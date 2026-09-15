@@ -1,0 +1,706 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4d0dbe92",
+      "name": "antigravity",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/antigravity"
+          ],
+          "name": "antigravity",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/antigravity",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/antigravity"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_11ea8638",
+      "name": "migrate-to-antigravity",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/migrate-to-antigravity"
+          ],
+          "name": "migrate-to-antigravity",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/migrate-to-antigravity",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/migrate-to-antigravity"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_3e4a00fe",
+      "name": "antigravity-delegate",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/antigravity-delegate.md"
+          ],
+          "name": "antigravity-delegate",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/antigravity-delegate.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/antigravity-delegate.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_78f02642",
+      "name": "cancel",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/cancel.md"
+          ],
+          "name": "cancel",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/cancel.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/cancel.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_80080b7f",
+      "name": "cloud-run-debug",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/cloud-run-debug.md"
+          ],
+          "name": "cloud-run-debug",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/cloud-run-debug.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/cloud-run-debug.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_3bd5e2a4",
+      "name": "delegate",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/delegate.md"
+          ],
+          "name": "delegate",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/delegate.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/delegate.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_cbecfeca",
+      "name": "media",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/media.md"
+          ],
+          "name": "media",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/media.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/media.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_f691bb0e",
+      "name": "migrate",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/migrate.md"
+          ],
+          "name": "migrate",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/migrate.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/migrate.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_13970db3",
+      "name": "research",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/research.md"
+          ],
+          "name": "research",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/research.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/research.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_44f9963c",
+      "name": "result",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/result.md"
+          ],
+          "name": "result",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/result.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/result.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1722e0f9",
+      "name": "review",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/review.md"
+          ],
+          "name": "review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/review.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/review.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_3b26e785",
+      "name": "setup",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/setup.md"
+          ],
+          "name": "setup",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/setup.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/setup.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_90bf65c8",
+      "name": "status",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/status.md"
+          ],
+          "name": "status",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/status.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/status.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fe4a69d7",
+      "name": "SessionStart-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionStart-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9ede00b1",
+      "name": "SessionStart-1",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionStart-1",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_aeae855f",
+      "name": "SessionStart-2",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionStart-2",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b576be88",
+      "name": "UserPromptSubmit-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "UserPromptSubmit-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_37945ea3",
+  "plugin_name": "antigravity-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-09-15"
+}
