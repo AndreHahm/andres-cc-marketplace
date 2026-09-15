@@ -141,10 +141,13 @@ This plugin is one shape of Claude and Gemini working together: **conductor and 
 
 [**quorum-review**](https://github.com/yuting0624/quorum-review) is the third shape: the two as **peers**. Both read the same pull request independently, neither sees the other's output, and where they agree independently *that is the result* — only the disagreements are worth a second opinion. Both run on **one** Google Cloud credential, so no vendor API keys live in the repository. Same author as this plugin.
 
-**This repo is its client zero.** It runs on every pull request opened here, alongside a Claude review — including the ones that change this plugin. Keeping the habit of not quoting numbers we haven't measured, here is what that has actually been worth:
+**This plugin's original standalone repo was its client zero**, before this plugin joined this
+marketplace (see the Contributing section below — that CI is inert here, not active against
+PRs in this repo). Keeping the habit of not quoting numbers that weren't measured, here is
+what that arrangement was worth there:
 
 - On a fixture holding three known bugs it found **two, with no false positives**, and reached the correct root cause on one that the single-model review took two rounds to get right.
-- Reviewing this repo's own CI, both of its models **independently** caught a fork-guard hole in the review workflow itself — one that would have put an outside contributor's code on the runner next to live credentials.
+- Reviewing that repo's own CI, both of its models **independently** caught a fork-guard hole in the review workflow itself — one that would have put an outside contributor's code on the runner next to live credentials.
 - It has also produced a confident **false positive that both models agreed on** — the code disproving it lived outside the checkout either model could read.
 
 That last one is the useful lesson, and it cuts against the obvious pitch: two independent scans insure you against *one model's* blind spot. They do not insure you against a gap in what you handed **both** of them.
@@ -191,7 +194,7 @@ via plugin options — `default_model`, or per-tier `tier_flash` / `tier_flash_l
 (env `CLAUDE_PLUGIN_OPTION_*`). Keep the executor a *different, cheaper* model than the Claude
 conductor — that's what gives both the cost saving and the cross-model verification.
 
-> **The `flash` tiers moved to Gemini 3.7 Flash in 0.24.0.** 3.6 and 3.7 are priced *identically* and both undercut 3.5 on every axis — input and cached-input are exactly **half** ($1.50 -> $0.75, $0.15 -> $0.075) and output is cheaper still, **$9.00 -> $3.75** (a 58% cut, not half) — under promotional pricing that **ends 2026-12-31**, after which they settle at $1.50 / $7.50 / $0.15 (still cheaper than 3.5 on output). Checked against two sources on 2026-08-17; [`prices.json`](prices.json) carries both sets. No quality claim is made here — the reason to move is price and currency, and this repo has retracted a model comparison before for being measured on a build where `--model` was ignored. **If your plan does not serve 3.7 yet** (newer models can lag on enterprise Vertex) you find out immediately, not silently: `agy-doctor` warns that the tier model is absent from `agy models`, and a delegation exits **14** naming the fix. Remap with the `tier_flash` / `tier_flash_lo` options to anything `agy models` lists — `Gemini 3.6 Flash (High)` costs exactly the same. (agy 1.1.5 switched `agy models` to slugs like `gemini-3.7-flash`; both slugs and display names work with `--model`, and `doctor` matches either.)
+> **The `flash` tiers moved to Gemini 3.7 Flash in 0.24.0.** 3.6 and 3.7 are priced *identically* and both undercut 3.5 on every axis — input and cached-input are exactly **half** ($1.50 -> $0.75, $0.15 -> $0.075) and output is cheaper still, **$9.00 -> $3.75** (a 58% cut, not half) — under promotional pricing that **ends 2026-12-31**, after which they settle at $1.50 / $7.50 / $0.15 (still cheaper than 3.5 on output). Checked against two sources on 2026-08-17; [`prices.json`](prices.json) carries both sets. No quality claim is made here — the reason to move is price and currency, and this plugin has retracted a model comparison before for being measured on a build where `--model` was ignored. **If your plan does not serve 3.7 yet** (newer models can lag on enterprise Vertex) you find out immediately, not silently: `agy-doctor` warns that the tier model is absent from `agy models`, and a delegation exits **14** naming the fix. Remap with the `tier_flash` / `tier_flash_lo` options to anything `agy models` lists — `Gemini 3.6 Flash (High)` costs exactly the same. (agy 1.1.5 switched `agy models` to slugs like `gemini-3.7-flash`; both slugs and display names work with `--model`, and `doctor` matches either.)
 
 </details>
 
@@ -261,14 +264,14 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <summary><b>📦 What's inside · local dev · tests</b></summary>
 
 ```
-.claude-plugin/   plugin (+ userConfig: default_tier, timeout, coding_policy) + marketplace manifests
-skills/antigravity/SKILL.md   WHEN + HOW Claude collaborates with agy
+.claude-plugin/   plugin.json (+ userConfig: default_tier, timeout, coding_policy) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
+skills/           antigravity (WHEN + HOW Claude collaborates with agy), migrate-to-antigravity (one-time config migration)
 agents/           antigravity-delegate subagent (file work runs on Gemini, not Claude)
-commands/         slash commands (delegate, review, research, media, cloud-run-debug, setup, status, result, cancel)
-hooks/            SessionStart: agy health check + auto-inject the cost-aware policy
+commands/         slash commands (delegate, review, research, media, cloud-run-debug, setup, status, result, cancel, migrate)
+hooks/            SessionStart: agy health check + auto-inject the cost-aware policy; UserPromptSubmit: delegation nudge
 bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · cloud-debug · agy-trace · agy-media · measure-session · agy-migrate
 scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate
-docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved
+docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved · START_WORKFLOW_MAX_SESSION · templates/
 prices.json       Vertex rate config (verify before quoting)
 ```
 
@@ -289,11 +292,13 @@ bash tests/run-tests.sh
 
 ## 🤝 Contributing
 
-Early-stage and Apache 2.0 — issues, PRs, and ⭐ all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [`good first issue`](https://github.com/andrehahm/andres-cc-marketplace/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) list.
-
-**Automated review:** PRs get two reviews in CI on top of the usual tests/shellcheck — a Claude review carrying this repo's own contracts, and [quorum-review](https://github.com/yuting0624/quorum-review) — see the section above.
-
-**From a fork:** quorum doesn't run at all. The Claude review runs only once a maintainer **with write access** applies the `claude-review` label — the label alone isn't authorisation, since triage collaborators can apply labels too — and it re-runs on every later push, so an approved review can't go stale behind new commits. Your code never reaches the runner at all — the reviewer sees it as a diff (`gh pr diff`), with this repository's base checkout for context. Nothing of yours is fetched or executed.
+Apache 2.0 — issues, PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for this plugin's
+development setup and PR conventions, and this marketplace's own root-level CI (tests,
+shellcheck, and review gates it applies repo-wide) for what actually runs against a PR. The
+`.github/workflows/` shipped inside this plugin's own directory (its history from before this
+plugin joined the marketplace) is inert here — GitHub only reads `.github/` at repo root, so
+those workflows don't execute; see the section above for the `quorum-review`/Claude-review
+concept they implemented in the plugin's original standalone repo.
 
 ---
 
