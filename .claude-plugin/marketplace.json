@@ -111,6 +111,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "antigravity-kit",
+      "source": "./plugins/antigravity-kit",
+      "description": "Hybrid Claude Code + Antigravity (Gemini) workflow: Claude conducts requirements/architecture/the hard 20%/verification, and routes deterministic, high-volume work (scaffolding, tests, first-pass review, migrations, web/Vertex AI Search) to Antigravity. Lower token cost as a financial lever.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }
