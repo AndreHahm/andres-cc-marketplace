@@ -31,9 +31,16 @@
 #     through it.
 #
 # Open items (disclosed, not blocking):
-#   - Matrix job limit: GitHub Actions caps a matrix at 256 jobs. The
-#     default limit input (100) is well within range, but a limit > 256
-#     would silently drop the excess. Run in smaller batches if needed.
+#   - Matrix job limit: GitHub Actions caps a matrix at 256 jobs and
+#     CANCELS the whole run if exceeded (validated explicitly in the
+#     "List issues" step below, with a clear error message). The default
+#     limit input (100) is well within range.
+#   - No way to advance past the first `limit` matching issues across
+#     multiple runs -- gh issue list always returns the newest matching
+#     issues first, with no cursor/exclusion mechanism, so a rerun with
+#     the same inputs re-selects the same set. Tracked as issue #329
+#     rather than fixed here -- implementing real pagination is a design
+#     decision (which field to page on), not a quick fix.
 #   - Per-job overhead: each matrix job does its own checkout + killswitch
 #     check, plus one issues.get call for the priority-label step below.
 #     For 100 issues that's 100 checkouts and 100 extra API reads --
@@ -117,6 +124,22 @@ jobs:
           PROCESS_ALL: ${{ github.event.inputs.process_all }}
           LIMIT: ${{ github.event.inputs.limit }}
         run: |
+          # GitHub Actions caps a matrix at 256 jobs and CANCELS the whole
+          # workflow run if exceeded -- it does not silently drop the
+          # excess, contrary to what an earlier version of this comment
+          # claimed (verified against GitHub's own documented behavior:
+          # "the workflow/job will get cancelled" when a limit is reached).
+          # Fail clearly here instead of letting that cancellation surprise
+          # whoever triggered the run (PR #328 review, Codex + CodeRabbit,
+          # independently). Note this only bounds a single run -- it does
+          # NOT make repeated runs able to reach issues past the newest
+          # `limit` matching ones; see issue #329 for that separate,
+          # larger gap.
+          if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [ "$LIMIT" -lt 1 ] || [ "$LIMIT" -gt 256 ]; then
+            echo "::error::limit must be a positive integer no greater than 256 (GitHub Actions' own matrix-job cap) -- got '$LIMIT'."
+            exit 1
+          fi
+
           STATE="open"
           if [ "$PROCESS_ALL" = "true" ]; then
             STATE="all"
@@ -251,10 +274,33 @@ jobs:
             }
             const text = stripTemplateBoilerplate(`${issue.title || ''}\n${issue.body || ''}`);
 
-            // Same critical-keyword pattern as issue-opened-labeler.yml.
+            // Same critical-keyword pattern as issue-opened-labeler.yml,
+            // plus a negation guard that live file doesn't have: "No
+            // blockers remain", "this is not urgent", and "non-blocking
+            // cleanup" all matched the bare keyword regex and would have
+            // been misclassified p: critical (PR #328 review, Codex).
+            // Checks the ~20 characters immediately preceding each match
+            // for a negation word ending right up against it -- imperfect
+            // (a negation further back, or a double negative, isn't
+            // caught) but closes the concrete false positives found.
+            // issue-opened-labeler.yml's own copy of this regex has the
+            // same gap, deliberately left unchanged here -- tracked as
+            // issue #330 rather than silently changed in this PR.
+            function isCriticalUnnegated(s) {
+              const re = /\b(critical|urgent|blockers?|blocking|asap|production down)\b/gi;
+              let m;
+              while ((m = re.exec(s))) {
+                const before = s.slice(Math.max(0, m.index - 20), m.index);
+                if (/\b(no|not|non|none|nothing|isn'?t|aren'?t|wasn'?t|weren'?t|without|never)[\s-]*$/i.test(before)) {
+                  continue;
+                }
+                return true;
+              }
+              return false;
+            }
             // Every other tier is a judgment call per
             // docs/github-label-taxonomy.md, not inferred here.
-            const isCritical = /\b(critical|urgent|blockers?|blocking|asap|production down)\b/i.test(text);
+            const isCritical = isCriticalUnnegated(text);
             const label = isCritical ? 'p: critical' : 'p: medium';
 
             core.info(`Issue #${issue_number}: no priority label found -- applying "${label}".`);
