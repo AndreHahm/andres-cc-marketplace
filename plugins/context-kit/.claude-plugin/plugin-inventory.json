@@ -327,11 +327,216 @@
         }
       ],
       "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1ebd5acf",
+      "name": "context-audit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/context-audit"
+          ],
+          "name": "context-audit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/context-audit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/context-audit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6d3a2cbc",
+      "name": "context-degradation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/context-degradation"
+          ],
+          "name": "context-degradation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/context-degradation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/context-degradation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_2e8edf75",
+      "name": "context-engineering",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/context-engineering"
+          ],
+          "name": "context-engineering",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/context-engineering",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/context-engineering"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_df73be62",
+      "name": "context-optimization",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/context-optimization"
+          ],
+          "name": "context-optimization",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/context-optimization",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/context-optimization"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1096c392",
+      "name": "context-window-analyze",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/context-window-analyze"
+          ],
+          "name": "context-window-analyze",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/context-window-analyze",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/context-window-analyze"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-15",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_7237ea29",
   "plugin_name": "context-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-09"
+  "updated_on": "2026-09-15"
 }
