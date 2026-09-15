@@ -16,6 +16,14 @@ on:
         required: true
         default: '100'
         type: 'string'
+      dry_run:
+        description: 'Dry run (log what would change without applying labels)'
+        required: true
+        default: 'false'
+        type: 'choice'
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   pull-requests: 'write'
@@ -45,6 +53,16 @@ jobs:
         env:
           GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
           GH_REPO: '${{ github.repository }}'
+          # Passed through env, not interpolated directly into the script
+          # below -- same reasoning already applied to DRY_RUN's siblings in
+          # the batch-run workflows this file mirrors (pr-auto-label-batch-
+          # run.yml, issue-auto-labeler-batch-run.yml): workflow_dispatch
+          # inputs aren't validated against their declared `type: choice`
+          # at the API level, so a value dispatched via `gh workflow run`/
+          # the REST API could contain shell metacharacters. This file's
+          # pre-existing PROCESS_ALL/LIMIT direct-interpolation lines below
+          # are left as-is -- out of scope for this change.
+          DRY_RUN: '${{ github.event.inputs.dry_run }}'
         run: |
           # Determine the state filter
           STATE="open"
@@ -53,6 +71,9 @@ jobs:
           fi
 
           LIMIT="${{ github.event.inputs.limit }}"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🔍 Dry run: no labels will actually be added or removed."
+          fi
           echo "Batch labeling up to $LIMIT $STATE PRs..."
 
           # The 5 "size: *" labels are declared in .github/labels.yml (single
@@ -82,6 +103,7 @@ jobs:
           UPDATED_COUNT=0
           SKIPPED_COUNT=0
           FAILED_COUNT=0
+          DRYRUN_COUNT=0
 
           while read -r PR_JSON; do
             PR_NUMBER=$(echo "$PR_JSON" | jq '.number')
@@ -119,17 +141,22 @@ jobs:
 
             # Update labels if there's a difference
             if [ ${#LABELS_TO_REMOVE[@]} -gt 0 ] || [ ${#LABEL_TO_ADD[@]} -gt 0 ]; then
-              echo "🔄 PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): updating size to $SIZE"
-              # Only count as updated on actual success -- the previous
-              # `2>/dev/null || true` discarded a real failure (rate limiting,
-              # permissions, a missing label) and still counted it as updated,
-              # so the batch could exit successfully while labels stayed
-              # stale (Codex + CodeRabbit finding, PR #294 review).
-              if gh pr edit "$PR_NUMBER" "${LABELS_TO_REMOVE[@]}" "${LABEL_TO_ADD[@]}"; then
-                UPDATED_COUNT=$((UPDATED_COUNT + 1))
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "🔍 [dry-run] PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): would update size to $SIZE"
+                DRYRUN_COUNT=$((DRYRUN_COUNT + 1))
               else
-                echo "::warning::Failed to update labels for PR #$PR_NUMBER"
-                FAILED_COUNT=$((FAILED_COUNT + 1))
+                echo "🔄 PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): updating size to $SIZE"
+                # Only count as updated on actual success -- the previous
+                # `2>/dev/null || true` discarded a real failure (rate limiting,
+                # permissions, a missing label) and still counted it as updated,
+                # so the batch could exit successfully while labels stayed
+                # stale (Codex + CodeRabbit finding, PR #294 review).
+                if gh pr edit "$PR_NUMBER" "${LABELS_TO_REMOVE[@]}" "${LABEL_TO_ADD[@]}"; then
+                  UPDATED_COUNT=$((UPDATED_COUNT + 1))
+                else
+                  echo "::warning::Failed to update labels for PR #$PR_NUMBER"
+                  FAILED_COUNT=$((FAILED_COUNT + 1))
+                fi
               fi
             else
               echo "✅ PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): already has correct label ($SIZE). Skipping."
@@ -140,7 +167,11 @@ jobs:
           echo "============================================"
           echo "🎉 Batch run completed!"
           echo "Skipped (already correct): $SKIPPED_COUNT"
-          echo "Updated: $UPDATED_COUNT"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Would update (dry-run): $DRYRUN_COUNT"
+          else
+            echo "Updated: $UPDATED_COUNT"
+          fi
           echo "Failed: $FAILED_COUNT"
           if [ "$FAILED_COUNT" -gt 0 ]; then
             exit 1
