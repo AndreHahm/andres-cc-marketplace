@@ -40,8 +40,14 @@
 #   - Rate limiting: processing 100+ PRs in one run makes many API calls
 #     (a pulls.get fetch per PR for real additions/deletions, plus
 #     addLabels + removeLabel per PR for the title step, plus the labeler
-#     action's own per-PR file fetch). For very large PR counts, consider
-#     splitting into smaller batches via the limit input.
+#     action's own per-PR file fetch).
+#   - No way to advance past the first `limit` matching PRs across
+#     multiple runs -- gh pr list always returns the newest matching PRs
+#     first, with no cursor/exclusion mechanism, so a rerun with the same
+#     inputs re-selects the same set (a lower `limit` doesn't help reach
+#     older PRs either, it just re-fetches a smaller slice of the same
+#     newest ones). Tracked as issue #329 rather than fixed here --
+#     implementing real pagination is a design decision, not a quick fix.
 #   - Priority-tier detection is deliberately narrow: it only recognizes a
 #     "critical" keyword pattern (mirroring issue-opened-labeler.yml's own,
 #     the closest existing precedent since no PR-side automation defines
@@ -181,36 +187,29 @@ jobs:
         if: steps.list-prs.outputs.pr_count != '0'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
         env:
-          PROCESS_ALL: ${{ github.event.inputs.process_all }}
-          LIMIT: ${{ github.event.inputs.limit }}
+          PR_NUMBERS: ${{ steps.list-prs.outputs.pr_numbers }}
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const state = process.env.PROCESS_ALL === 'true' ? 'all' : 'open';
-            const limit = parseInt(process.env.LIMIT, 10) || 100;
 
-            core.info(`Batch title-labeling up to ${limit} ${state} PRs...`);
+            // Reuse the exact PR set "List PRs" already captured, instead of
+            // re-querying with a separate github.paginate(pulls.list, ...)
+            // call. A second, independent enumeration can see a different
+            // result than the first if a PR opens or closes in between --
+            // with the default process_all=false, a PR that closes between
+            // the two calls gets file-based labels but never title/priority
+            // labels (or vice versa for one that opens in the gap). Reusing
+            // the same captured number list makes both labeling passes
+            // operate on one consistent set by construction, and removes
+            // the need for the early-stop pagination this step used to do
+            // (PR #328 review, CodeRabbit + Codex, independently).
+            const prsToProcess = (process.env.PR_NUMBERS || '')
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((number) => ({ number: Number(number) }));
 
-            // Fetch PRs with all required fields, stopping pagination once
-            // `limit` have been collected instead of walking every page
-            // matching `state` and slicing afterward -- a plain
-            // github.paginate(route, params) call has no early-stop, so it
-            // was issuing a List-PRs request for every page of `state`
-            // regardless of `limit` (cross-model-review finding: both
-            // Claude and Codex independently flagged this in Phase 1, each
-            // confirmed the other's finding in Phase 2, no refutation).
-            let fetchedCount = 0;
-            const prs = await github.paginate(
-              github.rest.pulls.list,
-              { owner, repo, state, per_page: 100 },
-              (response, done) => {
-                fetchedCount += response.data.length;
-                if (fetchedCount >= limit) done();
-                return response.data;
-              }
-            );
-            const prsToProcess = prs.slice(0, limit);
+            core.info(`Batch title-labeling ${prsToProcess.length} PR(s)...`);
 
             if (prsToProcess.length === 0) {
               core.info('No PRs found matching the criteria.');
@@ -290,6 +289,31 @@ jobs:
                 .replace(/^#{1,6}\s.*$/gm, ' ');
             }
 
+            // Same critical-keyword pattern as issue-opened-labeler.yml,
+            // plus a negation guard that live file doesn't have: "No
+            // blockers remain", "this is not urgent", and "non-blocking
+            // cleanup" all matched the bare keyword regex and would have
+            // been misclassified p: critical (PR #328 review, Codex).
+            // Checks the ~20 characters immediately preceding each match
+            // for a negation word ending right up against it -- imperfect
+            // (a negation further back, or a double negative, isn't
+            // caught) but closes the concrete false positives found.
+            // issue-opened-labeler.yml's own copy of this regex has the
+            // same gap, deliberately left unchanged here -- tracked as
+            // issue #330 rather than silently changed in this PR.
+            function isCriticalUnnegated(s) {
+              const re = /\b(critical|urgent|blockers?|blocking|asap|production down)\b/gi;
+              let m;
+              while ((m = re.exec(s))) {
+                const before = s.slice(Math.max(0, m.index - 20), m.index);
+                if (/\b(no|not|non|none|nothing|isn'?t|aren'?t|wasn'?t|weren'?t|without|never)[\s-]*$/i.test(before)) {
+                  continue;
+                }
+                return true;
+              }
+              return false;
+            }
+
             let updatedCount = 0;
             let skippedCount = 0;
             let failedCount = 0;
@@ -330,7 +354,7 @@ jobs:
                 // shouldn't second-guess.
                 if (!current.some((l) => l.startsWith('p: '))) {
                   const text = stripTemplateBoilerplate(`${prDetail.title || ''}\n${prDetail.body || ''}`);
-                  const isCritical = /\b(critical|urgent|blockers?|blocking|asap|production down)\b/i.test(text);
+                  const isCritical = isCriticalUnnegated(text);
                   const priorityLabel = isCritical ? 'p: critical' : 'p: medium';
                   core.info(`PR #${issue_number}: no priority label found -- applying "${priorityLabel}".`);
                   labelsToAdd.add(priorityLabel);
@@ -388,7 +412,13 @@ jobs:
                   toRemove = current.filter((l) => managedUniverse.has(l) && !labelsToAdd.has(l));
                 }
 
-                const labels = Array.from(labelsToAdd);
+                // Filter against current before the API call -- labelsToAdd
+                // holds the full desired set (used above by toRemove's own
+                // comparison), including labels the PR already has. Without
+                // this filter, addLabels was called -- and changed set true,
+                // inflating updatedCount -- on every run for a PR whose
+                // labels never actually changed (PR #328 review, CodeRabbit).
+                const labels = Array.from(labelsToAdd).filter((label) => !current.includes(label));
                 let changed = false;
 
                 if (labels.length > 0) {
