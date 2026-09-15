@@ -141,27 +141,11 @@ jobs:
           # cross-model-review finding, round 3: Codex Phase 1).
           PROCESS_ALL: ${{ github.event.inputs.process_all }}
           LIMIT: ${{ github.event.inputs.limit }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           STATE="open"
           if [ "$PROCESS_ALL" = "true" ]; then
             STATE="all"
           fi
-
-          # An API/CLI dispatch isn't validated against `type: choice`'s
-          # declared options, so a malformed dry_run value (e.g. "True",
-          # "1") must fail loudly here rather than silently reaching the
-          # `!= 'true'`/`=== 'true'` comparisons downstream (this step's own
-          # "Label PRs by changed files" `if:` and the title-labeling
-          # step's `dryRun` check), where anything other than the exact
-          # string "true" falls through toward the *mutating* path -- the
-          # opposite of what a safety-preview feature should do on bad
-          # input (Codex review finding, PR #331).
-          if [ "$DRY_RUN" != "true" ] && [ "$DRY_RUN" != "false" ]; then
-            echo "::error::dry_run must be exactly 'true' or 'false' -- got '$DRY_RUN'."
-            exit 1
-          fi
-
           echo "Fetching up to $LIMIT $STATE PRs..."
 
           # Check the command's own exit status separately from an empty

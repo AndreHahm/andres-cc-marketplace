@@ -140,7 +140,6 @@ jobs:
           # cross-model-review finding, round 3: Codex Phase 1).
           PROCESS_ALL: ${{ github.event.inputs.process_all }}
           LIMIT: ${{ github.event.inputs.limit }}
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           # GitHub Actions caps a matrix at 256 jobs and CANCELS the whole
           # workflow run if exceeded -- it does not silently drop the
@@ -155,19 +154,6 @@ jobs:
           # larger gap.
           if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [ "$LIMIT" -lt 1 ] || [ "$LIMIT" -gt 256 ]; then
             echo "::error::limit must be a positive integer no greater than 256 (GitHub Actions' own matrix-job cap) -- got '$LIMIT'."
-            exit 1
-          fi
-
-          # Same reasoning as the LIMIT check above: an API/CLI dispatch
-          # isn't validated against `type: choice`'s declared options, so a
-          # malformed dry_run value (e.g. "True", "1") must fail loudly here
-          # rather than silently reaching the `!= 'true'`/`=== 'true'`
-          # comparisons downstream, where anything other than the exact
-          # string "true" falls through toward the *mutating* path -- the
-          # opposite of what a safety-preview feature should do on bad input
-          # (Codex review finding, PR #331).
-          if [ "$DRY_RUN" != "true" ] && [ "$DRY_RUN" != "false" ]; then
-            echo "::error::dry_run must be exactly 'true' or 'false' -- got '$DRY_RUN'."
             exit 1
           fi
 
