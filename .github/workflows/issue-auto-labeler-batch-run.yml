@@ -54,6 +54,15 @@
 #     judgment calls per docs/github-label-taxonomy.md, not something this
 #     pass infers from content -- same scope boundary the live per-issue
 #     workflow already accepts.
+#   - Supports a `dry_run` input. The priority-backfill step (custom
+#     github-script logic) fully previews under dry-run -- it logs what it
+#     would apply instead of calling addLabels. The content-regex step
+#     (github/issue-labeler) is skipped entirely under dry-run instead:
+#     that action applies labels itself and has no dry-run mode of its
+#     own, and reimplementing its regex matching locally just to preview
+#     it would risk drifting from the action's real behavior over time --
+#     the same reasoning the "Structural difference" comment above already
+#     gives for using the real action instead of reimplementing its logic.
 
 name: 'Auto-label Issues (Batch)'
 
@@ -73,6 +82,14 @@ on:
         required: true
         default: '100'
         type: 'string'
+      dry_run:
+        description: 'Dry run (log what would change without applying labels)'
+        required: true
+        default: 'false'
+        type: 'choice'
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   issues: write
@@ -219,6 +236,7 @@ jobs:
       # enable-versioned-regex=0, sync-labels left at default (0/off --
       # labels only ever get added, never removed on a later edit).
       - name: 'Label issue by content regex'
+        if: github.event.inputs.dry_run != 'true'
         uses: github/issue-labeler@ccca1e16fcb66762200e616fc29b57b940c1cb67 # ratchet:github/issue-labeler@v3.5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -227,6 +245,14 @@ jobs:
           include-title: '1'
           include-body: '1'
           issue-number: ${{ matrix.issue-number }}
+
+      # github/issue-labeler has no dry-run mode of its own and applies
+      # labels directly -- see this file's header comment on why it's
+      # skipped entirely (rather than reimplemented) under dry-run.
+      - name: 'Note: content-regex labeling skipped in dry-run'
+        if: github.event.inputs.dry_run == 'true'
+        run: |
+          echo "::notice::Dry run: skipping github/issue-labeler (content-regex labeling) -- this action has no dry-run mode of its own and applies labels directly. Content-regex labels are not previewed in this mode; only the priority-backfill step below is previewed."
 
       # ── Set missing priority label ───────────────────────────────────
       # Backfills a single p: label onto issues that don't have one yet.
@@ -246,9 +272,12 @@ jobs:
       # for github/issue-labeler's own config duplication.
       - name: 'Set missing priority label'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         with:
           script: |
             const issue_number = ${{ matrix.issue-number }};
+            const dryRun = process.env.DRY_RUN === 'true';
             const { data: issue } = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -302,6 +331,11 @@ jobs:
             // docs/github-label-taxonomy.md, not inferred here.
             const isCritical = isCriticalUnnegated(text);
             const label = isCritical ? 'p: critical' : 'p: medium';
+
+            if (dryRun) {
+              core.info(`Issue #${issue_number}: [dry-run] would apply priority label "${label}".`);
+              return;
+            }
 
             core.info(`Issue #${issue_number}: no priority label found -- applying "${label}".`);
             await github.rest.issues.addLabels({
