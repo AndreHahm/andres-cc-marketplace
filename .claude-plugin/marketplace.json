@@ -102,7 +102,7 @@
     {
       "name": "context-kit",
       "source": "./plugins/context-kit",
-      "description": "Automatic, hook-driven context-window management for Claude Code sessions — tracks tool-call/context usage, suggests strategic compaction at phase transitions and milestones, and captures/restores session state across compaction boundaries.",
+      "description": "Context-window management for Claude Code sessions — automatic, hook-driven tracking and compaction suggestions, plus skills for footprint auditing, context-degradation diagnosis, the Write/Select/Compress/Isolate framework, targeted retrieval, and live window-health checks.",
       "version": "0.1.0",
       "author": {
         "name": "Andre Hahm",

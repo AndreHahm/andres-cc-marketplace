@@ -1,12 +1,19 @@
 # context-kit
 
-Automatic, hook-driven context-window management for Claude Code sessions.
+Context-window management for Claude Code sessions — an automatic, hook-driven layer plus 5 model-invoked
+skills covering footprint auditing, failure diagnosis, the Write/Select/Compress/Isolate framework,
+targeted retrieval, and live context-window health.
 
 `context-kit` tracks tool-call and context usage through a session, suggests strategic compaction at
 natural phase transitions and milestones (rather than letting auto-compact fire at an arbitrary point),
-and captures/restores key session state (active plan, current task) across a compaction event.
+and captures/restores key session state (active plan, current task) across a compaction event. Beyond the
+automatic layer, it also ships skills for auditing a project's own skill/CLAUDE.md/plugin footprint,
+diagnosing active context-degradation patterns, planning context budgets, choosing targeted retrieval
+strategies (@ mentions vs. search), and checking the current window's live health.
 
-This is Wave 1 of a multi-wave build. This wave ships:
+This is a multi-wave build. Waves shipped so far:
+
+**Wave 1 — automatic layer:**
 
 - **`strategic-compact`** — a skill plus 5 hook-driven shell scripts that track tool-call phase
   (exploration → implementation), detect milestones (tests passing, a commit, a build, a deploy), and
@@ -14,11 +21,23 @@ This is Wave 1 of a multi-wave build. This wave ships:
   pending suggestion actually reaches the user before the turn ends.
 - **3 additional Python hooks**, wired via the same `hooks/hooks.json`: a `PostToolUse` context-usage
   monitor (coarse percentage estimate, throttled threshold nudges), a `PreCompact` state-capture hook,
-  and a `SessionStart` (`source=compact`) state-restore hook.
+  and a `SessionStart` (`source=compact` or `resume`) state-restore hook.
 
-Later waves add more context-management skills (`context-audit`, `context-degradation`,
-`context-engineering`, `context-optimization`, `context-window-analyze`) and a `context-mode` skill for
-task-phase-aware behavioral switching.
+**Wave 2 — 5 model-invoked skills:**
+
+- **`context-audit`** — audits skills/CLAUDE.md/plugin/MCP footprint and scores it (A-F). Defers session
+  token/model/tool-usage analysis and memory-content health to `session-kit`'s `session-stats`/
+  `session-memory-audit` (if installed) rather than duplicating them.
+- **`context-degradation`** — diagnoses active context failures (lost-in-middle, poisoning, distraction,
+  confusion, clash) and maps each to the `context-engineering` operation that mitigates it.
+- **`context-engineering`** — the canonical Write/Select/Compress/Isolate framework for planning a
+  context budget, compaction strategy, and partitioning approach.
+- **`context-optimization`** — @ mentions and semantic search for targeted, precise retrieval; one
+  concrete instance of `context-engineering`'s "Select" operation.
+- **`context-window-analyze`** — a live, in-the-moment check of the current context window's health and
+  remediation options, narrower in scope than `context-audit`'s broader footprint audit.
+
+A future wave adds a `context-mode` skill for task-phase-aware behavioral switching.
 
 ## Installation
 
@@ -59,21 +78,34 @@ files somewhere `context-kit` should read.
 Python. New scripts added to this plugin should be Python going forward, per this marketplace's
 `require-declared-plugin-language.md` convention.
 
-**Disclosed exception:** `strategic-compact`'s 5 hook scripts (`hooks/scripts/*.sh`) are Bash. They were
-an already-written, working, non-trivial component pulled in from a prior design/review pass at this
-plugin's creation, and were not rewritten to Python as part of this build — rewriting working hook logic
-purely to match a naming convention wasn't worth the risk. They're a disclosed, intentional exception,
-not an oversight.
+**Disclosed exceptions:**
+- `strategic-compact`'s 5 hook scripts (`hooks/scripts/*.sh`) are Bash. They were an already-written,
+  working, non-trivial component pulled in from a prior design/review pass at this plugin's creation, and
+  were not rewritten to Python as part of this build — rewriting working hook logic purely to match a
+  naming convention wasn't worth the risk.
+- `context-audit`'s `scripts/audit-context.sh` (Wave 2) is also Bash. It's a static-inventory scanner
+  (`find`/`wc`/`jq`-based) carried over unchanged from the plugin's own source draft; a rewrite to Python
+  wasn't part of Wave 2's scope, which fixed the script's content (dropping a duplicated session-analysis
+  mode, a `--top` arithmetic bug) without changing its language.
+
+Both are disclosed, intentional exceptions, not oversights.
 
 ## Pairing with session-kit
 
-`context-kit`'s automatic capture/restore (this wave) and `session-kit`'s user-invoked
+`context-kit`'s automatic capture/restore (Wave 1) and `session-kit`'s user-invoked
 `session-handoff`/`session-wrap-up` skills both address "preserve context across a boundary," via
 different mechanisms (automatic hooks vs. explicit user action) and different storage
 (`~/.claude/sessions/<hash>/` vs. `.claude/handoffs/`). Both work independently — `session-kit` ships no
 hooks, so there's no mechanical collision. Whether `context-kit`'s automatic layer should eventually hand
 off to `session-kit`'s handoff format is an open cross-plugin design question for a future pass, not
 resolved in this wave.
+
+Wave 2's skills extend this pairing, each independently (conditional on `session-kit` being installed —
+`context-kit` has no hard dependency on it): `context-audit` defers session-token/model/tool-usage
+analysis and memory-content health to `session-kit`'s `session-stats`/`session-memory-audit`, rather than
+duplicating them; `context-window-analyze` separately offers `session-kit`'s `session-handoff` as one
+optional escalation path when context is critical. Neither skill duplicates the other's session-kit
+integration.
 
 ## License
 
