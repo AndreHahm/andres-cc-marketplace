@@ -1,0 +1,19 @@
+{
+  "skill_name": "migrate-to-antigravity",
+  "skill_path": "plugins/antigravity-kit/skills/migrate-to-antigravity/SKILL.md",
+  "description": "One-time move of an existing Claude Code setup (skills, memory, CLAUDE.md, MCP, plugins, permissions) onto the Antigravity CLI (agy).",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Migration request runs dry-run first, explains what moves live vs. generated",
+      "prompt": "I want to move my Claude Code config over to Antigravity -- skills, memory, the works. Where do I start?",
+      "expected_output": "Directs to run agy-migrate as a dry-run first (never jumping straight to --apply), then read the report before applying. Explains the live-vs-generated distinction: user skills are read in place via a skills.json entry (not copied), while memory/MCP/permissions are generated as new files because they need a format change. Flags that permissions are written only as a proposal file, merged only with --apply-permissions, because Claude's allow-list stores whole command lines while agy's command() matches a prefix (a widening translation). Mentions session history cannot move (Antigravity stores conversations as protobuf blobs in per-conversation SQLite, no writer exists)."
+    },
+    {
+      "id": 2,
+      "name": "Ongoing delegation request routes to the sibling skill, not handled here",
+      "prompt": "Now that agy is set up, can you delegate this test-generation task to it under cost discipline?",
+      "expected_output": "Recognizes this is ongoing, per-task delegation work, not a one-time config migration, and points to the sibling antigravity skill (or the relevant /antigravity-kit: delegation commands) instead of trying to answer it as a migration question -- matching this skill's own 'When NOT to Use' section, which names the antigravity skill explicitly for this exact scenario."
+    }
+  ]
+}

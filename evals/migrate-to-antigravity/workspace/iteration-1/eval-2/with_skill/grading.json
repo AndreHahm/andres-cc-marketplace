@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is ongoing per-task delegation, not a one-time config migration", "passed": true, "evidence": "\"delegating a specific test-generation task to agy under cost discipline ... isn't actually what the migrate-to-antigravity skill is for\""},
+    {"text": "Points to the sibling antigravity skill / delegation commands instead", "passed": true, "evidence": "\"should go through the sibling antigravity skill instead\""},
+    {"text": "Does not attempt to answer it as a migration question", "passed": true, "evidence": "Did not run agy-migrate; explicitly stated it would be the wrong tool and wouldn't apply cost controls"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

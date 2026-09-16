@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/antigravity-kit/skills/antigravity/SKILL.md",
+  "assertions": [
+    {"text": "Recommends doing the rename directly, not delegating it", "type": "presence", "target": "output"},
+    {"text": "Explicitly names this as below the break-even (small/self-contained/judgement-light)", "type": "quality", "target": "output"},
+    {"text": "Does not reach for agy-delegate or the antigravity-delegate subagent", "type": "presence", "target": "output"}
+  ]
+}

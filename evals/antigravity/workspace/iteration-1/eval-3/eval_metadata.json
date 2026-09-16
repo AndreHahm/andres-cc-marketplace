@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/antigravity-kit/skills/antigravity/SKILL.md",
+  "assertions": [
+    {"text": "Recognizes this is a one-time config/setup migration, not ongoing delegation", "type": "quality", "target": "output"},
+    {"text": "Points to the sibling migrate-to-antigravity skill or /antigravity-kit:migrate command", "type": "presence", "target": "output"},
+    {"text": "Does not attempt to answer it as an antigravity-skill delegation task", "type": "presence", "target": "output"}
+  ]
+}

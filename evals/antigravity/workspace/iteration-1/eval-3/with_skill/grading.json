@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is a one-time config/setup migration, not ongoing delegation", "passed": true, "evidence": "\"what you're describing ... is a one-time setup migration, not ongoing task delegation\""},
+    {"text": "Points to the sibling migrate-to-antigravity skill or /antigravity-kit:migrate command", "passed": true, "evidence": "\"handled by a separate, dedicated flow (a sibling 'migrate-to-antigravity' skill)\""},
+    {"text": "Does not attempt to answer it as an antigravity-skill delegation task", "passed": true, "evidence": "Explicitly declined to improvise the migration under the antigravity skill's own guidance, disclosed the sibling skill wasn't available, and asked clarifying questions instead"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recommends doing the rename directly, not delegating it", "passed": true, "evidence": "\"did NOT delegate it to Antigravity ... went to do it directly instead\""},
+    {"text": "Explicitly names this as below the break-even (small/self-contained/judgement-light)", "passed": true, "evidence": "\"This is a trivial, self-contained edit, so per the antigravity skill's cost-discipline guidance ... round-trip cost would exceed any savings for a task this small\""},
+    {"text": "Does not reach for agy-delegate or the antigravity-delegate subagent", "passed": true, "evidence": "No agy-delegate invocation attempted; agent instead searched for the target file directly"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

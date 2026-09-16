@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/antigravity-kit/skills/antigravity/SKILL.md",
+  "assertions": [
+    {"text": "Recommends delegating the migration to Antigravity/agy", "type": "presence", "target": "output"},
+    {"text": "States the break-even reasoning (this is bulk/repetitive, clearly above break-even)", "type": "quality", "target": "output"},
+    {"text": "Mentions --dir <repo-root> so agy reads real files instead of pasting them", "type": "presence", "target": "output"},
+    {"text": "Names a digest-only output contract (e.g. ===DIGEST===) as the cost lever", "type": "presence", "target": "output"},
+    {"text": "Mentions running on a dedicated branch/worktree with a diff review before merging", "type": "presence", "target": "output"}
+  ]
+}
