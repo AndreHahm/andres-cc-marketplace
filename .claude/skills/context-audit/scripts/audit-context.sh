@@ -69,6 +69,14 @@ word_count() {
   wc -w < "$1" | tr -d ' '
 }
 
+# Helper: escape a string for embedding in a JSON string literal (backslash, quote)
+json_escape() {
+  local s=$1
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  printf '%s' "$s"
+}
+
 # Helper: format bytes for display
 format_size() {
   local bytes=$1
@@ -266,7 +274,7 @@ if [[ "$JSON_OUTPUT" == true ]]; then
     IFS=$'\t' read -r source size words loads flag <<< "$entry"
     [[ "$first" == true ]] && first=false || echo ","
     printf '    {"source": "%s", "size_bytes": %s, "words": %s, "loads": "%s", "flag": "%s"}' \
-      "$source" "$size" "$words" "$loads" "$flag"
+      "$(json_escape "$source")" "$size" "$words" "$loads" "$flag"
   done
   echo ""
   echo "  ],"

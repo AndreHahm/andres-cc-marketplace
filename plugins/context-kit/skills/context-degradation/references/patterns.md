@@ -22,7 +22,8 @@ result = detect_lost_in_middle(critical_positions=[0, 1, 25, 48, 49], attention_
 ```
 
 Also available: `analyze_context_structure(context: str)`, which assesses structural degradation risk
-(how much content sits in the low-attention middle third) from a context string's own section layout —
+(how much content sits in the low-attention middle band — lines 30%-70% of the context) from a context
+string's own section layout —
 returns `total_lines`, `sections`, `middle_content_ratio`, and a `degradation_risk` level
 (`low`/`medium`/`high`).
 
