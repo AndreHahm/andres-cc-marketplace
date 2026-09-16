@@ -184,7 +184,7 @@ Claude Code writes newline-delimited JSON, one object per turn, linked by
 `uuid`/`parentUuid`. Antigravity writes one SQLite database per conversation
 (`~/.gemini/antigravity-cli/conversations/<uuid>.db`) whose schema is
 
-```sql
+```text
 CREATE TABLE steps (idx integer, step_type integer, status integer,
                     has_subtrajectory numeric, metadata blob, error_details blob,
                     permissions blob, task_details blob, render_info blob,
