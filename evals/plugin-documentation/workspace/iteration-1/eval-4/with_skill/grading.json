@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "README.md is updated the same way eval-2 expects (both skills listed, Known Issues preserved)",
+      "passed": true,
+      "evidence": "Agent found the Skills table already listed both skills correctly; the actual staleness was the opening summary paragraph ('Utilities for creating widget configuration files' -> 'Utilities for creating and validating widget configuration files'), which it corrected per Step 3's opening-summary re-check guidance. Known Issues section left untouched."
+    },
+    {
+      "text": "The report includes a structured classification block with version/source/docs_changed and the five change-axis fields",
+      "passed": true,
+      "evidence": "Full YAML block returned with all required fields present."
+    },
+    {
+      "text": "docs_changed lists README.md's actual path, not a placeholder",
+      "passed": true,
+      "evidence": "docs_changed contains the real file path to the fixture's README.md, not a placeholder string."
+    },
+    {
+      "text": "behavior_changed, activation_changed, permissions_changed, instructions_changed, and dependency_relationships_changed are all false",
+      "passed": true,
+      "evidence": "All five fields returned as false."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "AskUserQuestion was unavailable in this dispatch context, so the agent defaulted to the skill's own recommended delta-review mode rather than blocking, and disclosed this explicitly rather than presenting it as a real user answer. Delta human-doc-reviewer pass: PASS, no findings."
+}

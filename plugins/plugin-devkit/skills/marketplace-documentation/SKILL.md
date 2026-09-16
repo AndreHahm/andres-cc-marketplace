@@ -158,14 +158,15 @@ Scenarios:
    report surfaces the fix.
 
 Quick Workflow evals live at `evals/marketplace-documentation/` (`evals.json` + per-eval `grading.json`)
-— 2 scenarios, 7/7 assertions passing as of this skill's initial build: adding a plugin to
+— 2 evals, 7/7 assertions passing as of this skill's initial build: adding a plugin to
 `marketplace.json` (with_skill correctly caught a test-setup mismatch — the named plugin wasn't actually
 in the manifest — and refused to fabricate a row rather than proceeding, demonstrating Step 2's
 "never invent a plugin entry" discipline holds), and the trigger/non-trigger boundary against
-`plugin-documentation` for a single plugin's own docs. The other 2 scenarios in the "Scenarios" list above
-(no-changes-needed, broken `.claude/rules/*.md` reference) are lower-risk and delegated to
-`human-doc-reviewer`'s own already-tested logic rather than re-verified here — see `evals.json`'s
-`testing_validation_coverage` field.
+`plugin-documentation` for a single plugin's own docs. Only the first of those 2 evals maps to one of
+the 4 numbered "Scenarios" above (scenario 1, plugin added); the other 3 (plugin removed, no-changes-
+needed, broken `.claude/rules/*.md` reference) are lower-risk and delegated to `human-doc-reviewer`'s
+own already-tested logic rather than re-verified here — see `evals.json`'s `testing_validation_coverage`
+field.
 
 **Verify this skill activates on:**
 - "update the marketplace docs"

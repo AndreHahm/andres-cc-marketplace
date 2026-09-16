@@ -3,13 +3,14 @@
   "skill_path": "plugins/plugin-devkit/skills/marketplace-documentation/SKILL.md",
   "description": "Bounded Quick Workflow smoke check (plugin-lifecycle-upstream Phase 7) — confirms the skill's own documented trigger/non-trigger examples hold and its core Step 2-4 procedure is followed.",
   "testing_validation_coverage": {
-    "declared_scenarios": 4,
-    "covered_by_this_eval_set": 2,
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 1,
     "uncovered": [
+      "Plugin removed from marketplace.json — table row removal",
       "No changes needed (table already matches marketplace.json) — clean no-op reporting",
       "Broken .claude/rules/*.md reference caught by human-doc-reviewer's Step 3"
     ],
-    "note": "This is a bounded Phase 7 smoke check, not a full eval suite — the 2 scenarios below verify the trigger/non-trigger boundary and the core read-then-invoke-reviewer procedure; the 2 uncovered scenarios are lower-risk (delegated to human-doc-reviewer's own already-tested logic) and are not re-verified here."
+    "note": "This is a bounded Phase 7 smoke check, not a full eval suite. Only eval-1 exercises one of the SKILL.md's own numbered 'Scenarios' (scenario 1, plugin added). eval-2 tests a different, valuable dimension (the trigger/non-trigger boundary against plugin-documentation) that isn't one of the 4 numbered scenarios, so it doesn't count toward this coverage field even though it's a real, passing eval. The 3 uncovered scenarios are lower-risk (delegated to human-doc-reviewer's own already-tested logic, or straightforward no-op reporting) and are not re-verified here."
   },
   "evals": [
     {
