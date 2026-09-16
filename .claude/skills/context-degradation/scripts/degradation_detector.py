@@ -210,8 +210,13 @@ def analyze_context_structure(context: str) -> dict[str, Any]:
     middle_start = int(n * 0.3)
     middle_end = int(n * 0.7)
 
+    # Overlap between each section's [start, start+length) span and the middle
+    # band, not just whether the section *starts* in the band -- a section that
+    # starts before the middle band and runs through it (including the common
+    # single-section, no-headers case) must still count its middle-band lines.
     middle_content = sum(
-        s["length"] for s in sections if s["start"] >= middle_start and s["start"] <= middle_end
+        max(0, min(s["start"] + s["length"], middle_end + 1) - max(s["start"], middle_start))
+        for s in sections
     )
 
     middle_ratio = middle_content / n if n > 0 else 0
@@ -441,8 +446,12 @@ class ContextHealthAnalyzer:
         token_count = len(tokens)
         utilization = token_count / self.context_limit
 
+        # Analyze the full token sequence -- critical_positions indexes into the
+        # untruncated `tokens` list, so sampling a prefix here would silently drop
+        # any critical position beyond the sample from both at_risk and safe while
+        # still counting it in degradation_score's denominator (falsely "safe").
         attention_dist = measure_attention_distribution(
-            tokens[:1000],  # Sample for efficiency
+            tokens,
             "current_task",
         )
 
