@@ -82,9 +82,11 @@ Separately, apply `.claude/rules/keep-marketplace-root-docs-in-sync.md`: this on
 core fix changed `.claude-plugin/marketplace.json`'s plugin list itself (plugin-devkit being
 added/removed/renamed there) — not the far more common case of a component added/removed/changed within
 plugin-devkit, which the Inventory Sync paragraph above already handles and which never touches
-`marketplace.json`. In the rare case it does apply, run `marketplace-documentation` and fold the resulting
-commit into this step's own commit record; otherwise state "no marketplace-root doc sync needed" alongside
-the Inventory Sync summary above.
+`marketplace.json`. In the rare case it does apply, run `marketplace-documentation`, present its authored
+diff and `human-doc-reviewer` findings, and ask via `AskUserQuestion` whether to keep the changes as-is,
+revise, or discard — same gate the Document Step below uses. Fold any kept commit into this step's own
+commit record; otherwise state "no marketplace-root doc sync needed" alongside the Inventory Sync summary
+above.
 
 ## The Document Step (Shared Across All 4 Workflows)
 
@@ -104,10 +106,12 @@ Use `TaskCreate` at the start of whichever workflow runs, one task per major ste
 
 ## Testing & Validation
 
-This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 11 evals across 4 iterations, 30/30 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture; scenario 2's eval-4 record likewise predates `plugin-lifecycle-downstream`'s 12-phase redesign and still asserts the superseded "external Phase 3 entry" wording rather than the current "Phase 8 (Consolidated Fix)" — treat scenario 2 as needing a re-run against the current architecture, same caveat as scenario 6) — scenario 3 (bulk mode) and the 13 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above. **The new Step 3 (Conceive) insertion in `improve-a-plugin`/`enhance-a-plugin` (and the resulting Step 4-7 renumbering) is eval-tested** — evals 10-11 (iteration-4, 5/5 assertions) directly cover scenario 12a's substance (one `plugin-conception` invocation per approved candidate, narrow-repair bypass, new-component routing to `plugin-planning`); the renumbered steps themselves otherwise rely on the same design-review verification as the rest of this checklist.
+This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 11 evals across 4 iterations, 30/30 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture; scenario 2's eval-4 record likewise predates `plugin-lifecycle-downstream`'s 12-phase redesign and still asserts the superseded "external Phase 3 entry" wording rather than the current "Phase 8 (Consolidated Fix)" — treat scenario 2 as needing a re-run against the current architecture, same caveat as scenario 6) — scenario 3 (bulk mode) and the 14 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above. **The new Step 3 (Conceive) insertion in `improve-a-plugin`/`enhance-a-plugin` (and the resulting Step 4-7 renumbering) is eval-tested** — evals 10-11 (iteration-4, 5/5 assertions) directly cover scenario 12a's substance (one `plugin-conception` invocation per approved candidate, narrow-repair bypass, new-component routing to `plugin-planning`); the renumbered steps themselves otherwise rely on the same design-review verification as the rest of this checklist.
 
-**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (4/4 checks passing) and the eval
-evidence cited above (11 evals across 4 iterations, 30/30 assertions, 100% with_skill pass rate).
+**Last dated run record:** 2026-09-16 — `scripts/smoke_test.py` re-run after the Marketplace-Root Doc
+Sync paragraph was added (4/4 checks passing). The eval evidence cited above (11 evals across 4
+iterations, 30/30 assertions, 100% with_skill pass rate) predates this addition and does not cover
+scenario 14 — treat scenario 14 as design-review-verified only until eval coverage is extended.
 
 1. **improve-a-plugin, findings exist** — confirm `analyzing-sessions` runs, the human is asked which suggestions to act on via `AskUserQuestion`, and the hand-off to `plugin-lifecycle-downstream`'s Fix phase happens rather than a reimplemented apply step
 2. **enhance-a-plugin, findings exist** — same shape, confirm `plugin-comparison` is the finding source and the same Fix-phase hand-off happens
@@ -123,6 +127,7 @@ evidence cited above (11 evals across 4 iterations, 30/30 assertions, 100% with_
 12. **improve-a-plugin/enhance-a-plugin, Test and Self-Review reuse** — confirm Step 5 in both workflows doesn't re-invoke or duplicate `plugin-lifecycle-downstream`'s own Phase 8 (Consolidated Fix) re-verification, which already ran automatically as part of Step 4's hand-off once Phase 8 applied a change — and confirm Step 5 is stated as skipped (not silently omitted) when Step 4 applied nothing
 12a. **improve-a-plugin/enhance-a-plugin, Conceive step placement** — confirm the new Step 3 (Conceive) always runs after Step 2's human finding-selection pick and before Step 4's hand-off to Fix — never before the pick (which would classify unselected candidates for nothing), and never skipped silently; confirm a narrow, already-known Repair takes `plugin-conception`'s own bypass path straight to Step 4 without a full brief, while every other classification produces one
 13. **self-improvement, Test and Self-Review (Service 6, steps 6-7)** — confirm both are scoped to only the component(s) step 5 actually applied a change to, never the whole plugin; confirm step 7's findings are presented unscored; and confirm step 6's `smoke-tester` batch dispatch is used only for a large touched-skill set and only for the skill components in it, with any touched agent/hook/command/rule going through its own per-type tool directly
+14. **Marketplace-Root Doc Sync, plugin-devkit itself added/removed/renamed in marketplace.json** — confirm `marketplace-documentation` runs and its commit folds into this step's own commit record; confirm the far more common case (a component-only change within plugin-devkit) is correctly recognized as a no-op and states "no marketplace-root doc sync needed" rather than running the skill or silently omitting the check
 
 **Verify this skill activates on:**
 - "improve this plugin based on the retro"
@@ -148,6 +153,7 @@ evidence cited above (11 evals across 4 iterations, 30/30 assertions, 100% with_
 - [ ] `improve-a-plugin`/`enhance-a-plugin`'s Step 3 (Conceive) always runs after Step 2's human pick and before Step 4's Fix hand-off — never before the pick, never skipped, never reimplementing `plugin-conception`'s own classification logic
 - [ ] `self-improvement`'s Test (step 6) and Self-Review (step 7) are always scoped to only the component(s) step 5 touched, and step 7's findings are never scored into anything resembling `plugin-grader`'s output
 - [ ] Every workflow's Pre-Commit Disclosure check (`plugin-rulebook/references/open-item-discipline.md`) runs immediately before that workflow's own commit, and its result (including "no open items") is always stated alongside the file list/message
+- [ ] The Marketplace-Root Doc Sync check always states "no marketplace-root doc sync needed" for the common component-only case rather than silently omitting it — `marketplace-documentation` only ever runs for the rare case plugin-devkit itself is added/removed/renamed in `marketplace.json`
 
 ## Reference Guide
 
@@ -173,7 +179,7 @@ evidence cited above (11 evals across 4 iterations, 30/30 assertions, 100% with_
 | `plugin-rulebook/scripts/agent-cost-tracker.py` | Cost estimates cited in `self-review`/`self-evaluation`'s scoped-vs-full gate |
 | `plugin-documentation` skill | Document step, all 4 workflows — authors doc updates and runs its own `human-doc-reviewer` QA internally; also `self-documentation`'s dispatch target |
 | `plugin-inventory` skill | Inventory Sync and Manifest Check step, all 4 workflows — see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
-| `marketplace-documentation` skill | Inventory Sync and Manifest Check step, all 4 workflows — see `.claude/rules/keep-marketplace-root-docs-in-sync.md` |
+| `marketplace-documentation` skill | Marketplace-Root Doc Sync step (shared across all 4 workflows, alongside Inventory Sync and Manifest Check) — see `.claude/rules/keep-marketplace-root-docs-in-sync.md` |
 | `skill-maintenance` skill | Lighter-weight alternative for a single, already-known change — not this skill's job |
 | `/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules` | `self-upstream-plugin-devkit` bulk mode, in this order |
 | `/find-dev-rule`, `/update-dev-rule` | `self-upstream-plugin-devkit` single-rule mode |

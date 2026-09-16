@@ -10,9 +10,12 @@ description: >-
   'update the README', 'create a CONTRIBUTING.md', 'generate a changelog
   entry', 'document this plugin for humans', or after building or
   modifying plugin components when their docs need to reflect the change.
-  Does not review already-written docs on its own — it only authors, then
-  hands off to human-doc-reviewer for the actual QA pass.
-allowed-tools: Read Write Edit Glob Grep Agent
+  Never touches this marketplace's own top-level root docs (README.md,
+  CODE_OF_CONDUCT.md, CONTRIBUTING.md, GOVERNANCE.md, SECURITY.md at the
+  repo root) — see marketplace-documentation for that. Does not review
+  already-written docs on its own — it only authors, then hands off to
+  human-doc-reviewer for the actual QA pass.
+allowed-tools: Read Write Edit Glob Grep Agent AskUserQuestion
 ---
 
 # Plugin Documentation
@@ -66,14 +69,15 @@ for the caller, don't act on it here.
 
 ## When NOT to Use
 
-- **This marketplace's own top-level community docs** (`README.md`, `CODE_OF_CONDUCT.md`,
-  `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md` at the repo root) → use `marketplace-documentation`
-  instead. This skill is single-plugin-scoped: it reads one plugin's own `plugin.json` and only ever
-  writes that plugin's own doc files (including a plugin's own `SECURITY.md`, if it has one) —
+- **This marketplace's own top-level community docs** → use `marketplace-documentation` instead — see
+  that skill's own Step 1 for the current file list. This skill is single-plugin-scoped: it reads one
+  plugin's own `plugin.json` and only ever writes that plugin's own doc files —
   `marketplace-documentation` reads the marketplace root's `.claude-plugin/marketplace.json` and only
-  ever writes the 5 repo-root files. Watch for the naming overlap specifically: both skills can produce a
-  file named `SECURITY.md` — the distinguishing criterion is *whose* SECURITY.md, one plugin's or the
-  marketplace root's.
+  ever writes the marketplace root's own files. The distinguishing criterion is always *whose* docs, one
+  plugin's or the marketplace root's — watch for the naming overlap specifically: `README.md`,
+  `CONTRIBUTING.md`, and `SECURITY.md` are all filenames both skills can produce (a plugin genuinely
+  having its own copy of each is common); `GOVERNANCE.md` and `CODE_OF_CONDUCT.md` are marketplace-root
+  names only, no collision there.
 - **Reviewing an already-written doc for accuracy/completeness, with no authoring wanted** → use the `human-doc-reviewer` agent directly. This skill always calls it after authoring, but you can call it standalone too.
 - **Checking whether a README merely exists** (a structural presence check, not content authoring) → that's `plugin-development`'s validation checklist, not this skill's job.
 - **Writing a cold-context internal handoff report for a future session/developer** → use the `build-handoff-writer` agent. That report lives in `.claude/output/build-handoff-writer/` and is written for someone continuing the work, not for a plugin's end users — fully different audience from the docs this skill writes, which ship with the plugin.
@@ -103,6 +107,8 @@ Full required-sections and source-of-truth mapping per type: `${CLAUDE_SKILL_DIR
 
 Confirm the plugin's root directory (ask if ambiguous — a repo can contain multiple plugins). Confirm which doc type(s) to author or update: an explicit filename the user named, or infer from the request ("write docs for this plugin" without specifics means at minimum README.md — ask which others, don't silently assume the full list).
 
+If the user names only a bare filename that both this skill and `marketplace-documentation` can produce (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`) with no plugin path given and no "marketplace" qualifier, and no single plugin is already unambiguously in scope for this session, ask via `AskUserQuestion` which target is intended (a specific plugin's own file, or this marketplace's own root file) before proceeding — do not default silently to a plugin just because that's this skill's usual scope.
+
 If the plugin has an in-development staging mirror (e.g. `.claude/` alongside `plugins/<name>/`, the pattern this repo's own `plugin-devkit` uses), the docs must be written identically to both locations — treat this the same as any other component edit under that mirror convention.
 
 ### Step 2: Gather the Plugin's Actual Current State
@@ -127,10 +133,10 @@ When **updating** an existing doc: preserve sections that are still accurate; on
 Invoking `human-doc-reviewer` is mandatory in every case — authoring without a review pass is exactly the gap this skill exists to close, and skipping it here would just move the same gap one level down. Which mode to invoke it in depends on what kind of pass this was:
 
 - **Authoring a doc from scratch:** invoke full review mode directly, no gate needed — there is no prior version to delta against, so the full whole-surface pass is the only meaningful option.
-- **Updating an existing doc with a small, enumerable set of changed claims** (a count bump, one new table row, a single capability added/removed): before invoking, ask the user via `AskUserQuestion` — run a cheap delta check (verifies only the claims this pass changed) or the full whole-surface review (re-reads every human-facing doc against the entire plugin's current state, catches doc-to-doc inconsistencies beyond what changed)? State the tradeoff plainly (delta is fast but only has a targeted-grep safety net for staleness elsewhere; full is thorough but re-verifies everything). Recommend delta as the default option for this common case, but always let the user decide explicitly — never silently default to the expensive full pass (plugin-rulebook R26). Pass the specific list of changed claims to `human-doc-reviewer` if delta is chosen.
-- **A substantial rewrite of a doc's own content** (not just a count/table update): full review mode, same as authoring from scratch — a delta check's targeted-grep safety net doesn't cover a rewrite's blast radius.
+- **Updating an existing doc with a small, enumerable set of changed claims** (a count bump, one new table row, a single capability added/removed): before invoking, ask the user via `AskUserQuestion` — run a cheap delta check (verifies only the claims this pass changed) or the full whole-surface review (re-reads every human-facing doc against the entire plugin's current state, catches doc-to-doc inconsistencies beyond what changed)? State the tradeoff plainly (delta is fast but only has `human-doc-reviewer`'s own delta-mode safety nets for staleness elsewhere — see its Invocation Modes for exactly what those cover; full is thorough but re-verifies everything). Recommend delta as the default option for this common case, but always let the user decide explicitly — never silently default to the expensive full pass (plugin-rulebook R26). Pass the specific list of changed claims to `human-doc-reviewer` if delta is chosen.
+- **A substantial rewrite of a doc's own content** (not just a count/table update): full review mode, same as authoring from scratch — a delta check's safety nets don't cover a rewrite's blast radius.
 
-Whichever mode runs, it must cover the plugin's full human-facing doc surface in full mode (not just the file(s) just touched, since a change to one doc can create a doc-to-doc inconsistency with a sibling — `human-doc-reviewer`'s own Step 4) or the named changed claims plus its targeted safety net in delta mode.
+Whichever mode runs, it must cover the plugin's full human-facing doc surface in full mode (not just the file(s) just touched, since a change to one doc can create a doc-to-doc inconsistency with a sibling — `human-doc-reviewer`'s own Step 4) or the named changed claims plus its delta-mode safety nets in delta mode.
 
 **For doc types outside `human-doc-reviewer`'s current scope** (Release Notes, Architecture, Third-Party Notices, How-To guides, Quick Start — see the Doc Types Covered table above): state explicitly in the final report that no dedicated reviewer is available yet for that type, and that this is a `human-doc-reviewer` scope gap to close separately, rather than silently presenting the doc as reviewed. Do not invent review findings for a type `human-doc-reviewer` doesn't cover.
 
@@ -140,7 +146,7 @@ Present: which doc(s) were authored/updated (path + whether new or edited), the 
 
 ## Gotchas
 
-- **Don't silently claim full QA coverage for doc types `human-doc-reviewer` doesn't review.** Its own Step 1 scope list is README/CONTRIBUTING/CHANGELOG/INSTALLATION/SECURITY/CODE_OF_CONDUCT. Authoring a RELEASE_NOTES.md, ARCHITECTURE.md, THIRD_PARTY_NOTICES.md, HOW_TO guide, or QUICK_START.md and then reporting "reviewed" without qualification overstates what actually happened — always name the gap per Step 4/5 above.
+- **Don't silently claim full QA coverage for doc types `human-doc-reviewer` doesn't review.** Its own Step 1 scope list is README/CONTRIBUTING/CHANGELOG/INSTALLATION/SECURITY/CODE_OF_CONDUCT/GOVERNANCE — the last is relevant only when reviewing this marketplace's own root docs via `marketplace-documentation`; `GOVERNANCE.md` isn't one of the doc types this skill itself authors for a single plugin (see "When NOT to Use" above). Authoring a RELEASE_NOTES.md, ARCHITECTURE.md, THIRD_PARTY_NOTICES.md, HOW_TO guide, or QUICK_START.md and then reporting "reviewed" without qualification overstates what actually happened — always name the gap per Step 4/5 above.
 - **Don't invent capability claims.** A doc that says a plugin "supports X" or "includes Y" must trace to an actual component's frontmatter `description` or `plugin.json` field read in Step 2 — not to what a well-designed plugin *should* have, or to what a similar plugin does. This mirrors the same discipline `skill-development` itself requires when one component's docs describe another's behavior.
 - **Don't overwrite human-added content on an update pass.** An existing doc may have a caveat, a known-issue note, or custom prose a human wrote by hand — Step 3's read-before-write step exists specifically to catch this. A full silent rewrite is a worse outcome than a slightly-stale doc, because it destroys information a human intentionally added.
 - **Mirror the mirror.** For a plugin with an in-development staging mirror (this repo's `plugin-devkit` at `plugins/plugin-devkit/` + `.claude/`), a doc written to only one copy immediately diverges from the R19 mirror convention every other component in that plugin follows — write both, verify identical.
@@ -153,10 +159,25 @@ After authoring or updating a doc, verify:
 2. **Human-added content preserved** — on an update pass, diff against the original; every section the current plugin state doesn't contradict is untouched
 3. **Reviewer invoked** — `human-doc-reviewer`'s verdict is attached, or the explicit reviewer-gap note is present for an out-of-scope type
 4. **Mirror parity** — if the plugin has a staging mirror, both copies match
+5. **Delta-mode gate** — for a small, enumerable update (a count bump, a new table row), confirm the skill asks via `AskUserQuestion` before invoking `human-doc-reviewer`, rather than silently always running the expensive full whole-surface review
 
 Quick Workflow evals live at `evals/plugin-documentation/` (`evals.json` + per-eval `grading.json`) — 4 scenarios, 15/15 assertions passing: authoring a new README from scratch, updating an existing README without dropping human-added content, authoring a doc type outside `human-doc-reviewer`'s scope with the reviewer-gap caveat stated correctly, and Pipeline Mode returning the structured classification block correctly. Testing surfaced and fixed one real gap (the opening-summary-paragraph staleness check now in Step 3) — re-run these scenarios after any change to Steps 2-4.
 
-5. **Delta-mode gate** — for a small, enumerable update (a count bump, a new table row), confirm the skill asks via `AskUserQuestion` before invoking `human-doc-reviewer`, rather than silently always running the expensive full whole-surface review
+**Last dated run record:** 2026-09-16 — `evals/plugin-documentation/` (4 scenarios, 15/15 assertions,
+100% with_skill pass rate).
+
+**Verify this skill activates on:**
+- "write docs for this plugin"
+- "update the README"
+- "create a CONTRIBUTING.md"
+- "generate a changelog entry"
+- "document this plugin for humans"
+
+**Verify it does NOT activate on:**
+- "update the marketplace docs" / "sync the marketplace README" / "regenerate the plugin table" →
+  `marketplace-documentation` instead (this marketplace's own root docs, not a single plugin's own)
+- "review the README for accuracy" with no authoring wanted → `human-doc-reviewer` directly
+- "write a handoff report for this session" → `build-handoff-writer` instead
 
 **Quality gates:**
 - [ ] Every capability claim in an authored doc traces to a component's actual `description` field or `plugin.json` — never to memory or inference

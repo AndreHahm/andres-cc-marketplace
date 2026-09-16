@@ -4,7 +4,7 @@
 
 A new or structurally-modified `plugin-devkit` component whose job is to inspect, review, validate, or
 otherwise operate against a plugin's actual on-disk component/manifest structure — before that component
-is finalized. This covers 22 agents and 9 skills (see "In Scope" below), not every plugin-devkit
+is finalized. This covers 22 agents and 10 skills (see "In Scope" below), not every plugin-devkit
 component.
 
 ## Rule
@@ -29,13 +29,23 @@ named claim targets and canonical-source claims against real on-disk files) — 
 "operates against a plugin's actual structure/components" criterion the same way its sibling
 `*-reviewer` agents do.
 
-**In scope — 9 skills:**
+**In scope — 10 skills:**
 - `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance`
 - `plugin-auditor`, `plugin-grader`, `plugin-comparison`, `plugin-rulebook` (its direct-invocation
   mode, not just via `plugin-rulebook-checker`)
 - `marketplace-inventory`, `plugin-inventory` — both read a plugin's or the marketplace's actual
   on-disk component/manifest structure in their `discover`/`check`/`plan` modes, the same criterion
   `plugin-inspector`/`plugin-validator`/`smoke-tester` meet above
+- `marketplace-documentation` (added 2026-09-16) — reads `.claude-plugin/marketplace.json`, the
+  marketplace's own on-disk manifest, as its sole source of truth for regenerating README's plugin
+  table; meets this rule's own "the marketplace's actual on-disk manifest structure" criterion the same
+  way `marketplace-inventory` does above. Unlike `marketplace-inventory`/`plugin-inventory`, it has no
+  Glob-based directory-traversal mode of its own (no `Glob`/`Grep` in its `allowed-tools`) — its
+  "dry-run" equivalent is confirming it correctly reads `marketplace.json`'s real plugin list, including
+  `example-plugin`'s own entry, and produces an accurate table row for it; this was already exercised
+  live during this component's own build (Phase 7's eval-1 read the real `marketplace.json`, and this
+  rule's own resweep session manually cross-checked `example-plugin`'s entry against README's table) — see
+  Recording the run below for the persisted record.
 
 **Explicitly excluded, with reasoning:**
 - `agent-creator` — creates a *new* agent; its target is a spec to generate from, not an existing

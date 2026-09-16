@@ -336,8 +336,10 @@ rather than silently omitting the check.
 **Marketplace-Root Doc Sync (Phase 12):** if this run's Fix phases changed
 `.claude-plugin/marketplace.json`'s plugin list (a plugin added, removed, or renamed — not a
 component-only change within an already-listed plugin), apply
-`.claude/rules/keep-marketplace-root-docs-in-sync.md`: run `marketplace-documentation` and fold the
-resulting commit into Phase 12's own commit record. If the run's Fix phases only changed a component list
+`.claude/rules/keep-marketplace-root-docs-in-sync.md`: run `marketplace-documentation`, present its
+authored diff and `human-doc-reviewer` findings, and ask via `AskUserQuestion` whether to keep the
+changes as-is, revise, or discard — same gate Phase 9 (Documentation) uses for a plugin's own docs. Fold
+any kept commit into Phase 12's own commit record. If the run's Fix phases only changed a component list
 within an already-listed plugin (the common case Inventory Sync above already handles), `marketplace.json`
 itself didn't change — state "no marketplace-root doc sync needed" in the handoff report rather than
 silently omitting the check.
@@ -367,7 +369,7 @@ Stopped and skipped phases must be recorded explicitly.
 |---|---|
 | `workflows/run-qa-pipeline.md` | Full twelve-phase procedure with entry/actions/decision/exit per phase |
 | `references/pipeline-diagram.md` | Mermaid flowchart of all twelve phases, including the Fix/Re-check loops, Phase 8 External Entry, and the Phase 10 → Phase 8 regression route |
-| `references/workflow-test-scenarios.md` | The 13 required workflow test scenarios, traced against this skill's own text |
+| `references/workflow-test-scenarios.md` | The 14 required workflow test scenarios, traced against this skill's own text |
 | `references/handoff-example.md` | A worked-example Phase 12 handoff report showing every field this pipeline's own run record can populate |
 | `plugin-rulebook/references/evidence-schema.md` | Scope-manifest, Finding, Report Revision, and Evidence Bundle shapes shared across every phase and dispatched component |
 | `plugin-rulebook/scripts/validate_evidence.py` | Schema validator for the four shapes above; also used by this skill's own `scripts/smoke_test.py` fixture check |
@@ -395,15 +397,19 @@ Stopped and skipped phases must be recorded explicitly.
 - "grade this plugin" with no separate Validate/Audit step wanted → `plugin-grader` directly
 - "audit this plugin" as a bare first-touch request with no other context → `using-plugin-devkit` first, to confirm full-pipeline depth is wanted
 
-**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (5/5 checks passing) and
-`evals/plugin-lifecycle-downstream/` (1 eval scenario, 3/3 assertions, 100% with_skill pass rate).
+**Last dated run record:** 2026-09-16 — `scripts/smoke_test.py` re-run after the Marketplace-Root Doc
+Sync bullet was added (5/5 checks passing). The eval evidence above (1 eval scenario, 3/3 assertions,
+100% with_skill pass rate, dated 2026-08-27) predates this addition and does not cover scenario 14 —
+treat it as design-review-verified only (see `references/workflow-test-scenarios.md`'s own scenario 14)
+until eval coverage is extended.
 
-The 13 required workflow scenarios (scoped/full manifests, Prepare declined/approved,
+The 14 required workflow scenarios (scoped/full manifests, Prepare declined/approved,
 validation/audit success/repair/bounded-failure, Deep Test skip/Scoped/Full, external
 Phase 8 entry valid/stale/malformed, documentation invalidating evidence, final
 verification catching a regression, grading skipped/evidence-only/qualified/refused,
 handoff present/absent, no fixer self-verification, no mutation before preflight and
-approval, Eval Pre-Check declined/approved) are traced in detail in
+approval, Eval Pre-Check declined/approved, Marketplace-Root Doc Sync plugin-list-changed/
+component-only branches) are traced in detail in
 `references/workflow-test-scenarios.md`. Self-check:
 `scripts/smoke_test.py` passes (frontmatter validity, referenced-file existence,
 Bash-scope grant consistency, phase-header sequencing, report-fixture schema
@@ -428,4 +434,7 @@ below for the runtime invariants this pipeline itself must hold at every phase.
       per-batch approval only Phases 2, 4, 6, and 8 have wired in.
 - [ ] Phase 10 rechecks every affected evidence source after the last mutation.
 - [ ] Phase 11 performs evidence-only scoring and no duplicate review.
+- [ ] Phase 12's Marketplace-Root Doc Sync always states "no marketplace-root doc sync needed" for the
+      common component-only case rather than silently omitting it — `marketplace-documentation` only
+      ever runs when this run's Fix phases actually changed `marketplace.json`'s plugin list.
 - [ ] Phase 12 discloses stopped, skipped, deferred, and accepted-risk items.
