@@ -43,6 +43,11 @@ __all__ = [
     "analyze_agent_context",
 ]
 
+# SystemRandom, not the plain random module functions, purely so a
+# security scanner (e.g. Bandit's B311) doesn't flag the non-security
+# jitter in _estimate_attention() as if it were security-relevant.
+_rng = random.SystemRandom()
+
 
 # ---------------------------------------------------------------------------
 # Attention Distribution Analysis
@@ -117,15 +122,21 @@ def _estimate_attention(
     IMPORTANT: This is a simulation for demonstration. Production systems should
     extract actual attention weights from model forward passes or use
     interpretability libraries (e.g., TransformerLens).
+
+    Uses ``random.SystemRandom`` (not the plain ``random`` module functions)
+    purely to satisfy static-analysis tools that flag any ``random.random()``
+    call as unsuitable for security/cryptographic use (Bandit B311) -- this
+    jitter has no security purpose at all, but SystemRandom is a drop-in
+    replacement with no behavior change worth a suppression comment instead.
     """
     if is_beginning:
-        return 0.8 + random.random() * 0.2
+        return 0.8 + _rng.random() * 0.2
     elif is_end:
-        return 0.7 + random.random() * 0.3
+        return 0.7 + _rng.random() * 0.3
     else:
         middle_progress = (position - total * 0.1) / (total * 0.8)
         base_attention = 0.3 * (1 - middle_progress) + 0.1 * middle_progress
-        return base_attention + random.random() * 0.1
+        return base_attention + _rng.random() * 0.1
 
 
 # ---------------------------------------------------------------------------
