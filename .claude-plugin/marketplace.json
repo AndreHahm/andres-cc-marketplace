@@ -115,7 +115,7 @@
     {
       "name": "antigravity-kit",
       "source": "./plugins/antigravity-kit",
-      "description": "Hybrid Claude Code + Antigravity (Gemini) workflow: Claude conducts requirements/architecture/the hard 20%/verification, and routes deterministic, high-volume work (scaffolding, tests, first-pass review, migrations, web/Vertex AI Search) to Antigravity. Lower token cost as a financial lever.",
+      "description": "Run the Antigravity CLI (Gemini) as a collaborating AI inside Claude Code, with intelligent model routing across the SDLC. Claude conducts — requirements, architecture, the hard 20%, verification, review — and routes deterministic, high-volume work (scaffolding, tests, first-pass review, migrations, web/Vertex AI Search) to Antigravity. Hybrid agentic engineering; lower token cost as a financial lever.",
       "version": "0.1.0",
       "author": {
         "name": "Andre Hahm",
