@@ -51,6 +51,20 @@ jobdir() {
   echo "$resolved"
 }
 
+# True (exit 0) when $2 is still verifiably the process job $1 started -- not a PID the
+# OS has since recycled for something unrelated. Shared by job_state (so a job whose
+# process died without writing rc doesn't get reported as "running" forever once its
+# PID is reused) and cancel (so it never signals the wrong process).
+job_pid_live() {
+  local jd="$1" pid="$2"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || return 1
+  [ -s "$jd/pid_start" ] || return 1 # no fingerprint captured at start -- fail closed
+  local now_start stored_start
+  now_start="$(ps -o lstart= -p "$pid" 2>/dev/null || true)"
+  stored_start="$(cat "$jd/pid_start" 2>/dev/null || true)"
+  [ -n "$now_start" ] && [ "$now_start" = "$stored_start" ]
+}
+
 # echoes running | done | failed. (rc is read directly from the file by callers —
 # a global set here would NOT survive the `$(job_state ...)` command-substitution subshell.)
 job_state() {
@@ -58,10 +72,10 @@ job_state() {
   if [ -f "$jd/rc" ]; then
     rc="$(cat "$jd/rc")"
     if [ "$rc" = "0" ]; then echo "done"; else echo "failed"; fi
-  elif [ -f "$jd/pid" ] && kill -0 "$(cat "$jd/pid")" 2>/dev/null; then
+  elif job_pid_live "$jd" "$(cat "$jd/pid" 2>/dev/null || true)"; then
     echo running
   else
-    echo failed   # pid gone, no rc recorded = crashed/killed
+    echo failed   # pid gone, or recycled by the OS = crashed/killed
   fi
 }
 
@@ -144,23 +158,7 @@ case "$cmd" in
       exit 0
     fi
     pid="$(cat "$jd/pid" 2>/dev/null || true)"
-    live=0
-    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      live=1
-      if [ ! -s "$jd/pid_start" ]; then
-        # No fingerprint was ever captured (e.g. `ps` failed at start time) -- fail
-        # closed rather than signaling on PID-liveness alone, which a recycled PID
-        # would also satisfy.
-        live=0
-      else
-        now_start="$(ps -o lstart= -p "$pid" 2>/dev/null || true)"
-        stored_start="$(cat "$jd/pid_start" 2>/dev/null || true)"
-        # A mismatch means the OS has recycled this PID for an unrelated process
-        # since the job started -- refuse to signal it.
-        [ -n "$now_start" ] && [ "$now_start" = "$stored_start" ] || live=0
-      fi
-    fi
-    if [ "$live" = "1" ]; then
+    if job_pid_live "$jd" "$pid"; then
       # Walk the real PID tree (parent->child) rather than relying on process GROUPS:
       # `timeout` (used by agy-delegate.sh to bound the real agy call) puts its OWN
       # monitored command in a fresh process group of its own -- verified live -- so a
