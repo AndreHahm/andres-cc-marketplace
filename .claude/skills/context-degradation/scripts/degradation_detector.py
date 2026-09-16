@@ -346,9 +346,12 @@ class PoisoningDetector:
         """
         indicators: list[dict[str, Any]] = []
 
-        # Check for error accumulation
+        # Check for error accumulation -- count total occurrences per pattern,
+        # not just how many distinct patterns matched at least once, or a
+        # single repeated error (the normal form of accumulation) can never
+        # cross the threshold below no matter how many times it recurs.
         error_count = sum(
-            1 for pattern in self.error_patterns if re.search(pattern, context, re.IGNORECASE)
+            len(re.findall(pattern, context, re.IGNORECASE)) for pattern in self.error_patterns
         )
 
         if error_count > 3:
