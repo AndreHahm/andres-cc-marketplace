@@ -27,7 +27,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 (both call sites below are argument-list, no shell=True)
 import sys
 import tempfile
 import time
@@ -210,7 +210,10 @@ def git_root(path):
     if not git:
         return None
     try:
-        out = subprocess.run(
+        # nosec B603 -- argument-list form (no shell=True), and `git` is the absolute
+        # path shutil.which() just resolved, not a caller-supplied string; `path` is a
+        # filesystem path this process already has, not attacker-controlled input.
+        out = subprocess.run(  # nosec B603
             [git, "-C", path, "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
@@ -1213,7 +1216,9 @@ def run_native_import(stage, plugins):
     if not agy:
         return 127, "agy is not on PATH"
     try:
-        r = subprocess.run(
+        # nosec B603 -- argument-list form (no shell=True), and `agy` is the absolute
+        # path shutil.which() just resolved; the remaining args are fixed literals.
+        r = subprocess.run(  # nosec B603
             [agy, "plugin", "import", "claude"],
             cwd=stage,
             env=env,

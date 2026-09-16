@@ -147,7 +147,12 @@ case "$cmd" in
     live=0
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
       live=1
-      if [ -s "$jd/pid_start" ]; then
+      if [ ! -s "$jd/pid_start" ]; then
+        # No fingerprint was ever captured (e.g. `ps` failed at start time) -- fail
+        # closed rather than signaling on PID-liveness alone, which a recycled PID
+        # would also satisfy.
+        live=0
+      else
         now_start="$(ps -o lstart= -p "$pid" 2>/dev/null || true)"
         stored_start="$(cat "$jd/pid_start" 2>/dev/null || true)"
         # A mismatch means the OS has recycled this PID for an unrelated process

@@ -95,6 +95,13 @@ case "$LIMIT" in (*[!0-9]*|'') die "--limit must be a positive integer (got '$LI
 for v in "$SERVICE" "$REGION" "$RESOURCE_TYPE"; do
   case "$v" in *'"'*|*'\'*) die "invalid character in '$v' (no quotes or backslashes)" ;; esac
 done
+# Unlike the three quoted values above, $SEVERITY is interpolated bare (severity>=$SEVERITY,
+# no surrounding quotes) -- any value at all, not just one containing a quote, can append
+# arbitrary filter clauses. Restrict it to the real Cloud Logging severity enum.
+case "$SEVERITY" in
+  DEFAULT|DEBUG|INFO|NOTICE|WARNING|ERROR|CRITICAL|ALERT|EMERGENCY) ;;
+  *) die "invalid --severity '$SEVERITY' (use one of: DEFAULT DEBUG INFO NOTICE WARNING ERROR CRITICAL ALERT EMERGENCY)" ;;
+esac
 
 # gcloud is required for the real run; --print-command is a dry run (introspection)
 # and only resolves the project from gcloud config when it's available.

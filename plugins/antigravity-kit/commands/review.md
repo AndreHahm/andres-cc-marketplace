@@ -23,7 +23,7 @@ Do this:
    ```shell
    {
      printf '%s\n' 'Find correctness/security/performance bugs. Be skeptical. List each as file:line — issue.'
-     git diff
+     git diff <range/paths resolved in step 1 -- HEAD~1 when no scope was given>
    } | agy-delegate --tier pro -
    ```
    If `--adversarial` is set, add an instruction to also challenge the design decisions and
