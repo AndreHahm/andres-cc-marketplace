@@ -66,6 +66,14 @@ for the caller, don't act on it here.
 
 ## When NOT to Use
 
+- **This marketplace's own top-level community docs** (`README.md`, `CODE_OF_CONDUCT.md`,
+  `CONTRIBUTING.md`, `GOVERNANCE.md`, `SECURITY.md` at the repo root) → use `marketplace-documentation`
+  instead. This skill is single-plugin-scoped: it reads one plugin's own `plugin.json` and only ever
+  writes that plugin's own doc files (including a plugin's own `SECURITY.md`, if it has one) —
+  `marketplace-documentation` reads the marketplace root's `.claude-plugin/marketplace.json` and only
+  ever writes the 5 repo-root files. Watch for the naming overlap specifically: both skills can produce a
+  file named `SECURITY.md` — the distinguishing criterion is *whose* SECURITY.md, one plugin's or the
+  marketplace root's.
 - **Reviewing an already-written doc for accuracy/completeness, with no authoring wanted** → use the `human-doc-reviewer` agent directly. This skill always calls it after authoring, but you can call it standalone too.
 - **Checking whether a README merely exists** (a structural presence check, not content authoring) → that's `plugin-development`'s validation checklist, not this skill's job.
 - **Writing a cold-context internal handoff report for a future session/developer** → use the `build-handoff-writer` agent. That report lives in `.claude/output/build-handoff-writer/` and is written for someone continuing the work, not for a plugin's end users — fully different audience from the docs this skill writes, which ship with the plugin.

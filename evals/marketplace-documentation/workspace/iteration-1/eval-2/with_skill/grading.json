@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Correctly identifies this as a single-plugin-scoped doc request, not a marketplace-root request",
+      "passed": true,
+      "evidence": "Agent stated: 'Governing skill: plugin-documentation (not marketplace-documentation)... The request targets git-kit's own README.md — a single plugin's own doc file.'"
+    },
+    {
+      "text": "Does not attempt to read or regenerate the marketplace-root README's plugin table",
+      "passed": true,
+      "evidence": "Agent's entire planned procedure operates on plugins/git-kit/README.md's skill-list section only; no mention of the root README's plugin table."
+    },
+    {
+      "text": "Points at plugin-documentation (or equivalent single-plugin doc-authoring approach) rather than marketplace-documentation's own procedure",
+      "passed": true,
+      "evidence": "Agent explicitly cited marketplace-documentation's own 'When NOT to Use' exclusion clause verbatim as the reason plugin-documentation governs instead — confirming the bidirectional exclusion added during Self-Review fixes actually works as intended."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

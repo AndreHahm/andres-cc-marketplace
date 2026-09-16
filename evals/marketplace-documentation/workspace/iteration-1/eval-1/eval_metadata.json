@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-documentation/SKILL.md",
+  "assertions": [
+    {"text": "Reads .claude-plugin/marketplace.json as source of truth before proposing any table change", "type": "functionality", "target": "output"},
+    {"text": "Never proposes writing to .claude-plugin/marketplace.json itself", "type": "functionality", "target": "output"},
+    {"text": "States it will invoke human-doc-reviewer as a mandatory QA step", "type": "functionality", "target": "output"},
+    {"text": "Does not invent a placeholder description for the new plugin row", "type": "quality", "target": "output"}
+  ]
+}

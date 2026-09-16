@@ -78,6 +78,14 @@ Before any workflow step is treated as complete — and again immediately before
 
 After the core workflow's fix/rule-update is applied and committed, and before the Document step below, if the core fix changed plugin-devkit's own component list (add, remove, split, or merge): branch per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` — if plugin-devkit has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet), run `marketplace-inventory` then `plugin-inventory` to bootstrap both, each requiring its own explicit `AskUserQuestion` approval **before** that write (`bootstrap` writes immediately once invoked, with no further tool-level plan/apply step of its own — see the rule's "No silent writes" bullet); if plugin-devkit already has a `plugin_id`, run its own `plugin-inventory check` only. Propose and get approval for any resulting operations, committed separately, before the Document step runs. Alongside it, if the core fix changed plugin-devkit's own component count, run the manifest description check per `plugin-lifecycle-upstream`'s `## Document` section (same check, same rationale) before this step's own commit. Both checks answer to the identical trigger event (the component list changed during this run), so they run at the same point; if neither trigger condition applies, state in the workflow's own summary that no sync/check was needed rather than silently omitting it.
 
+Separately, apply `.claude/rules/keep-marketplace-root-docs-in-sync.md`: this only does anything if the
+core fix changed `.claude-plugin/marketplace.json`'s plugin list itself (plugin-devkit being
+added/removed/renamed there) — not the far more common case of a component added/removed/changed within
+plugin-devkit, which the Inventory Sync paragraph above already handles and which never touches
+`marketplace.json`. In the rare case it does apply, run `marketplace-documentation` and fold the resulting
+commit into this step's own commit record; otherwise state "no marketplace-root doc sync needed" alongside
+the Inventory Sync summary above.
+
 ## The Document Step (Shared Across All 4 Workflows)
 
 After the core workflow's fix/rule-update is applied and committed, and after the Inventory Sync and Manifest Check step above, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.), passing the specific list of changed claims from the core fix. `plugin-documentation` owns its own delta-vs-full `human-doc-reviewer` QA decision internally (see its own Step 4) — do not ask a separate delta/full question here first, or the same choice gets asked twice (plugin-rulebook R26 is already satisfied by `plugin-documentation`'s own gate). "No update needed" is a common, valid outcome, not a failure. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the core fix's own commit(s) — state the file list and message first, same discipline as every other commit in this pipeline. Keeping "what changed in the component" and "what changed in the docs" as distinct commits keeps history readable.
@@ -165,6 +173,7 @@ evidence cited above (11 evals across 4 iterations, 30/30 assertions, 100% with_
 | `plugin-rulebook/scripts/agent-cost-tracker.py` | Cost estimates cited in `self-review`/`self-evaluation`'s scoped-vs-full gate |
 | `plugin-documentation` skill | Document step, all 4 workflows — authors doc updates and runs its own `human-doc-reviewer` QA internally; also `self-documentation`'s dispatch target |
 | `plugin-inventory` skill | Inventory Sync and Manifest Check step, all 4 workflows — see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
+| `marketplace-documentation` skill | Inventory Sync and Manifest Check step, all 4 workflows — see `.claude/rules/keep-marketplace-root-docs-in-sync.md` |
 | `skill-maintenance` skill | Lighter-weight alternative for a single, already-known change — not this skill's job |
 | `/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules` | `self-upstream-plugin-devkit` bulk mode, in this order |
 | `/find-dev-rule`, `/update-dev-rule` | `self-upstream-plugin-devkit` single-rule mode |

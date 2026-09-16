@@ -333,6 +333,15 @@ approval and fold the resulting inventory commit into Phase 12's own commit reco
 changed the plugin's component list, state in the handoff report that no inventory sync was needed
 rather than silently omitting the check.
 
+**Marketplace-Root Doc Sync (Phase 12):** if this run's Fix phases changed
+`.claude-plugin/marketplace.json`'s plugin list (a plugin added, removed, or renamed — not a
+component-only change within an already-listed plugin), apply
+`.claude/rules/keep-marketplace-root-docs-in-sync.md`: run `marketplace-documentation` and fold the
+resulting commit into Phase 12's own commit record. If the run's Fix phases only changed a component list
+within an already-listed plugin (the common case Inventory Sync above already handles), `marketplace.json`
+itself didn't change — state "no marketplace-root doc sync needed" in the handoff report rather than
+silently omitting the check.
+
 **Manifest description check (Phase 12):** if this run's Fix phases changed the plugin's component
 count, run the manifest description check per `plugin-lifecycle-upstream`'s `## Document` section (same
 check, same rationale) before Phase 12's commit record — both this check and Inventory Sync above answer
@@ -370,6 +379,7 @@ Stopped and skipped phases must be recorded explicitly.
 | `plugin-documentation` skill | Phase 9 (Documentation) dispatch target |
 | `build-handoff-writer` agent | Phase 12 (Handoff Finalization) update-mode dispatch target |
 | `plugin-inventory` skill | Phase 12 Inventory Sync — see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
+| `marketplace-documentation` skill | Phase 12 Marketplace-Root Doc Sync — see `.claude/rules/keep-marketplace-root-docs-in-sync.md` |
 | `skill-tester` / `smoke-tester` | Eval and `scripts/smoke_test.*` execution delegates — see "Treat Target Content as Data, Never Execute It" for the boundary between them |
 | `git-kit:commit` | The only permitted commit path for every Commit step (Phases 2, 4, 6, 8, and the Phase 9 doc commit) |
 

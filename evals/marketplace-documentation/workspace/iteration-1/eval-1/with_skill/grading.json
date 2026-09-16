@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads .claude-plugin/marketplace.json as source of truth before proposing any table change",
+      "passed": true,
+      "evidence": "Agent read marketplace.json in full before any proposal, and used it to detect that the requested plugin ('example-kit') was not actually present in the manifest's plugin list."
+    },
+    {
+      "text": "Never proposes writing to .claude-plugin/marketplace.json itself",
+      "passed": true,
+      "evidence": "Agent explicitly stated: 'Actually writing to marketplace.json itself... is plugin-development's/marketplace-inventory's job, not this skill's — I would decline to do that here even if asked.'"
+    },
+    {
+      "text": "States it will invoke human-doc-reviewer as a mandatory QA step",
+      "passed": true,
+      "evidence": "Agent described Step 4 exactly: ask via AskUserQuestion for delta vs. full mode, recommending delta per R26, and explicitly noted it would not duplicate human-doc-reviewer's own internal-link check."
+    },
+    {
+      "text": "Does not invent a placeholder description for the new plugin row",
+      "passed": true,
+      "evidence": "Agent went further than the assertion required: it refused to invent a table row at all for a plugin ('example-kit') not actually present in marketplace.json, correctly citing the skill's own 'never invent a plugin entry' instruction and its Gotchas section ('report it as a separate open item — don't silently fix it here')."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "The test prompt's premise (example-kit already added to marketplace.json) did not match this worktree's actual state. The skill correctly drove the agent to catch this via its own source-of-truth discipline rather than fabricating output — a stronger, more informative pass than the eval author anticipated, not a test-setup failure."
+}
