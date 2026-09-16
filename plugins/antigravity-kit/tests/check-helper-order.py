@@ -14,6 +14,7 @@ real word is compared — there is no list of contexts to keep complete.
 """
 
 import re
+import shlex
 import sys
 
 # `NAME=value` (and `NAME=value NAME2=value2 ...`) preceding a command, as in
@@ -48,7 +49,13 @@ PREFIX = {
 def calls(line, fn):
     """True when `fn` is the command word of some segment of `line`."""
     for seg in SEGMENT.split(line):
-        words = seg.strip().split()
+        # shlex, not .split(): a quoted assignment value like MODE="one two" must stay
+        # one word, or the naive whitespace split breaks it into MODE="one / two" and
+        # the scan stops on the fragment instead of ever reaching the command word.
+        try:
+            words = shlex.split(seg, comments=False)
+        except ValueError:
+            words = seg.strip().split()
         i = 0
         while i < len(words) and (words[i] in PREFIX or ASSIGNMENT.match(words[i])):
             i += 1

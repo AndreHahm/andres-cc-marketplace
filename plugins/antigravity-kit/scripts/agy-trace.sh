@@ -61,16 +61,18 @@ list_recent() {
   local n="${1:-10}"
   case "$n" in (*[!0-9]*|'') n=10 ;; esac
   local found=0 f id when steps
-  # newest first; glob may match nothing -> nullglob-like guard via -f check
+  # newest first; glob may match nothing -> nullglob-like guard via -f check.
+  # `while read` (not `for f in $(...)`), so a $BRAIN/$HOME containing a space
+  # doesn't get word-split into fragments that all fail the -f check below.
   # shellcheck disable=SC2012
-  for f in $(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -"$n" || true); do
+  while IFS= read -r f; do
     [ -f "$f" ] || continue
     found=1
     id="${f#"$BRAIN"/}"; id="${id%%/*}"
     steps="$(wc -l < "$f" | tr -d ' ')"
     when="$(date -r "$f" '+%Y-%m-%d %H:%M' 2>/dev/null || echo '?')"
     printf '%s  %s  %s steps\n' "$when" "$id" "$steps"
-  done
+  done < <(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -"$n")
   if [ "$found" -eq 0 ]; then
     echo "agy-trace: no transcripts under $BRAIN" >&2
     echo "agy-trace: (one is written per agy run — delegate something first)" >&2
