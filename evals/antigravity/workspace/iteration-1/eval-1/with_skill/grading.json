@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recommends delegating the migration to Antigravity/agy", "passed": true, "evidence": "\"Recommended delegating the ~40-call-site APIv1→APIv2 migration to Antigravity\""},
+    {"text": "States the break-even reasoning (this is bulk/repetitive, clearly above break-even)", "passed": true, "evidence": "\"it fits the 'deterministic, high-volume, well-specified' profile that's above the delegation break-even\""},
+    {"text": "Mentions --dir <repo-root> so agy reads real files instead of pasting them", "passed": true, "evidence": "\"one batched agy-delegate --dir <repo> --yolo --digest call\""},
+    {"text": "Names a digest-only output contract (e.g. ===DIGEST===) as the cost lever", "passed": true, "evidence": "\"a digest-only return contract\""},
+    {"text": "Mentions running on a dedicated branch/worktree with a diff review before merging", "passed": true, "evidence": "\"dedicated branch/worktree ... mandatory diff review before merge (no auto-merge of agy's writes)\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

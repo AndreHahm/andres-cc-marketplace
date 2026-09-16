@@ -1,0 +1,25 @@
+{
+  "skill_name": "antigravity",
+  "skill_path": "plugins/antigravity-kit/skills/antigravity/SKILL.md",
+  "description": "Decides when/how to route SDLC work to Antigravity/Gemini (tiering, cost discipline, digest handling, verification gates).",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Bulk migration above break-even gets delegated with cost discipline",
+      "prompt": "I need to migrate all callers in this repo from APIv1 to APIv2 per MIGRATION.md -- there are about 40 call sites across the codebase. Should I delegate this to Antigravity?",
+      "expected_output": "Recommends delegation (this is squarely bulk/repetitive migration work, clearly above the break-even per the Cost discipline section). Names the delegation mechanism (agy-delegate, or the antigravity-delegate subagent for zero-Claude-token file writes), a sensible tier (pro for a migration needing correctness, or explains tier choice), --dir <repo-root> to let agy read real files instead of pasting them, and running on a dedicated branch/worktree with a diff review before merging (Safety for write tasks). States the digest-only instruction (end with a ===DIGEST=== block) as the cost lever, not raw output. Does not silently skip the break-even framing."
+    },
+    {
+      "id": 2,
+      "name": "Tiny one-off edit stays below break-even, not delegated",
+      "prompt": "Can you rename the variable 'usr' to 'user' in one function in src/auth.py?",
+      "expected_output": "Recommends doing this directly, not delegating -- explicitly names this as below the break-even (small, self-contained, judgement-light per the Cost discipline / When NOT to Use guidance) where delegation would be a net loss. Does not reach for agy-delegate or the antigravity-delegate subagent for this task."
+    },
+    {
+      "id": 3,
+      "name": "Migration-onboarding request routes to the sibling skill, not handled here",
+      "prompt": "I want to migrate my whole Claude Code setup -- skills, memory, MCP servers -- over to Antigravity so I can use agy going forward. How do I do that?",
+      "expected_output": "Recognizes this is a one-time config/setup migration, not an ongoing delegation task, and points to the sibling migrate-to-antigravity skill / the /antigravity-kit:migrate command instead of trying to answer it as an antigravity-skill delegation question -- matching the skill's own 'When NOT to Use' section, which names migrate-to-antigravity explicitly for this exact scenario."
+    }
+  ]
+}

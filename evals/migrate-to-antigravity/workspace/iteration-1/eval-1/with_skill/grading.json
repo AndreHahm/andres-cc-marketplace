@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Directs to run agy-migrate as a dry-run first, before --apply", "passed": true, "evidence": "\"Told them to start with agy-migrate (dry-run) to get a report before changing anything\""},
+    {"text": "Explains skills are read in place via a skills.json entry, not copied", "passed": true, "evidence": "\"user skills (linked live via skills.json, no copy)\""},
+    {"text": "Flags that permissions are written as a proposal only, merged with --apply-permissions", "passed": true, "evidence": "\"permissions are only written to a proposal file by default ... require the separate --apply-permissions flag\""},
+    {"text": "Mentions session history cannot move (protobuf/SQLite, no writer)", "passed": true, "evidence": "\"session transcripts (Claude Code uses plain JSONL; Antigravity uses per-conversation SQLite with opaque protobuf blobs, no supported writer)\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
