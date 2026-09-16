@@ -220,12 +220,15 @@ def analyze_context_structure(context: str) -> dict[str, Any]:
     )
 
     middle_ratio = middle_content / n if n > 0 else 0
+    # The middle band spans lines [middle_start, middle_end], ~40% of n by
+    # construction -- middle_ratio can't exceed that, so the "high" tier must
+    # sit below ~0.4, not 0.5, or it's unreachable for any input.
     return {
         "total_lines": n,
         "sections": sections,
         "middle_content_ratio": middle_ratio,
         "degradation_risk": (
-            "high" if middle_ratio > 0.5 else "medium" if middle_ratio > 0.3 else "low"
+            "high" if middle_ratio > 0.35 else "medium" if middle_ratio > 0.2 else "low"
         ),
     }
 
@@ -455,8 +458,11 @@ class ContextHealthAnalyzer:
             "current_task",
         )
 
+        # `or` would also replace an explicitly-supplied empty list (a caller
+        # deliberately asserting "no critical positions") with the range(10)
+        # default -- only an unset (None) argument should fall back to it.
         degradation = detect_lost_in_middle(
-            critical_positions or list(range(10)),
+            list(range(10)) if critical_positions is None else critical_positions,
             attention_dist,
         )
 
