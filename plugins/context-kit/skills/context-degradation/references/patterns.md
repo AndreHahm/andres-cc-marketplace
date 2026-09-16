@@ -23,6 +23,12 @@ result = detect_lost_in_middle(critical_positions=[0, 1, 25, 48, 49], attention_
 # (only present if any were given) and excluded from the degradation_score denominator
 ```
 
+For a large context where only a handful of positions need checking, `classify_critical_positions(
+critical_positions, token_count)` returns the same result shape without the cost of building
+`measure_attention_distribution()`'s full per-token list first — this is what `ContextHealthAnalyzer`
+uses internally (see Composite Health Scoring below) rather than materializing a distribution over every
+token just to inspect a handful of them.
+
 Also available: `analyze_context_structure(context: str)`, which assesses structural degradation risk
 from a context string's own section layout — returns `total_lines`, `sections`,
 `middle_content_ratio` (fraction of all lines in the low-attention middle band — lines 30%-70% of the

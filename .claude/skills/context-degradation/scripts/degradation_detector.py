@@ -7,6 +7,9 @@ Detect, measure, and diagnose context degradation patterns in LLM agent systems.
 Public API:
     measure_attention_distribution  — Map attention weight across context positions.
     detect_lost_in_middle           — Flag critical information in degraded-attention regions.
+    classify_critical_positions     — Like detect_lost_in_middle, but classifies only the given
+                                      positions directly, without materializing a full
+                                      per-token distribution first.
     analyze_context_structure       — Assess structural degradation risk factors.
     PoisoningDetector               — Detect context poisoning indicators (error accumulation,
                                       contradictions, hallucination markers).
@@ -32,6 +35,7 @@ from typing import Any
 __all__ = [
     "measure_attention_distribution",
     "detect_lost_in_middle",
+    "classify_critical_positions",
     "analyze_context_structure",
     "PoisoningDetector",
     "ContextHealthAnalyzer",
@@ -74,7 +78,7 @@ def measure_attention_distribution(
             {
                 "position": position,
                 "attention": attention,
-                "region": "attention_favored" if (is_beginning or is_end) else "attention_degraded",
+                "region": _classify_region(is_beginning, is_end),
                 "tokens": context_tokens[position][:50]
                 if position < 5 or position > n - 5
                 else None,
@@ -82,6 +86,15 @@ def measure_attention_distribution(
         )
 
     return attention_by_position
+
+
+def _classify_region(is_beginning: bool, is_end: bool) -> str:
+    """Classify a single position's attention region from its beginning/end
+    flags alone -- no dependency on other positions' data, so a caller that
+    only needs a handful of positions classified never has to materialize a
+    full per-token distribution first (see ``classify_critical_positions``).
+    """
+    return "attention_favored" if (is_beginning or is_end) else "attention_degraded"
 
 
 def _estimate_attention(
@@ -134,6 +147,65 @@ def detect_lost_in_middle(
         recommendations (list[str]), degradation_score (float 0-1),
         invalid_positions (list[int], only present if any were out of range).
     """
+    classified: list[tuple[int, str]] = []
+    invalid_positions: list[int] = []
+
+    for pos in critical_positions:
+        # A negative pos satisfies `pos < len(...)` and would silently index
+        # from the end of the list (a different, wrong position) rather than
+        # being rejected -- both bounds must be checked explicitly.
+        if 0 <= pos < len(attention_distribution):
+            classified.append((pos, attention_distribution[pos]["region"]))
+        else:
+            invalid_positions.append(pos)
+
+    return _aggregate_position_classifications(classified, invalid_positions)
+
+
+def classify_critical_positions(
+    critical_positions: list[int],
+    token_count: int,
+) -> dict[str, Any]:
+    """Classify only the given critical positions' attention region, without
+    materializing a full per-token distribution first.
+
+    Use when: checking a handful of specific positions on a large context,
+    where building ``measure_attention_distribution()`` for every token
+    first would be wasteful -- e.g. ``ContextHealthAnalyzer``'s routine
+    monitoring path, which only ever inspects the supplied/default critical
+    positions and discards the rest of the distribution anyway.
+
+    Args:
+        critical_positions: Indices into the context that hold critical info.
+        token_count: Total token count of the context (same role as
+            ``len(attention_distribution)`` in ``detect_lost_in_middle``).
+
+    Returns:
+        Same shape as ``detect_lost_in_middle``'s result.
+    """
+    classified: list[tuple[int, str]] = []
+    invalid_positions: list[int] = []
+
+    for pos in critical_positions:
+        if 0 <= pos < token_count:
+            is_beginning = pos < token_count * 0.1
+            is_end = pos > token_count * 0.9
+            classified.append((pos, _classify_region(is_beginning, is_end)))
+        else:
+            invalid_positions.append(pos)
+
+    return _aggregate_position_classifications(classified, invalid_positions)
+
+
+def _aggregate_position_classifications(
+    classified: list[tuple[int, str]],
+    invalid_positions: list[int],
+) -> dict[str, Any]:
+    """Build the at_risk/safe/degradation_score/recommendations result shape
+    from (position, region) pairs plus any positions excluded as out of
+    range. Shared by ``detect_lost_in_middle`` and
+    ``classify_critical_positions`` so both stay consistent.
+    """
     results: dict[str, Any] = {
         "at_risk": [],
         "safe": [],
@@ -142,23 +214,14 @@ def detect_lost_in_middle(
     }
 
     at_risk_count = 0
-    valid_count = 0
-    invalid_positions: list[int] = []
-
-    for pos in critical_positions:
-        # A negative pos satisfies `pos < len(...)` and would silently index
-        # from the end of the list (a different, wrong position) rather than
-        # being rejected -- both bounds must be checked explicitly.
-        if 0 <= pos < len(attention_distribution):
-            valid_count += 1
-            region = attention_distribution[pos]["region"]
-            if region == "attention_degraded":
-                results["at_risk"].append(pos)
-                at_risk_count += 1
-            else:
-                results["safe"].append(pos)
+    for pos, region in classified:
+        if region == "attention_degraded":
+            results["at_risk"].append(pos)
+            at_risk_count += 1
         else:
-            invalid_positions.append(pos)
+            results["safe"].append(pos)
+
+    valid_count = len(classified)
 
     if invalid_positions:
         results["invalid_positions"] = invalid_positions
@@ -532,21 +595,22 @@ class ContextHealthAnalyzer:
         token_count = len(tokens)
         utilization = token_count / self.context_limit
 
-        # Analyze the full token sequence -- critical_positions indexes into the
-        # untruncated `tokens` list, so sampling a prefix here would silently drop
-        # any critical position beyond the sample from both at_risk and safe while
-        # still counting it in degradation_score's denominator (falsely "safe").
-        attention_dist = measure_attention_distribution(
-            tokens,
-            "current_task",
-        )
-
+        # Classify only the requested critical positions rather than
+        # materializing a full per-token distribution -- this analyzer only
+        # ever inspects those specific positions and discards the rest, so
+        # building one dict per token (attention float, region, etc.) for a
+        # 100K+ token context would be pure wasted memory/latency on this
+        # routine monitoring path. classify_critical_positions still checks
+        # every requested position against the true token_count, so a
+        # position beyond the context is correctly reported as invalid
+        # rather than silently miscounted as "safe".
+        #
         # `or` would also replace an explicitly-supplied empty list (a caller
         # deliberately asserting "no critical positions") with the range(10)
         # default -- only an unset (None) argument should fall back to it.
-        degradation = detect_lost_in_middle(
+        degradation = classify_critical_positions(
             list(range(10)) if critical_positions is None else critical_positions,
-            attention_dist,
+            token_count,
         )
 
         poisoning = PoisoningDetector().detect_poisoning(context)
