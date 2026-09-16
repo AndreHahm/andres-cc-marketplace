@@ -260,7 +260,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <summary><b>📦 What's inside · local dev · tests</b></summary>
 
 ```
-.claude-plugin/   plugin.json (userConfig: `default_tier`, `timeout`, `coding_policy`, and 7 more — see the file) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
+.claude-plugin/   plugin.json (userConfig: `default_tier`, `timeout`, `coding_policy`, and more — see the file) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
 skills/           antigravity (WHEN + HOW Claude collaborates with agy), migrate-to-antigravity (one-time config migration)
 agents/           antigravity-delegate subagent (file work runs on Gemini, not Claude)
 commands/         slash commands (delegate, review, research, media, cloud-run-debug, setup, status, result, cancel, migrate)

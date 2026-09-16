@@ -141,13 +141,27 @@ def read_json(path, default=None):
         return default
 
 
-def write_json(path, obj):
+def write_json(path, obj, mode=None):
+    """`mode` (e.g. 0o600) is applied to the temp file at creation, before any bytes are
+    written -- for a credential-bearing destination (an MCP `env` block), chmod'ing only
+    after `os.replace` leaves the data at the ambient umask for the whole write."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    if mode is not None:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(obj, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+    else:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, indent=2, ensure_ascii=False)
+            f.write("\n")
     os.replace(tmp, path)
+    if mode is not None:
+        try:
+            os.chmod(path, mode)
+        except OSError:
+            pass
 
 
 def read_text(path):
@@ -881,14 +895,10 @@ def unit_mcp(plan, mf, roots):
             servers[name] = entry
             mf.note_key(dest, "mcpServers", name)
         cur["mcpServers"] = servers
-        write_json(dest, cur)
         # mcpServers entries can carry an `env` block with secrets (API keys, tokens) --
         # keep the destination file owner-readable only rather than the ambient umask
         # default, since translate_mcp() copies `env` verbatim.
-        try:
-            os.chmod(dest, 0o600)
-        except OSError:
-            pass
+        write_json(dest, cur, mode=0o600)
 
     plan.add("mcp", "ok", "write", dest, f"append {len(to_add)} server(s)", fn)
 
@@ -1239,7 +1249,7 @@ def postprocess_staged(stage, plugins, plan):
                     # Removing an entry is not the same as repairing one; say so.
                     dropped.append(sname)
             if restored or dropped:
-                write_json(mcp_path, {"mcpServers": fixed})
+                write_json(mcp_path, {"mcpServers": fixed}, mode=0o600)
             if restored:
                 notes.append(f"{name}: restored remote MCP ({', '.join(restored)})")
             if dropped:
@@ -1363,6 +1373,16 @@ def unit_plugins(plan, mf):
                 shutil.copytree(os.path.join(sroot, name), target)
                 mf.trees.append(target)  # we created it whole; undo removes it whole
                 copied += 1
+                # A repaired MCP config here can carry a server's own `env` block
+                # (secrets) restored by postprocess_staged() -- lock it down the same
+                # way unit_mcp()'s user-level write does; copytree preserved whatever
+                # ambient-umask mode the staging write left it at.
+                copied_mcp = os.path.join(target, "mcp_config.json")
+                if os.path.isfile(copied_mcp):
+                    try:
+                        os.chmod(copied_mcp, 0o600)
+                    except OSError:
+                        pass
             print(f"    · placed {copied}/{len(fresh)} plugin(s)")
             sman = read_json(os.path.join(stage, ".gemini", "config", "import_manifest.json"), None)
             if sman:
@@ -1408,6 +1428,9 @@ def do_uninstall(apply_):
         return rp == root or rp.startswith(root + os.sep)
 
     n = 0
+    # symlinks are deliberately exempt from contained(): the only symlink this tool ever
+    # creates is AGENTS.md -> CLAUDE.md, written *inside a user's own repo* (--include-repos),
+    # never under gemini_root() -- containment would refuse to remove every one it made.
     for p in mf.symlinks:
         if os.path.islink(p):
             print(f"  remove symlink {p}")
@@ -1434,6 +1457,9 @@ def do_uninstall(apply_):
             if apply_:
                 shutil.rmtree(p)
     for path, pointers in mf.json_keys.items():
+        if not contained(path):
+            print(f"  SKIP (outside {gemini_root()}, refusing to edit): {path}")
+            continue
         d = read_json(path, None)
         if not d:
             continue
@@ -1467,6 +1493,9 @@ def do_uninstall(apply_):
         if apply_:
             write_json(path, d)
     for p in mf.created_json:
+        if not contained(p):
+            print(f"  SKIP (outside {gemini_root()}, refusing to remove): {p}")
+            continue
         d = read_json(p, None)
         if d is None:
             continue
@@ -1479,6 +1508,9 @@ def do_uninstall(apply_):
             os.remove(p)
     for raw_dir in sorted(mf.dirs, key=len, reverse=True):
         p = str(raw_dir)
+        if not contained(p):
+            print(f"  SKIP (outside {gemini_root()}, refusing to rmdir): {p}")
+            continue
         if os.path.isdir(p) and not os.listdir(p):
             print(f"  rmdir          {p}")
             n += 1

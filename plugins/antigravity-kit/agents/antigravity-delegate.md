@@ -5,8 +5,8 @@ description: >-
   contains a well-scoped, ABOVE-break-even unit of work for the Antigravity CLI (agy / Gemini): bulk
   scaffolding, exhaustive test generation, migrations, long-context reads that distill to a digest, or
   fan-out web / Vertex AI Search. Proactive means YOU decide without being prompted — not that you
-  delegate everything: the break-even judgment is yours, every time. Its only file-acting tool is the
-  delegation wrapper, so file generation and bulky reading happen on Gemini and do NOT spend Claude
+  delegate everything: the break-even judgment is yours, every time. It holds no Write/Edit grant of
+  its own, so file generation and bulky reading happen on Gemini and do NOT spend Claude
   tokens; it returns agy's DIGEST for the caller to verify and never ships or claims success itself. Do
   NOT use it for small, self-contained, or judgement-heavy tasks — the caller should just do those
   directly.

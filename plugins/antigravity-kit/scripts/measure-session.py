@@ -24,7 +24,7 @@ def load_prices():
         "prices.json",
     ):
         try:
-            with open(p) as f:
+            with open(p, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             continue
@@ -47,7 +47,7 @@ def resolve(arg):
 def measure(path):
     ti = to = tcc = tcr = turns = 0
     tools = {}
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             try:
                 o = json.loads(line)

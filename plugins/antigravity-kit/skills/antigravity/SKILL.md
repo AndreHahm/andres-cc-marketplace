@@ -103,11 +103,12 @@ the cross-model verification value (Claude executing Claude loses both).
 > it would actually run. Below 1.1.11 it does not probe, because there the slash command
 > falls through as prompt text and the model answers as though it had run.
 >
-> The `flash` tiers default to **Gemini 3.7 Flash (High)** / **(Low)** since 0.24.0.
-> 3.6 and 3.7 are priced identically and undercut 3.5 on every axis today: input
-> and cached-input are exactly half ($1.50 -> $0.75, $0.15 -> $0.075) and output
-> is cheaper still, $9.00 -> $3.75 — a 58% cut, not a halving. Under a
-> promotion that **ends 2026-12-31** and then settles at $1.50 / $7.50 / $0.15.
+> The `flash` tiers default to **Gemini 3.7 Flash (High)** / **(Low)** — already the
+> default in this plugin's shipped 0.1.0 (a version-gated change upstream before this
+> plugin was packaged). 3.6 and 3.7 are priced identically and undercut 3.5 on every
+> axis today: input/cached-input are exactly half ($1.50 -> $0.75, $0.15 -> $0.075),
+> output is cheaper still ($9.00 -> $3.75, a 58% cut) — under a promotion ending
+> 2026-12-31, after which it settles at $1.50 / $7.50 / $0.15.
 > Price a run with `prices.json`'s `gemini_flash`, which mirrors whatever the flash
 > tier resolves to; `agy-cost-compare` picks that key by tier NAME, not by model.
 >
@@ -172,10 +173,10 @@ force it with the `structured_output` option.
 > Gemini-side data exactly this way, which made the hybrid look cheaper than it was. A
 > named file cannot be truncated by a pipe.
 
-**Two ways to delegate.** Call the wrapper directly (above), or — when you want file
-generation to happen entirely on Gemini with **zero Claude tokens spent writing** — hand
-the unit to the **`antigravity-delegate` subagent** (its only file-acting tool is the
-wrapper; it returns a digest for you to verify). Either way, *you* still own verification.
+**Two ways to delegate.** Call the wrapper directly (above), or — for **zero Claude
+tokens spent writing** — hand the unit to the **`antigravity-delegate` subagent** (no
+`Write`/`Edit` grant of its own; see its own note on what bounds it). Either way,
+*you* still own verification.
 
 **Structured failures.** The wrapper exits `10` quota · `11` auth · `12` timeout · `13`
 agy-missing · `14` model-unavailable (a `--model` / `tier_*` / `default_model` name not in
