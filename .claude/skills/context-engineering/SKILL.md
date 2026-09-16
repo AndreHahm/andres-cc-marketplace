@@ -46,16 +46,18 @@ Move information out of the context window into durable storage so it survives c
 | Target | When | Example |
 |--------|------|---------|
 | CLAUDE.md | Permanent project rules | "Always use pnpm, never npm" |
-| NOTES.md / scratchpad | Working state for current task | Architecture decisions, open questions |
+| A gitignored scratch file | Working state for current task | Architecture decisions, open questions |
 | `.claude/memory/` | Learnings and patterns | `[LEARN]` rules from corrections |
 | External files | Data too large for context | Test plans, migration checklists |
 
-**Pattern — Scratchpad workflow:**
+**Pattern — Scratchpad workflow:** name the file `NOTES.md` if you like, but put it wherever this
+project already keeps gitignored scratch content (a session scratchpad, `.claude/`, `.draft/`, etc.) —
+never bare at the repo root, which turns working state into untracked clutter the project can't clean up.
 ```text
-1. Start complex task → create NOTES.md with goals and constraints
-2. After research → write findings to NOTES.md
-3. After compaction → NOTES.md survives, context does not
-4. Resume → read NOTES.md to recover full state
+1. Start complex task → create a gitignored scratch file with goals and constraints
+2. After research → write findings to it
+3. After compaction → the scratch file survives, context does not
+4. Resume → read it back to recover full state
 ```
 
 ### 2. Select — Retrieve Relevant Info
@@ -179,7 +181,7 @@ Example baseline (calibrate with `/context`): ~200K total window, ~20K overhead 
 ```markdown
 ## Context Engineering
 
-Write to NOTES.md for working state that must survive compaction.
+Write working state that must survive compaction to a gitignored scratch file -- never bare at repo root.
 Select with precision — grep first, read specific lines, never dump whole files.
 Compact at 80% or task boundaries. Set CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80.
 Isolate heavy work to subagents. Main session stays for coordination and commits.
@@ -212,3 +214,4 @@ No `evals/context-engineering/evals.json` — this skill is a reference framewor
 **Quality gates:**
 - [ ] Never duplicates `context-degradation`'s Four-Bucket Mitigation Framework — this skill is the single canonical source for Write/Select/Compress/Isolate
 - [ ] The Compress section's compaction-strategy table and trigger list always name `strategic-compact` explicitly where its hooks are the mechanism, never a bare unnamed "strategic compact" phrase
+- [ ] The Write operation's scratchpad guidance never presents a bare repo-root filename (e.g. `NOTES.md`) as the default location — it always points at a gitignored, project-scoped location instead, since a literal reader following this skill in a project with a no-root-scratch policy would otherwise leave untracked clutter at the repo root (found by a cross-model review pass, 2026-09-16)

@@ -187,9 +187,13 @@ if [[ -f "$SETTINGS_FILE" ]]; then
     done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key | split("@")[0]' "$SETTINGS_FILE" 2>/dev/null)
     mcp_count=$(jq '.mcpServers // {} | keys | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
   else
-    plugin_count=$(grep -c '@' "$SETTINGS_FILE" 2>/dev/null || true)
+    # Best-effort, jq-free fallback: scope each count to its own block and
+    # require the 4-space indent Claude Code's settings.json uses for a
+    # direct child key, so a server's own nested "command"/"args"/"env"
+    # keys (6-space indent) aren't miscounted as additional MCP servers.
+    plugin_count=$(sed -n '/"enabledPlugins"/,/^  }/p' "$SETTINGS_FILE" 2>/dev/null | grep -cE '^    "[^"]*":' || true)
     plugin_count=${plugin_count:-0}
-    mcp_count=$(sed -n '/"mcpServers"/,/^  }/p' "$SETTINGS_FILE" 2>/dev/null | grep -c '"[^"]*":' || true)
+    mcp_count=$(sed -n '/"mcpServers"/,/^  }/p' "$SETTINGS_FILE" 2>/dev/null | grep -cE '^    "[^"]*":' || true)
     mcp_count=${mcp_count:-0}
   fi
   flag="-"
