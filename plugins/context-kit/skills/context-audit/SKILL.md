@@ -36,17 +36,24 @@ The script scans all context-contributing sources:
 - Skills, both user-scope (`~/.claude/skills/`) and project-scope (`{project-root}/.claude/skills/`) —
   either scope alone is enough to run; SKILL.md, references/, and a skill-bundled rules/ (a skill
   resource, on-demand like references/, not the project's always-on surface below)
-- `.claude/rules/*.md` — the project's real always-on rule surface, loaded every session regardless of
-  which skill is active, discovered recursively (subdirectories like `rules/frontend/` are included)
+- `.claude/rules/*.md` — the real always-on rule surface, both user-level (`~/.claude/rules/`, applies to
+  every project) and project-level, loaded every session regardless of which skill is active, discovered
+  recursively (subdirectories like `rules/frontend/` are included) — except a rule scoped by its own
+  `paths:` frontmatter, which is conditional (on-demand) rather than always-on
 - `~/.claude/CLAUDE.md` (the real global path) and project CLAUDE.md files (project root + subdirectories)
 - Auto-memory files scoped to the current project only (`~/.claude/projects/<this-project>/memory/*.md`)
   — footprint (size/word count) only; for content health (staleness, broken links, orphans), run
   `session-kit`'s `session-memory-audit` instead
-- Plugins with per-plugin tool count estimates
-- MCP servers — both user-configured (`~/.claude/settings.json`) and plugin-bundled (a plugin's own
-  `.mcp.json` or inline `plugin.json` `mcpServers` field)
+- Plugins enabled at any scope — user (`~/.claude/settings.json`), project (`.claude/settings.json`,
+  tracked), or local (`.claude/settings.local.json`, gitignored) — with per-plugin tool count estimates
+- MCP servers from every real source, deduplicated by server name: `settings.json`, `~/.claude.json`
+  (both its user-scope `mcpServers` and this project's own local-scope entry under `.projects`),
+  `{project}/.mcp.json` (team scope), and each enabled plugin's own `.mcp.json` or
+  `.claude-plugin/plugin.json` `mcpServers` field (added on top, never deduplicated against the others —
+  a plugin-provided server's real tool name is namespaced and can't collide with a same-named server
+  from another scope)
 
-**Thresholds:** Flag SKILL.md > 500 words, any `.claude/rules/*.md` file, CLAUDE.md > 2KB, 5+ MCP servers, plugins with 10+ tools.
+**Thresholds:** Flag SKILL.md > 500 words, any unconditional `.claude/rules/*.md` file, CLAUDE.md > 2KB, 5+ MCP servers, plugins with 10+ tools.
 
 ### 2. Live Context Window (`/context`)
 
@@ -113,4 +120,10 @@ No `evals/context-audit/evals.json` — this skill's variable part is `scripts/a
 - [ ] Global CLAUDE.md is read from `~/.claude/CLAUDE.md`, never the wrong `~/CLAUDE.md` path
 - [ ] Auto-memory files are scoped to the current project's own `~/.claude/projects/<encoded-cwd>/memory/` directory, never every project under `~/.claude/projects/*/memory/`
 - [ ] `.claude/rules/*.md` discovery is recursive — a rule in a subdirectory (e.g. `rules/frontend/`) is never silently dropped
-- [ ] MCP server counting includes both `~/.claude/settings.json`'s own `mcpServers` and each enabled plugin's bundled `.mcp.json`/inline `plugin.json` `mcpServers` — never settings.json alone
+- [ ] MCP server counting resolves every real source (`settings.json`, `~/.claude.json` user + local scope, `{project}/.mcp.json` team scope, each enabled plugin's bundled `.mcp.json`/`.claude-plugin/plugin.json`) and deduplicates by server name across the first four — never settings.json alone, and never double-counting a server defined in more than one scope
+- [ ] Plugin enablement is resolved across every scope that exists (`~/.claude/settings.json`, `{project}/.claude/settings.json`, `{project}/.claude/settings.local.json`), with a later scope's value winning on conflict — never user scope alone
+- [ ] `context-engineering`'s Isolate table never labels `/resume` as a "clean slate" — `/resume` loads the prior session's context back into memory (continuity, not isolation); only a genuinely fresh session (no `/resume`) is a clean slate
+- [ ] A `.claude/rules/*.md` file whose own frontmatter declares a `paths:` field is classified `on-demand`, never `always-on` — it only loads when Claude works with a matching file
+- [ ] Rules discovery includes `~/.claude/rules/` (user-level, applies to every project), never project-scope rules alone
+- [ ] A plugin's own `.mcp.json` is read as bare top-level keys (no `mcpServers` wrapper); a plugin's `.claude-plugin/plugin.json` and a project-root `.mcp.json` are both read with the `mcpServers` wrapper — these are two genuinely different schemas despite `.mcp.json` sharing a filename across plugin-root and project-root locations, verified against the official docs, never assumed identical
+- [ ] The marketplace-cache plugin-install-path glob includes the version-level directory (`cache/<marketplace>/<plugin>/<version>`, not `cache/<marketplace>/<plugin>`), and reads the plugin manifest from `.claude-plugin/plugin.json`, never plugin-root `plugin.json`
