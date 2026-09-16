@@ -1,0 +1,40 @@
+{
+  "_comment": "Trigger phrases per context-mode, first-pass scope (dev/review/ship/admin only). Derived and validated against 376 real messages from this repo's own session transcripts across 3 rounds - see references/design-history.md (shipped alongside this file) for full methodology, results, and the deliberately-not-chased list. Matching is case-insensitive substring matching by design (same mechanism used during validation) - see SKILL.md 'Known limitations' for the precision/recall tradeoffs this implies. research/plan/draft/doc are intentionally not included here - too little real-transcript evidence as of the last validation round. Only keys in scripts/detect_mode.py's VALID_MODES are ever emitted by the hook, regardless of what keys this file contains.",
+  "dev": [
+    "implement ", "let's build", "lets build", "write the code for", "fix this bug",
+    "fix the bug", "add this feature", "make this change", "let's code", "lets code",
+    "get this working", "implement solutions", "plan a solution",
+    "fix this", "fix that", "fix both", "fix items", "fix item", "yes, fix",
+    "go ahead and fix", "fix the ", "fix issue", "fix #", "apply the fix",
+    "commit this", "commit these", "commit and push", "push it", "push now",
+    "start building", "build the agent", "go ahead with task", "create missing smoke-test"
+  ],
+  "review": [
+    "review this pr", "review the diff", "check this code", "audit this",
+    "is this safe to merge", "code review", "what's wrong with", "review and verify",
+    "review and re-verify", "review issue", "review issues", "review status",
+    "skill-reviewer", "scripts-reviewer", "plugin-rulebook-checker",
+    "plugin-validator", "security-reviewer", "skill-tester", "reviewing-evals",
+    "reviewer round", "review round", "next reviewer round", "codex round",
+    "next round", "interview mode", "go through each item", "go through each open item",
+    "handling-review-findings", "handling-reviewer-findings", "lifecycle-downstream",
+    "open thread"
+  ],
+  "ship": [
+    "release this", "publish", "ship it", "merge and release", "post to", "deploy to",
+    "announce", "cut a release", "merge pr", "merge the pr",
+    "open a pr", "create a pr", "create pr", "flip it to ready", "flip pr to ready",
+    "convert pr", "merge it", "merge readiness", "merge ready", "ci-status", "ci status",
+    "pr status", "rebase branch on main", "rebase the branch on main",
+    "push and open the pr", "push and create pr", "push it and open the pr"
+  ],
+  "admin": [
+    "set up", "configure", "install", "bootstrap", "add a hook for",
+    "change permissions", "update settings.json", "clean up branches",
+    "clean up worktrees", "run maintenance on", "create a worktree", "create worktree",
+    "create a branch", "create branch", "plain branch",
+    "switch back into worktree", "switch back to pr",
+    "run finishing-work", "run the sync", "github issue", "open issue", "open item",
+    "next issue"
+  ]
+}
