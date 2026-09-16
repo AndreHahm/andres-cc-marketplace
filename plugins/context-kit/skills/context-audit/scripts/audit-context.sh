@@ -254,7 +254,12 @@ done
 avg_trigger_words=0
 [[ $trigger_count -gt 0 ]] && avg_trigger_words=$((total_trigger_words / trigger_count))
 
-total_always_on_words=$((total_always_on_words + mcp_count * 200 + plugin_count * 50))
+# Only MCP overhead is added here -- each enabled plugin already has its own
+# "plugin: $pname (~N tools)" entry (added above) summed into
+# total_always_on_words by the always-on loop, using its actual per-plugin
+# tool_est*50 rather than a flat 50; adding plugin_count*50 again here would
+# double-count every plugin's overhead.
+total_always_on_words=$((total_always_on_words + mcp_count * 200))
 
 # Apply filters to create display list
 display=()
