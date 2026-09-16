@@ -64,6 +64,10 @@ Complaints will be reviewed and investigated and will result in a response that 
 
 The project team is obligated to maintain confidentiality with regard to the reporter of an incident. Further details of specific enforcement policies may be posted separately.
 
+**Current limitation, disclosed:** this project has a single maintainer, so there is currently no
+alternate recipient to contact if a complaint concerns that maintainer themself. If that's your
+situation, you can instead use GitHub's own site-wide [report abuse](https://github.com/contact/report-abuse) form, which reaches GitHub directly rather than the project's maintainer(s).
+
 Project maintainers who do not follow or enforce the Code of Conduct in good
 faith may face temporary or permanent repercussions as determined by other
 members of the project's leadership.
