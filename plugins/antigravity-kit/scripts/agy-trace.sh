@@ -52,7 +52,7 @@ resolve() {
 latest() {
   local f
   # shellcheck disable=SC2012
-  f="$(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -1)"
+  f="$(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -1 || true)"
   [ -n "$f" ] || { echo "agy-trace: no transcripts under $BRAIN" >&2; exit 2; }
   printf '%s\n' "$f"
 }
@@ -63,7 +63,7 @@ list_recent() {
   local found=0 f id when steps
   # newest first; glob may match nothing -> nullglob-like guard via -f check
   # shellcheck disable=SC2012
-  for f in $(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -"$n"); do
+  for f in $(ls -t "$BRAIN"/*/.system_generated/logs/transcript.jsonl 2>/dev/null | head -"$n" || true); do
     [ -f "$f" ] || continue
     found=1
     id="${f#"$BRAIN"/}"; id="${id%%/*}"

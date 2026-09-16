@@ -190,6 +190,7 @@ outer_timeout_secs() {
   local d="${1:-5m}" n unit secs
   n="${d%[smh]}"; unit="${d#"$n"}"
   case "$n" in (*[!0-9]*|'') n=300; unit=s ;; esac
+  n=$((10#$n))
   case "$unit" in
     h) secs=$(( n * 3600 )) ;;
     m) secs=$(( n * 60 )) ;;
@@ -548,6 +549,7 @@ fi
 # (env CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS; empty = 8000, 0 = off).
 WARN_CHARS="${CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS:-8000}"
 case "$WARN_CHARS" in (*[!0-9]*|'') WARN_CHARS=8000 ;; esac
+WARN_CHARS=$((10#$WARN_CHARS))
 if [ "$WARN_CHARS" -gt 0 ] && [ "${#OUT}" -gt "$WARN_CHARS" ]; then
   echo "agy-delegate: note: output is ${#OUT} chars (> ${WARN_CHARS}) — that looks like a raw dump, not a digest. Don't ingest this into the conductor's context: re-run with --digest, or have agy summarize it first. (plugin option digest_warn_chars tunes this; 0 disables.)" >&2
 fi

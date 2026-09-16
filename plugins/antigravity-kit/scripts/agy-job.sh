@@ -69,6 +69,9 @@ case "$cmd" in
     [ -x "$DELEGATE" ] || die "delegate not executable: $DELEGATE"
     id="$(date +%Y%m%d-%H%M%S)-$$-${RANDOM}"
     jd="$REG/$id"; mkdir -p "$jd"
+    # Job output (task text, full stdout/stderr) can carry sensitive content -- keep the
+    # registry and each job dir readable only by the owner, not the ambient umask default.
+    chmod 700 "$REG" "$jd" 2>/dev/null || true
     { echo "id=$id"; echo "cwd=$PWD"; echo "started=$(date -u +%FT%TZ 2>/dev/null || date)";
       echo "task=$(printf '%s' "${!#}" | tr '\n' ' ' | cut -c1-200)"; } > "$jd/meta"
     ( nohup "$DELEGATE" "$@" >"$jd/out" 2>"$jd/err"; echo $? >"$jd/rc" ) >/dev/null 2>&1 &

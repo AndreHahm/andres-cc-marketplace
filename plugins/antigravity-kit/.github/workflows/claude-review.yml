@@ -46,15 +46,18 @@ jobs:
 
             - **Correctness of shell logic**: quoting, `set -euo pipefail` interactions,
               subshell/exit-code propagation, portability (macOS bash 3.2 vs GNU).
-            - **The security gate** (`hooks/validate-delegate-bash.sh`): it is the ONLY
-              restriction on what the delegate subagent may run. Any change here needs
-              extra scrutiny for bypasses and for false positives on legitimate prompts.
+            - **The security gate** (`hooks/validate-delegate-bash.sh`): defense-in-depth
+              on which command may start, not the load-bearing boundary — that is the
+              delegate subagent's `tools:` grant (`Bash, Read, Glob`, no `Write`/`Edit`).
+              A plugin-scoped agent's own frontmatter hook is accepted by the schema but
+              not verified to be honored at runtime (see SECURITY.md). Any change here
+              still needs extra scrutiny for bypasses and for false positives on
+              legitimate prompts.
             - **Exit-code / signal contract**: codes 2,3,10,11,12,13,14,15 and the
               `AGY_SIGNAL` / `AGY_USAGE` lines must stay consistent across
               `agy-delegate.sh`, `agy-job.sh`, SKILL.md and docs/TROUBLESHOOTING.md.
             - **Docs accuracy**: this repo tracks a fast-moving upstream CLI. Flag any
-              claim about agy behavior that the diff contradicts, and any version
-              drift between `.claude-plugin/plugin.json` and `skills/antigravity/SKILL.md`.
+              claim about agy behavior that the diff contradicts.
             - **Cost discipline**: changes that would put bulky output into the
               conductor's context (dumps instead of digests) are a regression.
 

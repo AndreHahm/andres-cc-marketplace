@@ -8,18 +8,21 @@ the plugin version, agy version/auth state, and platform warnings.
 
 ## "`/scripts/agy-delegate.sh: No such file or directory`" or `$CLAUDE_PLUGIN_ROOT` is empty
 
-**Cause:** you're on a plugin version < 0.14.0. `$CLAUDE_PLUGIN_ROOT` is only substituted
-inside structured config (hooks/MCP) — it is **not** exported to the shell commands the
-model runs, so marketplace installs saw an empty path ([#11](https://github.com/andrehahm/andres-cc-marketplace/issues/11),
-[#15](https://github.com/andrehahm/andres-cc-marketplace/issues/15)).
+**Cause (historical, upstream):** `$CLAUDE_PLUGIN_ROOT` is only substituted inside
+structured config (hooks/MCP) — it is **not** exported to the shell commands the model
+runs, so an early marketplace install could see an empty path. This was fixed upstream
+(everything is now invoked by bare names — `agy-delegate`, `agy-job`, `agy-doctor`,
+`agy-cost-compare` — on the plugin's `bin/` PATH) before this plugin was packaged for
+this marketplace, so this plugin already ships with the fix.
 
-**Fix:** update — since 0.14.0 everything is invoked by bare names (`agy-delegate`,
-`agy-job`, `agy-doctor`, `agy-cost-compare`) on the plugin's `bin/` PATH:
+**If you still see this:** update to the latest release of this plugin and reload:
 
 ```
-/plugin marketplace update antigravity-kit
+/plugin marketplace update andres-cc-marketplace
 /reload-plugins
 ```
+
+If it persists after that, file an issue — see "Still stuck?" below.
 
 ---
 
@@ -53,12 +56,12 @@ hang" instead of the misleading "not authenticated".
 unauthenticated CLI — but typing `agy models` yourself works fine. macOS and Linux, not just
 Windows.
 
-**Cause:** you have **stdio MCP servers configured** and a plugin build older than 0.22.1
-([#37](https://github.com/andrehahm/andres-cc-marketplace/issues/37)). agy's stdio MCP
-children **inherit its stdout and outlive agy**. A shell command substitution only returns
-once *every* holder of the pipe's write end closes it, so `OUT="$(agy ...)"` waits forever on
-children that are still alive. The wall-clock guard cannot rescue this: `timeout` kills
-`agy`, not the grandchildren.
+**Cause (historical, upstream, fixed before this plugin was packaged for this marketplace):**
+this happens when you have **stdio MCP servers configured** and agy's stdout is captured via a
+shell command substitution. agy's stdio MCP children **inherit its stdout and outlive agy**.
+A shell command substitution only returns once *every* holder of the pipe's write end closes
+it, so `OUT="$(agy ...)"` waits forever on children that are still alive. The wall-clock guard
+cannot rescue this: `timeout` kills `agy`, not the grandchildren.
 
 The one-line test, from the original report — same machine, only the config changed:
 
@@ -70,12 +73,14 @@ timeout 60 agy -p "Reply with exactly: PONG" > /tmp/out.txt 2>/dev/null </dev/nu
 timeout 90 bash -c 'O="$(timeout 60 agy -p "Reply with exactly: PONG" 2>/dev/null)"' </dev/null
 ```
 
-**Fix: update to 0.22.1 or later.** agy's stdout now goes to a temp file, which children
-inherit harmlessly. Check with `agy-doctor` (it prints the plugin version).
+**Fix:** this plugin already ships with the fix — agy's stdout now goes to a temp file,
+which children inherit harmlessly. If you still see this, run `agy-doctor` to confirm
+you're on the current release, then see the next section.
 
-### It still hangs on 0.22.1+
+### It still hangs after that
 
-Then it is a **different mechanism**, and one the plugin cannot fix: agy waits on its MCP
+If the above doesn't explain it, it is a **different mechanism**, and one the plugin
+cannot fix: agy waits on its MCP
 servers at startup, so a server that never finishes connecting blocks `agy` itself — this
 reproduces even with stdout on a file. `agy-doctor` now tells you how many stdio MCP servers
 you have when `agy models` times out.
@@ -104,8 +109,7 @@ whether the run admits it ([#10](https://github.com/andrehahm/andres-cc-marketpl
 - 1.1.3–1.1.1x: **soft-denies** — rc 0, empty stdout, a stderr notice naming the allow-rule
 - by **1.1.13**: **hard error** — the run fails (rc 1) with `permission check failed for
   write_file "...": user denied permission for write_file(...)`. Same cause, different
-  shape, and none of the older wording. The wrapper classifies both as **exit 15**; a
-  plugin before 0.24.0 reports the hard one as a bare `agy exited 1` instead
+  shape, and none of the older wording. The wrapper classifies both as **exit 15**
 
 **Fix:**
 - **For a file write, add an allow-rule — the narrower fix.** In
@@ -188,7 +192,7 @@ plugin option; `0` disables the warning.
 Third-party marketplace plugins do **not** auto-update by default:
 
 ```
-/plugin marketplace update antigravity-kit
+/plugin marketplace update andres-cc-marketplace
 /reload-plugins
 ```
 
