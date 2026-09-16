@@ -26,7 +26,7 @@ def load_prices():
         try:
             with open(p, encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             continue
     return None
 
@@ -51,7 +51,7 @@ def measure(path):
         for line in f:
             try:
                 o = json.loads(line)
-            except Exception:
+            except json.JSONDecodeError:
                 continue
             m = o.get("message")
             if not isinstance(m, dict):
