@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is ongoing per-task delegation, not a one-time config migration", "passed": true, "evidence": "\"what you're asking for now... is a different kind of thing than the migration we just walked through... it comes up every time you have a candidate task, not just once\""},
+    {"text": "Points to the sibling antigravity skill / delegation commands instead", "passed": true, "evidence": "\"/antigravity-kit:delegate <task>... antigravity-delegate subagent\" -- found by directly reading plugins/antigravity-kit/commands/delegate.md and agents/antigravity-delegate.md rather than via a loaded skill"},
+    {"text": "Does not attempt to answer it as a migration question", "passed": true, "evidence": "Explicitly frames it as distinct from migration and asks for the test-generation target rather than running agy-migrate"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Methodology confound: this baseline agent read plugins/antigravity-kit/commands/delegate.md and agents/antigravity-delegate.md directly from the repo, effectively re-deriving the antigravity skill's own routing answer by exploring adjacent plugin files rather than being a clean blind baseline."
+}

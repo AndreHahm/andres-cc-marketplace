@@ -1,0 +1,62 @@
+{
+  "skill_name": "migrate-to-antigravity",
+  "iteration": 2,
+  "timestamp": "2026-09-16T11:16:59+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 2400,
+        "avg_duration_ms": 9500
+      },
+      "baseline": {
+        "pass_rate": 0.0,
+        "assertions_passed": 0,
+        "assertions_total": 4,
+        "avg_tokens": 1750,
+        "avg_duration_ms": 21000
+      },
+      "delta": {
+        "pass_rate": 1.0,
+        "tokens": 650,
+        "duration_ms": -11500
+      }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 1900,
+        "avg_duration_ms": 8500
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 32000,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": -30100,
+        "duration_ms": -66500
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.5,
+    "improvement": 0.5,
+    "avg_tokens_with_skill": 2150,
+    "avg_tokens_baseline": 16875,
+    "token_cost": -14725,
+    "avg_duration_ms_with_skill": 9000,
+    "avg_duration_ms_baseline": 48000,
+    "duration_cost_ms": -39000
+  }
+}

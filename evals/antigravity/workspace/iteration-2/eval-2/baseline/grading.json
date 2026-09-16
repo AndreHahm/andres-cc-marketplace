@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recommends doing the rename directly, not delegating it", "passed": true, "evidence": "\"I'll take care of this directly — it's a small, self-contained edit.\""},
+    {"text": "Explicitly names this as below the break-even (small/self-contained/judgement-light)", "passed": true, "evidence": "\"This is a one-file, one-function, single-token rename — it doesn't need a design decision, a multi-file search, or anything else that would call for spinning off separate delegated work.\""},
+    {"text": "Does not reach for agy-delegate or the antigravity-delegate subagent", "passed": true, "evidence": "No delegation mechanism mentioned or invoked -- expected, since baseline has no knowledge of agy/Antigravity at all"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Expected negative-control agreement: a trivial single-variable rename is obviously below any reasonable delegation threshold even without the skill's specific framing."
+}
