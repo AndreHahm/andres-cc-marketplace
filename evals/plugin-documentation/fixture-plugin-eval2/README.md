@@ -1,6 +1,6 @@
 # widget-tools
 
-Utilities for creating widget configuration files.
+Utilities for creating and validating widget configuration files.
 
 ## Installation
 

@@ -154,7 +154,7 @@ After authoring or updating a doc, verify:
 3. **Reviewer invoked** — `human-doc-reviewer`'s verdict is attached, or the explicit reviewer-gap note is present for an out-of-scope type
 4. **Mirror parity** — if the plugin has a staging mirror, both copies match
 
-Quick Workflow evals live at `evals/plugin-documentation/` (`evals.json` + per-eval `grading.json`) — 3 scenarios, 11/11 assertions passing as of the skill's initial build: authoring a new README from scratch, updating an existing README without dropping human-added content, and authoring a doc type outside `human-doc-reviewer`'s scope with the reviewer-gap caveat stated correctly. Testing surfaced and fixed one real gap (the opening-summary-paragraph staleness check now in Step 3) — re-run these scenarios after any change to Steps 2-4.
+Quick Workflow evals live at `evals/plugin-documentation/` (`evals.json` + per-eval `grading.json`) — 4 scenarios, 15/15 assertions passing: authoring a new README from scratch, updating an existing README without dropping human-added content, authoring a doc type outside `human-doc-reviewer`'s scope with the reviewer-gap caveat stated correctly, and Pipeline Mode returning the structured classification block correctly. Testing surfaced and fixed one real gap (the opening-summary-paragraph staleness check now in Step 3) — re-run these scenarios after any change to Steps 2-4.
 
 5. **Delta-mode gate** — for a small, enumerable update (a count bump, a new table row), confirm the skill asks via `AskUserQuestion` before invoking `human-doc-reviewer`, rather than silently always running the expensive full whole-surface review
 
@@ -173,5 +173,5 @@ Quick Workflow evals live at `evals/plugin-documentation/` (`evals.json` + per-e
 | `${CLAUDE_SKILL_DIR}/assets/readme.template.md` | Starting-point README template, matches `human-doc-reviewer`'s structural baseline |
 | `${CLAUDE_SKILL_DIR}/assets/contributing.template.md` | Starting-point CONTRIBUTING template, matches `human-doc-reviewer`'s structural baseline |
 | `${CLAUDE_SKILL_DIR}/assets/changelog.template.md` | Starting-point CHANGELOG template, matches `human-doc-reviewer`'s structural baseline |
-| `evals/plugin-documentation/evals.json` | Eval scenarios and grading records (Quick Workflow, 11/11 passing) |
+| `evals/plugin-documentation/evals.json` | Eval scenarios and grading records (Quick Workflow, 15/15 passing) |
 | `human-doc-reviewer` agent | Mandatory QA step after every authoring pass (Step 4) |
