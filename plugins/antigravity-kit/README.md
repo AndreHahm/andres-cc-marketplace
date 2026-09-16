@@ -70,7 +70,7 @@ In Claude Code:
 
 **Prerequisites:** the [Antigravity CLI](https://antigravity.google/docs/cli-using) (`agy`) installed & authenticated (`agy models` lists Gemini models), and Claude Code. For the same-bill cost benefit, run Claude Code on Vertex too.
 
-**Platform support:** macOS, Linux, and **WSL** are the supported targets for headless delegation. **Native Windows (Git Bash/MSYS) is not recommended** — `agy -p` can hang with a 0-byte log when run without a real console (ConPTY); see [issue #6](https://github.com/andrehahm/andres-cc-marketplace/issues/6). The wrapper now bounds this with a wall-clock guard (GNU `timeout`/`gtimeout`, returning a clean TIMEOUT instead of hanging), and `doctor` distinguishes a hang from an auth failure — but for reliable headless use, run from **WSL/macOS/Linux**.
+**Platform support:** macOS, Linux, and **WSL** are the supported targets for headless delegation. **Native Windows (Git Bash/MSYS) is not recommended** — `agy -p` can hang with a 0-byte log when run without a real console (ConPTY); see issue #6 (unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)). The wrapper now bounds this with a wall-clock guard (GNU `timeout`/`gtimeout`, returning a clean TIMEOUT instead of hanging), and `doctor` distinguishes a hang from an auth failure — but for reliable headless use, run from **WSL/macOS/Linux**.
 
 ## 🧩 Slash commands
 
@@ -232,8 +232,8 @@ Delegation doesn't save money by itself — these do (also in the skill):
   scratch-divert 1.1.0–1.1.2 · soft-deny 1.1.3+ · **hard error by 1.1.13**). An ungranted
   write always **leaves your workspace untouched**; what changed is whether the run admits
   it — through 1.1.1x it still reported success, and by 1.1.13 it fails outright
-  ([#10](https://github.com/andrehahm/andres-cc-marketplace/issues/10)). Two things
-  grant it:
+  (issue #10, unverified against this marketplace's own tracker — see
+  [KNOWN_ISSUES.md](KNOWN_ISSUES.md)). Two things grant it:
   
   - **`permissions.allow` in `~/.gemini/antigravity-cli/settings.json`** — a
     `write_file(<dir>)` entry allows writes **recursively beneath `<dir>`** and needs no
@@ -249,14 +249,15 @@ Delegation doesn't save money by itself — these do (also in the skill):
     writes. Needed when no rule covers the target, and for web / Vertex AI Search / terminal
     tools.
   
-  Confirmed on **agy 1.1.9** by a controlled A/B ([#37](https://github.com/andrehahm/andres-cc-marketplace/issues/37)):
+  Confirmed on **agy 1.1.9** by a controlled A/B (issue #37, unverified against this
+marketplace's own tracker — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)):
   a covered target wrote with no flag; an uncovered one came back `PERMISSION_DENIED` with
   the rule as the only variable. agy's own denial text names the rule and offers `--yolo` as
   the alternative. Not verified on other versions, and a glob form (`write_file(/path/**)`)
   was reported *not* to match. Either way: run write tasks on a branch and verify with
   `git status`; the wrapper maps either denial shape — the soft one and 1.1.13's hard
   error — to exit `15`.
-- **Native Windows (no ConPTY):** headless `agy -p` / `agy models` can hard-hang with a 0-byte log when stdio is redirected ([issue #6](https://github.com/andrehahm/andres-cc-marketplace/issues/6)). The wrapper wraps agy in a wall-clock `timeout`/`gtimeout` guard so it returns a structured TIMEOUT (exit 12) instead of hanging; `doctor` reports the likely hang instead of a misleading "not authenticated". Without `timeout` on PATH there's no safety net — use **WSL/macOS/Linux** for headless delegation.
+- **Native Windows (no ConPTY):** headless `agy -p` / `agy models` can hard-hang with a 0-byte log when stdio is redirected (issue #6, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)). The wrapper wraps agy in a wall-clock `timeout`/`gtimeout` guard so it returns a structured TIMEOUT (exit 12) instead of hanging; `doctor` reports the likely hang instead of a misleading "not authenticated". Without `timeout` on PATH there's no safety net — use **WSL/macOS/Linux** for headless delegation.
 - **WSL:** running agy with `--add-dir` on a Windows mount (`/mnt/c/...`) is very slow — agy reads the workspace over a 9p bridge, so even trivial calls can take 20s+. Keep the repo on the WSL Linux filesystem (`~`). The wrapper and `doctor` warn about this.
 
 </details>
