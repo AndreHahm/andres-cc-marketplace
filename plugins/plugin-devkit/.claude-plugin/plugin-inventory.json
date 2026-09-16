@@ -3842,11 +3842,52 @@
         }
       ],
       "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_82487e30",
+      "name": "marketplace-documentation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/marketplace-documentation"
+          ],
+          "name": "marketplace-documentation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-16",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/marketplace-documentation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/marketplace-documentation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-16",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_7e527600",
   "plugin_name": "plugin-devkit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-01"
+  "updated_on": "2026-09-16"
 }
