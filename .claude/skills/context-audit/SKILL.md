@@ -33,14 +33,18 @@ optimizations. Two audit modes can run independently or together.
 Run `scripts/audit-context.sh` to automate the static inventory. Supports `--json` for structured output, `--flagged` for problems only, `--top N` for largest items.
 
 The script scans all context-contributing sources:
-- Skills (SKILL.md, rules/, references/)
+- Skills, both user-scope (`~/.claude/skills/`) and project-scope (`{project-root}/.claude/skills/`) —
+  SKILL.md, references/, and a skill-bundled rules/ (a skill resource, on-demand like references/, not
+  the project's always-on surface below)
+- `.claude/rules/*.md` — the project's real always-on rule surface, loaded every session regardless of
+  which skill is active
 - CLAUDE.md files (global + project + subdirectories)
 - Auto-memory files (`~/.claude/projects/*/memory/*.md`) — footprint (size/word count) only; for
   content health (staleness, broken links, orphans), run `session-kit`'s `session-memory-audit` instead
 - Plugins with per-plugin tool count estimates
 - MCP servers
 
-**Thresholds:** Flag SKILL.md > 500 words, any rules/ directory, CLAUDE.md > 2KB, 5+ MCP servers, plugins with 10+ tools.
+**Thresholds:** Flag SKILL.md > 500 words, any `.claude/rules/*.md` file, CLAUDE.md > 2KB, 5+ MCP servers, plugins with 10+ tools.
 
 ### 2. Live Context Window (`/context`)
 
@@ -100,3 +104,6 @@ No `evals/context-audit/evals.json` — this skill's variable part is `scripts/a
 - [ ] `scripts/audit-context.sh` never claims a `--session`/JSONL mode — that capability was deliberately dropped in favor of deferring to `session-kit`'s `session-stats`
 - [ ] Session Efficiency scoring is only ever sourced from user-shared `/context` output, never from self-parsed session JSONL
 - [ ] `--top` accepts a leading-zero value (e.g. `08`) as decimal, not octal, and never aborts on a missing value
+- [ ] `scripts/audit-context.sh` is tracked executable (`100755`) — this skill's own `allowed-tools` grant only permits invoking it directly, not via a `bash ...` wrapper
+- [ ] The static inventory scans project-scope skills (`{project-root}/.claude/skills/`) as well as user-scope, and never presents a skill-bundled `rules/` directory as the project's always-on surface — only `.claude/rules/*.md` earns the `RULES` flag
+- [ ] The jq-free settings fallback never reports a plugin count that silently includes disabled `enabledPlugins` entries — when `jq` is unavailable, plugin analysis is reported as unavailable rather than a confidently-wrong number

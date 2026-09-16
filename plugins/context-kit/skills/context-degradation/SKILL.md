@@ -105,7 +105,7 @@ Account for these research-backed surprises when designing context strategies:
 
 Do not assume larger context windows improve performance. Performance remains stable up to a model-specific threshold, then degrades rapidly — the curve is non-linear with a cliff edge, not a gentle slope. For many models, meaningful degradation begins at 8K-16K tokens even when windows support much larger sizes.
 
-Factor in cost: processing a 400K token context costs exponentially more than 200K in both time and compute, not linearly more. For many applications, this makes large-context processing economically impractical.
+Factor in cost: processing a 400K token context costs superlinearly more than 200K in both time and compute for some model architectures and deployments, not linearly more. For many applications, this makes large-context processing economically impractical.
 
 Recognize the cognitive bottleneck: even with infinite context, asking a single model to maintain quality across dozens of independent tasks creates degradation that more context cannot solve. Split tasks across sub-agents instead of expanding context.
 

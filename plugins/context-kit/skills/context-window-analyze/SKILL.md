@@ -45,7 +45,7 @@ window's health in the moment.
 | Usage | Status | Action |
 |-------|--------|--------|
 | < 50% | HEALTHY | No action needed |
-| 50-75% | MONITOR | Consider /compact soon |
+| 50-<75% | MONITOR | Consider /compact soon |
 | 75-85% | WARNING | Run /compact or /clear |
 | > 85% | CRITICAL | Immediate action required |
 
@@ -64,12 +64,15 @@ Claude Code's context typically includes:
 
 ## Workflow
 
-### Step 1: Estimate Context Usage
+### Step 1: Get Real Usage Data First
 
-Note: Exact context usage is internal to Claude Code. This command provides estimates based on observable factors:
+Ask the user to run `/context` and share the output — it reports the actual current tokens, max
+capacity, percentage used, and composition breakdown, and is the reliable source for the
+HEALTHY/MONITOR/WARNING/CRITICAL assessment in Step 2. Only fall back to indirect estimation below if
+the user hasn't shared `/context` output (e.g. a quick check where asking would interrupt the flow):
 
 ```text
-Factors to consider:
+Factors to consider (fallback only, when /context output isn't available):
 - Conversation length (turns)
 - Recent file reads
 - Tool output volume
@@ -233,7 +236,7 @@ IMMEDIATE ACTION REQUIRED:
   Option 3 (New Session without Handoff):
     1. Note session ID for /resume if needed
     2. Start new Claude Code session
-    3. Fresh 200k token context
+    3. Fresh context window at the configured model/window size (e.g. `CLAUDE_CONTEXT_WINDOW_TOKENS`)
 
   Option 4 (New Session with Handoff, if session-kit is installed):
     1. Trigger session-kit's session-handoff skill — say "create handoff" (it's model-invoked, not

@@ -70,12 +70,14 @@ word_count() {
 }
 
 # Helper: escape a string for embedding in a JSON string literal. Covers
-# backslash, quote, and the control characters most plausible in a real
-# filename (newline, tab, carriage return). A literal tab in a source name
-# would also break this script's own internal tab-separated entry format
-# upstream of this function -- an extremely rare edge case on real
-# filesystems, disclosed here rather than reworked into a NUL-delimited
-# internal format.
+# backslash, quote, the named short-escapes (newline, tab, carriage return),
+# and every other C0 control character (U+0001-U+001F, e.g. backspace,
+# form feed) as \u00XX -- a filename can legally contain any of these
+# except NUL (U+0000), which can't occur in a filename so isn't handled.
+# A literal tab in a source name would also break this script's own
+# internal tab-separated entry format upstream of this function -- an
+# extremely rare edge case on real filesystems, disclosed here rather
+# than reworked into a NUL-delimited internal format.
 json_escape() {
   local s=$1
   s=${s//\\/\\\\}
@@ -83,7 +85,16 @@ json_escape() {
   s=${s//$'\r'/\\r}
   s=${s//$'\n'/\\n}
   s=${s//$'\t'/\\t}
-  printf '%s' "$s"
+  local out="" i c ord
+  for (( i=0; i<${#s}; i++ )); do
+    c="${s:i:1}"
+    printf -v ord '%d' "'$c" 2>/dev/null || ord=32
+    if (( ord < 32 )); then
+      printf -v c '\\u%04x' "$ord"
+    fi
+    out+="$c"
+  done
+  printf '%s' "$out"
 }
 
 # Helper: format bytes for display
@@ -101,42 +112,77 @@ format_size() {
 # Collect entries as tab-separated: source \t size_bytes \t words \t loads \t flag
 entries=()
 
-# Scan SKILL.md files
-for skill_dir in "$SKILLS_DIR"/*/; do
-  [[ -d "$skill_dir" ]] || continue
-  skill_name=$(basename "$skill_dir")
+# Helper: scan one skills/ directory (user-scope or project-scope) for
+# SKILL.md/references. A rules/ subdirectory bundled inside a skill (if one
+# exists) is only ever loaded when that skill itself triggers -- it is a
+# skill resource, not the project's real always-on rule surface, which is
+# .claude/rules/*.md, scanned separately below.
+scan_skills_dir() {
+  local base_dir=$1
+  local label_prefix=$2
+  local skill_dir skill_name skill_file refs_dir ref_file ref_name
+  local rules_dir rule_file rule_name s w flag
 
-  skill_file="$skill_dir/SKILL.md"
-  if [[ -f "$skill_file" ]]; then
-    s=$(file_size "$skill_file")
-    w=$(word_count "$skill_file")
-    flag="-"
-    [[ $w -gt 500 ]] && flag="LARGE"
-    entries+=("skills/$skill_name/SKILL.md	$s	$w	on-trigger	$flag")
-  fi
+  for skill_dir in "$base_dir"/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name=$(basename "$skill_dir")
 
-  rules_dir="$skill_dir/rules"
-  if [[ -d "$rules_dir" ]]; then
-    for rule_file in "$rules_dir"/*.md; do
-      [[ -f "$rule_file" ]] || continue
-      rule_name=$(basename "$rule_file")
-      s=$(file_size "$rule_file")
-      w=$(word_count "$rule_file")
-      entries+=("skills/$skill_name/rules/$rule_name	$s	$w	always-on	RULES")
-    done
-  fi
+    skill_file="$skill_dir/SKILL.md"
+    if [[ -f "$skill_file" ]]; then
+      s=$(file_size "$skill_file")
+      w=$(word_count "$skill_file")
+      flag="-"
+      [[ $w -gt 500 ]] && flag="LARGE"
+      entries+=("${label_prefix}${skill_name}/SKILL.md	$s	$w	on-trigger	$flag")
+    fi
 
-  refs_dir="$skill_dir/references"
-  if [[ -d "$refs_dir" ]]; then
-    for ref_file in "$refs_dir"/*.md; do
-      [[ -f "$ref_file" ]] || continue
-      ref_name=$(basename "$ref_file")
-      s=$(file_size "$ref_file")
-      w=$(word_count "$ref_file")
-      entries+=("skills/$skill_name/references/$ref_name	$s	$w	on-demand	-")
-    done
-  fi
-done
+    refs_dir="$skill_dir/references"
+    if [[ -d "$refs_dir" ]]; then
+      for ref_file in "$refs_dir"/*.md; do
+        [[ -f "$ref_file" ]] || continue
+        ref_name=$(basename "$ref_file")
+        s=$(file_size "$ref_file")
+        w=$(word_count "$ref_file")
+        entries+=("${label_prefix}${skill_name}/references/$ref_name	$s	$w	on-demand	-")
+      done
+    fi
+
+    rules_dir="$skill_dir/rules"
+    if [[ -d "$rules_dir" ]]; then
+      for rule_file in "$rules_dir"/*.md; do
+        [[ -f "$rule_file" ]] || continue
+        rule_name=$(basename "$rule_file")
+        s=$(file_size "$rule_file")
+        w=$(word_count "$rule_file")
+        entries+=("${label_prefix}${skill_name}/rules/$rule_name	$s	$w	on-demand	-")
+      done
+    fi
+  done
+}
+
+# Scan SKILL.md files -- user scope always, plus project scope (this run's
+# cwd) whenever it has its own .claude/skills/ and isn't the same directory
+# as the user scope (e.g. cwd == $HOME).
+scan_skills_dir "$SKILLS_DIR" "skills/"
+
+PROJECT_SKILLS_DIR="$(pwd)/.claude/skills"
+if [[ -d "$PROJECT_SKILLS_DIR" && "$PROJECT_SKILLS_DIR" != "$SKILLS_DIR" ]]; then
+  scan_skills_dir "$PROJECT_SKILLS_DIR" "project-skills/"
+fi
+
+# .claude/rules/*.md -- the project's real always-on rule surface (unlike a
+# skill-bundled rules/ directory above, these load into every session
+# regardless of which skill, if any, is active).
+PROJECT_RULES_DIR="$(pwd)/.claude/rules"
+if [[ -d "$PROJECT_RULES_DIR" ]]; then
+  for rule_file in "$PROJECT_RULES_DIR"/*.md; do
+    [[ -f "$rule_file" ]] || continue
+    rule_name=$(basename "$rule_file")
+    s=$(file_size "$rule_file")
+    w=$(word_count "$rule_file")
+    entries+=("project-rules/$rule_name	$s	$w	always-on	RULES")
+  done
+fi
 
 # CLAUDE.md files — global
 if [[ -f "$HOME/CLAUDE.md" ]]; then
@@ -187,27 +233,47 @@ SETTINGS_FILE="$HOME/.claude/settings.json"
 plugin_count=0
 mcp_count=0
 plugin_names=()
+plugin_analysis_available=true
+plugin_count_json="0"
+plugin_count_display="0"
 if [[ -f "$SETTINGS_FILE" ]]; then
   # Count enabled plugins from enabledPlugins object
   if command -v jq &>/dev/null; then
     plugin_count=$(jq '[.enabledPlugins // {} | to_entries[] | select(.value == true)] | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
     while IFS= read -r pname; do
+      # Strip a trailing \r: some jq builds (notably native Windows jq.exe
+      # piped through a Unix-style shell) write CRLF line endings on this
+      # -r/raw-output path, and `read` only strips the \n, leaving a stray
+      # \r attached to the plugin name -- breaks the case-match below and
+      # would show up literally in the report.
+      pname=${pname%$'\r'}
       [[ -n "$pname" ]] && plugin_names+=("$pname")
     done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key | split("@")[0]' "$SETTINGS_FILE" 2>/dev/null)
     mcp_count=$(jq '.mcpServers // {} | keys | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
+    plugin_count_json="$plugin_count"
+    plugin_count_display="$plugin_count"
   else
-    # Best-effort, jq-free fallback: scope each count to its own block and
-    # require the 4-space indent Claude Code's settings.json uses for a
-    # direct child key, so a server's own nested "command"/"args"/"env"
-    # keys (6-space indent) aren't miscounted as additional MCP servers.
-    plugin_count=$(sed -n '/"enabledPlugins"/,/^  }/p' "$SETTINGS_FILE" 2>/dev/null | grep -cE '^    "[^"]*":' || true)
-    plugin_count=${plugin_count:-0}
+    # jq-free fallback can reliably count MCP servers (mcpServers has no
+    # per-entry enabled/disabled state -- every top-level key is an active
+    # server), but NOT enabled plugins: enabledPlugins entries can be
+    # true or false, and grep/sed can't distinguish them without a real
+    # JSON parser. Reporting a plugin count here would silently include
+    # disabled plugins as active, while plugin_names (and so every
+    # per-plugin tool-count entry) stays empty -- an inconsistent,
+    # misleadingly-confident result. Report it as unavailable instead.
+    plugin_analysis_available=false
+    plugin_count_json="null"
+    plugin_count_display="unavailable (no jq)"
     mcp_count=$(sed -n '/"mcpServers"/,/^  }/p' "$SETTINGS_FILE" 2>/dev/null | grep -cE '^    "[^"]*":' || true)
     mcp_count=${mcp_count:-0}
   fi
   flag="-"
   [[ $mcp_count -ge 5 ]] && flag="MCP"
-  entries+=("settings.json (${plugin_count} plugins, ${mcp_count} MCP)	0	0	always-on	$flag")
+  if [[ "$plugin_analysis_available" == true ]]; then
+    entries+=("settings.json (${plugin_count} plugins, ${mcp_count} MCP)	0	0	always-on	$flag")
+  else
+    entries+=("settings.json (plugin count unavailable without jq, ${mcp_count} MCP)	0	0	always-on	$flag")
+  fi
 
   # Add per-plugin entries with estimated tool counts
   # Known tool counts for common plugins (tool descriptions always loaded)
@@ -298,8 +364,8 @@ if [[ "$JSON_OUTPUT" == true ]]; then
   echo "  ],"
   printf '  "showing": %d, "total_entries": %d,' "$filtered_count" "$total_count"
   echo ""
-  printf '  "totals": {"always_on_words": %d, "avg_trigger_words": %d, "skills": %d, "plugins": %d, "mcp_servers": %d}' \
-    "$total_always_on_words" "$avg_trigger_words" "$trigger_count" "$plugin_count" "$mcp_count"
+  printf '  "totals": {"always_on_words": %d, "avg_trigger_words": %d, "skills": %d, "plugins": %s, "mcp_servers": %d}' \
+    "$total_always_on_words" "$avg_trigger_words" "$trigger_count" "$plugin_count_json" "$mcp_count"
   echo ""
   echo "}"
 else
@@ -321,5 +387,5 @@ else
   echo "Totals:"
   echo "  Always-on context: ~${total_always_on_words} words (includes MCP/plugin overhead estimate)"
   echo "  Avg on-trigger cost: ~${avg_trigger_words} words per skill invocation"
-  echo "  Skills: $trigger_count | Plugins: $plugin_count | MCP servers: $mcp_count"
+  echo "  Skills: $trigger_count | Plugins: $plugin_count_display | MCP servers: $mcp_count"
 fi

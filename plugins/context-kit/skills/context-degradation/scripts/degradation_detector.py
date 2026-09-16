@@ -29,6 +29,7 @@ PRODUCTION NOTES:
 
 import random
 import re
+from collections import deque
 from collections.abc import Sequence
 from typing import Any
 
@@ -70,7 +71,10 @@ def measure_attention_distribution(
 
     for position in range(n):
         is_beginning = position < n * 0.1
-        is_end = position > n * 0.9
+        # >= , not > -- a strict > excludes the position exactly at the 90th
+        # percentile (e.g. for n=10, the last valid index is 9 and 9 > 9 is
+        # False), so the literal final token would never classify as "end".
+        is_end = position >= n * 0.9
 
         attention = _estimate_attention(position, n, is_beginning, is_end)
 
@@ -189,7 +193,8 @@ def classify_critical_positions(
     for pos in critical_positions:
         if 0 <= pos < token_count:
             is_beginning = pos < token_count * 0.1
-            is_end = pos > token_count * 0.9
+            # Same >= fix as measure_attention_distribution's classifier above.
+            is_end = pos >= token_count * 0.9
             classified.append((pos, _classify_region(is_beginning, is_end)))
         else:
             invalid_positions.append(pos)
@@ -455,11 +460,20 @@ class PoisoningDetector:
                 }
             )
 
+        indicator_severities = {ind["severity"] for ind in indicators}
         return {
             "poisoning_risk": len(indicators) > 0,
             "indicators": indicators,
+            # Derived from each indicator's own severity, not just the
+            # indicator count -- a single "high"-severity indicator (e.g. one
+            # contradiction) must not report a lower aggregate "medium" than
+            # its own indicator data claims.
             "overall_risk": (
-                "high" if len(indicators) > 2 else "medium" if len(indicators) > 0 else "low"
+                "high"
+                if "high" in indicator_severities
+                else "medium"
+                if "medium" in indicator_severities
+                else "low"
             ),
         }
 
@@ -565,11 +579,15 @@ class ContextHealthAnalyzer:
     metrics into a single 0-1 health score with status interpretation.
     """
 
-    def __init__(self, context_limit: int = 100_000) -> None:
+    def __init__(self, context_limit: int = 100_000, max_history: int | None = 100) -> None:
         if context_limit <= 0:
             raise ValueError(f"context_limit must be a positive integer, got {context_limit}")
         self.context_limit: int = context_limit
-        self.metrics_history: list[dict[str, Any]] = []
+        # Bounded by default -- a long-running monitoring process calling
+        # .analyze() repeatedly would otherwise retain every result forever,
+        # growing memory without limit. Pass max_history=None to disable the
+        # cap for callers that genuinely need the full history.
+        self.metrics_history: deque[dict[str, Any]] = deque(maxlen=max_history)
 
     def analyze(
         self,
