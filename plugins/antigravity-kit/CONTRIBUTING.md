@@ -34,7 +34,9 @@ shellcheck scripts/*.sh tests/*.sh hooks/*.sh   # --severity=error
    `python3 -c "import json; json.load(open('plugins/antigravity-kit/.claude-plugin/plugin.json'))"`
 6. Keep [`skills/antigravity/SKILL.md`](skills/antigravity/SKILL.md) honest — it's the plugin's brain.
    If behavior changes, update it; don't claim a capability the code doesn't have.
-7. Open a pull request.
+7. Check [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for unresolved gaps before starting — your change may
+   already be tracked there, or resolve one of them.
+8. Open a pull request.
 
 ## Conventions
 

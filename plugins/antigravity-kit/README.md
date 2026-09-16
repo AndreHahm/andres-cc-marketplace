@@ -110,15 +110,18 @@ by default; `--apply` backs up first and `--uninstall --apply` reverses it. Your
 | `CLAUDE.md` | an `AGENTS.md` symlink beside it |
 | auto-memory | always-on rules — global ones in a plugin, per-repo ones in `<repo>/.agents/rules/` |
 | MCP servers (project + desktop app) | merged into `~/.gemini/config/mcp_config.json` |
-| trusted projects | `trustedWorkspaces` |
+| trusted projects | `trustedWorkspaces` — a **proposal** until `--apply-permissions`, see below |
 | `permissions.allow` | a **proposal file** — see below |
 | session history | nothing. Antigravity stores conversations as protobuf blobs inside per-conversation SQLite files; there is no writer |
 
 Two things are deliberately not automatic. **Permissions widen when translated** —
 Claude's allow-list holds whole command *lines*, while agy's `command()` matches a
 prefix — so the result is written out for review and merged only with
-`--apply-permissions`. **`model` / `effortLevel` / `env`** are reported and never
-written, because no honest mapping exists.
+`--apply-permissions`. **Marking a path trusted disables Antigravity's own trust
+prompt for it**, the same kind of widening, so `trustedWorkspaces` sits behind the
+identical `--apply-permissions` gate rather than writing under plain `--apply`.
+**`model` / `effortLevel` / `env`** are reported and never written, because no
+honest mapping exists.
 
 Worth knowing if you would rather do it by hand: an Antigravity rule without
 `trigger: always_on` in its frontmatter is ignored with no error and no warning,
@@ -212,6 +215,8 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <summary><b>🚧 Guardrails &amp; known limits</b></summary>
 
 > **Something broken?** See **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — symptom-first fixes for Windows/WSL, writes that silently don't happen, quota/auth/timeout codes, and updating.
+>
+> **Known, unresolved gaps** (Mirror Sync registration, unverified issue-tracker links): see **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)**.
 
 **Guardrails**
 - Always **verify** agy's output (it can be wrong, and may even alter its environment to make a check pass — re-run gates yourself in a clean state).

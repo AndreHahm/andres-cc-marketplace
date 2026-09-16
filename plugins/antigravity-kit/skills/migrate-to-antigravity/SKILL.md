@@ -79,7 +79,7 @@ So customization is shared across surfaces; session state is not.
 | `CLAUDE.md` | symlink `AGENTS.md` → `CLAUDE.md` | `--include-repos`; both are plain Markdown |
 | Auto-memory | **generated** rules | global → a plugin's `rules/`; per-repo → `<repo>/.agents/rules/` |
 | MCP servers | merged + translated into `mcp_config.json` | `url`/`httpUrl` → `serverUrl`, `type` dropped, `env` copied verbatim (see below) |
-| Trusted projects | `trustedWorkspaces` | the one clean settings mapping |
+| Trusted projects | `trustedWorkspaces` | widens trust (disables Antigravity's own trust prompt) — proposal only, same `--apply-permissions` gate as permissions below |
 | Permissions | **proposal only** by default | see the warning below |
 
 ### Cannot move
@@ -167,7 +167,7 @@ Also not migrated, by design: `model` (no Gemini equivalent for a Claude model i
 | `--only` / `--skip` | `plugins,skills,claudemd,memory,mcp,settings` |
 | `--include-repos` | write into git repos (`AGENTS.md`, `.agents/rules/`) |
 | `--include-orphan-memory` | fold memory whose source directory no longer exists into global rules |
-| `--apply-permissions` | actually write the translated allow-list |
+| `--apply-permissions` | actually write the translated allow-list and merge `trustedWorkspaces` |
 | `--no-register-projects` | skip agy project registration (workspace rules then stay inert) |
 | `--roots` | scope for `CLAUDE.md` and MCP discovery (default: the project paths recorded in `~/.claude.json`, or `~` if there are none). The desktop app's `claude_desktop_config.json` is global and always included. |
 | `--json` | machine-readable plan |
