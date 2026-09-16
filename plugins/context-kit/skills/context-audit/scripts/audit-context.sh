@@ -69,11 +69,20 @@ word_count() {
   wc -w < "$1" | tr -d ' '
 }
 
-# Helper: escape a string for embedding in a JSON string literal (backslash, quote)
+# Helper: escape a string for embedding in a JSON string literal. Covers
+# backslash, quote, and the control characters most plausible in a real
+# filename (newline, tab, carriage return). A literal tab in a source name
+# would also break this script's own internal tab-separated entry format
+# upstream of this function -- an extremely rare edge case on real
+# filesystems, disclosed here rather than reworked into a NUL-delimited
+# internal format.
 json_escape() {
   local s=$1
   s=${s//\\/\\\\}
   s=${s//\"/\\\"}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\t'/\\t}
   printf '%s' "$s"
 }
 
