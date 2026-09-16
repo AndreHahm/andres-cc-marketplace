@@ -34,15 +34,17 @@ Run `scripts/audit-context.sh` to automate the static inventory. Supports `--jso
 
 The script scans all context-contributing sources:
 - Skills, both user-scope (`~/.claude/skills/`) and project-scope (`{project-root}/.claude/skills/`) —
-  SKILL.md, references/, and a skill-bundled rules/ (a skill resource, on-demand like references/, not
-  the project's always-on surface below)
+  either scope alone is enough to run; SKILL.md, references/, and a skill-bundled rules/ (a skill
+  resource, on-demand like references/, not the project's always-on surface below)
 - `.claude/rules/*.md` — the project's real always-on rule surface, loaded every session regardless of
-  which skill is active
-- CLAUDE.md files (global + project + subdirectories)
-- Auto-memory files (`~/.claude/projects/*/memory/*.md`) — footprint (size/word count) only; for
-  content health (staleness, broken links, orphans), run `session-kit`'s `session-memory-audit` instead
+  which skill is active, discovered recursively (subdirectories like `rules/frontend/` are included)
+- `~/.claude/CLAUDE.md` (the real global path) and project CLAUDE.md files (project root + subdirectories)
+- Auto-memory files scoped to the current project only (`~/.claude/projects/<this-project>/memory/*.md`)
+  — footprint (size/word count) only; for content health (staleness, broken links, orphans), run
+  `session-kit`'s `session-memory-audit` instead
 - Plugins with per-plugin tool count estimates
-- MCP servers
+- MCP servers — both user-configured (`~/.claude/settings.json`) and plugin-bundled (a plugin's own
+  `.mcp.json` or inline `plugin.json` `mcpServers` field)
 
 **Thresholds:** Flag SKILL.md > 500 words, any `.claude/rules/*.md` file, CLAUDE.md > 2KB, 5+ MCP servers, plugins with 10+ tools.
 
@@ -107,3 +109,8 @@ No `evals/context-audit/evals.json` — this skill's variable part is `scripts/a
 - [ ] `scripts/audit-context.sh` is tracked executable (`100755`) — this skill's own `allowed-tools` grant only permits invoking it directly, not via a `bash ...` wrapper
 - [ ] The static inventory scans project-scope skills (`{project-root}/.claude/skills/`) as well as user-scope, and never presents a skill-bundled `rules/` directory as the project's always-on surface — only `.claude/rules/*.md` earns the `RULES` flag
 - [ ] The jq-free settings fallback never reports a plugin count that silently includes disabled `enabledPlugins` entries — when `jq` is unavailable, plugin analysis is reported as unavailable rather than a confidently-wrong number
+- [ ] The script never exits 1 when only one of user-scope or project-scope skills exists — the early guard requires at least one, never unconditionally requires `~/.claude/skills/`
+- [ ] Global CLAUDE.md is read from `~/.claude/CLAUDE.md`, never the wrong `~/CLAUDE.md` path
+- [ ] Auto-memory files are scoped to the current project's own `~/.claude/projects/<encoded-cwd>/memory/` directory, never every project under `~/.claude/projects/*/memory/`
+- [ ] `.claude/rules/*.md` discovery is recursive — a rule in a subdirectory (e.g. `rules/frontend/`) is never silently dropped
+- [ ] MCP server counting includes both `~/.claude/settings.json`'s own `mcpServers` and each enabled plugin's bundled `.mcp.json`/inline `plugin.json` `mcpServers` — never settings.json alone

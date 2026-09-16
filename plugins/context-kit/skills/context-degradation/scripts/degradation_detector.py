@@ -703,6 +703,18 @@ class ContextHealthAnalyzer:
         """Generate actionable recommendations based on analysis."""
         recommendations: list[str] = []
 
+        # A non-empty critical_positions input where every position turned out
+        # invalid (negative or beyond token_count) must not silently read as
+        # "safe" -- degradation_score defaults to 0.0 in that case (nothing
+        # to divide by), which is indistinguishable from "checked and found
+        # zero at-risk positions" unless called out explicitly here.
+        invalid_positions = degradation.get("invalid_positions")
+        if invalid_positions and not degradation.get("at_risk") and not degradation.get("safe"):
+            recommendations.append(
+                f"All {len(invalid_positions)} supplied critical position(s) were out of "
+                "range and excluded -- lost-in-middle risk was NOT actually evaluated"
+            )
+
         if utilization > 0.8:
             recommendations.append("Context near limit - consider compaction")
             recommendations.append("Implement observation masking for tool outputs")

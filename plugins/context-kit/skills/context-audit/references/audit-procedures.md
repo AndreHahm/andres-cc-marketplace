@@ -11,6 +11,9 @@ Glob: ~/.claude/skills/*/SKILL.md
 Glob: {project-root}/.claude/skills/*/SKILL.md   (if the project has its own)
 ```
 
+Either scope alone is enough to run this procedure — a machine with only project-local skills (no
+`~/.claude/skills/` at all) is a normal, supported setup, not an error.
+
 For each skill directory found (user-scope and project-scope):
 - Read `SKILL.md` — record byte size and word count
 - Glob `references/*.md` — record count and total size (these are on-demand)
@@ -21,16 +24,16 @@ For each skill directory found (user-scope and project-scope):
 ### Step 2: Measure CLAUDE.md Files
 
 Read these files if they exist:
-- `~/CLAUDE.md` (global)
+- `~/.claude/CLAUDE.md` (global — not `~/CLAUDE.md`, a common mistake)
 - `{project-root}/CLAUDE.md` (project-level)
-- `{project-root}/.claude/CLAUDE.md` (alternate location)
+- `{project-root}/.claude/CLAUDE.md` (alternate project-level location)
 
 Record byte size and word count for each.
 
 ### Step 3: Discover Project Rules
 
 ```
-Glob: {project-root}/.claude/rules/*.md
+Glob: {project-root}/.claude/rules/**/*.md   (recursive -- subdirectories like rules/frontend/ count too)
 ```
 
 These are the project's real always-on rule surface — unlike a skill-bundled `rules/` directory
@@ -45,7 +48,12 @@ Read `~/.claude/settings.json` and extract:
 - For each enabled plugin, estimate its tool-description overhead from its actual tool count (not a
   flat per-plugin estimate) — see `scripts/audit-context.sh`'s own `tool_est` table for known values
 - `mcpServers` object — count keys
-- For each MCP server, note if it has custom tool descriptions
+
+Then, for each enabled plugin, also check whether it bundles its own MCP servers — a plugin-root
+`.mcp.json` or an inline `mcpServers` field in its own `plugin.json` (both auto-start when the plugin
+is enabled and never appear in `~/.claude/settings.json`'s own `mcpServers` object). Count those keys
+too, added to the `mcpServers` total above. For each MCP server (settings-configured or
+plugin-bundled), note if it has custom tool descriptions.
 
 ### Step 5: Build Inventory Table
 
@@ -73,10 +81,13 @@ Compute totals:
   estimate (200 words per MCP server, tool-count-based per enabled plugin — see Step 4)
 - **On-trigger context**: average SKILL.md size across all skills
 
-Auto-memory files (`~/.claude/projects/*/memory/*.md`) are listed in this same inventory for their
-footprint (size/word count) only — this procedure does not assess their content health (staleness,
-broken links, orphans, missing frontmatter). For that, run `session-kit`'s `session-memory-audit`
-(if installed).
+Auto-memory files, scoped to the **current project only**
+(`~/.claude/projects/<this-project>/memory/*.md`, where `<this-project>` encodes the absolute project
+path per Claude Code's own convention — every `.`, `:`, `/`, `\` replaced with `-`), are listed in
+this same inventory for their footprint (size/word count) only — never another project's memory,
+which would otherwise inflate this session's always-on total with content that isn't actually loaded
+here. This procedure does not assess memory content health (staleness, broken links, orphans, missing
+frontmatter). For that, run `session-kit`'s `session-memory-audit` (if installed).
 
 ## Scoring Rubric
 
