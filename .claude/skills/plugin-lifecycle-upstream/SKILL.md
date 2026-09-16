@@ -157,11 +157,13 @@ brand-new plugin's first-time registration.
 After the Inventory Sync and Mirror Sync steps and before Document, apply
 `.claude/rules/keep-marketplace-root-docs-in-sync.md`: if this run's Build step produced a brand-new
 plugin (which always changes `.claude-plugin/marketplace.json`'s plugin list), invoke
-`marketplace-documentation` (via `Skill`) to sync the marketplace-root docs, then commit the result as its
-own commit, separate from the build commit, the Inventory Sync commit, and the Mirror Sync commit. If
-Build only added a component to an already-listed plugin, `marketplace.json`'s plugin list didn't
-change — state "no marketplace-root doc sync needed" and move on to Document, per that rule's own
-disclosure requirement.
+`marketplace-documentation` (via `Skill`) to sync the marketplace-root docs. Present the authored diff and
+`marketplace-documentation`'s own `human-doc-reviewer` findings; ask via `AskUserQuestion` whether to keep
+the changes as-is, revise, or discard — same gate the Document step below uses for a plugin's own docs.
+Commit any kept changes as their own commit, separate from the build commit, the Inventory Sync commit,
+and the Mirror Sync commit. If Build only added a component to an already-listed plugin,
+`marketplace.json`'s plugin list didn't change — state "no marketplace-root doc sync needed" and move on
+to Document, per that rule's own disclosure requirement.
 
 ## Document
 
@@ -181,16 +183,17 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 22 scenarios (Quick Workflow,
-`workspace/iteration-1`), 4/22 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches;
+**Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 24 scenarios (Quick Workflow,
+`workspace/iteration-1`), 4/24 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches;
 scenarios 14 and 14a, Mirror Sync's brand-new-plugin and already-mirrored branches); the remaining
-scenarios below are design-review-verified only.
+scenarios below, including the newly-added 15/15a, are design-review-verified only.
 
-**Last dated run record:** 2026-09-10 — `scripts/smoke_test.py` (5/5 checks passing, re-run after the
-Mirror Sync step was added) and the eval evidence above (11/11 assertions across scenarios 1a/1b/14/14a,
-100% with_skill pass rate — scenarios 14/14a added and run this same date, confirming both branches of
-the new Mirror Sync step are correctly derivable from the skill text). Mirror Sync's own detection logic
-dry-run against `example-plugin`: `.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
+**Last dated run record:** 2026-09-16 — `scripts/smoke_test.py` re-run after the Marketplace-Root Doc
+Sync step was added (5/5 checks passing). The eval evidence above (11/11 assertions across scenarios
+1a/1b/14/14a, 100% with_skill pass rate, dated 2026-09-10) predates this addition and does not cover
+scenarios 15/15a — treat those as design-review-verified only until eval coverage is extended. Mirror
+Sync's own detection logic dry-run against `example-plugin`:
+`.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
 
 1. **Cold start** — a rough idea with no existing artifacts; confirm all 7 phases run in order with a gate between each
 1a. **Conceive, Create classification** — Phase 1 classifies the idea as Create; confirm the pipeline proceeds to Phase 2 with the light Conception Brief as `plugin-ideation`'s input
@@ -214,6 +217,8 @@ dry-run against `example-plugin`: `.claude/output/plugin-lifecycle-upstream/exam
 13. **Phase-completion check catches a cancelled dispatch** — a Self-Review reviewer dispatch is cut off mid-run by a session limit; confirm Gate 6 is not presented as a clean pass, and the gap is disclosed per `plugin-rulebook/references/open-item-discipline.md` rather than silently treated as "no findings"
 14. **Mirror Sync step, brand-new plugin, this repo** — a run builds a plugin not yet present in `.claude/marketplace-sync.json`'s `plugin_mirrors`; confirm `AskUserQuestion` fires before any registry edit, and that "Yes" both edits `plugin_mirrors` and runs `sync-plugin-mirrors --stage`/`check-plugin-mirrors` before a separate commit
 14a. **Mirror Sync step, already-mirrored plugin or new component in one** — the built plugin's name is already in `plugin_mirrors`; confirm this step states "nothing to do" and moves on with no `AskUserQuestion` at all
+15. **Marketplace-Root Doc Sync step, brand-new plugin** — Phase 5 (Build) produced a brand-new plugin directory (which always changes `marketplace.json`'s plugin list); confirm `marketplace-documentation` is invoked and its commit is separate from the build commit, the Inventory Sync commit, and the Mirror Sync commit
+15a. **Marketplace-Root Doc Sync step, new component in an already-listed plugin** — Build only added a component to a plugin already in `marketplace.json`'s list; confirm this step states "no marketplace-root doc sync needed" and moves on with no `Skill(marketplace-documentation)` dispatch
 
 **Verify this skill activates on:**
 - "build a plugin from scratch"
@@ -238,6 +243,7 @@ dry-run against `example-plugin`: `.claude/output/plugin-lifecycle-upstream/exam
 - [ ] Any unplanned overhead reaching a Phase 7 result (a tool crash, a debugging detour, a retry) is disclosed to the user in plain language before Gate 7
 - [ ] The Commit step always states the file list and message before running, always runs the Pre-Commit Disclosure check first, and never runs before Phase 7's gate is approved
 - [ ] The Mirror Sync step (this repo only) always uses `AskUserQuestion` before adding a brand-new plugin to `.claude/marketplace-sync.json`'s `plugin_mirrors` — never inferred from the Inventory Sync step's own separate ask, and never fired at all for a new component in an already-mirrored plugin
+- [ ] The Marketplace-Root Doc Sync step always states "no marketplace-root doc sync needed" for a new-component-only build rather than silently omitting it — `marketplace-documentation` only ever runs when the build actually changed `marketplace.json`'s plugin list
 - [ ] The Document step always runs after the Commit step, and its own doc-fix commit (if any) is always separate from the build's own commit
 - [ ] The downstream handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every gate that follows a written artifact opens with the standard `📄 ... written:` link line, before the content summary
@@ -251,7 +257,7 @@ dry-run against `example-plugin`: `.claude/output/plugin-lifecycle-upstream/exam
 |---|---|
 | `workflows/design-a-plugin.md` | Full 7-phase procedure with gate criteria per phase |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, phase-header sequencing, SKILL.md-prose phase-range consistency) — re-run after any SKILL.md/`workflows/*.md` edit |
-| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (22 scenarios, 4/22 covered) |
+| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (24 scenarios, 4/24 covered) |
 | `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `plugin-rulebook/references/open-item-discipline.md` | Phase-completion check (every gate) and Pre-Commit Disclosure check (before Commit), shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `git-kit:starting-work` | Branch-scope check's "create a new branch" option |

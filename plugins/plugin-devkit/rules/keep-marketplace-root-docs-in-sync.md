@@ -2,13 +2,14 @@
 
 ## When this applies
 
-The exact same trigger condition already defined in
-[[require-inventory-updates-for-new-plugins-and-components]]'s own "When this applies" section: any of
-the three `plugin-devkit` lifecycle pipelines (`plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`,
-`plugin-lifecycle-maintenance`) creates a new plugin, or changes an existing plugin's component list (add,
-remove, split, or merge). This rule reuses that condition rather than redefining it — see "Why a separate
-rule" below for why the *artifact* this rule maintains is still distinct from that rule's own JSON
-inventory scope.
+The same trigger condition already defined in
+[[require-inventory-updates-for-new-plugins-and-components]]'s own "When this applies" section (any of
+the three `plugin-devkit` lifecycle pipelines creating a new plugin, creating a new component in an
+existing plugin, or changing an existing plugin's component list) — see that rule's own text for the
+exact wording rather than a restatement here, since a hand-copied restatement is itself a drift risk this
+rule's own subject matter warns against. This rule reuses that condition rather than redefining it — see
+"Why a separate rule" below for why the *artifact* this rule maintains is still distinct from that rule's
+own JSON inventory scope.
 
 **Narrower in practice than it sounds:** this rule's own action (below) only actually does anything on the
 subset of that trigger where `.claude-plugin/marketplace.json`'s plugin list itself changed — a plugin
@@ -20,8 +21,11 @@ own broader trigger already covers that component-only case for its own JSON-inv
 
 ## Rule
 
-Run `marketplace-documentation` before finalizing whenever this run's own Build step changed
-`.claude-plugin/marketplace.json`'s plugin list — same "before finalizing" cadence
+Run `marketplace-documentation` before finalizing whenever this run changed
+`.claude-plugin/marketplace.json`'s plugin list, by whatever step produced that change (a Build phase in
+`plugin-lifecycle-upstream`; a Fix phase in `plugin-lifecycle-downstream`; a core fix/rule-update in
+`plugin-lifecycle-maintenance` — see Lifecycle wiring below for the per-pipeline detail) — same
+"before finalizing" cadence
 `.claude/rules/plugin-rulebook-enforcement.md` and
 [[require-inventory-updates-for-new-plugins-and-components]] both already use. If this run's trigger
 condition fired but `marketplace.json`'s plugin list itself didn't actually change (the component-only
@@ -35,12 +39,13 @@ wiring section, in the same three pipelines — run `marketplace-documentation` 
 that rule's own Inventory Sync step, at the same timing (after Inventory Sync, before or alongside the
 Document step's own doc-fix commit):
 
-- **`plugin-lifecycle-upstream`:** after the Inventory Sync step and before the Document step. If Build
+- **`plugin-lifecycle-upstream`:** after the Inventory Sync and Mirror Sync steps and before the Document
+  step. If Build
   produced a brand-new plugin (which always changes `marketplace.json`'s plugin list), run
   `marketplace-documentation`. If Build only added a component to an already-listed plugin,
   `marketplace.json`'s plugin list didn't change — state "no marketplace-root doc sync needed" and move on.
 - **`plugin-lifecycle-downstream`:** wired into Phase 12 (Handoff Finalization), alongside the existing
-  Inventory Sync step — both already share the identical broader trigger. If this run's fix/build activity
+  Inventory Sync step — both already share the identical broader trigger. If this run's Fix phases
   changed `marketplace.json`'s plugin list (a plugin added/removed/renamed), run
   `marketplace-documentation` and fold the result into Phase 12's own commit record. If the run only
   changed a component list within an already-listed plugin, state "no marketplace-root doc sync needed"

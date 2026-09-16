@@ -1,6 +1,6 @@
 # Workflow Test Scenarios
 
-The 13 scenario categories this pipeline's own test coverage requires, each traced
+The 14 scenario categories this pipeline's own test coverage requires, each traced
 against the `SKILL.md`/`workflows/run-qa-pipeline.md` prose rather than executed live.
 Scenarios 1-12 were traced before this skill's production cutover, when it wasn't yet
 installed anywhere and a real `Skill()` dispatch wasn't possible. This is the same
@@ -266,9 +266,25 @@ newly-added pipeline sub-step doesn't get the benefit of this document's own pre
 trace discipline the original 12 scenarios had — it's exactly the kind of change most in
 need of the live end-to-end dry run still outstanding (see the closing note below).
 
+## 14. Marketplace-Root Doc Sync (Phase 12), plugin-list-changed and component-only branches
+
+**Setup:** (a) this run's Fix phases changed `.claude-plugin/marketplace.json`'s plugin list itself (a
+plugin added, removed, or renamed); (b) this run's Fix phases only changed a component list within an
+already-listed plugin — the far more common case, already covered by the adjacent Inventory Sync bullet.
+
+**Traced against:** the "Marketplace-Root Doc Sync (Phase 12)" bullet in `SKILL.md`'s "Handoff and
+Commits" section: "if this run's Fix phases changed `.claude-plugin/marketplace.json`'s plugin list...
+run `marketplace-documentation` and fold the resulting commit into Phase 12's own commit record... If the
+run's Fix phases only changed a component list within an already-listed plugin... `marketplace.json`
+itself didn't change — state 'no marketplace-root doc sync needed'."
+
+**Verdict:** PASS — both branches are explicit, and the disclosure requirement for the common (b) case
+matches `.claude/rules/disclose-before-overriding-decisions.md`'s "state the no-op plainly" convention,
+the same pattern the adjacent Inventory Sync bullet already uses.
+
 ## Summary
 
-10 of 13 scenario categories: PASS on first trace. 3 of 13 (external-entry malformed
+11 of 14 scenario categories: PASS on first trace. 3 of 14 (external-entry malformed
 evidence; final-verification regression routing; Eval Pre-Check, across two review-found
 gaps: nested-dispatch suppression and mutation-gate compliance) found real, previously
 undocumented gaps — all fixed in `SKILL.md`/`run-qa-pipeline.md` before this document was
@@ -278,10 +294,10 @@ scenario 13's later addition and both of its own subsequent fixes) and continued
 unaffected by these prose-only edits).
 
 **What this is not:** a live end-to-end pipeline execution. No `Agent()`/`Skill()`
-dispatch was made against a real target plugin for any of the 13 scenarios during their
+dispatch was made against a real target plugin for any of the 14 scenarios during their
 respective traces — scenarios 1-12 were blocked pre-cutover, since the skill wasn't yet
-installable; scenario 13 was traced the same documentation-only way for consistency with
-the rest of this document, not because live dispatch is still blocked. As of the
+installable; scenarios 13 and 14 were traced the same documentation-only way for
+consistency with the rest of this document, not because live dispatch is still blocked. As of the
 production cutover, a real end-to-end dry run against a small real plugin — which would
 now also exercise Phase 5's Eval Pre-Check live — is still a needed, separate follow-up,
 not a substitute this document claims to provide.

@@ -139,9 +139,63 @@ For a single-component addition to an already-existing plugin (this pipeline's m
 
 After GATE 7 is approved, run the Pre-Commit Disclosure check from `plugin-rulebook/references/open-item-discipline.md` — surface any open item from Phases 1-7 (including any Self-Review finding the user chose not to act on at GATE 6) alongside the file list and message below, not silently folded into the commit. Then stage exactly the files this pipeline run created or changed and commit them, per this repo's standard git-commit conventions (message ends with the `Co-Authored-By` line; never `--no-verify`; never bundle in unrelated unstaged changes). State the file list and commit message as part of presenting GATE 7 so the one approval covers both proceeding and committing — do not treat this as a second silent step after the gate. After committing, run `git log -1`/`git show --stat` to capture the commit SHA, message, and touched-file list for the handoff report.
 
+## Inventory Sync
+
+After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per
+`.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new
+component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory`
+record and no `plugin-inventory.json` yet) → run `marketplace-inventory` (mints/confirms the `plugin_id`,
+through its own Plan → `AskUserQuestion` approval → Apply gate) then `plugin-inventory` to bootstrap the
+component list — `bootstrap` has no plan/apply step of its own, so get explicit `AskUserQuestion`
+approval *before* invoking it, not after; a new component in an existing plugin that already has a
+`plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit,
+separate from the build commit and from any doc-fix commit the Document step below produces.
+
+## Mirror Sync
+
+This repository's own dogfooding step only — a no-op if `scripts/marketplace_ci/` and
+`.claude/marketplace-sync.json` don't exist. When it applies, run after Inventory Sync and before
+Document.
+
+If Phase 5 (Build) produced a brand-new plugin directory under `plugins/` (not just a new component
+inside an already-existing plugin), read `.claude/marketplace-sync.json` and check whether the plugin's
+name is already present in `plugin_mirrors`. If it already is, state that plainly and move on — nothing
+to do. If it isn't, ask via `AskUserQuestion`: "Register `<plugin-name>` in
+`.claude/marketplace-sync.json`'s `plugin_mirrors`, so its skills/agents/commands/hooks/rules sync into
+`.claude/`?" — options "Yes — add and sync" / "No — skip for now". Never add the entry without this ask.
+
+On "Yes": `Edit` the plugin's name into `plugin_mirrors`, then run
+`uv run python -m scripts.marketplace_ci sync-plugin-mirrors --stage` directly via the scoped
+`Bash(uv run python -m scripts.marketplace_ci:*)` tool, followed by
+`uv run python -m scripts.marketplace_ci check-plugin-mirrors` to confirm parity — never hand-write a file
+under `.claude/skills|agents|commands|hooks|rules/` yourself. Explicitly stage both the registry edit and
+every newly-created/updated destination file before committing — never assume `--stage` already did it.
+Commit the registry edit and the synced files together as their own commit, separate from the build
+commit, the Inventory Sync commit (if one landed), and any doc-fix commit Document produces below.
+
+On "No": state plainly that the new plugin's own components won't be loadable as this repo's own project
+skills until mirroring is registered later — a deferred decision, not a silent skip.
+
+A new component added to an *already-mirrored* existing plugin needs no ask here — this step only ever
+asks about a brand-new plugin's first-time registration.
+
+## Marketplace-Root Doc Sync
+
+After the Inventory Sync and Mirror Sync steps and before Document, apply
+`.claude/rules/keep-marketplace-root-docs-in-sync.md`: if this run's Build step produced a brand-new
+plugin (which always changes `.claude-plugin/marketplace.json`'s plugin list), invoke
+`marketplace-documentation` (via `Skill`) to sync the marketplace-root docs. Present the authored diff and
+its own `human-doc-reviewer` findings; ask via `AskUserQuestion` whether to keep the changes as-is,
+revise, or discard — same gate the Document step below uses. Commit any kept changes as their own commit,
+separate from the build commit, the Inventory Sync commit, and the Mirror Sync commit. If Build only
+added a component to an already-listed plugin, state "no marketplace-root doc sync needed" and move on to
+Document, per that rule's own disclosure requirement.
+
 ## Document
 
-After the Commit step, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure, and does not block progress to the handoff report below. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build commit above — state the file list and message first. This step produces no persisted report of its own (only direct doc edits plus an optional commit), so no `📄 ... written:` line applies here.
+After the Inventory Sync, Mirror Sync, and Marketplace-Root Doc Sync steps, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure, and does not block progress to the handoff report below. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build commit above — state the file list and message first. This step produces no persisted report of its own (only direct doc edits plus an optional commit), so no `📄 ... written:` line applies here.
+
+**Manifest description check (not covered by `plugin-documentation`):** `plugin-documentation`'s own scope is human-facing docs only — it does not read or write `.claude-plugin/plugin.json` or the marketplace's `.claude-plugin/marketplace.json`. When this run changed the plugin's component count (a skill/agent/command added or removed), separately check whether `plugin.json`'s `description` field (and the matching marketplace entry, which must stay byte-identical to it) still accurately names the plugin's current capability set. If it's stale, update both manifest `description` fields to match the just-updated README's own summary, and fold that edit into the same doc-fix commit as any `plugin-documentation` changes above.
 
 **Post-Commit handoff report:** invoke `build-handoff-writer` (via `Agent`) in **create** mode with the Conception Brief (if Phase 1 ran), Concept Card, Plan (if any), Design gate summaries, the Build summary, Phase 6's Self-Review findings, Phase 7's test results, and the commit info gathered above — including a doc-fix commit if Document produced one. This runs automatically — no separate gate, since GATE 7's approval already covers it. The agent has no `Write` tool and returns the full report as text — get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself before presenting GATE 8.
 
