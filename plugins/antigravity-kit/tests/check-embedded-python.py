@@ -35,7 +35,13 @@ def problems(path):
         body = src[start:end]
         line = src.count("\n", 0, start) + 1
         last = body.rstrip("\n").split("\n")[-1].lstrip()
-        if last.startswith("#"):
+        # A trailing comment line alone isn't evidence of truncation -- Python allows a
+        # comment as a program's last line, so a block that genuinely closes right there
+        # is valid. Real truncation looks like `# don't stop here` cut at the apostrophe:
+        # the found quote lands mid-word, so the character right after it continues that
+        # same word (e.g. the "t" in "don't") instead of resuming normal shell syntax.
+        after = src[end + 1 : end + 2]
+        if last.startswith("#") and (after.isalnum() or after == "_"):
             out.append((path, line + body.count("\n"), "ends inside a comment"))
             continue
         try:

@@ -341,8 +341,8 @@ TO_CMD="$(timeout_cmd || true)"
 # exists. Declaring them empty up front means the probe's file is covered too —
 # it used to be cleaned by a trailing `rm -f`, which a SIGINT during the probe
 # skips. `rm -f ""` is a silent no-op, so the unset ones cost nothing.
-HELPF=""; ERR=""; OUTF=""
-trap 'rm -f "$HELPF" "$ERR" "$OUTF" 2>/dev/null' EXIT
+HELPF=""; ERR=""; OUTF=""; RESP=""; JERR=""
+trap 'rm -f "$HELPF" "$ERR" "$OUTF" "$RESP" "$JERR" 2>/dev/null' EXIT
 
 JSON_MODE=0
 raw_so="${CLAUDE_PLUGIN_OPTION_STRUCTURED_OUTPUT:-on}"
@@ -433,9 +433,10 @@ if [ "$JSON_MODE" -eq 1 ] && [ -n "${OUT//[$' \t\n\r']/}" ]; then
   # "agy failed" (exit 2) instead of MODEL_UNAVAILABLE (14). Let python, which already
   # has the parsed object, write the raw value out.
   JERR="$(mktemp "${TMPDIR:-/tmp}/agy-err.XXXXXX")"
-  meta="$(AGY_JSON="$OUT" AGY_RESP_FILE="$RESP" AGY_ERR_FILE="$JERR" python3 - <<'PY' 2>/dev/null || true
+  meta="$(AGY_JSON_FILE="$OUTF" AGY_RESP_FILE="$RESP" AGY_ERR_FILE="$JERR" python3 - <<'PY' 2>/dev/null || true
 import json, os, sys
-raw = os.environ.get("AGY_JSON", "")
+with open(os.environ["AGY_JSON_FILE"], encoding="utf-8", errors="replace") as fh:
+    raw = fh.read()
 try:
     # strict=False: agy 1.1.8 leaves raw newlines inside "response".
     d = json.loads(raw, strict=False)

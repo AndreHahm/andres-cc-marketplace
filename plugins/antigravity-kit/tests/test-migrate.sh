@@ -179,6 +179,17 @@ s=json.load(open('$SET'))
 sys.exit(0 if not (s.get('permissions') or {}).get('allow') else 1)"; then
   ok "permissions NOT written without --apply-permissions (they widen the grant)"
 else bad "permissions written implicitly"; fi
+if [ -f "$H/.gemini/.agy-migrate/proposed-permissions.json" ]; then
+  ok "permission proposal written for review instead"
+else bad "no permission proposal"; fi
+if python3 -c "
+import json,sys
+a=json.load(open('$H/.gemini/.agy-migrate/proposed-permissions.json'))['allow']
+# command(git) must absorb command(git diff); the quoted pipe must be dropped.
+sys.exit(0 if 'command(git)' in a and 'command(git diff)' not in a
+              and not any('|' in x for x in a) else 1)"; then
+  ok "permission prefixes absorbed; shell-metachar rules dropped"
+else bad "permission collapsing wrong"; fi
 
 # --- --apply-permissions actually merges both gated mappings ------------------
 run --roots "$H" --include-repos --apply --apply-permissions >/dev/null 2>&1
@@ -194,17 +205,6 @@ s=json.load(open('$SET'))
 sys.exit(0 if (s.get('permissions') or {}).get('allow') else 1)"; then
   ok "permissions merged under --apply-permissions"
 else bad "permissions not merged under --apply-permissions"; fi
-if [ -f "$H/.gemini/.agy-migrate/proposed-permissions.json" ]; then
-  ok "permission proposal written for review instead"
-else bad "no permission proposal"; fi
-if python3 -c "
-import json,sys
-a=json.load(open('$H/.gemini/.agy-migrate/proposed-permissions.json'))['allow']
-# command(git) must absorb command(git diff); the quoted pipe must be dropped.
-sys.exit(0 if 'command(git)' in a and 'command(git diff)' not in a
-              and not any('|' in x for x in a) else 1)"; then
-  ok "permission prefixes absorbed; shell-metachar rules dropped"
-else bad "permission collapsing wrong"; fi
 
 # --- idempotency -------------------------------------------------------------
 SNAP="$TMP/snap1"; cp -R "$H/.gemini" "$SNAP"

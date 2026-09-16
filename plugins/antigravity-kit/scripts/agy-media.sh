@@ -123,7 +123,14 @@ if ! is_supported "$EXT"; then
 fi
 
 [ -n "$OUT" ] || OUT="$DIR/$STEM.transcript.md"
-case "$OUT" in /*) ;; *) OUT="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")" ;; esac
+case "$OUT" in
+  /*) ;;
+  *)
+    OUT_DIR="$(dirname "$OUT")"
+    [ -d "$OUT_DIR" ] || die "output directory does not exist: $OUT_DIR"
+    OUT="$(cd "$OUT_DIR" && pwd)/$(basename "$OUT")"
+    ;;
+esac
 
 # Size heads-up: long media is the usual cause of a timeout.
 BYTES="$(wc -c < "$ABS" 2>/dev/null | tr -d ' ')"

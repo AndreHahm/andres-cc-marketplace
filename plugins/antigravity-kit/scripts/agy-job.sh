@@ -95,7 +95,12 @@ case "$cmd" in
     { echo "id=$id"; echo "cwd=$PWD"; echo "started=$(date -u +%FT%TZ 2>/dev/null || date)";
       echo "task=$(printf '%s' "${!#}" | tr '\n' ' ' | cut -c1-200)"; } > "$jd/meta"
     ( nohup "$DELEGATE" "$@" >"$jd/out" 2>"$jd/err"; echo $? >"$jd/rc" ) >/dev/null 2>&1 &
-    echo $! > "$jd/pid"
+    pid=$!
+    echo "$pid" > "$jd/pid"
+    # Best-effort process-start fingerprint, so `cancel` can tell a PID that has been
+    # reused by an unrelated process apart from the job it actually started (a PID can
+    # be recycled by the OS once the original job process has exited).
+    ps -o lstart= -p "$pid" > "$jd/pid_start" 2>/dev/null || true
     disown 2>/dev/null || true
     echo "$id"
     ;;
@@ -132,8 +137,25 @@ case "$cmd" in
     ;;
   cancel)
     jd="$(jobdir "${1:-}")"
+    if [ -f "$jd/rc" ]; then
+      # Already recorded a completion -- the pid file's PID (if the OS has since
+      # reused it) no longer belongs to this job, so there is nothing left to signal.
+      echo "not running"
+      exit 0
+    fi
     pid="$(cat "$jd/pid" 2>/dev/null || true)"
+    live=0
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      live=1
+      if [ -s "$jd/pid_start" ]; then
+        now_start="$(ps -o lstart= -p "$pid" 2>/dev/null || true)"
+        stored_start="$(cat "$jd/pid_start" 2>/dev/null || true)"
+        # A mismatch means the OS has recycled this PID for an unrelated process
+        # since the job started -- refuse to signal it.
+        [ -n "$now_start" ] && [ "$now_start" = "$stored_start" ] || live=0
+      fi
+    fi
+    if [ "$live" = "1" ]; then
       # Walk the real PID tree (parent->child) rather than relying on process GROUPS:
       # `timeout` (used by agy-delegate.sh to bound the real agy call) puts its OWN
       # monitored command in a fresh process group of its own -- verified live -- so a

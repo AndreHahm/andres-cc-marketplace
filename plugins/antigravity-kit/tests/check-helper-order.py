@@ -16,6 +16,10 @@ real word is compared — there is no list of contexts to keep complete.
 import re
 import sys
 
+# `NAME=value` (and `NAME=value NAME2=value2 ...`) preceding a command, as in
+# `if MODE=1 helper; then` -- an assignment word, not the command itself.
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
 # Anything that ends one command and begins another. `(` and `)` cover subshells and
 # the `pattern)` opening a case branch; backtick and `$(` cover substitution.
 SEGMENT = re.compile(r"\|\||&&|\$\(|[;&|()`{}]")
@@ -46,7 +50,7 @@ def calls(line, fn):
     for seg in SEGMENT.split(line):
         words = seg.strip().split()
         i = 0
-        while i < len(words) and words[i] in PREFIX:
+        while i < len(words) and (words[i] in PREFIX or ASSIGNMENT.match(words[i])):
             i += 1
         if i < len(words) and words[i] == fn:
             return True
