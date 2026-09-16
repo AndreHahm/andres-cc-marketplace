@@ -215,6 +215,8 @@ esac
 # Unicode chars, undershooting by up to ~3x on multibyte (e.g. Japanese) logs.
 # (Subshell assignment, not a pipe, so it's safe under `set -euo pipefail`.)
 MAX_BYTES="${CLOUD_DEBUG_MAX_BYTES:-200000}"
+case "$MAX_BYTES" in (*[!0-9]*|'') MAX_BYTES=200000 ;; esac
+MAX_BYTES=$((10#$MAX_BYTES))
 if [ "$(LC_ALL=C; printf '%s' "${#LOGS}")" -gt "$MAX_BYTES" ]; then
   LOGS="$(LC_ALL=C; printf '%s' "${LOGS:0:$MAX_BYTES}")"
   # Clipping mid-array leaves invalid JSON; agy reads it leniently, but say so.

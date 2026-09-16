@@ -43,17 +43,30 @@ PROMPT="${*:-}"
 [ -n "$PROMPT" ] || { echo "usage: agy-cost-compare.sh [-t tier] [--yolo] \"task\"" >&2; exit 1; }
 
 # Default prices from prices.json (env vars still override); Gemini rate by tier.
+# Read as KEY=VALUE lines, never eval'd — a non-numeric price.json value fails float()
+# on the Python side and is dropped by the digit-only guard on the bash side, so it can
+# never reach shell evaluation.
 PRICES="$HERE/../prices.json"
 if [ -f "$PRICES" ] && command -v python3 >/dev/null 2>&1; then
-  eval "$(python3 - "$PRICES" "$TIER" 2>/dev/null <<'PY'
+  while IFS='=' read -r _k _v; do
+    case "$_v" in (*[!0-9.]*|'') continue ;; esac
+    case "$_k" in
+      _CIN)  _CIN="$_v" ;;
+      _COUT) _COUT="$_v" ;;
+      _GIN)  _GIN="$_v" ;;
+      _GOUT) _GOUT="$_v" ;;
+    esac
+  done < <(python3 - "$PRICES" "$TIER" 2>/dev/null <<'PY'
 import json,sys
 try:
     d=json.load(open(sys.argv[1])); t=sys.argv[2]
     g=d["gemini_pro"] if t=="pro" else d["gemini_flash"]; c=d["claude_opus"]
-    print(f'_CIN={c["in"]} _COUT={c["out"]} _GIN={g["in"]} _GOUT={g["out"]}')
-except Exception: pass
+    for k, v in (("_CIN", c["in"]), ("_COUT", c["out"]), ("_GIN", g["in"]), ("_GOUT", g["out"])):
+        print(f"{k}={float(v)}")
+except Exception:
+    pass
 PY
-)"
+)
 fi
 # Last-resort fallbacks, used only when prices.json or python3 is unavailable. Keep them
 # in step with prices.json — a stale hardcoded rate here quotes a wrong number in exactly
@@ -64,6 +77,7 @@ GEMINI_IN_PER_M="${GEMINI_IN_PER_M:-${_GIN:-0.75}}"
 GEMINI_OUT_PER_M="${GEMINI_OUT_PER_M:-${_GOUT:-3.75}}"
 CPT="${CHARS_PER_TOKEN:-4}"
 case "$CPT" in ''|*[!0-9]*) CPT=4 ;; esac   # must be a positive integer (avoid awk div-by-zero)
+CPT=$((10#$CPT))
 [ "$CPT" -gt 0 ] || CPT=4
 
 echo ">> Delegating to agy (tier=$TIER) ..." >&2

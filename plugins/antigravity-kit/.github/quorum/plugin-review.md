@@ -37,13 +37,16 @@ orchestrators parse them. `AGY_USAGE`'s semantics are specific and easy to get b
 counter — not part of `total`, not a subset of `input`**. Anything that prices the Gemini
 side using a different arrangement is wrong.
 
-**Version sync** — `.claude-plugin/plugin.json` and `skills/antigravity/SKILL.md` both carry
-a version. They must match.
-
 # The security gate
 
-`hooks/validate-delegate-bash.sh` is the **only** restriction on what the delegate subagent
-is allowed to run. Any change to it deserves disproportionate scrutiny, in both directions:
+The delegate subagent's real, load-bearing restriction is its `tools:` grant
+(`Bash, Read, Glob` — no `Write`/`Edit`), not `hooks/validate-delegate-bash.sh`. The hook is
+defense-in-depth on *which command* may start — per this repo's own agent-development
+documentation, a hook declared in a plugin-scoped agent's own frontmatter is accepted by the
+schema but not verified to be honored at runtime, so treat the gate as an unverified extra
+layer, not the actual boundary, until that is live-verified against an installed copy of this
+plugin (see `SECURITY.md` and `agents/antigravity-delegate.md` for the full disclosure).
+Any change to the gate still deserves scrutiny, in both directions:
 
 - a **bypass** — a shell construct that reaches a command the gate believes it blocked
   (quoting, substitution, chained operators, pipelines it did not anticipate)

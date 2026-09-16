@@ -30,7 +30,12 @@
 #     backticks, `$(`, and a NEWLINE — it separates commands just like `;`), while
 #     permitting them INSIDE a quoted prompt (no false positives on legitimate
 #     prompts — command substitution inside double quotes is still blocked because
-#     bash would expand it). Leading/trailing whitespace is stripped first, so a
+#     bash would expand it). `$VAR`/`${VAR}` parameter expansion is blocked for the
+#     same reason, unquoted or inside double quotes — bash expands an env var
+#     reference exactly as readily as `$(...)`, and this gate exists specifically to
+#     stop a secret/credential value from reaching the delegation wrapper, so the two
+#     expansion forms get identical treatment rather than one being a silent
+#     exception. Leading/trailing whitespace is stripped first, so a
 #     trailing newline is fine; an internal one is two commands and stays blocked;
 #   * fails CLOSED (block) if the JSON is unparseable or python3 is unavailable.
 #
@@ -52,7 +57,7 @@ set -uo pipefail
 
 input="$(cat)"
 
-BLOCK_MSG="[antigravity-delegate] blocked: this subagent may only run agy-delegate / agy-job (optionally as \`<cat|echo|printf> | agy-delegate -\`), as a bare PATH name with no path separator. No other commands, chaining, redirection, substitution, comments, or unquoted newlines. Delegate file work to agy; verification is the caller's job."
+BLOCK_MSG="[antigravity-delegate] blocked: this subagent may only run agy-delegate / agy-job (optionally as \`<cat|echo|printf> | agy-delegate -\`), as a bare PATH name with no path separator. No other commands, chaining, redirection, command substitution, \$VAR/\${VAR} parameter expansion, comments, or unquoted newlines. Delegate file work to agy; verification is the caller's job."
 
 # python3 gives a correct, quote-aware parse. Fail CLOSED if it's missing.
 if ! command -v python3 >/dev/null 2>&1; then
@@ -133,7 +138,13 @@ def scan(s):
             if c == "|":  segs.append("".join(cur)); cur = []; i += 1; continue
             if c == "`":  bad = flag("backtick command substitution", i); cur.append(c); i += 1; continue
             if c == "$":
-                if i + 1 < n and s[i + 1] == "(": bad = flag("`$(` command substitution", i)
+                if i + 1 < n and s[i + 1] == "(":
+                    bad = flag("`$(` command substitution", i)
+                elif i + 1 < n and (s[i + 1] == "{" or s[i + 1].isalpha() or s[i + 1] == "_"):
+                    bad = flag("`$` parameter expansion", i,
+                               " bash would expand this to an environment variable's value,"
+                               " which could exfiltrate a secret through the wrapper. Quote it"
+                               " as a literal dollar sign, or pass the value as literal text.")
                 cur.append(c); i += 1; continue
             if c == "\n":
                 bad = flag("an unquoted newline", i,
@@ -158,6 +169,10 @@ def scan(s):
             if i + 1 < n and s[i + 1] == "(":
                 bad = flag("`$(` command substitution inside double quotes "
                            "(bash still expands it)", i)
+            elif i + 1 < n and (s[i + 1] == "{" or s[i + 1].isalpha() or s[i + 1] == "_"):
+                bad = flag("`$` parameter expansion inside double quotes "
+                           "(bash still expands it, which could exfiltrate a secret"
+                           " through the wrapper)", i)
             i += 1; continue
         i += 1
     segs.append("".join(cur))

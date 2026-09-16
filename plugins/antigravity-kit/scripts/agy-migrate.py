@@ -882,6 +882,13 @@ def unit_mcp(plan, mf, roots):
             mf.note_key(dest, "mcpServers", name)
         cur["mcpServers"] = servers
         write_json(dest, cur)
+        # mcpServers entries can carry an `env` block with secrets (API keys, tokens) --
+        # keep the destination file owner-readable only rather than the ambient umask
+        # default, since translate_mcp() copies `env` verbatim.
+        try:
+            os.chmod(dest, 0o600)
+        except OSError:
+            pass
 
     plan.add("mcp", "ok", "write", dest, f"append {len(to_add)} server(s)", fn)
 
@@ -1004,13 +1011,18 @@ def unit_settings(plan, mf, apply_permissions):
         for p in trusted
         if not any(p == t or p.startswith(t.rstrip("/") + "/") for t in cur_trusted)
     ]
+    # Marking a path trusted disables Antigravity's own trust prompt for it -- a
+    # permission-widening change with the same "requires an explicit flag" gate as the
+    # command() permission mapping above, not applied implicitly.
+    write_trusted = bool(add_trusted) and apply_permissions
     if add_trusted:
         plan.add(
             "settings",
             "ok",
-            "trustedWorkspaces",
+            "trustedWorkspaces" if write_trusted else "propose-trustedWorkspaces",
             agy_settings_path(),
-            f"add {len(add_trusted)} trusted path(s)",
+            f"add {len(add_trusted)} trusted path(s)"
+            + ("" if write_trusted else " (widens trust; requires --apply-permissions)"),
         )
 
     # Report-only: these have no representable equivalent.
@@ -1042,7 +1054,7 @@ def unit_settings(plan, mf, apply_permissions):
         )
 
     write_perms = bool(new_allow) and apply_permissions
-    if not (write_perms or add_trusted):
+    if not (write_perms or write_trusted):
         if not seen_files:
             plan.add("settings", "skip", "no-op", claude_dir(), "no settings found")
         return
@@ -1056,7 +1068,7 @@ def unit_settings(plan, mf, apply_permissions):
             s["permissions"] = perms
             for k in new_allow:
                 mf.note_key(agy_settings_path(), "permissions.allow", k)
-        if add_trusted:
+        if write_trusted:
             tw = list(s.get("trustedWorkspaces") or []) + add_trusted
             s["trustedWorkspaces"] = list(dict.fromkeys(tw))
             for k in add_trusted:
@@ -1384,6 +1396,17 @@ def unit_plugins(plan, mf):
 
 def do_uninstall(apply_):
     mf = Manifest()
+    root = os.path.realpath(gemini_root())
+
+    def contained(p):
+        # manifest.json is a plain, unsigned file -- an entry pointing outside our own
+        # namespace must never reach os.remove/shutil.rmtree, regardless of MARKER/.json.
+        try:
+            rp = os.path.realpath(p)
+        except OSError:
+            return False
+        return rp == root or rp.startswith(root + os.sep)
+
     n = 0
     for p in mf.symlinks:
         if os.path.islink(p):
@@ -1392,12 +1415,18 @@ def do_uninstall(apply_):
             if apply_:
                 os.unlink(p)
     for p in mf.files:
+        if not contained(p):
+            print(f"  SKIP (outside {gemini_root()}, refusing to remove): {p}")
+            continue
         if os.path.isfile(p) and (MARKER in read_text(p) or p.endswith(".json")):
             print(f"  remove file    {p}")
             n += 1
             if apply_:
                 os.remove(p)
     for p in mf.trees:
+        if not contained(p):
+            print(f"  SKIP (outside {gemini_root()}, refusing to remove): {p}")
+            continue
         # Only ours: recorded because we created the whole tree in one copytree.
         if os.path.isdir(p):
             print(f"  remove tree    {p}")

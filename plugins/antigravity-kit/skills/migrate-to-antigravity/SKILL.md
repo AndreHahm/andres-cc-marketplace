@@ -13,6 +13,15 @@ allowed-tools: Bash(agy-migrate:*), Read
 
 # Migrating Claude Code → Antigravity CLI
 
+## Quick Start
+
+1. Run `agy-migrate` with no flags for a dry-run report.
+2. Read the report, including the permissions-widening warning.
+3. Run `agy-migrate --apply` (backs up `~/.gemini/config` first).
+4. Review `~/.gemini/.agy-migrate/proposed-permissions.json` and only merge it with
+   `--apply-permissions` if you accept the widened grants.
+5. `agy-migrate --uninstall --apply` reverses everything if needed.
+
 ## When to Use
 
 - A one-time move of skills/memory/MCP/permissions from Claude Code onto agy.
@@ -69,7 +78,7 @@ So customization is shared across surfaces; session state is not.
 | Installed plugins | native `agy plugin import claude`, run in a staging HOME | output is then repaired (below) |
 | `CLAUDE.md` | symlink `AGENTS.md` → `CLAUDE.md` | `--include-repos`; both are plain Markdown |
 | Auto-memory | **generated** rules | global → a plugin's `rules/`; per-repo → `<repo>/.agents/rules/` |
-| MCP servers | merged + translated into `mcp_config.json` | `url`/`httpUrl` → `serverUrl`, `type` dropped |
+| MCP servers | merged + translated into `mcp_config.json` | `url`/`httpUrl` → `serverUrl`, `type` dropped, `env` copied verbatim (see below) |
 | Trusted projects | `trustedWorkspaces` | the one clean settings mapping |
 | Permissions | **proposal only** by default | see the warning below |
 
@@ -78,8 +87,16 @@ So customization is shared across surfaces; session state is not.
 Session transcripts. Claude Code writes plain JSONL; Antigravity writes one SQLite
 database per conversation whose payloads are opaque protobuf blobs
 (`steps.metadata`, `gen_metadata.data`, …). There is no supported writer.
-Also unmovable: `tasks/`, `plans/`, `file-history/`, `jobs/`, and credentials
-(different auth systems entirely — never copy these).
+Also unmovable: `tasks/`, `plans/`, `file-history/`, `jobs/`, and Claude Code's own
+auth credentials (different auth systems entirely — never copy these).
+
+**Exception, and it matters:** an MCP server's own `env` block (API keys, tokens —
+whatever that server's own config carries) **is** copied verbatim into the new
+`mcp_config.json`, because the server needs it to keep working under Antigravity.
+`agy-migrate` locks the resulting file down (`chmod 0600`) so it isn't left
+world-readable, but the secret itself now lives in a second file — review
+`mcp_config.json` after a migration the same way you'd review any file that holds
+credentials.
 
 ---
 
@@ -158,6 +175,8 @@ Re-running is safe: generated files carry a marker comment, and a file whose mar
 you deleted is treated as yours and left alone.
 
 ## Testing & Validation
+
+**Last dated run record:** 2026-09-16, `evals/migrate-to-antigravity/` — 2/2 evals, 7/7 assertions passed (Quick Workflow).
 
 **Verify this skill activates on:**
 - "migrate to Antigravity" / "move my Claude Code config to agy"

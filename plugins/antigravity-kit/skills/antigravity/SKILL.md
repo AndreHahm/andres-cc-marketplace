@@ -30,6 +30,16 @@ This is **agentic engineering, not vibe coding**: the value is the structure aro
 the model — routing, shared rules, verification gates — not raw generation.
 *Generation is solved; verification, judgement, and direction are the craft.*
 
+## Quick Start
+
+1. Check the task clears the delegation break-even (see Cost discipline) — small,
+   self-contained, or judgement-heavy work stays on Claude.
+2. Pick a tier (`flash` default, `flash-lo` cheapest, `pro` for harder reasoning) and
+   call `agy-delegate` — directly, or via `antigravity-delegate` for zero-token writes
+   (see "How to call it").
+3. End the prompt with a digest-only trailer; ingest a digest, not a dump.
+4. Run the Verification gates before trusting agy's self-reported "SUCCESS."
+
 ## When to Use
 
 - Delegating deterministic, high-volume SDLC work (scaffolding, test generation,
@@ -262,11 +272,12 @@ commands** (`--yolo` grants write + terminal):
   matched EVERY command before 1.1.11; do not attach that history to a mistyped
   `write_file()`. If a user reports a rule that "should" work, have them run `agy-doctor`
   before changing anything else.
-  Run write tasks on a branch and verify with `git status`.
-  prompt for or block `--dangerously-skip-permissions` — approve it or pre-allow
-  `Bash(agy-delegate*)`. Always verify files actually changed **in the workspace** with
-  `git status` (the wrapper maps BOTH denial shapes — 1.1.3's soft deny and 1.1.13's
-  hard error — to exit `15`, so you're not left guessing).
+  Claude Code may prompt for or block `--dangerously-skip-permissions` — approve it
+  per-call. Pre-allowing `Bash(agy-delegate*)` removes that prompt for **all** future
+  delegations, including `--yolo` ones — only do this in a disposable/branch-isolated
+  environment, never as a blanket default. Always verify files actually changed
+  **in the workspace** with `git status` (the wrapper maps BOTH denial shapes — 1.1.3's
+  soft deny and 1.1.13's hard error — to exit `15`, so you're not left guessing).
 - Run it on a **dedicated git branch or worktree** so changes are isolated.
 - Add `--sandbox` for execution containment.
 - **Claude reviews the diff before merging** — never auto-merge agy's writes.
@@ -453,13 +464,16 @@ via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`
 - `agy` installed and authenticated (`agy models` lists Gemini models); its
   `~/.gemini/antigravity-cli/settings.json` points at a GCP project/region.
 - Scripts executable (`chmod +x scripts/*.sh`).
-- agy v1.0.x: `-p` takes the prompt as its value (wrapper handles); no JSON output;
-  print mode returns final text only (no trajectory); no `timeout(1)` on macOS (use
-  `--timeout`).
+- agy v1.0.x: `-p` takes the prompt as its value (wrapper handles); no `timeout(1)` on
+  macOS (use `--timeout`). **Structured output arrived in agy 1.1.8** (`--output-format
+  json`) and **every run leaves a readable trajectory** (`transcript.jsonl` — see
+  Verification gates above) — neither limitation applies to current agy.
 - **WSL:** `--add-dir` on a Windows mount (`/mnt/c/...`) reads over a slow 9p bridge —
   calls can take 20s+. Keep the repo on the Linux filesystem (`~`); the wrapper warns.
 
 ## Testing & Validation
+
+**Last dated run record:** 2026-09-16, `evals/antigravity/` — 3/3 evals, 11/11 assertions passed (Quick Workflow).
 
 **Verify this skill activates on:**
 - "delegate this to antigravity / agy"
@@ -475,4 +489,10 @@ via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`
 - [ ] Every delegation ends with a digest-only trailer, never a raw-dump instruction
 - [ ] Write/build delegations always run on a dedicated branch/worktree with a diff review before merge
 - [ ] `--yolo` is never described as risk-free — it grants the delegated agy process full tool access
+
+## Reference Guide
+
+| Resource | Read when |
+|---|---|
+| `references/advanced-recipes.md` | The task needs agy's internal fan-out (agy spawning its own subagents on the cheap side) or a Claude-orchestrated, multi-source, cited deep-research report — both supplementary to the core SDLC routing/cost/verification guidance above |
 

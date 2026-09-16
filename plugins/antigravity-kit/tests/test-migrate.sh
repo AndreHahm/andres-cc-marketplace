@@ -157,19 +157,43 @@ sys.exit(0 if s['remote-x'].get('serverUrl')=='https://ex.test/mcp'
   ok "remote MCP becomes serverUrl; stdio drops Claude's type"
 else bad "MCP translation wrong"; fi
 
+# Security review finding M3: trustedWorkspaces is at least as consequential as the
+# command() permission mapping (it disables Antigravity's own trust prompt for a path),
+# so it now requires the same --apply-permissions gate instead of writing implicitly
+# under plain --apply. A plain --apply run must therefore leave settings.json untouched
+# entirely (neither key is written, so the file may not even exist yet).
 SET="$H/.gemini/antigravity-cli/settings.json"
 if python3 -c "
-import json,sys
+import json,os,sys
+if not os.path.isfile('$SET'):
+    sys.exit(0)
 s=json.load(open('$SET'))
-sys.exit(0 if '$REPO' in (s.get('trustedWorkspaces') or []) else 1)"; then
-  ok "trusted projects become trustedWorkspaces"
-else bad "trustedWorkspaces not migrated"; fi
+sys.exit(0 if '$REPO' not in (s.get('trustedWorkspaces') or []) else 1)"; then
+  ok "trustedWorkspaces NOT written without --apply-permissions (widens trust)"
+else bad "trustedWorkspaces written implicitly"; fi
 if python3 -c "
-import json,sys
+import json,os,sys
+if not os.path.isfile('$SET'):
+    sys.exit(0)
 s=json.load(open('$SET'))
 sys.exit(0 if not (s.get('permissions') or {}).get('allow') else 1)"; then
   ok "permissions NOT written without --apply-permissions (they widen the grant)"
 else bad "permissions written implicitly"; fi
+
+# --- --apply-permissions actually merges both gated mappings ------------------
+run --roots "$H" --include-repos --apply --apply-permissions >/dev/null 2>&1
+if python3 -c "
+import json,sys
+s=json.load(open('$SET'))
+sys.exit(0 if '$REPO' in (s.get('trustedWorkspaces') or []) else 1)"; then
+  ok "trusted projects become trustedWorkspaces under --apply-permissions"
+else bad "trustedWorkspaces not migrated under --apply-permissions"; fi
+if python3 -c "
+import json,sys
+s=json.load(open('$SET'))
+sys.exit(0 if (s.get('permissions') or {}).get('allow') else 1)"; then
+  ok "permissions merged under --apply-permissions"
+else bad "permissions not merged under --apply-permissions"; fi
 if [ -f "$H/.gemini/.agy-migrate/proposed-permissions.json" ]; then
   ok "permission proposal written for review instead"
 else bad "no permission proposal"; fi
