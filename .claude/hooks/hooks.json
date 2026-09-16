@@ -166,6 +166,19 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": ".*",

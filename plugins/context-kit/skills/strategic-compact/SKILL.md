@@ -64,6 +64,15 @@ capture/restore above works independently.
 - Complete reset
 - Best when switching tasks entirely
 
+## Relationship to context-mode
+
+`context-kit`'s `context-mode` skill governs a different axis — *what behavioral posture to operate in*
+(dev/review/ship/admin), not *when to compact*. The two intersect only at a "hard switch": when
+`context-mode` detects a genuinely heavy mode transition (or context is already large), it defers to
+this skill's own "Switching to unrelated task" trigger above (suggest `/compact`/`/clear`) rather than
+duplicating compaction-timing logic itself. Use `context-mode` when the question is "how cautious/
+verbose should I be right now"; use this skill when the question is "should I compact or clear now."
+
 ## Phase Detection Patterns
 
 Detect phase transitions by monitoring:
