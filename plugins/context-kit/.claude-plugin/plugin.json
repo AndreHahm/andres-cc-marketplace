@@ -1,7 +1,7 @@
 {
   "name": "context-kit",
   "version": "0.1.0",
-  "description": "Context-window management for Claude Code sessions — automatic, hook-driven tracking and compaction suggestions, plus skills for footprint auditing, context-degradation diagnosis, the Write/Select/Compress/Isolate framework, targeted retrieval, and live window-health checks.",
+  "description": "Context-window management and behavioral-mode switching for Claude Code sessions — automatic, hook-driven tracking and compaction suggestions, skills for footprint auditing, context-degradation diagnosis, the Write/Select/Compress/Isolate framework, targeted retrieval, and live window-health checks, plus a context-mode skill for switching operating posture (dev/review/ship/admin) mid-session.",
   "author": {
     "name": "Andre Hahm",
     "url": "https://github.com/andrehahm"
