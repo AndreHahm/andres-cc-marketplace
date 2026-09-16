@@ -37,10 +37,14 @@ This is a [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin mark
 no build step for the marketplace itself. To iterate on a plugin locally:
 
 1. Clone this repository.
-2. Point Claude Code at your local checkout as a marketplace source (e.g.
+2. Run this repository's one-time local setup — installing dependencies and the pre-commit git
+   hook that gates commits/pushes — per [docs/local-development.md](docs/local-development.md).
+   Neither step happens automatically on clone or in CI; skipping it means your commits/pushes
+   aren't gated by this repo's own lint/gitleaks/hygiene checks locally.
+3. Point Claude Code at your local checkout as a marketplace source (e.g.
    `/plugin marketplace add /path/to/your/clone`) instead of the published one, so your local
    changes are picked up.
-3. Edit the plugin under `plugins/<plugin-name>/`, then reload/reinstall it in Claude Code to
+4. Edit the plugin under `plugins/<plugin-name>/`, then reload/reinstall it in Claude Code to
    pick up the change.
 
 Each plugin may have its own additional setup (dependencies, scripts) — check that plugin's own
