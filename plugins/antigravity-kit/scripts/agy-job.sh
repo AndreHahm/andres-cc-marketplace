@@ -24,11 +24,31 @@ die() { echo "agy-job: $*" >&2; exit 1; }
 # resolve a (possibly abbreviated) id to a job dir
 jobdir() {
   [ -n "${1:-}" ] || die "need a job id"
-  if [ -d "$REG/$1" ]; then echo "$REG/$1"; return; fi
-  local hits; hits=$(ls -d "$REG/$1"* 2>/dev/null)
-  [ -n "$hits" ] || die "no such job: $1"
-  [ "$(printf '%s\n' "$hits" | grep -c .)" -eq 1 ] || die "ambiguous id '$1'"
-  echo "$hits"
+  # Security review finding: the id comes straight from an untrusted slash-command
+  # argument ($ARGUMENTS in status.md/result.md/cancel.md) with no validation at that
+  # layer -- reject anything that isn't a plain path segment (no '/', no leading '.',
+  # no glob metacharacters) before it ever reaches a path construction below.
+  case "$1" in
+    */*|.*|*[\[\]\*\?]*) die "invalid job id '$1'" ;;
+  esac
+  local resolved
+  if [ -d "$REG/$1" ]; then resolved="$REG/$1"
+  else
+    local hits; hits=$(ls -d "$REG/$1"* 2>/dev/null)
+    [ -n "$hits" ] || die "no such job: $1"
+    [ "$(printf '%s\n' "$hits" | grep -c .)" -eq 1 ] || die "ambiguous id '$1'"
+    resolved="$hits"
+  fi
+  # Defense in depth: confirm the resolved path is still a direct child of $REG (a
+  # symlink under $REG could otherwise point elsewhere even past the character check).
+  local real_reg real_resolved
+  real_reg=$(cd "$REG" 2>/dev/null && pwd -P) || die "job registry unavailable: $REG"
+  real_resolved=$(cd "$resolved" 2>/dev/null && pwd -P) || die "no such job: $1"
+  case "$real_resolved" in
+    "$real_reg"/*) : ;;
+    *) die "invalid job id '$1'" ;;
+  esac
+  echo "$resolved"
 }
 
 # echoes running | done | failed. (rc is read directly from the file by callers —
@@ -114,8 +134,32 @@ case "$cmd" in
     jd="$(jobdir "${1:-}")"
     pid="$(cat "$jd/pid" 2>/dev/null || true)"
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-      pkill -P "$pid" 2>/dev/null || true   # children (agy) first
-      kill "$pid" 2>/dev/null || true
+      # Walk the real PID tree (parent->child) rather than relying on process GROUPS:
+      # `timeout` (used by agy-delegate.sh to bound the real agy call) puts its OWN
+      # monitored command in a fresh process group of its own -- verified live -- so a
+      # plain `pkill -P`/`kill` on the recorded pid alone misses that nested
+      # timeout/agy subtree entirely, leaving it running (bounded only by timeout's own
+      # --kill-after, not by this cancel). Collect every descendant PID first, then
+      # signal each one individually -- this reaches the tree regardless of how many
+      # times something below re-grouped itself.
+      descendants() {
+        local all=() frontier=("$1") next
+        while [ "${#frontier[@]}" -gt 0 ]; do
+          next=()
+          for p in "${frontier[@]}"; do
+            while IFS= read -r child; do
+              [ -n "$child" ] || continue
+              all+=("$child"); next+=("$child")
+            done < <(ps -Ao pid=,ppid= 2>/dev/null | awk -v p="$p" '$2==p{print $1}')
+          done
+          frontier=("${next[@]}")
+        done
+        printf '%s\n' "${all[@]}"
+      }
+      tree="$pid $(descendants "$pid")"
+      for p in $tree; do kill -TERM "$p" 2>/dev/null || true; done
+      sleep 0.2
+      for p in $tree; do kill -0 "$p" 2>/dev/null && kill -KILL "$p" 2>/dev/null || true; done
       echo "cancelled $(basename "$jd")"
     else
       echo "not running"
