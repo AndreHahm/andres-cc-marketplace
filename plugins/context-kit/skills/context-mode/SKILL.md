@@ -158,11 +158,13 @@ Queued next: <mode-2>, once <trigger condition>.
   mode — when a phrase looks like it names a mode but the surrounding sentence doesn't fit, prefer the
   sentence's actual intent over the bare word.
 - No default mode is a deliberate choice, not an oversight — see `references/design-history.md`.
-- The hook's measured latency (~180-210ms on this platform, mostly Python interpreter startup) exceeds
+- The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
+  interpreter startup — noisy from run to run, but consistently well over budget) exceeds
   `UserPromptSubmit`'s documented <100ms budget, even after dropping the `uv`-runner attempt this
   plugin's other Python hooks use (no dependency-resolution benefit here, since `detect_mode.py` has
-  zero third-party dependencies — removed to save the one subprocess hop it did cost). This is an
-  accepted, disclosed limitation of a Python-based hook on this event, not something this pass fully
+  zero third-party dependencies — removed to save the one subprocess hop it did cost, though the
+  measured effect was within this platform's own run-to-run noise, not a clean improvement). This is
+  an accepted, disclosed limitation of a Python-based hook on this event, not something this pass fully
   resolved. A future pass could investigate a dependency-free implementation with faster startup if
   this proves disruptive in practice.
 
