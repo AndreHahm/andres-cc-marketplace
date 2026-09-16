@@ -2,18 +2,21 @@
 
 ## Static Inventory Procedure
 
-> **Automation:** `scripts/audit-context.sh` automates Steps 1-4 below. Use `--json` for structured output. The manual steps remain here as reference.
+> **Automation:** `scripts/audit-context.sh` automates Steps 1-5 below. Use `--json` for structured output. The manual steps remain here as reference.
 
 ### Step 1: Discover Skills
 
 ```
 Glob: ~/.claude/skills/*/SKILL.md
+Glob: {project-root}/.claude/skills/*/SKILL.md   (if the project has its own)
 ```
 
-For each skill directory found:
+For each skill directory found (user-scope and project-scope):
 - Read `SKILL.md` — record byte size and word count
-- Glob `rules/*.md` — record count and total size (these are always-on)
 - Glob `references/*.md` — record count and total size (these are on-demand)
+- Glob `rules/*.md` — record count and total size (a `rules/` directory *bundled inside a skill* is a
+  skill resource, on-demand like `references/` — it only loads when that skill itself triggers, not
+  every conversation)
 
 ### Step 2: Measure CLAUDE.md Files
 
@@ -24,14 +27,27 @@ Read these files if they exist:
 
 Record byte size and word count for each.
 
-### Step 3: Count Plugins and MCP Servers
+### Step 3: Discover Project Rules
+
+```
+Glob: {project-root}/.claude/rules/*.md
+```
+
+These are the project's real always-on rule surface — unlike a skill-bundled `rules/` directory
+(Step 1), every file here loads into every session regardless of which skill, if any, is active.
+Record byte size and word count for each.
+
+### Step 4: Count Plugins and MCP Servers
 
 Read `~/.claude/settings.json` and extract:
-- `plugins` array — count entries
+- `enabledPlugins` object — count entries whose value is `true` (an entry with value `false` is
+  installed but disabled, and does not contribute to context)
+- For each enabled plugin, estimate its tool-description overhead from its actual tool count (not a
+  flat per-plugin estimate) — see `scripts/audit-context.sh`'s own `tool_est` table for known values
 - `mcpServers` object — count keys
 - For each MCP server, note if it has custom tool descriptions
 
-### Step 4: Build Inventory Table
+### Step 5: Build Inventory Table
 
 Sort all entries by size descending. Format:
 
@@ -40,19 +56,21 @@ Sort all entries by size descending. Format:
 |--------|------|-------|-------|------|
 | skills/tailwind/SKILL.md | 2.1KB | 620 | on-trigger | LARGE |
 | CLAUDE.md (global) | 3.4KB | 890 | always-on | LARGE |
-| skills/research/rules/defaults.md | 450B | 95 | always-on | RULES |
+| project-rules/no-secrets.md | 450B | 95 | always-on | RULES |
 | ... | ... | ... | ... | ... |
 ```
 
 Flag column values:
 - `LARGE` — SKILL.md > 500 words or CLAUDE.md > 2KB
-- `RULES` — any file in a rules/ directory (always loaded)
+- `RULES` — any `.claude/rules/*.md` file (the project's own always-on surface, Step 3 — not a
+  skill-bundled `rules/` directory from Step 1, which is on-demand)
 - `MCP` — 5+ MCP servers configured
 - `HEAVY` — plugin with 10+ estimated tools
 - `-` — within acceptable range
 
 Compute totals:
-- **Always-on context**: sum of all rules/ files + CLAUDE.md files + plugin/MCP overhead estimate (200 words per MCP server, 50 words per plugin for tool descriptions)
+- **Always-on context**: sum of all `.claude/rules/*.md` files + CLAUDE.md files + plugin/MCP overhead
+  estimate (200 words per MCP server, tool-count-based per enabled plugin — see Step 4)
 - **On-trigger context**: average SKILL.md size across all skills
 
 Auto-memory files (`~/.claude/projects/*/memory/*.md`) are listed in this same inventory for their
@@ -66,15 +84,15 @@ broken links, orphans, missing frontmatter). For that, run `session-kit`'s `sess
 
 | Condition | Points |
 |-----------|--------|
-| All SKILL.md files < 500 rows | +10 |
-| No rules/ directories (nothing always-on) | +10 |
+| All SKILL.md files < 500 words | +10 |
+| No (or very few) `.claude/rules/*.md` files (minimal always-on surface, Step 3) | +10 |
 | References used for detailed content | +5 |
 | No overlapping skill triggers | +5 |
 
 Deductions:
-- Each SKILL.md > 500 rows: -3
-- Each rules/ directory: -5
-- Each skill > 300 rows without references: -3
+- Each SKILL.md > 500 words: -3
+- Each `.claude/rules/*.md` file: -5
+- Each skill > 300 words without references: -3
 - Each overlapping skill trigger: -1
 
 ### CLAUDE.md Health (25 points)
@@ -138,8 +156,8 @@ is out of scope for this rubric.
 
 Generate recommendations based on findings. Priority order:
 
-1. **rules/ directories exist** → "Move `{skill}/rules/{file}` content into SKILL.md — rules/ files load every conversation regardless of skill use"
-2. **SKILL.md > 500 rows** → "Extract detailed procedures from `{skill}/SKILL.md` into `references/` — keeps trigger cost low"
+1. **A `.claude/rules/*.md` file is unusually large** → "Trim `{file}` — every word in it loads into every session regardless of what's being worked on"
+2. **SKILL.md > 500 words** → "Extract detailed procedures from `{skill}/SKILL.md` into `references/` — keeps trigger cost low"
 3. **CLAUDE.md > 4KB** → "Split global CLAUDE.md — move project-specific instructions to per-project files"
 4. **5+ MCP servers** → "Review MCP server list — each adds tool descriptions to every conversation. Disable unused servers."
 5. **/context usage > 80%** → "Context usage is high — consider /compact, or session-kit's session-handoff if installed"

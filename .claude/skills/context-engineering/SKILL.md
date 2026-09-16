@@ -110,8 +110,19 @@ Shrink context without losing the information that matters.
 **PostCompact hook — Re-inject critical context:**
 ```json
 {
-  "type": "PostCompact",
-  "command": "cat .claude/critical-context.md"
+  "hooks": {
+    "PostCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat .claude/critical-context.md"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
