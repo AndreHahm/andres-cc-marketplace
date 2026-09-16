@@ -138,7 +138,11 @@ Don't load everything into one context. Split work across independent execution 
 | Worktrees (`claude -w`) | Full repo copy | Parallel features, competing approaches |
 | `/btw` (built-in Claude Code) | Temporary overlay | Quick questions without entering conversation history |
 | Agent teams | Independent sessions | Cross-layer changes, parallel reviews |
-| Fresh session (`/resume`) | Clean slate | Unrelated work, degraded context |
+| Fresh session (no `/resume`) | Clean slate | Unrelated work, degraded context |
+
+`/resume` is continuity, not isolation — it loads the original session's context back into memory
+(see `session-kit`'s `session-resume`), so it carries degraded context forward rather than clearing
+it. For a genuine clean slate, start a new session without `/resume`.
 
 **Pattern — Subagent delegation:**
 ```text

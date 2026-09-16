@@ -30,30 +30,52 @@ Read these files if they exist:
 
 Record byte size and word count for each.
 
-### Step 3: Discover Project Rules
+### Step 3: Discover Rules (User-Level and Project)
 
 ```
-Glob: {project-root}/.claude/rules/**/*.md   (recursive -- subdirectories like rules/frontend/ count too)
+Glob: ~/.claude/rules/**/*.md               (user-level -- applies to every project on this machine)
+Glob: {project-root}/.claude/rules/**/*.md  (recursive -- subdirectories like rules/frontend/ count too)
 ```
 
-These are the project's real always-on rule surface — unlike a skill-bundled `rules/` directory
-(Step 1), every file here loads into every session regardless of which skill, if any, is active.
-Record byte size and word count for each.
+These are the real always-on rule surface — unlike a skill-bundled `rules/` directory (Step 1), every
+file here loads into every session regardless of which skill, if any, is active, **except** a rule
+whose own YAML frontmatter declares a `paths:` field — that rule is conditional, loading only when
+Claude works with a matching file, so classify it as on-demand instead of always-on. Record byte size
+and word count for each.
 
-### Step 4: Count Plugins and MCP Servers
+### Step 4: Resolve Plugins and MCP Servers Across Every Real Source
 
-Read `~/.claude/settings.json` and extract:
-- `enabledPlugins` object — count entries whose value is `true` (an entry with value `false` is
-  installed but disabled, and does not contribute to context)
-- For each enabled plugin, estimate its tool-description overhead from its actual tool count (not a
-  flat per-plugin estimate) — see `scripts/audit-context.sh`'s own `tool_est` table for known values
-- `mcpServers` object — count keys
+Plugins can be enabled at more than one scope, and MCP servers come from more sources than
+`~/.claude/settings.json` alone. Resolve both fully before counting:
+
+**Enabled plugins** — merge `enabledPlugins` from every scope that exists, in this precedence order
+(a later scope's value for the same key wins on conflict):
+1. `~/.claude/settings.json` (user)
+2. `{project-root}/.claude/settings.json` (project, tracked)
+3. `{project-root}/.claude/settings.local.json` (local, gitignored)
+
+Count entries whose merged value is `true`. For each enabled plugin, estimate its tool-description
+overhead from its actual tool count (not a flat per-plugin estimate) — see
+`scripts/audit-context.sh`'s own `tool_est` table for known values.
+
+**MCP servers** — collect server names from every real source below and count **distinct** names (a
+server defined in more than one scope counts once):
+- `~/.claude/settings.json`'s own `mcpServers` object (rare in practice, but checked for completeness)
+- `~/.claude.json`'s top-level `mcpServers` (user scope, available in every project)
+- `~/.claude.json`'s `.projects["{absolute-project-path}"].mcpServers` (local scope, private to this
+  project on this machine)
+- `{project-root}/.mcp.json`'s `mcpServers` field (team scope, tracked — **wrapped** in an
+  `mcpServers` key, unlike a plugin's own `.mcp.json` below)
 
 Then, for each enabled plugin, also check whether it bundles its own MCP servers — a plugin-root
-`.mcp.json` or an inline `mcpServers` field in its own `plugin.json` (both auto-start when the plugin
-is enabled and never appear in `~/.claude/settings.json`'s own `mcpServers` object). Count those keys
-too, added to the `mcpServers` total above. For each MCP server (settings-configured or
-plugin-bundled), note if it has custom tool descriptions.
+`.mcp.json` (servers as **bare top-level keys**, not wrapped in `mcpServers` — a different schema from
+the project-root `.mcp.json` above, despite the identical filename) or an inline `mcpServers` field in
+its own `.claude-plugin/plugin.json` (the real manifest location, not plugin-root) — both auto-start
+when the plugin is enabled. Add these counts on top of the deduplicated total above, without
+deduplicating against it: a plugin-provided server's real tool name is namespaced
+(`mcp__plugin_<name>_<server>__<tool>`) and can't collide with a same-named server from another scope.
+
+For each MCP server found (any source), note if it has custom tool descriptions.
 
 ### Step 5: Build Inventory Table
 
@@ -70,15 +92,17 @@ Sort all entries by size descending. Format:
 
 Flag column values:
 - `LARGE` — SKILL.md > 500 words or CLAUDE.md > 2KB
-- `RULES` — any `.claude/rules/*.md` file (the project's own always-on surface, Step 3 — not a
-  skill-bundled `rules/` directory from Step 1, which is on-demand)
-- `MCP` — 5+ MCP servers configured
+- `RULES` — an unconditional `.claude/rules/*.md` file, user- or project-level (Step 3 — not a
+  skill-bundled `rules/` directory from Step 1, which is on-demand, and not a `paths:`-scoped rule,
+  which is on-demand too)
+- `MCP` — 5+ MCP servers configured (deduplicated total across every source, Step 4)
 - `HEAVY` — plugin with 10+ estimated tools
 - `-` — within acceptable range
 
 Compute totals:
-- **Always-on context**: sum of all `.claude/rules/*.md` files + CLAUDE.md files + plugin/MCP overhead
-  estimate (200 words per MCP server, tool-count-based per enabled plugin — see Step 4)
+- **Always-on context**: sum of all unconditional `.claude/rules/*.md` files (user + project) +
+  CLAUDE.md files + plugin/MCP overhead estimate (200 words per deduplicated MCP server, tool-count-based
+  per enabled plugin — see Step 4)
 - **On-trigger context**: average SKILL.md size across all skills
 
 Auto-memory files, scoped to the **current project only**
