@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-documentation/SKILL.md",
+  "assertions": [
+    {"text": "Correctly identifies this as a single-plugin-scoped doc request, not a marketplace-root request", "type": "functionality", "target": "output"},
+    {"text": "Does not attempt to read or regenerate the marketplace-root README's plugin table", "type": "functionality", "target": "output"},
+    {"text": "Points at plugin-documentation (or equivalent single-plugin doc-authoring approach) rather than marketplace-documentation's own procedure", "type": "quality", "target": "output"}
+  ]
+}

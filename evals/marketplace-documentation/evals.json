@@ -1,0 +1,30 @@
+{
+  "skill_name": "marketplace-documentation",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-documentation/SKILL.md",
+  "description": "Bounded Quick Workflow smoke check (plugin-lifecycle-upstream Phase 7) — confirms the skill's own documented trigger/non-trigger examples hold and its core Step 2-4 procedure is followed.",
+  "testing_validation_coverage": {
+    "declared_scenarios": 4,
+    "covered_by_this_eval_set": 2,
+    "uncovered": [
+      "No changes needed (table already matches marketplace.json) — clean no-op reporting",
+      "Broken .claude/rules/*.md reference caught by human-doc-reviewer's Step 3"
+    ],
+    "note": "This is a bounded Phase 7 smoke check, not a full eval suite — the 2 scenarios below verify the trigger/non-trigger boundary and the core read-then-invoke-reviewer procedure; the 2 uncovered scenarios are lower-risk (delegated to human-doc-reviewer's own already-tested logic) and are not re-verified here."
+  },
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Plugin added to marketplace.json — activates and follows procedure",
+      "prompt": "A new plugin `example-kit` was just added to .claude-plugin/marketplace.json. Update the marketplace docs to reflect this.",
+      "expected_output": "Reads .claude-plugin/marketplace.json as source of truth; regenerates README's plugin table to include the new plugin without inventing a placeholder description; never writes to marketplace.json itself; invokes human-doc-reviewer afterward (mentions it explicitly, does not skip it).",
+      "files": []
+    },
+    {
+      "id": "eval-2",
+      "name": "Non-trigger — a single plugin's own README",
+      "prompt": "Write docs for the git-kit plugin — update its own README.md with its current skill list.",
+      "expected_output": "Recognizes this as plugin-documentation's job (a single plugin's own docs), not marketplace-documentation's — does not attempt to read/regenerate the marketplace-root README's plugin table for this request.",
+      "files": []
+    }
+  ]
+}
