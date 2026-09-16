@@ -875,7 +875,27 @@ def unit_mcp(plan, mf, roots):
         plan.add("mcp", "skip", "no-op", "-", "no MCP servers defined on the Claude side")
         return
     dest = os.path.join(gemini_config(), "mcp_config.json")
-    current = (read_json(dest, None) or {}).get("mcpServers") or {}
+    # read_json()'s "malformed == absent" fallback is fine for read-only discovery, but
+    # this destination gets rewritten below -- silently treating an existing-but-corrupt
+    # file as empty would have `fn()` overwrite it with ONLY the newly migrated servers,
+    # discarding whatever it actually held (this file can carry other servers' secrets).
+    # Refuse instead of guessing.
+    if os.path.isfile(dest):
+        try:
+            with open(dest, encoding="utf-8") as f:
+                existing = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            plan.add(
+                "mcp",
+                "warn",
+                "malformed-existing",
+                dest,
+                f"existing file is not valid JSON ({e}); repair or remove it first",
+            )
+            return
+    else:
+        existing = None
+    current = (existing or {}).get("mcpServers") or {}
     to_add = {}
     for name, (spec, source) in sorted(found.items()):
         if name in current:
@@ -901,7 +921,16 @@ def unit_mcp(plan, mf, roots):
         return
 
     def fn():
-        cur = read_json(dest, None) or {}
+        try:
+            with open(dest, encoding="utf-8") as f:
+                cur = json.load(f)
+        except FileNotFoundError:
+            cur = {}
+        except json.JSONDecodeError as e:
+            # Became malformed between the plan-building read above and this apply-time
+            # read (e.g. edited concurrently) -- the apply loop catches and reports this,
+            # never silently overwriting the file.
+            raise ValueError(f"{dest} is not valid JSON ({e}); refusing to overwrite it") from e
         servers = cur.get("mcpServers") or {}
         for name, entry in to_add.items():
             if name in servers:
@@ -1446,6 +1475,49 @@ def do_uninstall(apply_):
             return False
         return rp == root or rp.startswith(root + os.sep)
 
+    def own_repo_rule(p):
+        # The one file shape this tool writes outside gemini_root(): a memory rule at
+        # <repo>/.agents/rules/<name>.md (--include-repos; see unit_memory's `dest =
+        # os.path.join(src["cwd"], ".agents", "rules")`). A blanket outside-root
+        # allowance would defeat contained()'s own security purpose above, so this
+        # requires the exact two-segment .agents/rules/ shape AND the full MARKER_MD
+        # sentinel line (not the bare MARKER substring -- render_rule() always emits
+        # MARKER_MD verbatim as the file's first line, so this excludes no legitimate
+        # target while requiring far more than an incidental mention of the tool's
+        # name) -- narrower than "outside root with a marker," matching the shape
+        # check already trusted for the AGENTS.md symlink exemption below, not a new
+        # general carve-out. Resolved via realpath(), like contained() above, so a
+        # directory symlink at .agents/ or a relative manifest entry can't satisfy
+        # the shape lexically while pointing somewhere else; os.remove() still acts
+        # on the original (possibly symlink) path, never escalating to its target.
+        try:
+            rp = os.path.realpath(p)
+        except OSError:
+            return False
+        parts = rp.split(os.sep)
+        return (
+            len(parts) >= 3
+            and parts[-2] == "rules"
+            and parts[-3] == ".agents"
+            and rp.endswith(".md")
+            and os.path.isfile(rp)
+            and MARKER_MD in read_text(rp)
+        )
+
+    def own_repo_dir(p):
+        # Companion to own_repo_rule(): the two directories its files live in
+        # (<repo>/.agents/rules and its parent .agents). No marker check needed --
+        # os.rmdir() below only ever removes a directory that is genuinely empty,
+        # so there is no data-loss risk here, only the same containment shape.
+        try:
+            rp = os.path.realpath(p)
+        except OSError:
+            return False
+        parts = rp.split(os.sep)
+        return (len(parts) >= 2 and parts[-1] == "rules" and parts[-2] == ".agents") or (
+            parts and parts[-1] == ".agents"
+        )
+
     n = 0
     # symlinks are deliberately exempt from contained(): the only symlink this tool ever
     # creates is AGENTS.md -> CLAUDE.md, written *inside a user's own repo* (--include-repos),
@@ -1458,6 +1530,12 @@ def do_uninstall(apply_):
                 os.unlink(p)
     for p in mf.files:
         if not contained(p):
+            if own_repo_rule(p):
+                print(f"  remove file    {p}")
+                n += 1
+                if apply_:
+                    os.remove(p)
+                continue
             print(f"  SKIP (outside {gemini_root()}, refusing to remove): {p}")
             continue
         if os.path.isfile(p) and (MARKER in read_text(p) or p.endswith(".json")):
@@ -1528,6 +1606,12 @@ def do_uninstall(apply_):
     for raw_dir in sorted(mf.dirs, key=len, reverse=True):
         p = str(raw_dir)
         if not contained(p):
+            if own_repo_dir(p) and os.path.isdir(p) and not os.listdir(p):
+                print(f"  rmdir          {p}")
+                n += 1
+                if apply_:
+                    os.rmdir(p)
+                continue
             print(f"  SKIP (outside {gemini_root()}, refusing to rmdir): {p}")
             continue
         if os.path.isdir(p) and not os.listdir(p):
