@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recommends delegating the migration to Antigravity/agy", "passed": true, "evidence": "\"If the migration is real, well-specified, and genuinely mechanical across those 40 sites: delegate it\""},
+    {"text": "States the break-even reasoning (this is bulk/repetitive, clearly above break-even)", "passed": true, "evidence": "\"a 40-site mechanical rewrite against a written spec is comfortably on the other side of that line\""},
+    {"text": "Mentions --dir <repo-root> so agy reads real files instead of pasting them", "passed": true, "evidence": "\"Point the delegate at the repo directory so it reads MIGRATION.md and the call sites itself, rather than you copying code into the prompt\" (conceptually correct, no literal --dir flag named)"},
+    {"text": "Names a digest-only output contract (e.g. ===DIGEST===) as the cost lever", "passed": true, "evidence": "\"Ask for a digest, not a dump. Have it report back files changed + key decisions...\" (no literal ===DIGEST=== marker)"},
+    {"text": "Mentions running on a dedicated branch/worktree with a diff review before merging", "passed": true, "evidence": "\"Isolate it. Run the delegated migration on a dedicated branch or worktree... Review the full diff yourself before merging\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "note": "Methodology confound: this baseline agent explored the repo (found plugins/antigravity-kit/docs/MIGRATION.md and agents/antigravity-delegate.md) and effectively re-derived the skill's own guidance by reading adjacent plugin files, rather than being a clean blind baseline. Not representative of a baseline with no access to this repo."
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recommends delegating the migration to Antigravity/agy", "passed": true, "evidence": "\"Yes, delegate this migration to Antigravity... It's the textbook case for Antigravity delegation.\""},
+    {"text": "States the break-even reasoning (this is bulk/repetitive, clearly above break-even)", "passed": true, "evidence": "\"It's bulk, systematic, well-specified work... that's exactly the Maintenance/migration/modernization row\""},
+    {"text": "Mentions --dir <repo-root> so agy reads real files instead of pasting them", "passed": true, "evidence": "\"--dir <repo-root> (always, for repo work) so agy reads MIGRATION.md and the actual code instead of pasting 40 call sites\""},
+    {"text": "Names a digest-only output contract (e.g. ===DIGEST===) as the cost lever", "passed": true, "evidence": "\"End with a fenced block ===DIGEST=== listing: files changed, key decisions...\""},
+    {"text": "Mentions running on a dedicated branch/worktree with a diff review before merging", "passed": true, "evidence": "\"Run this on a dedicated branch or worktree... Review every shipping line before merge — no auto-merge\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

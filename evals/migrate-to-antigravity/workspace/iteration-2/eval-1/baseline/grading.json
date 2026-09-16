@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Directs to run agy-migrate as a dry-run first, before --apply", "passed": false, "evidence": "No specific tool (agy-migrate) or dry-run flag named anywhere -- gives a generic 'inventory then migrate in priority order' process instead"},
+    {"text": "Explains skills are read in place via a skills.json entry, not copied", "passed": false, "evidence": "States skills are 'the least portable piece' needing manual reimplementation; never mentions a live skills.json link mechanism -- doesn't know this exists"},
+    {"text": "Flags that permissions are written as a proposal only, merged with --apply-permissions", "passed": false, "evidence": "No permissions-proposal-file or --apply-permissions concept mentioned at all"},
+    {"text": "Mentions session history cannot move (protobuf/SQLite, no writer)", "passed": false, "evidence": "Session transcripts / conversation history are not mentioned anywhere in the response"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 0, "pass_rate": 0.0},
+  "note": "Clean, strong with_skill vs baseline gap: every one of the 4 concrete, tool-specific facts the skill documents (agy-migrate's flags, the live skills.json link, the permissions-proposal gate, the protobuf/SQLite transcript limitation) was completely absent from the baseline response, which fell back to generic 'go check the other product's docs' advice."
+}

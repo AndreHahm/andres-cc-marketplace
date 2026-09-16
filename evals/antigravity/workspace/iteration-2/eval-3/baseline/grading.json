@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is a one-time config/setup migration, not ongoing delegation", "passed": false, "evidence": "Treats it as a generic 'migrate to a new IDE' project with phased steps; never frames it against an 'ongoing delegation' alternative since it has no antigravity skill to contrast against"},
+    {"text": "Points to the sibling migrate-to-antigravity skill or /antigravity-kit:migrate command", "passed": false, "evidence": "No mention of any specific tool, skill, or command -- gives only generic conceptual advice ('check Antigravity's own docs/settings UI', 'map component-by-component') and explicitly says it lacks confirmed specifics"},
+    {"text": "Does not attempt to answer it as an antigravity-skill delegation task", "passed": true, "evidence": "Trivially true -- baseline has no antigravity skill loaded at all, so it cannot answer via that path either way"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.33},
+  "note": "This is the cleanest demonstrated with_skill vs baseline gap in this eval set: baseline could not discover the sibling-skill routing fact from repo exploration alone in the time it spent, and fell back to generic, hedged, non-actionable advice."
+}

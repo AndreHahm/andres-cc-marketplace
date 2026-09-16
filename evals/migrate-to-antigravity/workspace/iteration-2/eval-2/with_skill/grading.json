@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is ongoing per-task delegation, not a one-time config migration", "passed": true, "evidence": "\"'Now that agy is set up, can you delegate this test-generation task to it under cost discipline?' is exactly that excluded case... a recurring, per-task work-routing request... not a config migration.\""},
+    {"text": "Points to the sibling antigravity skill / delegation commands instead", "passed": true, "evidence": "\"That kind of ongoing delegation is the job of the sibling antigravity skill, not migrate-to-antigravity.\""},
+    {"text": "Does not attempt to answer it as a migration question", "passed": true, "evidence": "\"No agy-migrate commands were run and no files were changed, since acting on this request would require the other skill\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

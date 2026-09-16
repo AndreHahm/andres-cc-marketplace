@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recommends doing the rename directly, not delegating it", "passed": true, "evidence": "\"I'll just make this edit directly rather than routing it through Antigravity.\""},
+    {"text": "Explicitly names this as below the break-even (small/self-contained/judgement-light)", "passed": true, "evidence": "\"a small, self-contained, or judgement-heavy task... is explicitly called out as a case to just do directly, since delegating a tiny task is a net loss\""},
+    {"text": "Does not reach for agy-delegate or the antigravity-delegate subagent", "passed": true, "evidence": "\"I did not invoke agy-delegate.\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

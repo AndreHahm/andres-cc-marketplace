@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes this is a one-time config/setup migration, not ongoing delegation", "passed": true, "evidence": "\"this is exactly the scenario the antigravity skill's own 'When NOT to Use' section excludes\""},
+    {"text": "Points to the sibling migrate-to-antigravity skill or /antigravity-kit:migrate command", "passed": true, "evidence": "\"What you want is the sibling migrate-to-antigravity skill, which is purpose-built for the one-time move.\""},
+    {"text": "Does not attempt to answer it as an antigravity-skill delegation task", "passed": true, "evidence": "\"I'm not going to force this through agy-delegate — that would just delegate a single ad-hoc prompt to Gemini rather than actually performing a structured, verifiable migration\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
