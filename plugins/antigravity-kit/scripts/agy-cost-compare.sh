@@ -59,7 +59,7 @@ if [ -f "$PRICES" ] && command -v python3 >/dev/null 2>&1; then
   done < <(python3 - "$PRICES" "$TIER" 2>/dev/null <<'PY'
 import json,sys
 try:
-    d=json.load(open(sys.argv[1])); t=sys.argv[2]
+    d=json.load(open(sys.argv[1], encoding="utf-8")); t=sys.argv[2]
     g=d["gemini_pro"] if t=="pro" else d["gemini_flash"]; c=d["claude_opus"]
     for k, v in (("_CIN", c["in"]), ("_COUT", c["out"]), ("_GIN", g["in"]), ("_GOUT", g["out"])):
         print(f"{k}={float(v)}")

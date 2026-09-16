@@ -193,13 +193,17 @@ jobs:
             `claude plugin validate` — don't repeat those. Focus on:
 
             - **Malicious or unsafe changes** — this matters most for external PRs:
-              anything that weakens `hooks/validate-delegate-bash.sh` (the only
-              restriction on what the delegate subagent may run), exfiltrates data,
+              anything that weakens `hooks/validate-delegate-bash.sh` (defense-in-depth
+              on which command may start, not the load-bearing boundary — that is the
+              delegate subagent's `tools:` grant, `Bash, Read, Glob`, no `Write`/`Edit`;
+              a plugin-scoped agent's own frontmatter hook is accepted by the schema but
+              not verified to be honored at runtime, see SECURITY.md), exfiltrates data,
               adds network calls, widens tool permissions, or touches CI workflows.
             - **Correctness of shell logic**: quoting, exit-code propagation,
               portability (macOS bash 3.2 vs GNU).
             - **Contract consistency**: exit codes 2,3,10–15, `AGY_SIGNAL` /
-              `AGY_USAGE`, and version sync between plugin.json and SKILL.md.
+              `AGY_USAGE` must stay consistent across `agy-delegate.sh`, `agy-job.sh`,
+              SKILL.md and docs/TROUBLESHOOTING.md.
             - **Docs accuracy** against the actual behavior in the diff.
 
             Be concise and specific; a few high-confidence findings beat a long list.

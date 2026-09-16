@@ -80,7 +80,7 @@ import json, sys
 n = 0
 for path in sys.argv[1:]:
     try:
-        servers = (json.load(open(path)) or {}).get("mcpServers") or {}
+        servers = (json.load(open(path, encoding="utf-8")) or {}).get("mcpServers") or {}
     except Exception:
         continue
     # A stdio server is launched as a local process, so it carries "command"
@@ -221,7 +221,7 @@ allow_rules() {
   python3 -c '
 import json, sys
 try:
-    allow = ((json.load(open(sys.argv[1])) or {}).get("permissions") or {}).get("allow")
+    allow = ((json.load(open(sys.argv[1], encoding="utf-8")) or {}).get("permissions") or {}).get("allow")
 except Exception:
     sys.exit(1)
 if not isinstance(allow, list):

@@ -93,10 +93,12 @@ auth credentials (different auth systems entirely — never copy these).
 **Exception, and it matters:** an MCP server's own `env` block (API keys, tokens —
 whatever that server's own config carries) **is** copied verbatim into the new
 `mcp_config.json`, because the server needs it to keep working under Antigravity.
-`agy-migrate` locks the resulting file down (`chmod 0600`) so it isn't left
-world-readable, but the secret itself now lives in a second file — review
-`mcp_config.json` after a migration the same way you'd review any file that holds
-credentials.
+This applies to the user-level `~/.gemini/config/mcp_config.json` and to every
+per-plugin `~/.gemini/config/plugins/<name>/mcp_config.json` the plugin importer
+repairs. `agy-migrate` locks every one of these files down (`chmod 0600`) so none
+is left world-readable, but the secret itself now lives in a second (or third,
+fourth…) file — review each `mcp_config.json` after a migration the same way
+you'd review any file that holds credentials.
 
 ---
 
@@ -173,6 +175,12 @@ Also not migrated, by design: `model` (no Gemini equivalent for a Claude model i
 
 Re-running is safe: generated files carry a marker comment, and a file whose marker
 you deleted is treated as yours and left alone.
+
+## Reference Guide
+
+| Resource | Read when |
+|---|---|
+| `docs/MIGRATION.md` | The full layout reference, the compatibility matrix, and how each behavior above was measured — this skill covers the workflow, that doc covers the detail |
 
 ## Testing & Validation
 
