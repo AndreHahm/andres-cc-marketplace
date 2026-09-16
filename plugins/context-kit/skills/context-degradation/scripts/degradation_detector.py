@@ -397,6 +397,30 @@ class PoisoningDetector:
             ),
         }
 
+    # Common words that establish no "same topic" overlap on their own --
+    # excluded from _detect_contradictions' topic-word comparison.
+    _CONTRADICTION_STOPWORDS = frozenset(
+        {
+            "however",
+            "although",
+            "despite",
+            "nevertheless",
+            "instead",
+            "other",
+            "hand",
+            "that",
+            "this",
+            "with",
+            "from",
+            "have",
+            "does",
+            "changes",
+            "behavior",
+            "preserves",
+            "compatibility",
+        }
+    )
+
     def _detect_contradictions(self, text: str) -> list[str]:
         """Detect potential contradictions in text."""
         contradictions: list[str] = []
@@ -408,18 +432,36 @@ class PoisoningDetector:
             (r"despite", r"nevertheless"),
         ]
 
+        sentences = [s.strip() for s in text.split(".") if s.strip()]
+
+        def topic_words(sentence: str) -> set[str]:
+            return {
+                w
+                for w in re.findall(r"[a-zA-Z]{4,}", sentence.lower())
+                if w not in self._CONTRADICTION_STOPWORDS
+            }
+
         for pattern1, pattern2 in conflict_patterns:
-            if re.search(pattern1, text, re.IGNORECASE) and re.search(
-                pattern2, text, re.IGNORECASE
-            ):
-                sentences = text.split(".")
-                for sentence in sentences:
-                    if re.search(pattern1, sentence, re.IGNORECASE) or re.search(
-                        pattern2, sentence, re.IGNORECASE
-                    ):
-                        stripped = sentence.strip()
-                        if stripped and len(stripped) < 200:
-                            contradictions.append(stripped[:100])
+            idx_with_1 = [
+                i for i, s in enumerate(sentences) if re.search(pattern1, s, re.IGNORECASE)
+            ]
+            idx_with_2 = [
+                i for i, s in enumerate(sentences) if re.search(pattern2, s, re.IGNORECASE)
+            ]
+            for i1 in idx_with_1:
+                for i2 in idx_with_2:
+                    # A single sentence containing both connectors (e.g. "X
+                    # describes alternatives; however, it preserves Y, but
+                    # changes nothing") is ordinary explanatory prose, not a
+                    # contradiction -- only cross-sentence pairs that share an
+                    # overlapping topic word count as a candidate conflict.
+                    if i1 == i2:
+                        continue
+                    s1, s2 = sentences[i1], sentences[i2]
+                    if topic_words(s1) & topic_words(s2):
+                        for sentence in (s1, s2):
+                            if len(sentence) < 200 and sentence not in contradictions:
+                                contradictions.append(sentence[:100])
 
         return contradictions[:5]
 
@@ -458,6 +500,8 @@ class ContextHealthAnalyzer:
     """
 
     def __init__(self, context_limit: int = 100_000) -> None:
+        if context_limit <= 0:
+            raise ValueError(f"context_limit must be a positive integer, got {context_limit}")
         self.context_limit: int = context_limit
         self.metrics_history: list[dict[str, Any]] = []
 
