@@ -19,13 +19,18 @@ from degradation_detector import measure_attention_distribution, detect_lost_in_
 attention = measure_attention_distribution(context_tokens, query="quarterly revenue")
 result = detect_lost_in_middle(critical_positions=[0, 1, 25, 48, 49], attention_distribution=attention)
 # result: {"at_risk": [...], "safe": [...], "recommendations": [...], "degradation_score": 0.0-1.0}
+# an out-of-range or negative critical position is reported separately as "invalid_positions"
+# (only present if any were given) and excluded from the degradation_score denominator
 ```
 
 Also available: `analyze_context_structure(context: str)`, which assesses structural degradation risk
-(how much content sits in the low-attention middle band — lines 30%-70% of the context) from a context
-string's own section layout —
-returns `total_lines`, `sections`, `middle_content_ratio`, and a `degradation_risk` level
-(`low`/`medium`/`high`).
+from a context string's own section layout — returns `total_lines`, `sections`,
+`middle_content_ratio` (fraction of all lines in the low-attention middle band — lines 30%-70% of the
+context; near-constant across documents by construction, kept for reference only), the actual risk
+signal `middle_spillover_ratio` (fraction of the middle band's own content coming from a section that
+*starts* outside the band — an undifferentiated blob spanning through the middle, vs. content organized
+with a header local to the band), and a `degradation_risk` level (`low`/`medium`/`high`) based on the
+spillover ratio.
 
 ## Context Poisoning Detection
 

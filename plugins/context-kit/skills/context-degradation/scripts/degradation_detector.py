@@ -131,7 +131,8 @@ def detect_lost_in_middle(
 
     Returns:
         Dict with keys: at_risk (list[int]), safe (list[int]),
-        recommendations (list[str]), degradation_score (float 0-1).
+        recommendations (list[str]), degradation_score (float 0-1),
+        invalid_positions (list[int], only present if any were out of range).
     """
     results: dict[str, Any] = {
         "at_risk": [],
@@ -141,19 +142,29 @@ def detect_lost_in_middle(
     }
 
     at_risk_count = 0
-    total_critical = len(critical_positions)
+    valid_count = 0
+    invalid_positions: list[int] = []
 
     for pos in critical_positions:
-        if pos < len(attention_distribution):
+        # A negative pos satisfies `pos < len(...)` and would silently index
+        # from the end of the list (a different, wrong position) rather than
+        # being rejected -- both bounds must be checked explicitly.
+        if 0 <= pos < len(attention_distribution):
+            valid_count += 1
             region = attention_distribution[pos]["region"]
             if region == "attention_degraded":
                 results["at_risk"].append(pos)
                 at_risk_count += 1
             else:
                 results["safe"].append(pos)
+        else:
+            invalid_positions.append(pos)
 
-    if total_critical > 0:
-        results["degradation_score"] = at_risk_count / total_critical
+    if invalid_positions:
+        results["invalid_positions"] = invalid_positions
+
+    if valid_count > 0:
+        results["degradation_score"] = at_risk_count / valid_count
 
     if results["at_risk"]:
         results["recommendations"].extend(
@@ -161,8 +172,14 @@ def detect_lost_in_middle(
                 "Move critical information to attention-favored positions",
                 "Use explicit markers to highlight critical information",
                 "Consider splitting context to reduce middle section",
-                f"{at_risk_count}/{total_critical} critical items are in degraded region",
+                f"{at_risk_count}/{valid_count} critical items are in degraded region",
             ]
+        )
+
+    if invalid_positions:
+        results["recommendations"].append(
+            f"{len(invalid_positions)} critical position(s) out of range and excluded: "
+            f"{invalid_positions}"
         )
 
     return results
@@ -183,8 +200,15 @@ def analyze_context_structure(context: str) -> dict[str, Any]:
         context: The full context string to analyze.
 
     Returns:
-        Dict with total_lines, sections list, middle_content_ratio,
-        and degradation_risk level (low / medium / high).
+        Dict with total_lines, sections list, middle_content_ratio (fraction of
+        all lines that fall in the middle band -- close to constant, ~30%-70% of
+        any document by construction, since sections always tile the full input;
+        kept for reference, not the risk signal), middle_spillover_ratio
+        (fraction of the middle band's own content coming from a section that
+        *starts* outside the band -- an undifferentiated blob spanning through
+        the middle, vs. content organized with headers local to it; this is
+        what degradation_risk is actually based on), and degradation_risk level
+        (low / medium / high).
     """
     lines = context.split("\n")
     sections: list[dict[str, Any]] = []
@@ -209,26 +233,38 @@ def analyze_context_structure(context: str) -> dict[str, Any]:
     n = len(lines)
     middle_start = int(n * 0.3)
     middle_end = int(n * 0.7)
+    band_width = middle_end - middle_start + 1
 
-    # Overlap between each section's [start, start+length) span and the middle
-    # band, not just whether the section *starts* in the band -- a section that
-    # starts before the middle band and runs through it (including the common
-    # single-section, no-headers case) must still count its middle-band lines.
-    middle_content = sum(
-        max(0, min(s["start"] + s["length"], middle_end + 1) - max(s["start"], middle_start))
-        for s in sections
-    )
+    def band_overlap(section: dict[str, Any]) -> int:
+        # Overlap between the section's [start, start+length) span and the
+        # middle band, not just whether the section *starts* in the band -- a
+        # section that starts before the band and runs through it (including
+        # the common single-section, no-headers case) still occupies it.
+        return max(
+            0,
+            min(section["start"] + section["length"], middle_end + 1)
+            - max(section["start"], middle_start),
+        )
 
+    # middle_content_ratio is a near-constant ~30%-70% of any document by
+    # construction (sections always exactly tile the full input, so this is
+    # really just "band width / n"), kept only for reference/debugging.
+    middle_content = sum(band_overlap(s) for s in sections)
     middle_ratio = middle_content / n if n > 0 else 0
-    # The middle band spans lines [middle_start, middle_end], ~40% of n by
-    # construction -- middle_ratio can't exceed that, so the "high" tier must
-    # sit below ~0.4, not 0.5, or it's unreachable for any input.
+
+    # middle_spillover_ratio is the actual signal: how much of the band is an
+    # undifferentiated blob spilling in from a section that started before it,
+    # vs. content that's cleanly organized with a header local to the band.
+    spillover_content = sum(band_overlap(s) for s in sections if s["start"] < middle_start)
+    spillover_ratio = spillover_content / band_width if band_width > 0 else 0
+
     return {
         "total_lines": n,
         "sections": sections,
         "middle_content_ratio": middle_ratio,
+        "middle_spillover_ratio": spillover_ratio,
         "degradation_risk": (
-            "high" if middle_ratio > 0.35 else "medium" if middle_ratio > 0.2 else "low"
+            "high" if spillover_ratio > 0.7 else "medium" if spillover_ratio > 0.3 else "low"
         ),
     }
 
@@ -607,6 +643,7 @@ if __name__ == "__main__":
     structure = analyze_context_structure(sample_context)
     print(f"  Lines: {structure['total_lines']}")
     print(f"  Middle content ratio: {structure['middle_content_ratio']:.2f}")
+    print(f"  Middle spillover ratio: {structure['middle_spillover_ratio']:.2f}")
     print(f"  Degradation risk: {structure['degradation_risk']}")
 
     # 2. Attention distribution (first 50 tokens for brevity)
