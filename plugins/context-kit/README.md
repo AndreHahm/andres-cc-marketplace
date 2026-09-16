@@ -1,8 +1,9 @@
 # context-kit
 
-Context-window management for Claude Code sessions — an automatic, hook-driven layer plus 5 model-invoked
-skills covering footprint auditing, failure diagnosis, the Write/Select/Compress/Isolate framework,
-targeted retrieval, and live context-window health.
+Context-window management and behavioral-mode switching for Claude Code sessions — an automatic,
+hook-driven layer, 5 model-invoked skills covering footprint auditing, failure diagnosis, the
+Write/Select/Compress/Isolate framework, targeted retrieval, and live context-window health, plus a
+`context-mode` skill that switches operating posture (dev/review/ship/admin) mid-session.
 
 `context-kit` tracks tool-call and context usage through a session, suggests strategic compaction at
 natural phase transitions and milestones (rather than letting auto-compact fire at an arbitrary point),
@@ -37,7 +38,16 @@ This is a multi-wave build. Waves shipped so far:
 - **`context-window-analyze`** — a live, in-the-moment check of the current context window's health and
   remediation options, narrower in scope than `context-audit`'s broader footprint audit.
 
-A future wave adds a `context-mode` skill for task-phase-aware behavioral switching.
+**Wave 3 — behavioral-mode switching:**
+
+- **`context-mode`** — switches operating posture (dev/review/ship/admin, first-pass scope) mid-session
+  without needing a fresh session. A `UserPromptSubmit` hook (`scripts/detect_mode.py`)
+  substring-matches the submitted prompt against `triggers.json`'s phrase lists and injects a
+  `[Context-Mode candidate(s): ...]` tag into context via `additionalContext`; the skill activates only
+  off that hook-delivered tag for the current turn — never from the same string merely appearing in
+  file, tool-output, or fetched content — or an explicit user request. `research`/`plan`/`draft`/`doc`
+  modes are deferred to a later pass; too little real-transcript evidence to build detection against
+  yet.
 
 ## Installation
 
