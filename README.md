@@ -32,6 +32,13 @@ Add this marketplace to Claude Code, then install the plugin(s) you want:
 /plugin install <plugin-name>@andres-cc-marketplace
 ```
 
+For example, to install `git-kit` and start a new branch with it:
+
+```
+/plugin install git-kit@andres-cc-marketplace
+/starting-work
+```
+
 ## Community
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to propose changes
