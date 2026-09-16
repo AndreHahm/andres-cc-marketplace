@@ -8,13 +8,17 @@ Usage: audit-context [--flagged] [--top <N>] [--json] [--help]
 Static inventory of context-contributing sources: skills, CLAUDE.md files, auto-memory
 files, plugins, and MCP servers.
 
-Scans:
-  ~/.claude/skills/*/SKILL.md        Size and word count
-  ~/.claude/skills/*/rules/*.md      Always-on files (count)
-  ~/.claude/skills/*/references/*.md On-demand files (count)
-  ~/CLAUDE.md and project CLAUDE.md  Size and word count (recursive)
-  ~/.claude/projects/*/memory/*.md   Auto-memory files (footprint only)
+Scans (user scope ~/.claude/skills, plus {project}/.claude/skills when present --
+either scope alone is enough; the other is skipped, not an error):
+  {scope}/skills/*/SKILL.md          Size and word count
+  {scope}/skills/*/references/*.md   On-demand files (count)
+  {scope}/skills/*/rules/*.md        On-demand skill resource (count) -- NOT the
+                                      project's always-on surface, see below
+  {project}/.claude/rules/**/*.md    Always-on files (count, discovered recursively)
+  ~/.claude/CLAUDE.md and project CLAUDE.md  Size and word count (recursive)
+  ~/.claude/projects/<this-project>/memory/*.md  Auto-memory files (footprint only)
   ~/.claude/settings.json            Plugins, MCP servers, and tool counts
+  Each enabled plugin's own .mcp.json / plugin.json "mcpServers"  Bundled MCP servers
 
 For session token/model/tool-usage/frustration-signal analysis, use session-kit's
 session-stats skill instead (if installed) — this script only inventories static,
@@ -28,7 +32,7 @@ Options:
 
 Exit codes:
   0  Success
-  1  ~/.claude/skills/ not found
+  1  Neither ~/.claude/skills/ nor {project}/.claude/skills/ found
 EOF
 }
 
@@ -52,10 +56,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 SKILLS_DIR="$HOME/.claude/skills"
+PROJECT_SKILLS_DIR="$(pwd)/.claude/skills"
 
-if [[ ! -d "$SKILLS_DIR" ]]; then
+# User scope is optional -- a machine with only project-local skills (no
+# ~/.claude/skills/ at all) is a real, supported setup, not an error. Only
+# fail if NEITHER scope has anything to scan.
+if [[ ! -d "$SKILLS_DIR" && ! -d "$PROJECT_SKILLS_DIR" ]]; then
   # shellcheck disable=SC2088  # tilde in user-facing message is intentional
-  echo "~/.claude/skills/ not found" >&2
+  echo "Neither ~/.claude/skills/ nor {project}/.claude/skills/ found" >&2
   exit 1
 fi
 
@@ -160,34 +168,39 @@ scan_skills_dir() {
   done
 }
 
-# Scan SKILL.md files -- user scope always, plus project scope (this run's
-# cwd) whenever it has its own .claude/skills/ and isn't the same directory
-# as the user scope (e.g. cwd == $HOME).
-scan_skills_dir "$SKILLS_DIR" "skills/"
+# Scan SKILL.md files -- user scope if present, plus project scope (this
+# run's cwd) whenever it has its own .claude/skills/ and isn't the same
+# directory as the user scope (e.g. cwd == $HOME). Neither scope is
+# mandatory on its own; the guard above already required at least one.
+if [[ -d "$SKILLS_DIR" ]]; then
+  scan_skills_dir "$SKILLS_DIR" "skills/"
+fi
 
-PROJECT_SKILLS_DIR="$(pwd)/.claude/skills"
 if [[ -d "$PROJECT_SKILLS_DIR" && "$PROJECT_SKILLS_DIR" != "$SKILLS_DIR" ]]; then
   scan_skills_dir "$PROJECT_SKILLS_DIR" "project-skills/"
 fi
 
 # .claude/rules/*.md -- the project's real always-on rule surface (unlike a
 # skill-bundled rules/ directory above, these load into every session
-# regardless of which skill, if any, is active).
+# regardless of which skill, if any, is active). Discovered recursively --
+# Claude Code itself loads rules from subdirectories like rules/frontend/,
+# per the official rules specification -- not just the top level.
 PROJECT_RULES_DIR="$(pwd)/.claude/rules"
 if [[ -d "$PROJECT_RULES_DIR" ]]; then
-  for rule_file in "$PROJECT_RULES_DIR"/*.md; do
-    [[ -f "$rule_file" ]] || continue
-    rule_name=$(basename "$rule_file")
+  while IFS= read -r rule_file; do
+    [[ -z "$rule_file" ]] && continue
+    rule_name="${rule_file#"$PROJECT_RULES_DIR"/}"
     s=$(file_size "$rule_file")
     w=$(word_count "$rule_file")
     entries+=("project-rules/$rule_name	$s	$w	always-on	RULES")
-  done
+  done < <(find "$PROJECT_RULES_DIR" -type f -name "*.md" 2>/dev/null)
 fi
 
-# CLAUDE.md files — global
-if [[ -f "$HOME/CLAUDE.md" ]]; then
-  s=$(file_size "$HOME/CLAUDE.md")
-  w=$(word_count "$HOME/CLAUDE.md")
+# CLAUDE.md files — global (the real path is ~/.claude/CLAUDE.md, not ~/CLAUDE.md)
+GLOBAL_CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+if [[ -f "$GLOBAL_CLAUDE_MD" ]]; then
+  s=$(file_size "$GLOBAL_CLAUDE_MD")
+  w=$(word_count "$GLOBAL_CLAUDE_MD")
   flag="-"
   [[ $s -gt 2048 ]] && flag="LARGE"
   entries+=("CLAUDE.md (global)	$s	$w	always-on	$flag")
@@ -211,22 +224,27 @@ if [[ "$(pwd)" != "$HOME" ]]; then
   done < <(find "$(pwd)" -maxdepth 3 -name "CLAUDE.md" -type f 2>/dev/null)
 fi
 
-# Auto-memory files
-for mem_dir in "$HOME"/.claude/projects/*/memory/; do
-  [[ -d "$mem_dir" ]] || continue
-  project_hash=$(basename "$(dirname "$mem_dir")")
-  for mem_file in "$mem_dir"*.md; do
+# Auto-memory files -- scoped to the CURRENT project only. Claude Code
+# stores each project's memory under ~/.claude/projects/<encoded-cwd>/memory/,
+# where <encoded-cwd> replaces every ".", ":", "/", and "\" in the absolute
+# project path with "-" (verified against real on-disk project directories
+# for this repo, including a worktree path containing a literal "." segment
+# -- not guessed, and not the same as scanning every project's memory, which
+# would let unrelated projects dominate this session's always-on total).
+RAW_CWD=$(pwd -W 2>/dev/null || pwd)
+PROJECT_HASH=$(printf '%s' "$RAW_CWD" | sed 's/[.:\/\\]/-/g')
+CURRENT_MEMORY_DIR="$HOME/.claude/projects/$PROJECT_HASH/memory"
+if [[ -d "$CURRENT_MEMORY_DIR" ]]; then
+  for mem_file in "$CURRENT_MEMORY_DIR"/*.md; do
     [[ -f "$mem_file" ]] || continue
     mem_name=$(basename "$mem_file")
     s=$(file_size "$mem_file")
     w=$(word_count "$mem_file")
     flag="-"
     [[ $w -gt 300 ]] && flag="LARGE"
-    # Shorten project hash for display
-    short_hash="${project_hash:0:20}"
-    entries+=("memory/${short_hash}…/$mem_name	$s	$w	always-on	$flag")
+    entries+=("memory/$mem_name	$s	$w	always-on	$flag")
   done
-done
+fi
 
 # Settings: plugins and MCP servers
 SETTINGS_FILE="$HOME/.claude/settings.json"
@@ -252,6 +270,31 @@ if [[ -f "$SETTINGS_FILE" ]]; then
     mcp_count=$(jq '.mcpServers // {} | keys | length' "$SETTINGS_FILE" 2>/dev/null || echo 0)
     plugin_count_json="$plugin_count"
     plugin_count_display="$plugin_count"
+
+    # Plugins can also bundle their own MCP servers via a plugin-root
+    # .mcp.json or an inline "mcpServers" field in plugin.json -- both
+    # auto-start when the plugin is enabled, and settings.json's own
+    # mcpServers object never sees them, so count them separately. Checks
+    # the same three install-path patterns this repo's own
+    # setup-skill-improver.sh already uses (direct install, single-level
+    # marketplace cache, nested marketplace cache).
+    for pname in "${plugin_names[@]}"; do
+      for plugin_dir in \
+        "$HOME/.claude/plugins/$pname" \
+        "$HOME/.claude/plugins/cache"/*/"$pname" \
+        "$HOME/.claude/plugins/cache"/*/*/"$pname"; do
+        [[ -d "$plugin_dir" ]] || continue
+        if [[ -f "$plugin_dir/.mcp.json" ]]; then
+          n=$(jq 'keys | length' "$plugin_dir/.mcp.json" 2>/dev/null || echo 0)
+          mcp_count=$((mcp_count + n))
+        fi
+        if [[ -f "$plugin_dir/plugin.json" ]]; then
+          n=$(jq '.mcpServers // {} | keys | length' "$plugin_dir/plugin.json" 2>/dev/null || echo 0)
+          mcp_count=$((mcp_count + n))
+        fi
+        break
+      done
+    done
   else
     # jq-free fallback can reliably count MCP servers (mcpServers has no
     # per-entry enabled/disabled state -- every top-level key is an active
