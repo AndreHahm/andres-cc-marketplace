@@ -89,6 +89,12 @@ done
 
 [ -n "$SERVICE" ] || die "no --service given (the Cloud Run service to diagnose)"
 case "$LIMIT" in (*[!0-9]*|'') die "--limit must be a positive integer (got '$LIMIT')" ;; esac
+# These land inside double-quoted Logging-filter literals below; a quote or backslash
+# would close the literal and inject filter syntax, changing which log entries gcloud
+# returns rather than just what "SERVICE"/"REGION"/"RESOURCE_TYPE" should mean.
+for v in "$SERVICE" "$REGION" "$RESOURCE_TYPE"; do
+  case "$v" in *'"'*|*'\'*) die "invalid character in '$v' (no quotes or backslashes)" ;; esac
+done
 
 # gcloud is required for the real run; --print-command is a dry run (introspection)
 # and only resolves the project from gcloud config when it's available.

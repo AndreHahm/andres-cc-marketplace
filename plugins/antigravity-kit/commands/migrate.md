@@ -16,6 +16,9 @@ Run the tool in **dry-run first, always**:
 
 `agy-migrate $ARGUMENTS`
 
+If `$ARGUMENTS` already contains `--apply`, remove it for this first run and report the
+dry-run result before you apply anything.
+
 Then read the report back to the user, grouped by unit, and explain:
 
 - What will be **linked live** (skills stay in `~/.claude/skills`; Antigravity reads

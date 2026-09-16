@@ -15,13 +15,19 @@ current changes, then reconcile the findings yourself (you are the final judge).
 Scope/flags: $ARGUMENTS
 
 Do this:
-1. Capture the diff: `git diff` (or the range/paths in the scope above; default to
-   uncommitted + last commit if unspecified).
-2. Delegate the review to agy (pro tier) — pipe the diff in on stdin:
-   `git diff | agy-delegate --tier pro -`
-   with an instruction to find correctness/security/performance bugs, be skeptical, and
-   list each as `file:line — issue`. If `--adversarial` is set, also have it challenge the
-   design decisions and tradeoffs, not just line bugs.
+1. Capture the diff: use the range/paths in the scope above. If unspecified, default to
+   uncommitted + last commit with `git diff HEAD~1` (plain `git diff` omits staged work).
+2. Delegate the review to agy (pro tier). `agy-delegate` reads `-` as "read the whole
+   prompt from stdin" — any argument after `-` would replace it, not append to it — so the
+   review instruction has to go through that same stdin block, ahead of the diff:
+   ```shell
+   {
+     printf '%s\n' 'Find correctness/security/performance bugs. Be skeptical. List each as file:line — issue.'
+     git diff
+   } | agy-delegate --tier pro -
+   ```
+   If `--adversarial` is set, add an instruction to also challenge the design decisions and
+   tradeoffs, not just line bugs, to that same stdin block.
 3. **Reconcile**: for each finding, corroborate it against the actual code. Drop false
    positives; keep what's real. Agreement across two model families is a stronger signal;
    disagreement is a prompt to look closer.

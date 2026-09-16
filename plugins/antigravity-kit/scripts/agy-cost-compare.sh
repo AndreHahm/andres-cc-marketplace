@@ -89,9 +89,15 @@ ELAPSED=$(( END - START ))
 IN_CHARS=${#PROMPT}
 OUT_CHARS=${#OUT}
 
+case "$TIER" in
+  pro) GEMINI_DECK="Gemini Pro" ;;
+  *)   GEMINI_DECK="Gemini Flash" ;;
+esac
+
 awk -v ic="$IN_CHARS" -v oc="$OUT_CHARS" -v cpt="$CPT" \
     -v cin="$CLAUDE_IN_PER_M" -v cout="$CLAUDE_OUT_PER_M" \
     -v gin="$GEMINI_IN_PER_M" -v gout="$GEMINI_OUT_PER_M" \
+    -v gdeck="$GEMINI_DECK" \
     -v el="$ELAPSED" 'BEGIN {
   it = ic / cpt; ot = oc / cpt;
   cc = it*cin/1e6 + ot*cout/1e6;
@@ -104,7 +110,7 @@ awk -v ic="$IN_CHARS" -v oc="$OUT_CHARS" -v cpt="$CPT" \
   printf "elapsed: %ds\n\n", el;
   printf "%-14s %12s %12s\n", "deck", "in $/1M", "out $/1M";
   printf "%-14s %12.2f %12.2f\n", "Claude", cin, cout;
-  printf "%-14s %12.2f %12.2f\n\n", "Gemini Flash", gin, gout;
+  printf "%-14s %12.2f %12.2f\n\n", gdeck, gin, gout;
   printf "if priced as Claude: $%.6f\n", cc;
   printf "actual on Gemini   : $%.6f\n", gc;
   printf "saved on this task : $%.6f  (%.1fx cheaper)\n", save, ratio;

@@ -147,6 +147,14 @@ def write_json(path, obj, mode=None):
     after `os.replace` leaves the data at the ambient umask for the whole write."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
+    if mode is None:
+        # os.replace makes the temp file's mode the destination's mode -- an existing
+        # 0600 file (e.g. a credential-bearing mcp_config.json) would otherwise silently
+        # widen to the ambient umask on every rewrite that doesn't pass mode= explicitly.
+        try:
+            mode = os.stat(path).st_mode & 0o777
+        except OSError:
+            mode = None
     if mode is not None:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -198,16 +206,19 @@ def default_roots():
 
 
 def git_root(path):
+    git = shutil.which("git")
+    if not git:
+        return None
     try:
         out = subprocess.run(
-            ["git", "-C", path, "rev-parse", "--show-toplevel"],
+            [git, "-C", path, "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
             timeout=10,
         )
         if out.returncode == 0:
             return out.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         pass
     return None
 
@@ -1198,9 +1209,12 @@ def run_native_import(stage, plugins):
             shutil.copytree(src, dst, symlinks=False, ignore=ignore)
     env = dict(os.environ, HOME=stage)
     env.pop("CLAUDE_CONFIG_DIR", None)
+    agy = shutil.which("agy")
+    if not agy:
+        return 127, "agy is not on PATH"
     try:
         r = subprocess.run(
-            ["agy", "plugin", "import", "claude"],
+            [agy, "plugin", "import", "claude"],
             cwd=stage,
             env=env,
             capture_output=True,
@@ -1631,12 +1645,13 @@ def main(argv=None):
         os.path.abspath(os.path.expanduser(r)) for r in args.roots.split(",") if r
     ] or default_roots()
 
-    print(f"{C['hdr']}Claude Code{C['off']}  {claude_dir()}")
-    print(f"{C['hdr']}Antigravity{C['off']}  {gemini_config()}")
-    print(
-        f"{C['hdr']}Scanning{C['off']}     {len(roots)} root(s)"
-        f"{'' if args.roots else ' (override with --roots)'}"
-    )
+    if not args.json:
+        print(f"{C['hdr']}Claude Code{C['off']}  {claude_dir()}")
+        print(f"{C['hdr']}Antigravity{C['off']}  {gemini_config()}")
+        print(
+            f"{C['hdr']}Scanning{C['off']}     {len(roots)} root(s)"
+            f"{'' if args.roots else ' (override with --roots)'}"
+        )
 
     mf = Manifest()
     plan = Plan()
