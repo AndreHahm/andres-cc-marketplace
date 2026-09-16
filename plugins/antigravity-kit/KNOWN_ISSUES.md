@@ -12,8 +12,8 @@ Git-tracked record of gaps discovered while transferring `antigravity-kit` into 
 
 ## Issue-number links reference an unverified tracker (found 2026-09-16)
 
-**Component:** `README.md` and `docs/TROUBLESHOOTING.md`, which link 5 distinct GitHub issue numbers — `#6`, `#10`, `#37`, `#11`, `#15` — as `andrehahm/andres-cc-marketplace` issue links.
+**Component:** `README.md` and `docs/TROUBLESHOOTING.md`, which link 3 distinct GitHub issue numbers — `#6`, `#10`, `#37` — as `andrehahm/andres-cc-marketplace` issue links.
 
 **Symptom:** these issue numbers most plausibly originate from this plugin's old standalone source repo's own issue tracker (from before the transfer into this marketplace), not from `andres-cc-marketplace`'s actual tracker. Low issue numbers in a shared, busier marketplace repo's tracker are near-certain to resolve to unrelated items.
 
-**Status:** unverified — no network access was available during the transfer session that authored these links. Anyone touching these docs should verify each of the 5 links against `andres-cc-marketplace`'s real issue tracker before treating them as accurate, or open fresh tracking issues in this marketplace's tracker and repoint the links.
+**Status:** unverified — no network access was available during the transfer session that authored these links. Anyone touching these docs should verify each of the 3 links against `andres-cc-marketplace`'s real issue tracker before treating them as accurate, or open fresh tracking issues in this marketplace's tracker and repoint the links.

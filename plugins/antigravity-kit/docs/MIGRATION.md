@@ -169,13 +169,14 @@ the directory holding `hooks.json`, so it is rewritten to `./`.
 | `projects/<home>/memory/` | `config/plugins/claude-code-memory/rules/` | generated, `trigger: always_on` |
 | `projects/<repo>/memory/` | `<repo>/.agents/rules/` | generated + project registration |
 | `.mcp.json`, `projects.*.mcpServers`, desktop config | `config/mcp_config.json` | merged, `url`→`serverUrl` |
-| `hasTrustDialogAccepted` | `trustedWorkspaces` | direct |
+| `hasTrustDialogAccepted` | `trustedWorkspaces` | widening (disables Antigravity's own trust prompt) — proposal only, requires `--apply-permissions`, same gate as permissions below |
 | `permissions.allow` `Bash(...)` | `command(...)` | lossy, widening — proposal only |
 | `permissions.allow` `Read/WebFetch/WebSearch/Skill/mcp__*` | — | no equivalent |
-| `model`, `effortLevel`, `env` | — | reported, never written |
+| `model`, `effortLevel`, `env` (Claude's own settings.json) | — | reported, never written |
 | `projects/**/*.jsonl` | — | **impossible**, see below |
 | `tasks/`, `plans/`, `file-history/`, `jobs/`, `paste-cache/` | — | no counterpart |
-| credentials | — | different auth; never copy |
+| Claude Code's own auth credentials | — | different auth system entirely; never copied |
+| MCP server `env` block (API keys, tokens) | `mcp_config.json`'s own `env` | copied verbatim — the server needs it to work; the destination file is `chmod 0600`'d, but the secret now lives in a second file |
 
 ### Why sessions cannot be migrated
 
