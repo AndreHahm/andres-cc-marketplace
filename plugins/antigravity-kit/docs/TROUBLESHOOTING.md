@@ -147,6 +147,12 @@ whether the run admits it (issue #10, unverified against this marketplace's own 
 On classifiable failures the wrapper prints a machine-readable line to stderr:
 `AGY_SIGNAL {"status":"...","reason":"...","model":"...","retry":"..."}`
 
+**These codes are per-engine — the same number means something different in
+`cloud-debug.sh` or `agy-media.sh` than it does in `agy-delegate.sh`.** Look up the
+script that actually failed, not just the number.
+
+### `agy-delegate` / `agy-job` (and anything that calls through them)
+
 | exit | meaning | what to do |
 |---|---|---|
 | 0 | success | — |
@@ -159,9 +165,43 @@ On classifiable failures the wrapper prints a machine-readable line to stderr:
 | 13 | agy not on PATH | install the Antigravity CLI |
 | 14 | model unavailable | the `--model` / `tier_*` / `default_model` name isn't in `agy models` (agy ≥ 1.1.2 hard-fails instead of silently downgrading) — run `agy models` and fix the name |
 | 15 | permission denied | a tool needed permission headless — **both** shapes: agy 1.1.3's soft deny (rc 0, empty stdout) and 1.1.13's hard error (`user denied permission`). Add a `permissions.allow` rule covering the target, or pass `--yolo`; run on a branch |
-| 16 | python3 not on PATH (`agy-migrate` only) | install python3 (`brew install python3`) |
-| 17 | one or more migration steps failed (`agy-migrate` only) | read the named steps; the run is still revertible with `agy-migrate --uninstall --apply` |
-| 18 | prerequisite missing (`agy-migrate` only) | no Claude Code config dir, or agy has never been run |
+
+### `agy-migrate` only
+
+| exit | meaning | what to do |
+|---|---|---|
+| 16 | python3 not on PATH | install python3 (`brew install python3`) |
+| 17 | one or more migration steps failed | read the named steps; the run is still revertible with `agy-migrate --uninstall --apply` |
+| 18 | prerequisite missing | no Claude Code config dir, or agy has never been run |
+
+### `cloud-debug.sh` only
+
+| exit | meaning | what to do |
+|---|---|---|
+| 0 | ok (digest printed, or query succeeded with no matching logs) | — |
+| 1 | usage error | check flags |
+| 2 | gcloud read failed (generic) | read the relayed stderr |
+| 3 | permission denied — needs `roles/logging.viewer` | grant the role, or ask an owner to |
+| 4 | gcloud not on PATH | install the Cloud SDK |
+| 5 | agy digest step failed | agy-delegate's own stderr is surfaced — see the `agy-delegate` table above |
+
+### `agy-media.sh` only
+
+| exit | meaning | what to do |
+|---|---|---|
+| 0 | ok | — |
+| 1 | usage error | check flags |
+| 4 | file not found | check the input path |
+| 5 | unsupported format | convert first (`--convert`, or manually) |
+| *(other)* | passed through from `agy-delegate` | see the `agy-delegate` table above (2 failed, 3 empty, 10 quota, 11 auth, 12 timeout, 13 missing, 14 model, 15 permission) |
+
+### `agy-trace.sh` only
+
+| exit | meaning | what to do |
+|---|---|---|
+| 0 | ok | — |
+| 1 | usage error | check flags |
+| 2 | transcript not found | confirm the conversationId, or that the delegation actually ran |
 
 ---
 

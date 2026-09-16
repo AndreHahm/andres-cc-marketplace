@@ -4,7 +4,7 @@ description: >-
   Claude infers the root cause and proposes a fix. Read-only by default; --apply writes the fix to
   a branch.
 argument-hint: "[--service <name>] [--region <r>] [--project <id>] [--since 1h] [--limit 200] [--apply]"
-allowed-tools: Bash(cloud-debug:*), Bash(gcloud config get-value:*), Bash(git status:*), Bash(git checkout -b:*), Bash(git stash:*), Bash(git diff:*), Edit
+allowed-tools: Bash(cloud-debug:*), Bash(gcloud config get-value:*), Bash(git status:*), Bash(git checkout -b:*), Bash(git stash:*), Bash(git diff:*), Edit, Write
 ---
 
 > **Invocation:** Run as /antigravity-kit:cloud-run-debug in the Claude Code prompt. This command
