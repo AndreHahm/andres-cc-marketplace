@@ -158,10 +158,14 @@ The full hook wiring, by event:
   passing, commits, builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
   from transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds — its
-  own throttling (60s between checks below the warning threshold, once per threshold above it) keeps
-  this cheap despite firing on every call, and matters more once scoped this broadly rather than only
-  to `Bash|Agent|Task`: without it, a read-heavy session (e.g. `Read`/`Grep`/`Glob`-only) would never
-  get a context-usage nudge at all.
+  own throttling (60s between checks below the warning threshold, once per threshold above it) gates
+  the *emit*, not the interpreter launch itself, and matters more once scoped this broadly rather
+  than only to `Bash|Agent|Task`: without it, a read-heavy session (e.g. `Read`/`Grep`/`Glob`-only)
+  would never get a context-usage nudge at all. Unlike `compact-track-and-suggest.sh` (measured at
+  550-750ms on Windows, which required `async: true`), this hook's own real per-invocation cost was
+  directly benchmarked (10 runs, this platform): **83-97ms, mean ~88ms** — an order of magnitude
+  cheaper, well within `PostToolUse`'s synchronous budget, so it stays synchronous by measurement,
+  not by assumption.
 - **`PreCompact`** — `compact-instructions.sh` writes best-effort stderr/`systemMessage` guidance on
   what to preserve through compaction; this is a nudge, not a guarantee (stderr is verbose-mode-only
   by default). `PreCompact` **does** support `hookSpecificOutput.additionalContext` per Claude Code's
