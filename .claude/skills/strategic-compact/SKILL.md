@@ -158,6 +158,15 @@ This skill works with hooks that:
 
 Works automatically via plugin hooks. No manual configuration needed for the default behavior (see
 the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_LOGS_DIR` env vars).
+
+**State and side effects (disclosed, found by security-reviewer, 2026-09-17):** these hooks write to
+and read from `~/.claude/strategic-compact/` — per-session tool-call counters, thresholds, and
+generated suggestion text only, nothing else. `compact-session-init.sh` deletes `session-*` files
+older than 24 hours from that directory on every session start (`find ... -mtime +1 -delete`), and a
+stale-lock bust (`rm -rf`) can remove a lock directory under the same path. On macOS/Linux, a detected
+suggestion can also spawn a desktop-notification process (`osascript`/`notify-send`) — best-effort,
+fails silently if unavailable.
+
 The full hook wiring, by event:
 
 - **`SessionStart`** — `compact-session-init.sh` (always) initializes tool-call tracking for the new
@@ -216,12 +225,13 @@ vs. without skill" prompt-completion difference to compare, since the skill neve
 model reading and following its own body text to act; the hooks fire deterministically regardless.
 The meaningful test surface is the hook scripts' own input/output contracts, verified directly
 (stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
-LLM-judged eval — see `hook-development/scripts/test-hook.sh` and this plugin's own Build-time
-verification record. The checklist below documents that direct-verification surface, and the persisted
-`scripts/smoke_test.py` exercises `compact-milestone-detector.sh` and `compact-stop-check.sh` directly
-against this same stdin/stdout contract.
+LLM-judged eval — see `hook-development/scripts/test-hook.sh`. The checklist below documents that
+direct-verification surface, and the persisted `scripts/smoke_test.py` exercises
+`compact-milestone-detector.sh`, `compact-stop-check.sh`, and `compact-session-init.sh` directly
+against this same stdin/stdout contract, plus imports and cross-checks all 3 shared Python hooks
+(`context-monitor.py`, `pre-compact.py`, `post-compact-restore.py`).
 
-**Last dated run record:** `scripts/smoke_test.py` — 8/8 checks passing as of 2026-09-17.
+**Last dated run record:** `scripts/smoke_test.py` — 14/14 checks passing as of 2026-09-17.
 
 **Verify this skill's hooks activate on:**
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/

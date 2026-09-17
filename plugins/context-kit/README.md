@@ -86,6 +86,11 @@ values fall back to safe, no-op-if-unconfigured defaults:
 doesn't assume any particular project's plan/log convention. Set them if your project keeps plan/log
 files somewhere `context-kit` should read.
 
+`strategic-compact`'s hooks also write to `~/.claude/strategic-compact/` (per-session tool-call
+counters, thresholds, and generated suggestion text only) and delete `session-*` files older than 24
+hours from that directory on every session start. On macOS/Linux, a detected suggestion can also
+trigger a best-effort desktop notification (`osascript`/`notify-send`).
+
 ## Declared plugin language
 
 Python. New scripts added to this plugin should be Python going forward, per this marketplace's
