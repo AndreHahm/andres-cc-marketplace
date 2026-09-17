@@ -139,8 +139,8 @@ evidence bundle instead of dispatching anything. In this mode:
 
 Both modes: also run the Testing static heuristic directly (no dispatch — this stays
 `plugin-grader`'s own direct check, per `plugin-auditor`'s dispatch table's "Not This Skill's Job"):
-`Glob` for `evals/`, `evals.json`, `benchmark.json`; `Grep` SKILL.md for a Testing & Validation
-section. In evidence-only mode, prefer the scope manifest's own smoke-test/eval inventory if it
+`Glob` for `evals/`, `evals.json`, `benchmark.json`, `eval-*/*/grading.json`; `Grep` SKILL.md for a
+Testing & Validation section. In evidence-only mode, prefer the scope manifest's own smoke-test/eval inventory if it
 already states this instead of re-deriving it.
 
 ### 4. Score Dimensions and Compute

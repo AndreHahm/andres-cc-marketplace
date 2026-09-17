@@ -27,7 +27,7 @@ The four remaining dimensions (Simplicity, Testing, Efficiency, Actionability) d
 | 5 | `maintainability` | 10% | `consistency-reviewer` (plugin mode), `skilldir-reviewer` Step 5 (Duplicated Content) axis only — component mode | No drift/duplication | Minor duplication noted | 1 Major drift/duplication | 2+ Critical findings (score 0) — there is no hard gate for this dimension, so pervasive Major-only drift floors at 4.0 via the generic formula, not 0; only a genuine Critical count reaches 0 |
 | 6 | `robustness` | 10% | `scripts-reviewer` (only if `scripts/` present — otherwise `is_na: true`, score 10) | No findings | Minor only | 1 Major logic bug | Critical (script fails on documented input) |
 | 7 | `simplicity` | 5% | R13 tier (`plugin-rulebook`), orphaned-file findings | R13 OK/Weak Warning tier, no orphans | R13 Soft Warning tier, justified | R13 Warning tier unjustified, or 2+ orphaned files | R13 Critical tier, no recorded R13/R18 exception |
-| 8 | `testing` | 5% | Static heuristic (no dispatch) | `evals/` + `evals.json` + a completed `benchmark.json` | `evals/`+`evals.json` exist, no run evidence | No `evals/`, but SKILL.md has a concrete Testing & Validation section | Neither — score 0, triggers Gate D |
+| 8 | `testing` | 5% | Static heuristic (no dispatch) | `evals/` + `evals.json` + completed run evidence (`benchmark.json` for Full Pipeline mode, or `eval-*/{with_skill,baseline}/grading.json` for Quick Workflow mode — the same two accepted paths R28's `run_evidence_required_paths` already lists) | `evals/`+`evals.json` exist, no run evidence | No `evals/`, but SKILL.md has a concrete Testing & Validation section | Neither — score 0, triggers Gate D |
 | 9 | `uniqueness` | 5% | `activation-reviewer` | No overlap findings | Minor/touching-boundary only | 1 Major (domain-overlap/cross-type) | Critical (exact-phrase collision) |
 | 10 | `safety_risk_handling` | 5% | `plugin-rulebook` R6 (tool scoping)/R9 (credentials) findings, `security-reviewer` (permission risk, prompt-injection surface, PII/credential-leakage beyond simple regex), `hook-reviewer` (if hooks present), `scripts-reviewer` (credential/injection findings) | No findings, R6-compliant scoping | Minor only | 1 Major (missing confirmation on a risky action) | Critical (destructive action with no guard, or `Bash(*)`) |
 | 11 | `efficiency` | 3% | `plugin-rulebook` R13+R18 tiers, Quick Start token check | R13 OK/Weak Warning tier, no R18 Warning-tier-or-worse blocks, concise Quick Start | R13 Soft Warning tier, or 1-2 R18 Warning-tier blocks | R13 Warning tier, or 3+ R18 Warning-tier blocks | R13 Critical tier, or an unremediated R18 Critical-tier block |
@@ -50,7 +50,8 @@ rule.
 **This does not replace the `testing` dimension (8) above — the two intentionally coexist, scoring
 related but distinct things:**
 - `testing` (dimension 8, its own Static heuristic, Gate D) measures whether real run *evidence* exists
-  (`evals/`+`evals.json`+a completed `benchmark.json`) — a softer signal, capped at 8.0 (non-blocking)
+  (`evals/`+`evals.json`+completed run evidence, either accepted path per the Dimension Table row above)
+  — a softer signal, capped at 8.0 (non-blocking)
   when it scores 0.0, predating R28-R31 and left as-is by that addition (`plugin-grader/references/
   rubric.md`/`gates-and-rollup.md` are not named in the R28-R32 concept's own implementation checklist).
 - R28/R29/R31 (via `rule_compliance`, dimension 3, Gate A) measure whether the *rule-level structural
@@ -63,7 +64,7 @@ related but distinct things:**
   6.0) at once; per `gates-and-rollup.md` step 5, `final_score` takes the minimum of all triggered caps,
   so Gate A's 6.0 wins over Gate D's 8.0 in that case — the newer, rule-level signal is the one that
   actually determines the visible cap when both apply.
-- A skill can also fail only one: e.g. `evals/`+`evals.json` exist with a completed `benchmark.json`
+- A skill can also fail only one: e.g. `evals/`+`evals.json` exist with completed run evidence
   (satisfies R28's PASS path and `testing`'s 10-band) but the SKILL.md's own Testing & Validation section
   is missing a required subsection (R29 REQUIRED-FAILs `rule_compliance` regardless) — only Gate A fires
   there, `testing` stays ungated.
