@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Persisted smoke test for context-window-analyze: this skill has no scripts/ helper
 (pure model-applied guidance + a fixed report template), so the meaningful checks are
-structural -- frontmatter validity and the documented Quality Gates about Option 4's
-real session-kit reference and the R18 oversized-block exception notes."""
+structural -- frontmatter validity, the report template/examples reference link (moved
+out of SKILL.md by the 2026-09-17 R18 fix), and the documented Quality Gate about
+Option 4's real session-kit reference."""
 
 import pathlib
 import re
@@ -10,6 +11,7 @@ import sys
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
+EXAMPLES_MD = SKILL_DIR / "references" / "context-window-examples.md"
 
 
 def check_frontmatter():
@@ -25,13 +27,26 @@ def check_frontmatter():
     return True, "frontmatter present and closed"
 
 
+def check_skill_md_links_the_examples_reference():
+    # After the R18 fix (2026-09-17), the report template + worked examples live in
+    # references/context-window-examples.md, not inline -- SKILL.md must still point
+    # readers at it from Step 3.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    if "references/context-window-examples.md" not in text:
+        return False, "SKILL.md no longer points at references/context-window-examples.md"
+    if not EXAMPLES_MD.exists():
+        return False, "references/context-window-examples.md does not exist on disk"
+    return True, "SKILL.md correctly points at the real references/context-window-examples.md"
+
+
 def check_option4_names_real_session_kit_skill():
     # Quality gate: "Option 4 always names session-kit's real session-handoff skill
     # (trigger phrase, not a command) and its real .claude/handoffs/ storage location."
-    text = SKILL_MD.read_text(encoding="utf-8")
+    # Lives in references/context-window-examples.md since the R18 fix moved it there.
+    text = EXAMPLES_MD.read_text(encoding="utf-8")
     option4_idx = text.find("Option 4")
     if option4_idx == -1:
-        return False, "Option 4 section not found"
+        return False, "Option 4 section not found in references/context-window-examples.md"
     option4_section = text[option4_idx : option4_idx + 500]
     if "session-handoff" not in option4_section:
         return False, "Option 4 does not name the real session-handoff skill"
@@ -44,19 +59,16 @@ def check_option4_names_real_session_kit_skill():
     return True, "Option 4 correctly names session-handoff as a trigger phrase, not a command"
 
 
-def check_every_oversized_block_has_r18_exception_note():
-    # Every fenced ```text block over the rulebook's line thresholds must carry its
-    # own stated "R18 exception (recorded)" note -- count blocks vs. notes.
+def check_skill_md_has_no_oversized_blocks():
+    # After the R18 fix, SKILL.md itself must carry no ```text block over the
+    # rulebook's 20-line weak-warning threshold -- everything that size moved to
+    # references/context-window-examples.md.
     text = SKILL_MD.read_text(encoding="utf-8")
     fenced_blocks = re.findall(r"```text\n(.*?)```", text, re.DOTALL)
     oversized = [b for b in fenced_blocks if b.count("\n") > 20]
-    exception_notes = text.count("R18 exception (recorded)")
-    if len(oversized) > exception_notes:
-        return False, f"{len(oversized)} oversized block(s) but only {exception_notes} R18 note(s)"
-    return (
-        True,
-        f"{len(oversized)} oversized block(s), all covered by R18 notes ({exception_notes} total)",
-    )
+    if oversized:
+        return False, f"SKILL.md still has {len(oversized)} oversized block(s) post-R18-fix"
+    return True, f"SKILL.md has {len(fenced_blocks)} fenced text block(s), none oversized"
 
 
 def check_health_thresholds_table_is_ordered():
@@ -72,8 +84,9 @@ def check_health_thresholds_table_is_ordered():
 
 CHECKS = [
     check_frontmatter,
+    check_skill_md_links_the_examples_reference,
     check_option4_names_real_session_kit_skill,
-    check_every_oversized_block_has_r18_exception_note,
+    check_skill_md_has_no_oversized_blocks,
     check_health_thresholds_table_is_ordered,
 ]
 

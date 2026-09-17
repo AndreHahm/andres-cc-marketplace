@@ -8,7 +8,7 @@ description: >-
   the provenance boundary below), or when the user explicitly asks to switch, set, or check the
   current context mode (e.g. "switch to ship mode", "what mode are we in", "go back to dev mode").
   This skill only changes operating posture — it does not itself do the dev/review/ship/admin work.
-allowed-tools: Read, AskUserQuestion, Skill(git-kit:starting-work), Skill(plugin-rulebook)
+allowed-tools: Read, AskUserQuestion
 ---
 
 # Context Mode
