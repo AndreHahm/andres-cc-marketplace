@@ -124,7 +124,9 @@ to read it.
 
 ## Testing & Validation
 
-No `evals/context-window-analyze/evals.json` — this skill is guidance the model applies directly (an estimation heuristic + a fixed report template), not a deterministic tool with branching logic to eval.
+No `evals/context-window-analyze/evals.json` — this skill is guidance the model applies directly (an estimation heuristic + a fixed report template), not a deterministic tool with branching logic to eval. The structural claims this section documents (the examples-reference link, Option 4's real session-kit reference, no oversized blocks) are covered by the persisted `scripts/smoke_test.py`.
+
+**Last dated run record:** `scripts/smoke_test.py` — 6/6 checks passing as of 2026-09-17.
 
 **Verify this skill activates on:**
 - "how full is my context"
