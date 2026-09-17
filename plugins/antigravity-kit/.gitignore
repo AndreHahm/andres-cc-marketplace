@@ -1,8 +1,0 @@
-.DS_Store
-*.pyc
-__pycache__/
-/tmp/agy-delegate.err
-
-
-#Ignore vscode AI rules
-.github/instructions/codacy.instructions.md

@@ -127,7 +127,7 @@ Worth knowing if you would rather do it by hand: an Antigravity rule without
 `trigger: always_on` in its frontmatter is ignored with no error and no warning,
 workspace `.agents/` is ignored entirely unless the session is bound to an agy project,
 and `agy plugin import claude` finds nothing on a current Claude Code because it only
-looks one directory deep. [`docs/MIGRATION.md`](docs/MIGRATION.md) has the full layout
+looks one directory deep. [`docs/agy-migration.md`](../../docs/agy-migration.md) has the full layout
 reference, the compatibility matrix, and how each of these was measured.
 
 ---
@@ -214,7 +214,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <details>
 <summary><b>🚧 Guardrails &amp; known limits</b></summary>
 
-> **Something broken?** See **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — symptom-first fixes for Windows/WSL, writes that silently don't happen, quota/auth/timeout codes, and updating.
+> **Something broken?** See **[docs/agy-troubleshooting.md](../../docs/agy-troubleshooting.md)** — symptom-first fixes for Windows/WSL, writes that silently don't happen, quota/auth/timeout codes, and updating.
 >
 > **Known, unresolved gaps** (Mirror Sync registration, unverified issue-tracker links): see **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)**.
 
@@ -272,8 +272,7 @@ agents/           antigravity-delegate subagent (file work runs on Gemini, not C
 commands/         slash commands (agy-delegate, agy-review, agy-research, agy-media, agy-cloud-run-debug, agy-setup, agy-status, agy-result, agy-cancel, agy-migrate)
 hooks/            SessionStart: agy health check + auto-inject the cost-aware policy; UserPromptSubmit: delegation nudge
 bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · agy-cloud-debug · agy-trace · agy-media · agy-measure-session · agy-migrate
-scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate
-docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved · templates/
+scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate · tests/
 KNOWN_ISSUES.md   tracked, unresolved gaps: the Mirror Sync registration block, unverified issue links
 skills/antigravity/assets/prices.json   Vertex rate config (verify before quoting)
 ```
@@ -286,7 +285,7 @@ claude --plugin-dir ~/andres-cc-marketplace/plugins/antigravity-kit
 
 **Tests** (no dependencies; stubs `agy`):
 ```bash
-bash tests/run-tests.sh
+bash scripts/tests/run-tests.sh
 ```
 
 </details>
@@ -295,13 +294,12 @@ bash tests/run-tests.sh
 
 ## 🤝 Contributing
 
-Apache 2.0 — issues, PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for this plugin's
-development setup and PR conventions, and this marketplace's own root-level CI (tests,
-shellcheck, and review gates it applies repo-wide) for what actually runs against a PR. The
-`.github/workflows/` shipped inside this plugin's own directory (its history from before this
-plugin joined the marketplace) is inert here — GitHub only reads `.github/` at repo root, so
-those workflows don't execute; see the section above for the `quorum-review`/Claude-review
-concept they implemented in the plugin's original standalone repo.
+Apache 2.0 — issues, PRs welcome. See this marketplace's own root-level
+[CONTRIBUTING.md](../../CONTRIBUTING.md) for development setup and PR conventions, and its
+root-level CI (tests, shellcheck, and review gates it applies repo-wide) for what actually runs
+against a PR. This plugin's own standalone-repo CI history (from before it joined the
+marketplace) is not shipped here — see the section above for the `quorum-review`/Claude-review
+concept it implemented in the plugin's original standalone repo.
 
 ---
 

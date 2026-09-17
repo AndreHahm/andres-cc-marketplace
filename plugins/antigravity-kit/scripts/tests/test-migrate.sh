@@ -7,11 +7,11 @@
 # unit shells out to the native importer, and we assert our post-processing of its
 # output, not Google's binary.
 #
-#   bash tests/test-migrate.sh
+#   bash scripts/tests/test-migrate.sh
 #
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/.." && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 MIG="$ROOT/scripts/agy-migrate.py"
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
