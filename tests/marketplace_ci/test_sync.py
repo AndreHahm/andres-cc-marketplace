@@ -231,6 +231,20 @@ def test_apply_sync_plan_writes_created_files(repo, registry_for):
     )
 
 
+def test_apply_sync_plan_preserves_executable_bit_on_create(repo, registry_for):
+    # Regression guard (Codex PR #349 review): _atomic_write used to always create the
+    # destination at write_bytes()'s own default mode, silently dropping an executable
+    # source's execute bit -- a hook/bin script mirrored this way fails at runtime with
+    # "Permission denied" (exit 126) even though its content is byte-identical.
+    source = repo / "plugins" / "sample-kit-two" / "hooks" / "scripts" / "guard.sh"
+    source.chmod(0o755)
+    plan = plan_plugin_sync(repo, registry_for("sample-kit-two"), previous=None, bootstrap=True)
+    apply_sync_plan(plan)
+    dest = repo / ".claude" / "hooks" / "scripts" / "guard.sh"
+    assert dest.exists()
+    assert dest.stat().st_mode & 0o777 == 0o755
+
+
 def test_apply_sync_plan_rejects_collisions(repo, registry_for):
     plan = plan_plugin_sync(
         repo, registry_for("sample-kit-two", "sample-kit-two-clone"), previous=None, bootstrap=True
