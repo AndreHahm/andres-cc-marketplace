@@ -89,14 +89,31 @@ def check_examples_reference_has_no_oversized_blocks():
 
 
 def check_health_thresholds_table_is_ordered():
-    # Sanity check the Context Health Thresholds table's own internal consistency
-    # (< 50%, 50-<75%, 75-85%, > 85% -- monotonic, no gaps/overlaps stated wrong).
+    # Regression guard for the 2026-09-17 consistency fix: this table's WARNING/CRITICAL
+    # boundaries must match context-monitor.py's real THRESHOLD_WARN/THRESHOLD_CRITICAL
+    # constants exactly, not an independently-invented pair of numbers -- that's exactly
+    # the drift consistency-reviewer found (this table used to say 75/85, the real hook
+    # used 80/90, producing contradictory advice for the same real percentage).
+    monitor_py = SKILL_DIR.parent.parent / "scripts" / "context-monitor.py"
+    monitor_text = monitor_py.read_text(encoding="utf-8")
+    warn_match = re.search(r"THRESHOLD_WARN\s*=\s*(\d+)", monitor_text)
+    critical_match = re.search(r"THRESHOLD_CRITICAL\s*=\s*(\d+)", monitor_text)
+    if not warn_match or not critical_match:
+        return False, "could not find THRESHOLD_WARN/THRESHOLD_CRITICAL in context-monitor.py"
+    warn, critical = warn_match.group(1), critical_match.group(1)
+
     text = SKILL_MD.read_text(encoding="utf-8")
-    if "| < 50% | HEALTHY" not in text:
-        return False, "HEALTHY threshold row missing or reworded unexpectedly"
-    if "| > 85% | CRITICAL" not in text:
-        return False, "CRITICAL threshold row missing or reworded unexpectedly"
-    return True, "Context Health Thresholds table's boundary rows are present as documented"
+    if f"| {warn}-<{critical}%" not in text:
+        return (
+            False,
+            f"WARNING row does not match context-monitor.py's real {warn}-<{critical}% band",
+        )
+    if f"| >= {critical}%" not in text:
+        return (
+            False,
+            f"CRITICAL row does not match context-monitor.py's real >= {critical}% boundary",
+        )
+    return True, f"WARNING/CRITICAL boundaries ({warn}/{critical}) match context-monitor.py exactly"
 
 
 CHECKS = [

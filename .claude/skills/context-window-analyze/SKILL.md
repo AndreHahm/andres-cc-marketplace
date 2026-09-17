@@ -48,12 +48,18 @@ window's health in the moment.
 
 ## Context Health Thresholds
 
+Aligned to `scripts/context-monitor.py`'s real, live threshold constants (`LEARN_THRESHOLDS`,
+`THRESHOLD_WARN`, `THRESHOLD_CRITICAL`) — this table used to carry its own independent numbers
+(50/75/85), which disagreed with the actual hook's real nudge points and produced contradictory
+advice for the same real percentage (found by consistency-reviewer, 2026-09-17). Treat
+`context-monitor.py` as the canonical source if these ever need to change.
+
 | Usage | Status | Action |
 |-------|--------|--------|
-| < 50% | HEALTHY | No action needed |
-| 50-<75% | MONITOR | Consider /compact soon |
-| 75-85% | WARNING | Run /compact or /clear |
-| > 85% | CRITICAL | Immediate action required |
+| < 40% | HEALTHY | No action needed |
+| 40-<80% | MONITOR | Progressive awareness nudges at 40/55/65%; consider /compact soon |
+| 80-<90% | WARNING | Run /compact or /clear |
+| >= 90% | CRITICAL | Immediate action required |
 
 ## Context Composition (Typical)
 
