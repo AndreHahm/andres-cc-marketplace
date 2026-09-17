@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response does not perform the requested skills/CLAUDE.md bloat audit itself -- an in-scope live-window health readout offered alongside a correct decline does not violate this", "passed": true, "evidence": "Response explicitly declines the requested audit ('I did not perform that audit here, since doing so would exceed this skill's stated scope') and offers only the in-scope live-window health readout as an addendum. Assertion reworded 2026-09-17 (iteration-1 refinement) to test the real intent directly instead of a too-literal text match; same correction pattern as context-mode eval-2's sibling assertion."},
+    {"text": "Response points the user at context-audit as the correct tool for this request", "passed": true, "evidence": "'Skill(context-audit)' explicitly named and recommended as the correct next step, with a quoted rationale from context-window-analyze's own 'When NOT to Use' section."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

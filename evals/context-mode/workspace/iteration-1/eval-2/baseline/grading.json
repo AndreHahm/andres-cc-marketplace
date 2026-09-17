@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response never activates or switches to a mode (dev/review/ship/admin) -- incidental mention of 'context-mode'/'Context-Mode' while explaining why no switch is happening does not violate this", "passed": true, "evidence": "No mention of Context-Mode or any mode-switch language anywhere in the response -- baseline has no mode concept at all."},
+    {"text": "Response does not guess or assume a default mode was activated", "passed": true, "evidence": "No mode language present; nothing guessed or assumed."},
+    {"text": "Response addresses the actual task", "passed": true, "evidence": "Baseline investigated the real worktree state directly (git status, diffed plugin copy vs. mirror, ran scripts/smoke_test.py -- 7/7 pass, grepped for leftover TODO/FIXME markers) and concluded the fix from the last commit is complete, tested, and consistent -- a thorough, proactive answer to 'continue with the fix.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Eval 2 shows low differentiation between with_skill and baseline (3/3 vs. 3/3) -- both correctly avoid guessing a mode. This is expected: eval 2 is a negative-case scenario (no mode-switch tag present) and is weaker evidence of context-mode's value-add than eval 1's positive-case scenario. Baseline's investigation was also more thorough here because its agent harness had unrestricted tool-exploration framing, while with_skill's system prompt emphasized following the skill's documented dispatch logic (ask for clarification rather than investigate). This is a harness-setup asymmetry, not a skill defect -- see Phase 6 summary."
+}

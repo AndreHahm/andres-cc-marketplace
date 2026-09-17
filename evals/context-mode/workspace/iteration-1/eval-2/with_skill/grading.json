@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response never activates or switches to a mode (dev/review/ship/admin) -- incidental mention of 'context-mode'/'Context-Mode' while explaining why no switch is happening does not violate this", "passed": true, "evidence": "Response mentions 'context-mode'/'Context-Mode candidate' only while explaining, per the skill's own dispatch logic, why no mode applies and no switch is happening -- no mode was ever activated or switched. Assertion reworded 2026-09-17 (iteration-1 refinement) to test the real intent directly instead of a too-literal text match; see grading.json note in context-window-analyze eval-2 for the sibling correction."},
+    {"text": "Response does not guess or assume a default mode was activated", "passed": true, "evidence": "'no mode switch needed unless you separately ask for one' -- explicit refusal to assume a default."},
+    {"text": "Response addresses the actual task", "passed": true, "evidence": "Response asks for clarification on what 'the fix' refers to, correctly surfacing the ambiguity rather than guessing."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

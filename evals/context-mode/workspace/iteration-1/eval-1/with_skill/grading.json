@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response explicitly states a mode switch to 'ship' (e.g. contains 'ship' and 'activated')", "passed": true, "evidence": "Line 1: '[Context-Mode] ship activated — supersedes any previously active mode.'"},
+    {"text": "Response never switches silently -- the switch is stated plainly, not just implied", "passed": true, "evidence": "The activation statement is the very first line of the response, before any other content."},
+    {"text": "Response reflects ship mode's higher confirmation-bar posture (mentions confirming before a risky/visible action)", "passed": true, "evidence": "'Very low risk tolerance at the actual publish step... I'll confirm explicitly before it happens, even if a similar action was already approved earlier in the session.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
