@@ -26,6 +26,20 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
 2. **Compare** — agree, disagree with reasoning, or escalate to a tiebreak source (Round 2) if the disagreement can't be resolved by re-reading the evidence.
 3. **Report** the reconciled position to the user before presenting it as final — never present Claude's original, unchecked position if Codex materially disagreed.
 
+## Model check
+
+If this skill was reached via natural-language auto-routing with no explicit selection of it, and the
+request names neither Codex nor Gemini/Antigravity/agy (e.g. a bare "get a second opinion on this
+design"), confirm which model via `AskUserQuestion` before Round 1 — but only offer Gemini/Antigravity
+as an option if `antigravity-kit`'s skills are actually available in this session; if not, say so and
+proceed with Codex instead of asking. **If the answer is Gemini/Antigravity, stop here and defer to
+`antigravity-kit:antigravity`** instead of proceeding to Round 1. **Never fires on an explicit
+invocation of this skill** (e.g. `/codex-kit:codex-peer-review ...`, or the user explicitly saying
+"codex peer review"/"get a second opinion from codex") — that selection already answers "Codex." This
+check is separate from, and does not reopen, the "never ask before Round 1 or Round 2" rule below —
+that rule governs the comparison loop once a model is already confirmed; this happens once, before the
+loop starts.
+
 Catches blind spots in single-perspective analysis by running Codex in parallel on the *same question* and comparing outputs — **before** Claude presents a design, recommendation, or review finding to the user.
 
 **Always dispatch via a subagent** (the `Agent` tool, general-purpose) to keep this comparison out of the main conversation's context — matches the rationale that made this pattern worth adopting from its source. This is an intentional, broad privilege delegation, not an oversight: a general-purpose subagent carries its own full toolset, wider than this skill's own narrow `Bash(node */codex-kit/scripts/codex-companion.mjs:*)` scope — the delegation is limited by what the dispatched subagent is actually instructed to do (run Round 1/Round 2 and report back), not by a tool-level restriction.
@@ -86,6 +100,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 2. Round 2 converges → outcome classified "Resolved disagreement", not silently reported as "Agreement".
 3. A security or architecture-conflict disagreement → escalates immediately, skipping the normal 2-round wait.
 4. An unresolved disagreement after escalation → both positions and the escalation source are presented; no invented tiebreak.
+5. A bare, model-agnostic request ("get a second opinion on this design") reached via auto-routing → the Model check gate confirms Codex vs. Gemini/Antigravity via `AskUserQuestion` before Round 1, deferring to `antigravity-kit:antigravity` if the answer is Gemini/Antigravity — never fires on an explicit `/codex-kit:codex-peer-review` invocation or an explicit "codex" mention.
 
 **Current test coverage:**
 - `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`). **Live empirical run, 2026-08-24:** `skill-tester` full baseline comparison against a real Codex backend — with-skill 2/2 assertions pass (real subagent dispatch, 2-round protocol with `--resume-last`, correct "Resolved Disagreement" classification with escalation-taxonomy reasoning), baseline 0/2 (no subagent dispatch, no round structure, no Codex integration at all); `grading.json`/`outputs/` on disk under `evals/codex-peer-review/workspace/iteration-1/eval-1/`.

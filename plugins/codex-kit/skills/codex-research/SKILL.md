@@ -71,8 +71,11 @@ Rules:
 - **Ambiguous model** — only when this skill was reached via natural-language auto-routing with no
   explicit selection of it, and the request names neither Codex nor Gemini/Antigravity/agy (e.g. a
   bare "investigate this topic" or "deep research on X") → `AskUserQuestion` to confirm which model
-  before proceeding; trigger phrasing alone doesn't disambiguate this skill from antigravity-kit's
-  `antigravity` skill. **Never fires on an explicit invocation of this skill** (e.g.
+  before proceeding, but only offer Gemini/Antigravity as an option if `antigravity-kit`'s skills are
+  actually available in this session; if not, say so and proceed with Codex instead of asking.
+  Trigger phrasing alone doesn't disambiguate this skill from antigravity-kit's `antigravity` skill.
+  **If the answer is Gemini/Antigravity, stop here and defer to `antigravity-kit:antigravity`**
+  rather than continuing to Phase 2. **Never fires on an explicit invocation of this skill** (e.g.
   `/codex-kit:codex-research ...`, or the user explicitly saying "codex research") — that selection
   already answers "Codex," regardless of whether `$ARGUMENTS` itself names a model.
 - **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. `--model`/`--effort`/`--persist` are skill-level and handled per the whitelist above, not forwarded as arbitrary companion flags.

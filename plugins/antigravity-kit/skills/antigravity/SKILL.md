@@ -61,12 +61,15 @@ the model — routing, shared rules, verification gates — not raw generation.
   opinion), `codex-research` (deep research), or `codex-rescue` (delegate implementation) instead.
   This skill only fires when the named or implied model/tool is Gemini/Antigravity/agy. If this
   skill was reached via natural-language auto-routing with no explicit selection of it, and the
-  request names **neither** model (e.g. a bare "get a second opinion" or "do deep research"), ask
-  which one — Gemini/Antigravity or Codex — before proceeding; trigger phrasing alone doesn't
-  disambiguate that case. **Never ask on an explicit invocation of this skill** (e.g.
-  `/antigravity-kit:antigravity ...`, or the user explicitly saying "antigravity"/"agy") — that
-  selection already answers "Gemini/Antigravity," regardless of whether the arguments themselves
-  name a model.
+  request is a **second-opinion, deep-research, or delegated-implementation ask** that names
+  **neither** model (e.g. a bare "get a second opinion" or "do deep research") — never a web/Vertex
+  AI Search request, which only this skill supports — ask which one before proceeding, but only
+  offer Codex as an option if `codex-kit`'s skills are actually available in this session; if not,
+  say so and proceed with Gemini/Antigravity instead of asking. **If the answer is Codex, stop here
+  and defer to the matching codex-kit skill** rather than continuing this workflow. **Never ask on an
+  explicit invocation of this skill** (e.g. `/antigravity-kit:antigravity ...`, or the user
+  explicitly saying "antigravity"/"agy") — that selection already answers "Gemini/Antigravity,"
+  regardless of whether the arguments themselves name a model.
 
 ## Two modes (pick per task)
 
