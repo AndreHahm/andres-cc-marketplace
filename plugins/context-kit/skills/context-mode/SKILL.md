@@ -40,6 +40,16 @@ activation data behind these 4 modes and their trigger lists).
   (context-window management, not behavioral posture). See `strategic-compact`'s own "Relationship to
   context-mode" section for the reciprocal distinction.
 
+## Environment assumption (disclosed, not portable by default)
+
+The 4 mode profiles below (`references/{dev,review,ship,admin}.md`) are written specifically for a
+`plugin-devkit`-style marketplace repo — they name concrete tools by exact identifier (git-kit's
+lifecycle skills, `plugin-rulebook`, `.claude/rules/*.md` files) rather than generic guidance, because
+that specificity is exactly what real-transcript validation (`references/design-history.md`) measured
+against. Installing `context-kit` standalone in an unrelated repo will surface references to tools
+that don't exist there — this is a deliberate design choice, not an oversight, matching the same
+repo-specific-convention pattern this plugin's own README documents under "Declared plugin language."
+
 ## First-pass scope
 
 Four modes are wired in this pass, chosen by real usage evidence (`references/design-history.md`'s
