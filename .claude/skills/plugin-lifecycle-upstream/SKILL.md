@@ -12,7 +12,7 @@ description: >-
   report, and hands off to plugin-lifecycle-downstream for QA once Test completes. For a single
   already-designed component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Conception Brief/Concept Card/Plan]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) Bash(uv run python -m scripts.marketplace_ci:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) Bash(uv run python -m scripts.marketplace_ci:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Upstream
