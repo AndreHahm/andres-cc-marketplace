@@ -8,6 +8,7 @@ description: >-
   the provenance boundary below), or when the user explicitly asks to switch, set, or check the
   current context mode (e.g. "switch to ship mode", "what mode are we in", "go back to dev mode").
   This skill only changes operating posture — it does not itself do the dev/review/ship/admin work.
+allowed-tools: Read, AskUserQuestion, Skill(git-kit:starting-work), Skill(plugin-rulebook)
 ---
 
 # Context Mode
@@ -70,7 +71,7 @@ later decision (see `references/design-history.md`).
 
 ## How activation reaches this skill
 
-A `UserPromptSubmit` hook (`scripts/detect_mode.py`) regex/substring-matches the raw submitted prompt
+A `UserPromptSubmit` hook (`scripts/detect_mode.py`) case-insensitive substring-matches the raw submitted prompt
 against `triggers.json`'s phrase lists for the 4 wired modes, in the order phrases are matched in the
 text. If it finds any matches, it adds a tag to Claude's context via the hook's `additionalContext`
 output field — delivered as a system-reminder-style block alongside the submitted prompt, not prepended
