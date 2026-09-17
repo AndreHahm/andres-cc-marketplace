@@ -5,7 +5,7 @@ argument-hint: "[--tier flash|pro] <task>"
 allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*), Bash(git status:*)
 ---
 
-> **Invocation:** Run as /antigravity-kit:delegate in the Claude Code prompt. This command cannot
+> **Invocation:** Run as /antigravity-kit:agy-delegate in the Claude Code prompt. This command cannot
 > be invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Delegate the following task to Antigravity (`agy` / Gemini) via the plugin wrapper,
@@ -51,6 +51,6 @@ spec + round-trip + verification overhead. Tiny tasks are cheaper to just do you
 Bash-tool limit — start it in the background and keep working (this also keeps the prompt
 cache warm and frees you to do other turns):
 `ID=$(agy-job start --tier pro --dir . "<task>")`
-then check `/antigravity-kit:status` and collect with `/antigravity-kit:result <id>`.
+then check `/antigravity-kit:agy-status` and collect with `/antigravity-kit:agy-result <id>`.
 (Don't do this when YOU are headless `claude -p` — one-shot, no later turn to collect;
 delegate synchronously there.)

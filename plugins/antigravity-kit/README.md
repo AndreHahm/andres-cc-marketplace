@@ -33,7 +33,7 @@ you → Claude Code (conduct: design / verify / review)
 
 - **Routes work across the SDLC** — Claude keeps the judgement calls; Antigravity handles scaffolding, **test generation**, **first-pass review**, and **migrations** under a shared `AGENTS.md`.
 - **Adds tools Claude lacks natively** — live **Google/web search**, **Vertex AI Search** over your internal data, deep research, Cloud Logging. Claude reviews and re-checks the results.
-- **Hears audio, watches video** — `/antigravity-kit:media` delegates the perception to Gemini (natively multimodal, **no local ffmpeg/Whisper stack**): you get a **timestamped digest** while the full transcript is written to a file, so a 1-hour recording never lands in Claude's context.
+- **Hears audio, watches video** — `/antigravity-kit:agy-media` delegates the perception to Gemini (natively multimodal, **no local ffmpeg/Whisper stack**): you get a **timestamped digest** while the full transcript is written to a file, so a 1-hour recording never lands in Claude's context.
 - **Cross-model verification** — an independent, different-model opinion on your code.
 - **Background jobs** — fire a long delegation, keep working, collect later.
 - **Internal fan-out** — one delegation, and agy spawns its own subagents on the cheap side (dynamic `define_subagent` on agy ≥ 1.0.16; `TypeName "self"` + Role on any version); each leaves a **readable trajectory** you audit with `agy-trace`.
@@ -57,7 +57,7 @@ On a **large** ADK multi-agent build (+ `adk eval`), same task / same model, 3 w
 
 → **−27% vs solo@high, −64% vs solo@max, at equal quality** — and the cheap Gemini work isn't even counted. Savings scale with task size; tiny one-off tasks are cheaper to just run on Claude.
 
-> **Note on cost figures:** numbers are **estimates** — token counts are approximated and rates live in [`prices.json`](prices.json). **Set your real Vertex rates there before quoting any figure.**
+> **Note on cost figures:** numbers are **estimates** — token counts are approximated and rates live in [`prices.json`](skills/antigravity/assets/prices.json). **Set your real Vertex rates there before quoting any figure.**
 
 ## 🚀 Install
 
@@ -65,7 +65,7 @@ In Claude Code:
 ```
 /plugin marketplace add andrehahm/andres-cc-marketplace
 /plugin install antigravity-kit@andres-cc-marketplace
-/antigravity-kit:setup        # verifies agy is installed + authenticated
+/antigravity-kit:agy-setup    # verifies agy is installed + authenticated
 ```
 
 **Prerequisites:** the [Antigravity CLI](https://antigravity.google/docs/cli-using) (`agy`) installed & authenticated (`agy models` lists Gemini models), and Claude Code. For the same-bill cost benefit, run Claude Code on Vertex too.
@@ -78,14 +78,14 @@ In Claude Code:
 
 | command | what it does |
 |---|---|
-| `/antigravity-kit:setup` | health check — `agy` installed + authenticated, scripts ready |
-| `/antigravity-kit:delegate [--tier flash\|pro] <task>` | delegate a subtask to agy under cost discipline, then verify |
-| `/antigravity-kit:review [--adversarial]` | independent cross-model review of the current diff; Claude reconciles |
-| `/antigravity-kit:research <topic>` | Claude-orchestrated deep research — agy does grounded web legwork, Claude verifies citations across ≥2 sources |
-| `/antigravity-kit:media <file> [focus] [--convert]` | understand audio / video / images — agy transcribes + analyzes, returns a **timestamped digest**; full transcript goes to a file, not your context |
-| `/antigravity-kit:cloud-run-debug [--service <s>] [--region <r>] [--project <id>] [--since 1h] [--apply]` | diagnose a failing Cloud Run service — agy digests the error logs, Claude infers the root cause + fix; read-only by default (`--apply` writes to a branch) |
-| `/antigravity-kit:status [id]` · `:result <id>` · `:cancel <id>` | manage background delegation jobs |
-| `/antigravity-kit:migrate [--apply] [--include-repos]` | move an existing Claude Code setup onto agy — skills, CLAUDE.md, memory, MCP, plugins, permissions; dry-run by default, `--uninstall` reverses it |
+| `/antigravity-kit:agy-setup` | health check — `agy` installed + authenticated, scripts ready |
+| `/antigravity-kit:agy-delegate [--tier flash\|pro] <task>` | delegate a subtask to agy under cost discipline, then verify |
+| `/antigravity-kit:agy-review [--adversarial]` | independent cross-model review of the current diff; Claude reconciles |
+| `/antigravity-kit:agy-research <topic>` | Claude-orchestrated deep research — agy does grounded web legwork, Claude verifies citations across ≥2 sources |
+| `/antigravity-kit:agy-media <file> [focus] [--convert]` | understand audio / video / images — agy transcribes + analyzes, returns a **timestamped digest**; full transcript goes to a file, not your context |
+| `/antigravity-kit:agy-cloud-run-debug [--service <s>] [--region <r>] [--project <id>] [--since 1h] [--apply]` | diagnose a failing Cloud Run service — agy digests the error logs, Claude infers the root cause + fix; read-only by default (`--apply` writes to a branch) |
+| `/antigravity-kit:agy-status [id]` · `:agy-result <id>` · `:agy-cancel <id>` | manage background delegation jobs |
+| `/antigravity-kit:agy-migrate [--apply] [--include-repos]` | move an existing Claude Code setup onto agy — skills, CLAUDE.md, memory, MCP, plugins, permissions; dry-run by default, `--uninstall` reverses it |
 
 > Background jobs are for **interactive** sessions (fire-and-collect). In headless `claude -p` (one-shot), delegate **synchronously** — there's no later turn to collect a result.
 
@@ -93,14 +93,14 @@ In Claude Code:
 
 ## 📦 Bringing your Claude Code setup across
 
-`/antigravity-kit:migrate` moves an existing Claude Code configuration onto `agy`. Dry-run
+`/antigravity-kit:agy-migrate` moves an existing Claude Code configuration onto `agy`. Dry-run
 by default; `--apply` backs up first and `--uninstall --apply` reverses it. Your
 `~/.claude` is never written to.
 
 ```
-/antigravity-kit:migrate                             # see the plan
-/antigravity-kit:migrate --apply                     # global assets
-/antigravity-kit:migrate --apply --include-repos     # also AGENTS.md + per-repo memory
+/antigravity-kit:agy-migrate                             # see the plan
+/antigravity-kit:agy-migrate --apply                     # global assets
+/antigravity-kit:agy-migrate --apply --include-repos     # also AGENTS.md + per-repo memory
 ```
 
 | your Claude Code asset | becomes |
@@ -269,13 +269,13 @@ marketplace's own tracker — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)):
 .claude-plugin/   plugin.json (userConfig: `default_tier`, `timeout`, `coding_policy`, and more — see the file) — this plugin's marketplace entry lives in the marketplace repo's own top-level manifest, not here
 skills/           antigravity (WHEN + HOW Claude collaborates with agy), migrate-to-antigravity (one-time config migration)
 agents/           antigravity-delegate subagent (file work runs on Gemini, not Claude)
-commands/         slash commands (delegate, review, research, media, cloud-run-debug, setup, status, result, cancel, migrate)
+commands/         slash commands (agy-delegate, agy-review, agy-research, agy-media, agy-cloud-run-debug, agy-setup, agy-status, agy-result, agy-cancel, agy-migrate)
 hooks/            SessionStart: agy health check + auto-inject the cost-aware policy; UserPromptSubmit: delegation nudge
-bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · cloud-debug · agy-trace · agy-media · measure-session · agy-migrate
+bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · agy-cloud-debug · agy-trace · agy-media · agy-measure-session · agy-migrate
 scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate
 docs/             TROUBLESHOOTING · MIGRATION · WORKFLOW_MAX_improved · templates/
 KNOWN_ISSUES.md   tracked, unresolved gaps: the Mirror Sync registration block, unverified issue links
-prices.json       Vertex rate config (verify before quoting)
+skills/antigravity/assets/prices.json   Vertex rate config (verify before quoting)
 ```
 
 **Local development** (hack on the plugin — loads live files, `$CLAUDE_PLUGIN_ROOT` resolves):

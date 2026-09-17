@@ -46,7 +46,7 @@ PROMPT="${*:-}"
 # Read as KEY=VALUE lines, never eval'd — a non-numeric price.json value fails float()
 # on the Python side and is dropped by the digit-only guard on the bash side, so it can
 # never reach shell evaluation.
-PRICES="$HERE/../prices.json"
+PRICES="$HERE/../skills/antigravity/assets/prices.json"
 if [ -f "$PRICES" ] && command -v python3 >/dev/null 2>&1; then
   while IFS='=' read -r _k _v; do
     case "$_v" in (*[!0-9.]*|'') continue ;; esac

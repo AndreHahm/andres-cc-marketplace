@@ -19,7 +19,7 @@ import sys
 def load_prices():
     here = os.path.dirname(os.path.abspath(__file__))
     for p in (
-        os.path.join(here, "..", "prices.json"),
+        os.path.join(here, "..", "skills", "antigravity", "assets", "prices.json"),
         os.path.join(here, "prices.json"),
         "prices.json",
     ):

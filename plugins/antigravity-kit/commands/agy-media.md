@@ -6,7 +6,7 @@ argument-hint: "<file> [what to focus on] [--convert] [--tier pro|flash] [--time
 allowed-tools: Bash(agy-media:*), Bash(grep:*), Read
 ---
 
-> **Invocation:** Run as /antigravity-kit:media in the Claude Code prompt. This command cannot be
+> **Invocation:** Run as /antigravity-kit:agy-media in the Claude Code prompt. This command cannot be
 > invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Claude Code can't hear audio or watch video, and doing it locally means an ffmpeg +

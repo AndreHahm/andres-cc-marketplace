@@ -436,7 +436,7 @@ for s in agy-delegate.sh agy-cost-compare.sh cloud-debug.sh agy-trace.sh agy-med
 done
 
 # 4b. SessionStart hooks executable
-for h in check-agy.sh inject-policy.sh validate-delegate-bash.sh nudge-delegation.sh; do
+for h in agy-check.sh agy-inject-policy.sh agy-validate-delegate-bash.sh agy-nudge-delegation.sh; do
   if [ -x "$ROOT/hooks/$h" ]; then ok "hooks/$h executable"; else
     bad "hooks/$h not executable"; info "fix: chmod +x \"$ROOT/hooks/$h\""
   fi
@@ -444,7 +444,7 @@ done
 
 # 4b2. bin/ entrypoints executable (added to the Bash-tool PATH; commands/skills call
 #      these bare names — $CLAUDE_PLUGIN_ROOT is not exported to model-run Bash, issue #11)
-for b in agy-delegate agy-job agy-cost-compare agy-doctor cloud-debug agy-trace measure-session agy-media; do
+for b in agy-delegate agy-job agy-cost-compare agy-doctor agy-cloud-debug agy-trace agy-measure-session agy-media; do
   if [ -x "$ROOT/bin/$b" ]; then ok "bin/$b executable"; else
     bad "bin/$b not executable"; info "fix: chmod +x \"$ROOT/bin/$b\""
   fi

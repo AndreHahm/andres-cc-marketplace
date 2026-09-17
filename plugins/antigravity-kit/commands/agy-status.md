@@ -13,4 +13,4 @@ Show background agy delegation jobs.
   `agy-job list`
 
 Report each job's id, state (running / done / failed), and task. For finished jobs,
-remind the user they can fetch output with `/antigravity-kit:result <id>`.
+remind the user they can fetch output with `/antigravity-kit:agy-result <id>`.

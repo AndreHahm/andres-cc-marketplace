@@ -16,7 +16,7 @@ hooks:
     - matcher: Bash
       hooks:
         - type: command
-          command: "\"${CLAUDE_PLUGIN_ROOT}/hooks/validate-delegate-bash.sh\""
+          command: "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-validate-delegate-bash.sh\""
           timeout: 5
           onError: block
 model: inherit
@@ -43,7 +43,7 @@ must be performed by agy, not by you — you cannot write files even via the
 shell. Never reconstruct file contents in your reply.
 
 **What actually bounds this subagent — and what doesn't.** The declared
-`PreToolUse` gate above (`validate-delegate-bash.sh`) is a defense-in-depth
+`PreToolUse` gate above (`agy-validate-delegate-bash.sh`) is a defense-in-depth
 measure, not a guaranteed enforcement point: this repository's own platform
 documentation states that hooks declared in a *plugin-scoped* agent's own
 frontmatter are accepted by the schema but are not honored at runtime. Until

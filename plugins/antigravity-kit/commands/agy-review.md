@@ -6,7 +6,7 @@ argument-hint: "[--adversarial] [scope: paths or git range]"
 allowed-tools: Bash(git diff:*), Bash(agy-delegate:*)
 ---
 
-> **Invocation:** Run as /antigravity-kit:review in the Claude Code prompt. This command cannot be
+> **Invocation:** Run as /antigravity-kit:agy-review in the Claude Code prompt. This command cannot be
 > invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Use Antigravity (`agy` / Gemini) as an **independent, different-model reviewer** of the

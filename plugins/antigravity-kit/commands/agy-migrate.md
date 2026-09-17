@@ -7,7 +7,7 @@ allowed-tools: Bash(agy-migrate:*), Read
 disable-model-invocation: true
 ---
 
-> **Invocation:** Run as /antigravity-kit:migrate in the Claude Code prompt. This command cannot be
+> **Invocation:** Run as /antigravity-kit:agy-migrate in the Claude Code prompt. This command cannot be
 > invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Migrate this machine's Claude Code configuration to Antigravity (`agy`).

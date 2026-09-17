@@ -4,26 +4,26 @@
       {
         "matcher": "startup",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/check-agy.sh\"", "timeout": 5, "onError": "warn" }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-check.sh\"", "timeout": 5, "onError": "warn" }
         ]
       },
       {
         "matcher": "startup",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/inject-policy.sh\"", "timeout": 5, "onError": "warn" }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-inject-policy.sh\"", "timeout": 5, "onError": "warn" }
         ]
       },
       {
         "matcher": "compact",
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/inject-policy.sh\"", "timeout": 5, "onError": "warn" }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-inject-policy.sh\"", "timeout": 5, "onError": "warn" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/nudge-delegation.sh\"", "timeout": 3, "onError": "warn" }
+          { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-nudge-delegation.sh\"", "timeout": 3, "onError": "warn" }
         ]
       }
     ]
