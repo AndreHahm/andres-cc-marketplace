@@ -3,6 +3,7 @@ name: context-audit
 description: >-
   Audit context window composition and identify optimization targets. Use when performance feels
   sluggish, context warnings appear, after installing new skills, or for periodic context health checks.
+user-invocable: true
 allowed-tools: Read, Bash(${CLAUDE_SKILL_DIR}/scripts/audit-context.sh:*)
 ---
 

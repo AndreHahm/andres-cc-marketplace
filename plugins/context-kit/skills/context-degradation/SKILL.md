@@ -5,6 +5,7 @@ description: >-
   clash, context confusion, and attention-pattern issues. Use when agent performance degrades
   unexpectedly during long conversations, when debugging incorrect or irrelevant agent outputs, or
   when investigating a "lost in middle" phenomenon.
+allowed-tools: Read
 ---
 
 # Context Degradation Patterns

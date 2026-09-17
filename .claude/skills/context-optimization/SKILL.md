@@ -4,6 +4,7 @@ description: >-
   Effective use of @ mentions and semantic search for targeted context retrieval. Use when deciding
   whether to @-mention a specific file vs. let the agent search, choosing between @ mentions and
   grep/Glob, or running a natural-language semantic search over an unfamiliar codebase.
+allowed-tools: Read
 ---
 
 # Context Optimization

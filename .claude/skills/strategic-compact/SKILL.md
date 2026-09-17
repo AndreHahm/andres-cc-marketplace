@@ -5,6 +5,7 @@ description: >-
   transitions detected, user mentions "running out of context" or "conversation too long". Suggests
   strategic compaction timing - manual compact at phase transitions beats auto-compact at arbitrary
   points.
+allowed-tools: Read
 ---
 
 # Strategic Compact

@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
     --flagged) FLAGGED_ONLY=true; shift ;;
     --top)
       [[ $# -ge 2 ]] || { echo "--top requires a value" >&2; usage >&2; exit 1; }
-      [[ "$2" =~ ^[0-9]+$ ]] || { echo "--top value must be a non-negative integer: $2" >&2; exit 1; }
+      [[ "$2" =~ ^[0-9]{1,9}$ ]] || { echo "--top value must be a non-negative integer: $2" >&2; exit 1; }
       TOP_N=$((10#$2))
       shift 2
       ;;
