@@ -87,8 +87,21 @@ fi
 
 [ "$_lock_acquired" -ne 1 ] && exit 0
 
-# Source current state
-. "$TRACK_FILE"
+# Read key=value pairs without dot-sourcing the file as shell code -- a
+# tampered $TRACK_FILE would otherwise get arbitrary shell execution on every
+# Bash tool call. Whitelists the exact key set this plugin's own writers ever
+# produce (compact-session-init.sh / compact-track-and-suggest.sh / this
+# script); every other line in the file is ignored.
+while IFS='=' read -r _key _val; do
+    case "$_key" in
+        TOTAL|EXPLORATION|IMPLEMENTATION|SUGGESTED_T1|SUGGESTED_T2|SUGGESTED_T3|SUGGESTED_TIME|PHASE_TRANSITION_SUGGESTED|MILESTONE_SUGGESTED|START_TIME|LAST_MILESTONE_TIME|T1|T2|T3|TIME_THRESHOLD)
+            [[ "$_val" =~ ^[0-9]{1,15}$ ]] && printf -v "$_key" '%s' "$_val"
+            ;;
+        LAST_PHASE)
+            [[ "$_val" =~ ^[a-zA-Z_]{1,32}$ ]] && printf -v "$_key" '%s' "$_val"
+            ;;
+    esac
+done < "$TRACK_FILE"
 
 # Get current time
 CURRENT_TIME=$(date +%s)
