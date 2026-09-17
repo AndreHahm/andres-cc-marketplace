@@ -1,9 +1,10 @@
 # context-kit
 
-Context-window management and behavioral-mode switching for Claude Code sessions — an automatic,
-hook-driven layer, 5 model-invoked skills covering footprint auditing, failure diagnosis, the
-Write/Select/Compress/Isolate framework, targeted retrieval, and live context-window health, plus a
-`context-mode` skill that switches operating posture (dev/review/ship/admin) mid-session.
+Context-window management and behavioral-mode switching for Claude Code sessions — `strategic-compact`,
+a skill that owns an automatic, hook-driven layer; 5 more model-invoked skills covering footprint
+auditing, failure diagnosis, the Write/Select/Compress/Isolate framework, targeted retrieval, and live
+context-window health; and a `context-mode` skill that switches operating posture (dev/review/ship/
+admin) mid-session — 7 skills in total.
 
 `context-kit` tracks tool-call and context usage through a session, suggests strategic compaction at
 natural phase transitions and milestones (rather than letting auto-compact fire at an arbitrary point),

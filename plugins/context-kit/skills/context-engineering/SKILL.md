@@ -181,7 +181,9 @@ Example baseline (calibrate with `/context`): ~200K total window, ~20K overhead 
 - Keeping MCP tool results in context after extracting what you need
 - Running 15+ MCPs (each adds tool schema overhead to every request)
 - Vague prompts that force Claude to search broadly ("fix the code")
-- Never compacting until auto-compact triggers at 95%
+- Never compacting until Claude Code's own native auto-compact triggers (no fixed percentage —
+  varies by model and context-window size; ~97% for native-1M-window models per `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`'s
+  own docs)
 
 ## Add to CLAUDE.md
 
