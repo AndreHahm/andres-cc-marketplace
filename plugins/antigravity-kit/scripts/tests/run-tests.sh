@@ -739,6 +739,17 @@ check "gate blocks a piped \$VAR expansion -> exit 2" 2 "$rc"
 printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"cost is \\$5\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate allows an escaped literal \\\$ (not an expansion) -> exit 0" 0 "$rc"
 
+# Security review finding M1 (issue #336 follow-up): bash's special parameters
+# ($?, $$, $!, $#, $*, $@, $-, $0-$9) expand exactly as readily as $FOO, but the
+# scan only flagged alpha/underscore/{ after $, so these fell through unblocked
+# despite the gate's own stated "identical treatment" invariant above.
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"exit was $?\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks \$? special-parameter expansion in dquotes -> exit 2" 2 "$rc"
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"pid $$\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks \$\$ special-parameter expansion in dquotes -> exit 2" 2 "$rc"
+printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"first arg $1\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
+check "gate blocks \$1 positional-parameter expansion in dquotes -> exit 2" 2 "$rc"
+
 # --- issue #51: newline handling, and saying WHY ------------------------------
 # The gate blocked any unquoted newline and gave the same generic message it gives
 # for "you tried to run something else", so a caller could not tell a stray newline
