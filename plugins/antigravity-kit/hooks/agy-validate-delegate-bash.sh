@@ -143,6 +143,16 @@ def base(tok):
 
 # Quote-aware scan: split into pipeline segments on UNQUOTED '|', and flag any
 # unquoted metacharacter bash would act on (plus command substitution inside "").
+def _is_param_expansion_start(c):
+    # Characters that can start a `$...` parameter expansion bash will act on --
+    # alpha/underscore/`{` for a named variable, plus the special parameters ($?,
+    # $$, $!, $#, $*, $@, $-, $0-$9), which get the exact same treatment: a bare
+    # `$?` is just as capable of being mistaken for a literal dollar sign as `$FOO`
+    # is, and the gate's own stated invariant is that both expansion forms get
+    # identical treatment, not a silent exception for the special-parameter shape.
+    return c == "{" or c.isalpha() or c == "_" or c.isdigit() or c in "?$!#*@-"
+
+
 def scan(s):
     # `bad` carries the REASON (a string) rather than a bool — the gate already knew
     # why it was rejecting and used to throw that away, which made a stray newline
@@ -165,7 +175,7 @@ def scan(s):
             if c == "$":
                 if i + 1 < n and s[i + 1] == "(":
                     bad = flag("`$(` command substitution", i)
-                elif i + 1 < n and (s[i + 1] == "{" or s[i + 1].isalpha() or s[i + 1] == "_"):
+                elif i + 1 < n and _is_param_expansion_start(s[i + 1]):
                     bad = flag("`$` parameter expansion", i,
                                " bash would expand this to an environment variable's value,"
                                " which could exfiltrate a secret through the wrapper. Quote it"
@@ -176,9 +186,20 @@ def scan(s):
                            " bash treats it as a command separator, so this is two commands."
                            " Quote the argument, or end the line with a backslash to continue it.")
                 cur.append(c); i += 1; continue
+            # `#` is rejected anywhere unquoted, including mid-word (e.g.
+            # `agy-delegate --dir . fix#123`), where bash would not actually start a
+            # comment there. Known over-blocking, not a hole -- accepted rather than
+            # adding a word-boundary check for a usability-only false positive.
             if c in ";&<>()#*?[~{": bad = flag("unquoted %s" % CHAR_NAMES[c], i); cur.append(c); i += 1; continue
             cur.append(c); i += 1; continue
         if st == "S":
+            # ANSI-C quoting (bash's `$'...'`) is not recognised here -- an escaped
+            # `\'` inside one still ends this scanner's single-quote state early,
+            # while bash itself keeps the string open. This fails SAFE, not open: the
+            # scanner then sees MORE unquoted text than bash does, so a payload like
+            # `$'a\'; id; echo '` is still denied (on the unquoted `;`), never
+            # silently approved. Documented so a future edit to this state doesn't
+            # assume the two quoting models already agree.
             cur.append(c)
             if c == "'": st = "U"
             i += 1; continue
@@ -194,7 +215,7 @@ def scan(s):
             if i + 1 < n and s[i + 1] == "(":
                 bad = flag("`$(` command substitution inside double quotes "
                            "(bash still expands it)", i)
-            elif i + 1 < n and (s[i + 1] == "{" or s[i + 1].isalpha() or s[i + 1] == "_"):
+            elif i + 1 < n and _is_param_expansion_start(s[i + 1]):
                 bad = flag("`$` parameter expansion inside double quotes "
                            "(bash still expands it, which could exfiltrate a secret"
                            " through the wrapper)", i)
