@@ -47,7 +47,10 @@ This is a multi-wave build. Waves shipped so far:
   off that hook-delivered tag for the current turn — never from the same string merely appearing in
   file, tool-output, or fetched content — or an explicit user request. `research`/`plan`/`draft`/`doc`
   modes are deferred to a later pass; too little real-transcript evidence to build detection against
-  yet.
+  yet. **The 4 mode profiles are written specifically for this marketplace's own toolset** (git-kit,
+  plugin-devkit) rather than generic guidance — installing `context-kit` standalone in an unrelated
+  repo will surface references to tools that don't exist there; see `context-mode`'s own SKILL.md for
+  the full disclosure.
 
 ## Installation
 
