@@ -18,6 +18,24 @@ Intelligent context management that suggests compaction at optimal moments.
 
 Auto-compact triggers at context limits, often mid-task. Strategic compaction preserves context through logical phases and compacts at natural transition points.
 
+## When to Use
+
+- Context is actively filling up in the current session (phase transitions, rising tool-call counts)
+- The user mentions "running out of context" or "conversation too long"
+- Deciding whether *now* is a good moment to compact/clear
+
+## When NOT to Use
+
+- A broader skills/CLAUDE.md/plugin/MCP footprint audit ("context warnings appear", periodic health
+  checks) — that's `context-audit`'s job. This skill only fires the automatic, hook-driven
+  compaction-timing suggestion when context is actively filling up in the current session; it never
+  inventories what's contributing to that fullness. "Is my skills/CLAUDE.md/plugin footprint too
+  heavy" → `context-audit`; "should I compact now because this session's context is filling up" →
+  this skill.
+- A live, in-the-moment read of the current window's percentage-full state — that's
+  `context-window-analysis`'s job (see its own "Relationship to strategic-compact" section)
+- A behavioral-posture question (dev/review/ship/admin) — see "Relationship to context-mode" below
+
 ## When to Suggest Compaction
 
 ### Optimal Compaction Points
@@ -154,7 +172,7 @@ The full hook wiring, by event:
   attached to or synchronously injects `additionalContext`. It still writes any detected suggestion to
   a pending-suggestion file synchronously within its own (backgrounded) run — the `Stop` hook below is
   what actually delivers it to the user, not this hook's own return value.
-- **`PostToolUse`** — `compact-milestone-detector.sh` (matcher `Bash`) detects milestones (tests
+- **`PostToolUse`** — `compact-milestone-detector.sh` (matcher `^Bash$`) detects milestones (tests
   passing, commits, builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
   from transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds — its
@@ -165,7 +183,8 @@ The full hook wiring, by event:
   550-750ms on Windows, which required `async: true`), this hook's own real per-invocation cost was
   directly benchmarked (10 runs, this platform): **83-97ms, mean ~88ms** — an order of magnitude
   cheaper, well within `PostToolUse`'s synchronous budget, so it stays synchronous by measurement,
-  not by assumption.
+  not by assumption. `context-window-analysis`'s own Context Health Thresholds table mirrors these
+  same constants — re-check that table too whenever `context-monitor.py`'s thresholds change here.
 - **`PreCompact`** — `compact-instructions.sh` writes best-effort stderr/`systemMessage` guidance on
   what to preserve through compaction; this is a nudge, not a guarantee (stderr is verbose-mode-only
   by default). `PreCompact` **does** support `hookSpecificOutput.additionalContext` per Claude Code's
