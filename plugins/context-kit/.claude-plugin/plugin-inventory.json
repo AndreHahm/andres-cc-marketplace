@@ -501,7 +501,7 @@
       "domain": null,
       "functional_role": null,
       "id": "component_1096c392",
-      "name": "context-window-analyze",
+      "name": "context-window-analysis",
       "naming_history": [
         {
           "evidence": [
@@ -510,10 +510,19 @@
           "name": "context-window-analyze",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-09-15",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "skills/context-window-analysis"
+          ],
+          "name": "context-window-analysis",
+          "reason": "Renamed from context-window-analyze to context-window-analysis to match plugin-rulebook's noun-phrase skill-naming convention (R27 advisory finding during Phase 10 Final Verification of the context-kit wave-4 QA pass) -- 'analyze' read as a bare-verb form; 'analysis' matches the documented noun/gerund pattern used by sibling skills.",
+          "valid_from": "2026-09-17",
           "valid_to": null
         }
       ],
-      "path": "skills/context-window-analyze",
+      "path": "skills/context-window-analysis",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -528,6 +537,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-09-15",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "skills/context-window-analysis"
+          ],
+          "reason": "Renamed from context-window-analyze to context-window-analysis to match plugin-rulebook's noun-phrase skill-naming convention (R27 advisory finding during Phase 10 Final Verification of the context-kit wave-4 QA pass) -- 'analyze' read as a bare-verb form; 'analysis' matches the documented noun/gerund pattern used by sibling skills.",
+          "status": "active",
+          "valid_from": "2026-09-17",
           "valid_to": null
         }
       ],
@@ -620,5 +638,5 @@
   "plugin_id": "plugin_7237ea29",
   "plugin_name": "context-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-16"
+  "updated_on": "2026-09-17"
 }

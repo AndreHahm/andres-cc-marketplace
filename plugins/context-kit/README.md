@@ -35,7 +35,7 @@ This is a multi-wave build. Waves shipped so far:
   context budget, compaction strategy, and partitioning approach.
 - **`context-optimization`** — @ mentions and semantic search for targeted, precise retrieval; one
   concrete instance of `context-engineering`'s "Select" operation.
-- **`context-window-analyze`** — a live, in-the-moment check of the current context window's health and
+- **`context-window-analysis`** — a live, in-the-moment check of the current context window's health and
   remediation options, narrower in scope than `context-audit`'s broader footprint audit.
 
 **Wave 3 — behavioral-mode switching:**
@@ -116,7 +116,7 @@ resolved in this wave.
 Wave 2's skills extend this pairing, each independently (conditional on `session-kit` being installed —
 `context-kit` has no hard dependency on it): `context-audit` defers session-token/model/tool-usage
 analysis and memory-content health to `session-kit`'s `session-stats`/`session-memory-audit`, rather than
-duplicating them; `context-window-analyze` separately offers `session-kit`'s `session-handoff` as one
+duplicating them; `context-window-analysis` separately offers `session-kit`'s `session-handoff` as one
 optional escalation path when context is critical. Neither skill duplicates the other's session-kit
 integration.
 

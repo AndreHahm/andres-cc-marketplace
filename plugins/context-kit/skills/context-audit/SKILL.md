@@ -93,7 +93,7 @@ Read `references/audit-procedures.md` for detailed procedures, scoring rubric, a
 
 - `session-kit`'s `session-stats` (if installed) — session token/model/tool-usage/frustration analysis, out of scope here.
 - `session-kit`'s `session-memory-audit` (if installed) — memory content health, out of scope here.
-- `context-window-analyze` — a narrower, live-window-only check; use it for the current window's health in the moment, this skill for the broader skills/CLAUDE.md/plugin/MCP footprint.
+- `context-window-analysis` — a narrower, live-window-only check; use it for the current window's health in the moment, this skill for the broader skills/CLAUDE.md/plugin/MCP footprint.
 
 ## Testing & Validation
 
@@ -110,7 +110,7 @@ No `evals/context-audit/evals.json` — this skill's variable part is `scripts/a
 **Verify it does NOT activate on:**
 - "how much did this session use" / "what tool errors happened" (session usage stats, not static footprint) → `session-kit`'s `session-stats`
 - "clean up stale memories" (memory content health, not footprint) → `session-kit`'s `session-memory-audit`
-- "check the live context window right now" with no interest in the broader skills/CLAUDE.md/plugin footprint → `context-window-analyze`
+- "check the live context window right now" with no interest in the broader skills/CLAUDE.md/plugin footprint → `context-window-analysis`
 
 **Quality gates:**
 - [ ] `scripts/audit-context.sh` never claims a `--session`/JSONL mode — that capability was deliberately dropped in favor of deferring to `session-kit`'s `session-stats`

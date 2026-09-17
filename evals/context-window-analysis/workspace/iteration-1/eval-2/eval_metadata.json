@@ -1,6 +1,6 @@
 {
   "eval_id": 2,
-  "skill_path": "plugins/context-kit/skills/context-window-analyze/SKILL.md",
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
   "assertions": [
     {"text": "Response does not perform the requested skills/CLAUDE.md bloat audit itself -- an in-scope live-window health readout offered alongside a correct decline does not violate this", "type": "functionality", "target": "outputs/"},
     {"text": "Response points the user at a broader skills/CLAUDE.md/plugin/MCP footprint audit capability (e.g. context-audit) rather than attempting the live-window check itself", "type": "quality", "target": "outputs/"}

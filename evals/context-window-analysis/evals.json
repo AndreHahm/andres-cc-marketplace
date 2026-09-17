@@ -1,6 +1,6 @@
 {
-  "skill_name": "context-window-analyze",
-  "skill_path": "plugins/context-kit/skills/context-window-analyze/SKILL.md",
+  "skill_name": "context-window-analysis",
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
   "description": "Analyzes the current context window's live health and provides optimization recommendations (HEALTHY/MONITOR/WARNING/CRITICAL), manually triggered.",
   "evals": [
     {
