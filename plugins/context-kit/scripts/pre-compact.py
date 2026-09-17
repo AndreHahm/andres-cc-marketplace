@@ -156,12 +156,21 @@ def find_active_plan(project_dir: str) -> dict | None:
 
 
 def save_state(state: dict, session_id: str = "") -> None:
-    """Save state to the session directory."""
+    """Save state to the session directory.
+
+    Writes to a temp file then os.replace()s it into place -- matching this
+    plugin's own Bash hooks' `> "$FILE.tmp" && mv "$FILE.tmp" "$FILE"`
+    convention -- so a crash/kill mid-write can never leave post-compact-restore.py
+    reading a truncated file and silently discarding real captured state
+    (its own JSON-decode-error handling would otherwise mask the loss as
+    "no state was ever captured")."""
     state_file = get_session_dir(session_id) / "pre-compact-state.json"
     state["timestamp"] = datetime.now().isoformat()
+    tmp_file = state_file.with_suffix(state_file.suffix + ".tmp")
 
     try:
-        state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        tmp_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        tmp_file.replace(state_file)
     except OSError as e:
         print(f"Warning: Could not save pre-compact state: {e}", file=sys.stderr)
 

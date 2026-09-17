@@ -292,10 +292,17 @@ def save_cache(data: dict, session_id: str = "") -> bool:
     """Save the context monitor cache. Returns True on success, False on a
     write failure -- callers that must not treat the write as done until it
     actually landed (see _maybe_reset_baseline's marker-unlink ordering)
-    check this instead of assuming success."""
+    check this instead of assuming success.
+
+    Writes to a temp file then os.replace()s it into place -- matching this
+    plugin's own Bash hooks' `> "$FILE.tmp" && mv "$FILE.tmp" "$FILE"`
+    convention -- so a crash/kill mid-write, or an AV scanner holding the
+    file, can never leave a truncated cache for a later read to trip over."""
     cache_file = get_session_dir(session_id) / "context-monitor-cache.json"
+    tmp_file = cache_file.with_suffix(cache_file.suffix + ".tmp")
     try:
-        cache_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp_file.replace(cache_file)
         return True
     except OSError:
         return False
