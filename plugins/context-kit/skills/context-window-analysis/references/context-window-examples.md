@@ -6,9 +6,10 @@ health-status tiers with a distinct example (HEALTHY, WARNING, CRITICAL — MONI
 distinct example since its guidance is the same shape as HEALTHY with an earlier nudge).
 
 Every block below is a genuinely independent fence (header/indicators, then
-assessment/recommendations, then — for Critical only — one fence per remediation option) so
-none needs a whole-block R18 exception; reading them in sequence still reconstructs the full
-report exactly as a single fence would have shown it.
+assessment/recommendations, then — for Critical only — one fence per remediation option, except
+Options 1 and 2 which share one fence since both are short enough together) so none needs a
+whole-block R18 exception; reading them in sequence still reconstructs the full report exactly
+as a single fence would have shown it.
 
 ## Report Template
 
@@ -110,9 +111,10 @@ Warning Signs to Watch:
 
 ## Example: Critical State
 
-Covers all 4 remediation options, read in sequence — each option is its own small fence
-rather than one large combined block, so none needs a whole-block R18 exception; the
-side-by-side comparison value is unchanged since the four still read consecutively.
+Covers all 4 remediation options, read in sequence — Options 1 and 2 share one small fence
+(both short enough together), Options 3 and 4 each get their own, so none needs a whole-block
+R18 exception; the side-by-side comparison value is unchanged since the four still read
+consecutively.
 
 ```text
 Context Window Analysis

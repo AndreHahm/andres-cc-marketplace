@@ -91,7 +91,7 @@ Sort all entries by size descending. Format:
 ```
 
 Flag column values:
-- `LARGE` — SKILL.md > 500 words or CLAUDE.md > 2KB
+- `LARGE` — SKILL.md > 500 words, CLAUDE.md > 2KB, or an auto-memory file > 300 words
 - `RULES` — an unconditional `.claude/rules/*.md` file, user- or project-level (Step 3 — not a
   skill-bundled `rules/` directory from Step 1, which is on-demand, and not a `paths:`-scoped rule,
   which is on-demand too)
