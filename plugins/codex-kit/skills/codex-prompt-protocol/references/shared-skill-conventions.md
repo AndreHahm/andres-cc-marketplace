@@ -87,9 +87,15 @@ the machine to an external CLI) through a mechanism of its own:
   confirmation reasoning applies) and `transfer.md`'s own explicit per-call
   confirmation both exceed this gate's bar in the default case (per-call,
   not just first-call in the session).
-- **`codex-peer-review`**: manual/on-request only, never auto-triggered —
-  same reasoning as the slash commands above, the explicit request that
-  invokes it is the confirmation.
+- **`codex-peer-review`**: scoped to an explicit Codex selection only — an
+  explicit invocation, or an explicit "Codex" answer at its own Model check
+  gate — same reasoning as the slash commands above, that selection is the
+  confirmation. This exception does **not** cover its antigravity-kit
+  (Gemini/Antigravity) sibling's unavailability fallback: on an ambiguous,
+  auto-routed request where the sibling isn't available this session,
+  `codex-peer-review` still asks unconditionally which model is intended,
+  regardless of whether this gate was already satisfied by an earlier call
+  this session — see that skill's own "Model check" section.
 - **`codex-audit-loop`**: its own mandatory cost/scope `AskUserQuestion`
   runs before any mode launches its first Codex dispatch and covers the
   same ground.
