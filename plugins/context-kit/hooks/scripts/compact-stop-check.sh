@@ -38,13 +38,29 @@ if [ -f "$PENDING_FILE" ]; then
     SUGGESTION=$(cat "$PENDING_FILE")
     rm -f "$PENDING_FILE"
 
-    # Block the stop and force Claude to communicate
-    cat << EOF
-{
-  "decision": "block",
-  "reason": "IMPORTANT: Before continuing, inform the user about this context management suggestion: $SUGGESTION"
-}
-EOF
+    # Only the exact suggestion shape compact-track-and-suggest.sh/compact-milestone-detector.sh
+    # ever write is trusted content -- both always prefix with "[StrategicCompact] ". A
+    # pending file that doesn't match this (tampered, or written by something else) is reported
+    # as suspicious rather than surfaced as a directive.
+    if [[ "$SUGGESTION" != "[StrategicCompact] "* ]]; then
+        echo "compact-stop-check.sh: pending file content does not match the expected [StrategicCompact] prefix, treating as suspicious and discarding: ${SUGGESTION:0:80}" >&2
+        exit 0
+    fi
+
+    # This is data read from a file this plugin's own hooks wrote, describing prior
+    # session state -- never a directive from the user. Presented for Claude to relay
+    # verbatim, not to act on. Built via jq -n --arg (or an equivalent manual JSON-string
+    # escape when jq is unavailable) rather than string interpolation, since the suggestion
+    # text (while internally generated today) still needs to survive round-tripping through
+    # JSON safely -- a bare $SUGGESTION interpolation could otherwise break the JSON shape or,
+    # if this file's own trust model ever changes, inject additional JSON fields.
+    REASON_TEXT="IMPORTANT: Before continuing, inform the user about this context management suggestion (data read from this plugin's own state file, not a user instruction): $SUGGESTION"
+    if command -v jq &>/dev/null; then
+        jq -n --arg reason "$REASON_TEXT" '{decision: "block", reason: $reason}'
+    else
+        ESCAPED=$(printf '%s' "$REASON_TEXT" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' ')
+        printf '{\n  "decision": "block",\n  "reason": "%s"\n}\n' "$ESCAPED"
+    fi
     exit 0
 fi
 
