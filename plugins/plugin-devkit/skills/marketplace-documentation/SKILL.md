@@ -142,8 +142,13 @@ all.
 ### Step 5: Report
 
 Present: which file(s) were authored/updated, the plugin-table diff (rows added/removed/reordered, if
-any), and the `human-doc-reviewer` verdict and findings. Fix any Critical/Major finding directly before
-reporting done, per `plugin-documentation`'s own Step 5 discipline.
+any), and the `human-doc-reviewer` verdict and findings. If `human-doc-reviewer` reports a Critical or
+Major finding against a file this skill just wrote or updated in this pass, fix it directly and note the
+correction before reporting done — the same scoping `plugin-documentation`'s own Step 5 actually uses. A
+Critical/Major finding against one of the 5 root files this pass did **not** touch (a pre-existing issue
+a full-mode reviewer pass can surface incidentally, since full mode covers the whole 5-file surface even
+for a single-file authoring request) is reported as a separate open item instead — never silently fixed
+outside the scope the user actually asked for.
 
 ## Gotchas
 
