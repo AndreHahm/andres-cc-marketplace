@@ -213,12 +213,12 @@ fi
 
 if [ "$TOTAL" -eq "$T2" ] && [ "$SUGGESTED_T2" -eq 0 ]; then
     SUGGESTED_T2=1
-    SUGGESTION="[StrategicCompact] ${T2} tool calls. Context is filling up. Recommend /compact or /handoff before continuing."
+    SUGGESTION="[StrategicCompact] ${T2} tool calls. Context is filling up. Recommend /compact, or say create handoff if session-kit is installed, before continuing."
 fi
 
 if [ "$TOTAL" -eq "$T3" ] && [ "$SUGGESTED_T3" -eq 0 ]; then
     SUGGESTED_T3=1
-    SUGGESTION="[StrategicCompact] ${T3} tool calls reached. Strongly recommend /compact or /handoff now to maintain performance."
+    SUGGESTION="[StrategicCompact] ${T3} tool calls reached. Strongly recommend /compact, or say create handoff if session-kit is installed, now to maintain performance."
 fi
 
 # Every 50 calls after T3
@@ -230,7 +230,7 @@ fi
 if [ "$ELAPSED" -ge "$TIME_THRESHOLD" ] && [ "$SUGGESTED_TIME" -eq 0 ]; then
     SUGGESTED_TIME=1
     MINUTES=$((ELAPSED / 60))
-    SUGGESTION="[StrategicCompact] Session running for ${MINUTES} minutes. Long sessions accumulate stale context. Consider /compact or /handoff."
+    SUGGESTION="[StrategicCompact] Session running for ${MINUTES} minutes. Long sessions accumulate stale context. Consider /compact, or say create handoff if session-kit is installed."
 fi
 
 # Save updated state (atomic write)

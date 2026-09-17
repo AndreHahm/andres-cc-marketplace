@@ -73,6 +73,21 @@ this skill's own "Switching to unrelated task" trigger above (suggest `/compact`
 duplicating compaction-timing logic itself. Use `context-mode` when the question is "how cautious/
 verbose should I be right now"; use this skill when the question is "should I compact or clear now."
 
+## Relationship to context-engineering
+
+`context-engineering` owns the manually-applied Write/Select/Compress/Isolate conceptual framework —
+planning what to persist/retrieve/compress before or during a task. This skill only supplies the
+automatic, hook-driven layer that detects a good compaction *moment* and suggests acting on it; it does
+not decide *what* to persist or how to structure a context budget. "How should I structure/budget
+context for this task" → `context-engineering`; "is now a good moment to compact" → this skill.
+
+## Relationship to context-window-analyze
+
+For a manually-triggered, point-in-time read of the current window's actual health (percentage full,
+composition breakdown) rather than an automatic nudge, see `context-window-analyze` — this skill only
+fires the automatic hook-driven suggestion; it doesn't answer "how full is my context right now" on
+demand.
+
 ## Phase Detection Patterns
 
 Detect phase transitions by monitoring:
@@ -194,8 +209,9 @@ verification record. The checklist below documents that direct-verification surf
 - A `Stop` event where `stop_hook_active` is already `true` — must exit cleanly, never re-block.
 - A Bash command containing an unrelated word that happens to substring-match a milestone-detection
   pattern (e.g. `majestic`, `cmake build`) — `compact-milestone-detector.sh`'s test/build/deploy
-  patterns are word-boundary-anchored (`\b...\b`) specifically so these don't produce a false
-  milestone suggestion.
+  patterns use `grep -w` (whole-word matching), not `\b...\b`: BSD grep (macOS's default
+  `/usr/bin/grep`) doesn't support the GNU-only `\b` escape at all, so `-w` is the portable choice
+  that still stops these from producing a false milestone suggestion.
 
 **Note on test/build milestone detection:** `compact-milestone-detector.sh` is wired to `PostToolUse`
 only (not `PostToolUseFailure`) — this event fires only after a tool call completes successfully, so a

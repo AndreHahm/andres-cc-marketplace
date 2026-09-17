@@ -26,6 +26,10 @@ window's health in the moment.
 - Automatic, hook-driven detection of a good compaction moment — that's `strategic-compact`'s job (this
   plugin, Wave 1); this skill is a manually-triggered check, not the automation itself
 - A broader skills/CLAUDE.md/plugin/MCP footprint audit — use `context-audit` instead
+- A conceptual/planning-level question about which of `/compact`, `/clear`, or a subagent generally
+  fits a situation, independent of a live health read — see `context-engineering`'s "When to /clear vs
+  /compact vs Subagent" table; this skill answers "what's my window's health right now," not the
+  general decision framework
 
 ## Usage
 

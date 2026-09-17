@@ -170,7 +170,7 @@ if [ -n "$MILESTONE_TYPE" ] && [ "$TIME_SINCE_MILESTONE" -ge 300 ]; then
             SUGGESTION="[StrategicCompact] Tests passed - milestone reached. Good checkpoint for /compact if implementation phase complete."
             ;;
         commit)
-            SUGGESTION="[StrategicCompact] Code committed - milestone reached. Consider /compact or /handoff before starting next task."
+            SUGGESTION="[StrategicCompact] Code committed - milestone reached. Consider /compact, or say create handoff if session-kit is installed, before starting next task."
             ;;
         build)
             SUGGESTION="[StrategicCompact] Build completed - milestone reached. Good time for /compact if moving to testing or deployment."
