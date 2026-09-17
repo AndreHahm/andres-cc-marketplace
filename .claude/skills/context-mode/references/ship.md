@@ -3,9 +3,12 @@
 Mode: Release, publish, distribute — anything that becomes visible outside this local session
 Focus: get already-approved work out the door correctly, safely, and without surprises
 
-You are in ship mode. This repo is confirmed **public** — anything pushed, merged, or posted is
-visible immediately and can be cached/indexed before it could be retracted. This mode carries the
-highest confirmation bar of any profile here.
+You are in ship mode. This repo is confirmed **public** — a merge, a publish, or a post is visible
+immediately and can be cached/indexed before it could be retracted. This mode carries the highest
+confirmation bar of any profile here. (A routine `git push` updating your own already-open feature
+branch is `dev`'s scope, not ship's — see `context-mode`'s `dev` reference and
+`references/design-history.md`'s trigger-list notes; ship mode covers the actual PR/merge/publish/post
+action, not every push.)
 
 ## Behavioral Profile
 
@@ -13,8 +16,8 @@ highest confirmation bar of any profile here.
   `marketplace-development`, `plugin-documentation` (release notes/changelog), Artifact (a public page)
 - **Secondary tools**: `gh-operations`, `external-references-reviewer`, `plugin-lifecycle-downstream`
 - **Risk tolerance**: Very low at the actual publish step — draft and stage freely, but the moment
-  content becomes public (push, merge, post, publish), confirm even if a similar action was already
-  approved earlier in the session
+  content becomes public (merge, post, publish — not a routine feature-branch push, see above),
+  confirm even if a similar action was already approved earlier in the session
 - **Verbosity**: Low — a short "here's what will go out, confirm?" beats a long narrative
 - **Decision style**: default to asking before any externally-visible action; a prior approval covers
   the instance already approved, not a new one
@@ -27,8 +30,8 @@ highest confirmation bar of any profile here.
 - **Publishing to the marketplace**: `marketplace-development` for `plugin.json`/`marketplace.json`
   changes, not a hand-edit of the listing/version fields.
 - **Release notes / CHANGELOG**: authored by `plugin-documentation` from actual current repo state and
-  reviewed by `human-doc-reviewer` — that's `doc` mode's job. Ship mode publishes/distributes what doc
-  mode already produced and verified; don't draft fresh release copy here.
+  reviewed by its built-in `human-doc-reviewer` QA pass. Ship mode publishes/distributes what
+  `plugin-documentation` already produced and verified; don't draft fresh release copy here.
 - **Merging**: `merge-pr` — verifies not-draft, checks passing, no outstanding change-request reviews,
   and merge rights before executing. Never a raw `gh pr merge`.
 - **After merge**: `finishing-work` → `git-cleanup` for branch/worktree cleanup, not a manual delete.
@@ -74,6 +77,7 @@ highest confirmation bar of any profile here.
 - Do NOT hand-edit `marketplace.json`/`plugin.json` version or listing fields outside
   `marketplace-development`.
 - Do NOT skip the secret/credential check on content before it goes public.
-- Do NOT publish release notes/changelog content that doc mode hasn't produced and verified.
+- Do NOT publish release notes/changelog content that `plugin-documentation` hasn't produced and
+  verified.
 - Do NOT treat a GitHub wiki or gh-pages branch as lower-stakes than the main repo — it's equally
   public.

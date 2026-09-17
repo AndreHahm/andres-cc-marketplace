@@ -2,7 +2,7 @@
 """
 Context-Mode Detection Hook (UserPromptSubmit)
 
-Regex/substring-matches the raw submitted prompt against triggers.json's phrase lists
+Case-insensitive substring-matches the raw submitted prompt against triggers.json's phrase lists
 (first-pass scope: dev/review/ship/admin - see references/design-history.md for the full
 design history and real-transcript validation behind these 4 modes and their trigger lists).
 
