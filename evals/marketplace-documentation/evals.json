@@ -15,9 +15,12 @@
     {
       "id": "eval-1",
       "name": "Plugin added to marketplace.json — activates and follows procedure",
-      "prompt": "A new plugin `example-kit` was just added to .claude-plugin/marketplace.json. Update the marketplace docs to reflect this.",
-      "expected_output": "Reads .claude-plugin/marketplace.json as source of truth; regenerates README's plugin table to include the new plugin without inventing a placeholder description; never writes to marketplace.json itself; invokes human-doc-reviewer afterward (mentions it explicitly, does not skip it).",
-      "files": []
+      "prompt": "Using the marketplace-documentation skill, treat evals/marketplace-documentation/fixture-eval1/marketplace.json as the marketplace manifest and evals/marketplace-documentation/fixture-eval1/README.md as the README to update for this run (a fixture pair, not the real repo-root files). A new plugin `example-kit` was just added to that manifest — it's already present in the fixture manifest with a real description but missing from the fixture README's Plugins table. Update the fixture README's plugin table to reflect this.",
+      "expected_output": "Reads the fixture marketplace.json as source of truth; adds a real new table row for example-kit to the fixture README using its actual fixture description (not a placeholder); never writes to the fixture marketplace.json itself; invokes human-doc-reviewer afterward (mentions it explicitly, does not skip it).",
+      "files": [
+        "evals/marketplace-documentation/fixture-eval1/marketplace.json",
+        "evals/marketplace-documentation/fixture-eval1/README.md"
+      ]
     },
     {
       "id": "eval-2",

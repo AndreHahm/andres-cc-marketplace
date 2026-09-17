@@ -1,0 +1,32 @@
+{
+  "name": "fixture-marketplace",
+  "owner": {
+    "name": "Fixture Owner"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Fixture marketplace manifest for marketplace-documentation eval-1"
+  },
+  "plugins": [
+    {
+      "name": "hello-kit",
+      "source": "./plugins/hello-kit",
+      "description": "Says hello.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Fixture Owner"
+      },
+      "license": "MIT"
+    },
+    {
+      "name": "example-kit",
+      "source": "./plugins/example-kit",
+      "description": "Example utilities for testing plugin scaffolding and CI setup.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Fixture Owner"
+      },
+      "license": "MIT"
+    }
+  ]
+}
