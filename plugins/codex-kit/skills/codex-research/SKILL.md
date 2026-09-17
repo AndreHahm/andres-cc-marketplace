@@ -68,7 +68,13 @@ Rules:
 - **Mixed** (topic + path) → both, in the blind payload template.
 - **Meta-instructions addressed to YOU** (e.g. "in Korean", "quickly", "thoroughly" — often typed in the user's own language) → obey for your own behavior, never include in the prompt.
 - **No args** → `AskUserQuestion`: "What should I research?"
-- **Ambiguous model** (the request names neither Codex nor Gemini/Antigravity/agy — e.g. a bare "investigate this topic" or "deep research on X") → `AskUserQuestion` to confirm which model before proceeding; trigger phrasing alone doesn't disambiguate this skill from antigravity-kit's `antigravity` skill.
+- **Ambiguous model** — only when this skill was reached via natural-language auto-routing with no
+  explicit selection of it, and the request names neither Codex nor Gemini/Antigravity/agy (e.g. a
+  bare "investigate this topic" or "deep research on X") → `AskUserQuestion` to confirm which model
+  before proceeding; trigger phrasing alone doesn't disambiguate this skill from antigravity-kit's
+  `antigravity` skill. **Never fires on an explicit invocation of this skill** (e.g.
+  `/codex-kit:codex-research ...`, or the user explicitly saying "codex research") — that selection
+  already answers "Codex," regardless of whether `$ARGUMENTS` itself names a model.
 - **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. `--model`/`--effort`/`--persist` are skill-level and handled per the whitelist above, not forwarded as arbitrary companion flags.
 - **`--no-preview`** → skip Phase 1.5 draft review. Power users who trust the translation.
 

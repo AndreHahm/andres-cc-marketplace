@@ -59,10 +59,14 @@ the model — routing, shared rules, verification gates — not raw generation.
 - **The request names Codex, not Gemini/Antigravity/agy** — for a second opinion, deep research, or
   delegating an implementation to Codex specifically, use codex-kit's `codex-peer-review` (second
   opinion), `codex-research` (deep research), or `codex-rescue` (delegate implementation) instead.
-  This skill only fires when the named or implied model/tool is Gemini/Antigravity/agy. If the
+  This skill only fires when the named or implied model/tool is Gemini/Antigravity/agy. If this
+  skill was reached via natural-language auto-routing with no explicit selection of it, and the
   request names **neither** model (e.g. a bare "get a second opinion" or "do deep research"), ask
   which one — Gemini/Antigravity or Codex — before proceeding; trigger phrasing alone doesn't
-  disambiguate that case.
+  disambiguate that case. **Never ask on an explicit invocation of this skill** (e.g.
+  `/antigravity-kit:antigravity ...`, or the user explicitly saying "antigravity"/"agy") — that
+  selection already answers "Gemini/Antigravity," regardless of whether the arguments themselves
+  name a model.
 
 ## Two modes (pick per task)
 
