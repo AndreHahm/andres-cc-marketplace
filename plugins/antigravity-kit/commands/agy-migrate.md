@@ -41,4 +41,4 @@ Only run with `--apply` after the user has seen the dry-run and agreed. Then tel
 If the user is only asking what *would* move, stop at the dry-run — do not apply.
 
 For the full compatibility matrix and the reasons behind each mapping, read
-`docs/MIGRATION.md` in this plugin.
+[`docs/agy-migration.md`](../../../docs/agy-migration.md).
