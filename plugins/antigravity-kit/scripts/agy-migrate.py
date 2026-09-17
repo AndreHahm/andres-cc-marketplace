@@ -4,7 +4,7 @@
 Read-only by default: prints a per-unit plan and exits. `--apply` performs it.
 
 Design constraints, all of them learned the hard way from probing agy 1.1.12
-(see docs/agy-migration.md at the repo root for the full findings):
+(see docs/agy-migration.md in this plugin for the full findings):
 
   * The Claude Code config dir is treated as READ-ONLY. The only file this tool
     can ever create on the Claude side is an `AGENTS.md` symlink beside an

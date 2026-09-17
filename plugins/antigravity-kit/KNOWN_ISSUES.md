@@ -12,7 +12,7 @@ Git-tracked record of gaps discovered while transferring `antigravity-kit` into 
 
 ## Issue-number links reference an unverified tracker (found 2026-09-16)
 
-**Component:** `README.md` and [`docs/agy-troubleshooting.md`](../../docs/agy-troubleshooting.md), which link 3 distinct GitHub issue numbers — `#6`, `#10`, `#37` — as `andrehahm/andres-cc-marketplace` issue links.
+**Component:** `README.md` and [`docs/agy-troubleshooting.md`](docs/agy-troubleshooting.md), which link 3 distinct GitHub issue numbers — `#6`, `#10`, `#37` — as `andrehahm/andres-cc-marketplace` issue links.
 
 **Symptom:** these issue numbers most plausibly originate from this plugin's old standalone source repo's own issue tracker (from before the transfer into this marketplace), not from `andres-cc-marketplace`'s actual tracker. Low issue numbers in a shared, busier marketplace repo's tracker are near-certain to resolve to unrelated items.
 

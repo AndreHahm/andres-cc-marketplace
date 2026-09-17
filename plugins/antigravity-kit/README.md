@@ -127,7 +127,7 @@ Worth knowing if you would rather do it by hand: an Antigravity rule without
 `trigger: always_on` in its frontmatter is ignored with no error and no warning,
 workspace `.agents/` is ignored entirely unless the session is bound to an agy project,
 and `agy plugin import claude` finds nothing on a current Claude Code because it only
-looks one directory deep. [`docs/agy-migration.md`](../../docs/agy-migration.md) has the full layout
+looks one directory deep. [`docs/agy-migration.md`](docs/agy-migration.md) has the full layout
 reference, the compatibility matrix, and how each of these was measured.
 
 ---
@@ -214,7 +214,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 <details>
 <summary><b>🚧 Guardrails &amp; known limits</b></summary>
 
-> **Something broken?** See **[docs/agy-troubleshooting.md](../../docs/agy-troubleshooting.md)** — symptom-first fixes for Windows/WSL, writes that silently don't happen, quota/auth/timeout codes, and updating.
+> **Something broken?** See **[docs/agy-troubleshooting.md](docs/agy-troubleshooting.md)** — symptom-first fixes for Windows/WSL, writes that silently don't happen, quota/auth/timeout codes, and updating.
 >
 > **Known, unresolved gaps** (Mirror Sync registration, unverified issue-tracker links): see **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)**.
 

@@ -180,7 +180,7 @@ you deleted is treated as yours and left alone.
 
 | Resource | Read when |
 |---|---|
-| [`docs/agy-migration.md`](../../../../docs/agy-migration.md) | The full layout reference, the compatibility matrix, and how each behavior above was measured — this skill covers the workflow, that doc covers the detail |
+| [`docs/agy-migration.md`](../../docs/agy-migration.md) | The full layout reference, the compatibility matrix, and how each behavior above was measured — this skill covers the workflow, that doc covers the detail |
 
 ## Testing & Validation
 
