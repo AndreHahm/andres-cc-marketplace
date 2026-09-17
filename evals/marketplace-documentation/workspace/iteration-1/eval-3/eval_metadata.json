@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-documentation/SKILL.md",
+  "assertions": [
+    {"text": "Reads .claude-plugin/marketplace.json as source of truth before making any comparison", "type": "functionality", "target": "output"},
+    {"text": "Compares it against README's actual current plugin table row by row", "type": "functionality", "target": "output"},
+    {"text": "Correctly reports whether changes are needed based on the real comparison (not assumed)", "type": "quality", "target": "output"},
+    {"text": "Does not fabricate an edit or silently make a no-op look like real work", "type": "quality", "target": "output"}
+  ]
+}
