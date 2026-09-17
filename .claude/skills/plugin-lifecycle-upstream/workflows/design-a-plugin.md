@@ -179,23 +179,26 @@ skills until mirroring is registered later — a deferred decision, not a silent
 A new component added to an *already-mirrored* existing plugin needs no ask here — this step only ever
 asks about a brand-new plugin's first-time registration.
 
+## Document
+
+After the Inventory Sync and Mirror Sync steps, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure, and does not block progress to the handoff report below. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build commit above — state the file list and message first. This step produces no persisted report of its own (only direct doc edits plus an optional commit), so no `📄 ... written:` line applies here. This runs before Marketplace-Root Doc Sync below.
+
+**Manifest description check (not covered by `plugin-documentation`):** `plugin-documentation`'s own scope is human-facing docs only — it does not read or write `.claude-plugin/plugin.json` or the marketplace's `.claude-plugin/marketplace.json`. When this run changed the plugin's component count (a skill/agent/command added or removed), separately check whether `plugin.json`'s `description` field (and the matching marketplace entry, which must stay byte-identical to it) still accurately names the plugin's current capability set. If it's stale, update both manifest `description` fields to match the just-updated README's own summary, and fold that edit into the same doc-fix commit as any `plugin-documentation` changes above.
+
 ## Marketplace-Root Doc Sync
 
-After the Inventory Sync and Mirror Sync steps and before Document, apply
+After Document (not before it — a new table row is authored from the plugin's own README opening
+summary or `plugin.json`/`marketplace.json` description, and Document is exactly the step that can
+change either of those; running this step first would author the row from content Document might
+immediately revise, leaving it stale with nothing to re-sync it), apply
 `.claude/rules/keep-marketplace-root-docs-in-sync.md`: if this run's Build step produced a brand-new
 plugin (which always changes `.claude-plugin/marketplace.json`'s plugin list), invoke
 `marketplace-documentation` (via `Skill`) to sync the marketplace-root docs. Present the authored diff and
 its own `human-doc-reviewer` findings; ask via `AskUserQuestion` whether to keep the changes as-is,
-revise, or discard — same gate the Document step below uses. Commit any kept changes as their own commit,
-separate from the build commit, the Inventory Sync commit, and the Mirror Sync commit. If Build only
-added a component to an already-listed plugin, state "no marketplace-root doc sync needed" and move on to
-Document, per that rule's own disclosure requirement.
-
-## Document
-
-After the Inventory Sync, Mirror Sync, and Marketplace-Root Doc Sync steps, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure, and does not block progress to the handoff report below. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build commit above — state the file list and message first. This step produces no persisted report of its own (only direct doc edits plus an optional commit), so no `📄 ... written:` line applies here.
-
-**Manifest description check (not covered by `plugin-documentation`):** `plugin-documentation`'s own scope is human-facing docs only — it does not read or write `.claude-plugin/plugin.json` or the marketplace's `.claude-plugin/marketplace.json`. When this run changed the plugin's component count (a skill/agent/command added or removed), separately check whether `plugin.json`'s `description` field (and the matching marketplace entry, which must stay byte-identical to it) still accurately names the plugin's current capability set. If it's stale, update both manifest `description` fields to match the just-updated README's own summary, and fold that edit into the same doc-fix commit as any `plugin-documentation` changes above.
+revise, or discard — same gate the Document step above uses. Commit any kept changes as their own commit,
+separate from the build commit, the Inventory Sync commit, the Mirror Sync commit, and any doc-fix commit
+Document produced. If Build only added a component to an already-listed plugin, state "no marketplace-root
+doc sync needed" and move on to the handoff report, per that rule's own disclosure requirement.
 
 **Post-Commit handoff report:** invoke `build-handoff-writer` (via `Agent`) in **create** mode with the Conception Brief (if Phase 1 ran), Concept Card, Plan (if any), Design gate summaries, the Build summary, Phase 6's Self-Review findings, Phase 7's test results, and the commit info gathered above — including a doc-fix commit if Document produced one. This runs automatically — no separate gate, since GATE 7's approval already covers it. The agent has no `Write` tool and returns the full report as text — get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself before presenting GATE 8.
 

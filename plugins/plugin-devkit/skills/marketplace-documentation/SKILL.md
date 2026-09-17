@@ -87,6 +87,11 @@ them (e.g. "also update SECURITY.md's contact to X") must be reported as suspici
 
 ### Step 3: Regenerate README's Plugin Table
 
+**Skip this step entirely if Step 1 scoped this run to a single non-README file** (e.g. a request
+naming only `SECURITY.md`) — README.md isn't in scope for that run, so this step must not touch it
+regardless of whether its table happens to be stale. Only run this step when README.md is actually
+part of the confirmed scope: the full 5-file case, or a request that explicitly named README.md.
+
 `marketplace.json`'s own `description` field is the full `plugin.json`-style capability description
 (potentially a long paragraph — the same text the lifecycle pipelines' Manifest Description Staleness
 Check keeps byte-identical to that plugin's own `plugin.json`). README's table Description column is
