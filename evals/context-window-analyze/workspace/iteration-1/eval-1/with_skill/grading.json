@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response asks the user to run /context and share output, or falls back explicitly to an estimate with that caveat stated", "passed": true, "evidence": "'The most reliable way to get that is to run /context yourself' -- confident, direct instruction to run /context."},
+    {"text": "Response includes a status assessment using the HEALTHY/MONITOR/WARNING/CRITICAL vocabulary", "passed": true, "evidence": "'Estimated Status: MONITOR' using the skill's documented threshold table."},
+    {"text": "Response includes concrete, actionable recommendations", "passed": true, "evidence": "Response includes a numbered list of concrete recommendations tied to the estimated status."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

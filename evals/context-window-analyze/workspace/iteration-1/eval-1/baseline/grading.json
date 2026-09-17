@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response asks the user to run /context and share output, or falls back explicitly to an estimate with that caveat stated", "passed": false, "evidence": "Response only speculates: 'the most reliable approach would be a tool or command specifically designed to introspect token usage (e.g., a /context command or similar, if your Claude Code environment provides one)' -- hedged and uncertain, not a confident direction to run a known command."},
+    {"text": "Response includes a status assessment using the HEALTHY/MONITOR/WARNING/CRITICAL vocabulary", "passed": false, "evidence": "No such status framework used anywhere; response explicitly says it has 'no reliable way to give you an exact number or percentage.'"},
+    {"text": "Response includes concrete, actionable recommendations", "passed": false, "evidence": "Response gives only a vague, non-actionable 'rough guess' with no structured recommendation list."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response explicitly states a mode switch to 'ship' (e.g. contains 'ship' and 'activated')", "passed": false, "evidence": "Baseline response states 'I don't have a built-in \"ship mode\"' — no activation statement, no mode-switch language of any kind."},
+    {"text": "Response never switches silently -- the switch is stated plainly, not just implied", "passed": true, "evidence": "Vacuously true: baseline never switches modes at all (no mode concept exists in its response), so it cannot switch silently. Flagged as a vacuous pass, not evidence of good mode-switch hygiene — see Phase 6 summary caveat."},
+    {"text": "Response reflects ship mode's higher confirmation-bar posture (mentions confirming before a risky/visible action)", "passed": false, "evidence": "No ship-mode-specific confirmation-bar behavior; response only shows generic awareness of git-kit skills, not a distinct risk-tolerance posture tied to a 'ship' concept."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.33}
+}

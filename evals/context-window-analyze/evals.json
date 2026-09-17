@@ -1,0 +1,30 @@
+{
+  "skill_name": "context-window-analyze",
+  "skill_path": "plugins/context-kit/skills/context-window-analyze/SKILL.md",
+  "description": "Analyzes the current context window's live health and provides optimization recommendations (HEALTHY/MONITOR/WARNING/CRITICAL), manually triggered.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Direct live-window health question",
+      "prompt": "how full is my context right now",
+      "expected_output": "Asks the user to run /context and share the output (the reliable source for the HEALTHY/MONITOR/WARNING/CRITICAL assessment), falling back to indirect estimation only if /context output isn't available. Produces a Context Window Analysis report following the template in references/context-window-examples.md (Estimated Status, Observable Indicators, Assessment, Recommendations), using the real 40/80/90 thresholds aligned with context-monitor.py.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Broader footprint audit request (should defer to context-audit)",
+      "prompt": "audit my skills and CLAUDE.md for context bloat",
+      "expected_output": "Does NOT produce a live-context-window health report. This request is explicitly out of scope per the skill's own 'When NOT to Use' section -- a broader skills/CLAUDE.md/plugin/MCP footprint audit belongs to context-audit instead. The response should point at context-audit (or a comparable footprint-auditing capability) rather than attempting the live-window health check this skill actually does.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "\"should I compact now\"",
+      "Responses feel slow and the user asks what's going on",
+      "A request for the automatic hook-driven compaction-timing behavior itself -- defers to strategic-compact"
+    ]
+  }
+}
