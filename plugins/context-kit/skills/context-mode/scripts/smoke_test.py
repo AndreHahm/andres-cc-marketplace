@@ -119,8 +119,11 @@ def check_skill_md_validates_candidates_before_reading():
     # path-shaped value like "../../../../CLAUDE.local" would otherwise steer an
     # arbitrary .md file read. This is a prose/dispatch-logic fix, not executable
     # code, so the check is structural: confirm the closed-vocabulary guard text
-    # exists and sits before both "Single candidate" and "Multiple candidates"
-    # dispatch steps, not just mentioned once in passing.
+    # exists and sits before "Single candidate", "Multiple candidates", AND
+    # "Explicit manual request" dispatch steps, not just mentioned once in passing.
+    # The scope was widened the same day (still 2026-09-17) after a security-reviewer
+    # pass found the original fix only covered steps 2/3, leaving the manual-request
+    # channel (step 4) reachable with the identical unvalidated-read primitive.
     skill_md = SKILL_DIR / "SKILL.md"
     text = skill_md.read_text(encoding="utf-8")
     guard_idx = text.find("Closed-vocabulary check")
@@ -129,13 +132,16 @@ def check_skill_md_validates_candidates_before_reading():
     # "How activation reaches this skill").
     single_idx = text.find("**Single candidate**")
     multi_idx = text.find("**Multiple candidates**")
+    manual_idx = text.find("**Explicit manual request**")
     if guard_idx == -1:
         return False, "SKILL.md no longer states a closed-vocabulary check in Dispatch logic"
-    if not (guard_idx < single_idx and guard_idx < multi_idx):
-        return False, "closed-vocabulary check does not precede both dispatch steps it must gate"
-    if "read nothing" not in text[guard_idx : guard_idx + 800]:
+    if not (guard_idx < single_idx and guard_idx < multi_idx and guard_idx < manual_idx):
+        return False, "closed-vocabulary check does not precede all three dispatch steps it must gate"
+    if "steps 2, 3, and 4" not in text[guard_idx : guard_idx + 200]:
+        return False, "closed-vocabulary check's own scope clause no longer names step 4"
+    if "read nothing" not in text[guard_idx : guard_idx + 1000]:
         return False, "closed-vocabulary check does not state the 'read nothing' refusal action"
-    return True, "SKILL.md's closed-vocabulary check precedes both dispatch steps it must gate"
+    return True, "SKILL.md's closed-vocabulary check precedes all three dispatch steps it must gate"
 
 
 CHECKS = [

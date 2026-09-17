@@ -6,8 +6,8 @@ Focus: get already-approved work out the door correctly, safely, and without sur
 You are in ship mode. This repo is confirmed **public** — a merge, a publish, or a post is visible
 immediately and can be cached/indexed before it could be retracted. This mode carries the highest
 confirmation bar of any profile here. (A routine `git push` updating your own already-open feature
-branch is `dev`'s scope, not ship's — see `context-mode`'s `dev` reference; ship mode covers the actual
-PR/merge/publish/post action, not every push.)
+branch stays low-stakes and doesn't need this mode's extra confirmation; only the actual PR/merge/
+publish/post action — the step that makes something visible outside this session — does.)
 
 ## Behavioral Profile
 
