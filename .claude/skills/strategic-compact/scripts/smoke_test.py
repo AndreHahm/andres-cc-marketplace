@@ -62,6 +62,36 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
     return home
 
 
+def check_tracking_file_is_not_executed_as_shell(tmp_path):
+    # Regression guard for the 2026-09-17 security fix: TRACK_FILE used to be
+    # dot-sourced (`. "$TRACK_FILE"`) in 3 hook scripts, which would execute a
+    # tampered file's content as shell code. Plants a non-whitelisted line whose
+    # RHS is a live command substitution that creates a marker file if executed --
+    # under the old dot-source behavior this would have run `touch`; under the
+    # fixed whitelisted read loop, an unrecognized key is simply ignored.
+    marker = tmp_path / "pwned_marker"
+    home = make_home_with_tracking_file(tmp_path, "injecttest")
+    track_dir = home / ".claude" / "strategic-compact"
+    import hashlib
+
+    session_hash = hashlib.md5(b"injecttest\n").hexdigest()[:8]
+    track_file = track_dir / f"session-{session_hash}"
+    # Append a malicious, non-whitelisted line to the real tracking file.
+    with track_file.open("a", encoding="utf-8") as f:
+        f.write(f'MALICIOUS=$(touch "{marker}")\n')
+
+    payload = json.dumps({"session_id": "injecttest", "tool_input": {"command": "npm test"}})
+    result = run(MILESTONE_SCRIPT, payload, home)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0: {result.stderr[:300]}"
+    if marker.exists():
+        return (
+            False,
+            "the marker was created -- TRACK_FILE is still being dot-sourced as shell code",
+        )
+    return True, "a malicious non-whitelisted tracking-file line is correctly never executed"
+
+
 def check_real_test_command_triggers_milestone(tmp_path):
     home = make_home_with_tracking_file(tmp_path, "realtest")
     payload = json.dumps({"session_id": "realtest", "tool_input": {"command": "npm test"}})
@@ -301,6 +331,7 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
 
 
 CHECKS = [
+    check_tracking_file_is_not_executed_as_shell,
     check_real_test_command_triggers_milestone,
     check_substring_false_positive_rejected,
     check_command_referencing_pytest_as_text_not_flagged,

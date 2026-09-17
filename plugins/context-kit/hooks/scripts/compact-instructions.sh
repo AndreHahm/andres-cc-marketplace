@@ -36,7 +36,21 @@ TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 # Build context about the session
 CONTEXT_INFO=""
 if [ -f "$TRACK_FILE" ]; then
-    . "$TRACK_FILE"
+    # Read key=value pairs without dot-sourcing the file as shell code -- a
+    # tampered $TRACK_FILE would otherwise get arbitrary shell execution on
+    # every PreCompact event. Whitelists the exact key set this plugin's own
+    # writers ever produce (compact-session-init.sh / compact-track-and-suggest.sh
+    # / compact-milestone-detector.sh); every other line in the file is ignored.
+    while IFS='=' read -r _key _val; do
+        case "$_key" in
+            TOTAL|EXPLORATION|IMPLEMENTATION|SUGGESTED_T1|SUGGESTED_T2|SUGGESTED_T3|SUGGESTED_TIME|PHASE_TRANSITION_SUGGESTED|MILESTONE_SUGGESTED|START_TIME|LAST_MILESTONE_TIME|T1|T2|T3|TIME_THRESHOLD)
+                [[ "$_val" =~ ^[0-9]{1,15}$ ]] && printf -v "$_key" '%s' "$_val"
+                ;;
+            LAST_PHASE)
+                [[ "$_val" =~ ^[a-zA-Z_]{1,32}$ ]] && printf -v "$_key" '%s' "$_val"
+                ;;
+        esac
+    done < "$TRACK_FILE"
     CONTEXT_INFO=" Session had ${TOTAL} tool calls (${EXPLORATION} exploration, ${IMPLEMENTATION} implementation)."
 fi
 
