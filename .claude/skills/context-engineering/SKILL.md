@@ -6,6 +6,7 @@ description: >-
   coding session efficient, deciding what to persist vs. retrieve vs. compress, or designing a
   context budget for a task before it starts.
 user-invocable: true
+allowed-tools: Read
 ---
 
 # Context Engineering

@@ -4,6 +4,8 @@ description: >-
   Analyze the current context window's live health and provide optimization recommendations. Use
   when responses feel slow, the user asks "how full is my context", or before deciding between
   /compact, /clear, or continuing as-is.
+user-invocable: true
+allowed-tools: Read
 ---
 
 # Check Context

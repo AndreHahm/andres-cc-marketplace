@@ -195,6 +195,49 @@ def check_malicious_env_var_falls_back_to_default(tmp_path):
     return True, "a malicious STRATEGIC_COMPACT_T1 value does not execute or crash the hook"
 
 
+def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
+    # Distinct from check_malicious_env_var_falls_back_to_default above: that test uses a
+    # non-digit injection payload, already rejected by the plain ^[0-9]+$ regex. This one
+    # is an all-digit, arbitrarily-long payload that the *old* unbounded regex would have
+    # accepted -- bash's $((10#$value)) doesn't error on this, it silently WRAPS to a huge,
+    # unrelated 64-bit value (verified live: 30 nines wraps to 5076944270305263615, which
+    # happens to start with "50" -- an earlier version of this test used a substring check
+    # and false-passed against that exact wrapped value). Exercises the real _validate_int()
+    # helper via compact-session-init.sh (SessionStart), then reads the written TRACK_FILE
+    # with an exact line match to confirm T1 actually fell back to the default (50), not a
+    # silently-corrupted threshold.
+    session_init = HOOKS_DIR / "compact-session-init.sh"
+    home = tmp_path / "home_overlong"
+    home.mkdir()
+    payload = json.dumps({"session_id": "overlongtest", "source": "startup"})
+    env = {**os.environ, "HOME": str(home), "STRATEGIC_COMPACT_T1": "9" * 30}
+    result = subprocess.run(
+        ["bash", str(session_init)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+    if result.returncode != 0:
+        return False, f"30-digit STRATEGIC_COMPACT_T1 caused exit {result.returncode}, expected 0"
+
+    import hashlib
+
+    session_hash = hashlib.md5(b"overlongtest\n").hexdigest()[:8]
+    track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
+    if not track_file.exists():
+        return False, "compact-session-init.sh did not write the expected tracking file"
+    content = track_file.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    if "T1=50" not in lines:
+        return (
+            False,
+            f"expected an exact 'T1=50' line (default fallback) in tracking file, got: {content!r}",
+        )
+    return True, "a 30-digit env var falls back to the default (T1=50), no wraparound corruption"
+
+
 CHECKS = [
     check_real_test_command_triggers_milestone,
     check_substring_false_positive_rejected,
@@ -203,6 +246,7 @@ CHECKS = [
     check_stop_hook_active_guard,
     check_stop_hook_delivers_pending_suggestion,
     check_malicious_env_var_falls_back_to_default,
+    check_overlong_digit_env_var_falls_back_to_default,
 ]
 
 
