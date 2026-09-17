@@ -6,7 +6,7 @@ argument-hint: "<what to research>"
 allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*)
 ---
 
-> **Invocation:** Run as /antigravity-kit:research in the Claude Code prompt. This command cannot
+> **Invocation:** Run as /antigravity-kit:agy-research in the Claude Code prompt. This command cannot
 > be invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Run a multi-source research pass on the topic below, following the `antigravity`

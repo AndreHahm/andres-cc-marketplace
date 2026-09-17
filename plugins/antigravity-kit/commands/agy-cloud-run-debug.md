@@ -4,10 +4,10 @@ description: >-
   Claude infers the root cause and proposes a fix. Read-only by default; --apply writes the fix to
   a branch.
 argument-hint: "[--service <name>] [--region <r>] [--project <id>] [--since 1h] [--limit 200] [--apply]"
-allowed-tools: Bash(cloud-debug:*), Bash(gcloud config get-value:*), Bash(git status:*), Bash(git checkout -b:*), Bash(git stash:*), Bash(git diff:*), Edit, Write
+allowed-tools: Bash(agy-cloud-debug:*), Bash(gcloud config get-value:*), Bash(git status:*), Bash(git checkout -b:*), Bash(git stash:*), Bash(git diff:*), Edit, Write
 ---
 
-> **Invocation:** Run as /antigravity-kit:cloud-run-debug in the Claude Code prompt. This command
+> **Invocation:** Run as /antigravity-kit:agy-cloud-run-debug in the Claude Code prompt. This command
 > cannot be invoked via Skill() — it must be triggered as a slash command or followed manually.
 
 Diagnose a broken Cloud Run service. This is a **Conductor / Executor** split: **you (Claude)
@@ -41,7 +41,7 @@ Do this:
    engine, which pulls `severity>=ERROR` logs via `gcloud logging read` and hands them to agy for
    a structured digest (error clusters / representative stack traces / time distribution / likely
    root-cause candidates):
-   `cloud-debug --service <name> [--region <r>] [--project <id>] [--since <dur>] [--limit <n>]`
+   `agy-cloud-debug --service <name> [--region <r>] [--project <id>] [--since <dur>] [--limit <n>]`
    - **Ingest only the digest** it prints — do **not** re-fetch or paste the raw logs into your
      context (that lean handoff is where the cost saving comes from).
    - If it exits **3** (permission denied), relay the `roles/logging.viewer` guidance it printed

@@ -598,21 +598,21 @@ HOOKS="$ROOT/hooks"
 python3 -c "import json; json.load(open('$HOOKS/policy-context.json'))" 2>/dev/null; rc=$?
 check "policy-context.json is valid JSON" 0 "$rc"
 
-out=$("$HOOKS/inject-policy.sh" 2>/dev/null); rc=$?
+out=$("$HOOKS/agy-inject-policy.sh" 2>/dev/null); rc=$?
 check "inject-policy default on -> emits additionalContext" 0 "$rc" "additionalContext" "$out"
 check "inject-policy is cost-aware (not 'delegate everything')" 0 "$rc" "COST-AWARE" "$out"
 # the emitted stdout is a well-formed SessionStart hook payload (not just substrings)
 printf '%s' "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["hookSpecificOutput"]["hookEventName"]=="SessionStart"' 2>/dev/null; rc=$?
 check "inject-policy emits valid SessionStart JSON" 0 "$rc"
 
-out=$(CLAUDE_PLUGIN_OPTION_CODING_POLICY=off "$HOOKS/inject-policy.sh" 2>/dev/null); rc=$?
+out=$(CLAUDE_PLUGIN_OPTION_CODING_POLICY=off "$HOOKS/agy-inject-policy.sh" 2>/dev/null); rc=$?
 if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "ok: inject-policy off -> exit 0 + no output"; PASS=$((PASS+1));
 else echo "FAIL: inject-policy off (rc=$rc, out='${out:0:40}')"; FAIL=$((FAIL+1)); fi
 
 # check-agy: exits 0 whether agy is present (stub) or absent, and warns when absent
-out=$("$HOOKS/check-agy.sh" 2>/dev/null); rc=$?
+out=$("$HOOKS/agy-check.sh" 2>/dev/null); rc=$?
 check "check-agy (agy present) -> exit 0" 0 "$rc"
-err=$( { PATH="/usr/bin:/bin" "$HOOKS/check-agy.sh" >/dev/null; } 2>&1 ); rc=$?
+err=$( { PATH="/usr/bin:/bin" "$HOOKS/agy-check.sh" >/dev/null; } 2>&1 ); rc=$?
 check "check-agy (agy absent) -> exit 0 + warns" 0 "$rc" "not on PATH" "$err"
 
 # hooks.json structural shape (all events: command hooks referencing the plugin root)
@@ -629,7 +629,7 @@ PY
 check "hooks.json shape valid (SessionStart + UserPromptSubmit)" 0 "$rc"
 
 # nudge-delegation (UserPromptSubmit): advisory material only — never a mandate
-NUDGE="$HOOKS/nudge-delegation.sh"
+NUDGE="$HOOKS/agy-nudge-delegation.sh"
 out=$(printf '%s' '{"prompt":"migrate every caller from APIv1 to APIv2 across the codebase"}' | "$NUDGE" 2>/dev/null); rc=$?
 check "nudge fires on bulk EN prompt" 0 "$rc" "additionalContext" "$out"
 check "nudge preserves Claude's judgment (not a mandate)" 0 "$rc" "THE JUDGMENT IS YOURS" "$out"
@@ -640,7 +640,7 @@ check "nudge fires on bulk JA prompt" 0 "$rc" "additionalContext" "$out"
 out=$(printf '%s' '{"prompt":"fix the typo in README"}' | "$NUDGE" 2>/dev/null); rc=$?
 if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "ok: nudge silent on a small prompt"; PASS=$((PASS+1));
 else echo "FAIL: nudge fired on a small prompt (rc=$rc)"; FAIL=$((FAIL+1)); fi
-out=$(printf '%s' '{"prompt":"/antigravity-kit:delegate migrate everything"}' | "$NUDGE" 2>/dev/null)
+out=$(printf '%s' '{"prompt":"/antigravity-kit:agy-delegate migrate everything"}' | "$NUDGE" 2>/dev/null)
 if [ -z "$out" ]; then echo "ok: nudge silent when already delegating"; PASS=$((PASS+1));
 else echo "FAIL: nudge fired on an antigravity command"; FAIL=$((FAIL+1)); fi
 out=$(printf '%s' '{"prompt":"migrate all files"}' | CLAUDE_PLUGIN_OPTION_DELEGATION_NUDGE=off "$NUDGE" 2>/dev/null)
@@ -651,7 +651,7 @@ if [ -z "$out" ]; then echo "ok: nudge scans only the prompt field (cwd noise ig
 else echo "FAIL: nudge matched a non-prompt field"; FAIL=$((FAIL+1)); fi
 
 echo "== delegate subagent guardrail =="
-GATE="$HOOKS/validate-delegate-bash.sh"
+GATE="$HOOKS/agy-validate-delegate-bash.sh"
 # Security review finding C2: a path-qualified invocation must be BLOCKED even when
 # its basename matches a real wrapper — a file the subagent's own delegated agy run
 # wrote (agy's default --yolo grants it arbitrary file writes) could otherwise
@@ -784,7 +784,7 @@ AGENT="$ROOT/agents/antigravity-delegate.md"
 tl=$(grep -m1 '^tools:' "$AGENT")
 if [ "$tl" = "tools: Bash, Read, Glob" ]; then echo "ok: delegate agent tools allowlist exact (no Write/Edit)"; PASS=$((PASS+1));
 else echo "FAIL: delegate agent tools line unexpected: '$tl'"; FAIL=$((FAIL+1)); fi
-if grep -q "PreToolUse" "$AGENT" && grep -q "validate-delegate-bash.sh" "$AGENT"; then
+if grep -q "PreToolUse" "$AGENT" && grep -q "agy-validate-delegate-bash.sh" "$AGENT"; then
   echo "ok: delegate agent wires the PreToolUse Bash gate"; PASS=$((PASS+1));
 else echo "FAIL: delegate agent missing PreToolUse gate"; FAIL=$((FAIL+1)); fi
 # proactive auto-selection, WITH the judgment kept on Claude (not "delegate everything")
@@ -794,7 +794,7 @@ else echo "FAIL: delegate agent missing proactive-with-judgment description"; FA
 
 echo "== bin/ entrypoints (issue #11: \$CLAUDE_PLUGIN_ROOT not on model-run Bash) =="
 BIN="$ROOT/bin"
-for b in agy-delegate agy-job agy-cost-compare agy-doctor cloud-debug agy-trace measure-session agy-media; do
+for b in agy-delegate agy-job agy-cost-compare agy-doctor agy-cloud-debug agy-trace agy-measure-session agy-media; do
   if [ -x "$BIN/$b" ]; then echo "ok: bin/$b executable"; PASS=$((PASS+1));
   else echo "FAIL: bin/$b missing or not executable"; FAIL=$((FAIL+1)); fi
 done
@@ -804,11 +804,11 @@ check "bin/agy-delegate forwards to the wrapper (no CLAUDE_PLUGIN_ROOT)" 0 "$rc"
 out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-doctor" 2>/dev/null | head -1); rc=$?
 case "$out" in *doctor*) echo "ok: bin/agy-doctor forwards to doctor.sh"; PASS=$((PASS+1));;
   *) echo "FAIL: bin/agy-doctor did not forward (got: '$out')"; FAIL=$((FAIL+1));; esac
-out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/cloud-debug" --service svc --print-command 2>/dev/null); rc=$?
-check "bin/cloud-debug forwards to cloud-debug.sh (no CLAUDE_PLUGIN_ROOT)" 0 "$rc" "logging read" "$out"
-out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/measure-session" 2>&1 | head -1)
-case "$out" in *measure-session*) echo "ok: bin/measure-session forwards to the .py"; PASS=$((PASS+1));;
-  *) echo "FAIL: bin/measure-session did not forward (got: '$out')"; FAIL=$((FAIL+1));; esac
+out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-cloud-debug" --service svc --print-command 2>/dev/null); rc=$?
+check "bin/agy-cloud-debug forwards to cloud-debug.sh (no CLAUDE_PLUGIN_ROOT)" 0 "$rc" "logging read" "$out"
+out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-measure-session" 2>&1 | head -1)
+case "$out" in *measure-session*) echo "ok: bin/agy-measure-session forwards to the .py"; PASS=$((PASS+1));;
+  *) echo "FAIL: bin/agy-measure-session did not forward (got: '$out')"; FAIL=$((FAIL+1));; esac
 
 echo "== doctor.sh tier-model check (agy 1.1.5 slug format) =="
 # The stub's `agy models` emits slugs (gemini-3.5-flash); doctor's default tier models are
@@ -896,7 +896,7 @@ else echo "FAIL: an embedded python block is cut short (it runs a partial progra
 
 echo "== exit 15 is described consistently across the user-facing surfaces =="
 # Three separate sweeps in 0.24.0 updated some files and missed others:
-# commands/delegate.md and agents/antigravity-delegate.md each kept describing exit 15 as
+# commands/agy-delegate.md and agents/antigravity-delegate.md each kept describing exit 15 as
 # agy 1.1.3's soft deny after the release made it cover 1.1.13's hard error too, so the
 # docs contradicted each other about the same behaviour. Reviewers found all three; a grep
 # would have.
@@ -1307,7 +1307,7 @@ echo "== prices.json / hardcoded-rate drift =="
 out=$(ROOT="$ROOT" python3 - <<'PY' 2>&1
 import json, os, re, sys
 root = os.environ["ROOT"]
-pj = json.load(open(os.path.join(root, "prices.json")))
+pj = json.load(open(os.path.join(root, "skills", "antigravity", "assets", "prices.json")))
 src = open(os.path.join(root, "scripts", "agy-cost-compare.sh")).read()
 want = {
     "CLAUDE_IN_PER_M":  pj["claude_opus"]["in"],
@@ -1337,7 +1337,7 @@ else echo "FAIL: rate drift — $out"; FAIL=$((FAIL+1)); fi
 out=$(ROOT="$ROOT" python3 - <<'PY' 2>&1
 import json, os, re
 root = os.environ["ROOT"]
-pj = json.load(open(os.path.join(root, "prices.json")))
+pj = json.load(open(os.path.join(root, "skills", "antigravity", "assets", "prices.json")))
 src = open(os.path.join(root, "scripts", "agy-delegate.sh")).read()
 m = re.search(r'flash\)\s*echo "\$\{CLAUDE_PLUGIN_OPTION_TIER_FLASH:-([^}]*)\}"', src)
 if not m:
@@ -1550,12 +1550,12 @@ m = re.search(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\"']+\.sh)", agent)
 need(bool(m), "agent PreToolUse gate path not found")
 if m: need(os.path.isfile(p(m.group(1))), "agent gate references missing file: " + m.group(1))
 
-for s in ("hooks/check-agy.sh", "hooks/inject-policy.sh", "hooks/validate-delegate-bash.sh", "hooks/nudge-delegation.sh"):
+for s in ("hooks/agy-check.sh", "hooks/agy-inject-policy.sh", "hooks/agy-validate-delegate-bash.sh", "hooks/agy-nudge-delegation.sh"):
     need(os.access(p(s), os.X_OK), "not executable: " + s)
 
 # bin/ entrypoints exist + executable (issue #11: $CLAUDE_PLUGIN_ROOT isn't exported
 # to model-run Bash, so commands/skill must call these bare names on the PATH)
-for b in ("agy-delegate", "agy-job", "agy-cost-compare", "agy-doctor", "cloud-debug", "agy-trace", "measure-session", "agy-media"):
+for b in ("agy-delegate", "agy-job", "agy-cost-compare", "agy-doctor", "agy-cloud-debug", "agy-trace", "agy-measure-session", "agy-media"):
     need(os.access(p("bin", b), os.X_OK), "bin entrypoint missing/not executable: bin/" + b)
 
 # regression guard: commands & skill must NOT invoke $CLAUDE_PLUGIN_ROOT/scripts/* — that
