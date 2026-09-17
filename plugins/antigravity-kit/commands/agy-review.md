@@ -3,7 +3,7 @@ description: >-
   Get an independent cross-model review of the current diff from Antigravity (Gemini), then
   reconcile as the final judge.
 argument-hint: "[--adversarial] [scope: paths or git range]"
-allowed-tools: Bash(git diff:*), Bash(agy-delegate:*)
+allowed-tools: Bash(git diff:*), Bash(printf:*), Bash(agy-delegate:*)
 ---
 
 > **Invocation:** Run as /antigravity-kit:agy-review in the Claude Code prompt. This command cannot be
