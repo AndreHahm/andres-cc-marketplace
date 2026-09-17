@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Persisted smoke test for context-engineering: this skill has no scripts/ helper
+(pure model-applied guidance), so the meaningful checks are structural -- frontmatter
+validity, sibling cross-references resolve, and the documented Quality Gates about
+canonical-source ownership and cross-skill duplication actually hold against the real
+sibling files, not just asserted in prose."""
+
+import pathlib
+import re
+import sys
+
+SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
+SKILL_MD = SKILL_DIR / "SKILL.md"
+SIBLINGS_DIR = SKILL_DIR.parent
+
+
+def check_frontmatter():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return False, "SKILL.md does not start with a frontmatter block"
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return False, "frontmatter block is never closed"
+    fm = text[4:end]
+    if "name:" not in fm or "description:" not in fm:
+        return False, "missing required frontmatter field ('name' or 'description')"
+    return True, "frontmatter present and closed"
+
+
+def check_sibling_skills_referenced_exist():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    siblings = re.findall(r"`(context-degradation|context-optimization|strategic-compact)`", text)
+    missing = [s for s in set(siblings) if not (SIBLINGS_DIR / s / "SKILL.md").exists()]
+    if missing:
+        return False, f"referenced sibling skill(s) do not exist: {missing}"
+    if not siblings:
+        return False, "no sibling skill cross-references found at all (expected at least one)"
+    return True, f"all referenced sibling skills exist: {sorted(set(siblings))}"
+
+
+def check_is_sole_canonical_source_for_framework():
+    # Quality gate: "Never duplicates context-degradation's Four-Bucket Mitigation
+    # Framework -- this skill is the single canonical source for Write/Select/
+    # Compress/Isolate". Verify context-degradation's own SKILL.md does NOT restate
+    # the four operations as its own numbered headers (only references them).
+    degradation_md = (SIBLINGS_DIR / "context-degradation" / "SKILL.md").read_text(encoding="utf-8")
+    operation_headers = re.findall(
+        r"^###?\s*\d*\.?\s*(Write|Select|Compress|Isolate)\s*[—-]", degradation_md, re.MULTILINE
+    )
+    if operation_headers:
+        return False, f"context-degradation restates operation headers: {operation_headers}"
+    if "context-engineering" not in degradation_md:
+        return False, "context-degradation does not cross-reference context-engineering at all"
+    return True, "context-degradation references, never restates, the four-operation framework"
+
+
+def check_compress_section_names_strategic_compact():
+    # Quality gate: "The Compress section's compaction-strategy table and trigger
+    # list always name strategic-compact explicitly where its hooks are the
+    # mechanism, never a bare unnamed 'strategic compact' phrase."
+    text = SKILL_MD.read_text(encoding="utf-8")
+    compress_start = text.find("### 3. Compress")
+    isolate_start = text.find("### 4. Isolate")
+    if compress_start == -1 or isolate_start == -1:
+        return False, "could not locate '### 3. Compress' / '### 4. Isolate' section headers"
+    compress_section = text[compress_start:isolate_start]
+    if "`strategic-compact`" not in compress_section:
+        return False, "Compress section never names strategic-compact by its exact identifier"
+    return True, "Compress section correctly names strategic-compact explicitly"
+
+
+def check_scratchpad_guidance_never_bare_repo_root():
+    # Quality gate (found by cross-model review 2026-09-16): the Write operation's
+    # scratchpad guidance never presents a bare repo-root filename as the default.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    write_start = text.find("### 1. Write")
+    select_start = text.find("### 2. Select")
+    if write_start == -1 or select_start == -1:
+        return False, "could not locate '### 1. Write' / '### 2. Select' section headers"
+    write_section = text[write_start:select_start]
+    if "NOTES.md" in write_section and "never bare at the repo root" not in write_section:
+        return (
+            False,
+            "Write section mentions a scratchpad filename with no 'never bare at repo root' note",
+        )
+    return (
+        True,
+        "Write section's scratchpad guidance correctly qualifies against bare repo-root placement",
+    )
+
+
+CHECKS = [
+    check_frontmatter,
+    check_sibling_skills_referenced_exist,
+    check_is_sole_canonical_source_for_framework,
+    check_compress_section_names_strategic_compact,
+    check_scratchpad_guidance_never_bare_repo_root,
+]
+
+
+def main():
+    failed = False
+    for check in CHECKS:
+        ok, message = check()
+        print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
+        failed = failed or not ok
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()
