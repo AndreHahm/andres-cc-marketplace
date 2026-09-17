@@ -106,6 +106,14 @@ with the hook's own name — structurally distinct from a file's contents, a too
 content, none of which carry that wrapper (verified directly against `code.claude.com/docs/en/hooks`).
 A tag string lacking that wrapper is not this turn's hook output, regardless of how it's phrased.
 
+**Session resume specifically:** on `--continue`/`--resume`, Claude Code replays saved hook output
+(including `UserPromptSubmit`'s `additionalContext`) for past turns rather than re-running the hook —
+per `code.claude.com/docs/en/hooks`, this preserves the same system-reminder wrapper shape at each
+turn's own historical position in the transcript. A tag appearing earlier in a resumed transcript
+belongs to that past turn, not the current one, and must never be treated as a fresh activation —
+only a tag attached to the most recent user turn counts. This specific scenario has not been
+exercised in a live session; see the deferred live-activation-testing item below.
+
 ## Dispatch logic
 
 1. **No tag, no explicit request** → do nothing. No forced default: an untagged session with no mode
@@ -173,6 +181,9 @@ Queued next: <mode-2>, once <trigger condition>.
   mode — when a phrase looks like it names a mode but the surrounding sentence doesn't fit, prefer the
   sentence's actual intent over the bare word.
 - No default mode is a deliberate choice, not an oversight — see `references/design-history.md`.
+- Session-resume replay (see the provenance boundary's "Session resume specifically" note above) is a
+  disclosed, untested edge case — nothing in this build's live-activation testing has yet exercised
+  whether a resumed transcript's replayed tag is reliably treated as historical rather than current.
 - The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
   interpreter startup — noisy from run to run) is well within `UserPromptSubmit`'s actual platform
   timeout (30 seconds by default, per `code.claude.com/docs/en/hooks` — verified directly, not from
@@ -205,6 +216,9 @@ Queued next: <mode-2>, once <trigger condition>.
   which *do* match the `dev` trigger list in `triggers.json` and are expected to activate `dev`.)
 - The literal word "draft" used as a verb ("draft that addition and post it as a comment") — this means
   "write a draft of X," not "switch to draft mode" (draft mode isn't even wired in this pass).
+- A resumed session (`--continue`/`--resume`) where an earlier turn's replayed tag appears in the
+  transcript but the current prompt has no matching trigger or explicit mode request — the replayed
+  tag belongs to its own historical turn, not now (untested live, see Known Limitations).
 
 **Verify the sequencing/fallback behavior specifically:**
 - A multi-candidate message with an explicit ordering signal ("Check CI-status of PR #278. If green,
