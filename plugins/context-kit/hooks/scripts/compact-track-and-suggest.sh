@@ -103,7 +103,7 @@ if [ "$_lock_acquired" -ne 1 ] && [ -f "${TRACK_LOCK}/created" ]; then
     LOCK_CREATED=""
     { read -r LOCK_PID; read -r LOCK_CREATED; } < "${TRACK_LOCK}/created" 2>/dev/null
     if [[ "$LOCK_CREATED" =~ ^[0-9]{1,15}$ ]]; then
-        LOCK_AGE=$(( $(date +%s) - LOCK_CREATED ))
+        LOCK_AGE=$(( $(date +%s) - 10#$LOCK_CREATED ))
         if [ "$LOCK_AGE" -ge 10 ] && { ! [[ "$LOCK_PID" =~ ^[0-9]{1,15}$ ]] || ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
             rm -rf "$TRACK_LOCK" 2>/dev/null
             if mkdir "$TRACK_LOCK" 2>/dev/null; then
@@ -171,6 +171,18 @@ while IFS='=' read -r _key _val; do
             ;;
     esac
 done < "$TRACK_FILE"
+
+# The whitelist above permits a leading zero (e.g. "0912345"), which bash's arithmetic
+# context reads as octal -- a value like "09..." is not valid octal and aborts the script
+# with "value too great for base"; an all-0-7-digit value silently evaluates to the wrong
+# (smaller) magnitude instead. Force base-10 on every numeric field read from the tracking
+# file before it's used in any arithmetic/comparison below, mirroring _validate_int's own
+# 10# handling of the env-var-sourced thresholds.
+for _numvar in TOTAL EXPLORATION IMPLEMENTATION SUGGESTED_T1 SUGGESTED_T2 SUGGESTED_T3 \
+    SUGGESTED_TIME PHASE_TRANSITION_SUGGESTED MILESTONE_SUGGESTED START_TIME \
+    LAST_MILESTONE_TIME T1 T2 T3 TIME_THRESHOLD; do
+    [[ -n "${!_numvar-}" ]] && printf -v "$_numvar" '%d' "10#${!_numvar}"
+done
 
 # Increment total
 TOTAL=$((TOTAL + 1))

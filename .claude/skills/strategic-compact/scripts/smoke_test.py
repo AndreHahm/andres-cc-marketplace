@@ -52,6 +52,10 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
     # trailing newline, so the hash input must include it too.
     session_hash = hashlib.md5((session_id + "\n").encode()).hexdigest()[:8]
     track_file = track_dir / f"session-{session_hash}"
+    # newline="" prevents Python's platform-default newline translation (CRLF on
+    # Windows) from appending a trailing \r to every value -- the bash scripts'
+    # own whitelist regexes (^[0-9]{1,15}$ etc.) reject a value with a trailing \r,
+    # which would otherwise silently leave every field unset instead of matching.
     track_file.write_text(
         "TOTAL=0\nEXPLORATION=0\nIMPLEMENTATION=0\nLAST_PHASE=\n"
         "SUGGESTED_T1=0\nSUGGESTED_T2=0\nSUGGESTED_T3=0\nSUGGESTED_TIME=0\n"
@@ -59,6 +63,7 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
         f"START_TIME={int(time.time())}\nLAST_MILESTONE_TIME=0\n"
         "T1=10\nT2=30\nT3=50\nTIME_THRESHOLD=300\n",
         encoding="utf-8",
+        newline="",
     )
     return home
 
@@ -384,6 +389,61 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
     return True, "a 30-digit env var falls back to the default (T1=50), no wraparound corruption"
 
 
+def check_leading_zero_tracking_value_does_not_crash(tmp_path):
+    # Regression guard for the 2026-09-17 security-reviewer finding: the tracking-file
+    # whitelist regex (^[0-9]{1,15}$) permits a leading zero, and bash's $((...)) reads
+    # a leading-zero numeral as octal -- "09"/"08" are invalid octal digits, which
+    # produces a "value too great for base" arithmetic error before this fix forced
+    # base-10 (10#) on every numeric field read back from the file. The script has no
+    # `set -e`, so this doesn't turn into a non-zero exit code -- it surfaces only as
+    # stderr noise (and a cascading "integer expected" error on the next comparison
+    # that consumes the now-unset variable), which is what this check actually looks
+    # for rather than the exit code alone. Plants LAST_MILESTONE_TIME=0912345 (invalid
+    # octal).
+    home = make_home_with_tracking_file(tmp_path, "leadingzero")
+    import hashlib
+
+    session_hash = hashlib.md5(b"leadingzero\n").hexdigest()[:8]
+    track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
+    content = track_file.read_text(encoding="utf-8")
+    content = content.replace("LAST_MILESTONE_TIME=0", "LAST_MILESTONE_TIME=0912345")
+    track_file.write_text(content, encoding="utf-8", newline="")
+
+    payload = json.dumps(
+        {"session_id": "leadingzero", "tool_input": {"command": "npm test"}}
+    )
+    result = run(MILESTONE_SCRIPT, payload, home)
+    if "value too great for base" in result.stderr:
+        return (
+            False,
+            f"leading-zero LAST_MILESTONE_TIME was read as invalid octal: {result.stderr[:300]}",
+        )
+    return True, "a leading-zero tracking-file value is force-decoded as base-10, no arithmetic error"
+
+
+def check_hyphenated_prefix_command_not_misclassified(tmp_path):
+    # Regression guard for the 2026-09-17 scripts-reviewer finding: `-w` (word
+    # boundary) only requires a *non-word* character on each side, and `-` is
+    # non-word -- so a real git plumbing command like `git commit-tree` used to
+    # satisfy `-w`'s right boundary and get misclassified as a "commit" milestone,
+    # same as an unrelated `deploy-prod.sh` script would satisfy the "deploy"
+    # pattern. Both must now produce no milestone at all.
+    home = make_home_with_tracking_file(tmp_path, "hyphenprefix")
+    for command in ["git commit-tree HEAD^{tree}", "./deploy-prod.sh --dry-run"]:
+        payload = json.dumps(
+            {"session_id": "hyphenprefix", "tool_input": {"command": command}}
+        )
+        result = run(MILESTONE_SCRIPT, payload, home)
+        if result.returncode != 0:
+            return False, f"'{command}' exited {result.returncode}, expected 0"
+        if result.stdout.strip():
+            return (
+                False,
+                f"'{command}' incorrectly produced a milestone suggestion: {result.stdout!r}",
+            )
+    return True, "hyphenated-prefix commands (git commit-tree, deploy-prod.sh) are not misclassified"
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -397,6 +457,8 @@ CHECKS = [
     check_json_injection_in_suggestion_is_escaped,
     check_malicious_env_var_falls_back_to_default,
     check_overlong_digit_env_var_falls_back_to_default,
+    check_leading_zero_tracking_value_does_not_crash,
+    check_hyphenated_prefix_command_not_misclassified,
 ]
 
 

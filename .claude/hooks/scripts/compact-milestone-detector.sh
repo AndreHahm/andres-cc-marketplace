@@ -103,6 +103,18 @@ while IFS='=' read -r _key _val; do
     esac
 done < "$TRACK_FILE"
 
+# The whitelist above permits a leading zero (e.g. "0912345"), which bash's arithmetic
+# context reads as octal -- a value like "09..." is not valid octal and aborts the script
+# with "value too great for base"; an all-0-7-digit value silently evaluates to the wrong
+# (smaller) magnitude instead. Force base-10 on every numeric field read from the tracking
+# file before it's used in any arithmetic/comparison below, mirroring _validate_int's own
+# 10# handling of the env-var-sourced thresholds.
+for _numvar in TOTAL EXPLORATION IMPLEMENTATION SUGGESTED_T1 SUGGESTED_T2 SUGGESTED_T3 \
+    SUGGESTED_TIME PHASE_TRANSITION_SUGGESTED MILESTONE_SUGGESTED START_TIME \
+    LAST_MILESTONE_TIME T1 T2 T3 TIME_THRESHOLD; do
+    [[ -n "${!_numvar-}" ]] && printf -v "$_numvar" '%d' "10#${!_numvar}"
+done
+
 # Get current time
 CURRENT_TIME=$(date +%s)
 TIME_SINCE_MILESTONE=$((CURRENT_TIME - LAST_MILESTONE_TIME))
@@ -150,13 +162,21 @@ CMD_START='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[
 # heuristic: only the exact trailing `|| true` / `; true` pattern
 # (optionally followed by a shell comment, e.g. `|| true  # flaky`),
 # not every possible failure-swallowing shape (found by cross-model-review).
-if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)" \
+#
+# Right-boundary note (found by security-reviewer, 2026-09-17): `-w` only
+# requires a *non-word* character on each side of the match, and `-` is
+# non-word -- so `-w` alone lets a same-prefix hyphenated command (e.g.
+# `git commit-tree`, `deploy-prod.sh`, a hypothetical `pytest-cov`) satisfy
+# the right boundary too. Every alternation below is followed by an explicit
+# `([[:space:]]|$)` group so the match must end at real whitespace or the
+# end of the segment, not just any non-word character.
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)([[:space:]]|\$)" \
     && ! echo "$COMMAND" | grep -qE '(\|\|[[:space:]]*true|;[[:space:]]*true)[[:space:]]*(#.*)?$'; then
     MILESTONE_TYPE="test_pass"
 fi
 
 # Git commit
-if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}git commit"; then
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}git commit([[:space:]]|\$)"; then
     MILESTONE_TYPE="commit"
 fi
 
@@ -164,14 +184,14 @@ fi
 # for BSD-grep portability — see the test-commands comment above) reasoning
 # as above (`make build` would otherwise substring-match inside `cmake
 # build`).
-if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)"; then
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)([[:space:]]|\$)"; then
     MILESTONE_TYPE="build"
 fi
 
 # Deploy commands — same `-w`/BSD-portability reasoning as above, swept here
 # for consistency (this block predates the SUCCESS-gate fix and was already
 # live, but shares the same unanchored-substring shape).
-if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)"; then
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)([[:space:]]|\$)"; then
     MILESTONE_TYPE="deploy"
 fi
 

@@ -87,7 +87,7 @@ if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compac
         LOCK_CREATED=""
         { read -r LOCK_PID; read -r LOCK_CREATED; } < "${TRACK_LOCK}/created" 2>/dev/null
         if [[ "$LOCK_CREATED" =~ ^[0-9]{1,15}$ ]]; then
-            LOCK_AGE=$(( $(date +%s) - LOCK_CREATED ))
+            LOCK_AGE=$(( $(date +%s) - 10#$LOCK_CREATED ))
             if [ "$LOCK_AGE" -ge 10 ] && { ! [[ "$LOCK_PID" =~ ^[0-9]{1,15}$ ]] || ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
                 rm -rf "$TRACK_LOCK" 2>/dev/null
                 if mkdir "$TRACK_LOCK" 2>/dev/null; then
