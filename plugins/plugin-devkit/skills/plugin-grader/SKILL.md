@@ -139,9 +139,12 @@ evidence bundle instead of dispatching anything. In this mode:
 
 Both modes: also run the Testing static heuristic directly (no dispatch — this stays
 `plugin-grader`'s own direct check, per `plugin-auditor`'s dispatch table's "Not This Skill's Job"):
-`Glob` for `evals/`, `evals.json`, `benchmark.json`, `evals/*/workspace/iteration-*/eval-*/*/grading.json`
-(the real Quick Workflow run-evidence depth — a bare `eval-*/*/grading.json` never matches); `Grep`
-SKILL.md for a Testing & Validation section. In evidence-only mode, prefer the scope manifest's own smoke-test/eval inventory if it
+`Glob` for `evals/`, `evals.json`, `benchmark.json`,
+`evals/<resolved-skill-name>/workspace/iteration-*/eval-*/*/grading.json` (the real Quick Workflow
+run-evidence depth for the specific skill being graded — never the unscoped `evals/*/workspace/...`
+form, which would match an unrelated skill's own grading.json and award completed-run credit to a
+target with no run evidence of its own; and never the bare `eval-*/*/grading.json` form, which never
+matches at all); `Grep` SKILL.md for a Testing & Validation section. In evidence-only mode, prefer the scope manifest's own smoke-test/eval inventory if it
 already states this instead of re-deriving it.
 
 ### 4. Score Dimensions and Compute
