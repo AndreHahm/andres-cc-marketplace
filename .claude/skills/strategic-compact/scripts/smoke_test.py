@@ -423,6 +423,36 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
     return True, "a 30-digit env var falls back to the default (T1=50), no wraparound corruption"
 
 
+def check_leading_zero_lock_created_does_not_crash(tmp_path):
+    # Regression guard for a real gap this skill's own 2026-09-17 Critical bash-arithmetic
+    # fix missed: LOCK_CREATED is read from a *different* file (${TRACK_LOCK}/created, the
+    # stale-lock-bust path) than the tracking-file whitelist loop the sibling regression test
+    # (check_leading_zero_tracking_value_does_not_crash) covers -- this is a separate code
+    # path in all 3 hook scripts, and compact-milestone-detector.sh's own copy of it was
+    # found still missing the 10# base-10 forcing by a rulebook re-check after the original
+    # fix shipped. Simulates a pre-existing stale lock whose `created` file's timestamp has
+    # a leading zero (invalid octal), which must not crash the lock-staleness check.
+    home = make_home_with_tracking_file(tmp_path, "lockleadingzero")
+    import hashlib
+
+    session_hash = hashlib.md5(b"lockleadingzero\n").hexdigest()[:8]
+    track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
+    lock_dir = home / ".claude" / "strategic-compact" / f"session-{session_hash}.lock"
+    lock_dir.mkdir(parents=True)
+    (lock_dir / "created").write_text("999999\n0912345\n", encoding="utf-8", newline="")
+
+    payload = json.dumps(
+        {"session_id": "lockleadingzero", "tool_input": {"command": "npm test"}}
+    )
+    result = run(MILESTONE_SCRIPT, payload, home)
+    if "value too great for base" in result.stderr:
+        return (
+            False,
+            f"leading-zero LOCK_CREATED was read as invalid octal: {result.stderr[:300]}",
+        )
+    return True, "a leading-zero lock-file timestamp is force-decoded as base-10, no arithmetic error"
+
+
 def check_leading_zero_tracking_value_does_not_crash(tmp_path):
     # Regression guard for the 2026-09-17 security-reviewer finding: the tracking-file
     # whitelist regex (^[0-9]{1,15}$) permits a leading zero, and bash's $((...)) reads
@@ -492,6 +522,7 @@ CHECKS = [
     check_malicious_env_var_falls_back_to_default,
     check_overlong_digit_env_var_falls_back_to_default,
     check_leading_zero_tracking_value_does_not_crash,
+    check_leading_zero_lock_created_does_not_crash,
     check_hyphenated_prefix_command_not_misclassified,
     check_prefixed_content_with_hostile_tail_is_discarded,
 ]
