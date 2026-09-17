@@ -71,6 +71,23 @@ def check_skill_md_has_no_oversized_blocks():
     return True, f"SKILL.md has {len(fenced_blocks)} fenced text block(s), none oversized"
 
 
+def check_examples_reference_has_no_oversized_blocks():
+    # Regression guard for the 2026-09-17 R18 finding: the first extraction moved the
+    # oversized blocks into this reference file without actually splitting them (a 40-line
+    # single fence), which the original version of this check couldn't catch since it only
+    # ever looked at SKILL.md. Every block here must now be <=20 lines (Weak-Warning tier
+    # at worst) -- none in the Warning (>20) or Critical (>30) tier.
+    text = EXAMPLES_MD.read_text(encoding="utf-8")
+    fenced_blocks = re.findall(r"```text\n(.*?)```", text, re.DOTALL)
+    if not fenced_blocks:
+        return False, "no fenced text blocks found in references/context-window-examples.md at all"
+    oversized = [b for b in fenced_blocks if b.count("\n") > 20]
+    if oversized:
+        sizes = [b.count("\n") for b in oversized]
+        return False, f"{len(oversized)} block(s) over the 20-line threshold: {sizes}"
+    return True, f"all {len(fenced_blocks)} block(s) in the reference file are <=20 lines"
+
+
 def check_health_thresholds_table_is_ordered():
     # Sanity check the Context Health Thresholds table's own internal consistency
     # (< 50%, 50-<75%, 75-85%, > 85% -- monotonic, no gaps/overlaps stated wrong).
@@ -87,6 +104,7 @@ CHECKS = [
     check_skill_md_links_the_examples_reference,
     check_option4_names_real_session_kit_skill,
     check_skill_md_has_no_oversized_blocks,
+    check_examples_reference_has_no_oversized_blocks,
     check_health_thresholds_table_is_ordered,
 ]
 

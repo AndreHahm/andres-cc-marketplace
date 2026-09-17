@@ -113,7 +113,8 @@ per `code.claude.com/docs/en/hooks`, this preserves the same system-reminder wra
 turn's own historical position in the transcript. A tag appearing earlier in a resumed transcript
 belongs to that past turn, not the current one, and must never be treated as a fresh activation —
 only a tag attached to the most recent user turn counts. This specific scenario has not been
-exercised in a live session; see the deferred live-activation-testing item below.
+exercised in a live session and has no tracked follow-up item as of this writing — see "Known
+limitations" below for the full disclosure, not a separate tracked artifact.
 
 ## Dispatch logic
 
@@ -233,11 +234,12 @@ Queued next: <mode-2>, once <trigger condition>.
 `scripts/detect_mode.py` (happy path, order-of-mention, allowlist enforcement, UTF-8/malformed-input
 fail-open cases) lives in `references/design-history.md`'s "Validation Record" section, not inline here.
 
-**Last dated run record:** direct stdin/stdout smoke tests (see `references/design-history.md`) were run
-and confirmed during this skill's Build/Self-Review pass — see the build commit for this skill.
-Model-driven activation (the `Verify this skill activates on` / `does NOT activate on` scenarios above)
-requires a live Claude Code session with this plugin installed/mirrored; see this build's own handoff
-report for the recorded result of that pass.
+**Last dated run record:** direct stdin/stdout smoke tests (see `references/design-history.md`'s
+"Validation Record" section) were run and confirmed during this skill's Build/Self-Review pass, commit
+`e18edb23` (2026-09-16). Model-driven activation (the `Verify this skill activates on` / `does NOT
+activate on` scenarios above) requires a live Claude Code session with this plugin installed/mirrored —
+no resolvable record of that pass having actually run exists as of this writing; treat it as not yet
+exercised rather than assume it happened.
 
 **Quality gates:**
 - [ ] A tag never activates this skill unless it arrived as the current turn's own hook output — never

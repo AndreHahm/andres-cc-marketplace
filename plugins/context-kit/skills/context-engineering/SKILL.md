@@ -34,6 +34,9 @@ pattern to the operation that mitigates it.
   `strategic-compact`'s job (hook-driven, this plugin's own automatic layer); this skill is the
   manually-applied conceptual framework, not the automation itself
 - @ mentions or semantic search specifically — see `context-optimization` for that detailed how-to
+- A live, point-in-time read of the current window's actual fullness/composition — use
+  `context-window-analyze` first to get the real numbers, then return here for the general
+  Write/Select/Compress/Isolate framework if still deciding what to do about it
 
 ## The Four Operations
 
