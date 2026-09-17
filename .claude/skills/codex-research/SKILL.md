@@ -7,7 +7,9 @@ description: >-
   changes/diffs (use the /codex-kit:review command for that), for
   verifying an existing written plan/document (use codex-verify for that),
   or for validating Claude's own already-formed analysis, design, or
-  recommendation before presenting it (use codex-peer-review for that).
+  recommendation before presenting it (use codex-peer-review for that). For
+  the same deep-research workflow naming Gemini/Antigravity/agy instead of
+  Codex, use antigravity-kit's `antigravity` skill instead.
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---
@@ -66,6 +68,7 @@ Rules:
 - **Mixed** (topic + path) → both, in the blind payload template.
 - **Meta-instructions addressed to YOU** (e.g. "in Korean", "quickly", "thoroughly" — often typed in the user's own language) → obey for your own behavior, never include in the prompt.
 - **No args** → `AskUserQuestion`: "What should I research?"
+- **Ambiguous model** (the request names neither Codex nor Gemini/Antigravity/agy — e.g. a bare "investigate this topic" or "deep research on X") → `AskUserQuestion` to confirm which model before proceeding; trigger phrasing alone doesn't disambiguate this skill from antigravity-kit's `antigravity` skill.
 - **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. `--model`/`--effort`/`--persist` are skill-level and handled per the whitelist above, not forwarded as arbitrary companion flags.
 - **`--no-preview`** → skip Phase 1.5 draft review. Power users who trust the translation.
 
@@ -400,13 +403,17 @@ For the full shared gotchas list, read
 
 **Verify this skill activates on:**
 - "codex research: pros and cons of event sourcing for a small team"
-- "deep dive with codex", "investigate this topic" (with or without a document)
+- "deep dive with codex", "investigate this topic with codex" (with or without a document) — a bare,
+  model-agnostic phrasing ("investigate this topic" alone) routes through the Phase 1 ambiguous-model
+  ask first, not straight to this skill
 - `resume [follow-up]` against a prior research thread already sent this session
 
 **Verify it does NOT activate on:**
 - Reviewing code changes/diffs → `/codex-kit:review`
 - Verifying an existing written plan/document → `codex-verify`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
+- "deep research with antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
+  (Gemini/Antigravity/agy named, not Codex)
 
 **Concrete scenarios to check:**
 1. Topic-only input (no document) → the document-append step is skipped entirely; no empty `<context_document>` tag written.
@@ -415,6 +422,7 @@ For the full shared gotchas list, read
 4. A Codex-cited source/fact that doesn't exist or is misrepresented → classified "False Positive (hallucination)".
 5. `resume [follow-up]` → Phase 2's invocation includes `--resume-last`; without it, that line is omitted entirely.
 6. A document containing a literal `</context_document>` string → the `sed` step neutralizes it to `(/context_document)` before appending; the document still gets sent (never refused/exited), and its line count is unchanged.
+7. A bare, model-agnostic request ("investigate this topic", "deep research on X") → `AskUserQuestion` confirms Codex vs. Gemini/Antigravity/agy before Phase 2, rather than silently assuming Codex.
 
 **Current test coverage:**
 - `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Structurally graded 2026-08-12 (PASS — the documented Topic-only mode and the repeated independent-synthesis-not-an-echo framing both match the eval's `expected_output`); not a live empirical run.

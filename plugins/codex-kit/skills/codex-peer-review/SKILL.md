@@ -11,7 +11,9 @@ description: >-
   instead. For a full multi-phase plan-validate-implement-review workflow
   (not just validating an already-formed position), use codex-plan-loop
   instead. For open-ended investigation of a topic with no existing Claude
-  position to validate, use codex-research instead.
+  position to validate, use codex-research instead. For the same second-opinion
+  workflow naming Gemini/Antigravity/agy instead of Codex, use antigravity-kit's
+  `antigravity` skill instead.
 argument-hint: "[--base <ref>] [question or design summary]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
@@ -76,6 +78,8 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 **Verify it does NOT activate on:**
 - Proactively, without an explicit request — this skill deliberately has no automatic trigger
 - Verifying an existing written plan/document file → `codex-verify`
+- "get a second opinion from antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
+  (Gemini/Antigravity/agy named, not Codex)
 
 **Concrete scenarios to check:**
 1. A code-diff question routed to `task` instead of `review --base` (the #1 mistake this skill names) → wrong command selected, review the Command selection section.
