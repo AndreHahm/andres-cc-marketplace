@@ -31,7 +31,7 @@ If it persists after that, file an issue — see "Still stuck?" below.
 **Cause (upstream, not the plugin):** on native Windows, headless `agy` needs a real
 console (ConPTY). When the plugin runs it as a child process with redirected stdio there
 is no console, and agy v1.0.x can hard-hang before producing any output
-(issue #6, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../plugins/antigravity-kit/KNOWN_ISSUES.md)).
+(issue #6, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)).
 
 **"But agy works when I type it in my terminal!"** — yes: typed directly, agy has a real
 console (interactive mode). Invoked by the plugin, it runs headless (no console). That's
@@ -103,7 +103,7 @@ wrapper and `agy-doctor` warn when they detect this.
 
 **Cause:** write tasks need write permission, and headless agy's no-permission behavior
 has changed across versions. **Your workspace stays untouched every time**; what varies is
-whether the run admits it (issue #10, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../plugins/antigravity-kit/KNOWN_ISSUES.md)):
+whether the run admits it (issue #10, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../KNOWN_ISSUES.md)):
 - pre-1.1.0: only *describes* the edits
 - 1.1.0–1.1.2: writes to its **own scratch dir** (`~/.gemini/antigravity-cli/scratch/`)
 - 1.1.3–1.1.1x: **soft-denies** — rc 0, empty stdout, a stderr notice naming the allow-rule
@@ -116,7 +116,7 @@ whether the run admits it (issue #10, unverified against this marketplace's own 
   `~/.gemini/antigravity-cli/settings.json`, under `permissions.allow`, add
   `write_file(<dir>)`. It matches **recursively beneath `<dir>`** and needs no flag.
   This is the rule agy's own denial message is naming. Confirmed on agy 1.1.9 by a
-  controlled A/B (issue #37, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../plugins/antigravity-kit/KNOWN_ISSUES.md));
+  controlled A/B (issue #37, unverified against this marketplace's own tracker — see [KNOWN_ISSUES.md](../KNOWN_ISSUES.md));
   a glob form (`write_file(/path/**)`) was reported *not* to match.
   **Substitute a real path for `<dir>`** — and if the rule is in place and the write is
   *still* denied, suspect the rule before suspecting agy. An entry agy cannot parse
