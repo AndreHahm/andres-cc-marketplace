@@ -10,7 +10,8 @@ description: >-
   or internal data", "deep research", "second-model cross-check", or "lower token cost on a big
   job". For a one-time move of an existing Claude Code setup onto agy, see the sibling
   `migrate-to-antigravity` skill instead — this skill is for ongoing delegation, not migration.
-  Claude always verifies Antigravity's output.
+  Naming Codex, not Gemini/Antigravity/agy, routes to codex-kit's `codex-peer-review`/
+  `codex-research`/`codex-rescue`. Claude always verifies Antigravity's output.
 allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*), Bash(agy-trace:*), Bash(agy-cost-compare:*), Bash(agy-media:*), Bash(git status:*), Bash(git diff:*), Read
 ---
 
@@ -55,6 +56,13 @@ the model — routing, shared rules, verification gates — not raw generation.
   this skill is for ongoing, per-task delegation, not a one-shot config move.
 - A small, self-contained, or judgement-heavy task — the round-trip cost exceeds the
   savings; just do it directly (see Cost discipline below).
+- **The request names Codex, not Gemini/Antigravity/agy** — for a second opinion, deep research, or
+  delegating an implementation to Codex specifically, use codex-kit's `codex-peer-review` (second
+  opinion), `codex-research` (deep research), or `codex-rescue` (delegate implementation) instead.
+  This skill only fires when the named or implied model/tool is Gemini/Antigravity/agy. If the
+  request names **neither** model (e.g. a bare "get a second opinion" or "do deep research"), ask
+  which one — Gemini/Antigravity or Codex — before proceeding; trigger phrasing alone doesn't
+  disambiguate that case.
 
 ## Two modes (pick per task)
 
@@ -451,12 +459,15 @@ via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`
 **Verify this skill activates on:**
 - "delegate this to antigravity / agy"
 - "scaffold this from the spec, use gemini"
-- "get a cross-model review of this diff"
+- "get a cross-model review of this diff using gemini/antigravity" (a bare, model-agnostic phrasing
+  routes through the ambiguous-model ask in "When NOT to Use" first, not straight to this skill)
 - "search the web for X" / "search Vertex AI Search for X"
 
 **Verify it does NOT activate on:**
 - "migrate my Claude Code setup to agy" → `migrate-to-antigravity` instead
 - a small, single-file, judgement-heavy edit → below the delegation break-even
+- "get a second opinion from codex", "codex research X", "delegate this to codex" → codex-kit's
+  `codex-peer-review`/`codex-research`/`codex-rescue` instead (Codex named, not Gemini/Antigravity/agy)
 
 **Quality gates:**
 - [ ] Every delegation ends with a digest-only trailer, never a raw-dump instruction

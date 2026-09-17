@@ -10,7 +10,9 @@ description: >-
   iterative validation loop. Not for a whole-project, multi-lens fix pass
   across many files/subsystems — use codex-audit-loop's --mode fix for
   that; codex-rescue delegates one task to one Codex call, not a
-  coordinated multi-worktree fix loop.
+  coordinated multi-worktree fix loop. For the same delegated-implementation
+  workflow naming Gemini/Antigravity/agy instead of Codex, use
+  antigravity-kit's `antigravity` skill instead.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(git checkout:*)", "Bash(git reset:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Read", "Write", "AskUserQuestion"]
 ---
@@ -450,6 +452,8 @@ For the full shared gotchas list, read
 - A multi-phase plan-validate-implement-review request → `codex-plan-loop`
 - "verify this plan" / "review this doc" (no implementation task) → `codex-verify`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
+- "delegate this to antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead
+  (Gemini/Antigravity/agy named, not Codex)
 
 **Concrete scenarios to check:**
 1. A vague task ("fix it") → `AskUserQuestion` for clarification, never repo exploration to guess intent.
