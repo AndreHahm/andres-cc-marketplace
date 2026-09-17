@@ -734,7 +734,7 @@ printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle $x\""}}' | 
 check "gate blocks bare \$VAR expansion in dquotes -> exit 2" 2 "$rc"
 printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"handle ${GITHUB_TOKEN}\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate blocks \${VAR} expansion in dquotes -> exit 2" 2 "$rc"
-printf '%s' "{\"tool_input\":{\"command\":\"echo \\\"\\$AWS_SECRET_ACCESS_KEY\\\" | agy-delegate -\"}}" | "$GATE" >/dev/null 2>&1; rc=$?
+printf '%s' '{"tool_input":{"command":"echo \"$AWS_SECRET_ACCESS_KEY\" | agy-delegate -"}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate blocks a piped \$VAR expansion -> exit 2" 2 "$rc"
 printf '%s' '{"tool_input":{"command":"agy-delegate --dir . \"cost is \\$5\""}}' | "$GATE" >/dev/null 2>&1; rc=$?
 check "gate allows an escaped literal \\\$ (not an expansion) -> exit 0" 0 "$rc"
@@ -829,7 +829,7 @@ else echo "FAIL: delegate agent missing proactive-with-judgment description"; FA
 
 echo "== bin/ entrypoints (issue #11: \$CLAUDE_PLUGIN_ROOT not on model-run Bash) =="
 BIN="$ROOT/bin"
-for b in agy-delegate agy-job agy-cost-compare agy-doctor agy-cloud-debug agy-trace agy-measure-session agy-media; do
+for b in agy-delegate agy-job agy-cost-compare agy-doctor agy-cloud-debug agy-trace agy-measure-session agy-media agy-migrate; do
   if [ -x "$BIN/$b" ]; then echo "ok: bin/$b executable"; PASS=$((PASS+1));
   else echo "FAIL: bin/$b missing or not executable"; FAIL=$((FAIL+1)); fi
 done
