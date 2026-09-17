@@ -18,7 +18,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`codex-kit`](./plugins/codex-kit) | Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification. |
 | [`workmanagement-kit`](./plugins/workmanagement-kit) | Notion/Linear integration for knowledge capture and tracked execution work. |
 | [`session-kit`](./plugins/session-kit) | Claude Code session management: list, search, diff, export, resume, and clean up sessions. |
-| [`context-kit`](./plugins/context-kit) | Automatic, hook-driven context-window management for Claude Code sessions. |
+| [`context-kit`](./plugins/context-kit) | Context-window management and behavioral-mode switching: hook-driven compaction suggestions, footprint auditing, degradation diagnosis, and dev/review/ship/admin mode switching. |
 | [`example-plugin`](./plugins/example-plugin) | Minimal example/test-fixture plugin used by plugin-devkit's own tooling. |
 
 See each plugin's own README for details.
