@@ -54,6 +54,14 @@ function assertInvariants(content, label) {
     "Always dispatch via a subagent"
   );
 
+  results.fallbackAsksUnconditionally = content.includes(
+    "If `antigravity-kit` is unavailable, still ask — with Codex as the sole option to"
+  );
+
+  results.geminiMisrouteStop = content.includes(
+    "if the request names Gemini/Antigravity/agy anywhere, stop here"
+  );
+
   results.neverInventTiebreak = content.includes("Never invent a tiebreak");
 
   console.log(`\n=== ${label} ===`);

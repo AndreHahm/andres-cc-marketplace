@@ -22,21 +22,38 @@ allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUser
 
 ## Quick Start
 
-1. **Dispatch a subagent** (never inline) to send Claude's not-yet-presented position to Codex for the same question, in parallel with Claude's own reasoning (Round 1).
+1. **Dispatch a subagent** (after the Model check below; never inline) to send Claude's not-yet-presented position to Codex for the same question, in parallel with Claude's own reasoning (Round 1).
 2. **Compare** — agree, disagree with reasoning, or escalate to a tiebreak source (Round 2) if the disagreement can't be resolved by re-reading the evidence.
 3. **Report** the reconciled position to the user before presenting it as final — never present Claude's original, unchecked position if Codex materially disagreed.
 
 ## Model check
 
-If this skill was reached via natural-language auto-routing with no explicit selection of it, and the
-request names neither Codex nor Gemini/Antigravity/agy (e.g. a bare "get a second opinion on this
-design"), confirm which model via `AskUserQuestion` before Round 1 — but only offer Gemini/Antigravity
-as an option if `antigravity-kit`'s skills are actually available in this session; if not, say so and
-proceed with Codex instead of asking. **If the answer is Gemini/Antigravity, stop here and defer to
-`antigravity-kit:antigravity`** instead of proceeding to Round 1. **Never fires on an explicit
-invocation of this skill** (e.g. `/codex-kit:codex-peer-review ...`, or the user explicitly saying
-"codex peer review"/"get a second opinion from codex") — that selection already answers "Codex." This
-check is separate from, and does not reopen, the "never ask before Round 1 or Round 2" rule below —
+Both checks below fire in the main conversation, before the Quick Start's `Agent` dispatch — never
+inside the dispatched subagent, since the subagent is what actually sends content to Codex.
+
+**Gemini/Antigravity named, at all:** if the request names Gemini/Antigravity/agy anywhere, stop here
+and defer to `antigravity-kit:antigravity` instead of proceeding — regardless of how this skill was
+reached, and regardless of whether the ambiguous-model check below would otherwise have fired (that
+check's own trigger condition only covers a request naming *neither* model; this stop covers the
+separate case of a request naming the *other* model).
+
+**Ambiguous model:** if this skill was reached via natural-language auto-routing with no explicit
+selection of it, and the request names neither Codex nor Gemini/Antigravity/agy (e.g. a bare "get a
+second opinion on this design"), confirm which model via `AskUserQuestion` before Round 1 — offering
+Gemini/Antigravity as an option only if `antigravity-kit`'s skills are actually available in this
+session. **If `antigravity-kit` is unavailable, still ask — with Codex as the sole option to
+confirm — rather than silently proceeding.** This ask is required regardless of whether the
+session-level first-send gate below has already been satisfied by an earlier codex-kit call this
+session: that gate answers "send anything to Codex at all," this one answers "which model," and one
+satisfying the other's question doesn't answer this one's. If the answer is Gemini/Antigravity, stop
+here and defer to `antigravity-kit:antigravity` instead of proceeding to Round 1.
+
+**Never fires on an explicit invocation of this skill** (e.g. `/codex-kit:codex-peer-review ...`, or
+the user explicitly saying "codex peer review"/"get a second opinion from codex") — that selection
+already answers "Codex," and the session-level first-send gate below (not this ask) governs whether to
+confirm sending content to Codex at all.
+
+This check is separate from, and does not reopen, the "never ask before Round 1 or Round 2" rule below —
 that rule governs the comparison loop once a model is already confirmed; this happens once, before the
 loop starts.
 
@@ -79,7 +96,7 @@ For unresolved disagreements, use WebSearch (or a configured research MCP tool, 
 
 Present the final report to the user in one of three shapes: **Agreement** (both aligned, brief), **Resolved Disagreement** (both positions + the synthesis + why), or **External Research Arbitration** (both positions + escalation findings, unresolved). This session-level outcome vocabulary is intentionally separate from the per-finding canonical taxonomy other codex-kit components use (Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred, see `codex-prompt-protocol/references/evaluation-framework.md`) — this skill validates a *position*, not individual findings.
 
-Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked. **Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): this skill is manual/on-request only and never auto-triggered, so the explicit request that invokes it ("codex peer review this design") already is the confirmation — asking again before Round 1 or Round 2 would be redundant with that invocation, not an additional safeguard.
+Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked. **Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3), **scoped to an explicit Codex selection only** (an explicit invocation, or an explicit "Codex" answer at the Model check above — never the antigravity-kit-unavailable fallback, which always asks unconditionally regardless of this gate, see that section): when this skill is explicitly invoked, or explicitly selected at the Model check, that selection already is the confirmation — asking again before Round 1 or Round 2 would be redundant with it, not an additional safeguard.
 
 ---
 
@@ -100,13 +117,17 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 2. Round 2 converges → outcome classified "Resolved disagreement", not silently reported as "Agreement".
 3. A security or architecture-conflict disagreement → escalates immediately, skipping the normal 2-round wait.
 4. An unresolved disagreement after escalation → both positions and the escalation source are presented; no invented tiebreak.
-5. A bare, model-agnostic request ("get a second opinion on this design") reached via auto-routing → the Model check gate confirms Codex vs. Gemini/Antigravity via `AskUserQuestion` before Round 1, deferring to `antigravity-kit:antigravity` if the answer is Gemini/Antigravity — never fires on an explicit `/codex-kit:codex-peer-review` invocation or an explicit "codex" mention.
+5. A bare, model-agnostic request ("get a second opinion on this design") reached via auto-routing, with `antigravity-kit` available → the Model check gate confirms Codex vs. Gemini/Antigravity via `AskUserQuestion` before Round 1, deferring to `antigravity-kit:antigravity` if the answer is Gemini/Antigravity — never fires on an explicit `/codex-kit:codex-peer-review` invocation or an explicit "codex" mention.
+6. The same bare request, but `antigravity-kit` is unavailable this session → still asks, with Codex as the sole option to confirm, even if an earlier codex-kit call already satisfied the session-level first-send gate this session — never silently proceeds to Round 1 with zero ask.
+7. A request that explicitly names Gemini/Antigravity/agy but still reaches this skill (an activation-layer misroute) → stops and defers to `antigravity-kit:antigravity` unconditionally, regardless of whether the ambiguous-model check's own trigger condition matched.
 
 **Current test coverage:**
 - `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`). **Live empirical run, 2026-08-24:** `skill-tester` full baseline comparison against a real Codex backend — with-skill 2/2 assertions pass (real subagent dispatch, 2-round protocol with `--resume-last`, correct "Resolved Disagreement" classification with escalation-taxonomy reasoning), baseline 0/2 (no subagent dispatch, no round structure, no Codex integration at all); `grading.json`/`outputs/` on disk under `evals/codex-peer-review/workspace/iteration-1/eval-1/`.
 - `scripts/smoke-tests/codex-peer-review-invariants.mjs` — this skill's own output isn't mechanically testable (it depends on Claude's own position and Codex's live response), but the SKILL.md text's safety-relevant invariants are: Round 1/Round 2/Escalation ordering, the never-ask-before-Round-1-or-2 gate, and the always-dispatch-via-subagent requirement. Not a live Codex-call test.
 
 **Quality gates:**
-- [ ] Never asks the user before Round 1 or Round 2
+- [ ] Never asks inside the comparison loop itself — the Model check (and, on the antigravity-unavailable
+      fallback, its unconditional confirmation) are the only permitted pre-Round-1 asks; Round 1/Round 2
+      stay autonomous once a model is confirmed
 - [ ] Always dispatches via a subagent, never inline in the main conversation
 - [ ] A security/architecture/breaking-change disagreement always skips straight to escalation
