@@ -3,7 +3,7 @@ name: codex-research
 description: >-
   Deep-dive research using Codex with Claude's cross-model synthesis. Use
   when asked "codex research", "deep dive with codex", "investigate this
-  topic", or "resume" a prior research thread. Not for reviewing code
+  topic (codex)", or "resume" a prior research thread. Not for reviewing code
   changes/diffs (use the /codex-kit:review command for that), for
   verifying an existing written plan/document (use codex-verify for that),
   or for validating Claude's own already-formed analysis, design, or

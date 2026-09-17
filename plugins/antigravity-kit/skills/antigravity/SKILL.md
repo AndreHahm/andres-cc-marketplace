@@ -7,11 +7,11 @@ description: >-
   migrations, web/Vertex AI Search) to Antigravity (Gemini), the cheaper model. Use when the user
   wants to "use Antigravity / agy", "vibe code / agentic engineering", "accelerate the SDLC",
   "delegate to Gemini", "scaffold / generate tests / migrate", "first-pass code review", "search web
-  or internal data", "deep research", "second-model cross-check", or "lower token cost on a big
-  job". For a one-time move of an existing Claude Code setup onto agy, see the sibling
+  or internal data", "deep research (gemini)", "second-model cross-check (gemini)", or "lower token
+  cost on a big job". For a one-time move of an existing Claude Code setup onto agy, see the sibling
   `migrate-to-antigravity` skill instead — this skill is for ongoing delegation, not migration.
-  Naming Codex, not Gemini/Antigravity/agy, routes to codex-kit's `codex-peer-review`/
-  `codex-research`/`codex-rescue`. Claude always verifies Antigravity's output.
+  Naming Codex instead routes to codex-kit's `codex-peer-review`/`codex-research`/`codex-rescue`.
+  Claude always verifies Antigravity's output.
 allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*), Bash(agy-trace:*), Bash(agy-cost-compare:*), Bash(agy-media:*), Bash(git status:*), Bash(git diff:*), Read
 ---
 
