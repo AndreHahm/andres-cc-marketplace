@@ -234,9 +234,13 @@ Queued next: <mode-2>, once <trigger condition>.
 `scripts/detect_mode.py` (happy path, order-of-mention, allowlist enforcement, UTF-8/malformed-input
 fail-open cases) lives in `references/design-history.md`'s "Validation Record" section, not inline here.
 
-**Last dated run record:** direct stdin/stdout smoke tests (see `references/design-history.md`'s
-"Validation Record" section) were run and confirmed during this skill's Build/Self-Review pass, commit
-`e18edb23` (2026-09-16). Model-driven activation (the `Verify this skill activates on` / `does NOT
+**Last dated run record:** the persisted `scripts/smoke_test.py` (6/6 checks passing as of 2026-09-17)
+covers `detect_mode.py`'s real stdin/stdout hook contract directly — happy path, order-of-mention,
+fail-open on malformed/non-UTF-8 input, and the closed `VALID_MODES` vocabulary guarantee. This
+supersedes the manual stdin/stdout walkthrough originally run and confirmed during this skill's
+Build/Self-Review pass, commit `e18edb23` (2026-09-16), still documented in
+`references/design-history.md`'s "Validation Record" section for historical context. Model-driven
+activation (the `Verify this skill activates on` / `does NOT
 activate on` scenarios above) requires a live Claude Code session with this plugin installed/mirrored —
 no resolvable record of that pass having actually run exists as of this writing; treat it as not yet
 exercised rather than assume it happened.

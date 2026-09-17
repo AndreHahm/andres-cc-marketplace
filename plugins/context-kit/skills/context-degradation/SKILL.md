@@ -225,7 +225,9 @@ Internal reference:
 
 ## Testing & Validation
 
-No `evals/context-degradation/evals.json` — this skill is diagnostic guidance the model applies directly (pattern recognition + a reference-guided mitigation mapping), not a deterministic tool with its own branching logic to eval. `scripts/degradation_detector.py`'s own functions were smoke-tested directly via its `__main__` demo (structure analysis, attention distribution, lost-in-middle detection, and poisoning detection all ran cleanly against synthetic context).
+No `evals/context-degradation/evals.json` — this skill is diagnostic guidance the model applies directly (pattern recognition + a reference-guided mitigation mapping), not a deterministic tool with its own branching logic to eval. `scripts/degradation_detector.py`'s own functions are covered by the persisted `scripts/smoke_test.py` (attention-distribution favored/degraded classification, lost-in-middle at-risk/safe/invalid-position handling, poisoning detection on known-poisoned and clean text, and health-analyzer input validation).
+
+**Last dated run record:** `scripts/smoke_test.py` — 7/7 checks passing as of 2026-09-17.
 
 **Verify this skill activates on:**
 - "why is the agent producing irrelevant output after a long conversation"

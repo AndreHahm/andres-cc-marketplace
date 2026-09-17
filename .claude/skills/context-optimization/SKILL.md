@@ -80,7 +80,9 @@ Natural-language, meaning-based code discovery — complementary to `grep`'s exa
 
 ## Testing & Validation
 
-No `evals/context-optimization/evals.json` — this skill is guidance the model applies directly when choosing a retrieval strategy, not a deterministic tool with branching logic to eval.
+No `evals/context-optimization/evals.json` — this skill is guidance the model applies directly when choosing a retrieval strategy, not a deterministic tool with branching logic to eval. The structural claims this section documents (sibling cross-reference resolving, no restated framework headers) are covered by the persisted `scripts/smoke_test.py`.
+
+**Last dated run record:** `scripts/smoke_test.py` — 4/4 checks passing as of 2026-09-17.
 
 **Verify this skill activates on:**
 - "should I @-mention this file or let you search for it"

@@ -97,7 +97,9 @@ Read `references/audit-procedures.md` for detailed procedures, scoring rubric, a
 
 ## Testing & Validation
 
-No `evals/context-audit/evals.json` — this skill's variable part is `scripts/audit-context.sh` (deterministic, no model-judgment branching to eval); it was smoke-tested directly against real repo data (`--top`, `--flagged`, `--json`, `--help`, and the `--top 08`/missing-value edge cases) rather than via a `skill-tester` blind comparison. The scoring/recommendation logic in `references/audit-procedures.md` is guidance the model applies directly, not a separate code path to eval.
+No `evals/context-audit/evals.json` — this skill's variable part is `scripts/audit-context.sh` (deterministic, no model-judgment branching to eval); it's covered by the persisted `scripts/smoke_test.py` (`--top`, `--flagged`, `--json`, `--help`, and the `--top 08`/missing-value edge cases, run against an isolated fixture rather than this real repo's own skills tree) rather than via a `skill-tester` blind comparison. The scoring/recommendation logic in `references/audit-procedures.md` is guidance the model applies directly, not a separate code path to eval.
+
+**Last dated run record:** `scripts/smoke_test.py` — 5/5 checks passing as of 2026-09-17 (see commit history for `plugins/context-kit/skills/context-audit/scripts/smoke_test.py`).
 
 **Verify this skill activates on:**
 - "audit my context"
@@ -123,7 +125,6 @@ No `evals/context-audit/evals.json` — this skill's variable part is `scripts/a
 - [ ] `.claude/rules/*.md` discovery is recursive — a rule in a subdirectory (e.g. `rules/frontend/`) is never silently dropped
 - [ ] MCP server counting resolves every real source (`settings.json`, `~/.claude.json` user + local scope, `{project}/.mcp.json` team scope, each enabled plugin's bundled `.mcp.json`/`.claude-plugin/plugin.json`) and deduplicates by server name across the first four — never settings.json alone, and never double-counting a server defined in more than one scope
 - [ ] Plugin enablement is resolved across every scope that exists (`~/.claude/settings.json`, `{project}/.claude/settings.json`, `{project}/.claude/settings.local.json`), with a later scope's value winning on conflict — never user scope alone
-- [ ] `context-engineering`'s Isolate table never labels `/resume` as a "clean slate" — `/resume` loads the prior session's context back into memory (continuity, not isolation); only a genuinely fresh session (no `/resume`) is a clean slate
 - [ ] A `.claude/rules/*.md` file whose own frontmatter declares a `paths:` field is classified `on-demand`, never `always-on` — it only loads when Claude works with a matching file
 - [ ] Rules discovery includes `~/.claude/rules/` (user-level, applies to every project), never project-scope rules alone
 - [ ] A plugin's own `.mcp.json` is read as bare top-level keys (no `mcpServers` wrapper); a plugin's `.claude-plugin/plugin.json` and a project-root `.mcp.json` are both read with the `mcpServers` wrapper — these are two genuinely different schemas despite `.mcp.json` sharing a filename across plugin-root and project-root locations, verified against the official docs, never assumed identical

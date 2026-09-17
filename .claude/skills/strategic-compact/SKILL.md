@@ -194,7 +194,11 @@ model reading and following its own body text to act; the hooks fire determinist
 The meaningful test surface is the hook scripts' own input/output contracts, verified directly
 (stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
 LLM-judged eval — see `hook-development/scripts/test-hook.sh` and this plugin's own Build-time
-verification record. The checklist below documents that direct-verification surface.
+verification record. The checklist below documents that direct-verification surface, and the persisted
+`scripts/smoke_test.py` exercises `compact-milestone-detector.sh` and `compact-stop-check.sh` directly
+against this same stdin/stdout contract.
+
+**Last dated run record:** `scripts/smoke_test.py` — 8/8 checks passing as of 2026-09-17.
 
 **Verify this skill's hooks activate on:**
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/
@@ -222,7 +226,7 @@ types on `.tool_response.success`, a field that doesn't exist on a real Bash `Po
 that check was always false in practice, silently disabling both milestone types entirely; it was
 removed rather than fixed to check a real field, since `PostToolUse` already guarantees success.
 
-**Pass criteria:**
+**Quality gates:**
 - [ ] A session with 50+ tool calls produces exactly one threshold suggestion per configured
       threshold (`T1`/`T2`/`T3`), not a repeated suggestion on every call past the threshold.
 - [ ] A successful `pytest`/`npm test`/etc. command produces a `test_pass` milestone suggestion (once

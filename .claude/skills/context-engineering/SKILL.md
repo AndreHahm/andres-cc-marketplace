@@ -219,7 +219,9 @@ Isolate heavy work to subagents. Main session stays for coordination and commits
 
 ## Testing & Validation
 
-No `evals/context-engineering/evals.json` — this skill is a reference framework the model applies directly (choosing which of four operations fits a situation), not a deterministic tool with branching logic to eval.
+No `evals/context-engineering/evals.json` — this skill is a reference framework the model applies directly (choosing which of four operations fits a situation), not a deterministic tool with branching logic to eval. The structural claims this section documents (sole canonical-source ownership, cross-references resolving, sibling skills never restating the framework) are covered by the persisted `scripts/smoke_test.py`.
+
+**Last dated run record:** `scripts/smoke_test.py` — 5/5 checks passing as of 2026-09-17.
 
 **Verify this skill activates on:**
 - "how should I manage context for this task"
@@ -234,3 +236,4 @@ No `evals/context-engineering/evals.json` — this skill is a reference framewor
 - [ ] Never duplicates `context-degradation`'s Four-Bucket Mitigation Framework — this skill is the single canonical source for Write/Select/Compress/Isolate
 - [ ] The Compress section's compaction-strategy table and trigger list always name `strategic-compact` explicitly where its hooks are the mechanism, never a bare unnamed "strategic compact" phrase
 - [ ] The Write operation's scratchpad guidance never presents a bare repo-root filename (e.g. `NOTES.md`) as the default location — it always points at a gitignored, project-scoped location instead, since a literal reader following this skill in a project with a no-root-scratch policy would otherwise leave untracked clutter at the repo root (found by a cross-model review pass, 2026-09-16)
+- [ ] The Isolate table never labels `/resume` as a "clean slate" — `/resume` loads the prior session's context back into memory (continuity, not isolation); only a genuinely fresh session (no `/resume`) is a clean slate (this gate previously lived in `context-audit`'s own checklist, moved here 2026-09-17 since it's a fact about this skill's own content, not `context-audit`'s)
