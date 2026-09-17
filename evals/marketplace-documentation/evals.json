@@ -4,13 +4,12 @@
   "description": "Bounded Quick Workflow smoke check (plugin-lifecycle-upstream Phase 7) — confirms the skill's own documented trigger/non-trigger examples hold and its core Step 2-4 procedure is followed.",
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 1,
+    "declared_scenarios_covered": 2,
     "uncovered": [
       "Plugin removed from marketplace.json — table row removal",
-      "No changes needed (table already matches marketplace.json) — clean no-op reporting",
       "Broken .claude/rules/*.md reference caught by human-doc-reviewer's Step 3"
     ],
-    "note": "This is a bounded Phase 7 smoke check, not a full eval suite. Only eval-1 exercises one of the SKILL.md's own numbered 'Scenarios' (scenario 1, plugin added). eval-2 tests a different, valuable dimension (the trigger/non-trigger boundary against plugin-documentation) that isn't one of the 4 numbered scenarios, so it doesn't count toward this coverage field even though it's a real, passing eval. The 3 uncovered scenarios are lower-risk (delegated to human-doc-reviewer's own already-tested logic, or straightforward no-op reporting) and are not re-verified here."
+    "note": "This is a bounded Phase 7 smoke check, not a full eval suite. eval-1 exercises scenario 1 (plugin added) and eval-3 exercises scenario 3 (no changes needed, clean no-op) of the SKILL.md's own numbered 'Scenarios'. eval-2 tests a different, valuable dimension (the trigger/non-trigger boundary against plugin-documentation) that isn't one of the 4 numbered scenarios, so it doesn't count toward this coverage field even though it's a real, passing eval. The 2 remaining uncovered scenarios are lower-risk (a symmetric table-removal case, or delegated to human-doc-reviewer's own already-tested logic) and are not re-verified here. This satisfies R28's min_eval_scenarios=3 (evals: 3)."
   },
   "evals": [
     {
@@ -25,6 +24,13 @@
       "name": "Non-trigger — a single plugin's own README",
       "prompt": "Write docs for the git-kit plugin — update its own README.md with its current skill list.",
       "expected_output": "Recognizes this as plugin-documentation's job (a single plugin's own docs), not marketplace-documentation's — does not attempt to read/regenerate the marketplace-root README's plugin table for this request.",
+      "files": []
+    },
+    {
+      "id": "eval-3",
+      "name": "No changes needed — table already matches marketplace.json — clean no-op reporting",
+      "prompt": "Check whether the marketplace README's plugin table matches .claude-plugin/marketplace.json's current plugin list, and update it if it doesn't.",
+      "expected_output": "Reads .claude-plugin/marketplace.json as source of truth, compares it against README's actual current plugin table, finds no discrepancy, and reports that no changes are needed rather than fabricating an edit or silently making a no-op change look like real work.",
       "files": []
     }
   ]

@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads .claude-plugin/marketplace.json as source of truth before making any comparison",
+      "passed": true,
+      "evidence": "Read .claude-plugin/marketplace.json in full (Step 2) before reading or comparing README.md, capturing its real plugin list and order: plugin-devkit, git-kit, analysis-kit, codex-kit, example-plugin, workmanagement-kit, session-kit, context-kit."
+    },
+    {
+      "text": "Compares it against README's actual current plugin table row by row",
+      "passed": true,
+      "evidence": "Read README.md's Plugins table (8 rows) and checked row presence, link path, and description content against each marketplace.json entry. All 8 plugins present on both sides with no missing/extra rows and no broken source-path links. Found one row-order deviation: example-plugin sits at position 5 in marketplace.json (between codex-kit and workmanagement-kit) but is placed last (position 8) in README's table."
+    },
+    {
+      "text": "Correctly reports whether changes are needed based on the real comparison (not assumed)",
+      "passed": true,
+      "evidence": "The order deviation found is the exact scenario the skill's own Step 3 text names as an example of deliberate curation ('a test-fixture plugin placed last on purpose') -- example-plugin is this repo's actual test-fixture plugin. Per Step 3's instruction to report rather than silently reorder, and only correct if the deviation is confirmed unintentional, this was assessed as the already-known, intentional exception (consistent with the prior session's own work keeping README and marketplace.json in sync) rather than an unaddressed drift. Conclusion: no edit needed -- row presence, link paths, and descriptions all match; the one order difference is an accepted, documented curation choice, not a defect."
+    },
+    {
+      "text": "Does not fabricate an edit or silently make a no-op look like real work",
+      "passed": true,
+      "evidence": "No Edit/Write was made to README.md. The order deviation was explicitly surfaced and reasoned about (not silently ignored, and not silently 'fixed' by reordering) before concluding no change was needed, per the skill's own Step 3 guidance on deliberately curated ordering."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Real comparison result: in sync. All 8 marketplace.json plugin entries have a corresponding, accurate README table row with correct link paths and non-placeholder descriptions. The only structural difference -- example-plugin listed last in README versus mid-list in marketplace.json -- matches the skill's own documented example of intentional curation (a test-fixture plugin placed last on purpose) and was treated as an accepted deviation, not a fix candidate. No edit made to README.md or marketplace.json."
+}
