@@ -74,14 +74,19 @@ if [[ ! -d "$SKILLS_DIR" && ! -d "$PROJECT_SKILLS_DIR" ]]; then
   exit 1
 fi
 
-# Helper: get file size in bytes (portable)
-file_size() {
-  wc -c < "$1" | tr -d ' '
-}
-
-# Helper: get word count
-word_count() {
-  wc -w < "$1" | tr -d ' '
+# Helper: get word count and byte size in a single wc invocation instead of two
+# separate subprocess spawns -- halves the subprocess count across this script's
+# whole scan (one wc call per file instead of two), which is the actual cost
+# driver against a real repo with hundreds of scanned files (each spawn measured
+# at ~30ms on this platform per compact-track-and-suggest.sh's own comment).
+# `wc -w -c` always prints "<words> <bytes>" in that fixed order regardless of
+# flag order (GNU wc's own newline/word/byte canonical ordering) -- verified
+# directly, not assumed from flag order. Sets the caller's own w/s variables
+# directly (via `local -n` nameref) rather than echo+command-substitution, to
+# avoid yet another subprocess per call.
+file_words_and_size() {
+  local -n _fws_w=$2 _fws_s=$3
+  read -r _fws_w _fws_s < <(wc -w -c < "$1")
 }
 
 # Helper: escape a string for embedding in a JSON string literal. Covers
@@ -144,8 +149,7 @@ scan_skills_dir() {
 
     skill_file="$skill_dir/SKILL.md"
     if [[ -f "$skill_file" ]]; then
-      s=$(file_size "$skill_file")
-      w=$(word_count "$skill_file")
+      file_words_and_size "$skill_file" w s
       flag="-"
       [[ $w -gt 500 ]] && flag="LARGE"
       entries+=("${label_prefix}${skill_name}/SKILL.md	$s	$w	on-trigger	$flag")
@@ -156,8 +160,7 @@ scan_skills_dir() {
       for ref_file in "$refs_dir"/*.md; do
         [[ -f "$ref_file" ]] || continue
         ref_name=$(basename "$ref_file")
-        s=$(file_size "$ref_file")
-        w=$(word_count "$ref_file")
+        file_words_and_size "$ref_file" w s
         entries+=("${label_prefix}${skill_name}/references/$ref_name	$s	$w	on-demand	-")
       done
     fi
@@ -167,8 +170,7 @@ scan_skills_dir() {
       for rule_file in "$rules_dir"/*.md; do
         [[ -f "$rule_file" ]] || continue
         rule_name=$(basename "$rule_file")
-        s=$(file_size "$rule_file")
-        w=$(word_count "$rule_file")
+        file_words_and_size "$rule_file" w s
         entries+=("${label_prefix}${skill_name}/rules/$rule_name	$s	$w	on-demand	-")
       done
     fi
@@ -217,8 +219,7 @@ scan_rules_dir() {
   while IFS= read -r rule_file; do
     [[ -z "$rule_file" ]] && continue
     rule_name="${rule_file#"$base_dir"/}"
-    s=$(file_size "$rule_file")
-    w=$(word_count "$rule_file")
+    file_words_and_size "$rule_file" w s
     if has_paths_frontmatter "$rule_file"; then
       entries+=("${label_prefix}${rule_name}	$s	$w	on-demand	-")
     else
@@ -247,8 +248,7 @@ fi
 # CLAUDE.md files — global (the real path is ~/.claude/CLAUDE.md, not ~/CLAUDE.md)
 GLOBAL_CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 if [[ -f "$GLOBAL_CLAUDE_MD" ]]; then
-  s=$(file_size "$GLOBAL_CLAUDE_MD")
-  w=$(word_count "$GLOBAL_CLAUDE_MD")
+  file_words_and_size "$GLOBAL_CLAUDE_MD" w s
   flag="-"
   [[ $s -gt 2048 ]] && flag="LARGE"
   entries+=("CLAUDE.md (global)	$s	$w	always-on	$flag")
@@ -260,8 +260,7 @@ if [[ "$(pwd)" != "$HOME" ]]; then
   while IFS= read -r claude_file; do
     [[ -z "$claude_file" ]] && continue
     rel_path="${claude_file#"$(pwd)"/}"
-    s=$(file_size "$claude_file")
-    w=$(word_count "$claude_file")
+    file_words_and_size "$claude_file" w s
     flag="-"
     [[ $s -gt 2048 ]] && flag="LARGE"
     if [[ "$rel_path" == "CLAUDE.md" ]]; then
@@ -286,8 +285,7 @@ if [[ -d "$CURRENT_MEMORY_DIR" ]]; then
   for mem_file in "$CURRENT_MEMORY_DIR"/*.md; do
     [[ -f "$mem_file" ]] || continue
     mem_name=$(basename "$mem_file")
-    s=$(file_size "$mem_file")
-    w=$(word_count "$mem_file")
+    file_words_and_size "$mem_file" w s
     flag="-"
     [[ $w -gt 300 ]] && flag="LARGE"
     entries+=("memory/$mem_name	$s	$w	always-on	$flag")
