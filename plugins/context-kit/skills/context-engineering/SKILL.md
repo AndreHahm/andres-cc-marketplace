@@ -28,9 +28,9 @@ pattern to the operation that mitigates it.
 
 ## When NOT to Use
 
-- A context failure is already happening (lost-in-middle, poisoning, confusion, clash) and needs
-  diagnosis first — use `context-degradation` to identify which pattern is active, then come back here
-  for the matching operation
+- A context failure is already happening (lost-in-middle, poisoning, distraction, confusion, clash)
+  and needs diagnosis first — use `context-degradation` to identify which pattern is active, then
+  come back here for the matching operation
 - Only the automatic phase-transition/compaction-timing suggestion behavior is wanted — that's
   `strategic-compact`'s job (hook-driven, this plugin's own automatic layer); this skill is the
   manually-applied conceptual framework, not the automation itself
@@ -51,7 +51,8 @@ Move information out of the context window into durable storage so it survives c
 |--------|------|---------|
 | CLAUDE.md | Permanent project rules | "Always use pnpm, never npm" |
 | A gitignored scratch file | Working state for current task | Architecture decisions, open questions |
-| `.claude/memory/` | Learnings and patterns | `[LEARN]` rules from corrections |
+| `~/.claude/projects/<this-project>/memory/*.md` | Learnings and patterns (auto-memory) | `[LEARN]` rules from corrections |
+| `.claude/handoffs/` (via `session-kit`'s `session-handoff`) | Full session state across a boundary | Active plan, current task, open questions |
 | External files | Data too large for context | Test plans, migration checklists |
 
 **Pattern — Scratchpad workflow:** name the file `NOTES.md` if you like, but put it wherever this
@@ -111,26 +112,13 @@ Shrink context without losing the information that matters.
 - Before switching task domains
 - After heavy search/read operations
 
-**PostCompact hook — Re-inject critical context:**
-```json
-{
-  "hooks": {
-    "PostCompact": [
-      {
-        "matcher": "auto",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cat .claude/critical-context.md"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Use this to ensure project rules, current task state, or architecture constraints survive every compaction.
+**Re-inject critical context after compaction:** this plugin already ships this mechanism —
+`strategic-compact`'s own `pre-compact.py` (`PreCompact`) captures the active plan's state, and
+`post-compact-restore.py` (`SessionStart`, matcher `compact|resume`) restores it via
+`additionalContext` (see `strategic-compact`'s own "Integration" section for the full wiring). Use
+that shipped mechanism rather than hand-rolling a separate `PostCompact` hook for the same job; a
+generic `PostCompact`-matcher hook is a real, documented Claude Code event if a project needs a
+different re-injection source than this plugin's own plan-state capture.
 
 ### 4. Isolate — Partition Across Execution Spaces
 
@@ -221,7 +209,7 @@ Isolate heavy work to subagents. Main session stays for coordination and commits
 
 No `evals/context-engineering/evals.json` — this skill is a reference framework the model applies directly (choosing which of four operations fits a situation), not a deterministic tool with branching logic to eval. The structural claims this section documents (sole canonical-source ownership, cross-references resolving, sibling skills never restating the framework) are covered by the persisted `scripts/smoke_test.py`.
 
-**Last dated run record:** `scripts/smoke_test.py` — 5/5 checks passing as of 2026-09-17.
+**Last dated run record:** `scripts/smoke_test.py` — 6/6 checks passing as of 2026-09-17.
 
 **Verify this skill activates on:**
 - "how should I manage context for this task"

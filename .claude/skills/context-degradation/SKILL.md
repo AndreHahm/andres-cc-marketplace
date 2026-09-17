@@ -29,6 +29,12 @@ Do not activate this skill for adjacent work owned by other skills:
 - Applying token-efficiency tactics after the failure pattern is already known — that's `context-engineering`'s job (Write/Select/Compress/Isolate), not this skill's
 - Designing a compression or handoff summary strategy
 - Persisting large outputs, logs, or scratch state outside the prompt
+- Responses simply feel slower, or reported "memory gaps" look like ordinary context-window
+  fullness rather than a specific pattern below — check `context-window-analysis` first for a live
+  percentage-full read; return here only once a specific degradation pattern (not just fullness) is
+  suspected
+- Choosing between @ mentions, grep/Glob, or semantic search with no active failure — that's
+  `context-optimization`'s job
 
 ## Core Concepts
 

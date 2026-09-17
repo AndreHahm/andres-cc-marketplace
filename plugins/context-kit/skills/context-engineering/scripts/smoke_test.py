@@ -89,12 +89,43 @@ def check_scratchpad_guidance_never_bare_repo_root():
     )
 
 
+def check_resume_never_labeled_clean_slate():
+    # Quality gate: "The Isolate table never labels /resume as a 'clean slate' --
+    # /resume loads the prior session's context back into memory (continuity, not
+    # isolation); only a genuinely fresh session (no /resume) is a clean slate."
+    # This gate was moved here from context-audit's own checklist (2026-09-17) but,
+    # until now, its test coverage was never migrated with it (found by
+    # completeness-reviewer, 2026-09-17).
+    text = SKILL_MD.read_text(encoding="utf-8")
+    isolate_start = text.find("### 4. Isolate")
+    if isolate_start == -1:
+        return False, "could not locate '### 4. Isolate' section header"
+    isolate_section = text[isolate_start : isolate_start + 2000]
+    resume_rows = re.findall(r"^\|.*`/resume`.*\|$", isolate_section, re.MULTILINE)
+    if not resume_rows:
+        return False, "Isolate section has no table row mentioning /resume to check"
+    # A row naming bare `/resume` (not qualified with "no") must never pair it with
+    # "Clean slate" -- but a row like "Fresh session (no `/resume`)" correctly does,
+    # since that row is describing the *absence* of /resume, not /resume itself.
+    bad_rows = [
+        row
+        for row in resume_rows
+        if "clean slate" in row.lower() and "no `/resume`" not in row and "no /resume" not in row
+    ]
+    if bad_rows:
+        return False, f"a table row pairs bare /resume with 'clean slate': {bad_rows}"
+    if "Clean slate" not in isolate_section:
+        return False, "expected a 'Clean slate' row for the no-/resume case, none found"
+    return True, "/resume is never labeled a clean slate; only a fresh no-/resume session is"
+
+
 CHECKS = [
     check_frontmatter,
     check_sibling_skills_referenced_exist,
     check_is_sole_canonical_source_for_framework,
     check_compress_section_names_strategic_compact,
     check_scratchpad_guidance_never_bare_repo_root,
+    check_resume_never_labeled_clean_slate,
 ]
 
 

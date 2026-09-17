@@ -32,6 +32,10 @@ window's health in the moment.
   fits a situation, independent of a live health read — see `context-engineering`'s "When to /clear vs
   /compact vs Subagent" table; this skill answers "what's my window's health right now," not the
   general decision framework
+- A degradation pattern is already suspected, not just raw window fullness — persistent memory gaps
+  that survive a fresh, low-context prompt, contradictory/poisoned retrieved facts, or task-confusion
+  symptoms point to an active failure pattern, not fullness — use `context-degradation` to diagnose
+  which pattern is active instead
 
 ## Usage
 
