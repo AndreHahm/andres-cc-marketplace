@@ -1,6 +1,6 @@
 {
   "eval_id": 1,
-  "skill_path": "plugins/context-kit/skills/context-window-analyze/SKILL.md",
+  "skill_path": "plugins/context-kit/skills/context-window-analysis/SKILL.md",
   "assertions": [
     {"text": "Response asks the user to run /context and share the output, or explicitly falls back to indirect estimation only when /context output isn't available", "type": "functionality", "target": "outputs/"},
     {"text": "Response includes a status assessment using one of HEALTHY/MONITOR/WARNING/CRITICAL", "type": "structure", "target": "outputs/"},

@@ -82,10 +82,10 @@ automatic, hook-driven layer that detects a good compaction *moment* and suggest
 not decide *what* to persist or how to structure a context budget. "How should I structure/budget
 context for this task" → `context-engineering`; "is now a good moment to compact" → this skill.
 
-## Relationship to context-window-analyze
+## Relationship to context-window-analysis
 
 For a manually-triggered, point-in-time read of the current window's actual health (percentage full,
-composition breakdown) rather than an automatic nudge, see `context-window-analyze` — this skill only
+composition breakdown) rather than an automatic nudge, see `context-window-analysis` — this skill only
 fires the automatic hook-driven suggestion; it doesn't answer "how full is my context right now" on
 demand.
 

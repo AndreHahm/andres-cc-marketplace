@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persisted smoke test for context-window-analyze: this skill has no scripts/ helper
+"""Persisted smoke test for context-window-analysis: this skill has no scripts/ helper
 (pure model-applied guidance + a fixed report template), so the meaningful checks are
 structural -- frontmatter validity, the report template/examples reference link (moved
 out of SKILL.md by the 2026-09-17 R18 fix), and the documented Quality Gate about

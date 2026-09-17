@@ -1,6 +1,6 @@
 # Context Window Analysis — Report Template and Worked Examples
 
-Read when: writing or reviewing a `context-window-analyze` report — the output template
+Read when: writing or reviewing a `context-window-analysis` report — the output template
 (Step 3 of the skill's own Workflow) plus a complete worked example at each of the three
 health-status tiers with a distinct example (HEALTHY, WARNING, CRITICAL — MONITOR has no
 distinct example since its guidance is the same shape as HEALTHY with an earlier nudge).
@@ -23,7 +23,9 @@ Observable Indicators:
   Recent file reads: {count} files
   Tool invocations: {count}
   Skills loaded: {list}
+```
 
+```text
 Assessment:
   {description of current state}
 
@@ -98,7 +100,9 @@ Recommendations:
   1. Run /compact to summarize and free space
   2. Or run /clear if starting a new task
   3. Save important context to a temp file first
+```
 
+```text
 Warning Signs to Watch:
   - If responses slow further, act immediately
   - Watch for truncation or "I don't recall" responses
@@ -121,7 +125,10 @@ Observable Indicators:
   Recent file reads: 45 files
   Tool invocations: 312
   Skills loaded: 7
-  Auto-compact triggered: 3 times
+```
+
+```text
+Auto-compact triggered: 3 times
 
 Assessment:
   Context is near capacity. Significant degradation likely:

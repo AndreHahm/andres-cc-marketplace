@@ -1,5 +1,5 @@
 ---
-name: context-window-analyze
+name: context-window-analysis
 description: >-
   Analyze the current context window's live health and provide optimization recommendations. Use
   when responses feel slow, the user asks "how full is my context", or before deciding between
@@ -36,7 +36,7 @@ window's health in the moment.
 ## Usage
 
 ```text
-/context-window-analyze
+/context-window-analysis
 ```
 
 ## What Gets Analyzed
@@ -130,7 +130,7 @@ to read it.
 
 ## Testing & Validation
 
-No `evals/context-window-analyze/evals.json` — this skill is guidance the model applies directly (an estimation heuristic + a fixed report template), not a deterministic tool with branching logic to eval. The structural claims this section documents (the examples-reference link, Option 4's real session-kit reference, no oversized blocks) are covered by the persisted `scripts/smoke_test.py`.
+No `evals/context-window-analysis/evals.json` — this skill is guidance the model applies directly (an estimation heuristic + a fixed report template), not a deterministic tool with branching logic to eval. The structural claims this section documents (the examples-reference link, Option 4's real session-kit reference, no oversized blocks) are covered by the persisted `scripts/smoke_test.py`.
 
 **Last dated run record:** `scripts/smoke_test.py` — 6/6 checks passing as of 2026-09-17.
 
