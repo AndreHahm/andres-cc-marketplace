@@ -188,17 +188,17 @@ Scenarios:
    report surfaces the fix.
 
 Quick Workflow evals live at `evals/marketplace-documentation/` (`evals.json` + per-eval `grading.json`)
-— 2 evals, 7/7 assertions passing as of this skill's initial build: adding a plugin to
-`marketplace.json` (with_skill correctly caught a test-setup mismatch — the named plugin wasn't actually
-in the manifest — and refused to fabricate a row rather than proceeding, demonstrating Step 2's
-"never invent a plugin entry" discipline holds), and the trigger/non-trigger boundary against
-`plugin-documentation` for a single plugin's own docs. Only the first of those 2 evals maps to one of
-the 4 numbered "Scenarios" above (scenario 1, plugin added); the other 3 (plugin removed, no-changes-
-needed, broken `.claude/rules/*.md` reference) are lower-risk and delegated to `human-doc-reviewer`'s
-own already-tested logic rather than re-verified here — see `evals.json`'s `testing_validation_coverage`
-field.
+— 3 evals, 11/11 assertions passing: adding a plugin to `marketplace.json` (with_skill correctly caught a
+test-setup mismatch — the named plugin wasn't actually in the manifest — and refused to fabricate a row
+rather than proceeding, demonstrating Step 2's "never invent a plugin entry" discipline holds), the
+trigger/non-trigger boundary against `plugin-documentation` for a single plugin's own docs, and a live
+no-changes-needed run against the real repo state (README/marketplace.json confirmed in sync). Two of
+those 3 evals map to the 4 numbered "Scenarios" above (scenario 1, plugin added; scenario 3, no changes
+needed); the remaining 2 (plugin removed, broken `.claude/rules/*.md` reference) are lower-risk and
+delegated to `human-doc-reviewer`'s own already-tested logic rather than re-verified here — see
+`evals.json`'s `testing_validation_coverage` field.
 
-**Last dated run record:** 2026-09-16 — `evals/marketplace-documentation/` (2 evals, 7/7 assertions,
+**Last dated run record:** 2026-09-17 — `evals/marketplace-documentation/` (3 evals, 11/11 assertions,
 100% with_skill pass rate). `example-plugin` dry-run per `.claude/rules/test-against-example-plugin.md`:
 `.claude/output/marketplace-documentation/example-plugin-20260916T190529Z.md`.
 
@@ -231,4 +231,4 @@ field.
 |---|---|
 | `human-doc-reviewer` agent | Mandatory QA step after every authoring pass (Step 4) — also covers cross-reference integrity for hard-coded `.claude/rules/*.md` paths via its own Step 3 |
 | `plugin-documentation` skill | Sibling skill for a single plugin's own docs — see When NOT to Use |
-| `evals/marketplace-documentation/evals.json` | Eval scenarios and grading records (Quick Workflow, 7/7 passing) |
+| `evals/marketplace-documentation/evals.json` | Eval scenarios and grading records (Quick Workflow, 11/11 passing) |
