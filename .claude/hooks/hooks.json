@@ -76,6 +76,39 @@
     ],
     "SessionStart": [
       {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-check.sh\"",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-inject-policy.sh\"",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-inject-policy.sh\"",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
@@ -103,6 +136,29 @@
           {
             "type": "command",
             "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py; else exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py; fi",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/agy-nudge-delegation.sh\"",
+            "timeout": 3,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -163,19 +219,6 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
             "timeout": 30
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/skills/context-mode/scripts/detect_mode.py",
-            "shell": "bash",
-            "timeout": 5,
-            "onError": "warn"
           }
         ]
       }
