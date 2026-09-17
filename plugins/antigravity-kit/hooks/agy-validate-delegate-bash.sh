@@ -4,8 +4,8 @@
 # subagent `tools:` field can't scope Bash to one command, so this hook is DESIGNED
 # to be the thing restricting what that subagent may run via Bash — it must allow a
 # Bash call only when it invokes the plugin's delegation wrapper (agy-delegate /
-# agy-job) and nothing else. NOTE (see agents/antigravity-delegate.md and
-# SECURITY.md): this repository's own platform documentation states that hooks
+# agy-job) and nothing else. NOTE (see agents/antigravity-delegate.md and this
+# marketplace's root-level SECURITY.md): this repository's own platform documentation states that hooks
 # declared in a plugin-scoped agent's own frontmatter are accepted by the schema but
 # not honored at runtime — this gate is defense-in-depth, not a verified enforcement
 # point, until live-verified against an installed copy of this plugin.
@@ -18,16 +18,31 @@
 #     with NO path separator — a bare-name, PATH-resolved token check, not a substring
 #     match and not a path-qualified one (so a file the subagent's own delegated agy
 #     run wrote, e.g. `./agy-delegate`, can never impersonate the real PATH wrapper);
-#   * allows only one pipeline shape, `<cat|echo|printf> | agy-delegate|agy-job -`.
+#   * allows only one pipeline shape, `<echo|printf> | agy-delegate|agy-job -`.
 #     `git` was deliberately removed from the allowed producers (a prior version
 #     allowed it for `git diff | agy-delegate -`): a producer's basename is checked,
 #     never its arguments, and `git`'s own alias/config mechanism is a documented
 #     local-execution primitive (e.g. `git -c alias.z='!<anything>' z`) — allowing it
 #     here would let an attacker run arbitrary code through git with no metacharacter
 #     required at all. Prefer `agy-delegate --dir <repo-root>` so agy reads the repo
-#     itself instead of piping its content through this gate;
+#     itself instead of piping its content through this gate. `cat` was likewise
+#     removed (issue #336): the basename-only check has no way to tell a legitimate
+#     `cat prompt.txt | agy-delegate -` apart from `cat ~/.ssh/id_ed25519 |
+#     agy-delegate --yolo -` — both are just `cat` feeding the wrapper — so a
+#     prompt-injected subagent could exfiltrate any file it can read via this
+#     pipeline shape. `echo`/`printf` stay allowed because, unlike `cat`, they
+#     cannot read a file's bytes off disk themselves — a bare unquoted
+#     glob/tilde/brace (`* ? [ ~ {`, blocked below) was the one way an echo/printf
+#     argument could still expand into filesystem content, and that path is now
+#     closed too. NOTE what this removal does NOT close: it narrows one specific
+#     pipeline shape, it does not make file content unreachable by the subagent —
+#     `Read`-then-inline-as-a-literal-string and `agy-delegate --dir <path>` (see
+#     Scope note below) both remain fully open, bounded only by
+#     agents/antigravity-delegate.md's documented Data boundary discipline, not by
+#     anything this script checks;
 #   * rejects UNQUOTED shell metacharacters bash would act on (`; & | < > ( ) #`,
-#     backticks, `$(`, and a NEWLINE — it separates commands just like `;`), while
+#     backticks, `$(`, a glob/tilde/brace (`* ? [ ~ {`), and a NEWLINE — it
+#     separates commands just like `;`), while
 #     permitting them INSIDE a quoted prompt (no false positives on legitimate
 #     prompts — command substitution inside double quotes is still blocked because
 #     bash would expand it). `$VAR`/`${VAR}` parameter expansion is blocked for the
@@ -47,8 +62,14 @@
 # Scope note: this gate constrains WHICH command may start — it is not, and cannot
 # be, a guarantee about what that command then does. `agy-delegate`'s default
 # `--yolo` grants the delegated agy process full tool access (file writes, terminal,
-# web/Vertex AI Search) — see agents/antigravity-delegate.md and SECURITY.md for
-# that actual capability boundary.
+# web/Vertex AI Search) — see agents/antigravity-delegate.md and this marketplace's
+# root-level SECURITY.md for that actual capability boundary. In particular, this
+# script only inspects argv[0] on a single-segment command — `agy-delegate --dir
+# <any-path>` passes with no argument validation at all, so a subagent that can name
+# a sensitive directory (e.g. `--dir ~/.ssh`) can hand agy the same file content the
+# `cat`-pipe removal (issue #336) was meant to stop, through a channel this gate does
+# not restrict. This is a disclosed, intentionally-open equivalent — closing it would
+# mean validating `--dir`'s resolved path, which this gate does not currently do.
 #
 # Input: hook JSON on stdin, with .tool_input.command holding the bash command.
 # Exit: 0 = allow, 2 = block.
@@ -57,7 +78,7 @@ set -uo pipefail
 
 input="$(cat)"
 
-BLOCK_MSG="[antigravity-delegate] blocked: this subagent may only run agy-delegate / agy-job (optionally as \`<cat|echo|printf> | agy-delegate -\`), as a bare PATH name with no path separator. No other commands, chaining, redirection, command substitution, \$VAR/\${VAR} parameter expansion, comments, or unquoted newlines. Delegate file work to agy; verification is the caller's job."
+BLOCK_MSG="[antigravity-delegate] blocked: this subagent may only run agy-delegate / agy-job (optionally as \`<echo|printf> | agy-delegate -\`), as a bare PATH name with no path separator. No other commands, chaining, redirection, command substitution, \$VAR/\${VAR} parameter expansion, glob/tilde/brace expansion, comments, or unquoted newlines. Delegate file work to agy; verification is the caller's job."
 
 # python3 gives a correct, quote-aware parse. Fail CLOSED if it's missing.
 if ! command -v python3 >/dev/null 2>&1; then
@@ -84,7 +105,7 @@ if not isinstance(cmd, str) or not cmd.strip():
 cmd = cmd.strip()
 
 WRAPPERS  = {"agy-delegate", "agy-job"}
-PRODUCERS = {"cat", "echo", "printf"}
+PRODUCERS = {"echo", "printf"}
 
 # Say WHY, on stderr, so the caller can self-correct (issue #51). Claude Code feeds
 # PreToolUse stderr back to the agent, which is the same path BLOCK_MSG already takes.
@@ -103,7 +124,11 @@ def deny(reason):
 CHAR_NAMES = {";": "';' (command separator)", "&": "'&' (background / chaining)",
               "<": "'<' (redirection)",       ">": "'>' (redirection)",
               "(": "'(' (subshell)",          ")": "')' (subshell)",
-              "#": "'#' (comment)"}
+              "#": "'#' (comment)",
+              "*": "'*' (glob expansion)",    "?": "'?' (glob expansion)",
+              "[": "'[' (glob character class)",
+              "~": "'~' (tilde/home expansion)",
+              "{": "'{' (brace expansion)"}
 
 def base(tok):
     # Bare PATH names only — a path-qualified token (containing "/") is never
@@ -151,7 +176,7 @@ def scan(s):
                            " bash treats it as a command separator, so this is two commands."
                            " Quote the argument, or end the line with a backslash to continue it.")
                 cur.append(c); i += 1; continue
-            if c in ";&<>()#": bad = flag("unquoted %s" % CHAR_NAMES[c], i); cur.append(c); i += 1; continue
+            if c in ";&<>()#*?[~{": bad = flag("unquoted %s" % CHAR_NAMES[c], i); cur.append(c); i += 1; continue
             cur.append(c); i += 1; continue
         if st == "S":
             cur.append(c)
@@ -204,13 +229,13 @@ elif len(segs) == 2:
     if not lt or not rt:
         deny("one side of the pipe could not be tokenised")
     if base(lt) not in PRODUCERS:
-        deny("the left side of the pipe is not allowed — only cat, echo or "
+        deny("the left side of the pipe is not allowed — only echo or "
              "printf may feed the wrapper (as a bare PATH name)")
     if base(rt) not in WRAPPERS:
         deny("the right side of the pipe is not agy-delegate or agy-job (as a bare PATH name)")
     sys.exit(0)
 else:
-    deny("%d pipes — at most one is allowed, as `<cat|echo|printf> | agy-delegate -`"
+    deny("%d pipes — at most one is allowed, as `<echo|printf> | agy-delegate -`"
          % (len(segs) - 1))
 PY
 then
