@@ -24,6 +24,7 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 HOOKS_DIR = SKILL_DIR.parent.parent / "hooks" / "scripts"
 MILESTONE_SCRIPT = HOOKS_DIR / "compact-milestone-detector.sh"
 STOP_SCRIPT = HOOKS_DIR / "compact-stop-check.sh"
+PLUGIN_SCRIPTS_DIR = SKILL_DIR.parent.parent / "scripts"
 
 
 def run(script, stdin_text, home):
@@ -60,6 +61,59 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
         encoding="utf-8",
     )
     return home
+
+
+def check_get_session_dir_implementations_agree(tmp_path):
+    # Regression guard for consistency-reviewer's finding: get_session_dir() is
+    # hand-duplicated across context-monitor.py, pre-compact.py, and
+    # post-compact-restore.py, with the invariant "the three must agree"
+    # enforced only by comments, not any shared code. If either copy's hashing
+    # ever drifts, pre-compact.py would write state to one directory and
+    # post-compact-restore.py would read from another -- capture->restore
+    # silently becomes a no-op with no error at any layer. This test imports
+    # all 3 modules directly and confirms they resolve to the identical path
+    # for the same (CLAUDE_PROJECT_DIR, session_id) pair.
+    import importlib.util
+
+    home = tmp_path / "home_sessiondir"
+    home.mkdir()
+    old_home = os.environ.get("HOME")
+    old_userprofile = os.environ.get("USERPROFILE")
+    old_project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    os.environ["HOME"] = str(home)
+    os.environ["USERPROFILE"] = str(home)
+    os.environ["CLAUDE_PROJECT_DIR"] = "/fake/project/for/smoke-test"
+    try:
+        dirs = {}
+        for name, filename in [
+            ("context-monitor", "context-monitor.py"),
+            ("pre-compact", "pre-compact.py"),
+            ("post-compact-restore", "post-compact-restore.py"),
+        ]:
+            spec = importlib.util.spec_from_file_location(
+                f"_smoketest_{name.replace('-', '_')}", PLUGIN_SCRIPTS_DIR / filename
+            )
+            assert spec is not None and spec.loader is not None, (
+                f"could not build an import spec for {filename}"
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            dirs[name] = module.get_session_dir("shared-session-id-for-smoke-test")
+    finally:
+        for key, value in [
+            ("HOME", old_home),
+            ("USERPROFILE", old_userprofile),
+            ("CLAUDE_PROJECT_DIR", old_project_dir),
+        ]:
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    unique_dirs = set(dirs.values())
+    if len(unique_dirs) != 1:
+        return False, f"get_session_dir() implementations disagree: {dirs}"
+    return True, f"all 3 get_session_dir() implementations agree: {dirs['context-monitor']}"
 
 
 def check_tracking_file_is_not_executed_as_shell(tmp_path):
@@ -331,6 +385,7 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
 
 
 CHECKS = [
+    check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
     check_real_test_command_triggers_milestone,
     check_substring_false_positive_rejected,
