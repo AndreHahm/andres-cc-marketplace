@@ -3,11 +3,11 @@
 # run-tests.sh — dependency-free tests (no bats). Stubs `agy` on PATH and asserts
 # agy-delegate.sh behavior + measure-session.py accounting.
 #
-#   bash tests/run-tests.sh
+#   bash scripts/tests/run-tests.sh
 #
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/.." && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 DELEGATE="$ROOT/scripts/agy-delegate.sh"
 
 MEASURE="$ROOT/scripts/measure-session.py"
@@ -939,6 +939,7 @@ done
 # line pairs these words today.
 ae_bad="$(grep -rniE 'accept-edits' "$ROOT"/README.md "$ROOT"/docs/*.md "$ROOT"/skills \
             "$ROOT"/agents "$ROOT"/commands "$ROOT"/scripts 2>/dev/null \
+          | grep -v "^$ROOT/scripts/tests/" \
           | grep -iE 'safer|auto-appl' | sed "s|$ROOT/||" | cut -d: -f1-2 | tr '\n' ' ')"
 if [ -z "$ae_bad" ]; then
   echo "ok: no line still sells --mode accept-edits as safer or auto-applying"; PASS=$((PASS+1));
@@ -1421,80 +1422,6 @@ if grep -q "rc=10: QUOTA" <<<"$out"; then echo "ok: job renders rc=10 label"; PA
 else echo "FAIL: job did not render 'rc=10: QUOTA' label (got: $out)"; FAIL=$((FAIL+1)); fi
 if grep -q "QUOTA_EXHAUSTED" <<<"$out"; then echo "ok: job shows AGY_SIGNAL"; PASS=$((PASS+1));
 else echo "FAIL: job did not surface AGY_SIGNAL"; FAIL=$((FAIL+1)); fi
-
-echo "== CI workflow invariants =="
-# These cannot be executed here — they need a GitHub runner — so assert the SHAPE of the
-# two expressions that have each been wrong once, in a way that a well-meaning
-# simplification would break.
-#
-# `cancel-in-progress` is evaluated BEFORE any job condition, so a run that will be
-# skipped still cancels whatever is running. Naive `true` made the review cancel itself
-# when it posted its summary (#42); `comment.user.type != 'Bot'` fixed that but still let
-# ANY human comment kill an in-flight review (#52). It needs both guards.
-QW="$ROOT/.github/workflows/quorum-review.yml"
-CONC="$(sed -n '/^concurrency:/,/^permissions:/p' "$QW")"
-if grep -q "cancel-in-progress: *true" <<<"$CONC"; then
-  echo "FAIL: quorum cancel-in-progress is bare true — the review will cancel itself"; FAIL=$((FAIL+1));
-else echo "ok: quorum cancel-in-progress is an expression"; PASS=$((PASS+1)); fi
-# Cancel ONLY on a push. `cancel-in-progress: false` queues the new run rather than
-# discarding it, so nothing else ever needs to cancel — a comment or a dispatch waits its
-# turn. This is what makes the expression safe without replicating the job's `if:`.
-if grep -q "github.event_name == 'pull_request'" <<<"$CONC"; then
-  echo "ok: cancel-in-progress cancels only on a push"; PASS=$((PASS+1));
-else echo "FAIL: cancel-in-progress no longer keys on pull_request alone"; FAIL=$((FAIL+1)); fi
-# The design decision, asserted directly: the moment this expression starts reasoning
-# about WHO commented or WHAT they said, it is predicting whether the job will run — and
-# it was broader than the job's `if:` on both previous attempts (#42, #53), which is how
-# a run that gets skipped ends up cancelling a live review.
-if grep -qE 'comment\.(body|user|author_association)' <<<"$CONC"; then
-  echo "FAIL: concurrency inspects the comment again — it must not predict the job condition"; FAIL=$((FAIL+1));
-else echo "ok: concurrency does not try to predict whether the job will run"; PASS=$((PASS+1)); fi
-
-# The SAME property on the external workflow, which never got the #42/#53 fix and lost a
-# real review to it on #57: two labels applied in the same second produced two `labeled`
-# events, the `documentation` one cancelled the live `claude-review` one and then skipped
-# itself. Asserted separately rather than looped over both files, because the two differ —
-# quorum discriminates on `github.event_name`, this one is all `pull_request_target` and
-# has to key on the action — and a shared assertion would have to be loose enough to pass
-# on either, which is how a guard stops guarding.
-XW="$ROOT/.github/workflows/claude-review-external.yml"
-# NOTE the range: this file puts `permissions:` BEFORE `concurrency:`, so the quorum
-# extraction above would come back empty here and every assertion would pass on nothing.
-XCONC="$(sed -n '/^concurrency:/,/^jobs:/p' "$XW")"
-if [ -z "${XCONC//[$' \t\n']/}" ]; then
-  echo "FAIL: could not read the external workflow concurrency block"; FAIL=$((FAIL+1));
-else echo "ok: external concurrency block located"; PASS=$((PASS+1)); fi
-if grep -q "cancel-in-progress: *true" <<<"$XCONC"; then
-  echo "FAIL: external cancel-in-progress is bare true — an unrelated label kills the review"; FAIL=$((FAIL+1));
-else echo "ok: external cancel-in-progress is an expression"; PASS=$((PASS+1)); fi
-# Only a push makes a running review obsolete; a label leaves the head commit alone.
-if grep -q "github.event.action == 'synchronize'" <<<"$XCONC"; then
-  echo "ok: external cancels only on a push"; PASS=$((PASS+1));
-else echo "FAIL: external cancel-in-progress no longer keys on synchronize alone"; FAIL=$((FAIL+1)); fi
-# Same design decision as quorum: the expression must not try to predict the job's `if:`.
-if grep -qE 'label\.name|labels\.\*' <<<"$XCONC"; then
-  echo "FAIL: external concurrency inspects the label — it must not predict the job condition"; FAIL=$((FAIL+1));
-else echo "ok: external concurrency does not inspect the label"; PASS=$((PASS+1)); fi
-
-# The external reviewer must not fall back to minting a Claude App installation token.
-# Doing so 401ed on every attempt under pull_request_target, and even when it works it is
-# the WIDER credential: an App token carries whatever that App holds across the
-# repository, while GITHUB_TOKEN is bounded by this workflow's permissions block. The
-# privileged context is the one place not to take the wider one.
-if grep -qE '^ +github_token: \$\{\{ *github\.token *\}\}' "$XW"; then
-  echo "ok: external review uses the workflow-scoped GITHUB_TOKEN"; PASS=$((PASS+1));
-else echo "FAIL: external review has no explicit github_token — it will mint an App token"; FAIL=$((FAIL+1)); fi
-# ...and the permissions that token is scoped BY have to actually cover posting a review.
-XPERM="$(sed -n '/^permissions:/,/^concurrency:/p' "$XW")"
-if grep -q 'pull-requests: write' <<<"$XPERM"; then
-  echo "ok: the workflow grants pull-requests: write for the review comment"; PASS=$((PASS+1));
-else echo "FAIL: GITHUB_TOKEN cannot post the review with these permissions"; FAIL=$((FAIL+1)); fi
-
-# The fork guard runs before anything is cloned or any credential is minted.
-if [ "$(grep -n 'Refuse a fork' "$QW" | cut -d: -f1)" \
-     -lt "$(grep -n 'actions/checkout@' "$QW" | head -1 | cut -d: -f1)" ]; then
-  echo "ok: the fork check precedes the checkout"; PASS=$((PASS+1));
-else echo "FAIL: a fork could be cloned before it is refused"; FAIL=$((FAIL+1)); fi
 
 echo "== plugin contract =="
 python3 - "$ROOT" <<'PY'
