@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -326,10 +327,18 @@ def plan_hooks_merge(
     )
 
 
-def _atomic_write(destination: Path, data: bytes) -> None:
+def _atomic_write(destination: Path, data: bytes, *, source: Path | None = None) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = destination.parent / f".{destination.name}.tmp"
     tmp_path.write_bytes(data)
+    if source is not None:
+        # A mirrored destination is supposed to be a faithful copy of its canonical source --
+        # not just byte-identical content, but the same permission bits too. write_bytes() always
+        # creates the new file at the process's default mode (no execute bits, regardless of the
+        # source's own mode), so an executable hook/bin script loses its executable bit on every
+        # create/update unless explicitly restored here. shutil.copymode copies permission bits
+        # only (not owner/group), which is exactly the git-tracked distinction (100644 vs 100755).
+        shutil.copymode(source, tmp_path)
     os.replace(tmp_path, destination)
 
 
@@ -346,10 +355,11 @@ def apply_sync_plan(plan: SyncPlan) -> SyncResult:
         if action.operation in ("create", "update"):
             if action.content is not None:
                 data = action.content
+                _atomic_write(action.destination, data)
             else:
                 assert action.source is not None
                 data = action.source.read_bytes()
-            _atomic_write(action.destination, data)
+                _atomic_write(action.destination, data, source=action.source)
             applied.append(action)
         elif action.operation == "delete":
             action.destination.unlink(missing_ok=True)
