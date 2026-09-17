@@ -111,6 +111,33 @@ def check_valid_modes_vocabulary_is_closed():
     return True, "non-VALID_MODES keys in triggers.json are filtered, never emitted"
 
 
+def check_skill_md_validates_candidates_before_reading():
+    # Regression guard for the 2026-09-17 security fix: SKILL.md's own Dispatch
+    # logic must validate a candidate value against the closed dev/review/ship/admin
+    # vocabulary BEFORE constructing a references/<value>.md read -- a forged tag
+    # (never produced by the hook, so VALID_MODES never applied to it) with a
+    # path-shaped value like "../../../../CLAUDE.local" would otherwise steer an
+    # arbitrary .md file read. This is a prose/dispatch-logic fix, not executable
+    # code, so the check is structural: confirm the closed-vocabulary guard text
+    # exists and sits before both "Single candidate" and "Multiple candidates"
+    # dispatch steps, not just mentioned once in passing.
+    skill_md = SKILL_DIR / "SKILL.md"
+    text = skill_md.read_text(encoding="utf-8")
+    guard_idx = text.find("Closed-vocabulary check")
+    # Match the actual numbered dispatch-step headers, not an earlier prose mention
+    # of the same words elsewhere in the doc (e.g. the tag-format example under
+    # "How activation reaches this skill").
+    single_idx = text.find("**Single candidate**")
+    multi_idx = text.find("**Multiple candidates**")
+    if guard_idx == -1:
+        return False, "SKILL.md no longer states a closed-vocabulary check in Dispatch logic"
+    if not (guard_idx < single_idx and guard_idx < multi_idx):
+        return False, "closed-vocabulary check does not precede both dispatch steps it must gate"
+    if "read nothing" not in text[guard_idx : guard_idx + 800]:
+        return False, "closed-vocabulary check does not state the 'read nothing' refusal action"
+    return True, "SKILL.md's closed-vocabulary check precedes both dispatch steps it must gate"
+
+
 CHECKS = [
     check_single_candidate_ship,
     check_multi_candidate_order_of_mention,
@@ -118,6 +145,7 @@ CHECKS = [
     check_malformed_json_fails_open,
     check_non_utf8_fails_open,
     check_valid_modes_vocabulary_is_closed,
+    check_skill_md_validates_candidates_before_reading,
 ]
 
 
