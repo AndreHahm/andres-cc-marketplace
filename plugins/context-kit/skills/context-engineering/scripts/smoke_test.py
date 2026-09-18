@@ -28,8 +28,18 @@ def check_frontmatter():
 
 
 def check_sibling_skills_referenced_exist():
+    # Regression guard for a real completeness-reviewer finding (2026-09-18): a hardcoded
+    # 3-name alternation only ever covered the siblings named at the time it was written --
+    # SKILL.md's own cross-references to context-window-analysis and context-audit grew
+    # after that, and the hardcoded set silently never covered either. Derive the checked
+    # name set from the real sibling skill directories instead, so a future addition is
+    # covered automatically.
     text = SKILL_MD.read_text(encoding="utf-8")
-    siblings = re.findall(r"`(context-degradation|context-optimization|strategic-compact)`", text)
+    real_sibling_names = {
+        p.parent.name for p in SIBLINGS_DIR.glob("*/SKILL.md") if p.parent.name != "context-engineering"
+    }
+    pattern = r"`(" + "|".join(re.escape(name) for name in sorted(real_sibling_names)) + r")`"
+    siblings = re.findall(pattern, text)
     missing = [s for s in set(siblings) if not (SIBLINGS_DIR / s / "SKILL.md").exists()]
     if missing:
         return False, f"referenced sibling skill(s) do not exist: {missing}"
