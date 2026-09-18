@@ -199,4 +199,3 @@ you deleted is treated as yours and left alone.
 - [ ] Always runs the dry-run report before suggesting `--apply`
 - [ ] Never applies permissions without `--apply-permissions` explicitly requested
 - [ ] States plainly what cannot move (session transcripts, tasks/plans/file-history/jobs, credentials)
-
