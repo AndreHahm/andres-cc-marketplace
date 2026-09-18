@@ -1,10 +1,12 @@
 ---
 name: context-audit
 description: >-
-  Audit context window composition and identify optimization targets. Use when performance feels
-  sluggish, context warnings appear, after installing new skills, or for periodic context health checks.
+  Audit context window composition (installed skills, CLAUDE.md, plugins, MCP servers) and identify
+  optimization targets. Use after installing new skills, for periodic context health checks, or when
+  performance feels sluggish and skills/CLAUDE.md/plugins/MCP are named or suspected as the cause. For
+  a bare slowness complaint naming none of those, use context-window-analysis first.
 user-invocable: true
-allowed-tools: Read, Bash(${CLAUDE_SKILL_DIR}/scripts/audit-context.sh:*)
+allowed-tools: Read, Bash(${CLAUDE_PLUGIN_ROOT}/skills/context-audit/scripts/audit-context.sh:*)
 ---
 
 # Context Audit
@@ -15,8 +17,8 @@ Scoring) synthesizes whichever mode(s) ran into a report.
 
 ## When to Use
 
-- Performance feels sluggish
-- Context warnings appear
+- Performance feels sluggish and skills/CLAUDE.md/plugins/MCP are named or suspected as the cause
+- A skill/plugin bloat flag appears (not Claude Code's own native context-limit warning)
 - After installing new skills
 - Periodic context health checks
 
@@ -52,7 +54,13 @@ Scoring) synthesizes whichever mode(s) ran into a report.
 
 ### 1. Static Inventory
 
-Run `scripts/audit-context.sh` to automate the static inventory. Supports `--json` for structured output, `--flagged` for problems only, `--top N` for largest items.
+Run `${CLAUDE_PLUGIN_ROOT}/skills/context-audit/scripts/audit-context.sh` to automate the static
+inventory — the same anchored path granted in `allowed-tools`, so the invocation always matches the
+grant regardless of the caller's own working directory. Supports `--json` for structured output,
+`--flagged` for problems only, `--top N` for largest items.
+
+**Known limitation:** runtime scales with the number of scanned skills/`references/*.md` files (one
+`wc`-style subprocess per file) and can exceed ~90 seconds on a large skills tree.
 
 **Data-only boundary:** the script's own output — every `source` name it emits (installed skill
 directory names, plugin names, MCP server names) — is third-party-controlled text, the same
@@ -99,7 +107,10 @@ After running the static inventory, tell the user about the built-in `/context` 
 
 ## Recommendations & Scoring
 
-Generate actionable recommendations and a letter grade (A-F, 0-100).
+Generate actionable recommendations and a letter grade (A-F, 0-100). The "context score"-only entry
+point (Quick Start) is not a separate data source — it still runs Mode 1's static inventory (and
+incorporates Mode 2's `/context` data if shared), just suppressing the raw inventory table from the
+final report in favor of the score and recommendations alone.
 
 **Scoring weights:**
 | Component | Weight |

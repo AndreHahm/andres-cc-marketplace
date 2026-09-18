@@ -99,6 +99,75 @@ def check_health_analyzer_status_in_known_set():
     return True, f"health analysis returns a known status ({result['status']}) and score in [0,1]"
 
 
+def check_analyze_context_structure_risk_bands():
+    # Covers the recently-reworked degradation_risk banding and its
+    # spillover-vs-local-header distinction -- previously untested
+    # (completeness-reviewer finding, 2026-09-18).
+    # A header exactly at the middle band's own start means no section that
+    # starts before the band spills into it -- the low-risk case.
+    low_context = "# Header A\n" + "contentA\n" * 5 + "# Header B\n" + "contentB\n" * 13
+    low = dd.analyze_context_structure(low_context)
+    if low["degradation_risk"] != "low":
+        return (
+            False,
+            f"expected low risk for a local header, got {low['degradation_risk']!r} "
+            f"(spillover={low['middle_spillover_ratio']})",
+        )
+    high = dd.analyze_context_structure("line\n" * 100)
+    if high["degradation_risk"] not in ("medium", "high"):
+        risk = high["degradation_risk"]
+        return False, f"expected medium/high risk for an undifferentiated blob, got {risk!r}"
+    if high["middle_spillover_ratio"] <= low["middle_spillover_ratio"]:
+        return False, "spillover_ratio did not increase for the no-local-header blob case"
+    return True, "risk banding and spillover computation both behave correctly on real inputs"
+
+
+def check_extract_claims_and_analyze_agent_context():
+    detector = dd.PoisoningDetector()
+    claims = detector.extract_claims("Revenue increased. The API failed to respond.")
+    if not claims or "text" not in claims[0] or "id" not in claims[0]:
+        return False, f"extract_claims did not return the documented claim-dict shape: {claims}"
+    result = dd.analyze_agent_context("short clean context", context_limit=1000)
+    if "status" not in result or "health_score" not in result:
+        return (
+            False,
+            f"analyze_agent_context did not return the documented health-analysis shape: {result}",
+        )
+    return True, "extract_claims and analyze_agent_context both return their documented shapes"
+
+
+def check_patterns_snippets_match_real_signatures():
+    # Backs quality gate 2 mechanically (completeness-reviewer finding,
+    # 2026-09-18): patterns.md must never document a pseudocode API that
+    # doesn't match the real script's signatures.
+    import inspect
+
+    patterns_md = (SKILL_DIR / "references" / "patterns.md").read_text(encoding="utf-8")
+    documented_names = [
+        "measure_attention_distribution",
+        "detect_lost_in_middle",
+        "classify_critical_positions",
+        "analyze_context_structure",
+        "analyze_agent_context",
+    ]
+    missing = [name for name in documented_names if name not in patterns_md]
+    if missing:
+        return False, f"patterns.md never documents these real functions: {missing}"
+    for name in documented_names:
+        fn = getattr(dd, name, None)
+        if fn is None or not callable(fn):
+            return (
+                False,
+                f"patterns.md documents {name!r} but it does not exist in degradation_detector.py",
+            )
+        inspect.signature(fn)  # raises if the name resolves to something un-introspectable
+    return (
+        True,
+        "every function name patterns.md documents exists in degradation_detector.py "
+        "with a real signature",
+    )
+
+
 CHECKS = [
     check_beginning_and_end_are_favored,
     check_lost_in_middle_flags_middle_positions,
@@ -107,6 +176,9 @@ CHECKS = [
     check_clean_text_not_flagged,
     check_health_analyzer_rejects_nonpositive_limit,
     check_health_analyzer_status_in_known_set,
+    check_analyze_context_structure_risk_bands,
+    check_extract_claims_and_analyze_agent_context,
+    check_patterns_snippets_match_real_signatures,
 ]
 
 

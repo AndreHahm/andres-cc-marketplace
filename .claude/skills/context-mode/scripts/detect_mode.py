@@ -14,14 +14,19 @@ first appear in the text:
   [Context-Mode candidates: review, ship]
 
 additionalContext is delivered as a system-reminder-style block alongside the submitted
-prompt, not prepended to the visible prompt text itself. (An earlier design called for
-rewriting the prompt text directly via an "updatedPrompt" output field, but that field does
-not exist in the current UserPromptSubmit output schema - verified directly against
-https://code.claude.com/docs/en/hooks. additionalContext is the real, available mechanism.)
+prompt, not prepended to the visible prompt text itself. ("updatedPrompt" was considered and
+rejected - see references/design-history.md's "Hook output mechanism" section for why;
+additionalContext is the real, available mechanism per `code.claude.com/docs/en/hooks`.)
 
 Only VALID_MODES may ever be emitted, regardless of what keys triggers.json contains - this
 keeps the tag vocabulary closed even if that data file is edited carelessly in the future
 (e.g. when a later pass wires in research/plan/draft/doc).
+
+hooks.json's UserPromptSubmit registration invokes this script via a plain python3/python
+fallback chain, deliberately skipping the uv-first attempt this plugin's other Python hooks
+use - a latency choice for this specific, tightly-budgeted (5s timeout) every-prompt event,
+not an oversight (this script has zero third-party dependencies, so uv's own
+dependency-resolution benefit doesn't apply here either).
 
 The context-mode skill's own description matches this exact tag string, which is what
 actually triggers it reliably - substring-matching a fixed hook-generated tag in context is
@@ -101,8 +106,11 @@ def main() -> int:
         triggers = load_triggers()
     except (OSError, json.JSONDecodeError) as exc:
         # Fail open, but leave a breadcrumb (stderr never reaches additionalContext or the
-        # user) so a broken triggers.json doesn't look identical to "no mode matched".
-        print(f"context-mode: failed to load triggers.json: {exc}", file=sys.stderr)
+        # user) so a broken triggers.json doesn't look identical to "no mode matched". Log
+        # the exception type only, not str(exc) -- an OSError's own message embeds the full
+        # absolute TRIGGERS_PATH, which on this platform contains the OS username, and
+        # onError: "warn" can surface stderr into the session transcript.
+        print(f"context-mode: failed to load triggers.json ({type(exc).__name__})", file=sys.stderr)
         return 0
 
     candidates = detect_candidates(prompt, triggers)

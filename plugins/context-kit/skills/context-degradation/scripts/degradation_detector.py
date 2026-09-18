@@ -495,6 +495,12 @@ class PoisoningDetector:
             ),
         }
 
+    # Structural cap on each connector's candidate-sentence list in
+    # _detect_contradictions, applied before the nested loop -- bounds the
+    # per-pattern cross product to at most this value squared regardless of
+    # how many sentences in adversarial input actually match a connector.
+    _MAX_CANDIDATE_INDICES = 50
+
     # Common words that establish no "same topic" overlap on their own --
     # excluded from _detect_contradictions' topic-word comparison.
     _CONTRADICTION_STOPWORDS = frozenset(
@@ -523,12 +529,19 @@ class PoisoningDetector:
         """Detect potential contradictions in text.
 
         Untrusted-input performance note (found by security-reviewer,
-        2026-09-17): text is caller-supplied and untrusted by this module's
+        2026-09-17; bound made structural, not just hit-dependent, on
+        2026-09-18): text is caller-supplied and untrusted by this module's
         own threat model, so a doubly-nested scan over sentence pairs must
-        stay bounded regardless of how the input is shaped. topic_words() is
-        computed once per sentence up front (not per pair, inside the inner
-        loop), and the scan breaks as soon as the existing 5-result cap is
-        reached instead of exhausting the full cross product first.
+        stay bounded regardless of how the input is shaped -- including an
+        adversarial input engineered so no pair's topic words ever
+        intersect, which would otherwise let the scan run to completion
+        without ever reaching the 5-result early exit below. topic_words()
+        is computed once per sentence up front (not per pair, inside the
+        inner loop); each connector's candidate index list is capped to
+        _MAX_CANDIDATE_INDICES before the nested loop runs, bounding the
+        cross product unconditionally; and the scan still breaks as soon as
+        the 5-result cap is reached for the common case where it fires
+        early.
         """
         contradictions: list[str] = []
 
@@ -553,10 +566,10 @@ class PoisoningDetector:
         for pattern1, pattern2 in conflict_patterns:
             idx_with_1 = [
                 i for i, s in enumerate(sentences) if re.search(pattern1, s, re.IGNORECASE)
-            ]
+            ][: self._MAX_CANDIDATE_INDICES]
             idx_with_2 = [
                 i for i, s in enumerate(sentences) if re.search(pattern2, s, re.IGNORECASE)
-            ]
+            ][: self._MAX_CANDIDATE_INDICES]
             for i1 in idx_with_1:
                 for i2 in idx_with_2:
                     # A single sentence containing both connectors (e.g. "X

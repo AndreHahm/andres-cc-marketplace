@@ -36,7 +36,9 @@ def check_sibling_skills_referenced_exist():
     # covered automatically.
     text = SKILL_MD.read_text(encoding="utf-8")
     real_sibling_names = {
-        p.parent.name for p in SIBLINGS_DIR.glob("*/SKILL.md") if p.parent.name != "context-engineering"
+        p.parent.name
+        for p in SIBLINGS_DIR.glob("*/SKILL.md")
+        if p.parent.name != "context-engineering"
     }
     pattern = r"`(" + "|".join(re.escape(name) for name in sorted(real_sibling_names)) + r")`"
     siblings = re.findall(pattern, text)
@@ -49,19 +51,29 @@ def check_sibling_skills_referenced_exist():
 
 
 def check_is_sole_canonical_source_for_framework():
-    # Quality gate: "Never duplicates context-degradation's Four-Bucket Mitigation
-    # Framework -- this skill is the single canonical source for Write/Select/
-    # Compress/Isolate". Verify context-degradation's own SKILL.md does NOT restate
-    # the four operations as its own numbered headers (only references them).
-    degradation_md = (SIBLINGS_DIR / "context-degradation" / "SKILL.md").read_text(encoding="utf-8")
-    operation_headers = re.findall(
-        r"^###?\s*\d*\.?\s*(Write|Select|Compress|Isolate)\s*[—-]", degradation_md, re.MULTILINE
-    )
-    if operation_headers:
-        return False, f"context-degradation restates operation headers: {operation_headers}"
-    if "context-engineering" not in degradation_md:
-        return False, "context-degradation does not cross-reference context-engineering at all"
-    return True, "context-degradation references, never restates, the four-operation framework"
+    # Quality gate: "No sibling skill restates this skill's own Write/Select/
+    # Compress/Isolate framework in full -- this skill is the single canonical
+    # source". Regression guard for a real completeness-reviewer finding
+    # (2026-09-18): this check previously inspected only context-degradation by
+    # name, leaving every other sibling unguarded -- broadened to iterate the
+    # real sibling set, matching check_sibling_skills_referenced_exist's own
+    # 2026-09-18 fix for the identical hardcoded-set gap.
+    real_sibling_names = {
+        p.parent.name
+        for p in SIBLINGS_DIR.glob("*/SKILL.md")
+        if p.parent.name != "context-engineering"
+    }
+    restating: list[str] = []
+    for name in sorted(real_sibling_names):
+        sibling_md = (SIBLINGS_DIR / name / "SKILL.md").read_text(encoding="utf-8")
+        operation_headers = re.findall(
+            r"^###?\s*\d*\.?\s*(Write|Select|Compress|Isolate)\s*[—-]", sibling_md, re.MULTILINE
+        )
+        if operation_headers:
+            restating.append(f"{name}: {operation_headers}")
+    if restating:
+        return False, f"sibling(s) restate operation headers: {restating}"
+    return True, f"no sibling in {sorted(real_sibling_names)} restates the four-operation framework"
 
 
 def check_compress_section_names_strategic_compact():

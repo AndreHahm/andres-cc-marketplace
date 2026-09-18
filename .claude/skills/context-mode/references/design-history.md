@@ -17,6 +17,9 @@ fire reliably on specific phrases. This is why detection is split into a determi
 
 Validated against 376 real, human-typed user messages extracted from this repo's own session
 transcripts (naive case-insensitive substring matching, the same mechanism the real hook uses).
+Quoted excerpts below are screened for PII/credentials before shipping — this repo is public, per
+`references/ship.md`'s own confirmation — since a future pass adding more transcript excerpts has
+nothing else telling it to do the same screening.
 
 | | Round 1 | Round 2 | Round 3 |
 |---|---|---|---|

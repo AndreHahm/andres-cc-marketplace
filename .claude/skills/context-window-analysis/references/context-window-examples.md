@@ -13,6 +13,12 @@ as a single fence would have shown it.
 
 ## Report Template
 
+The "Available Commands"/"Tips for Context Management" block below is user-facing output text, not
+model-facing decision guidance — for the actual choice-of-remediation rationale (when to use
+`/compact` vs `/clear` vs a subagent), `context-engineering`'s own "When to /clear vs /compact vs
+Subagent" table is canonical; keep this block's wording in sync with that table rather than treating
+it as an independent second source of that guidance.
+
 ```text
 Context Window Analysis
 =======================

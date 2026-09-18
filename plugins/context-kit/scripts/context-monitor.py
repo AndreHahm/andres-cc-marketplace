@@ -10,13 +10,18 @@ Monitors approximate context usage and provides progressive, de-duplicated nudge
 Hook Event: PostToolUse (matcher ".*", every successful tool call -- a
 narrower Bash/Agent/Task-only matcher would silently skip a read-only
 session and never nudge it). Throttled to 60-second intervals when below
-the warning threshold.
+the warning threshold. Runs synchronously, not async (unlike this plugin's
+PreToolUse ".*" handler): a context-fullness warning is only useful if it
+lands on the same turn the threshold was crossed -- an async result would
+deliver on a later turn, defeating the point of a timely nudge. The
+per-call cost is bounded by the same 60-second throttle plus a benchmarked
+83-97ms real overhead (see strategic-compact's own SKILL.md).
 
 Output contract (PostToolUse, exit 0): emits JSON on stdout with a `systemMessage`
 (shown to the user) AND `hookSpecificOutput.additionalContext` (injected into
 Claude's context). Plain stdout would reach Claude but NOT the user, and would
 carry literal ANSI escape codes as noise — so we emit clean structured JSON.
-See https://code.claude.com/docs/en/hooks.
+See `code.claude.com/docs/en/hooks`.
 
 Context %% is a COARSE PROXY. When the hook receives a `transcript_path`, we
 estimate tokens from the transcript size against CLAUDE_CONTEXT_WINDOW_TOKENS

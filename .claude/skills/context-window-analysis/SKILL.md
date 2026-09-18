@@ -54,12 +54,14 @@ its namespaced form `/context-kit:context-window-analysis`.
 
 ## Context Health Thresholds
 
-Kept in sync with `scripts/context-monitor.py`'s real, live threshold constants (`LEARN_THRESHOLDS`,
-`THRESHOLD_WARN`, `THRESHOLD_CRITICAL`) — this table used to carry its own independent numbers
-(50/75/85), which disagreed with the actual hook's real nudge points and produced contradictory
-advice for the same real percentage (found by consistency-reviewer, 2026-09-17). Re-check this table
-against `context-monitor.py`'s real constants whenever `strategic-compact` (the component that owns
-that script) changes them.
+Kept in sync with the plugin-root shared hook `plugins/context-kit/scripts/context-monitor.py`'s
+real, live threshold constants (`LEARN_THRESHOLDS`, `THRESHOLD_WARN`, `THRESHOLD_CRITICAL`) —
+`strategic-compact`'s own SKILL.md documents this script's wiring, but the file itself lives at the
+plugin root, not under any one skill's own `scripts/` directory. This table used to carry its own
+independent numbers (50/75/85), which disagreed with the actual hook's real nudge points and
+produced contradictory advice for the same real percentage (found by consistency-reviewer,
+2026-09-17). Re-check this table against `context-monitor.py`'s real constants whenever
+`strategic-compact` (the skill that documents that shared hook's wiring) changes them.
 
 | Usage | Status | Action |
 |-------|--------|--------|
@@ -138,6 +140,13 @@ to read it.
 - Observable signals are good proxies for context health
 - When in doubt, /compact is safer than continuing
 - Sub-agents help by isolating context-heavy operations
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/context-window-examples.md` | Read at Step 3 — the report template and a complete worked example at each health tier |
+| `scripts/smoke_test.py` | This skill's own persisted structural regression test |
 
 ## Testing & Validation
 
