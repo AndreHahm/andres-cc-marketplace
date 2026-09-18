@@ -82,11 +82,15 @@ fi
 # `wc -w -c` always prints "<words> <bytes>" in that fixed order regardless of
 # flag order (GNU wc's own newline/word/byte canonical ordering) -- verified
 # directly, not assumed from flag order. Sets the caller's own w/s variables
-# directly (via `local -n` nameref) rather than echo+command-substitution, to
-# avoid yet another subprocess per call.
+# via `printf -v` indirect assignment (Bash 3.1+) rather than a `local -n`
+# nameref (Bash 4.3+, unsupported by macOS's default system /bin/bash 3.2 --
+# a real regression found by cross-model-review, 2026-09-18) or
+# echo+command-substitution, to avoid yet another subprocess per call.
 file_words_and_size() {
-  local -n _fws_w=$2 _fws_s=$3
+  local _fws_w _fws_s
   read -r _fws_w _fws_s < <(wc -w -c < "$1")
+  printf -v "$2" '%s' "$_fws_w"
+  printf -v "$3" '%s' "$_fws_s"
 }
 
 # Helper: escape a string for embedding in a JSON string literal. Covers
