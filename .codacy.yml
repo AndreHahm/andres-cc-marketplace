@@ -69,6 +69,25 @@
 # (fixing them means editing the canonical plugins/*/... file, which then re-syncs here
 # automatically). Same disclosed tradeoff as above: this also silences secret-detection
 # for the mirror tree, accepted since the canonical source is never itself excluded.
+#
+# plugins/context-kit/skills/*/scripts/smoke_test.py is this plugin's own persisted
+# smoke-test convention (see .claude/rules -- the same shape as plugins/*/tests/**
+# above, just outside a directory literally named tests/, so that exclusion's own glob
+# doesn't reach it). Verified per-file before excluding (PR #353): every flagged
+# subprocess.run() call across these files is the same safe, list-form shape already
+# covered by the plugins/*/tests/** precedent above -- a hardcoded interpreter/script
+# path (sys.executable, or a bash script resolved from this file's own directory) plus
+# args controlled only by the test file's own functions, never external input (Bandit
+# B404/B603/B607, plus a non-Bandit "subprocess without a static string" heuristic that
+# fires on any list-form call containing a non-literal element, even a trusted
+# pathlib.Path). The B101 ("assert" detected) finding is the same structural false
+# positive as plugins/*/tests/** -- one assert, used as an import-time sanity check on
+# a dynamically loaded module spec, not a runtime guard Python's -O flag could disable
+# away. Same whole-path/whole-engine tradeoff as every entry above: this also silences
+# secret-detection for this path, accepted for the same reason -- these are test
+# fixtures with no real secrets, and a false-positive-plagued required check blocking
+# every context-kit smoke-test edit is a worse practical outcome than losing this one
+# narrow path's own secret-scan coverage.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/*/tests/**"
@@ -78,3 +97,4 @@ exclude_paths:
   - ".claude/commands/**"
   - ".claude/hooks/**"
   - ".claude/rules/**"
+  - "plugins/context-kit/skills/*/scripts/smoke_test.py"
