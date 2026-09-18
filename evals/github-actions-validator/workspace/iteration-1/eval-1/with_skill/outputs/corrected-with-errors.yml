@@ -1,0 +1,38 @@
+name: Workflow with Errors
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0'  # Fixed: Sunday (0-6 valid; 8 doesn't exist)
+  pull_request:
+
+permissions:
+  contents: read  # Fixed: explicit least-privilege permissions block (policy-check advisory)
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest  # Fixed: typo (was ubuntu-lastest)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6  # Fixed: updated from v4 (current per action-versions.md)
+
+      - name: Build
+        run: npm run build
+
+      - name: Process issue
+        env:
+          TITLE: ${{ github.event.issue.title }}  # Fixed: untrusted input via env var
+        run: |
+          echo "Processing: $TITLE"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build  # Fixed: typo (was biuld)
+
+    steps:
+      - name: Deploy
+        run: echo "Deploying..."

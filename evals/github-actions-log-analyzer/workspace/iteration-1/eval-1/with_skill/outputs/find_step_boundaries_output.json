@@ -1,0 +1,24 @@
+{
+  "steps": [
+    {
+      "name": "Set up job",
+      "start_line": 2,
+      "end_line": 5,
+      "source": "group"
+    },
+    {
+      "name": "triage-classifier",
+      "start_line": 6,
+      "end_line": 9,
+      "source": "flue"
+    },
+    {
+      "name": "duplicate-checker",
+      "start_line": 10,
+      "end_line": 13,
+      "source": "flue"
+    }
+  ],
+  "result_markers": [],
+  "total_lines": 14
+}

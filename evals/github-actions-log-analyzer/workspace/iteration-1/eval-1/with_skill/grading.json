@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "A synthetic log file with at least 2 step markers was created", "passed": true, "evidence": "synthetic-run.log, 14 lines, 3 markers (1 group + 2 flue)"},
+    {"text": "scripts/find_step_boundaries.py was run (or its logic correctly followed) and detected the step boundaries", "passed": true, "evidence": "find_step_boundaries_output.json shows real script output: 3 correctly-ranged steps, result_markers: []"},
+    {"text": "The agent stated the dispatch-scope AskUserQuestion with an accurate computed count instead of silently proceeding to dispatch subagents", "passed": true, "evidence": "dispatch-scope-question.md: 1 run x 3 steps = 3, full question + 3 options stated, explicit confirmation no Agent/Task call was made"}
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

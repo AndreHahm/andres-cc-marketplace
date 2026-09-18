@@ -1,0 +1,19 @@
+
+[0;34m=== GitHub Actions Validator ===[0m
+
+[0;32m[INFO][0m Target: /tmp/corrected-with-errors.yml
+
+[0;34m=== Running actionlint ===[0m
+
+[0;32m[INFO][0m Validating: /tmp/corrected-with-errors.yml
+[0;32m[INFO][0m ✓ actionlint validation passed
+
+[0;34m=== Security Policy Checks (Advisory) ===[0m
+
+[0;32m[INFO][0m Checking policies in: /tmp/corrected-with-errors.yml
+
+[0;32m[INFO][0m ✓ No security policy warnings found
+
+[0;34m=== Validation Summary ===[0m
+
+[0;32m[INFO][0m ✓ All validations passed

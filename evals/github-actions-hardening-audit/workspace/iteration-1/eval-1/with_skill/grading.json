@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The agent actually runs scripts/workflow_hardening_audit.py against the fixtures directory", "passed": true, "evidence": "script_output_text.txt and script_output_json.json contain real script stdout"},
+    {"text": "clean.yml is correctly reported as ok/score 0", "passed": true, "evidence": "clean.yml: score=0, severity=ok"},
+    {"text": "risky.yml is correctly reported as critical/score 9", "passed": true, "evidence": "risky.yml: score=9, severity=critical, matches SKILL.md's documented quality gate exactly"}
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

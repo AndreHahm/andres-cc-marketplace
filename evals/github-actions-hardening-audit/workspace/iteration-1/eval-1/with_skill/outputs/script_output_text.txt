@@ -1,0 +1,8 @@
+GITHUB ACTIONS WORKFLOW HARDENING AUDIT
+---
+SUMMARY: files=2 evaluated=2 filtered=0 critical=1 warn=0 ok=1
+---
+TOP WORKFLOWS (2)
+- [critical] file=fixtures/risky.yml score=9 jobs=1 missing_timeout=1 missing_permissions=1 missing_concurrency=0 floating_refs=2 events=pull_request_target,push
+- [ok] file=fixtures/clean.yml score=0 jobs=1 missing_timeout=0 missing_permissions=0 missing_concurrency=0 floating_refs=0 events=push
+text exit=0
