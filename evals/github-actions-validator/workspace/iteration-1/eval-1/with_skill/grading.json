@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The agent actually runs scripts/validate_workflow.py against the target file (not just eyeballs it)", "passed": true, "evidence": "actionlint installed into scripts/.tools/ per skill's own documented location; real --lint-only and --check-versions --policy-checks runs, raw output saved"},
+    {"text": "Each reported error is mapped to a specific reference file/section, not left generic", "passed": true, "evidence": "all 4 actionlint errors mapped via Step-2 table to references/common-errors.md/runners.md sections; 2 advisory findings mapped to action-versions.md/common-pitfalls.md"},
+    {"text": "Corrected workflow code is shown for at least one identified error", "passed": true, "evidence": "corrected-with-errors.yml fixes all 6 findings; post-fix rerun confirmed clean pass"}
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

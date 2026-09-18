@@ -1,0 +1,19 @@
+{
+  "skill_name": "github-actions-conclusion-audit",
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-conclusion-audit/SKILL.md",
+  "description": "Detect chronically flaky workflows from run-history JSON via conclusion-transition volatility scoring.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Audit synthetic run-history JSON for flakiness",
+      "prompt": "I don't have live gh CLI access in this sandbox. Create a small set of synthetic run-history JSON files (matching the shape the skill's 'Collect run JSON' section documents: databaseId, workflowName, headBranch, conclusion, createdAt, updatedAt, url, repository) representing 6 runs of the same workflow+branch that alternate between success and failure, then run the skill's audit script against them and report the result.",
+      "expected_output": "Creates valid synthetic run JSON files, runs scripts/conclusion_volatility_audit.py against them, and correctly reports the group as unstable given the alternating pattern.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": ["audit CI stability", "detect unstable workflows from run history (live gh data path)"]
+  }
+}

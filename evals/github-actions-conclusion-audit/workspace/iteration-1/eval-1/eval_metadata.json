@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-conclusion-audit/SKILL.md",
+  "assertions": [
+    {"text": "Synthetic run JSON files matching the documented schema were created", "type": "presence", "target": "outputs/ directory"},
+    {"text": "The agent actually runs scripts/conclusion_volatility_audit.py against them", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The alternating-conclusion group is correctly flagged as warn/critical instability, not ok", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

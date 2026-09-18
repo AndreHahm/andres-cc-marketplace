@@ -105,7 +105,8 @@ def main() -> int:
     all_yaml_files = template_files + example_files
 
     print(
-        f"Discovered {len(template_files)} template file(s) and {len(example_files)} example file(s)."
+        f"Discovered {len(template_files)} template file(s) and "
+        f"{len(example_files)} example file(s)."
     )
     print()
 
@@ -157,7 +158,10 @@ def main() -> int:
 
     # --- 2. SHA pinning compliance ---
     print("[2] SHA pinning compliance (no bare @vN refs in positive examples)")
-    unpinned_pattern = r"^[ \t]*uses:[ \t]*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*@v[0-9]+(\.[0-9]+){0,2}([ \t]|$)"
+    unpinned_pattern = (
+        r"^[ \t]*uses:[ \t]*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*"
+        r"@v[0-9]+(\.[0-9]+){0,2}([ \t]|$)"
+    )
 
     print("  [2a] Regex regression checks")
     assert_text_matches_pattern(
@@ -177,7 +181,8 @@ def main() -> int:
     )
     assert_text_not_matches_pattern(
         "does not match full SHA pin",
-        "        uses: github/codeql-action/upload-sarif@ae9ef3a1d2e3413523c3741725c30064970cc0d4 # v3.32.5",
+        "        uses: github/codeql-action/upload-sarif@"
+        "ae9ef3a1d2e3413523c3741725c30064970cc0d4 # v3.32.5",
         unpinned_pattern,
     )
 
