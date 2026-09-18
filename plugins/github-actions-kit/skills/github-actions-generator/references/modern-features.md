@@ -198,10 +198,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       # A second service (e.g. redis) follows the same shape — image, optional env,
       # and its own --health-cmd/--health-interval/--health-timeout/--health-retries options.
 

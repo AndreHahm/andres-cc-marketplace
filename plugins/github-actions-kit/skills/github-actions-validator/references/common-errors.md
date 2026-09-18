@@ -194,9 +194,10 @@ Unexpected input 'invalid_input'
 Node.js 12/16 actions are deprecated
 ```
 
-**Fix:** update to a version built on a current Node.js runtime. Node.js 12 reached EOL April 2022 and
-Node.js 16 reached EOL September 2023 — actions still built on either are deprecated; Node.js 20 (EOL
-April 2026) and Node.js 22/24 are the current supported runtimes.
+**Fix:** update to a version built on a current Node.js runtime. See `references/action-versions.md`'s
+"Node.js Runtime Deprecation Timeline" (the source of truth for Node.js EOL status) — Node.js 12, 16,
+and 20 have all now reached EOL and actions still built on any of them are deprecated; Node.js 22/24
+are the current supported runtimes.
 
 ```yaml
 # Deprecated - old runtime
@@ -227,8 +228,8 @@ runs-on: ubuntu-latest
 ```
 
 Valid current labels: `ubuntu-latest`, `ubuntu-24.04`, `ubuntu-22.04`, `windows-latest`, `windows-2025`,
-`windows-2022`, `macos-latest`, `macos-15`, `macos-14` — see `references/runners.md` for the full list
-including GPU/ARM64 runner options and retirement dates.
+`windows-2022`, `macos-latest`, `macos-15`, `macos-14`, plus GPU and ARM64 variants for CI workloads
+that need them.
 
 ### 2. Undefined Job Dependency
 
@@ -390,7 +391,7 @@ strategy:
 strategy:
   matrix:
     os: [ubuntu-latest, windows-latest, macos-latest]
-    node: [20, 22, 24]  # Node 16 EOL Sep 2023, Node 20 EOL Apr 2026
+    node: [20, 22, 24]  # Node 16/20 both past EOL (see action-versions.md); 22/24 current
 ```
 
 ### 2. Matrix Variable Reference
@@ -473,25 +474,19 @@ steps:
 ```yaml
 # Example of good practices
 name: Production Deployment
-
 on:
   push:
     branches: [main]
-
 concurrency:
   group: production
   cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
-
-      - name: Deploy
-        env:
+      - env:
           API_KEY: ${{ secrets.API_KEY }}
-        run: |
-          ./deploy.sh
+        run: ./deploy.sh
 ```

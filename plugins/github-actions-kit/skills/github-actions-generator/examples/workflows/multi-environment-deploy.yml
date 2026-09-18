@@ -53,16 +53,19 @@ jobs:
     steps:
       - name: Determine environment
         id: determine
+        env:
+          DISPATCH_ENVIRONMENT: ${{ github.event.inputs.environment }}
         run: |
-          # Manual dispatch takes precedence
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          # Manual dispatch takes precedence. $GITHUB_EVENT_NAME is a GitHub-provided
+          # default runner env var, not a raw ${{ }} interpolation.
+          if [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
+            echo "environment=$DISPATCH_ENVIRONMENT" >> $GITHUB_OUTPUT
             echo "deploy=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           # Release event goes to production
-          if [ "${{ github.event_name }}" == "release" ]; then
+          if [ "$GITHUB_EVENT_NAME" == "release" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "deploy=true" >> $GITHUB_OUTPUT
             exit 0
@@ -298,11 +301,13 @@ jobs:
 
       - name: Rollback on failure
         if: failure()
+        env:
+          BACKUP_PATH: ${{ steps.backup.outputs.backup-path }}
         run: |
           echo "❌ Deployment failed, initiating rollback..."
 
           # Restore from backup
-          aws s3 sync ${{ steps.backup.outputs.backup-path }} s3://${{ secrets.S3_BUCKET_PRODUCTION }} --delete
+          aws s3 sync "$BACKUP_PATH" s3://${{ secrets.S3_BUCKET_PRODUCTION }} --delete
 
           # Invalidate cache
           aws cloudfront create-invalidation \
@@ -356,9 +361,13 @@ jobs:
 
       - name: Update deployment status
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          TARGET_ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
         with:
           script: |
-            const environment = '${{ needs.determine-environment.outputs.environment }}';
+            // The target environment is passed via env and read from process.env rather
+            // than interpolated as ${{ }} into this script's source.
+            const environment = process.env.TARGET_ENVIRONMENT;
             const devResult = '${{ needs.deploy-dev.result }}';
             const stagingResult = '${{ needs.deploy-staging.result }}';
             const productionResult = '${{ needs.deploy-production.result }}';

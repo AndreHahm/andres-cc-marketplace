@@ -2,6 +2,10 @@
 
 This reference provides current recommended action versions and validation procedures for GitHub Actions workflows.
 
+**Staleness note:** the versions and dates below reflect this file's last content update (December
+2025). If that date looks old relative to today, verify current values via `WebSearch` before treating
+this table as current — see SKILL.md's Step 5 for when to do this.
+
 ## Current Recommended Versions (December 2025)
 
 | Action | Current Version | Minimum Supported | Notes |
@@ -44,6 +48,9 @@ Generate warnings for:
 
 ## Example Version Validation Output
 
+**Illustrative only:** the block below is a hand-written sample shape, not a captured `--check-versions`
+run — real output reflects whatever versions the target workflow and the table above currently contain.
+
 ```
 === Action Version Check ===
 
@@ -68,11 +75,14 @@ python3 scripts/validate_workflow.py .github/workflows/ci.yml
 
 ## Node.js Runtime Deprecation Timeline
 
+This is the source-of-truth section for Node.js EOL status — other reference files in this skill point
+here rather than restating these dates.
+
 GitHub Actions runtime requirements:
 - **Node.js 12**: EOL April 2022 - Actions using this are deprecated
 - **Node.js 16**: EOL September 2023 - Actions using this are deprecated
-- **Node.js 20**: EOL April 2026 - Current runtime for most actions
-- **Node.js 22/24**: Current LTS - Newer actions support these
+- **Node.js 20**: EOL April 2026 (reached) - Legacy; actions still built on it should migrate to 22/24
+- **Node.js 22/24**: Current LTS - Actions should target these
 
 ## SHA Pinning Best Practice
 

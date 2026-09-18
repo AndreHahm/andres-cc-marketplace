@@ -398,10 +398,6 @@ on:
       environment:
         required: true
         type: string
-      node-version:
-        required: false
-        type: string
-        default: '20'
     secrets:
       token:
         required: true
@@ -741,7 +737,10 @@ jobs:
 jobs:
   notify:
     steps:
-      - run: curl -X POST ${{ secrets.WEBHOOK_URL }}
+      - name: Send webhook notification
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+        run: curl -X POST "$WEBHOOK_URL"
 ```
 
 ## Summary

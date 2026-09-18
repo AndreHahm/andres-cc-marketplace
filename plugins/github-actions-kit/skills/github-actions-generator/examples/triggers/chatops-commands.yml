@@ -52,6 +52,7 @@ jobs:
         env:
           AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
           COMMAND: ${{ steps.parse.outputs.command }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
         run: |
           # Define allowed associations per command
           case "$COMMAND" in
@@ -75,17 +76,23 @@ jobs:
 
           if echo "$ALLOWED" | grep -q "$AUTHOR_ASSOCIATION"; then
             echo "authorized=true" >> $GITHUB_OUTPUT
-            echo "✅ User authorized: ${{ github.event.comment.user.login }} ($AUTHOR_ASSOCIATION)"
+            echo "✅ User authorized: $COMMENT_AUTHOR ($AUTHOR_ASSOCIATION)"
           else
             echo "authorized=false" >> $GITHUB_OUTPUT
-            echo "❌ User not authorized: ${{ github.event.comment.user.login }} ($AUTHOR_ASSOCIATION)"
+            echo "❌ User not authorized: $COMMENT_AUTHOR ($AUTHOR_ASSOCIATION)"
           fi
 
       - name: React to unauthorized command
         if: steps.check-permissions.outputs.authorized == 'false'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
         with:
           script: |
+            // The comment author's login is passed via env and read from process.env
+            // rather than interpolated as ${{ }} into this script's source.
+            const commentAuthor = process.env.COMMENT_AUTHOR;
+
             await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -97,7 +104,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `❌ @${{ github.event.comment.user.login }} You don't have permission to run this command.\n\nRequired role: OWNER or MEMBER`
+              body: `❌ @${commentAuthor} You don't have permission to run this command.\n\nRequired role: OWNER or MEMBER`
             });
 
   # Command: /deploy [environment]
@@ -124,9 +131,9 @@ jobs:
 
       - name: Parse deploy arguments
         id: parse-deploy
+        env:
+          ARGS: ${{ needs.parse-command.outputs.args }}
         run: |
-          ARGS="${{ needs.parse-command.outputs.args }}"
-
           # Extract environment (default: staging)
           ENV=$(echo "$ARGS" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
           ENV=${ENV:-staging}
@@ -190,10 +197,20 @@ jobs:
 
       - name: Comment deployment success
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          DEPLOY_ENVIRONMENT: ${{ steps.parse-deploy.outputs.environment }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          PR_SHA: ${{ steps.pr.outputs.sha }}
         with:
           script: |
-            const environment = '${{ steps.parse-deploy.outputs.environment }}';
-            const url = '${{ steps.deploy.outputs.url }}';
+            // Values derived from the ChatOps command args are passed via env and read
+            // from process.env rather than interpolated as ${{ }} into this script's
+            // source, so a value containing a quote/backtick can't break out of the JS string.
+            const environment = process.env.DEPLOY_ENVIRONMENT;
+            const url = process.env.DEPLOY_URL;
+            const commentAuthor = process.env.COMMENT_AUTHOR;
+            const prSha = process.env.PR_SHA;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -203,8 +220,8 @@ jobs:
 
               **Environment:** ${environment}
               **URL:** ${url}
-              **Triggered by:** @${{ github.event.comment.user.login }}
-              **Commit:** ${{ steps.pr.outputs.sha }}
+              **Triggered by:** @${commentAuthor}
+              **Commit:** ${prSha}
 
               [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
               `
@@ -249,8 +266,9 @@ jobs:
 
       - name: Parse test suite
         id: parse-suite
+        env:
+          ARGS: ${{ needs.parse-command.outputs.args }}
         run: |
-          ARGS="${{ needs.parse-command.outputs.args }}"
           SUITE=$(echo "$ARGS" | awk '{print $1}')
           SUITE=${SUITE:-all}
 
@@ -311,10 +329,16 @@ jobs:
       - name: Comment test results
         if: always()
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          TEST_SUITE_NAME: ${{ steps.parse-suite.outputs.suite }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
         with:
           script: |
-            const suite = '${{ steps.parse-suite.outputs.suite }}';
-            const success = '${{ steps.test.outcome }}' === 'success';
+            // Values derived from the ChatOps command args are passed via env and read
+            // from process.env rather than interpolated as ${{ }} into this script's
+            // source, so a value containing a quote/backtick can't break out of the JS string.
+            const suite = process.env.TEST_SUITE_NAME;
+            const success = process.env.TEST_OUTCOME === 'success';
             const emoji = success ? '✅' : '❌';
             const status = success ? 'Passed' : 'Failed';
 
@@ -405,8 +429,14 @@ jobs:
     steps:
       - name: Show help
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
         with:
           script: |
+            // The author association is passed via env and read from process.env rather
+            // than interpolated as ${{ }} into this script's source.
+            const authorAssociation = process.env.AUTHOR_ASSOCIATION;
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -435,7 +465,7 @@ jobs:
 
               ---
 
-              **Your permission level:** ${{ github.event.comment.author_association }}
+              **Your permission level:** ${authorAssociation}
               `
             });
 
@@ -455,8 +485,14 @@ jobs:
     steps:
       - name: React with confused
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          PARSED_COMMAND: ${{ needs.parse-command.outputs.command }}
         with:
           script: |
+            // The parsed command is passed via env and read from process.env rather
+            // than interpolated as ${{ }} into this script's source.
+            const parsedCommand = process.env.PARSED_COMMAND;
+
             await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -468,7 +504,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `❓ Unknown command: \`/${{ needs.parse-command.outputs.command }}\`
+              body: `❓ Unknown command: \`/${parsedCommand}\`
 
               Type \`/help\` to see available commands.
               `
