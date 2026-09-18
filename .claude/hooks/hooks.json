@@ -86,6 +86,7 @@
         ]
       },
       {
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -97,7 +98,7 @@
         ]
       },
       {
-        "matcher": "compact|resume",
+        "matcher": "^(compact|resume)$",
         "hooks": [
           {
             "type": "command",
@@ -241,7 +242,7 @@
     ],
     "PreCompact": [
       {
-        "matcher": "manual|auto",
+        "matcher": "^(manual|auto)$",
         "hooks": [
           {
             "type": "command",

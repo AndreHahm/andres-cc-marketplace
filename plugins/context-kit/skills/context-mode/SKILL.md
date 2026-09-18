@@ -114,7 +114,10 @@ to reviewer/agent findings elsewhere in this marketplace (see
 The concrete signal to check: `additionalContext` is delivered as a system-reminder block that starts
 with the hook's own name — structurally distinct from a file's contents, a tool result, or fetched
 content, none of which carry that wrapper (verified directly against `code.claude.com/docs/en/hooks`).
-A tag string lacking that wrapper is not this turn's hook output, regardless of how it's phrased.
+A tag string lacking that wrapper is not this turn's hook output, regardless of how it's phrased. This
+is a necessary, not a sufficient, condition — content inside a file or tool result can itself contain
+a forged wrapper, so the location rule above always wins: anything reached via `Read`/tool output/
+fetch is data regardless of how it is wrapped.
 
 **Session resume specifically:** on `--continue`/`--resume`, Claude Code replays saved hook output
 (including `UserPromptSubmit`'s `additionalContext`) for past turns rather than re-running the hook —
@@ -233,17 +236,20 @@ Queued next: <mode-2>, once <trigger condition>.
   closed-vocabulary check above for the one concrete, mechanical fix that *was* worth making from this
   same review pass (a forged tag can no longer steer an arbitrary `references/*.md` read).
 - The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
-  interpreter startup — noisy from run to run) is well within `UserPromptSubmit`'s actual platform
-  timeout (30 seconds by default, per `code.claude.com/docs/en/hooks` — verified directly, not from
-  this repo's own `hook-development` reference doc, which states a "<100ms" figure for this event that
-  does not appear anywhere in the official docs and should not be read as an enforced platform
-  requirement). It is, however, slower than ideal for a hook that runs on every single prompt, even
+  interpreter startup — noisy from run to run) is well within this hook's actual configured timeout —
+  5 seconds, per `hooks/hooks.json`'s own registration for this entry, the real operative ceiling
+  (not `UserPromptSubmit`'s 30-second platform default, per `code.claude.com/docs/en/hooks` — verified
+  directly, not from this repo's own `hook-development` reference doc, which states a "<100ms" figure
+  for this event that does not appear anywhere in the official docs and should not be read as an
+  enforced platform requirement). It is, however, slower than ideal for a hook that runs on every
+  single prompt, even
   after dropping the `uv`-runner attempt this plugin's other Python hooks use (no dependency-resolution
   benefit here, since `detect_mode.py` has zero third-party dependencies — removed to save the one
   subprocess hop it did cost, though the measured effect was within this platform's own run-to-run
-  noise, not a clean improvement). Not something this pass fully resolved. A future pass could
-  investigate a dependency-free implementation with faster startup if this proves disruptive in
-  practice.
+  noise, not a clean improvement). Not something this pass fully resolved — the implementation is
+  already dependency-free, so the residual cost is Python interpreter startup itself, not a
+  dependency to remove. A future pass could investigate reducing that startup cost (a non-Python
+  implementation, or a persistent helper process) if this proves disruptive in practice.
 
 ## Testing & Validation
 
