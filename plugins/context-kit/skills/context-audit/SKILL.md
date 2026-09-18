@@ -146,7 +146,7 @@ Produce a single report with sections:
 
 No `evals/context-audit/evals.json` — this skill's variable part is `scripts/audit-context.sh` (deterministic, no model-judgment branching to eval); it's covered by the persisted `scripts/smoke_test.py` (`--top`, `--flagged`, `--json`, `--help`, and the `--top 08`/missing-value edge cases, run against an isolated fixture rather than this real repo's own skills tree) rather than via a `skill-tester` blind comparison. The scoring/recommendation logic in `references/audit-procedures.md` is guidance the model applies directly, not a separate code path to eval.
 
-**Last dated run record:** `scripts/smoke_test.py` — 5/5 checks passing as of 2026-09-17 (see commit history for `plugins/context-kit/skills/context-audit/scripts/smoke_test.py`).
+**Last dated run record:** `scripts/smoke_test.py` — 7/7 checks passing as of 2026-09-18 (see commit history for `plugins/context-kit/skills/context-audit/scripts/smoke_test.py`).
 
 **Verify this skill activates on:**
 - "audit my context"
