@@ -178,10 +178,18 @@ done < "$TRACK_FILE"
 # (smaller) magnitude instead. Force base-10 on every numeric field read from the tracking
 # file before it's used in any arithmetic/comparison below, mirroring _validate_int's own
 # 10# handling of the env-var-sourced thresholds.
+#
+# The `base#number` (e.g. "10#050") syntax is only understood inside a bash arithmetic
+# context ($(( ))) -- passed directly as printf's own %d argument, printf's number parser
+# rejects it outright (found by Codex, 2026-09-18, P1: "printf: 10#42: invalid number"),
+# silently truncating EVERY value (not just leading-zero ones) to whatever decimal prefix
+# parses before the "#" -- corrupting every tracked counter/threshold/timestamp to "10" on
+# every single invocation. Evaluate the arithmetic expression first, inside $(( )), so
+# printf's %d only ever receives an already-resolved plain decimal string.
 for _numvar in TOTAL EXPLORATION IMPLEMENTATION SUGGESTED_T1 SUGGESTED_T2 SUGGESTED_T3 \
     SUGGESTED_TIME PHASE_TRANSITION_SUGGESTED MILESTONE_SUGGESTED START_TIME \
     LAST_MILESTONE_TIME T1 T2 T3 TIME_THRESHOLD; do
-    [[ -n "${!_numvar-}" ]] && printf -v "$_numvar" '%d' "10#${!_numvar}"
+    [[ -n "${!_numvar-}" ]] && printf -v "$_numvar" '%d' "$((10#${!_numvar}))"
 done
 
 # Increment total

@@ -24,6 +24,7 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 HOOKS_DIR = SKILL_DIR.parent.parent / "hooks" / "scripts"
 MILESTONE_SCRIPT = HOOKS_DIR / "compact-milestone-detector.sh"
 STOP_SCRIPT = HOOKS_DIR / "compact-stop-check.sh"
+TRACK_SCRIPT = HOOKS_DIR / "compact-track-and-suggest.sh"
 PLUGIN_SCRIPTS_DIR = SKILL_DIR.parent.parent / "scripts"
 
 
@@ -321,7 +322,8 @@ def check_prefixed_content_with_hostile_tail_is_discarded(tmp_path):
     if result.stdout.strip():
         return (
             False,
-            f"a prefixed-but-multi-line payload was surfaced instead of discarded: {result.stdout!r}",
+            f"a prefixed-but-multi-line payload was surfaced instead of discarded: "
+            f"{result.stdout!r}",
         )
     if pending_file.exists():
         return False, "pending file was not removed even though it was discarded"
@@ -436,21 +438,21 @@ def check_leading_zero_lock_created_does_not_crash(tmp_path):
     import hashlib
 
     session_hash = hashlib.md5(b"lockleadingzero\n").hexdigest()[:8]
-    track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
     lock_dir = home / ".claude" / "strategic-compact" / f"session-{session_hash}.lock"
     lock_dir.mkdir(parents=True)
     (lock_dir / "created").write_text("999999\n0912345\n", encoding="utf-8", newline="")
 
-    payload = json.dumps(
-        {"session_id": "lockleadingzero", "tool_input": {"command": "npm test"}}
-    )
+    payload = json.dumps({"session_id": "lockleadingzero", "tool_input": {"command": "npm test"}})
     result = run(MILESTONE_SCRIPT, payload, home)
     if "value too great for base" in result.stderr:
         return (
             False,
             f"leading-zero LOCK_CREATED was read as invalid octal: {result.stderr[:300]}",
         )
-    return True, "a leading-zero lock-file timestamp is force-decoded as base-10, no arithmetic error"
+    return (
+        True,
+        "a leading-zero lock-file timestamp is force-decoded as base-10, no arithmetic error",
+    )
 
 
 def check_leading_zero_tracking_value_does_not_crash(tmp_path):
@@ -473,16 +475,59 @@ def check_leading_zero_tracking_value_does_not_crash(tmp_path):
     content = content.replace("LAST_MILESTONE_TIME=0", "LAST_MILESTONE_TIME=0912345")
     track_file.write_text(content, encoding="utf-8", newline="")
 
-    payload = json.dumps(
-        {"session_id": "leadingzero", "tool_input": {"command": "npm test"}}
-    )
+    payload = json.dumps({"session_id": "leadingzero", "tool_input": {"command": "npm test"}})
     result = run(MILESTONE_SCRIPT, payload, home)
     if "value too great for base" in result.stderr:
         return (
             False,
             f"leading-zero LAST_MILESTONE_TIME was read as invalid octal: {result.stderr[:300]}",
         )
-    return True, "a leading-zero tracking-file value is force-decoded as base-10, no arithmetic error"
+    return (
+        True,
+        "a leading-zero tracking-file value is force-decoded as base-10, no arithmetic error",
+    )
+
+
+def check_normalization_loop_preserves_normal_values(tmp_path):
+    # Regression guard for a real, live P1 finding (Codex, 2026-09-18): the base-10
+    # normalization loop's `printf -v "$var" '%d' "10#$value"` form is broken -- the
+    # `base#number` syntax is only understood inside a bash arithmetic context
+    # ($(( ))), never by printf's own %d parser, which rejects "10#<anything>"
+    # outright ("invalid number") and truncates the result to whatever decimal
+    # prefix parsed before the "#" -- always "10", regardless of the real value.
+    # This corrupted EVERY tracked counter/threshold/timestamp on every single
+    # invocation, not just leading-zero ones -- the prior check above only asserted
+    # "no 'value too great for base' in stderr", which this different failure mode
+    # (a silent, non-crashing corruption) never triggered, so it passed unnoticed.
+    # Uses the default tracking file (TOTAL=0, no leading zero anywhere) -- if the
+    # normalization loop is still broken, TOTAL is corrupted to 10 by the loop, then
+    # incremented to 11 by the script's own `TOTAL=$((TOTAL + 1))`; if fixed, TOTAL
+    # ends at the correct 1.
+    home = make_home_with_tracking_file(tmp_path, "normloop")
+    import hashlib
+
+    session_hash = hashlib.md5(b"normloop\n").hexdigest()[:8]
+    track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
+
+    payload = json.dumps({"session_id": "normloop", "tool_name": "Read"})
+    run(TRACK_SCRIPT, payload, home)
+
+    content = track_file.read_text(encoding="utf-8")
+    match = [line for line in content.splitlines() if line.startswith("TOTAL=")]
+    if not match:
+        return False, f"tracking file has no TOTAL= line after the run: {content[:300]}"
+    total_value = match[0].split("=", 1)[1]
+    if total_value != "1":
+        return (
+            False,
+            f"TOTAL should be 1 after one tool call from a fresh tracking file, "
+            f"got {total_value!r} -- the normalization loop is corrupting values",
+        )
+    return (
+        True,
+        "the base-10 normalization loop preserves a normal (non-leading-zero) value "
+        "correctly (TOTAL=1)",
+    )
 
 
 def check_hyphenated_prefix_command_not_misclassified(tmp_path):
@@ -494,9 +539,7 @@ def check_hyphenated_prefix_command_not_misclassified(tmp_path):
     # pattern. Both must now produce no milestone at all.
     home = make_home_with_tracking_file(tmp_path, "hyphenprefix")
     for command in ["git commit-tree HEAD^{tree}", "./deploy-prod.sh --dry-run"]:
-        payload = json.dumps(
-            {"session_id": "hyphenprefix", "tool_input": {"command": command}}
-        )
+        payload = json.dumps({"session_id": "hyphenprefix", "tool_input": {"command": command}})
         result = run(MILESTONE_SCRIPT, payload, home)
         if result.returncode != 0:
             return False, f"'{command}' exited {result.returncode}, expected 0"
@@ -505,7 +548,10 @@ def check_hyphenated_prefix_command_not_misclassified(tmp_path):
                 False,
                 f"'{command}' incorrectly produced a milestone suggestion: {result.stdout!r}",
             )
-    return True, "hyphenated-prefix commands (git commit-tree, deploy-prod.sh) are not misclassified"
+    return (
+        True,
+        "hyphenated-prefix commands (git commit-tree, deploy-prod.sh) are not misclassified",
+    )
 
 
 CHECKS = [
@@ -523,6 +569,7 @@ CHECKS = [
     check_overlong_digit_env_var_falls_back_to_default,
     check_leading_zero_tracking_value_does_not_crash,
     check_leading_zero_lock_created_does_not_crash,
+    check_normalization_loop_preserves_normal_values,
     check_hyphenated_prefix_command_not_misclassified,
     check_prefixed_content_with_hostile_tail_is_discarded,
 ]

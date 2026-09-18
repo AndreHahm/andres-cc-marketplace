@@ -246,10 +246,10 @@ other when Claude Code dispatches multiple tool calls in close succession.
 | `hooks/scripts/compact-session-init.sh` | `SessionStart` — initializes per-session tool-call tracking |
 | `hooks/scripts/compact-track-and-suggest.sh` | `PreToolUse` — counts tool calls, detects phase transitions, generates suggestions |
 | `hooks/scripts/compact-milestone-detector.sh` | `PostToolUse` — detects test/build/commit/deploy milestones |
-| `hooks/scripts/compact-instructions.sh` | `PreCompact` — captures the active plan's status before compaction |
+| `hooks/scripts/compact-instructions.sh` | `PreCompact` — emits compaction guidance |
 | `hooks/scripts/compact-stop-check.sh` | `Stop` — delivers a pending suggestion, if any |
 | `scripts/pre-compact.py` | `PreCompact` — captures plan state and appends a session-log note (if configured) |
-| `scripts/post-compact-restore.py` | `SessionStart` (matcher `compact|resume`) — restores captured plan state |
+| `scripts/post-compact-restore.py` | `SessionStart` (matcher `compact\|resume`) — restores captured plan state |
 | `scripts/context-monitor.py` | `PostToolUse` — live context-window health, shared with `context-window-analysis` |
 
 ## Testing & Validation
@@ -271,7 +271,7 @@ suggest.sh` (the most complex script — async, cross-process locking), `compact
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 16/16 checks passing as of 2026-09-18.
+**Last dated run record:** `scripts/smoke_test.py` — 17/17 checks passing as of 2026-09-18.
 
 **Verify this skill's hooks activate on:**
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/
