@@ -32,7 +32,7 @@ session-stats skill instead (if installed) — this script only inventories stat
 always-on/on-trigger context footprint, not per-session JSONL data.
 
 Options:
-  --flagged           Only show items with flags (LARGE, RULES, MCP)
+  --flagged           Only show items with flags (LARGE, RULES, MCP, HEAVY)
   --top <N>           Number of top entries to show, limits inventory entries by size.
   --json              Output as JSON
   --help              Show this help message
