@@ -20,6 +20,8 @@ development, git/GitHub workflows, session analysis, and more.
 | [`session-kit`](./plugins/session-kit) | Claude Code session management: list, search, diff, export, resume, and clean up sessions. |
 | [`context-kit`](./plugins/context-kit) | Automatic, hook-driven context-window management for Claude Code sessions. |
 | [`example-plugin`](./plugins/example-plugin) | Minimal example/test-fixture plugin used by plugin-devkit's own tooling. |
+| [`antigravity-kit`](./plugins/antigravity-kit) | Run the Antigravity CLI (Gemini) as a collaborating sub-agent inside Claude Code, with intelligent model routing across the SDLC. |
+| [`github-actions-kit`](./plugins/github-actions-kit) | Generate, validate, and audit GitHub Actions workflows and custom actions. |
 
 See each plugin's own README for details.
 
