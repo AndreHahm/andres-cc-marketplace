@@ -140,31 +140,52 @@ def check_patterns_snippets_match_real_signatures():
     # Backs quality gate 2 mechanically (completeness-reviewer finding,
     # 2026-09-18): patterns.md must never document a pseudocode API that
     # doesn't match the real script's signatures.
+    #
+    # inspect.signature(fn) alone only proves fn is introspectable -- it does
+    # NOT validate that the documented call shape (argument names, count,
+    # positional vs. keyword) actually matches the real signature (found by
+    # CodeRabbit, 2026-09-18). Bind each documented example call's own
+    # argument shape against the real signature via Signature.bind(), which
+    # raises TypeError on a mismatched name/count/keyword -- this is what
+    # actually proves the documented call would work.
     import inspect
 
     patterns_md = (SKILL_DIR / "references" / "patterns.md").read_text(encoding="utf-8")
-    documented_names = [
-        "measure_attention_distribution",
-        "detect_lost_in_middle",
-        "classify_critical_positions",
-        "analyze_context_structure",
-        "analyze_agent_context",
-    ]
-    missing = [name for name in documented_names if name not in patterns_md]
+    # Each entry's args/kwargs mirror patterns.md's own documented example
+    # call exactly (see that file's "Core Concepts"/"Composite Health
+    # Scoring" sections) -- dummy values only, never executed, just bound.
+    documented_calls = {
+        "measure_attention_distribution": ((["tok"],), {"query": "quarterly revenue"}),
+        "detect_lost_in_middle": ((), {"critical_positions": [0, 1], "attention_distribution": []}),
+        "classify_critical_positions": (([0, 1], 10), {}),
+        "analyze_context_structure": (("context text",), {}),
+        "analyze_agent_context": (
+            ("context text",),
+            {"context_limit": 80_000, "critical_positions": None},
+        ),
+    }
+    missing = [name for name in documented_calls if name not in patterns_md]
     if missing:
         return False, f"patterns.md never documents these real functions: {missing}"
-    for name in documented_names:
+    for name, (args, kwargs) in documented_calls.items():
         fn = getattr(dd, name, None)
         if fn is None or not callable(fn):
             return (
                 False,
                 f"patterns.md documents {name!r} but it does not exist in degradation_detector.py",
             )
-        inspect.signature(fn)  # raises if the name resolves to something un-introspectable
+        try:
+            inspect.signature(fn).bind(*args, **kwargs)
+        except TypeError as exc:
+            return (
+                False,
+                f"patterns.md's documented call shape for {name}(*{args}, **{kwargs}) "
+                f"does not match the real signature: {exc}",
+            )
     return (
         True,
-        "every function name patterns.md documents exists in degradation_detector.py "
-        "with a real signature",
+        "every function patterns.md documents exists with a signature matching its "
+        "documented call shape",
     )
 
 

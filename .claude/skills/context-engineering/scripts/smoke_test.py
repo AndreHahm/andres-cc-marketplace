@@ -34,19 +34,39 @@ def check_sibling_skills_referenced_exist():
     # after that, and the hardcoded set silently never covered either. Derive the checked
     # name set from the real sibling skill directories instead, so a future addition is
     # covered automatically.
+    #
+    # Building the match pattern FROM real_sibling_names (found by CodeRabbit,
+    # 2026-09-18) means `missing` can never be non-empty by construction --
+    # re.findall(pattern, text) can only ever match a name that's already in
+    # the pattern, so a typo like `context-window-analysiss` is silently
+    # invisible rather than caught. Extract identifiers from the "Related
+    # Skills" section itself using a generic kebab-case pattern first, THEN
+    # validate each extracted identifier against the real sibling set.
     text = SKILL_MD.read_text(encoding="utf-8")
     real_sibling_names = {
         p.parent.name
         for p in SIBLINGS_DIR.glob("*/SKILL.md")
         if p.parent.name != "context-engineering"
     }
-    pattern = r"`(" + "|".join(re.escape(name) for name in sorted(real_sibling_names)) + r")`"
-    siblings = re.findall(pattern, text)
+    related_start = text.find("## Related Skills")
+    testing_start = text.find("## Testing & Validation")
+    if related_start == -1 or testing_start == -1:
+        return (
+            False,
+            "could not locate '## Related Skills' / '## Testing & Validation' section headers",
+        )
+    related_section = text[related_start:testing_start]
+    siblings = re.findall(r"`([a-z][a-z0-9-]*)`", related_section)
     missing = [s for s in set(siblings) if not (SIBLINGS_DIR / s / "SKILL.md").exists()]
     if missing:
         return False, f"referenced sibling skill(s) do not exist: {missing}"
     if not siblings:
         return False, "no sibling skill cross-references found at all (expected at least one)"
+    if not real_sibling_names & set(siblings):
+        return (
+            False,
+            f"none of the extracted identifiers {sorted(set(siblings))} match a real sibling",
+        )
     return True, f"all referenced sibling skills exist: {sorted(set(siblings))}"
 
 

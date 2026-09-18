@@ -102,6 +102,15 @@ def check_health_thresholds_table_is_ordered():
         return False, "could not find THRESHOLD_WARN/THRESHOLD_CRITICAL in context-monitor.py"
     warn, critical = warn_match.group(1), critical_match.group(1)
 
+    # Found by CodeRabbit, 2026-09-18: this check previously read only
+    # THRESHOLD_WARN/THRESHOLD_CRITICAL -- if LEARN_THRESHOLDS drifted, the
+    # documented 40/55/65 nudge values could go stale while this check still
+    # passed. Parse and verify LEARN_THRESHOLDS too.
+    learn_match = re.search(r"LEARN_THRESHOLDS\s*=\s*\[([\d,\s]+)\]", monitor_text)
+    if not learn_match:
+        return False, "could not find LEARN_THRESHOLDS in context-monitor.py"
+    learn_thresholds = [t.strip() for t in learn_match.group(1).split(",")]
+
     text = SKILL_MD.read_text(encoding="utf-8")
     if f"| {warn}-<{critical}%" not in text:
         return (
@@ -113,7 +122,18 @@ def check_health_thresholds_table_is_ordered():
             False,
             f"CRITICAL row does not match context-monitor.py's real >= {critical}% boundary",
         )
-    return True, f"WARNING/CRITICAL boundaries ({warn}/{critical}) match context-monitor.py exactly"
+    nudge_str = "/".join(learn_thresholds)
+    if f"nudges at {nudge_str}%" not in text:
+        return (
+            False,
+            f"MONITOR row's nudge values do not match context-monitor.py's real "
+            f"LEARN_THRESHOLDS ({nudge_str})",
+        )
+    return (
+        True,
+        f"WARNING/CRITICAL boundaries ({warn}/{critical}) and MONITOR nudges ({nudge_str}) "
+        f"match context-monitor.py exactly",
+    )
 
 
 CHECKS = [

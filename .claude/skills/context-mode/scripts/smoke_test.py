@@ -73,7 +73,13 @@ def check_non_utf8_fails_open():
     result = run_hook(b"\xff\xfe not valid utf-8 \x80")
     if result.returncode != 0:
         return False, f"non-UTF8 stdin exited {result.returncode}, expected 0 (fail-open)"
-    return True, "non-UTF-8 stdin fails open (exit 0), no crash"
+    # Found by CodeRabbit, 2026-09-18: exit 0 alone doesn't prove the hook
+    # produced no output -- a regression emitting hook output for invalid
+    # bytes would still exit 0. Match check_malformed_json_fails_open's own
+    # stdout assertion.
+    if result.stdout.strip():
+        return False, f"non-UTF8 stdin should produce no stdout, got {result.stdout!r}"
+    return True, "non-UTF-8 stdin fails open (exit 0) with empty stdout, no crash"
 
 
 def check_valid_modes_vocabulary_is_closed():
@@ -136,7 +142,10 @@ def check_skill_md_validates_candidates_before_reading():
     if guard_idx == -1:
         return False, "SKILL.md no longer states a closed-vocabulary check in Dispatch logic"
     if not (guard_idx < single_idx and guard_idx < multi_idx and guard_idx < manual_idx):
-        return False, "closed-vocabulary check does not precede all three dispatch steps it must gate"
+        return (
+            False,
+            "closed-vocabulary check does not precede all three dispatch steps it must gate",
+        )
     if "steps 2, 3, and 4" not in text[guard_idx : guard_idx + 200]:
         return False, "closed-vocabulary check's own scope clause no longer names step 4"
     if "read nothing" not in text[guard_idx : guard_idx + 1000]:

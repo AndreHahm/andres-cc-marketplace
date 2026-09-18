@@ -51,7 +51,7 @@ if [ -f "$PENDING_FILE" ]; then
         || [[ "$SUGGESTION" == *$'\r'* ]] \
         || [ "${#SUGGESTION}" -gt 300 ] \
         || [[ ! "$SUGGESTION" =~ ^[[:print:]]*$ ]]; then
-        echo "compact-stop-check.sh: pending file content does not match the expected single-line [StrategicCompact]-prefixed shape, treating as suspicious and discarding: ${SUGGESTION:0:80}" >&2
+        echo "compact-stop-check.sh: pending file content does not match the expected single-line [StrategicCompact]-prefixed shape; discarding it" >&2
         exit 0
     fi
 
