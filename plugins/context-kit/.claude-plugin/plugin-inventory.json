@@ -510,7 +510,7 @@
           "name": "context-window-analyze",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-09-15",
-          "valid_to": "unknown"
+          "valid_to": "2026-09-17"
         },
         {
           "evidence": [
@@ -638,5 +638,5 @@
   "plugin_id": "plugin_7237ea29",
   "plugin_name": "context-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-17"
+  "updated_on": "2026-09-18"
 }
