@@ -1,0 +1,214 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_edf3f059",
+      "name": "github-actions-conclusion-audit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-actions-conclusion-audit"
+          ],
+          "name": "github-actions-conclusion-audit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-actions-conclusion-audit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-actions-conclusion-audit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_601f7455",
+      "name": "github-actions-generator",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-actions-generator"
+          ],
+          "name": "github-actions-generator",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-actions-generator",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-actions-generator"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b3aecb2f",
+      "name": "github-actions-hardening-audit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-actions-hardening-audit"
+          ],
+          "name": "github-actions-hardening-audit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-actions-hardening-audit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-actions-hardening-audit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c86e7cf6",
+      "name": "github-actions-log-analyzer",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-actions-log-analyzer"
+          ],
+          "name": "github-actions-log-analyzer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-actions-log-analyzer",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-actions-log-analyzer"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d61bac1d",
+      "name": "github-actions-validator",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-actions-validator"
+          ],
+          "name": "github-actions-validator",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-actions-validator",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-actions-validator"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-18",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_33891dd6",
+  "plugin_name": "github-actions-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-09-18"
+}
