@@ -1,0 +1,8 @@
+{
+  "name": "github-actions-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "Generate, validate, and audit GitHub Actions workflows and custom actions: production-ready workflow/action scaffolding with security-hardened defaults, actionlint+act-based validation and CI-pitfall diagnosis, static hardening-gap scoring, run-history flakiness/volatility auditing, and post-hoc run-log analysis for wasted effort and mistakes.",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}
