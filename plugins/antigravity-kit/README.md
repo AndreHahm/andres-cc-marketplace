@@ -234,7 +234,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
   it — through 1.1.1x it still reported success, and by 1.1.13 it fails outright
   (issue #10, unverified against this marketplace's own tracker — see
   [KNOWN_ISSUES.md](KNOWN_ISSUES.md)). Two things grant it:
-  
+
   - **`permissions.allow` in `~/.gemini/antigravity-cli/settings.json`** — a
     `write_file(<dir>)` entry allows writes **recursively beneath `<dir>`** and needs no
     flag. This is the narrower grant and usually the right one.
@@ -248,7 +248,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
   - **`--yolo`** (`--dangerously-skip-permissions`) — auto-approves **all** tools, not just
     writes. Needed when no rule covers the target, and for web / Vertex AI Search / terminal
     tools.
-  
+
   Confirmed on **agy 1.1.9** by a controlled A/B (issue #37, unverified against this
 marketplace's own tracker — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)):
   a covered target wrote with no flag; an uncovered one came back `PERMISSION_DENIED` with
