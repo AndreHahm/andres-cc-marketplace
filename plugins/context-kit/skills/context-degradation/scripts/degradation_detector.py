@@ -562,7 +562,19 @@ class PoisoningDetector:
                 if w not in self._CONTRADICTION_STOPWORDS
             }
 
-        sentence_topics = [topic_words(s) for s in sentences]
+        # Cache topic sets lazily, only for indices that actually land in a
+        # capped candidate list below (found by CodeRabbit, 2026-09-18):
+        # precomputing this for every sentence up front paid full linear
+        # regex-scan cost even on an adversarial input with no connector
+        # matches at all, before the candidate lists' own _MAX_CANDIDATE_INDICES
+        # cap had a chance to bound anything -- the same untrusted-input
+        # threat model this function's own docstring already states.
+        topic_cache: dict[int, set[str]] = {}
+
+        def get_topics(idx: int) -> set[str]:
+            if idx not in topic_cache:
+                topic_cache[idx] = topic_words(sentences[idx])
+            return topic_cache[idx]
 
         for pattern1, pattern2 in conflict_patterns:
             # itertools.islice on the matching-index generator (found by
@@ -592,7 +604,7 @@ class PoisoningDetector:
                     # overlapping topic word count as a candidate conflict.
                     if i1 == i2:
                         continue
-                    if sentence_topics[i1] & sentence_topics[i2]:
+                    if get_topics(i1) & get_topics(i2):
                         for idx in (i1, i2):
                             sentence = sentences[idx]
                             if len(sentence) < 200 and sentence not in contradictions:
