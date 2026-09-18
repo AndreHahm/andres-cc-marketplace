@@ -6,7 +6,7 @@ description: >-
   success and failure-like outcomes across recent runs — to surface
   chronically flaky pipelines. Use when asked "which workflows are flaky",
   "audit CI stability", or "detect unstable workflows from run history".
-allowed-tools: Bash(gh run view:*) Bash(gh repo view:*) Bash(jq:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*)
+allowed-tools: Bash(gh run view:*) Bash(gh run list:*) Bash(gh repo view:*) Bash(jq:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*)
 ---
 
 # GitHub Actions Conclusion Volatility Audit
