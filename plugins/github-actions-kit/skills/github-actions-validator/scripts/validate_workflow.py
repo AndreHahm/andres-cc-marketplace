@@ -206,7 +206,8 @@ def check_action_versions(workflow_path: str) -> int:
         log_info("Recommendations:")
         if deprecated_count > 0:
             log_error(
-                "  - Update deprecated actions to current versions (see references/action-versions.md)"
+                "  - Update deprecated actions to current versions "
+                "(see references/action-versions.md)"
             )
         if outdated_count > 0:
             log_warn("  - Consider updating outdated actions for latest features")
@@ -306,7 +307,8 @@ def check_security_policies(workflow_path: str) -> int:
         # 2) Explicit least-privilege permissions.
         if not re.search(r"^\s*permissions:\s*", text, re.MULTILINE):
             log_warn(
-                f"{file} missing explicit permissions block. Add workflow/job-level permissions (or permissions: {{}})."
+                f"{file} missing explicit permissions block. Add workflow/job-level "
+                "permissions (or permissions: {})."
             )
             warning_count += 1
         if re.search(r"^\s*permissions:\s*write-all\s*(#.*)?$", text, re.MULTILINE):
@@ -316,14 +318,16 @@ def check_security_policies(workflow_path: str) -> int:
         # 3) Heuristic detection for untrusted github context in run scripts.
         for line_no in find_injection_risk_lines(lines):
             log_warn(
-                f"{file}:{line_no} potential script injection risk in run step. Move untrusted input to env and quote it."
+                f"{file}:{line_no} potential script injection risk in run step. "
+                "Move untrusted input to env and quote it."
             )
             warning_count += 1
 
         # 4) OIDC-integrated actions should explicitly request id-token: write.
         if OIDC_ACTION_RE.search(text) and not re.search(r"id-token:\s*write", text, re.IGNORECASE):
             log_warn(
-                f"{file} uses an OIDC-related action but does not declare id-token: write in permissions."
+                f"{file} uses an OIDC-related action but does not declare "
+                "id-token: write in permissions."
             )
             warning_count += 1
 
@@ -352,7 +356,8 @@ def show_reference_hints(error_output: str) -> None:
         showed_hint = True
     if has("expression", "${{"):
         log_reference(
-            "Expression errors detected - see references/common-errors.md (Expression Errors section)"
+            "Expression errors detected - see references/common-errors.md "
+            "(Expression Errors section)"
         )
         showed_hint = True
     if has("cron", "schedule"):
@@ -375,7 +380,8 @@ def show_reference_hints(error_output: str) -> None:
         showed_hint = True
     if has("needs:", "dependency", "job"):
         log_reference(
-            "Job dependency issues - see references/common-errors.md (Job Configuration Errors section)"
+            "Job dependency issues - see references/common-errors.md "
+            "(Job Configuration Errors section)"
         )
         showed_hint = True
     if has("injection", "security", "secret", "untrusted"):
@@ -406,7 +412,8 @@ def show_reference_hints(error_output: str) -> None:
     if not showed_hint:
         log_reference("No direct mapping found for this error output")
         log_reference(
-            "Fallback: check references/common-errors.md, then search the exact error text in official docs"
+            "Fallback: check references/common-errors.md, then search the exact "
+            "error text in official docs"
         )
         log_reference("Include exact tool output, workflow file, and line number in your report")
 

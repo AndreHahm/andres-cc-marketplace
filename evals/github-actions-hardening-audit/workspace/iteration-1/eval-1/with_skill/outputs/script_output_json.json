@@ -1,0 +1,143 @@
+{
+  "all_workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 9,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "fixtures/risky.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 0,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "fixtures/clean.yml"
+    }
+  ],
+  "critical_workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 9,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "fixtures/risky.yml"
+    }
+  ],
+  "summary": {
+    "checks": {
+      "allow_ref_regex": null,
+      "event_exclude": null,
+      "event_match": null,
+      "flag_floating_refs": true,
+      "require_concurrency": false,
+      "require_permissions": true,
+      "require_timeout": true,
+      "workflow_file_exclude": null,
+      "workflow_file_match": null
+    },
+    "critical_score": 7,
+    "critical_workflows": 1,
+    "files_evaluated": 2,
+    "files_scanned": 2,
+    "files_skipped_by_event_filter": 0,
+    "ok_workflows": 1,
+    "parse_errors": [],
+    "warn_score": 3,
+    "warn_workflows": 0
+  },
+  "workflows": [
+    {
+      "events": [
+        "pull_request_target",
+        "push"
+      ],
+      "floating_refs": [
+        {
+          "line": 8,
+          "reason": "branch-like",
+          "uses": "actions/checkout@main"
+        },
+        {
+          "line": 9,
+          "reason": "major-tag",
+          "uses": "actions/setup-node@v4"
+        }
+      ],
+      "missing_concurrency_jobs": [],
+      "missing_permission_jobs": [
+        "deploy"
+      ],
+      "missing_timeout_jobs": [
+        "deploy"
+      ],
+      "score": 9,
+      "severity": "critical",
+      "total_jobs": 1,
+      "workflow_file": "fixtures/risky.yml"
+    },
+    {
+      "events": [
+        "push"
+      ],
+      "floating_refs": [],
+      "missing_concurrency_jobs": [],
+      "missing_permission_jobs": [],
+      "missing_timeout_jobs": [],
+      "score": 0,
+      "severity": "ok",
+      "total_jobs": 1,
+      "workflow_file": "fixtures/clean.yml"
+    }
+  ]
+}

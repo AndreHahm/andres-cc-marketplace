@@ -1,0 +1,9 @@
+=== TEXT OUTPUT (default thresholds, RUN_GLOB=/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
+GITHUB ACTIONS CONCLUSION VOLATILITY AUDIT
+---
+SUMMARY: files=6 runs=6 runs_filtered=0 groups=1 warn_groups=0 critical_groups=1 below_min_runs=0
+THRESHOLDS: min_runs=5 warn_instability_pct=35.0 critical_instability_pct=60.0
+---
+TOP VOLATILITY GROUPS (1)
+- [critical] acme-org/widget-service :: CI :: main instability_pct=100.0 failure_rate_pct=50.0 runs=6 transitions=5 max_failure_streak=1
+EXIT_CODE=0

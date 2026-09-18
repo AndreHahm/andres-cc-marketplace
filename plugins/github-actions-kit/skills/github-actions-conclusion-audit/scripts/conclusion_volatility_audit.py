@@ -324,13 +324,16 @@ def main() -> int:
         print("---")
         print(
             "SUMMARY: "
-            f"files={summary['files_scanned']} runs={summary['runs_scanned']} runs_filtered={summary['runs_filtered']} "
-            f"groups={summary['groups']} warn_groups={summary['warn_groups']} critical_groups={summary['critical_groups']} "
+            f"files={summary['files_scanned']} runs={summary['runs_scanned']} "
+            f"runs_filtered={summary['runs_filtered']} groups={summary['groups']} "
+            f"warn_groups={summary['warn_groups']} "
+            f"critical_groups={summary['critical_groups']} "
             f"below_min_runs={summary['groups_below_min_runs']}"
         )
         print(
             "THRESHOLDS: "
-            f"min_runs={min_runs} warn_instability_pct={warn_instability_pct} critical_instability_pct={critical_instability_pct}"
+            f"min_runs={min_runs} warn_instability_pct={warn_instability_pct} "
+            f"critical_instability_pct={critical_instability_pct}"
         )
 
         if summary["parse_errors"]:
@@ -345,9 +348,11 @@ def main() -> int:
         else:
             for row in ranked_groups[:top_n]:
                 print(
-                    f"- [{row['severity']}] {row['repository']} :: {row['workflow']} :: {row['branch']} "
-                    f"instability_pct={row['instability_pct']} failure_rate_pct={row['failure_rate_pct']} "
-                    f"runs={row['run_count']} transitions={row['transitions']} max_failure_streak={row['max_failure_streak']}"
+                    f"- [{row['severity']}] {row['repository']} :: {row['workflow']} :: "
+                    f"{row['branch']} instability_pct={row['instability_pct']} "
+                    f"failure_rate_pct={row['failure_rate_pct']} runs={row['run_count']} "
+                    f"transitions={row['transitions']} "
+                    f"max_failure_streak={row['max_failure_streak']}"
                 )
 
     return 1 if (fail_on_critical and critical_groups) else 0

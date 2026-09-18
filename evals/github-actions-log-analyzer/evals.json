@@ -1,0 +1,19 @@
+{
+  "skill_name": "github-actions-log-analyzer",
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-log-analyzer/SKILL.md",
+  "description": "Fetch and analyze recent GitHub Actions run logs via subagent dispatch to identify wasted effort and mistakes.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Detect step boundaries in a synthetic log and confirm the dispatch gate",
+      "prompt": "I don't have live gh CLI access in this sandbox. Create a small synthetic GitHub Actions run log file (a few lines, containing at least 2 step markers in any of the formats the skill's Step 3 describes: flue skill markers, ##[group]/##[endgroup], or generic START/END), then follow the skill's Step 3 to detect step boundaries. Then follow Step 4 only up to the point of the dispatch-scope gate — state the AskUserQuestion you would ask (with the actual computed dispatch count) but do NOT actually dispatch any subagents.",
+      "expected_output": "Creates a synthetic log, runs (or correctly follows) scripts/find_step_boundaries.py to detect the step boundaries, and correctly states the dispatch-scope gate's AskUserQuestion with an accurate computed count before stopping — never silently proceeding to actual dispatch.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": ["review action runs for issue-triage.yml (live gh data path)", "why is this CI run wasting time (full multi-subagent analysis)"]
+  }
+}

@@ -164,7 +164,8 @@ def main() -> int:
     if not files:
         print(
             "ERROR: no files left after WORKFLOW_FILE_MATCH/WORKFLOW_FILE_EXCLUDE filtering "
-            f"(match={workflow_file_match_raw or '<none>'}, exclude={workflow_file_exclude_raw or '<none>'})",
+            f"(match={workflow_file_match_raw or '<none>'}, "
+            f"exclude={workflow_file_exclude_raw or '<none>'})",
             file=sys.stderr,
         )
         return 1
@@ -373,8 +374,10 @@ def main() -> int:
         print("---")
         print(
             "SUMMARY: "
-            f"files={summary['files_scanned']} evaluated={summary['files_evaluated']} filtered={summary['files_skipped_by_event_filter']} "
-            f"critical={summary['critical_workflows']} warn={summary['warn_workflows']} ok={summary['ok_workflows']}"
+            f"files={summary['files_scanned']} evaluated={summary['files_evaluated']} "
+            f"filtered={summary['files_skipped_by_event_filter']} "
+            f"critical={summary['critical_workflows']} warn={summary['warn_workflows']} "
+            f"ok={summary['ok_workflows']}"
         )
         if parse_errors:
             print("PARSE_ERRORS:")
@@ -387,7 +390,8 @@ def main() -> int:
         else:
             for row in rows[:top_n]:
                 print(
-                    f"- [{row['severity']}] file={row['workflow_file']} score={row['score']} jobs={row['total_jobs']} "
+                    f"- [{row['severity']}] file={row['workflow_file']} "
+                    f"score={row['score']} jobs={row['total_jobs']} "
                     f"missing_timeout={len(row['missing_timeout_jobs'])} "
                     f"missing_permissions={len(row['missing_permission_jobs'])} "
                     f"missing_concurrency={len(row['missing_concurrency_jobs'])} "

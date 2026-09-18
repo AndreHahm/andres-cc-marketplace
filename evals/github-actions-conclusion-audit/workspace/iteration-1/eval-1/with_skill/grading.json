@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Synthetic run JSON files matching the documented schema were created", "passed": true, "evidence": "6 files run-1001.json..run-1006.json with databaseId/workflowName/headBranch/conclusion/createdAt/updatedAt/url/repository fields"},
+    {"text": "The agent actually runs scripts/conclusion_volatility_audit.py against them", "passed": true, "evidence": "script-output-text.txt and script-output-json.txt contain real script stdout"},
+    {"text": "The alternating-conclusion group is correctly flagged as warn/critical instability, not ok", "passed": true, "evidence": "instability_pct=100.0, severity=critical, critical_groups=1; JSON mode with FAIL_ON_CRITICAL=1 exits 1 correctly"}
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -148,7 +148,8 @@ def main() -> int:
         sb.create_act_stub()
         sb.write_repo_file(
             "examples/outside.yml",
-            "name: Outside\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
+            "name: Outside\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n      - run: echo hi\n",
         )
         exit_code, output = sb.run_validator(str(sb.repo_dir / "examples" / "outside.yml"))
         if exit_code != 0:
@@ -172,7 +173,8 @@ def main() -> int:
         sb.create_actionlint_stub()
         sb.write_repo_file(
             "examples/outside.yml",
-            "name: Outside\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
+            "name: Outside\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n      - run: echo hi\n",
         )
         exit_code, output = sb.run_validator(str(sb.repo_dir / "examples" / "outside.yml"))
         assert_exit(
@@ -191,7 +193,8 @@ def main() -> int:
         sb.create_act_stub()
         sb.write_repo_file(
             ".github/workflows/ci.yml",
-            "name: CI\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n",
+            "name: CI\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n      - run: echo hi\n",
         )
         exit_code, output = sb.run_validator(str(sb.repo_dir / ".github" / "workflows" / "ci.yml"))
         assert_exit(
@@ -263,8 +266,10 @@ def main() -> int:
             "  release:\n"
             "    runs-on: ubuntu-latest\n"
             "    steps:\n"
-            "      - uses: docker/build-push-action@0123456789abcdef0123456789abcdef01234567\n"
-            "      - uses: aws-actions/configure-aws-credentials@0123456789abcdef0123456789abcdef01234567\n"
+            "      - uses: docker/build-push-action@"
+            "0123456789abcdef0123456789abcdef01234567\n"
+            "      - uses: aws-actions/configure-aws-credentials@"
+            "0123456789abcdef0123456789abcdef01234567\n"
             "      - name: Safe run usage\n"
             "        env:\n"
             "          PR_TITLE: ${{ github.event.pull_request.title }}\n"

@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-validator/SKILL.md",
+  "assertions": [
+    {"text": "The agent actually runs scripts/validate_workflow.py against the target file (not just eyeballs it)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Each reported error is mapped to a specific reference file/section, not left generic", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Corrected workflow code is shown for at least one identified error", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

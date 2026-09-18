@@ -1,0 +1,24 @@
+{
+  "skill_name": "github-actions-generator",
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-generator/SKILL.md",
+  "description": "Generate production-ready GitHub Actions workflows and custom actions with security-hardened defaults.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Generate a basic Node.js CI workflow",
+      "prompt": "Create a GitHub Actions workflow for a Node.js project that runs on push and pull_request, installs dependencies, and runs tests.",
+      "expected_output": "A .github/workflows/*.yml file with SHA-pinned actions, explicit minimal permissions, a checkout + setup-node + npm ci + npm test sequence, and concurrency controls — following the skill's Mandatory Standards.",
+      "files": [".github/workflows/*.yml"]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "create a composite action that combines these steps",
+      "make this workflow reusable so other repos can call it",
+      "add dependency review / SBOM scanning to our workflow",
+      "validate my existing workflow file (negative trigger)"
+    ]
+  }
+}

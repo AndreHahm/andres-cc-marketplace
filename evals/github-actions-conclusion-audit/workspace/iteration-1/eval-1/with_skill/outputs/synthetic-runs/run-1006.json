@@ -1,0 +1,10 @@
+{
+  "databaseId": 1006,
+  "workflowName": "CI",
+  "headBranch": "main",
+  "conclusion": "failure",
+  "createdAt": "2026-09-17T09:00:00Z",
+  "updatedAt": "2026-09-17T09:06:00Z",
+  "url": "https://github.com/acme-org/widget-service/actions/runs/1006",
+  "repository": "acme-org/widget-service"
+}
