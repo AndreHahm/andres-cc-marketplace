@@ -99,8 +99,8 @@ if: ${{ 42 }}  # Number, not boolean
 
 ### 3. Runner Label Validation
 
-Validates runner labels against known GitHub-hosted runners — see `references/runners.md` for the
-current label list, retirement dates, and GPU/ARM64 options.
+Validates runner labels against known GitHub-hosted runners (standard Ubuntu/Windows/macOS, ARM64, and
+GPU labels), flagging typos and retired labels.
 
 Example:
 ```yaml
@@ -156,7 +156,7 @@ run: echo $VARIABLE
 
 ### 8. Glob Pattern Validation
 
-Validates glob patterns in `paths:` and `paths-ignore:` filters for structural errors (e.g., empty patterns or malformed syntax). See `references/common-errors.md`'s "Path Filter Errors" section for the `**.js`/`**/*.js` glob-pattern best-practice note.
+Validates glob patterns in `paths:` and `paths-ignore:` filters for structural errors (e.g., empty patterns or malformed syntax). Note: `**.js` (double-star without a slash) is not flagged by actionlint as of v1.7.x and is functionally equivalent to `**/*.js`, but `**/*.js` is the clearer, more widely understood form.
 
 ### 9. Security Checks
 
@@ -242,63 +242,8 @@ Install the "actionlint" extension for real-time validation in VS Code.
 
 ## Common Error Examples
 
-### 1. Typo in Runner Label
-
-```yaml
-# Error
-runs-on: ubuntu-lastest
-
-# Fix
-runs-on: ubuntu-latest
-```
-
-### 2. Invalid CRON Expression
-
-```yaml
-# Error
-schedule:
-  - cron: '0 0 * * 8'  # Day of week 8 doesn't exist
-
-# Fix
-schedule:
-  - cron: '0 0 * * 0'  # Sunday = 0
-```
-
-### 3. Missing Required Input
-
-```yaml
-# Error
-- uses: actions/checkout@v4
-
-# Fix (if repository input is required)
-- uses: actions/checkout@v4
-  with:
-    repository: owner/repo
-```
-
-### 4. Invalid Expression
-
-```yaml
-# Error
-if: ${{ success() && 'true' }}  # Mixing boolean and string
-
-# Fix
-if: ${{ success() && true }}
-```
-
-### 5. Undefined Job in needs
-
-```yaml
-# Error
-jobs:
-  deploy:
-    needs: biuld  # Typo
-
-# Fix
-jobs:
-  deploy:
-    needs: build
-```
+See `references/common-errors.md` for the full example catalog (Job Configuration Errors, Schedule
+Errors, Action Errors, Expression Errors) — the same fixes actionlint's own diagnostics above map to.
 
 ## Best Practices
 

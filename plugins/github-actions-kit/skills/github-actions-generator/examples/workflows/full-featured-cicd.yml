@@ -34,9 +34,10 @@ jobs:
           echo "coverage=85" >> $GITHUB_OUTPUT
 
       - name: Coverage check
+        env:
+          COVERAGE: ${{ steps.test.outputs.coverage }}
         run: |
-          COVERAGE=${{ steps.test.outputs.coverage }}
-          if [ $COVERAGE -lt 80 ]; then
+          if [ "$COVERAGE" -lt 80 ]; then
             echo "::warning::Coverage $COVERAGE% below 80% threshold"
           else
             echo "::notice::Coverage $COVERAGE% meets threshold"
@@ -44,12 +45,14 @@ jobs:
 
       - name: Test summary
         if: always()
+        env:
+          COVERAGE: ${{ steps.test.outputs.coverage }}
         run: |
           echo "## Test Results :test_tube:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Coverage | ${{ steps.test.outputs.coverage }}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage | ${COVERAGE}% |" >> $GITHUB_STEP_SUMMARY
           echo "| Status | :white_check_mark: Passed |" >> $GITHUB_STEP_SUMMARY
 
   deploy-staging:

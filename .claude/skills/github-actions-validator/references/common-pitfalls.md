@@ -121,8 +121,10 @@ this reference by hand for the pitfalls above — they need to be reviewed, not 
 2. **Explicit permissions** — flags a workflow with no `permissions:` block at all, and separately
    flags `permissions: write-all` (prefer least-privilege scopes).
 3. **Script injection heuristic** — flags an untrusted `github.*` context (`event`, `head_ref`,
-   `ref_name`, `actor`, `triggering_actor`, `repository_owner`, `base_ref`) interpolated directly
-   into a `run:` step, instead of passed through `env:`.
+   `ref_name`, `actor`, `triggering_actor`, `repository_owner`, `base_ref`), or a `needs.*.outputs.*`,
+   `steps.*.outputs.*`, or `inputs.*` laundered-taint sink, interpolated directly into a `run:` step
+   (including block-scalar `run: |`/`>` forms with a chomping or indentation indicator, e.g. `|-`,
+   `>-`, `|2`), instead of passed through `env:`.
 4. **OIDC permission declaration** — flags an OIDC-integrated action (`aws-actions/configure-aws-credentials`,
    `azure/login`, `google-github-actions/auth`, `hashicorp/vault-action`,
    `actions/attest-build-provenance`) used without a matching `id-token: write` permission.

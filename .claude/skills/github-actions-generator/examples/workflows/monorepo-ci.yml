@@ -53,11 +53,16 @@ jobs:
 
       - name: Set any-changed flag
         id: any-changed
+        env:
+          FRONTEND_CHANGED: ${{ steps.filter.outputs.frontend }}
+          BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
+          SHARED_CHANGED: ${{ steps.filter.outputs.shared }}
+          INFRASTRUCTURE_CHANGED: ${{ steps.filter.outputs.infrastructure }}
         run: |
-          if [[ "${{ steps.filter.outputs.frontend }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.backend }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.shared }}" == "true" ]] || \
-             [[ "${{ steps.filter.outputs.infrastructure }}" == "true" ]]; then
+          if [[ "$FRONTEND_CHANGED" == "true" ]] || \
+             [[ "$BACKEND_CHANGED" == "true" ]] || \
+             [[ "$SHARED_CHANGED" == "true" ]] || \
+             [[ "$INFRASTRUCTURE_CHANGED" == "true" ]]; then
             echo "any-changed=true" >> $GITHUB_OUTPUT
           else
             echo "any-changed=false" >> $GITHUB_OUTPUT

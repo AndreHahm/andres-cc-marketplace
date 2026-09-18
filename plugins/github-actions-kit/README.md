@@ -11,7 +11,8 @@ diagnosis:
   and `act`, with a mapped error-to-reference table and a CI-pitfalls reference covering issues static
   tools miss (cache-dependency-path, monorepo build order, service-container startup).
 - **`github-actions-hardening-audit`** — statically scores workflow YAML for hardening gaps: missing
-  `timeout-minutes`/`permissions`/`concurrency`, floating action refs (`@main`/`@master`/`@vN`).
+  `timeout-minutes`/`permissions`, floating action refs (`@main`/`@master`/`@vN`), plus optional
+  concurrency checks (opt-in, off by default).
 - **`github-actions-conclusion-audit`** — detects chronically flaky workflows from run-history JSON via
   conclusion-transition volatility scoring.
 - **`github-actions-log-analyzer`** — fetches and analyzes recent workflow run logs (subagent-dispatched

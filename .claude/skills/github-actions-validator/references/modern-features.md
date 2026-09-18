@@ -2,6 +2,10 @@
 
 This reference covers validation of modern GitHub Actions features including reusable workflows, attestations, OIDC authentication, and more.
 
+**Staleness note:** limits, claims, and dates below reflect this file's last content update (November
+2025). If that looks old relative to today, verify current values via `WebSearch` before treating this
+file as current.
+
 ## Reusable Workflows
 
 ### Validation Points
@@ -12,6 +16,10 @@ This reference covers validation of modern GitHub Actions features including reu
 
 ### Example
 
+**Size exception:** this block is already trimmed to the minimum needed to show the full
+`workflow_call` contract in one place (inputs, secrets, and outputs together) — splitting it further
+would separate parts of a single contract that only make sense read together.
+
 ```yaml
 # Reusable workflow (.github/workflows/reusable-deploy.yml)
 on:
@@ -20,16 +28,11 @@ on:
       environment:
         required: true
         type: string
-      deploy-version:
-        required: false
-        type: string
-        default: 'latest'
     secrets:
       deploy-token:
         required: true
     outputs:
       deployment-url:
-        description: "The URL of the deployment"
         value: ${{ jobs.deploy.outputs.url }}
 
 jobs:
@@ -38,8 +41,7 @@ jobs:
     outputs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
-      - name: Deploy
-        id: deploy
+      - id: deploy
         run: echo "url=https://example.com" >> $GITHUB_OUTPUT
 ```
 
@@ -78,25 +80,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Build artifact
-        run: |
-          mkdir -p dist
-          tar -czvf dist/app.tar.gz ./src
-
-      - name: Generate SBOM
-        run: |
-          # Generate SPDX SBOM
-          syft ./src -o spdx-json > sbom.spdx.json
+      - run: syft ./src -o spdx-json > sbom.spdx.json
 
       - uses: actions/attest-sbom@v3
         with:
-          subject-path: '${{ github.workspace }}/dist/*.tar.gz'
-          sbom-path: '${{ github.workspace }}/sbom.spdx.json'
+          subject-path: 'dist/*.tar.gz'
+          sbom-path: 'sbom.spdx.json'
 
       - uses: actions/attest-build-provenance@v3
         with:
-          subject-path: '${{ github.workspace }}/dist/*.tar.gz'
+          subject-path: 'dist/*.tar.gz'
 ```
 
 ### Common Errors
@@ -272,20 +265,16 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: node:24
-      env:
-        NODE_ENV: test
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
+        ports: ['5432:5432']
     steps:
       - uses: actions/checkout@v6
       - run: npm ci
-      - name: Run tests
-        env:
+      - env:
           DATABASE_URL: postgres://postgres:postgres@postgres:5432/testdb
         run: npm test
 ```
@@ -312,6 +301,9 @@ container-to-service networking pattern itself.
 
 ### Example
 
+**Size exception:** this block is already trimmed to the minimum needed to show `exclude:`/`include:`
+together with a base matrix — either alone wouldn't demonstrate the interaction this section documents.
+
 ```yaml
 jobs:
   test:
@@ -328,7 +320,6 @@ jobs:
           - os: ubuntu-latest
             node: 24
             experimental: true
-
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

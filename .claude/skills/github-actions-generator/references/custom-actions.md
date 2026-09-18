@@ -178,11 +178,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update major version tag
-        run: |
-          MAJOR=$(echo ${{ github.ref_name }} | cut -d. -f1)
-          git tag -fa $MAJOR -m "Update $MAJOR tag"
-          git push origin $MAJOR --force
+      # Update the major version tag (e.g. v1) to point at this release —
+      # see "Git Tags" above for the underlying `git tag -fa`/`push --force` commands.
 ```
 
 ### Breaking Changes
@@ -303,7 +300,7 @@ outputs:
     description: 'Action result'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
 ```
 

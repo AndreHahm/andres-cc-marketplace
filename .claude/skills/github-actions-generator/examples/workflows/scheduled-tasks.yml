@@ -324,10 +324,15 @@ jobs:
 
       - name: Create metrics report
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          METRICS_COMMITS: ${{ steps.metrics.outputs.commits }}
+          METRICS_CONTRIBUTORS: ${{ steps.metrics.outputs.contributors }}
         with:
           script: |
-            const commits = '${{ steps.metrics.outputs.commits }}';
-            const contributors = '${{ steps.metrics.outputs.contributors }}';
+            // Metrics values are passed via env and read from process.env rather than
+            // interpolated as ${{ }} into this script's source.
+            const commits = process.env.METRICS_COMMITS;
+            const contributors = process.env.METRICS_CONTRIBUTORS;
 
             const weekStart = new Date();
             weekStart.setDate(weekStart.getDate() - 7);

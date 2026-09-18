@@ -248,25 +248,27 @@ jobs:
     steps:
       - name: Determine environment
         id: determine
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch }}"
-
-          case "$BRANCH" in
+          case "$HEAD_BRANCH" in
             main)
-              echo "environment=production" >> $GITHUB_OUTPUT
-              echo "should-deploy=true" >> $GITHUB_OUTPUT
+              ENV_NAME="production"
+              SHOULD_DEPLOY="true"
               ;;
             staging)
-              echo "environment=staging" >> $GITHUB_OUTPUT
-              echo "should-deploy=true" >> $GITHUB_OUTPUT
+              ENV_NAME="staging"
+              SHOULD_DEPLOY="true"
               ;;
             *)
-              echo "environment=none" >> $GITHUB_OUTPUT
-              echo "should-deploy=false" >> $GITHUB_OUTPUT
+              ENV_NAME="none"
+              SHOULD_DEPLOY="false"
               ;;
           esac
 
-          echo "Deploying to: ${{ steps.determine.outputs.environment }}"
+          echo "environment=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "should-deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          echo "Deploying to: $ENV_NAME"
 
   deploy:
     name: Deploy to ${{ needs.determine-environment.outputs.environment }}
@@ -296,10 +298,12 @@ jobs:
       - name: Deploy to environment
         env:
           ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           echo "Deploying to $ENVIRONMENT"
-          echo "Commit SHA: ${{ github.event.workflow_run.head_sha }}"
-          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Commit SHA: $HEAD_SHA"
+          echo "Branch: $HEAD_BRANCH"
 
           # Deployment commands here
           # Example: Upload to S3, deploy to Kubernetes, etc.
@@ -317,19 +321,26 @@ jobs:
           echo "✅ Smoke tests passed"
 
       - name: Create deployment summary
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
           cat <<EOF >> $GITHUB_STEP_SUMMARY
           ## 🚀 Deployment Complete
 
-          **Environment:** ${{ needs.determine-environment.outputs.environment }}
-          **Commit:** ${{ github.event.workflow_run.head_sha }}
-          **Branch:** ${{ github.event.workflow_run.head_branch }}
-          **URL:** https://${{ needs.determine-environment.outputs.environment }}.example.com
+          **Environment:** $ENVIRONMENT
+          **Commit:** $HEAD_SHA
+          **Branch:** $HEAD_BRANCH
+          **URL:** https://$ENVIRONMENT.example.com
 
           ### CI Workflow Details
-          - **Workflow:** ${{ github.event.workflow_run.name }}
-          - **Run ID:** ${{ github.event.workflow_run.id }}
-          - **Conclusion:** ${{ github.event.workflow_run.conclusion }}
+          - **Workflow:** $WORKFLOW_NAME
+          - **Run ID:** $WORKFLOW_RUN_ID
+          - **Conclusion:** $WORKFLOW_CONCLUSION
 
           ✅ Deployment successful!
           EOF
@@ -385,11 +396,17 @@ jobs:
 
       - name: Comment with performance results
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         with:
           script: |
+            // The triggering run's head SHA is passed via env and read from process.env
+            // rather than interpolated as ${{ }} into this script's source.
+            const headSha = process.env.HEAD_SHA;
+
             const message = `## ⚡ Performance Test Results
 
-            **Commit:** ${{ github.event.workflow_run.head_sha }}
+            **Commit:** ${headSha}
 
             ✅ Performance tests completed
 
@@ -399,6 +416,6 @@ jobs:
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              commit_sha: '${{ github.event.workflow_run.head_sha }}',
+              commit_sha: headSha,
               body: message
             });

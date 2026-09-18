@@ -9,6 +9,9 @@ Tests:
                               references/common-actions.md
   5. Required workflow keys - example workflows contain mandatory top-level keys
   6. Template placeholders  - workflow/docker templates keep safe placeholders
+  7. Script injection risk  - no untrusted ${{ }} context interpolated directly
+                              into a run: block or an actions/github-script
+                              script: block anywhere in templates/ or examples/
 
 Prerequisites: yamllint must be installed (pip install yamllint)
 
@@ -110,8 +113,8 @@ def main() -> int:
     )
     print()
 
-    # Canonical SHAs, sourced from references/common-actions.md.
-    # If common-actions.md is updated, update these constants to match.
+    # Canonical SHAs, sourced from references/common-actions.md. If common-actions.md is
+    # updated, update these constants to match.
     canonical_shas = {
         "actions/checkout": ("de0fac2e4500dabe0009e67214ff5f5447ce83dd", "v6.0.2"),
         "actions/setup-node": ("6044e13b5dc448c55e2357c09f80417699197238", "v6.2.0"),
@@ -159,7 +162,7 @@ def main() -> int:
     # --- 2. SHA pinning compliance ---
     print("[2] SHA pinning compliance (no bare @vN refs in positive examples)")
     unpinned_pattern = (
-        r"^[ \t]*uses:[ \t]*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*"
+        r"^[ \t]*(?:-\s*)?uses:[ \t]*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*"
         r"@v[0-9]+(\.[0-9]+){0,2}([ \t]|$)"
     )
 
@@ -177,6 +180,11 @@ def main() -> int:
     assert_text_matches_pattern(
         "matches nested action path semver tag",
         "        uses: owner/repo/sub-path@v3.2.1 # mutable",
+        unpinned_pattern,
+    )
+    assert_text_matches_pattern(
+        "matches compact single-line step form (- uses:)",
+        "      - uses: actions/dependency-review-action@v4",
         unpinned_pattern,
     )
     assert_text_not_matches_pattern(
@@ -279,6 +287,63 @@ def main() -> int:
         docker_template,
         r"--no-install-recommends",
     )
+    print()
+
+    # --- 7. Script injection risk ---
+    print("[7] Script injection risk (no untrusted ${{ }} interpolated into run:/script: blocks)")
+    # Mirrors the untrusted-context heuristic in
+    # ../github-actions-validator/scripts/validate_workflow.py's find_injection_risk_lines
+    # (re-implemented inline here rather than imported, to avoid a runtime dependency on a
+    # sibling skill's internal script layout), extended to also cover actions/github-script
+    # `script:` blocks (JS), not just `run:` blocks. A value from these contexts is
+    # attacker-influenced (event/PR data, a prior job's outputs, a composite action's
+    # inputs) and must be passed through `env:` + $VAR (shell) or process.env.VAR (JS)
+    # rather than substituted directly into the run/script source text by ${{ }} — a raw
+    # substitution happens before the shell/JS is parsed and can break out of a string.
+    expr_label = "${{ }}"
+    injection_context_re = re.compile(
+        r"\$\{\{\s*(?:"
+        r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+        r"|needs\.[\w-]+\.outputs\.[\w-]+"
+        r"|steps\.[\w-]+\.outputs\.[\w-]+"
+        r"|inputs\.[\w-]+"
+        r")"
+    )
+    run_block_start_re = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
+    script_block_start_re = re.compile(r"^\s*script:\s*[|>][-+]?\d*\s*$")
+
+    def find_injection_risk_lines(lines: list[str]) -> list[tuple[int, str]]:
+        risky: list[tuple[int, str]] = []
+        in_block = False
+        block_kind = ""
+        block_indent = -1
+        for idx, line in enumerate(lines, start=1):
+            indent = len(line) - len(line.lstrip(" "))
+            if in_block and indent <= block_indent and line.strip() != "":
+                in_block = False
+            if run_block_start_re.match(line):
+                in_block = True
+                block_kind = "run"
+                block_indent = indent
+                continue
+            if script_block_start_re.match(line):
+                in_block = True
+                block_kind = "script"
+                block_indent = indent
+                continue
+            if in_block and injection_context_re.search(line):
+                risky.append((idx, block_kind))
+        return risky
+
+    for f in all_yaml_files:
+        lines = f.read_text(encoding="utf-8").splitlines()
+        risky = find_injection_risk_lines(lines)
+        if not risky:
+            ok(f"no risky {expr_label} interpolation in run:/script: blocks: {rel(f)}")
+        else:
+            bad(f"risky {expr_label} interpolated directly into a run:/script: block: {rel(f)}")
+            for line_no, kind in risky:
+                print(f"    {line_no} [{kind}]: {lines[line_no - 1].strip()}")
     print()
 
     print(f"Results: {PASS} passed, {FAIL} failed")

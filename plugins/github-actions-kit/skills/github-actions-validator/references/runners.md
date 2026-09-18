@@ -2,6 +2,10 @@
 
 This reference covers all GitHub-hosted runner types, including recent additions and deprecations.
 
+**Staleness note:** labels, availability, and retirement dates below reflect this file's last content
+update (2025). If that looks old relative to today, verify current values via `WebSearch` before
+treating this file as current.
+
 ## Standard Runner Labels
 
 ### Ubuntu
@@ -142,22 +146,11 @@ jobs:
     runs-on: gpu-t4-4-core
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install ML dependencies
-        run: |
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-          pip install -r requirements.txt
-
-      - name: Train model
-        run: python train.py --use-gpu
-
-      - name: Run inference
-        run: python inference.py
+      - run: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+      - run: python train.py --use-gpu
 ```
 
 ### Use Cases
@@ -203,24 +196,11 @@ jobs:
     runs-on: macos-15-xlarge  # M2 Pro with GPU acceleration
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+      - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
-
-      - name: Build iOS app
-        run: |
-          xcodebuild -workspace App.xcworkspace \
-            -scheme Production \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
-            archive
-
-      - name: Run GPU-accelerated tests
-        run: |
-          # GPU acceleration automatically available
-          xcodebuild test -scheme AppTests
+      - run: xcodebuild -workspace App.xcworkspace -scheme Production archive
+      - run: xcodebuild test -scheme AppTests  # GPU acceleration automatically available
 ```
 
 ### Benefits
@@ -281,18 +261,11 @@ jobs:
             arch: x64
           - runner: ubuntu-latest-arm64
             arch: arm64
-
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
-
-      - name: Build
-        run: |
-          echo "Building for ${{ matrix.arch }}"
-          ./build.sh --arch ${{ matrix.arch }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - run: ./build.sh --arch ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.arch }}
           path: dist/

@@ -209,6 +209,25 @@ permissions:
     cache-dependency-path: go.sum
 ```
 
+### hashicorp/setup-terraform
+
+**Latest Version:** v3 (v3.1.2)
+**SHA:** `b9cd54a3c349d3f38e8881555d616ced269862dd`
+
+**Description:** Setup Terraform CLI
+
+**Common Inputs:**
+- `terraform_version`: Version to use (e.g., `'1.6.0'`, `'latest'`)
+- `terraform_wrapper`: Wrap the `terraform` binary to expose outputs (default: `true`)
+
+**Example:**
+```yaml
+- name: Setup Terraform
+  uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+  with:
+    terraform_version: 1.6.0
+```
+
 ## Caching
 
 ### actions/cache
@@ -239,6 +258,30 @@ permissions:
     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
     restore-keys: |
       ${{ runner.os }}-node-
+```
+
+### actions/cache/save
+
+**Latest Version:** v4 (v4.0.2)
+**SHA:** `0c45773b623bea8c8e75f6c82b208c3cf94ea4f9`
+
+**Description:** Save a cache entry unconditionally (the write half of `actions/cache`, for
+workflows that need to save on every run rather than only on a cache miss — pair with
+`actions/cache/restore` for the read half)
+
+**Required Inputs:**
+- `path`: Directories to cache
+- `key`: Cache key (must be unique)
+
+**Example:**
+```yaml
+- name: Save cache
+  uses: actions/cache/save@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+  with:
+    path: |
+      ~/.npm
+      node_modules
+    key: cache-rebuild-${{ github.sha }}
 ```
 
 ## Artifacts
@@ -370,6 +413,30 @@ permissions:
       BUILD_DATE=${{ github.event.head_commit.timestamp }}
 ```
 
+### docker/metadata-action
+
+**Latest Version:** v5 (v5.5.1)
+**SHA:** `8e5442c4ef9f78752691e2d8f8d19755c6f78e81`
+
+**Description:** Derive Docker image tags and labels from Git ref, branch, semver, and SHA
+
+**Common Inputs:**
+- `images`: Image name(s) to generate metadata for
+- `tags`: Tag generation rules (e.g., `type=ref,event=branch`, `type=semver,pattern={{version}}`)
+
+**Example:**
+```yaml
+- name: Extract metadata
+  id: meta
+  uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
+  with:
+    images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+    tags: |
+      type=ref,event=branch
+      type=ref,event=pr
+      type=semver,pattern={{version}}
+```
+
 ## Cloud Providers
 
 ### aws-actions/configure-aws-credentials
@@ -449,6 +516,49 @@ permissions:
     token: ${{ secrets.CODECOV_TOKEN }}
     files: ./coverage/lcov.info
     fail_ci_if_error: true
+```
+
+### dorny/paths-filter
+
+**Latest Version:** v3 (v3.0.2)
+**SHA:** `de90cc6551a0c30ca4af50ac82dafbf57eb22fab`
+
+**Description:** Detect which paths changed, for conditionally running jobs in a monorepo
+
+**Common Inputs:**
+- `filters`: YAML map of filter name to glob pattern(s) to match changed files against
+
+**Example:**
+```yaml
+- name: Detect changed paths
+  uses: dorny/paths-filter@de90cc6551a0c30ca4af50ac82dafbf57eb22fab # v3.0.2
+  id: filter
+  with:
+    filters: |
+      frontend:
+        - 'packages/frontend/**'
+      backend:
+        - 'packages/backend/**'
+```
+
+### golangci/golangci-lint-action
+
+**Latest Version:** v9 (v9.1.0)
+**SHA:** `e7fa5ac41e1cf5b7d48e45e42232ce7ada589601`
+
+**Description:** Run golangci-lint (Go static analysis/linting)
+
+**Common Inputs:**
+- `version`: golangci-lint version to use
+- `args`: CLI arguments (e.g., `--timeout=5m`)
+
+**Example:**
+```yaml
+- name: Run golangci-lint
+  uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
+  with:
+    version: v1.55.3
+    args: --timeout=5m
 ```
 
 ### github/super-linter
@@ -650,6 +760,30 @@ permissions:
     push-to-registry: true
 ```
 
+### aquasecurity/trivy-action
+
+**Latest Version:** v0.33 (v0.33.1)
+**SHA:** `b6643a29fecd7f34b3597bc6acb0a98b03d33ff8`
+
+**Description:** Scan container images, filesystems, or repos for vulnerabilities with Trivy
+
+**Common Inputs:**
+- `image-ref`: Image reference to scan
+- `format`: Output format (e.g., `sarif`, `table`)
+- `output`: Output file path
+- `severity`: Severity levels to report (e.g., `CRITICAL,HIGH`)
+
+**Example:**
+```yaml
+- name: Scan image for vulnerabilities with Trivy
+  uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+  with:
+    image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+    format: sarif
+    output: trivy-results.sarif
+    severity: CRITICAL,HIGH
+```
+
 ### github/codeql-action
 
 **Latest Version:** v3 (v3.32.5)
@@ -681,7 +815,7 @@ permissions:
 
 1. **Always pin to full SHA**: Use 40-character SHA with version comment
 2. **Node 24 migration**: Migrate to Node 24 before March 2026 (Node 20 EOL April 2026)
-3. **Cache v4.3.0**: Use latest cache version (v4.2.0+ required, legacy service retired Feb 2025)
+3. **Cache v5.0.3**: Use latest cache version (v4.2.0+ required, legacy service retired Feb 2025)
 4. **Use official actions**: Prefer verified `actions/*`, `docker/*`, etc.
 5. **Security scanning**: Implement dependency review and SBOM attestations
 6. **Minimal permissions**: Use explicit `permissions:` blocks
