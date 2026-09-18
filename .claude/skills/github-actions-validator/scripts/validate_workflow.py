@@ -125,7 +125,10 @@ VERSION_IN_LINE_RE = re.compile(r"v(\d+)")
 def check_action_versions(workflow_path: str) -> int:
     log_section("Action Version Check")
 
-    files = collect_workflow_files(workflow_path) or []
+    files = collect_workflow_files(workflow_path)
+    if files is None:
+        log_error(f"Path not found: {workflow_path}")
+        return 1
     if not files:
         log_warn("No workflow files found to check")
         return 0
@@ -217,11 +220,21 @@ def check_action_versions(workflow_path: str) -> int:
 
 
 INJECTION_CONTEXT_RE = re.compile(
-    r"\$\{\{\s*github\.(event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"\$\{\{\s*(?:"
+    r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"|needs\.[\w-]+\.outputs\.[\w-]+"
+    r"|steps\.[\w-]+\.outputs\.[\w-]+"
+    r"|inputs\.[\w-]+"
+    r")"
 )
-RUN_BLOCK_START_RE = re.compile(r"^\s*run:\s*[|>]\s*$")
+RUN_BLOCK_START_RE = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
 RUN_INLINE_RISK_RE = re.compile(
-    r"^\s*run:\s*.*\$\{\{\s*github\.(event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"^\s*run:\s*.*\$\{\{\s*(?:"
+    r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"|needs\.[\w-]+\.outputs\.[\w-]+"
+    r"|steps\.[\w-]+\.outputs\.[\w-]+"
+    r"|inputs\.[\w-]+"
+    r")"
 )
 
 

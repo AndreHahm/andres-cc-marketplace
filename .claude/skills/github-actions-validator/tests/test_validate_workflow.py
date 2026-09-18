@@ -284,6 +284,87 @@ def main() -> int:
             "does not print warning summary when clean", output, "Security policy warnings:"
         )
 
+        print()
+        print("[P1] script injection check catches chomping-indicator run: block forms")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-chomping.yml",
+            "name: Policy Chomping\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - name: Dash chomped block\n"
+            "        run: |-\n"
+            "          echo ${{ github.event.pull_request.title }}\n"
+            "      - name: Plus chomped block\n"
+            "        run: >+\n"
+            "          echo ${{ github.head_ref }}\n"
+            "      - name: Indented block\n"
+            "        run: |2\n"
+            "          echo ${{ github.actor }}\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only", "--policy-checks", str(sb.repo_dir / "examples" / "policy-chomping.yml")
+        )
+        assert_exit("chomping-indicator run: blocks do not change exit code", exit_code, 0, output)
+        assert_contains(
+            "warns for injection inside a '|-' chomped block",
+            output,
+            r"policy-chomping\.yml:9 potential script injection risk",
+        )
+        assert_contains(
+            "warns for injection inside a '>+' chomped block",
+            output,
+            r"policy-chomping\.yml:12 potential script injection risk",
+        )
+        assert_contains(
+            "warns for injection inside a '|2' indented block",
+            output,
+            r"policy-chomping\.yml:15 potential script injection risk",
+        )
+
+        print()
+        print("[P1] script injection check catches needs/steps/inputs laundered-taint sinks")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-laundered.yml",
+            "name: Policy Laundered\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - name: needs output\n"
+            '        run: echo "${{ needs.build.outputs.artifact }}"\n'
+            "      - name: steps output\n"
+            '        run: echo "${{ steps.tag.outputs.version }}"\n'
+            "      - name: workflow_call input\n"
+            '        run: echo "${{ inputs.branch }}"\n',
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only", "--policy-checks", str(sb.repo_dir / "examples" / "policy-laundered.yml")
+        )
+        assert_exit("laundered-taint sinks do not change exit code", exit_code, 0, output)
+        assert_contains(
+            "warns for needs.*.outputs.* sink",
+            output,
+            r"policy-laundered\.yml:8 potential script injection risk",
+        )
+        assert_contains(
+            "warns for steps.*.outputs.* sink",
+            output,
+            r"policy-laundered\.yml:10 potential script injection risk",
+        )
+        assert_contains(
+            "warns for inputs.* sink",
+            output,
+            r"policy-laundered\.yml:12 potential script injection risk",
+        )
+
     print()
     print(f"Test summary: PASS={PASS} FAIL={FAIL}")
     if FAIL != 0:

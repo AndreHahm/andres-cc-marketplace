@@ -43,7 +43,11 @@ def env_int(name: str, default: int) -> int:
 
 
 def env_bool01(name: str, default: int) -> bool:
-    return env_int(name, default) == 1
+    value = env_int(name, default)
+    if value not in (0, 1):
+        print(f"ERROR: {name} must be 0 or 1 (got: {value})", file=sys.stderr)
+        sys.exit(1)
+    return value == 1
 
 
 def compile_optional_regex(pattern: str, label: str) -> re.Pattern[str] | None:
@@ -98,6 +102,14 @@ def parse_inline_on_events(raw_value: str) -> list[str]:
         if token and IDENTIFIER_RE.match(token) and token in VALID_TRIGGER_NAMES:
             events.append(token)
     return events
+
+
+MAX_FIELD_LEN = 200
+
+
+def truncate_value(value: str, limit: int = MAX_FIELD_LEN) -> str:
+    """Cap a free-form, attacker-influenceable value before it reaches report output."""
+    return value if len(value) <= limit else value[:limit] + "...(truncated)"
 
 
 def classify_ref(uses_value: str, allow_ref_regex: re.Pattern[str] | None) -> str | None:
@@ -196,6 +208,8 @@ def main() -> int:
         job_timeout: dict[str, bool] = {}
         job_permissions: dict[str, bool] = {}
         job_concurrency: dict[str, bool] = {}
+        job_uses: dict[str, bool] = {}
+        job_body_indent: dict[str, int] = {}
 
         floating_refs: list[dict] = []
 
@@ -235,7 +249,9 @@ def main() -> int:
                 uses_value = use_match.group(1)
                 reason = classify_ref(uses_value, allow_ref_regex)
                 if reason:
-                    floating_refs.append({"line": idx, "uses": uses_value, "reason": reason})
+                    floating_refs.append(
+                        {"line": idx, "uses": truncate_value(uses_value), "reason": reason}
+                    )
 
             if not in_jobs and re.match(r"^jobs\s*:\s*$", line):
                 in_jobs = True
@@ -255,9 +271,17 @@ def main() -> int:
                     job_timeout[current_job] = False
                     job_permissions[current_job] = False
                     job_concurrency[current_job] = False
+                    job_uses[current_job] = False
                     continue
 
                 if current_job and indent > jobs_indent + 2:
+                    # The job's own direct attributes (runs-on:, uses:, timeout-minutes:, etc.)
+                    # all share one indent level — the first such line establishes it, so a
+                    # `uses:` seen deeper (e.g. a step's `- uses: action@ref` under `steps:`)
+                    # is never mistaken for the job-level reusable-workflow-call key.
+                    job_body_indent.setdefault(current_job, indent)
+                    if indent == job_body_indent[current_job] and re.match(r"^uses\s*:", stripped):
+                        job_uses[current_job] = True
                     if re.match(r"^\s*timeout-minutes\s*:", line):
                         job_timeout[current_job] = True
                     if re.match(r"^\s*permissions\s*:", line):
@@ -279,7 +303,9 @@ def main() -> int:
 
         if require_timeout:
             missing_timeout_jobs = [
-                job for job, has_timeout in job_timeout.items() if not has_timeout
+                job
+                for job, has_timeout in job_timeout.items()
+                if not has_timeout and not job_uses.get(job, False)
             ]
 
         if require_permissions:

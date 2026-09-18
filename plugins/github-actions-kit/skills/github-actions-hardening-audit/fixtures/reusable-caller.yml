@@ -1,0 +1,13 @@
+name: Reusable Caller
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  call-shared-ci:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      environment: production

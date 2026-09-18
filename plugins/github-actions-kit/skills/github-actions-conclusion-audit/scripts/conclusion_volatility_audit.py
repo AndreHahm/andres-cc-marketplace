@@ -157,6 +157,10 @@ def main() -> int:
             summary["parse_errors"].append(f"{path}: {exc}")
             continue
 
+        if not isinstance(payload, dict):
+            summary["parse_errors"].append(f"{path}: not a JSON object")
+            continue
+
         summary["runs_scanned"] += 1
 
         workflow = payload.get("workflowName") or payload.get("name") or "<unknown-workflow>"

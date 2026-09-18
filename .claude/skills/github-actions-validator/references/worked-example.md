@@ -28,12 +28,13 @@ jobs:
 python3 "$SKILL_DIR/scripts/validate_workflow.py" --lint-only workflow.yml
 ```
 
-**Output:**
+**Output** (actionlint's real `file:line:col: message [rule]` format — see
+`references/actionlint-usage.md`'s Output Formats section):
 ```
-[ERROR] invalid CRON format "0 0 * * 8"
-[ERROR] label "ubuntu-lastest" is unknown
-[WARN] "github.event.issue.title" is potentially untrusted
-[ERROR] job "deploy" needs job "biuld" which does not exist
+workflow.yml:4:16: invalid CRON format "0 0 * * 8" in schedule event [events]
+workflow.yml:7:15: label "ubuntu-lastest" is unknown [runner-label]
+workflow.yml:10:19: "github.event.issue.title" is potentially untrusted [expression]
+workflow.yml:12:14: job "deploy" needs job "biuld" which does not exist [job-needs]
 ```
 
 ### Example Phase 2-3: Consult References and Quote Fixes (applying Steps 2-3 above)

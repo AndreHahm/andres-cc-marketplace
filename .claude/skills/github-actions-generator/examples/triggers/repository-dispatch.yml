@@ -36,20 +36,24 @@ jobs:
     steps:
       - name: Validate deployment payload
         id: validate
+        env:
+          CLIENT_VERSION: ${{ github.event.client_payload.version }}
+          CLIENT_ENVIRONMENT: ${{ github.event.client_payload.environment }}
+          CLIENT_REQUESTOR: ${{ github.event.client_payload.requestor }}
         run: |
           # Required fields validation
-          if [[ -z "${{ github.event.client_payload.version }}" ]]; then
+          if [[ -z "$CLIENT_VERSION" ]]; then
             echo "❌ Error: 'version' is required in client_payload"
             exit 1
           fi
 
-          if [[ -z "${{ github.event.client_payload.environment }}" ]]; then
+          if [[ -z "$CLIENT_ENVIRONMENT" ]]; then
             echo "❌ Error: 'environment' is required in client_payload"
             exit 1
           fi
 
           # Validate environment
-          ENV="${{ github.event.client_payload.environment }}"
+          ENV="$CLIENT_ENVIRONMENT"
           if [[ ! "$ENV" =~ ^(dev|staging|production)$ ]]; then
             echo "❌ Error: Invalid environment: $ENV"
             echo "Allowed: dev, staging, production"
@@ -57,29 +61,37 @@ jobs:
           fi
 
           # Validate version format (semver)
-          VERSION="${{ github.event.client_payload.version }}"
+          VERSION="$CLIENT_VERSION"
           if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
             echo "⚠️ Warning: Version doesn't match semver format: $VERSION"
           fi
 
           echo "environment=$ENV" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "requestor=${{ github.event.client_payload.requestor || 'unknown' }}" >> $GITHUB_OUTPUT
+          echo "requestor=${CLIENT_REQUESTOR:-unknown}" >> $GITHUB_OUTPUT
 
       - name: Log deployment request
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          STEP_VERSION: ${{ steps.validate.outputs.version }}
+          STEP_ENVIRONMENT: ${{ steps.validate.outputs.environment }}
+          STEP_REQUESTOR: ${{ steps.validate.outputs.requestor }}
+          PAYLOAD_ROLLBACK: ${{ github.event.client_payload.rollback || 'false' }}
+          PAYLOAD_FORCE: ${{ github.event.client_payload.force || 'false' }}
+          PAYLOAD_JSON: ${{ toJSON(github.event.client_payload) }}
         run: |
           cat <<EOF
           📦 Deployment Request Received
 
-          Event Type: ${{ github.event.action }}
-          Version: ${{ steps.validate.outputs.version }}
-          Environment: ${{ steps.validate.outputs.environment }}
-          Requestor: ${{ steps.validate.outputs.requestor }}
-          Rollback: ${{ github.event.client_payload.rollback || 'false' }}
-          Force: ${{ github.event.client_payload.force || 'false' }}
+          Event Type: $EVENT_ACTION
+          Version: $STEP_VERSION
+          Environment: $STEP_ENVIRONMENT
+          Requestor: $STEP_REQUESTOR
+          Rollback: $PAYLOAD_ROLLBACK
+          Force: $PAYLOAD_FORCE
 
           Payload:
-          ${{ toJSON(github.event.client_payload) }}
+          $PAYLOAD_JSON
           EOF
 
       - name: Checkout specific version
@@ -117,11 +129,18 @@ jobs:
 
       - name: Create deployment notification issue
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          DEPLOY_ENVIRONMENT: ${{ steps.validate.outputs.environment }}
+          DEPLOY_VERSION: ${{ steps.validate.outputs.version }}
+          DEPLOY_REQUESTOR: ${{ steps.validate.outputs.requestor }}
         with:
           script: |
-            const environment = '${{ steps.validate.outputs.environment }}';
-            const version = '${{ steps.validate.outputs.version }}';
-            const requestor = '${{ steps.validate.outputs.requestor }}';
+            // Untrusted client_payload-derived values are passed via env and read from
+            // process.env rather than interpolated as ${{ }} into this script's source,
+            // so a value containing a quote/backtick can't break out of the JS string.
+            const environment = process.env.DEPLOY_ENVIRONMENT;
+            const version = process.env.DEPLOY_VERSION;
+            const requestor = process.env.DEPLOY_REQUESTOR;
 
             await github.rest.issues.create({
               owner: context.repo.owner,
@@ -155,13 +174,16 @@ jobs:
 
     steps:
       - name: Validate migration payload
+        env:
+          MIGRATION_NAME: ${{ github.event.client_payload.migration_name }}
+          CLIENT_ENVIRONMENT: ${{ github.event.client_payload.environment }}
         run: |
-          if [[ -z "${{ github.event.client_payload.migration_name }}" ]]; then
+          if [[ -z "$MIGRATION_NAME" ]]; then
             echo "❌ Error: 'migration_name' is required"
             exit 1
           fi
 
-          if [[ -z "${{ github.event.client_payload.environment }}" ]]; then
+          if [[ -z "$CLIENT_ENVIRONMENT" ]]; then
             echo "❌ Error: 'environment' is required"
             exit 1
           fi
@@ -198,8 +220,10 @@ jobs:
           node-version: '24'
 
       - name: Clear existing cache
+        env:
+          CACHE_KEY: ${{ github.event.client_payload.cache_key }}
         run: |
-          echo "🗑️ Clearing cache for: ${{ github.event.client_payload.cache_key || 'all' }}"
+          echo "🗑️ Clearing cache for: ${CACHE_KEY:-all}"
           # Clear cache logic
 
       - name: Rebuild cache
@@ -227,10 +251,14 @@ jobs:
     steps:
       - name: Parse incident payload
         id: incident
+        env:
+          CLIENT_SEVERITY: ${{ github.event.client_payload.severity }}
+          CLIENT_MESSAGE: ${{ github.event.client_payload.message }}
+          CLIENT_SERVICE: ${{ github.event.client_payload.service }}
         run: |
-          SEVERITY="${{ github.event.client_payload.severity || 'medium' }}"
-          MESSAGE="${{ github.event.client_payload.message }}"
-          AFFECTED_SERVICE="${{ github.event.client_payload.service }}"
+          SEVERITY="${CLIENT_SEVERITY:-medium}"
+          MESSAGE="$CLIENT_MESSAGE"
+          AFFECTED_SERVICE="$CLIENT_SERVICE"
 
           echo "severity=$SEVERITY" >> $GITHUB_OUTPUT
           echo "message=$MESSAGE" >> $GITHUB_OUTPUT
@@ -238,11 +266,18 @@ jobs:
 
       - name: Create incident issue
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          INCIDENT_SEVERITY: ${{ steps.incident.outputs.severity }}
+          INCIDENT_MESSAGE: ${{ steps.incident.outputs.message }}
+          INCIDENT_SERVICE: ${{ steps.incident.outputs.service }}
         with:
           script: |
-            const severity = '${{ steps.incident.outputs.severity }}';
-            const message = '${{ steps.incident.outputs.message }}';
-            const service = '${{ steps.incident.outputs.service }}';
+            // Untrusted client_payload-derived values are passed via env and read from
+            // process.env rather than interpolated as ${{ }} into this script's source,
+            // so a value containing a quote/backtick can't break out of the JS string.
+            const severity = process.env.INCIDENT_SEVERITY;
+            const message = process.env.INCIDENT_MESSAGE;
+            const service = process.env.INCIDENT_SERVICE;
 
             const severityEmoji = {
               'critical': '🔴',
@@ -297,8 +332,10 @@ jobs:
 
     steps:
       - name: Validate custom task
+        env:
+          TASK_NAME: ${{ github.event.client_payload.task_name }}
         run: |
-          if [[ -z "${{ github.event.client_payload.task_name }}" ]]; then
+          if [[ -z "$TASK_NAME" ]]; then
             echo "❌ Error: 'task_name' is required"
             exit 1
           fi
@@ -348,25 +385,41 @@ jobs:
 
     steps:
       - name: Generate summary
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_CREATED_AT: ${{ github.event.created_at }}
+          EVENT_SENDER: ${{ github.event.sender.login }}
+          DEPLOYMENT_RESULT: ${{ needs.handle-deployment.result }}
+          MIGRATION_RESULT: ${{ needs.handle-migration.result }}
+          CACHE_REBUILD_RESULT: ${{ needs.handle-cache-rebuild.result }}
+          INCIDENT_RESULT: ${{ needs.handle-incident.result }}
+          CUSTOM_TASK_RESULT: ${{ needs.handle-custom-task.result }}
+          PAYLOAD_JSON: ${{ toJSON(github.event.client_payload) }}
         run: |
-          cat <<'EOF' >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
           ## 📬 Repository Dispatch Event Summary
 
-          **Event Type:** ${{ github.event.action }}
-          **Triggered:** ${{ github.event.created_at }}
-          **Sender:** ${{ github.event.sender.login }}
+          **Event Type:** $EVENT_ACTION
+          **Triggered:** $EVENT_CREATED_AT
+          **Sender:** $EVENT_SENDER
 
           ### Job Results
-          - Deployment: ${{ needs.handle-deployment.result }}
-          - Migration: ${{ needs.handle-migration.result }}
-          - Cache Rebuild: ${{ needs.handle-cache-rebuild.result }}
-          - Incident Response: ${{ needs.handle-incident.result }}
-          - Custom Task: ${{ needs.handle-custom-task.result }}
+          - Deployment: $DEPLOYMENT_RESULT
+          - Migration: $MIGRATION_RESULT
+          - Cache Rebuild: $CACHE_REBUILD_RESULT
+          - Incident Response: $INCIDENT_RESULT
+          - Custom Task: $CUSTOM_TASK_RESULT
 
           ### Payload
           ```json
-          ${{ toJSON(github.event.client_payload) }}
+          $PAYLOAD_JSON
           ```
+          EOF
+
+          # Static documentation below has no dynamic values to substitute, so it's
+          # written via a separate quoted heredoc (inert to the shell, no injection
+          # surface) rather than continuing the dynamic block above.
+          cat <<'DOCEOF' >> $GITHUB_STEP_SUMMARY
 
           ---
 
@@ -377,7 +430,7 @@ jobs:
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            https://api.github.com/repos/OWNER/REPO/dispatches \
             -d '{
               "event_type": "deploy-prod",
               "client_payload": {
@@ -392,7 +445,7 @@ jobs:
           ```python
           import requests
 
-          url = "https://api.github.com/repos/${{ github.repository }}/dispatches"
+          url = "https://api.github.com/repos/OWNER/REPO/dispatches"
           headers = {
               "Authorization": f"token {token}",
               "Accept": "application/vnd.github.v3+json"
@@ -409,10 +462,10 @@ jobs:
 
           **Using GitHub CLI:**
           ```bash
-          gh api repos/${{ github.repository }}/dispatches \
+          gh api repos/OWNER/REPO/dispatches \
             -X POST \
             -f event_type='deploy-prod' \
             -f client_payload[version]='v1.2.3' \
             -f client_payload[environment]='production'
           ```
-          EOF
+          DOCEOF

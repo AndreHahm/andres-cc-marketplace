@@ -89,9 +89,7 @@ permissions:
 jobs:
   scan:
     # Only scan if CI passed and it was a PR
-    if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -100,10 +98,8 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Run security scan
-        run: |
-          # Security scanning without exposing secrets to PR
-          npm audit --audit-level=high
+      - name: Run security scan  # scanning without exposing secrets to the PR
+        run: npm audit --audit-level=high
 ```
 
 #### Accessing Workflow Run Information
@@ -282,14 +278,9 @@ jobs:
     steps:
       - name: Validate payload
         run: |
-          # Validate required fields
-          if [[ -z "${{ github.event.client_payload.version }}" ]]; then
-            echo "Error: version is required"
-            exit 1
-          fi
-
-          if [[ -z "${{ github.event.client_payload.approver }}" ]]; then
-            echo "Error: approver is required"
+          # Required fields: version, approver
+          if [[ -z "${{ github.event.client_payload.version }}" || -z "${{ github.event.client_payload.approver }}" ]]; then
+            echo "Error: version and approver are required"
             exit 1
           fi
 
