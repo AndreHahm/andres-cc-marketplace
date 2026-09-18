@@ -38,9 +38,9 @@ claude --plugin-dir /path/to/andres-cc-marketplace/plugins/github-actions-kit
 ## Declared plugin language
 
 Python. All scripts (`validate_workflow.py`, `workflow_hardening_audit.py`,
-`conclusion_volatility_audit.py`, `test_generator.py`, `test_validate_workflow.py`) are Python, per this
-marketplace's `require-declared-plugin-language.md` convention. New scripts added to this plugin should
-stay Python going forward.
+`conclusion_volatility_audit.py`, `find_step_boundaries.py`, `test-generator.py`,
+`test_validate_workflow.py`) are Python, per this marketplace's `require-declared-plugin-language.md`
+convention. New scripts added to this plugin should stay Python going forward.
 
 ## License
 
