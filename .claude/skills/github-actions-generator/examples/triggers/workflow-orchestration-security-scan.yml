@@ -2,21 +2,28 @@
 # Part of a 4-file set — see workflow-orchestration.yml for the full list and why these
 # are separate files, not one multi-document YAML.
 #
-# This workflow runs AFTER CI completes, triggered by workflow_run — which runs with
-# elevated permissions and access to secrets regardless of where the code came from.
-# WARNING: checking out and executing github.event.workflow_run.head_sha (the PR's own
-# head commit) in this privileged context is the classic "workflow_run pwn request"
-# vulnerability — a fork PR could ship a malicious package.json lifecycle script that
-# then runs with this workflow's write-capable token. The same-repository guard below
-# is the standard mitigation: only same-repo (already-trusted, write-access) PRs reach
-# the checkout/install steps; a fork PR's run exits before touching any PR code.
+# SECURITY NOTE — why this file uses `pull_request`, not `workflow_run`, unlike its
+# siblings: CodeQL/dependency-audit need the PR's own source code to analyze, and
+# checking that code out inside a privileged `workflow_run` job (which always runs with
+# elevated permissions and secrets, regardless of a same-repository guard on the job's
+# own `if:` condition — a static analyzer can't evaluate that guard, and neither can a
+# human skimming the file) is the classic "workflow_run pwn request" vulnerability: a
+# fork PR could ship a malicious package.json lifecycle script that then runs with this
+# workflow's write-capable token. `pull_request` is the officially-recommended trigger
+# for CodeQL for exactly this reason — GitHub automatically restricts a fork PR's
+# pull_request-triggered run to a read-only token with no secrets, regardless of what
+# permissions this file declares, so the analysis itself never executes with elevated
+# access. The tradeoff: `security-events: write` (SARIF upload) and `issues: write` (PR
+# comment) are silently no-ops for a fork PR's read-only token — expected, not a bug;
+# same-repo PRs and direct pushes still get the full scan-and-report behavior.
 
 name: Security Scan
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline"]
-    types: [completed]
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   security-events: write
@@ -27,19 +34,12 @@ permissions:
 jobs:
   security-scan:
     name: Run Security Scan
-    # Only scan if CI passed, and only for same-repository PRs — never a fork's PR head,
-    # since this job runs with write-capable permissions and secrets (see WARNING above).
-    if: >-
-      ${{ github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_repository.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
-      - name: Checkout PR code
+      - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -75,19 +75,13 @@ jobs:
           retention-days: 30
 
       - name: Comment on PR with results
-        if: github.event.workflow_run.event == 'pull_request'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const fs = require('fs');
 
-            // Get PR number from workflow run
-            const prNumber = context.payload.workflow_run.pull_requests[0]?.number;
-
-            if (!prNumber) {
-              console.log('Not a PR, skipping comment');
-              return;
-            }
+            const prNumber = context.payload.pull_request.number;
 
             // Read audit results
             let auditResults = {};
