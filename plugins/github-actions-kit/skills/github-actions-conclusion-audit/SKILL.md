@@ -145,11 +145,18 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
       `critical_groups`)
 - [ ] The "Collect run JSON" example runs without error against a real `gh run view` call
 
-A single-arm (with-skill) eval covers 1 of 3 declared scenarios (synthetic alternating-conclusion run history →
-correctly flagged as critical instability): all 3 assertions passed (schema-valid synthetic files
-created, script actually run, alternating group correctly flagged `critical` with `instability_pct=100.0`
-and a correct `FAIL_ON_CRITICAL=1` exit code). The "audit CI stability" and live-`gh`-data-path scenarios
-remain uncovered by eval — the quality gates above are the check for those.
+A real baseline-comparison eval covers 1 of 3 declared scenarios (synthetic alternating-conclusion run
+history → correctly flagged as critical instability): `with_skill` passed all 3 assertions (schema-valid
+synthetic files created, script actually run, alternating group correctly flagged `critical` with
+`instability_pct=100.0` and a correct `FAIL_ON_CRITICAL=1` exit code; pass rate 1.0). `baseline` (no
+skill guidance) passed 1 of 3 (pass rate 0.333): it correctly concluded the group was unstable/flaky
+using strong independent reasoning (same-commit reruns flipping failure→success), but its synthetic JSON
+schema omitted the `repository` field this skill's own documented schema requires, and it never ran
+`scripts/conclusion_volatility_audit.py` — a +66.7 percentage-point improvement. The "audit CI stability"
+and live-`gh`-data-path scenarios remain uncovered by eval — the quality gates above are the check for
+those.
 
-**Last dated run record:** 2026-09-18 — `evals/github-actions-conclusion-audit/` eval-1, with_skill
-3/3 assertions passing (pass_rate 1.0).
+**Last dated run record:** 2026-09-19 — eval-1 baseline-comparison, with_skill 3/3 (1.0) vs baseline 1/3
+(0.333), +66.7pp — see
+`evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`
+and `evals/github-actions-conclusion-audit/workspace/iteration-1/benchmark.json`.

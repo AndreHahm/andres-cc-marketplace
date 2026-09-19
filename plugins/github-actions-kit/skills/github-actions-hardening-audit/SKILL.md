@@ -131,13 +131,19 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
 - [ ] `fixtures/reusable-caller.yml` scores `0` (severity `ok`) — its one job calls a reusable workflow via a job-level `uses:` key and has no `timeout-minutes` (not a valid key for that job shape); `missing_timeout_jobs` correctly comes back empty instead of false-positive-flagging the job.
 - [ ] `WORKFLOW_GLOB` resolves to at least one file, or the script exits `1` with a clear `no files matched` error.
 
-A single-arm (with-skill) eval exists at `evals/github-actions-hardening-audit/evals.json` — 1 of 3 declared
-Testing & Validation scenarios above is covered as its own scenario ("audit the bundled fixtures for
-hardening risk"; the other two trigger phrases exercise the same underlying scoring path, not yet run as
-separate blind scenarios). Result: PASS, 3/3 assertions (script actually invoked against the fixtures,
-`clean.yml` scored `0`/`ok`, `risky.yml` scored `9`/`critical`) — see
-`evals/github-actions-hardening-audit/workspace/iteration-1/eval-1/with_skill/grading.json`.
+A real baseline-comparison eval exists at `evals/github-actions-hardening-audit/evals.json` — 1 of 3
+declared Testing & Validation scenarios above is covered as its own scenario ("audit the bundled fixtures
+for hardening risk"; the other two trigger phrases exercise the same underlying scoring path, not yet run
+as separate blind scenarios). `with_skill` result: PASS, 3/3 assertions (script actually invoked against
+the fixtures, `clean.yml` scored `0`/`ok`, `risky.yml` scored `9`/`critical`; pass rate 1.0). `baseline`
+(no skill guidance) result: 0/3 (pass rate 0.0) — a manual qualitative review correctly judged
+`clean.yml` as having no findings and `risky.yml` as critical severity (even independently naming the
+`pull_request_target` "pwn request" pattern the script itself doesn't label), but never ran the script
+and so produced no reproducible numeric score — a +100 percentage-point improvement on the graded
+assertions, though the qualitative severity judgment alone was directionally sound. See
+`evals/github-actions-hardening-audit/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`
+and `evals/github-actions-hardening-audit/workspace/iteration-1/benchmark.json`.
 
-**Last dated run record:** 2026-09-18 — eval-1 above (3/3 assertions passing); `fixtures/clean.yml`,
-`fixtures/risky.yml`, and the new `fixtures/reusable-caller.yml` all re-verified via direct script
-execution the same session (see Quality gates above).
+**Last dated run record:** 2026-09-19 — eval-1 baseline-comparison, with_skill 3/3 (1.0) vs baseline 0/3
+(0.0), +100pp; `fixtures/clean.yml`, `fixtures/risky.yml`, and `fixtures/reusable-caller.yml` all
+re-verified via direct script execution the same session (see Quality gates above).

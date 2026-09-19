@@ -1,0 +1,36 @@
+{
+  "databaseId": 10480256789,
+  "number": 143,
+  "attempt": 1,
+  "workflowName": "CI",
+  "workflowDatabaseId": 9876543,
+  "name": "CI",
+  "displayTitle": "Bump fixture dataset for reporting module",
+  "headBranch": "main",
+  "headSha": "def4567890123456789abcdef01234567890123",
+  "event": "push",
+  "status": "completed",
+  "conclusion": "failure",
+  "createdAt": "2026-09-18T11:45:21Z",
+  "startedAt": "2026-09-18T11:45:26Z",
+  "updatedAt": "2026-09-18T11:49:02Z",
+  "url": "https://github.com/example-org/example-repo/actions/runs/10480256789",
+  "jobs": [
+    {
+      "databaseId": 29011000143,
+      "name": "build-and-test",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-09-18T11:45:29Z",
+      "completedAt": "2026-09-18T11:48:57Z",
+      "steps": [
+        { "number": 1, "name": "Checkout", "status": "completed", "conclusion": "success" },
+        { "number": 2, "name": "Setup Node", "status": "completed", "conclusion": "success" },
+        { "number": 3, "name": "Install dependencies", "status": "completed", "conclusion": "success" },
+        { "number": 4, "name": "Run unit tests", "status": "completed", "conclusion": "success" },
+        { "number": 5, "name": "Run integration tests", "status": "completed", "conclusion": "failure" },
+        { "number": 6, "name": "Upload coverage", "status": "completed", "conclusion": "skipped" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "databaseId": 10480301122,
+  "number": 145,
+  "attempt": 1,
+  "workflowName": "CI",
+  "workflowDatabaseId": 9876543,
+  "name": "CI",
+  "displayTitle": "Refactor pagination helper in reporting module",
+  "headBranch": "main",
+  "headSha": "ghi7890123456789abcdef0123456789abcdef01",
+  "event": "push",
+  "status": "completed",
+  "conclusion": "failure",
+  "createdAt": "2026-09-18T16:22:10Z",
+  "startedAt": "2026-09-18T16:22:14Z",
+  "updatedAt": "2026-09-18T16:25:49Z",
+  "url": "https://github.com/example-org/example-repo/actions/runs/10480301122",
+  "jobs": [
+    {
+      "databaseId": 29011000145,
+      "name": "build-and-test",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-09-18T16:22:17Z",
+      "completedAt": "2026-09-18T16:25:44Z",
+      "steps": [
+        { "number": 1, "name": "Checkout", "status": "completed", "conclusion": "success" },
+        { "number": 2, "name": "Setup Node", "status": "completed", "conclusion": "success" },
+        { "number": 3, "name": "Install dependencies", "status": "completed", "conclusion": "success" },
+        { "number": 4, "name": "Run unit tests", "status": "completed", "conclusion": "success" },
+        { "number": 5, "name": "Run integration tests", "status": "completed", "conclusion": "failure" },
+        { "number": 6, "name": "Upload coverage", "status": "completed", "conclusion": "skipped" }
+      ]
+    }
+  ]
+}

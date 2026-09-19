@@ -287,18 +287,22 @@ Validation work is complete when all are true:
 - [ ] `python3 scripts/validate_workflow.py <file>` passes cleanly for `examples/valid-ci.yml`
 
 `evals/github-actions-validator/evals.json` currently covers 1 of 3 declared scenarios (the other two —
-"check my `.github/workflows/*.yml` file" and "debug actionlint errors" — are still uncovered): eval-1
-("Validate a known-broken workflow") ran with the skill and passed all 3 graded assertions (real
-`validate_workflow.py` execution against the target file, each error mapped to a specific reference
-section, and corrected workflow code shown for at least one finding) — see
-`evals/github-actions-validator/workspace/iteration-1/eval-1/with_skill/grading.json`. Combined with
+"check my `.github/workflows/*.yml` file" and "debug actionlint errors" — are still uncovered): a real
+baseline-comparison eval for eval-1 ("Validate a known-broken workflow") shows `with_skill` passing all
+3 graded assertions (real `validate_workflow.py` execution against the target file, each error mapped
+to a specific reference section, and corrected workflow code shown for at least one finding — pass rate
+1.0) against `baseline` passing 1 of 3 (pass rate 0.333: baseline found the same 4 defects via a raw
+locally-installed actionlint and showed corrected code, but never ran this skill's own script and had no
+reference sections to map to) — a +66.7 percentage-point improvement. See
+`evals/github-actions-validator/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json` and
+`evals/github-actions-validator/workspace/iteration-1/benchmark.json`. Combined with
 `tests/test_validate_workflow.py`, which exercises the script's real logic end-to-end (actionlint/act
 invocation, policy checks, offline mode) against known-good and known-bad fixtures, and the
 trigger-phrase/quality-gate lists above, this covers activation and core-path correctness, but the two
 uncovered scenarios remain open.
 
-**Last dated run record:** 2026-09-18 -- eval-1 (`with_skill`), 3/3 assertions passed, pass_rate 1.0;
-`tests/test_validate_workflow.py` passing.
+**Last dated run record:** 2026-09-19 -- eval-1 baseline-comparison, with_skill 3/3 (1.0) vs baseline 1/3
+(0.333), +66.7pp; `tests/test_validate_workflow.py` passing.
 
 ## Summary
 
