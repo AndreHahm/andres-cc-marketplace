@@ -4,10 +4,12 @@
 name: Scheduled Maintenance Tasks
 
 on:
-  # Run dependency audit daily at 2 AM UTC
+  # Run dependency audit daily at 2 AM UTC (Monday excluded: the separate
+  # weekly cron below covers Monday so the daily and weekly jobs never both
+  # fire at 2 AM UTC on the same day)
   schedule:
-    - cron: '0 2 * * *'
-    # Also run at the same time on Mondays so the weekly-metrics job's
+    - cron: '0 2 * * 0,2-6'
+    # Run at the same time on Mondays so the weekly-metrics job's
     # Monday-only condition (github.event.schedule == '0 2 * * 1') is genuinely emitted
     - cron: '0 2 * * 1'
 

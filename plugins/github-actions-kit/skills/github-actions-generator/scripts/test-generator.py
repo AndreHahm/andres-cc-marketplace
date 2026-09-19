@@ -311,14 +311,18 @@ def main() -> int:
     id_re = r"(?:[\w-]+|\[[\w-]+\])"
     injection_context_re = re.compile(
         r"\$\{\{\s*(?:"
-        r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+        r"github\.(?:event|head_ref|ref_name|ref(?!_)|actor|triggering_actor|repository_owner|base_ref)"
         rf"|needs\.{id_re}\.outputs\.{id_re}"
         rf"|steps\.{id_re}\.outputs\.{id_re}"
         rf"|inputs\.{id_re}"
         r")"
     )
-    run_block_start_re = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
-    script_block_start_re = re.compile(r"^\s*script:\s*[|>][-+]?\d*\s*$")
+    # Shared YAML block-scalar header: `[|>]` optionally followed by an indentation digit and/or
+    # a chomping indicator, in either order (`|-2` and `|2-` are both valid YAML), and an optional
+    # leading `- ` list marker so the compact `- run: |` step form is matched too.
+    block_header_re = r"[|>](?:[-+]?\d*|\d+[-+]?)"
+    run_block_start_re = re.compile(rf"^\s*(?:-\s*)?run:\s*{block_header_re}\s*$")
+    script_block_start_re = re.compile(rf"^\s*(?:-\s*)?script:\s*{block_header_re}\s*$")
     # Inline single-line form: `run: <command>` / `script: <command>` (optionally under a
     # `- ` step-list dash). Block-scalar starts (`run: |`, `run: >-`, ...) are matched and
     # `continue`d past by the two regexes above before this one is ever consulted, so this
@@ -383,6 +387,24 @@ def main() -> int:
     assert_injection_detected(
         "detects bracketed needs.[job-id].outputs.[output-name] inside a run: | block",
         ["      run: |", '        echo "${{ needs.[job-id].outputs.[output-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects un-bracketed github.ref (not github.ref_name) inside a run: | block",
+        ["      run: |", '        echo "${{ github.ref }}"'],
+    )
+    assert_injection_not_detected(
+        "does not flag github.ref_type/github.ref_protected as risky "
+        "(not attacker-controlled freeform text, unlike github.ref)",
+        ["      run: |", '        echo "${{ github.ref_type }} ${{ github.ref_protected }}"'],
+    )
+    assert_injection_detected(
+        "detects a risky expression inside a compact '- run: |' step form",
+        ["      - run: |", '        echo "${{ inputs.[input-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects a risky expression inside a 'run: |2-' block "
+        "(indentation-then-chomping indicator order)",
+        ["      run: |2-", '        echo "${{ inputs.[input-name] }}"'],
     )
     assert_injection_detected(
         "detects an inline run: <command> single-line form with a risky expression",

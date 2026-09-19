@@ -67,6 +67,7 @@ def check_docker() -> bool:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,
+            timeout=10,
         )
         return True
     except Exception:
@@ -221,16 +222,16 @@ def check_action_versions(workflow_path: str) -> int:
 
 INJECTION_CONTEXT_RE = re.compile(
     r"\$\{\{.*(?:"
-    r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"github\.(?:event|head_ref|ref_name|ref(?!_)|actor|triggering_actor|repository_owner|base_ref)"
     r"|needs\.[\w-]+\.outputs\.[\w-]+"
     r"|steps\.[\w-]+\.outputs\.[\w-]+"
     r"|inputs\.[\w-]+"
     r")"
 )
-RUN_BLOCK_START_RE = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
+RUN_BLOCK_START_RE = re.compile(r"^\s*(?:-\s*)?run:\s*[|>](?:[-+]?\d*|\d+[-+]?)\s*$")
 RUN_INLINE_RISK_RE = re.compile(
     r"^\s*run:\s*.*\$\{\{.*(?:"
-    r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
+    r"github\.(?:event|head_ref|ref_name|ref(?!_)|actor|triggering_actor|repository_owner|base_ref)"
     r"|needs\.[\w-]+\.outputs\.[\w-]+"
     r"|steps\.[\w-]+\.outputs\.[\w-]+"
     r"|inputs\.[\w-]+"

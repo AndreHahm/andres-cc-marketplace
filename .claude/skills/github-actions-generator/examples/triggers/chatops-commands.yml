@@ -116,17 +116,23 @@ jobs:
             });
 
   # Command: /deploy [environment]
-  cmd-deploy:
-    name: Deploy Command
+  # Split into three jobs so the job that checks out and builds fork-controlled PR code
+  # never holds a write-capable token: `actions/checkout` persists its credential by
+  # default, and a malicious npm lifecycle/build script from the fork could read that
+  # credential from .git/config and use it to call write-scoped GitHub APIs — the same
+  # "pwn request" class covered in workflow-orchestration-security-scan.yml. The build
+  # job below drops `issues: write` and sets `persist-credentials: false` on checkout;
+  # reactions/comments run in separate jobs that never execute PR code.
+  cmd-deploy-react:
+    name: Deploy Command - React
     needs: [parse-command]
     if: |
       needs.parse-command.outputs.command == 'deploy' &&
       needs.parse-command.outputs.is-authorized == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: read
       issues: write
 
     steps:
@@ -141,6 +147,24 @@ jobs:
               content: 'rocket'
             });
 
+  cmd-deploy-build:
+    name: Deploy Command - Build
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'deploy' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+
+    outputs:
+      environment: ${{ steps.parse-deploy.outputs.environment }}
+      url: ${{ steps.deploy.outputs.url }}
+      sha: ${{ steps.pr.outputs.sha }}
+
+    steps:
       - name: Parse deploy arguments
         id: parse-deploy
         env:
@@ -186,6 +210,7 @@ jobs:
         with:
           repository: ${{ steps.pr.outputs.repo }}
           ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -209,13 +234,28 @@ jobs:
           DEPLOY_URL="https://$ENVIRONMENT.example.com"
           echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
 
+  cmd-deploy-comment:
+    name: Deploy Command - Comment
+    needs: [parse-command, cmd-deploy-build]
+    if: |
+      always() &&
+      needs.parse-command.outputs.command == 'deploy' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
       - name: Comment deployment success
+        if: needs.cmd-deploy-build.result == 'success'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
-          DEPLOY_ENVIRONMENT: ${{ steps.parse-deploy.outputs.environment }}
-          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+          DEPLOY_ENVIRONMENT: ${{ needs.cmd-deploy-build.outputs.environment }}
+          DEPLOY_URL: ${{ needs.cmd-deploy-build.outputs.url }}
           COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
-          PR_SHA: ${{ steps.pr.outputs.sha }}
+          PR_SHA: ${{ needs.cmd-deploy-build.outputs.sha }}
         with:
           script: |
             // Values derived from the ChatOps command args are passed via env and read
@@ -242,7 +282,7 @@ jobs:
             });
 
       - name: Comment deployment failure
-        if: failure()
+        if: needs.cmd-deploy-build.result != 'success'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
@@ -257,17 +297,19 @@ jobs:
             });
 
   # Command: /run-tests [suite]
-  cmd-run-tests:
-    name: Run Tests Command
+  # Split into three jobs for the same reason as cmd-deploy above: the job that checks
+  # out and runs fork-controlled PR code (npm ci, npm test) must not hold issues: write,
+  # and its checkout must not persist the token for that code to read.
+  cmd-run-tests-react:
+    name: Run Tests Command - React
     needs: [parse-command]
     if: |
       needs.parse-command.outputs.command == 'run-tests' &&
       needs.parse-command.outputs.is-authorized == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: read
       issues: write
 
     steps:
@@ -282,6 +324,22 @@ jobs:
               content: 'eyes'
             });
 
+  cmd-run-tests-build:
+    name: Run Tests Command - Build
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'run-tests' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+
+    outputs:
+      suite: ${{ steps.parse-suite.outputs.suite }}
+
+    steps:
       - name: Parse test suite
         id: parse-suite
         env:
@@ -311,6 +369,7 @@ jobs:
         with:
           repository: ${{ steps.pr.outputs.repo }}
           ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -347,12 +406,25 @@ jobs:
               ;;
           esac
 
+  cmd-run-tests-comment:
+    name: Run Tests Command - Comment
+    needs: [parse-command, cmd-run-tests-build]
+    if: |
+      always() &&
+      needs.parse-command.outputs.command == 'run-tests' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
       - name: Comment test results
-        if: always()
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
-          TEST_SUITE_NAME: ${{ steps.parse-suite.outputs.suite }}
-          TEST_OUTCOME: ${{ steps.test.outcome }}
+          TEST_SUITE_NAME: ${{ needs.cmd-run-tests-build.outputs.suite }}
+          TEST_OUTCOME: ${{ needs.cmd-run-tests-build.result }}
         with:
           script: |
             // Values derived from the ChatOps command args are passed via env and read

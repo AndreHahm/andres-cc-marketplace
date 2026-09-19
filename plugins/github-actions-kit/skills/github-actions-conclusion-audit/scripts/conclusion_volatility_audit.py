@@ -367,7 +367,7 @@ def main() -> int:
                     f"max_failure_streak={row['max_failure_streak']}"
                 )
 
-    return 1 if (fail_on_critical and critical_groups) else 0
+    return 1 if (fail_on_critical and (critical_groups or summary["parse_errors"])) else 0
 
 
 if __name__ == "__main__":
