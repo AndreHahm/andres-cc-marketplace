@@ -64,3 +64,10 @@ Found in PR #355's review (CodeRabbit) and deferred as too large to fix in that 
 several smaller, independently-scoped findings (an `act` fallback exit-code bug, an untrusted-context
 injection-regex gap, and a Windows path-separator bug) that were fixed directly in that same PR. This
 finding was intentionally left for a dedicated follow-up rather than folded into that fix set.
+
+## Review Finding Source
+- **PR:** https://github.com/AndreHahm/andres-cc-marketplace/pull/355
+- **Head SHA at time of finding:** `78f8f4194862fc45eaea081dc24c020f458b7520`
+- **Review:** https://github.com/AndreHahm/andres-cc-marketplace/pull/355#pullrequestreview-5254985343
+- **Reviewer:** coderabbitai (CodeRabbit)
+- **Stated severity:** Major ("🏗️ Heavy lift" / too large to fix in this review round)
