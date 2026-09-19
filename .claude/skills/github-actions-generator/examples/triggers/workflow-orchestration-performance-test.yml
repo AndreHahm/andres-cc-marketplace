@@ -2,11 +2,13 @@
 # Part of a 4-file set — see workflow-orchestration.yml for the full list and why these
 # are separate files, not one multi-document YAML.
 #
-# Run performance tests after CI completes (only on main branch). Same workflow_run
-# privilege caveat as security-scan.yml: this job checks out and executes
-# github.event.workflow_run.head_sha with contents: write — the same-repository guard
-# below is required for the same "pwn request" reason (see security-scan.yml's own
-# WARNING comment for the full explanation).
+# Run performance tests after CI completes (only on main branch). This job never checks
+# out the triggering run's source — it operates solely on the build artifact CI already
+# produced, so there is no `workflow_run` "pwn request" surface here (contrast
+# security-scan.yml, which genuinely needs PR source for CodeQL and uses the
+# `pull_request` trigger instead for that reason). The same-repository guard below is
+# kept anyway as defense in depth around `contents: write`, not because this job
+# executes untrusted PR code.
 
 name: Performance Tests
 
@@ -23,8 +25,8 @@ permissions:
 jobs:
   performance-test:
     name: Run Performance Tests
-    # Only run if CI passed, and only for same-repository PRs — never a fork's PR head,
-    # since this job checks out and executes PR code with write-capable permissions.
+    # Only run if CI passed, and only for same-repository PRs — defense in depth around
+    # the contents:write permission, even though this job never checks out PR source.
     if: >-
       ${{ github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.head_repository.full_name == github.repository }}
@@ -32,11 +34,6 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
       - name: Download build artifacts from CI
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         with:
