@@ -72,7 +72,7 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: ./build.sh
 ```
 
@@ -100,7 +100,7 @@ jobs:
   build:
     runs-on: ubuntu-latest-arm64  # Free for public repos
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Build on ARM64
         run: |
           uname -m  # Should output: aarch64
@@ -145,8 +145,8 @@ jobs:
   ml-training:
     runs-on: gpu-t4-4-core
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: '3.11'
       - run: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
@@ -195,8 +195,8 @@ jobs:
   ios-build:
     runs-on: macos-15-xlarge  # M2 Pro with GPU acceleration
     steps:
-      - uses: actions/checkout@v6
-      - uses: maxim-lobanov/setup-xcode@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
         with:
           xcode-version: latest-stable
       - run: xcodebuild -workspace App.xcworkspace -scheme Production archive
@@ -263,9 +263,9 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: ./build.sh --arch ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
         with:
           name: build-${{ matrix.arch }}
           path: dist/

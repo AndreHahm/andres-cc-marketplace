@@ -28,12 +28,6 @@
 - Reproducible: Same code runs every time
 - Verifiable: Can audit exact code being executed
 
-**Acceptable Alternative:**
-```yaml
-# ✅ ACCEPTABLE: Major version tag (for official GitHub actions)
-- uses: actions/checkout@v4
-```
-
 **Avoid:**
 ```yaml
 # ❌ BAD: Mutable references
@@ -491,7 +485,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: test-results/
@@ -623,7 +617,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: build-${{ github.sha }}
           path: dist/

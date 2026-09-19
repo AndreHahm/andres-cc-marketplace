@@ -205,7 +205,9 @@ steps:
     run: ./upload-results.sh
 
   - name: Use step output
-    run: echo "Test result: ${{ steps.tests.outputs.result }}"
+    env:
+      TEST_RESULT: ${{ steps.tests.outputs.result }}
+    run: echo "Test result: $TEST_RESULT"
 ```
 
 **Step Properties:**
@@ -231,7 +233,9 @@ jobs:
     needs: build
     steps:
       - name: Deploy build
-        run: ./deploy.sh ${{ needs.build.outputs.build-id }}
+        env:
+          BUILD_ID: ${{ needs.build.outputs.build-id }}
+        run: ./deploy.sh "$BUILD_ID"
 ```
 
 ### inputs context
@@ -257,7 +261,9 @@ jobs:
   deploy:
     steps:
       - name: Deploy to ${{ inputs.environment }}
-        run: ./deploy.sh ${{ inputs.environment }}
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+        run: ./deploy.sh "$DEPLOY_ENVIRONMENT"
 
       - name: Enable debug
         if: inputs.debug
@@ -294,7 +300,9 @@ if: endsWith(github.event.pull_request.head.ref, '-hotfix')
 ```yaml
 # Format string with placeholders
 - name: Print message
-  run: echo "${{ format('Building {0} on {1}', github.ref_name, runner.os) }}"
+  env:
+    BUILD_MESSAGE: ${{ format('Building {0} on {1}', github.ref_name, runner.os) }}
+  run: echo "$BUILD_MESSAGE"
 ```
 
 ### Type Conversion Functions
@@ -303,10 +311,14 @@ if: endsWith(github.event.pull_request.head.ref, '-hotfix')
 ```yaml
 # Convert object to JSON string
 - name: Print context
-  run: echo '${{ toJSON(github) }}'
+  env:
+    GITHUB_CONTEXT: ${{ toJSON(github) }}
+  run: echo "$GITHUB_CONTEXT"
 
 - name: Print matrix
-  run: echo '${{ toJSON(matrix) }}'
+  env:
+    MATRIX_CONTEXT: ${{ toJSON(matrix) }}
+  run: echo "$MATRIX_CONTEXT"
 ```
 
 **fromJSON()**
@@ -498,7 +510,7 @@ timeout-minutes: ${{ github.event_name == 'schedule' && 120 || 30 }}
 
 ```yaml
 # Artifact name with context values
-- uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+- uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
   with:
     name: build-${{ runner.os }}-${{ github.sha }}
     path: dist/
@@ -628,14 +640,21 @@ This approach ensures variables are resolved by GitHub Actions before execution,
 8. **Debugging Expressions:**
    ```yaml
    # Print entire context with pretty formatting
-   - run: echo '${{ toJson(github) }}'
+   - env:
+       GITHUB_CONTEXT: ${{ toJson(github) }}
+     run: echo "$GITHUB_CONTEXT"
 
    # Print specific values
-   - run: |
-       echo "Event: ${{ github.event_name }}"
-       echo "Ref: ${{ github.ref }}"
-       echo "SHA: ${{ github.sha }}"
-       echo "Actor: ${{ github.actor }}"
+   - env:
+       EVENT_NAME: ${{ github.event_name }}
+       EVENT_REF: ${{ github.ref }}
+       EVENT_SHA: ${{ github.sha }}
+       EVENT_ACTOR: ${{ github.actor }}
+     run: |
+       echo "Event: $EVENT_NAME"
+       echo "Ref: $EVENT_REF"
+       echo "SHA: $EVENT_SHA"
+       echo "Actor: $EVENT_ACTOR"
    ```
 
 ## Summary

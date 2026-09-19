@@ -4,14 +4,9 @@ Actionlint is a static checker for GitHub Actions workflow files that catches er
 
 ## Installation
 
-```bash
-# Download and install using the official script
-bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-```
-
-See [actionlint's installation docs](https://github.com/rhysd/actionlint#installation) for other installation methods (Homebrew, Go
-install, prebuilt binaries). This skill does not auto-install actionlint — see SKILL.md's Initial
-Setup section.
+See [actionlint's installation docs](https://github.com/rhysd/actionlint#installation) for the current
+installation methods (Homebrew, Go install, prebuilt binaries, or the official download script). This
+skill does not auto-install actionlint — see SKILL.md's Initial Setup section.
 
 ## Core Usage
 
@@ -231,7 +226,8 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Download actionlint
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        # Pinned to a tagged release, not `main` — check https://github.com/rhysd/actionlint/releases for latest version
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/v1.7.9/scripts/download-actionlint.bash)
       - name: Run actionlint
         run: ./actionlint
 ```

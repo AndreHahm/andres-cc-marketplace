@@ -288,8 +288,8 @@ workflows that need to save on every run rather than only on a cache miss — pa
 
 ### actions/upload-artifact
 
-**Latest Version:** v4 (v4.3.1)
-**SHA:** `5d5d22a31266ced268874388b861e4b58bb5c2f3`
+**Latest Version:** v7 (v7.0.1)
+**SHA:** `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
 
 **Description:** Upload build artifacts
 
@@ -304,7 +304,7 @@ workflows that need to save on every run rather than only on a cache miss — pa
 **Example:**
 ```yaml
 - name: Upload build artifacts
-  uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+  uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
   with:
     name: build-${{ github.sha }}
     path: dist/

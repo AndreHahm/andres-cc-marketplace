@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import glob as globmod
 import json
+import math
 import os
 import re
 import sys
@@ -47,7 +48,7 @@ def parse_pct(value: str, label: str) -> float:
     except ValueError:
         print(f"ERROR: {label} must be numeric (got {value!r})", file=sys.stderr)
         sys.exit(1)
-    if parsed < 0 or parsed > 100:
+    if not math.isfinite(parsed) or parsed < 0 or parsed > 100:
         print(f"ERROR: {label} must be between 0 and 100 (got {value!r})", file=sys.stderr)
         sys.exit(1)
     return parsed
@@ -229,7 +230,14 @@ def main() -> int:
         run_count = len(conclusions)
         transitions = 0
         for idx in range(1, run_count):
-            if conclusions[idx] != conclusions[idx - 1]:
+            previous = conclusions[idx - 1]
+            current = conclusions[idx]
+            if (
+                previous == "success"
+                and current in FAILURE_LIKE
+                or previous in FAILURE_LIKE
+                and current == "success"
+            ):
                 transitions += 1
 
         instability_pct = 0.0

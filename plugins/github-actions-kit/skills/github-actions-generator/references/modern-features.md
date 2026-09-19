@@ -27,13 +27,16 @@ Create rich markdown summaries in the Actions UI using `$GITHUB_STEP_SUMMARY`.
 
 ```yaml
 - name: Generate summary
+  env:
+    TESTS_PASSED: ${{ steps.test.outputs.passed }}
+    TEST_COVERAGE: ${{ steps.test.outputs.coverage }}
   run: |
     echo "## Build Results :rocket:" >> $GITHUB_STEP_SUMMARY
     echo "" >> $GITHUB_STEP_SUMMARY
     echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
     echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-    echo "| Tests | ${{ steps.test.outputs.passed }} passed |" >> $GITHUB_STEP_SUMMARY
-    echo "| Coverage | ${{ steps.test.outputs.coverage }}% |" >> $GITHUB_STEP_SUMMARY
+    echo "| Tests | $TESTS_PASSED passed |" >> $GITHUB_STEP_SUMMARY
+    echo "| Coverage | ${TEST_COVERAGE}% |" >> $GITHUB_STEP_SUMMARY
 ```
 
 ### Advanced Patterns
@@ -310,12 +313,17 @@ Key excerpt — the coverage-gate and summary pattern from the `test` job:
 
 ```yaml
 - name: Coverage check
+  env:
+    TEST_COVERAGE: ${{ steps.test.outputs.coverage }}
   run: |
-    COVERAGE=${{ steps.test.outputs.coverage }}
-    if [ $COVERAGE -lt 80 ]; then
-      echo "::warning::Coverage $COVERAGE% below 80% threshold"
+    if ! [[ "$TEST_COVERAGE" =~ ^[0-9]+$ ]]; then
+      echo "::error::Coverage value is not a valid integer: $TEST_COVERAGE"
+      exit 1
+    fi
+    if [ "$TEST_COVERAGE" -lt 80 ]; then
+      echo "::warning::Coverage ${TEST_COVERAGE}% below 80% threshold"
     else
-      echo "::notice::Coverage $COVERAGE% meets threshold"
+      echo "::notice::Coverage ${TEST_COVERAGE}% meets threshold"
     fi
 ```
 

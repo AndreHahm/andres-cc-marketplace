@@ -93,7 +93,8 @@ For security, pin actions to specific commit SHAs:
 - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
 - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903  # v6.0.0
 
-# Acceptable: Major version tag
+# Acceptable: Major version tag, but only for official GitHub-owned actions
+# (the `actions` or `github` org). Third-party actions should always be SHA pinned.
 - uses: actions/checkout@v6
 
 # Not recommended: Branch reference

@@ -16,7 +16,7 @@ surfaces as "works locally, fails in CI."
     cache: 'npm'
 
 # Good
-- uses: actions/setup-node@v4
+- uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
   with:
     cache: 'npm'
     cache-dependency-path: package-lock.json

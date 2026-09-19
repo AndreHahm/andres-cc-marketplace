@@ -9,9 +9,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  deployments: write
-  issues: write
 
 jobs:
   # Command router - determines which command to run
@@ -21,6 +18,9 @@ jobs:
     if: github.event.issue.pull_request
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
 
     outputs:
       command: ${{ steps.parse.outputs.command }}
@@ -42,7 +42,15 @@ jobs:
           ARGS=$(echo "$COMMENT" | sed -E 's|^/[-[:alnum:]_]+\s*||' || echo "")
 
           echo "command=$COMMAND" >> $GITHUB_OUTPUT
-          echo "args=$ARGS" >> $GITHUB_OUTPUT
+
+          # ARGS is derived from the comment body and may contain embedded newlines;
+          # use the collision-safe multiline delimiter syntax rather than a single-line write.
+          delimiter="$(uuidgen)"
+          {
+            echo "args<<$delimiter"
+            printf '%s\n' "$ARGS"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
 
           echo "Detected command: /$COMMAND"
           echo "Arguments: $ARGS"
@@ -116,6 +124,10 @@ jobs:
       needs.parse-command.outputs.is-authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
 
     steps:
       - name: React with rocket
@@ -160,6 +172,7 @@ jobs:
 
             core.setOutput('ref', pr.data.head.ref);
             core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
             core.setOutput('mergeable', pr.data.mergeable);
 
       - name: Check if PR is mergeable
@@ -171,7 +184,8 @@ jobs:
       - name: Checkout PR code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ steps.pr.outputs.ref }}
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -251,6 +265,10 @@ jobs:
       needs.parse-command.outputs.is-authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
 
     steps:
       - name: React with eyes
@@ -285,11 +303,14 @@ jobs:
               pull_number: context.payload.issue.number
             });
             core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
 
       - name: Checkout PR code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ steps.pr.outputs.ref }}
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -361,6 +382,10 @@ jobs:
       needs.parse-command.outputs.is-authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
 
     steps:
       - name: React with chart
@@ -385,11 +410,14 @@ jobs:
               pull_number: context.payload.issue.number
             });
             core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
 
       - name: Checkout PR code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ steps.pr.outputs.ref }}
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
 
       - name: Run benchmarks
         run: |
@@ -425,6 +453,9 @@ jobs:
     if: needs.parse-command.outputs.command == 'help'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Show help
@@ -481,6 +512,9 @@ jobs:
       needs.parse-command.outputs.command != 'help'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: React with confused

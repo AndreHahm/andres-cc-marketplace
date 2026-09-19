@@ -79,15 +79,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: syft ./src -o spdx-json > sbom.spdx.json
 
-      - uses: actions/attest-sbom@v3
+      - uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34  # v3.0.0
         with:
           subject-path: 'dist/*.tar.gz'
           sbom-path: 'sbom.spdx.json'
 
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a  # v3.0.0
         with:
           subject-path: 'dist/*.tar.gz'
 ```
@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4.3.1
         with:
           role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
           aws-region: us-east-1
@@ -193,7 +193,7 @@ jobs:
       name: staging
       url: https://staging.example.com
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: ./deploy.sh staging
 
   deploy-production:
@@ -203,7 +203,7 @@ jobs:
       name: production
       url: https://prod.example.com
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: ./deploy.sh production
 ```
 
@@ -272,7 +272,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: npm ci
       - env:
           DATABASE_URL: postgres://postgres:postgres@postgres:5432/testdb
@@ -321,8 +321,8 @@ jobs:
             node: 24
             experimental: true
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238  # v6.2.0
         with:
           node-version: ${{ matrix.node }}
       - run: npm test
@@ -354,7 +354,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: npm ci && npm run build
 ```
 
