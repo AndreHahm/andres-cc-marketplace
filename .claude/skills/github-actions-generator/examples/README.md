@@ -142,10 +142,18 @@ Repository-dispatch workflow demonstrating:
 
 **Use case:** Triggering a workflow from an external system or another repo
 
-#### triggers/workflow-orchestration.yml
+#### triggers/workflow-orchestration.yml (+ 3 companion files)
 Workflow-orchestration example demonstrating:
 - `workflow_run` triggering off a completed upstream workflow
 - Conditional execution based on the triggering workflow's conclusion
+- The same-repository guard required whenever a privileged `workflow_run` job checks out
+  and executes the triggering PR's own head commit (the "pwn request" mitigation)
+
+A 4-file set, one workflow definition per file (GitHub Actions doesn't support multiple
+workflows in one file) — `workflow-orchestration.yml` is the main CI Pipeline;
+`workflow-orchestration-security-scan.yml`, `workflow-orchestration-deploy.yml`, and
+`workflow-orchestration-performance-test.yml` are the three `workflow_run`-triggered
+workflows chained after it.
 
 **Use case:** Chaining workflows together (e.g. deploy after CI succeeds)
 
