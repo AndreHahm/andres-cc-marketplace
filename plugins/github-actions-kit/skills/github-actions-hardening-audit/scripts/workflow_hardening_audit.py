@@ -60,7 +60,7 @@ def compile_optional_regex(pattern: str, label: str) -> re.Pattern[str] | None:
         sys.exit(1)
 
 
-JOB_KEY_RE = re.compile(r"^[A-Za-z0-9_.-]+:\s*(#.*)?$")
+JOB_KEY_RE = re.compile(r"^(?:\"[^\"]+\"|'[^']+'|[A-Za-z0-9_.-]+):\s*(#.*)?$")
 USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
 # GitHub's complete documented set of `on:` trigger names (webhook events plus schedule/
 # workflow_dispatch/workflow_call/workflow_run/repository_dispatch/image_version) — kept as the

@@ -320,7 +320,7 @@ def main() -> int:
     # Shared YAML block-scalar header: `[|>]` optionally followed by an indentation digit and/or
     # a chomping indicator, in either order (`|-2` and `|2-` are both valid YAML), and an optional
     # leading `- ` list marker so the compact `- run: |` step form is matched too.
-    block_header_re = r"[|>](?:[-+]?\d*|\d+[-+]?)"
+    block_header_re = r"[|>](?:[-+]?\d*|\d+[-+]?)(?:\s+#.*)?"
     run_block_start_re = re.compile(rf"^\s*(?:-\s*)?run:\s*{block_header_re}\s*$")
     script_block_start_re = re.compile(rf"^\s*(?:-\s*)?script:\s*{block_header_re}\s*$")
     # Inline single-line form: `run: <command>` / `script: <command>` (optionally under a
@@ -405,6 +405,11 @@ def main() -> int:
         "detects a risky expression inside a 'run: |2-' block "
         "(indentation-then-chomping indicator order)",
         ["      run: |2-", '        echo "${{ inputs.[input-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects a risky expression inside a 'run: | # explanation' block "
+        "(trailing YAML comment after the block-scalar header)",
+        ["      run: | # explanation", '        echo "${{ inputs.[input-name] }}"'],
     )
     assert_injection_detected(
         "detects an inline run: <command> single-line form with a risky expression",

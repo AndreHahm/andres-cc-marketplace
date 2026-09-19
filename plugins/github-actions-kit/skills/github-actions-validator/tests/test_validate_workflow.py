@@ -470,6 +470,63 @@ def main() -> int:
         )
 
         print()
+        print("[P1] script injection check recognizes dash-prefixed inline run: steps")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-inline-dash.yml",
+            "name: Policy Inline Dash\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            '      - run: echo "${{ github.event.issue.title }}"\n',
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only",
+            "--policy-checks",
+            str(sb.repo_dir / "examples" / "policy-inline-dash.yml"),
+        )
+        assert_exit(
+            "dash-prefixed inline run: step does not change exit code", exit_code, 0, output
+        )
+        assert_contains(
+            "warns for a dash-prefixed inline run: step",
+            output,
+            r"policy-inline-dash\.yml:7 potential script injection risk",
+        )
+
+        print()
+        print("[P1] script injection check recognizes a trailing comment on a block header")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-block-comment.yml",
+            "name: Policy Block Comment\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - run: | # explanation\n"
+            "          echo ${{ github.ref }}\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only",
+            "--policy-checks",
+            str(sb.repo_dir / "examples" / "policy-block-comment.yml"),
+        )
+        assert_exit(
+            "block header with a trailing comment does not change exit code", exit_code, 0, output
+        )
+        assert_contains(
+            "warns inside a 'run: | # explanation' block",
+            output,
+            r"policy-block-comment\.yml:8 potential script injection risk",
+        )
+
+        print()
         print("[P0] act failing with an unrecognized, nonzero exit must be reported as failure")
         sb = Sandbox(tmp_root)
         sb.create_act_stub()

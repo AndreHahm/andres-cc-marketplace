@@ -37,6 +37,14 @@ reports/events/
 **/.temp/
 **/.experiments/
 
+# github-actions-conclusion-audit's own documented run-history collection directory
+# (SKILL.md's "Collect run JSON" recipe) -- deliberately repo-relative rather than the
+# session scratchpad, since exports are meant to persist across collection runs for
+# volatility comparison, not be discarded after one use. Gitignored here to close the
+# gap between that skill's own stated mitigation ("recommend gitignoring it") and this
+# repo's actual .gitignore, per PR #355 round-3 review.
+artifacts/
+
 #MKDocs static site
 site/
 

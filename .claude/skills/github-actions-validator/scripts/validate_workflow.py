@@ -228,9 +228,9 @@ INJECTION_CONTEXT_RE = re.compile(
     r"|inputs\.[\w-]+"
     r")"
 )
-RUN_BLOCK_START_RE = re.compile(r"^\s*(?:-\s*)?run:\s*[|>](?:[-+]?\d*|\d+[-+]?)\s*$")
+RUN_BLOCK_START_RE = re.compile(r"^\s*(?:-\s*)?run:\s*[|>](?:[-+]?\d*|\d+[-+]?)(?:\s+#.*)?\s*$")
 RUN_INLINE_RISK_RE = re.compile(
-    r"^\s*run:\s*.*\$\{\{.*(?:"
+    r"^\s*(?:-\s*)?run:\s*.*\$\{\{.*(?:"
     r"github\.(?:event|head_ref|ref_name|ref(?!_)|actor|triggering_actor|repository_owner|base_ref)"
     r"|needs\.[\w-]+\.outputs\.[\w-]+"
     r"|steps\.[\w-]+\.outputs\.[\w-]+"
