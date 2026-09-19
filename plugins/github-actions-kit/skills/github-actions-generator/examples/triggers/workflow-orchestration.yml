@@ -104,8 +104,14 @@ jobs:
 
 ---
 # SEPARATE WORKFLOW FILE: .github/workflows/security-scan.yml
-# This workflow runs AFTER CI completes, triggered by workflow_run
-# It's safe for external PRs because it runs with the target branch's code
+# This workflow runs AFTER CI completes, triggered by workflow_run — which runs with
+# elevated permissions and access to secrets regardless of where the code came from.
+# WARNING: checking out and executing github.event.workflow_run.head_sha (the PR's own
+# head commit) in this privileged context is the classic "workflow_run pwn request"
+# vulnerability — a fork PR could ship a malicious package.json lifecycle script that
+# then runs with this workflow's write-capable token. The same-repository guard below
+# is the standard mitigation: only same-repo (already-trusted, write-access) PRs reach
+# the checkout/install steps; a fork PR's run exits before touching any PR code.
 
 name: Security Scan
 
@@ -114,8 +120,6 @@ on:
     workflows: ["CI Pipeline"]
     types: [completed]
 
-# Critical: These permissions are safe because this workflow
-# uses code from the target branch, not the PR
 permissions:
   security-events: write
   contents: read
@@ -125,14 +129,15 @@ permissions:
 jobs:
   security-scan:
     name: Run Security Scan
-    # Only scan if CI passed
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only scan if CI passed, and only for same-repository PRs — never a fork's PR head,
+    # since this job runs with write-capable permissions and secrets (see WARNING above).
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
-      # Important: Check out the PR's code explicitly
-      # This is safe because we're in workflow_run (target branch context)
       - name: Checkout PR code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
