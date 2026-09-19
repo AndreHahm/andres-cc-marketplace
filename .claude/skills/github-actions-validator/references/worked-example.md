@@ -25,6 +25,7 @@ jobs:
 ### Example Phase 1: Run Validation
 
 ```bash
+SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/github-actions-validator"
 python3 "$SKILL_DIR/scripts/validate_workflow.py" --lint-only workflow.yml
 ```
 
@@ -180,6 +181,7 @@ jobs:
 ### Example Phase 5: Mandatory Rerun (applying Step 7 above)
 
 ```bash
+SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/github-actions-validator"
 python3 "$SKILL_DIR/scripts/validate_workflow.py" --lint-only workflow.yml
 ```
 
