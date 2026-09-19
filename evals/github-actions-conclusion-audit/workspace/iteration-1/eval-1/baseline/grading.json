@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Synthetic run JSON files matching the documented schema were created", "passed": false, "evidence": "6 synthetic run JSON files created with a reasonable but non-matching schema — missing the 'repository' field the skill's documented schema (and its script's own group-by key) requires; extra fields like 'number'/'attempt'/'jobs[].steps[]' also go beyond what's documented"},
+    {"text": "The agent actually runs scripts/conclusion_volatility_audit.py against them", "passed": false, "evidence": "own manual analysis only, script never run"},
+    {"text": "The alternating-conclusion group is correctly flagged as warn/critical instability, not ok", "passed": true, "evidence": "correctly concluded the group is unstable/flaky, with strong supporting evidence (same-commit rerun flips)"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.333}
+}

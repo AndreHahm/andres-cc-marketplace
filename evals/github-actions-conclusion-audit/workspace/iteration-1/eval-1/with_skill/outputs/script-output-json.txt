@@ -1,0 +1,91 @@
+=== JSON OUTPUT + FAIL_ON_CRITICAL=1 (RUN_GLOB=/home/andre-hahm/Repos/andres-cc-marketplace/.claude/worktrees/devops-kit/evals/github-actions-conclusion-audit/workspace/iteration-1/eval-1/with_skill/outputs/synthetic-runs/*.json) ===
+{
+  "all_groups": [
+    {
+      "branch": "main",
+      "failure_like_count": 3,
+      "failure_rate_pct": 50.0,
+      "instability_pct": 100.0,
+      "latest_conclusion": "failure",
+      "max_failure_streak": 1,
+      "repository": "acme-org/widget-service",
+      "run_count": 6,
+      "sample_run_urls": [
+        "https://github.com/acme-org/widget-service/actions/runs/1001",
+        "https://github.com/acme-org/widget-service/actions/runs/1002",
+        "https://github.com/acme-org/widget-service/actions/runs/1003"
+      ],
+      "severity": "critical",
+      "success_count": 3,
+      "transitions": 5,
+      "workflow": "CI"
+    }
+  ],
+  "critical_groups": [
+    {
+      "branch": "main",
+      "failure_like_count": 3,
+      "failure_rate_pct": 50.0,
+      "instability_pct": 100.0,
+      "latest_conclusion": "failure",
+      "max_failure_streak": 1,
+      "repository": "acme-org/widget-service",
+      "run_count": 6,
+      "sample_run_urls": [
+        "https://github.com/acme-org/widget-service/actions/runs/1001",
+        "https://github.com/acme-org/widget-service/actions/runs/1002",
+        "https://github.com/acme-org/widget-service/actions/runs/1003"
+      ],
+      "severity": "critical",
+      "success_count": 3,
+      "transitions": 5,
+      "workflow": "CI"
+    }
+  ],
+  "groups": [
+    {
+      "branch": "main",
+      "failure_like_count": 3,
+      "failure_rate_pct": 50.0,
+      "instability_pct": 100.0,
+      "latest_conclusion": "failure",
+      "max_failure_streak": 1,
+      "repository": "acme-org/widget-service",
+      "run_count": 6,
+      "sample_run_urls": [
+        "https://github.com/acme-org/widget-service/actions/runs/1001",
+        "https://github.com/acme-org/widget-service/actions/runs/1002",
+        "https://github.com/acme-org/widget-service/actions/runs/1003"
+      ],
+      "severity": "critical",
+      "success_count": 3,
+      "transitions": 5,
+      "workflow": "CI"
+    }
+  ],
+  "summary": {
+    "critical_groups": 1,
+    "files_scanned": 6,
+    "filters": {
+      "branch_exclude": null,
+      "branch_match": null,
+      "repo_exclude": null,
+      "repo_match": null,
+      "workflow_exclude": null,
+      "workflow_match": null
+    },
+    "groups": 1,
+    "groups_below_min_runs": 0,
+    "parse_errors": [],
+    "runs_filtered": 0,
+    "runs_scanned": 6,
+    "thresholds": {
+      "critical_instability_pct": 60.0,
+      "min_runs": 5,
+      "warn_instability_pct": 35.0
+    },
+    "top_n": 20,
+    "warn_groups": 0
+  }
+}
+EXIT_CODE=1

@@ -1,0 +1,617 @@
+# ChatOps Commands Example
+# Demonstrates: issue_comment trigger, PR commands, permission validation, command parsing, feedback
+
+name: ChatOps Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  # Command router - determines which command to run
+  parse-command:
+    name: Parse ChatOps Command
+    # Only run on PRs, not issues
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    outputs:
+      command: ${{ steps.parse.outputs.command }}
+      args: ${{ steps.parse.outputs.args }}
+      is-authorized: ${{ steps.check-permissions.outputs.authorized }}
+
+    steps:
+      - name: Parse command
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          COMMENT="$COMMENT_BODY"
+
+          # Extract command (first word starting with /)
+          COMMAND=$(echo "$COMMENT" | grep -oE '^/[-[:alnum:]_]+' | sed 's|^/||' || echo "")
+
+          # Extract arguments (everything after command)
+          ARGS=$(echo "$COMMENT" | sed -E 's|^/[-[:alnum:]_]+\s*||' || echo "")
+
+          echo "command=$COMMAND" >> $GITHUB_OUTPUT
+
+          # ARGS is derived from the comment body and may contain embedded newlines;
+          # use the collision-safe multiline delimiter syntax rather than a single-line write.
+          delimiter="$(uuidgen)"
+          {
+            echo "args<<$delimiter"
+            printf '%s\n' "$ARGS"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Detected command: /$COMMAND"
+          echo "Arguments: $ARGS"
+
+      - name: Check permissions
+        id: check-permissions
+        env:
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          COMMAND: ${{ steps.parse.outputs.command }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        run: |
+          # Define allowed associations per command
+          case "$COMMAND" in
+            deploy|approve|merge)
+              # Sensitive commands - only owners and members
+              ALLOWED="OWNER MEMBER"
+              ;;
+            run-tests|benchmark|lint)
+              # Less sensitive - include collaborators
+              ALLOWED="OWNER MEMBER COLLABORATOR"
+              ;;
+            help|status|info)
+              # Public commands - anyone
+              ALLOWED="OWNER MEMBER COLLABORATOR CONTRIBUTOR FIRST_TIME_CONTRIBUTOR FIRST_TIMER NONE"
+              ;;
+            *)
+              # Unknown command - no one
+              ALLOWED=""
+              ;;
+          esac
+
+          if echo "$ALLOWED" | grep -q "$AUTHOR_ASSOCIATION"; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "✅ User authorized: $COMMENT_AUTHOR ($AUTHOR_ASSOCIATION)"
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "❌ User not authorized: $COMMENT_AUTHOR ($AUTHOR_ASSOCIATION)"
+          fi
+
+      - name: React to unauthorized command
+        if: steps.check-permissions.outputs.authorized == 'false'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        with:
+          script: |
+            // The comment author's login is passed via env and read from process.env
+            // rather than interpolated as ${{ }} into this script's source.
+            const commentAuthor = process.env.COMMENT_AUTHOR;
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '-1'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `❌ @${commentAuthor} You don't have permission to run this command.\n\nRequired role: OWNER or MEMBER`
+            });
+
+  # Command: /deploy [environment]
+  # Split into three jobs so the job that checks out and builds fork-controlled PR code
+  # never holds a write-capable token: `actions/checkout` persists its credential by
+  # default, and a malicious npm lifecycle/build script from the fork could read that
+  # credential from .git/config and use it to call write-scoped GitHub APIs — the same
+  # "pwn request" class covered in workflow-orchestration-security-scan.yml. The build
+  # job below drops `issues: write` and sets `persist-credentials: false` on checkout;
+  # reactions/comments run in separate jobs that never execute PR code.
+  cmd-deploy-react:
+    name: Deploy Command - React
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'deploy' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: React with rocket
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+  cmd-deploy-build:
+    name: Deploy Command - Build
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'deploy' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+
+    outputs:
+      environment: ${{ steps.parse-deploy.outputs.environment }}
+      url: ${{ steps.deploy.outputs.url }}
+      sha: ${{ steps.pr.outputs.sha }}
+
+    steps:
+      - name: Parse deploy arguments
+        id: parse-deploy
+        env:
+          ARGS: ${{ needs.parse-command.outputs.args }}
+        run: |
+          # Extract environment (default: staging)
+          ENV=$(echo "$ARGS" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
+          ENV=${ENV:-staging}
+
+          # Validate environment
+          if [[ ! "$ENV" =~ ^(dev|staging|production)$ ]]; then
+            echo "error=Invalid environment: $ENV" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          result-encoding: string
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+
+            core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
+            core.setOutput('mergeable', pr.data.mergeable);
+
+      - name: Check if PR is mergeable
+        if: steps.pr.outputs.mergeable == 'false'
+        run: |
+          echo "❌ PR has merge conflicts"
+          exit 1
+
+      - name: Checkout PR code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy to environment
+        id: deploy
+        env:
+          ENVIRONMENT: ${{ steps.parse-deploy.outputs.environment }}
+        run: |
+          echo "🚀 Deploying to $ENVIRONMENT"
+
+          # Deployment logic here
+          DEPLOY_URL="https://$ENVIRONMENT.example.com"
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+
+  cmd-deploy-comment:
+    name: Deploy Command - Comment
+    needs: [parse-command, cmd-deploy-build]
+    if: |
+      always() &&
+      needs.parse-command.outputs.command == 'deploy' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Comment deployment success
+        if: needs.cmd-deploy-build.result == 'success'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          DEPLOY_ENVIRONMENT: ${{ needs.cmd-deploy-build.outputs.environment }}
+          DEPLOY_URL: ${{ needs.cmd-deploy-build.outputs.url }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          PR_SHA: ${{ needs.cmd-deploy-build.outputs.sha }}
+        with:
+          script: |
+            // Values derived from the ChatOps command args are passed via env and read
+            // from process.env rather than interpolated as ${{ }} into this script's
+            // source, so a value containing a quote/backtick can't break out of the JS string.
+            const environment = process.env.DEPLOY_ENVIRONMENT;
+            const url = process.env.DEPLOY_URL;
+            const commentAuthor = process.env.COMMENT_AUTHOR;
+            const prSha = process.env.PR_SHA;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ✅ Deployment Successful
+
+              **Environment:** ${environment}
+              **URL:** ${url}
+              **Triggered by:** @${commentAuthor}
+              **Commit:** ${prSha}
+
+              [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `
+            });
+
+      - name: Comment deployment failure
+        if: needs.cmd-deploy-build.result != 'success'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ❌ Deployment Failed
+
+              [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `
+            });
+
+  # Command: /run-tests [suite]
+  # Split into three jobs for the same reason as cmd-deploy above: the job that checks
+  # out and runs fork-controlled PR code (npm ci, npm test) must not hold issues: write,
+  # and its checkout must not persist the token for that code to read.
+  cmd-run-tests-react:
+    name: Run Tests Command - React
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'run-tests' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: React with eyes
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+  cmd-run-tests-build:
+    name: Run Tests Command - Build
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'run-tests' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+
+    outputs:
+      suite: ${{ steps.parse-suite.outputs.suite }}
+
+    steps:
+      - name: Parse test suite
+        id: parse-suite
+        env:
+          ARGS: ${{ needs.parse-command.outputs.args }}
+        run: |
+          SUITE=$(echo "$ARGS" | awk '{print $1}')
+          SUITE=${SUITE:-all}
+
+          echo "suite=$SUITE" >> $GITHUB_OUTPUT
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+            core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
+
+      - name: Checkout PR code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        id: test
+        env:
+          TEST_SUITE: ${{ steps.parse-suite.outputs.suite }}
+        run: |
+          echo "🧪 Running test suite: $TEST_SUITE"
+
+          case "$TEST_SUITE" in
+            unit)
+              npm run test:unit
+              ;;
+            integration)
+              npm run test:integration
+              ;;
+            e2e)
+              npm run test:e2e
+              ;;
+            all)
+              npm test
+              ;;
+            *)
+              echo "❌ Unknown test suite: $TEST_SUITE"
+              exit 1
+              ;;
+          esac
+
+  cmd-run-tests-comment:
+    name: Run Tests Command - Comment
+    needs: [parse-command, cmd-run-tests-build]
+    if: |
+      always() &&
+      needs.parse-command.outputs.command == 'run-tests' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Comment test results
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          TEST_SUITE_NAME: ${{ needs.cmd-run-tests-build.outputs.suite }}
+          TEST_OUTCOME: ${{ needs.cmd-run-tests-build.result }}
+        with:
+          script: |
+            // Values derived from the ChatOps command args are passed via env and read
+            // from process.env rather than interpolated as ${{ }} into this script's
+            // source, so a value containing a quote/backtick can't break out of the JS string.
+            const suite = process.env.TEST_SUITE_NAME;
+            const success = process.env.TEST_OUTCOME === 'success';
+            const emoji = success ? '✅' : '❌';
+            const status = success ? 'Passed' : 'Failed';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ${emoji} Test Suite: ${suite} - ${status}
+
+              [View test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `
+            });
+
+  # Command: /benchmark
+  cmd-benchmark:
+    name: Benchmark Command
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command == 'benchmark' &&
+      needs.parse-command.outputs.is-authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+
+    steps:
+      - name: React with chart
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '+1'
+            });
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number
+            });
+            core.setOutput('ref', pr.data.head.ref);
+            core.setOutput('sha', pr.data.head.sha);
+            core.setOutput('repo', pr.data.head.repo.full_name);
+
+      - name: Checkout PR code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ steps.pr.outputs.repo }}
+          ref: ${{ steps.pr.outputs.sha }}
+
+      - name: Run benchmarks
+        run: |
+          echo "⚡ Running performance benchmarks"
+          # Benchmark logic here
+
+      - name: Comment benchmark results
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## ⚡ Benchmark Results
+
+              | Metric | Value | Baseline | Change |
+              |--------|-------|----------|--------|
+              | Response Time | 125ms | 130ms | -3.8% 🟢 |
+              | Throughput | 1,250 req/s | 1,200 req/s | +4.2% 🟢 |
+              | Memory Usage | 245 MB | 250 MB | -2.0% 🟢 |
+
+              ✅ All metrics within acceptable range
+
+              [View details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `
+            });
+
+  # Command: /help
+  cmd-help:
+    name: Help Command
+    needs: [parse-command]
+    if: needs.parse-command.outputs.command == 'help'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Show help
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+        with:
+          script: |
+            // The author association is passed via env and read from process.env rather
+            // than interpolated as ${{ }} into this script's source.
+            const authorAssociation = process.env.AUTHOR_ASSOCIATION;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `## 🤖 ChatOps Commands
+
+              Available commands:
+
+              ### Deployment
+              - \`/deploy [env]\` - Deploy PR to environment (dev, staging, production)
+                - Example: \`/deploy staging\`
+                - Requires: OWNER or MEMBER permission
+
+              ### Testing
+              - \`/run-tests [suite]\` - Run test suite (unit, integration, e2e, all)
+                - Example: \`/run-tests unit\`
+                - Requires: OWNER, MEMBER, or COLLABORATOR permission
+
+              ### Performance
+              - \`/benchmark\` - Run performance benchmarks
+                - Requires: OWNER, MEMBER, or COLLABORATOR permission
+
+              ### Utility
+              - \`/help\` - Show this help message
+                - Available to everyone
+
+              ---
+
+              **Your permission level:** ${authorAssociation}
+              `
+            });
+
+  # Unknown command handler
+  cmd-unknown:
+    name: Unknown Command
+    needs: [parse-command]
+    if: |
+      needs.parse-command.outputs.command != '' &&
+      needs.parse-command.outputs.command != 'deploy' &&
+      needs.parse-command.outputs.command != 'run-tests' &&
+      needs.parse-command.outputs.command != 'benchmark' &&
+      needs.parse-command.outputs.command != 'help'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: React with confused
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          PARSED_COMMAND: ${{ needs.parse-command.outputs.command }}
+        with:
+          script: |
+            // The parsed command is passed via env and read from process.env rather
+            // than interpolated as ${{ }} into this script's source.
+            const parsedCommand = process.env.PARSED_COMMAND;
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `❓ Unknown command: \`/${parsedCommand}\`
+
+              Type \`/help\` to see available commands.
+              `
+            });

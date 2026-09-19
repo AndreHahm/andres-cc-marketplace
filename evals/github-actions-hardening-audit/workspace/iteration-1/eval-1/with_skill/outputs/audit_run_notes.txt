@@ -1,0 +1,84 @@
+GitHub Actions Hardening Audit -- Fixture Run
+==============================================
+
+TASK
+----
+Audit .github/workflows-style fixtures in
+plugins/github-actions-kit/skills/github-actions-hardening-audit/fixtures/ using the skill's own
+scripts/workflow_hardening_audit.py, and report which workflows are risky.
+
+COMMANDS RUN
+------------
+Text mode (default thresholds: WARN_SCORE=3, CRITICAL_SCORE=7, REQUIRE_TIMEOUT=1,
+REQUIRE_PERMISSIONS=1, REQUIRE_CONCURRENCY=0, FLAG_FLOATING_REFS=1):
+
+  cd plugins/github-actions-kit/skills/github-actions-hardening-audit
+  WORKFLOW_GLOB="fixtures/*.y*ml" python3 scripts/workflow_hardening_audit.py
+
+JSON mode + fail gate:
+
+  WORKFLOW_GLOB="fixtures/*.y*ml" OUTPUT_FORMAT=json FAIL_ON_CRITICAL=1 \
+  python3 scripts/workflow_hardening_audit.py
+
+Raw outputs saved alongside this file: script_output_text.txt, script_output_json.json.
+
+ACTUAL RESULTS
+--------------
+File                  | Score | Severity | Jobs | Missing timeout | Missing permissions | Missing concurrency | Floating refs | Events
+fixtures/risky.yml    |   9   | critical |  1   | 1 (deploy)       | 1 (deploy)           | 0                    | 2              | pull_request_target, push
+fixtures/clean.yml    |   0   | ok       |  1   | 0                | 0                    | 0                    | 0              | push
+
+Summary line: files=2 evaluated=2 filtered=0 critical=1 warn=0 ok=1
+
+- Text-mode exit code: 0 (report mode, no FAIL_ON_CRITICAL set).
+- JSON-mode exit code with FAIL_ON_CRITICAL=1: 1 (one critical workflow present) -- confirms the
+  fail-gate behaves as documented.
+
+Both results match the SKILL.md's own stated quality gates exactly:
+- fixtures/clean.yml scores 0 / ok.
+- fixtures/risky.yml scores 9 / critical.
+
+WHICH WORKFLOW IS RISKY, AND WHY
+---------------------------------
+fixtures/risky.yml is the risky one -- critical severity, score 9. Contents:
+
+  name: Risky CI
+  on: [push, pull_request_target]
+
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@main
+        - uses: actions/setup-node@v4
+        - run: echo "no permissions, no timeout, floating refs"
+
+Four independent hardening gaps, all flagged by the script:
+
+1. No workflow-level or job-level permissions: block -- the deploy job runs with the repository's
+   default (often overly broad, e.g. write on contents) GITHUB_TOKEN permissions.
+2. No timeout-minutes on the deploy job -- a hung/runaway job has no automatic cutoff.
+3. Two floating action refs:
+   - actions/checkout@main -- a mutable branch ref (branch-like), not pinned; whatever is on main
+     at run time gets executed.
+   - actions/setup-node@v4 -- a mutable major-version tag (major-tag); v4 can be repointed to a new
+     commit at any time by the action's maintainer.
+4. Triggered on pull_request_target (alongside push) -- this event runs with access to repository
+   secrets and a write-scoped token even for PRs from forks, which is the highest-risk trigger
+   combined with unpinned actions and no permissions floor. This is exactly the pattern the audit is
+   designed to catch before it reaches production CI.
+
+fixtures/clean.yml is not risky -- ok severity, score 0. It declares workflow-level
+permissions: { contents: read }, its one job has timeout-minutes: 10, its only uses: ref is pinned
+to a full commit SHA (actions/checkout@de0fac2e... with a "# v6.0.2" comment), and it only triggers
+on push to main (no pull_request_target).
+
+NOTES / CAVEATS
+----------------
+- Ran with default thresholds (REQUIRE_CONCURRENCY=0), matching the skill's documented default and
+  its own bundled-fixtures example command. Neither fixture was penalized for missing concurrency:
+  under these defaults; both fixtures also show missing_concurrency_jobs: [] in the JSON even under
+  require_concurrency: false (the check is simply not applied).
+- Two fixtures only (clean.yml, risky.yml) exist in the fixtures directory -- this is the full set
+  audited, not a sample.
+- No timing metrics captured, per instructions for this quick-workflow run.

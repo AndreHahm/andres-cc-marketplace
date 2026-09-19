@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-hardening-audit/SKILL.md",
+  "assertions": [
+    {"text": "The agent actually runs scripts/workflow_hardening_audit.py against the fixtures directory", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "clean.yml is correctly reported as ok/score 0", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "risky.yml is correctly reported as critical/score 9", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

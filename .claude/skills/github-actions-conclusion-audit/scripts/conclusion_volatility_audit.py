@@ -1,0 +1,374 @@
+#!/usr/bin/env python3
+"""GitHub Actions Conclusion Volatility Audit.
+
+Reads workflow-run JSON exports, groups them by repository + workflow +
+branch, and scores instability from conclusion transitions across run
+history. Configured entirely via environment variables.
+"""
+
+from __future__ import annotations
+
+import glob as globmod
+import json
+import math
+import os
+import re
+import sys
+from collections import defaultdict
+from datetime import datetime
+from typing import TypedDict
+
+
+class GroupRow(TypedDict):
+    repository: str
+    workflow: str
+    branch: str
+    run_count: int
+    transitions: int
+    instability_pct: float
+    success_count: int
+    failure_like_count: int
+    failure_rate_pct: float
+    max_failure_streak: int
+    latest_conclusion: str | None
+    severity: str
+    sample_run_urls: list[str]
+
+
+def env_str(name: str, default: str) -> str:
+    return os.environ.get(name, default)
+
+
+FAILURE_LIKE = {"failure", "cancelled", "timed_out", "action_required", "startup_failure"}
+
+
+def parse_pct(value: str, label: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError:
+        print(f"ERROR: {label} must be numeric (got {value!r})", file=sys.stderr)
+        sys.exit(1)
+    if not math.isfinite(parsed) or parsed < 0 or parsed > 100:
+        print(f"ERROR: {label} must be between 0 and 100 (got {value!r})", file=sys.stderr)
+        sys.exit(1)
+    return parsed
+
+
+def compile_optional_regex(pattern: str, label: str) -> re.Pattern[str] | None:
+    if not pattern:
+        return None
+    try:
+        return re.compile(pattern)
+    except re.error as exc:
+        print(f"ERROR: invalid {label} regex {pattern!r}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def parse_ts(value) -> datetime | None:
+    if not value:
+        return None
+    ts = str(value)
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(ts)
+    except ValueError:
+        return None
+
+
+def normalize_conclusion(value) -> str:
+    text = str(value or "").strip().lower()
+    return text or "unknown"
+
+
+def main() -> int:
+    run_glob = env_str("RUN_GLOB", "artifacts/github-actions/*.json")
+    top_n_raw = env_str("TOP_N", "20")
+    output_format = env_str("OUTPUT_FORMAT", "text")
+    min_runs_raw = env_str("MIN_RUNS", "5")
+    warn_instability_raw = env_str("WARN_INSTABILITY_PCT", "35")
+    critical_instability_raw = env_str("CRITICAL_INSTABILITY_PCT", "60")
+    fail_on_critical_raw = env_str("FAIL_ON_CRITICAL", "0")
+    workflow_match_raw = env_str("WORKFLOW_MATCH", "")
+    workflow_exclude_raw = env_str("WORKFLOW_EXCLUDE", "")
+    branch_match_raw = env_str("BRANCH_MATCH", "")
+    branch_exclude_raw = env_str("BRANCH_EXCLUDE", "")
+    repo_match_raw = env_str("REPO_MATCH", "")
+    repo_exclude_raw = env_str("REPO_EXCLUDE", "")
+
+    if output_format not in ("text", "json"):
+        print(
+            f"ERROR: OUTPUT_FORMAT must be 'text' or 'json' (got: {output_format})", file=sys.stderr
+        )
+        return 1
+
+    if not re.match(r"^[0-9]+$", top_n_raw) or int(top_n_raw) == 0:
+        print(f"ERROR: TOP_N must be a positive integer (got: {top_n_raw})", file=sys.stderr)
+        return 1
+    top_n = int(top_n_raw)
+
+    if not re.match(r"^[0-9]+$", min_runs_raw) or int(min_runs_raw) == 0:
+        print(f"ERROR: MIN_RUNS must be a positive integer (got: {min_runs_raw})", file=sys.stderr)
+        return 1
+    min_runs = int(min_runs_raw)
+
+    if fail_on_critical_raw not in ("0", "1"):
+        print(
+            f"ERROR: FAIL_ON_CRITICAL must be 0 or 1 (got: {fail_on_critical_raw})", file=sys.stderr
+        )
+        return 1
+    fail_on_critical = fail_on_critical_raw == "1"
+
+    warn_instability_pct = parse_pct(warn_instability_raw, "WARN_INSTABILITY_PCT")
+    critical_instability_pct = parse_pct(critical_instability_raw, "CRITICAL_INSTABILITY_PCT")
+    if critical_instability_pct < warn_instability_pct:
+        print("ERROR: CRITICAL_INSTABILITY_PCT must be >= WARN_INSTABILITY_PCT", file=sys.stderr)
+        return 1
+
+    workflow_match = compile_optional_regex(workflow_match_raw, "WORKFLOW_MATCH")
+    workflow_exclude = compile_optional_regex(workflow_exclude_raw, "WORKFLOW_EXCLUDE")
+    branch_match = compile_optional_regex(branch_match_raw, "BRANCH_MATCH")
+    branch_exclude = compile_optional_regex(branch_exclude_raw, "BRANCH_EXCLUDE")
+    repo_match = compile_optional_regex(repo_match_raw, "REPO_MATCH")
+    repo_exclude = compile_optional_regex(repo_exclude_raw, "REPO_EXCLUDE")
+
+    files = sorted(globmod.glob(run_glob, recursive=True))
+    if not files:
+        print(f"ERROR: no files matched RUN_GLOB={run_glob}", file=sys.stderr)
+        return 1
+
+    summary = {
+        "files_scanned": len(files),
+        "parse_errors": [],
+        "runs_scanned": 0,
+        "runs_filtered": 0,
+        "groups": 0,
+        "groups_below_min_runs": 0,
+        "warn_groups": 0,
+        "critical_groups": 0,
+    }
+
+    groups: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
+
+    for path in files:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except Exception as exc:
+            summary["parse_errors"].append(f"{path}: {exc}")
+            continue
+
+        if not isinstance(payload, dict):
+            summary["parse_errors"].append(f"{path}: not a JSON object")
+            continue
+
+        summary["runs_scanned"] += 1
+
+        workflow = payload.get("workflowName") or payload.get("name") or "<unknown-workflow>"
+        branch = payload.get("headBranch") or "<unknown-branch>"
+        conclusion = normalize_conclusion(payload.get("conclusion"))
+        run_id = str(payload.get("databaseId") or payload.get("id") or path)
+        run_url = payload.get("url")
+
+        raw_repository = payload.get("repository")
+        repository = "<unknown-repo>"
+        if isinstance(raw_repository, str) and raw_repository.strip():
+            repository = raw_repository.strip()
+        elif isinstance(raw_repository, dict):
+            repository = (
+                raw_repository.get("nameWithOwner")
+                or raw_repository.get("full_name")
+                or raw_repository.get("fullName")
+                or raw_repository.get("name")
+                or repository
+            )
+
+        if repo_match and not repo_match.search(repository):
+            summary["runs_filtered"] += 1
+            continue
+        if repo_exclude and repo_exclude.search(repository):
+            summary["runs_filtered"] += 1
+            continue
+        if workflow_match and not workflow_match.search(workflow):
+            summary["runs_filtered"] += 1
+            continue
+        if workflow_exclude and workflow_exclude.search(workflow):
+            summary["runs_filtered"] += 1
+            continue
+        if branch_match and not branch_match.search(branch):
+            summary["runs_filtered"] += 1
+            continue
+        if branch_exclude and branch_exclude.search(branch):
+            summary["runs_filtered"] += 1
+            continue
+
+        timestamp = (
+            parse_ts(payload.get("createdAt"))
+            or parse_ts(payload.get("runStartedAt"))
+            or parse_ts(payload.get("updatedAt"))
+        )
+
+        groups[(repository, workflow, branch)].append(
+            {
+                "run_id": run_id,
+                "conclusion": conclusion,
+                "timestamp": timestamp,
+                "run_url": run_url,
+            }
+        )
+
+    ranked_groups: list[GroupRow] = []
+    critical_groups: list[GroupRow] = []
+
+    for (repository, workflow, branch), runs in groups.items():
+        runs_sorted = sorted(
+            runs,
+            key=lambda r: (r["timestamp"] is None, r["timestamp"] or datetime.min, r["run_id"]),
+        )
+
+        conclusions = [r["conclusion"] for r in runs_sorted]
+        run_count = len(conclusions)
+        transitions = 0
+        for idx in range(1, run_count):
+            previous = conclusions[idx - 1]
+            current = conclusions[idx]
+            if (
+                previous == "success"
+                and current in FAILURE_LIKE
+                or previous in FAILURE_LIKE
+                and current == "success"
+            ):
+                transitions += 1
+
+        instability_pct = 0.0
+        if run_count > 1:
+            instability_pct = (transitions / (run_count - 1)) * 100.0
+
+        success_count = sum(1 for c in conclusions if c == "success")
+        failure_like_count = sum(1 for c in conclusions if c in FAILURE_LIKE)
+
+        failure_rate_pct = 0.0
+        if run_count > 0:
+            failure_rate_pct = (failure_like_count / run_count) * 100.0
+
+        streak = 0
+        max_failure_streak = 0
+        for c in conclusions:
+            if c in FAILURE_LIKE:
+                streak += 1
+                max_failure_streak = max(max_failure_streak, streak)
+            else:
+                streak = 0
+
+        severity = "ok"
+        if run_count < min_runs:
+            summary["groups_below_min_runs"] += 1
+        else:
+            if instability_pct >= critical_instability_pct:
+                severity = "critical"
+                summary["critical_groups"] += 1
+            elif instability_pct >= warn_instability_pct:
+                severity = "warn"
+                summary["warn_groups"] += 1
+
+        row: GroupRow = {
+            "repository": repository,
+            "workflow": workflow,
+            "branch": branch,
+            "run_count": run_count,
+            "transitions": transitions,
+            "instability_pct": round(instability_pct, 3),
+            "success_count": success_count,
+            "failure_like_count": failure_like_count,
+            "failure_rate_pct": round(failure_rate_pct, 3),
+            "max_failure_streak": max_failure_streak,
+            "latest_conclusion": conclusions[-1] if conclusions else None,
+            "severity": severity,
+            "sample_run_urls": [r["run_url"] for r in runs_sorted if r.get("run_url")][:3],
+        }
+
+        ranked_groups.append(row)
+        if severity == "critical":
+            critical_groups.append(row)
+
+    severity_rank = {"critical": 2, "warn": 1, "ok": 0}
+    ranked_groups.sort(
+        key=lambda row: (
+            -severity_rank[row["severity"]],
+            -row["instability_pct"],
+            -row["failure_rate_pct"],
+            -row["run_count"],
+            row["repository"],
+            row["workflow"],
+            row["branch"],
+        )
+    )
+
+    summary["groups"] = len(ranked_groups)
+
+    result = {
+        "summary": {
+            **summary,
+            "top_n": top_n,
+            "thresholds": {
+                "min_runs": min_runs,
+                "warn_instability_pct": warn_instability_pct,
+                "critical_instability_pct": critical_instability_pct,
+            },
+            "filters": {
+                "repo_match": repo_match_raw or None,
+                "repo_exclude": repo_exclude_raw or None,
+                "workflow_match": workflow_match_raw or None,
+                "workflow_exclude": workflow_exclude_raw or None,
+                "branch_match": branch_match_raw or None,
+                "branch_exclude": branch_exclude_raw or None,
+            },
+        },
+        "groups": ranked_groups[:top_n],
+        "all_groups": ranked_groups,
+        "critical_groups": critical_groups,
+    }
+
+    if output_format == "json":
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print("GITHUB ACTIONS CONCLUSION VOLATILITY AUDIT")
+        print("---")
+        print(
+            "SUMMARY: "
+            f"files={summary['files_scanned']} runs={summary['runs_scanned']} "
+            f"runs_filtered={summary['runs_filtered']} groups={summary['groups']} "
+            f"warn_groups={summary['warn_groups']} "
+            f"critical_groups={summary['critical_groups']} "
+            f"below_min_runs={summary['groups_below_min_runs']}"
+        )
+        print(
+            "THRESHOLDS: "
+            f"min_runs={min_runs} warn_instability_pct={warn_instability_pct} "
+            f"critical_instability_pct={critical_instability_pct}"
+        )
+
+        if summary["parse_errors"]:
+            print("PARSE_ERRORS:")
+            for err in summary["parse_errors"]:
+                print(f"- {err}")
+
+        print("---")
+        print(f"TOP VOLATILITY GROUPS ({min(top_n, len(ranked_groups))})")
+        if not ranked_groups:
+            print("none")
+        else:
+            for row in ranked_groups[:top_n]:
+                print(
+                    f"- [{row['severity']}] {row['repository']} :: {row['workflow']} :: "
+                    f"{row['branch']} instability_pct={row['instability_pct']} "
+                    f"failure_rate_pct={row['failure_rate_pct']} runs={row['run_count']} "
+                    f"transitions={row['transitions']} "
+                    f"max_failure_streak={row['max_failure_streak']}"
+                )
+
+    return 1 if (fail_on_critical and (critical_groups or summary["parse_errors"])) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

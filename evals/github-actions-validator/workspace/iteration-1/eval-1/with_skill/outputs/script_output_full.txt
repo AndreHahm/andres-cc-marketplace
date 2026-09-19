@@ -1,0 +1,65 @@
+
+[0;34m=== GitHub Actions Validator ===[0m
+
+[0;32m[INFO][0m Target: examples/with-errors.yml
+
+[0;34m=== Action Version Check ===[0m
+
+[0;32m[INFO][0m Checking: examples/with-errors.yml
+  [1;33m⚠️[0m  actions/checkout@v4 - [1;33mOUTDATED[0m (current: v6, using: v4)
+
+[0;32m[INFO][0m Version Check Summary:
+[0;32m[INFO][0m   Up-to-date: 0
+[1;33m[WARN][0m   Outdated: 1
+
+[0;32m[INFO][0m Recommendations:
+[1;33m[WARN][0m   - Consider updating outdated actions for latest features
+[0;32m[INFO][0m   - Use SHA pinning for security: action@SHA # vX.Y.Z
+
+[0;34m=== Running actionlint ===[0m
+
+[0;32m[INFO][0m Validating: examples/with-errors.yml
+examples/with-errors.yml:18:13: invalid CRON format "0 0 * * 8" in schedule event: end of range (8) above maximum (6): 8 [events]
+   |
+18 |     - cron: '0 0 * * 8'
+   |             ^~
+examples/with-errors.yml:25:14: label "ubuntu-lastest" is unknown. available labels are "windows-latest", "windows-latest-8-cores", "windows-2025", "windows-2025-vs2026", "windows-2022", "windows-11-arm", "ubuntu-slim", "ubuntu-latest", "ubuntu-latest-4-cores", "ubuntu-latest-8-cores", "ubuntu-latest-16-cores", "ubuntu-24.04", "ubuntu-24.04-arm", "ubuntu-22.04", "ubuntu-22.04-arm", "macos-latest", "macos-latest-xlarge", "macos-latest-large", "macos-26-intel", "macos-26-xlarge", "macos-26-large", "macos-26", "macos-15-intel", "macos-15-xlarge", "macos-15-large", "macos-15", "macos-14-xlarge", "macos-14-large", "macos-14", "self-hosted", "x64", "arm", "arm64", "linux", "macos", "windows". if it is a custom label for self-hosted runner, set list of labels in actionlint.yaml config file [runner-label]
+   |
+25 |     runs-on: ubuntu-lastest
+   |              ^~~~~~~~~~~~~~
+examples/with-errors.yml:36:36: "github.event.issue.title" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/reference/security/secure-use#good-practices-for-mitigating-script-injection-attacks for more details [expression]
+examples/with-errors.yml:39:3: job "deploy" needs job "biuld" which does not exist in this workflow [job-needs]
+   |
+39 |   deploy:
+   |   ^~~~~~~
+[0;31m[ERROR][0m ✗ actionlint found issues
+
+[0;34m=== Security Policy Checks (Advisory) ===[0m
+
+[0;32m[INFO][0m Checking policies in: examples/with-errors.yml
+[1;33m[WARN][0m examples/with-errors.yml missing explicit permissions block. Add workflow/job-level permissions (or permissions: {}).
+[1;33m[WARN][0m examples/with-errors.yml:37 potential script injection risk in run step. Move untrusted input to env and quote it.
+
+[1;33m[WARN][0m Security policy warnings: 2 (advisory only; exit code unchanged)
+[0;32m[INFO][0m See references/common-pitfalls.md's "Security Policy Checks (Advisory)" section
+
+[0;34m=== Validation Summary ===[0m
+
+[0;31m[ERROR][0m ✗ Some validations failed
+
+[0;34m=== Reference Documentation ===[0m
+
+[0;36m[REF][0m Syntax errors detected - see references/common-errors.md (Syntax Errors section)
+[0;36m[REF][0m Expression errors detected - see references/common-errors.md (Expression Errors section)
+[0;36m[REF][0m Schedule errors detected - see references/common-errors.md (Schedule Errors section)
+[0;36m[REF][0m Runner label issues - see references/runners.md
+[0;36m[REF][0m Action issues detected - see references/common-errors.md (Action Errors section)
+[0;36m[REF][0m Job dependency issues - see references/common-errors.md (Job Configuration Errors section)
+[0;36m[REF][0m Security issues detected - see references/common-errors.md (Security section)
+
+[0;32m[INFO][0m Tips:
+[0;32m[INFO][0m   - Review error messages above
+[0;32m[INFO][0m   - Use --lint-only to skip Docker-dependent tests
+[0;32m[INFO][0m   - Use --check-versions to check for outdated actions
+[0;32m[INFO][0m   - Use --policy-checks for security hardening warnings
+[0;32m[INFO][0m   - Check references/common-errors.md for solutions

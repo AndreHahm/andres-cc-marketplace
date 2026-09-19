@@ -1,0 +1,27 @@
+{
+  "name": "[ACTION_NAME]",
+  "version": "1.0.0",
+  "description": "[ACTION_DESCRIPTION]",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build index.js -o dist --source-map --license licenses.txt",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "github-actions",
+    "[KEYWORD_1]",
+    "[KEYWORD_2]"
+  ],
+  "author": "[AUTHOR_NAME]",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "3.0.1",
+    "@actions/github": "9.1.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "0.45.0",
+    "eslint": "10.11.0",
+    "jest": "30.5.2"
+  }
+}

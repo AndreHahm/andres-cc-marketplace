@@ -1,0 +1,117 @@
+name: 'Setup Node.js with Smart Caching'
+description: 'Setup Node.js with intelligent dependency caching and installation'
+author: 'Example Author'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: true
+  package-manager:
+    description: 'Package manager to use (npm, yarn, pnpm)'
+    required: false
+    default: 'npm'
+  cache-dependency-path:
+    description: 'Path to lock file(s)'
+    required: false
+    default: '**/package-lock.json'
+
+outputs:
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+  node-version:
+    description: 'Actual Node.js version installed'
+    value: ${{ steps.setup.outputs.node-version }}
+
+branding:
+  icon: 'package'
+  color: 'green'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+      run: |
+        if [[ ! "$PACKAGE_MANAGER" =~ ^(npm|yarn|pnpm)$ ]]; then
+          echo "::error::Invalid package manager: $PACKAGE_MANAGER"
+          exit 1
+        fi
+        echo "✅ Inputs validated"
+
+    - name: Setup Node.js ${{ inputs.node-version }}
+      id: setup
+      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Enable Corepack for pnpm/yarn
+      if: inputs.package-manager != 'npm'
+      shell: bash
+      run: corepack enable
+
+    - name: Get cache directory
+      id: cache-dir
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+      run: |
+        if [ "$PACKAGE_MANAGER" == "npm" ]; then
+          echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+        elif [ "$PACKAGE_MANAGER" == "yarn" ]; then
+          # 'yarn cache dir' only exists on Yarn Classic (1.x); Yarn Berry (2+, the
+          # version Corepack commonly activates) removed it in favor of 'config get
+          # cacheFolder'. Detect the active generation from the version string.
+          if [[ "$(yarn --version)" == 1.* ]]; then
+            echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+          else
+            echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Cache dependencies
+      id: cache
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      with:
+        path: ${{ steps.cache-dir.outputs.dir }}
+        key: ${{ runner.os }}-${{ inputs.package-manager }}-${{ hashFiles(inputs.cache-dependency-path) }}
+        restore-keys: |
+          ${{ runner.os }}-${{ inputs.package-manager }}-
+
+    - name: Install dependencies
+      # Always run the install command, even on a cache hit — the cache above only holds
+      # the package manager's download cache (npm's tarball cache / yarn's cache dir /
+      # pnpm's content-addressable store), never node_modules itself. Skipping install on
+      # cache-hit leaves node_modules empty; the cache still speeds up install by avoiding
+      # re-downloads, it just can't replace running install entirely.
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+      run: |
+        if [ "$PACKAGE_MANAGER" == "npm" ]; then
+          npm ci
+        elif [ "$PACKAGE_MANAGER" == "yarn" ]; then
+          if [[ "$(yarn --version)" == 1.* ]]; then
+            yarn install --frozen-lockfile
+          else
+            yarn install --immutable
+          fi
+        else
+          pnpm install --frozen-lockfile
+        fi
+
+    - name: Report status
+      shell: bash
+      env:
+        PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+      run: |
+        echo "::group::Setup Summary"
+        echo "Node.js version: $(node --version)"
+        echo "Package manager: $PACKAGE_MANAGER"
+        echo "Cache hit: $CACHE_HIT"
+        echo "::endgroup::"

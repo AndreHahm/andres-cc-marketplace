@@ -1,0 +1,19 @@
+{
+  "skill_name": "github-actions-validator",
+  "skill_path": "plugins/github-actions-kit/skills/github-actions-validator/SKILL.md",
+  "description": "Validate, lint, and fix GitHub Actions workflow and action files using actionlint and act.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Validate a known-broken workflow",
+      "prompt": "Validate the workflow file at plugins/github-actions-kit/skills/github-actions-validator/examples/with-errors.yml and tell me what's wrong with it.",
+      "expected_output": "Runs the skill's validation procedure against the file, maps each actionlint/act error to a reference section per the error-mapping table, and reports fixes with corrected code.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": ["check my .github/workflows/*.yml file", "debug actionlint errors"]
+  }
+}

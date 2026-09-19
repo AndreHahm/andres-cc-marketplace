@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The agent actually runs scripts/workflow_hardening_audit.py against the fixtures directory", "passed": false, "evidence": "manual qualitative review only, script never run"},
+    {"text": "clean.yml is correctly reported as ok/score 0", "passed": false, "evidence": "correctly judged clean.yml as having no findings (directionally right), but no numeric score 0 was produced since the script wasn't run"},
+    {"text": "risky.yml is correctly reported as critical/score 9", "passed": false, "evidence": "correctly judged risky.yml as CRITICAL (directionally right, including finding the pull_request_target pwn-request pattern the script itself doesn't specifically name), but no numeric score 9 was produced since the script wasn't run"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

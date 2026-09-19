@@ -1,0 +1,110 @@
+# Workflow Orchestration Example (1 of 4)
+# Demonstrates: workflow_run trigger, workflow chaining, artifact passing, secure external PR handling
+#
+# This is a SET OF 4 SEPARATE WORKFLOW FILES that chain together via workflow_run —
+# GitHub Actions requires one workflow definition per file, so each must be copied to
+# its own path under .github/workflows/, not concatenated into one file:
+#   1. workflow-orchestration.yml               -> .github/workflows/ci-pipeline.yml (this file)
+#   2. workflow-orchestration-security-scan.yml  -> .github/workflows/security-scan.yml
+#   3. workflow-orchestration-deploy.yml         -> .github/workflows/deploy.yml
+#   4. workflow-orchestration-performance-test.yml -> .github/workflows/performance-test.yml
+
+# This is the MAIN CI workflow that runs on all PRs
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Standard CI jobs - safe for external PRs
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test -- --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [test]
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 30
+
+  ci-status:
+    name: CI Status Check
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.test.result }}" == "failure" ]] || [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ CI failed"
+            exit 1
+          fi
+          echo "✅ CI passed"
