@@ -1,0 +1,120 @@
+# Workflow Orchestration Example (2 of 4) -> .github/workflows/security-scan.yml
+# Part of a 4-file set — see workflow-orchestration.yml for the full list and why these
+# are separate files, not one multi-document YAML.
+#
+# This workflow runs AFTER CI completes, triggered by workflow_run — which runs with
+# elevated permissions and access to secrets regardless of where the code came from.
+# WARNING: checking out and executing github.event.workflow_run.head_sha (the PR's own
+# head commit) in this privileged context is the classic "workflow_run pwn request"
+# vulnerability — a fork PR could ship a malicious package.json lifecycle script that
+# then runs with this workflow's write-capable token. The same-repository guard below
+# is the standard mitigation: only same-repo (already-trusted, write-access) PRs reach
+# the checkout/install steps; a fork PR's run exits before touching any PR code.
+
+name: Security Scan
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+  issues: write  # Required for PR comments via issues.createComment
+
+jobs:
+  security-scan:
+    name: Run Security Scan
+    # Only scan if CI passed, and only for same-repository PRs — never a fork's PR head,
+    # since this job runs with write-capable permissions and secrets (see WARNING above).
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run dependency audit
+        run: |
+          npm audit --audit-level=high || true
+          npm audit --json > audit-results.json || true
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/init@ae9ef3a1d2e3413523c3741725c30064970cc0d4 # v3.32.5
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@ae9ef3a1d2e3413523c3741725c30064970cc0d4 # v3.32.5
+        with:
+          category: security-scan
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            audit-results.json
+          retention-days: 30
+
+      - name: Comment on PR with results
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Get PR number from workflow run
+            const prNumber = context.payload.workflow_run.pull_requests[0]?.number;
+
+            if (!prNumber) {
+              console.log('Not a PR, skipping comment');
+              return;
+            }
+
+            // Read audit results
+            let auditResults = {};
+            try {
+              auditResults = JSON.parse(fs.readFileSync('audit-results.json', 'utf8'));
+            } catch (error) {
+              console.log('No audit results found');
+            }
+
+            const vulnerabilities = auditResults.metadata?.vulnerabilities || {};
+            const total = Object.values(vulnerabilities).reduce((a, b) => a + b, 0);
+
+            let message = '## 🔒 Security Scan Results\n\n';
+
+            if (total === 0) {
+              message += '✅ No vulnerabilities found!\n';
+            } else {
+              message += '⚠️ Found vulnerabilities:\n\n';
+              message += `- Critical: ${vulnerabilities.critical || 0}\n`;
+              message += `- High: ${vulnerabilities.high || 0}\n`;
+              message += `- Moderate: ${vulnerabilities.moderate || 0}\n`;
+              message += `- Low: ${vulnerabilities.low || 0}\n`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: message
+            });
