@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "A synthetic log file with at least 2 step markers was created", "passed": true, "evidence": "synthetic-run.log with 6 ##[group]/##[endgroup] steps"},
+    {"text": "scripts/find_step_boundaries.py was run (or its logic correctly followed) and detected the step boundaries", "passed": true, "evidence": "manually scanned ##[group]/##[endgroup] pairs and correctly identified all 6 step boundaries with line ranges"},
+    {"text": "The agent stated the dispatch-scope AskUserQuestion with an accurate computed count instead of silently proceeding to dispatch subagents", "passed": false, "evidence": "wrote prose about when it WOULD dispatch subagents, but never produced an actual dispatch-scope gate/question with a computed count — no such gate exists without the skill's own instructions"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.667}
+}

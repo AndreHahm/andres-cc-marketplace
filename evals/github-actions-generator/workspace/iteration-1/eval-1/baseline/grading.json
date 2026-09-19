@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output includes a .yml workflow file under .github/workflows/", "passed": true, "evidence": ".github/workflows/ci.yml created"},
+    {"text": "Every uses: reference is pinned to a full commit SHA with a version comment, not a bare tag", "passed": false, "evidence": "uses: actions/checkout@v4 and actions/setup-node@v4 — bare version tags, not SHA-pinned"},
+    {"text": "The workflow declares an explicit, minimal permissions: block", "passed": false, "evidence": "no permissions: key anywhere in the file"},
+    {"text": "The workflow includes concurrency controls", "passed": false, "evidence": "no concurrency: key anywhere in the file"},
+    {"text": "The workflow runs on push and pull_request as requested", "passed": true, "evidence": "on: push/pull_request targeting main"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 2, "pass_rate": 0.4}
+}
