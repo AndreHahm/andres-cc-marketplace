@@ -61,12 +61,9 @@ def tool_exists(tool_name: str) -> bool:
 
 
 def check_docker() -> bool:
-    docker_path = shutil.which("docker")
-    if docker_path is None:
-        return False
     try:
         subprocess.run(
-            [docker_path, "info"],
+            ["docker", "info"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,

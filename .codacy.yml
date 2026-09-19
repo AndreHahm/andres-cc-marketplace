@@ -19,7 +19,7 @@
 # here since a false-positive-plagued required check blocking every PR
 # that adds a new smoke-test scenario is a worse practical outcome than
 # losing that one narrow directory's own secret-scan coverage.
-# plugins/*/tests/** is every plugin's own pytest suite. Bandit's B101 ("Use of
+# plugins/**/tests/** is every plugin's own pytest suite. Bandit's B101 ("Use of
 # assert detected...") fires on every bare `assert` statement, which is the
 # actual test mechanism pytest relies on -- these files are never run under
 # `python -O` (the only condition B101 warns about), so the rule is a
@@ -38,6 +38,18 @@
 # embed a secret-shaped string (e.g. to exercise redaction logic) should
 # still use an obviously-synthetic placeholder, the same discipline already
 # expected repo-wide -- this exclusion is not a reason to relax that.
+#
+# plugins/**/tests/** (not plugins/*/tests/**): the single-star form only matches a
+# tests/ directory living directly under a plugin's root -- it silently misses a
+# plugin whose skills each own their own nested tests/ directory instead, e.g.
+# plugins/github-actions-kit/skills/github-actions-validator/tests/ or
+# plugins/antigravity-kit/scripts/tests/. Confirmed live, PR #355: Codacy's Cloud
+# analysis flagged plugins/github-actions-kit/skills/github-actions-validator/tests/
+# test_validate_workflow.py's own B101/B603-style subprocess-harness code as new
+# Critical/High security issues -- the exact same false-positive class already
+# accepted for every other plugin's top-level tests/**, just not excluded here because
+# the glob never matched this nested shape. The double-star form matches both the
+# top-level and nested cases with one pattern.
 #
 # .github/scripts/test-issue-auto-labeling.js hits the same two rules as the
 # smoke-tests exclusion above, for the same underlying reason: it reads
@@ -71,7 +83,7 @@
 # for the mirror tree, accepted since the canonical source is never itself excluded.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
-  - "plugins/*/tests/**"
+  - "plugins/**/tests/**"
   - ".github/scripts/test-issue-auto-labeling.js"
   - ".claude/skills/**"
   - ".claude/agents/**"
