@@ -27,9 +27,11 @@ acted on.
   `permissions` check stays active for such jobs
 - Flags missing `permissions` declarations (workflow-level or job-level)
 - Optionally flags missing `concurrency` controls
-- Flags floating `uses:` refs — the canonical list (also the exact set `scripts/workflow_hardening_audit.py`
-  checks): 8 branch-like ref names (`main`, `master`, `head`, `latest`, `stable`, `trunk`, `dev`,
-  `develop`, matched case-insensitively), plus any major-only version tag matching `^v\d+$` (e.g. `@v4`)
+- Flags floating `uses:` refs — only a full 40-character commit SHA (or an `ALLOW_REF_REGEX`-matched
+  exception) counts as properly pinned. Everything else is flagged as floating/mutable, including: 8
+  branch-like ref names (`main`, `master`, `head`, `latest`, `stable`, `trunk`, `dev`, `develop`, matched
+  case-insensitively), any major-only version tag matching `^v\d+$` (e.g. `@v4`), and any other non-SHA
+  ref (full semver tags like `@v4.1.0`, release branches, feature branches, etc.)
 - Supports file/event regex filtering for targeted triage in large monorepos
 - Raises severity (`ok` / `warn` / `critical`) and can fail CI gates
 
@@ -95,6 +97,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
 ## Output contract
 - Exit `0` in report mode with no critical workflows (or `FAIL_ON_CRITICAL=0`)
 - Exit `1` when `FAIL_ON_CRITICAL=1` and one or more workflows are critical
+- Exit `1` when `FAIL_ON_CRITICAL=1` and any matched workflow file couldn't be read (a parse error) —
+  an unreadable workflow never silently lets the gate pass just because no critical row was added for it
 - Exit `1` also on invalid input — a non-integer, or an integer other than `0`/`1`, for any of
   `REQUIRE_TIMEOUT`/`REQUIRE_PERMISSIONS`/`REQUIRE_CONCURRENCY`/`FLAG_FLOATING_REFS`/`FAIL_ON_CRITICAL`;
   a non-integer `TOP_N`/`WARN_SCORE`/`CRITICAL_SCORE`; an invalid

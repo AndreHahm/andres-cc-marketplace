@@ -68,7 +68,15 @@ jobs:
 
           echo "environment=$ENV" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "requestor=${CLIENT_REQUESTOR:-unknown}" >> $GITHUB_OUTPUT
+
+          # requestor is derived from client_payload and may contain embedded newlines;
+          # use the collision-safe multiline delimiter syntax rather than a single-line write.
+          requestor_delimiter="$(uuidgen)"
+          {
+            echo "requestor<<$requestor_delimiter"
+            printf '%s\n' "${CLIENT_REQUESTOR:-unknown}"
+            echo "$requestor_delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Log deployment request
         env:
@@ -261,8 +269,22 @@ jobs:
           AFFECTED_SERVICE="$CLIENT_SERVICE"
 
           echo "severity=$SEVERITY" >> $GITHUB_OUTPUT
-          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
-          echo "service=$AFFECTED_SERVICE" >> $GITHUB_OUTPUT
+
+          # message and service are derived from client_payload and may contain embedded
+          # newlines; use the collision-safe multiline delimiter syntax for each.
+          message_delimiter="$(uuidgen)"
+          {
+            echo "message<<$message_delimiter"
+            printf '%s\n' "$MESSAGE"
+            echo "$message_delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+          service_delimiter="$(uuidgen)"
+          {
+            echo "service<<$service_delimiter"
+            printf '%s\n' "$AFFECTED_SERVICE"
+            echo "$service_delimiter"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create incident issue
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

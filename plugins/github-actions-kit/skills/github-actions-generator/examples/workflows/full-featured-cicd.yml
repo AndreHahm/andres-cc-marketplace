@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  deployments: write
 
 jobs:
   test:
@@ -59,6 +58,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: staging
       url: https://staging.example.com
@@ -80,6 +82,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: production
       url: https://example.com

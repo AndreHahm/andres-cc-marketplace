@@ -119,7 +119,7 @@ def main() -> int:
         "actions/checkout": ("de0fac2e4500dabe0009e67214ff5f5447ce83dd", "v6.0.2"),
         "actions/setup-node": ("6044e13b5dc448c55e2357c09f80417699197238", "v6.2.0"),
         "actions/cache": ("cdf6c1fa76f9f475f3d7449005a359c84ca0f306", "v5.0.3"),
-        "actions/upload-artifact": ("5d5d22a31266ced268874388b861e4b58bb5c2f3", "v4.3.1"),
+        "actions/upload-artifact": ("043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", "v7.0.1"),
         "actions/download-artifact": ("c850b930e6ba138125429b7e5c93fc707a7f8427", "v4.1.4"),
         "actions/github-script": ("60a0d83039c74a4aee543508d2ffcb1c3799cdea", "v7.0.1"),
         "actions/dependency-review-action": ("05fe4576374b728f0c523d6a13d64c25081e0803", "v4.8.3"),
@@ -295,22 +295,35 @@ def main() -> int:
     # ../github-actions-validator/scripts/validate_workflow.py's find_injection_risk_lines
     # (re-implemented inline here rather than imported, to avoid a runtime dependency on a
     # sibling skill's internal script layout), extended to also cover actions/github-script
-    # `script:` blocks (JS), not just `run:` blocks. A value from these contexts is
-    # attacker-influenced (event/PR data, a prior job's outputs, a composite action's
-    # inputs) and must be passed through `env:` + $VAR (shell) or process.env.VAR (JS)
-    # rather than substituted directly into the run/script source text by ${{ }} — a raw
-    # substitution happens before the shell/JS is parsed and can break out of a string.
+    # `script:` blocks (JS), not just `run:` blocks; inline `run: <command>`/`script: <command>`
+    # single-line forms, not just block-scalar (`run: |`) forms; and this plugin's own
+    # bracketed template-placeholder convention (`inputs.[input-name]`,
+    # `steps.[step-id].outputs.[output-name]`, `needs.[job-id].outputs.[output-name]`), alongside
+    # the un-bracketed real-usage form. A value from these contexts is attacker-influenced
+    # (event/PR data, a prior job's outputs, a composite action's inputs) and must be passed
+    # through `env:` + $VAR (shell) or process.env.VAR (JS) rather than substituted directly
+    # into the run/script source text by ${{ }} — a raw substitution happens before the
+    # shell/JS is parsed and can break out of a string.
     expr_label = "${{ }}"
+    # Matches either a real identifier (`input-name`) or this plugin's own bracketed
+    # placeholder convention (`[input-name]`) so template files (which use the latter) and
+    # generated/real usage (which uses the former) are both covered.
+    id_re = r"(?:[\w-]+|\[[\w-]+\])"
     injection_context_re = re.compile(
         r"\$\{\{\s*(?:"
         r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
-        r"|needs\.[\w-]+\.outputs\.[\w-]+"
-        r"|steps\.[\w-]+\.outputs\.[\w-]+"
-        r"|inputs\.[\w-]+"
+        rf"|needs\.{id_re}\.outputs\.{id_re}"
+        rf"|steps\.{id_re}\.outputs\.{id_re}"
+        rf"|inputs\.{id_re}"
         r")"
     )
     run_block_start_re = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
     script_block_start_re = re.compile(r"^\s*script:\s*[|>][-+]?\d*\s*$")
+    # Inline single-line form: `run: <command>` / `script: <command>` (optionally under a
+    # `- ` step-list dash). Block-scalar starts (`run: |`, `run: >-`, ...) are matched and
+    # `continue`d past by the two regexes above before this one is ever consulted, so this
+    # only ever matches a real inline command.
+    inline_run_script_re = re.compile(r"^\s*(?:-\s*)?(run|script):\s*(\S.*)$")
 
     def find_injection_risk_lines(lines: list[str]) -> list[tuple[int, str]]:
         risky: list[tuple[int, str]] = []
@@ -333,7 +346,67 @@ def main() -> int:
                 continue
             if in_block and injection_context_re.search(line):
                 risky.append((idx, block_kind))
+                continue
+            if not in_block:
+                inline_match = inline_run_script_re.match(line)
+                if inline_match and injection_context_re.search(inline_match.group(2)):
+                    risky.append((idx, f"{inline_match.group(1)}-inline"))
         return risky
+
+    print("  [7a] Detector regression checks")
+
+    def assert_injection_detected(label: str, sample_lines: list[str]) -> None:
+        if find_injection_risk_lines(sample_lines):
+            ok(label)
+        else:
+            bad(f"{label} — expected risky interpolation was not detected")
+
+    def assert_injection_not_detected(label: str, sample_lines: list[str]) -> None:
+        if not find_injection_risk_lines(sample_lines):
+            ok(label)
+        else:
+            bad(f"{label} — unexpected risky interpolation flagged")
+
+    assert_injection_detected(
+        "detects un-bracketed inputs.<name> inside a run: | block",
+        ["      run: |", '        echo "${{ inputs.foo }}"'],
+    )
+    assert_injection_detected(
+        "detects bracketed inputs.[input-name] inside a run: | block "
+        "(this plugin's template placeholder form)",
+        ["      run: |", '        echo "${{ inputs.[input-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects bracketed steps.[step-id].outputs.[output-name] inside a run: | block",
+        ["      run: |", '        echo "${{ steps.[step-id].outputs.[output-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects bracketed needs.[job-id].outputs.[output-name] inside a run: | block",
+        ["      run: |", '        echo "${{ needs.[job-id].outputs.[output-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects an inline run: <command> single-line form with a risky expression",
+        ['      run: echo "${{ inputs.[input-name] }}"'],
+    )
+    assert_injection_detected(
+        "detects an inline script: <command> single-line form with a risky expression",
+        ['      script: console.log("${{ steps.[step-id].outputs.[output-name] }}")'],
+    )
+    assert_injection_not_detected(
+        "does not flag inputs.[input-name] referenced only via an env: block, "
+        "with the run: block itself using $VAR",
+        [
+            "      env:",
+            "        INPUT_VALUE: ${{ inputs.[input-name] }}",
+            "      run: |",
+            '        echo "$INPUT_VALUE"',
+        ],
+    )
+    assert_injection_not_detected(
+        "does not flag a plain inline run: command with no ${{ }} expression",
+        ["      run: npm ci"],
+    )
+    print()
 
     for f in all_yaml_files:
         lines = f.read_text(encoding="utf-8").splitlines()

@@ -98,9 +98,11 @@ class Sandbox:
         path.write_text(content, encoding="utf-8")
         return path
 
-    def run_validator(self, *args: str) -> tuple[int, str]:
+    def run_validator(self, *args: str, extra_env: dict[str, str] | None = None) -> tuple[int, str]:
         env = dict(os.environ)
         env["PATH"] = f"{self.bin_dir}:{env.get('PATH', '')}"
+        if extra_env:
+            env.update(extra_env)
         proc = subprocess.run(
             [sys.executable, str(self.validator_path), *args],
             cwd=self.repo_dir,
@@ -363,6 +365,62 @@ def main() -> int:
             "warns for inputs.* sink",
             output,
             r"policy-laundered\.yml:12 potential script injection risk",
+        )
+
+        print()
+        print("[P1] script injection check catches context wrapped inside a function call")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-wrapped.yml",
+            "name: Policy Wrapped\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - name: toJSON-wrapped context\n"
+            '        run: echo "${{ toJSON(github.event.issue.title) }}"\n'
+            "      - name: format-wrapped context\n"
+            "        run: echo \"${{ format('{0}', inputs.branch) }}\"\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only", "--policy-checks", str(sb.repo_dir / "examples" / "policy-wrapped.yml")
+        )
+        assert_exit("function-wrapped injection does not change exit code", exit_code, 0, output)
+        assert_contains(
+            "warns for github.event wrapped in toJSON(...)",
+            output,
+            r"policy-wrapped\.yml:8 potential script injection risk",
+        )
+        assert_contains(
+            "warns for inputs.branch wrapped in format(...)",
+            output,
+            r"policy-wrapped\.yml:10 potential script injection risk",
+        )
+
+        print()
+        print("[P0] act failing with an unrecognized, nonzero exit must be reported as failure")
+        sb = Sandbox(tmp_root)
+        sb.create_act_stub()
+        sb.write_repo_file(
+            ".github/workflows/ci.yml",
+            "name: CI\non: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n      - run: echo hi\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--test-only",
+            str(sb.repo_dir / ".github" / "workflows" / "ci.yml"),
+            extra_env={"ACT_DRYRUN_STUB_EXIT": "3"},
+        )
+        assert_exit("unrecognized nonzero act exit is reported as failure", exit_code, 1, output)
+        assert_contains(
+            "reports act validation failed", output, r"act validation failed \(exit code: 3\)"
+        )
+        assert_not_contains(
+            "does not report act as merely completed with warnings",
+            output,
+            "act completed with warnings",
         )
 
     print()

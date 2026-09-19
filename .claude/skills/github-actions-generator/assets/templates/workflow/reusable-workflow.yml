@@ -28,7 +28,7 @@ on:
       [INPUT_NAME]:
         description: '[INPUT_DESCRIPTION]'
         required: [true/false]
-        type: [string/boolean/number/choice/environment]
+        type: [string/boolean/number]
         default: '[DEFAULT_VALUE]'  # Optional, only for optional inputs
 
       # Add more inputs as needed
@@ -87,9 +87,12 @@ jobs:
 
       - name: [STEP_NAME]
         id: [STEP_ID]
+        env:
+          INPUT_VALUE: ${{ inputs.[INPUT_NAME] }}
+          SECRET_VALUE: ${{ secrets.[SECRET_NAME] }}
         run: |
-          # Use inputs: ${{ inputs.[INPUT_NAME] }}
-          # Use secrets: ${{ secrets.[SECRET_NAME] }}
+          # Use inputs: "$INPUT_VALUE"
+          # Use secrets: "$SECRET_VALUE"
           echo "[OUTPUT_NAME]=[OUTPUT_VALUE]" >> $GITHUB_OUTPUT
 
       # Add more steps as needed
@@ -102,5 +105,7 @@ jobs:
 
     steps:
       - name: Use previous job output
+        env:
+          PREVIOUS_OUTPUT: ${{ needs.[JOB_ID].outputs.[OUTPUT_KEY] }}
         run: |
-          echo "Output from previous job: ${{ needs.[JOB_ID].outputs.[OUTPUT_KEY] }}"
+          echo "Output from previous job: $PREVIOUS_OUTPUT"

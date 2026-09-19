@@ -4,14 +4,9 @@ Act is a tool that allows you to run your GitHub Actions locally, providing fast
 
 ## Installation
 
-```bash
-# Install act using the official script
-curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
-```
-
-See [act's installation docs](https://github.com/nektos/act#installation) for other installation methods (Homebrew, Chocolatey,
-winget, prebuilt binaries). This skill does not auto-install act — see SKILL.md's Initial Setup
-section.
+See [act's installation docs](https://github.com/nektos/act#installation) for the current installation
+methods (Homebrew, Chocolatey, winget, prebuilt binaries, or the official install script). This skill
+does not auto-install act — see SKILL.md's Initial Setup section.
 
 ## Core Commands
 
