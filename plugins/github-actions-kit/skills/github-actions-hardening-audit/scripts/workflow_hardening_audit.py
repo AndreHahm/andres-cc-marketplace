@@ -62,21 +62,45 @@ def compile_optional_regex(pattern: str, label: str) -> re.Pattern[str] | None:
 
 JOB_KEY_RE = re.compile(r"^[A-Za-z0-9_.-]+:\s*(#.*)?$")
 USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
+# GitHub's complete documented set of `on:` trigger names (webhook events plus schedule/
+# workflow_dispatch/workflow_call/workflow_run/repository_dispatch/image_version) — kept as the
+# single source of truth so TRIGGER_KEY_RE below can never drift out of sync with it.
 VALID_TRIGGER_NAMES = {
-    "push",
+    "branch_protection_rule",
+    "check_run",
+    "check_suite",
+    "create",
+    "delete",
+    "deployment",
+    "deployment_status",
+    "discussion",
+    "discussion_comment",
+    "fork",
+    "gollum",
+    "image_version",
+    "issue_comment",
+    "issues",
+    "label",
+    "merge_group",
+    "milestone",
+    "page_build",
+    "public",
     "pull_request",
+    "pull_request_review",
+    "pull_request_review_comment",
     "pull_request_target",
-    "workflow_dispatch",
+    "push",
+    "registry_package",
+    "release",
     "repository_dispatch",
     "schedule",
-    "merge_group",
+    "status",
+    "watch",
+    "workflow_call",
+    "workflow_dispatch",
     "workflow_run",
-    "release",
 }
-TRIGGER_KEY_RE = re.compile(
-    r"^(push|pull_request|pull_request_target|workflow_dispatch|repository_dispatch|"
-    r"schedule|merge_group|workflow_run|release):"
-)
+TRIGGER_KEY_RE = re.compile(r"^(" + "|".join(VALID_TRIGGER_NAMES) + r"):")
 ON_INLINE_RE = re.compile(r"^on\s*:\s*(.+)$")
 IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -118,7 +142,7 @@ FULL_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 def classify_ref(uses_value: str, allow_ref_regex: re.Pattern[str] | None) -> str | None:
     if "@" not in uses_value:
         return None
-    ref = uses_value.rsplit("@", 1)[1].strip()
+    ref = uses_value.rsplit("@", 1)[1].strip().strip("'\"")
     if allow_ref_regex and allow_ref_regex.search(ref):
         return None
     if FULL_SHA_RE.match(ref):

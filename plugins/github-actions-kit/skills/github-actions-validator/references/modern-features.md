@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: syft ./src -o spdx-json > sbom.spdx.json
 
-      - uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34  # v3.0.0
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
         with:
           subject-path: 'dist/*.tar.gz'
           sbom-path: 'sbom.spdx.json'
@@ -137,13 +137,12 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
           aws-region: us-east-1
-          # Token now includes check_run_id for granular tracking
 
       - name: Deploy to AWS
         run: aws s3 sync ./build s3://my-bucket/
 ```
 
-### AWS IAM Policy with check_run_id
+### AWS IAM Policy
 
 ```json
 {
@@ -158,20 +157,11 @@ jobs:
       "StringEquals": {
         "token.actions.githubusercontent.com:sub": "repo:org/repo:ref:refs/heads/main",
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-      },
-      "StringLike": {
-        "token.actions.githubusercontent.com:check_run_id": "*"
       }
     }
   }]
 }
 ```
-
-### Benefits of check_run_id
-- **Fine-grained access control**: Trace tokens to exact job and compute
-- **Improved auditability**: Track which specific check run made API calls
-- **Least-privilege policies**: Attribute-based access control without enumerating repositories
-- **Faster revocation**: Reduce secret exposure risk
 
 ---
 

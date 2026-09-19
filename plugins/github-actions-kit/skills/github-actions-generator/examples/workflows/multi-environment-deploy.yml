@@ -69,8 +69,9 @@ jobs:
             exit 0
           fi
 
-          # Branch-based deployment
-          case "${{ github.ref }}" in
+          # Branch-based deployment. $GITHUB_REF is a GitHub-provided default runner env var,
+          # not a raw ${{ }} interpolation.
+          case "$GITHUB_REF" in
             refs/heads/main)
               echo "environment=production" >> $GITHUB_OUTPUT
               echo "deploy=true" >> $GITHUB_OUTPUT

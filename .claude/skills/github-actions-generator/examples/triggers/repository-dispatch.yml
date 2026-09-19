@@ -418,25 +418,26 @@ jobs:
           CUSTOM_TASK_RESULT: ${{ needs.handle-custom-task.result }}
           PAYLOAD_JSON: ${{ toJSON(github.event.client_payload) }}
         run: |
-          cat <<EOF >> $GITHUB_STEP_SUMMARY
-          ## 📬 Repository Dispatch Event Summary
-
-          **Event Type:** $EVENT_ACTION
-          **Triggered:** $EVENT_CREATED_AT
-          **Sender:** $EVENT_SENDER
-
-          ### Job Results
-          - Deployment: $DEPLOYMENT_RESULT
-          - Migration: $MIGRATION_RESULT
-          - Cache Rebuild: $CACHE_REBUILD_RESULT
-          - Incident Response: $INCIDENT_RESULT
-          - Custom Task: $CUSTOM_TASK_RESULT
-
-          ### Payload
-          ```json
-          $PAYLOAD_JSON
-          ```
-          EOF
+          # The Markdown fences below contain literal backticks, which an unquoted
+          # heredoc (<<EOF) would parse as command substitution; write the dynamic
+          # fields with printf instead so the backticks stay literal while
+          # variables still interpolate.
+          {
+            printf '## 📬 Repository Dispatch Event Summary\n\n'
+            printf '**Event Type:** %s\n' "$EVENT_ACTION"
+            printf '**Triggered:** %s\n' "$EVENT_CREATED_AT"
+            printf '**Sender:** %s\n\n' "$EVENT_SENDER"
+            printf '### Job Results\n'
+            printf -- '- Deployment: %s\n' "$DEPLOYMENT_RESULT"
+            printf -- '- Migration: %s\n' "$MIGRATION_RESULT"
+            printf -- '- Cache Rebuild: %s\n' "$CACHE_REBUILD_RESULT"
+            printf -- '- Incident Response: %s\n' "$INCIDENT_RESULT"
+            printf -- '- Custom Task: %s\n\n' "$CUSTOM_TASK_RESULT"
+            printf '### Payload\n'
+            printf '```json\n'
+            printf '%s\n' "$PAYLOAD_JSON"
+            printf '```\n'
+          } >> "$GITHUB_STEP_SUMMARY"
 
           # Static documentation below has no dynamic values to substitute, so it's
           # written via a separate quoted heredoc (inert to the shell, no injection

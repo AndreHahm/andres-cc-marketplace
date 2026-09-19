@@ -114,6 +114,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
 ## Output contract
 - Exit `0` in reporting mode with no critical groups (or `FAIL_ON_CRITICAL=0`)
 - Exit `1` when `FAIL_ON_CRITICAL=1` and one or more critical groups are found
+- Exit `1` when `FAIL_ON_CRITICAL=1` and any matched file failed to parse (malformed JSON or a
+  non-object payload) — a skipped file never silently lets the gate pass just because no group was
+  built from it
 - Exit `1` also on invalid input — invalid `OUTPUT_FORMAT`/`TOP_N`/`MIN_RUNS`/`FAIL_ON_CRITICAL`, a
   non-numeric or out-of-range `WARN_INSTABILITY_PCT`/`CRITICAL_INSTABILITY_PCT`,
   `CRITICAL_INSTABILITY_PCT` below `WARN_INSTABILITY_PCT`, an invalid `*_MATCH`/`*_EXCLUDE` regex, or
@@ -143,6 +146,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
 - [ ] `FAIL_ON_CRITICAL=1` exits `1` when a critical group is present
 - [ ] JSON output includes all four documented top-level keys (`summary`, `groups`, `all_groups`,
       `critical_groups`)
+- [ ] `FAIL_ON_CRITICAL=1` exits `1` when `RUN_GLOB` matches only a malformed-JSON file (a parse error
+      with zero critical groups) — a skipped file must not let the gate pass silently
 - [ ] The "Collect run JSON" example runs without error against a real `gh run view` call
 
 A real baseline-comparison eval covers 1 of 3 declared scenarios (synthetic alternating-conclusion run
