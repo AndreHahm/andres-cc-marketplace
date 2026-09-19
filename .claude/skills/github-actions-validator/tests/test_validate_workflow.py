@@ -400,6 +400,76 @@ def main() -> int:
         )
 
         print()
+        print("[P1] script injection check catches direct github.ref interpolation")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-ref.yml",
+            "name: Policy Ref\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - name: Inline github.ref usage\n"
+            '        run: echo "${{ github.ref }}"\n'
+            "      - name: Block-form github.ref usage\n"
+            "        run: |\n"
+            "          echo ${{ github.ref }}\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only", "--policy-checks", str(sb.repo_dir / "examples" / "policy-ref.yml")
+        )
+        assert_exit(
+            "direct github.ref interpolation does not change exit code", exit_code, 0, output
+        )
+        assert_contains(
+            "warns for github.ref in an inline run: step",
+            output,
+            r"policy-ref\.yml:8 potential script injection risk",
+        )
+        assert_contains(
+            "warns for github.ref in a block-form run: step",
+            output,
+            r"policy-ref\.yml:11 potential script injection risk",
+        )
+
+        print()
+        print("[P1] script injection check recognizes compact/reordered run: block headers")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-block-headers.yml",
+            "name: Policy Block Headers\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  release:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - run: |\n"
+            "          echo ${{ github.ref }}\n"
+            "      - name: Reordered chomping/indentation indicators\n"
+            "        run: |2-\n"
+            "          echo ${{ github.ref }}\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only",
+            "--policy-checks",
+            str(sb.repo_dir / "examples" / "policy-block-headers.yml"),
+        )
+        assert_exit("compact/reordered run: headers do not change exit code", exit_code, 0, output)
+        assert_contains(
+            "warns inside a compact '- run: |' block",
+            output,
+            r"policy-block-headers\.yml:8 potential script injection risk",
+        )
+        assert_contains(
+            "warns inside a 'run: |2-' (indentation-then-chomping) block",
+            output,
+            r"policy-block-headers\.yml:11 potential script injection risk",
+        )
+
+        print()
         print("[P0] act failing with an unrecognized, nonzero exit must be reported as failure")
         sb = Sandbox(tmp_root)
         sb.create_act_stub()

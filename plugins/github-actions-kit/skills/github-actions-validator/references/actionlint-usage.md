@@ -227,7 +227,7 @@ jobs:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Download actionlint
         # Pinned to a tagged release, not `main` — check https://github.com/rhysd/actionlint/releases for latest version
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/v1.7.9/scripts/download-actionlint.bash)
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.9/scripts/download-actionlint.bash) 1.7.9
       - name: Run actionlint
         run: ./actionlint
 ```
