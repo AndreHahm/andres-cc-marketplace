@@ -69,7 +69,7 @@ jobs:
       - run: echo "Deploying commit ${{ github.event.workflow_run.head_sha }}"
 ```
 
-See `examples/triggers/workflow-orchestration.yml` for the complete, runnable workflow-chaining example (main CI workflow, artifact passing, and the downstream `workflow_run`-triggered job together).
+See `examples/triggers/workflow-orchestration.yml` (+ its 3 companion files, `-security-scan.yml`/`-deploy.yml`/`-performance-test.yml`) for the complete, runnable workflow-chaining example — one workflow definition per file, since GitHub Actions doesn't support multiple workflows in a single file, chained together via `workflow_run`.
 
 **2. Security Scanning for External PRs**
 
@@ -772,7 +772,7 @@ curl -X POST \
 
 See the `examples/triggers/` directory for complete working examples:
 
-- `workflow-orchestration.yml` - CI → Deploy workflow chaining
+- `workflow-orchestration.yml` (+ 3 companion files) - CI → Deploy workflow chaining
 - `repository-dispatch.yml` - External API triggers
 - `chatops-commands.yml` - Full ChatOps implementation
 

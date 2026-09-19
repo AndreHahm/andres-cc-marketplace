@@ -61,7 +61,14 @@ runs:
         if [ "$PACKAGE_MANAGER" == "npm" ]; then
           echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
         elif [ "$PACKAGE_MANAGER" == "yarn" ]; then
-          echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+          # 'yarn cache dir' only exists on Yarn Classic (1.x); Yarn Berry (2+, the
+          # version Corepack commonly activates) removed it in favor of 'config get
+          # cacheFolder'. Detect the active generation from the version string.
+          if [[ "$(yarn --version)" == 1.* ]]; then
+            echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+          else
+            echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
+          fi
         else
           echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
         fi
@@ -88,7 +95,11 @@ runs:
         if [ "$PACKAGE_MANAGER" == "npm" ]; then
           npm ci
         elif [ "$PACKAGE_MANAGER" == "yarn" ]; then
-          yarn install --frozen-lockfile
+          if [[ "$(yarn --version)" == 1.* ]]; then
+            yarn install --frozen-lockfile
+          else
+            yarn install --immutable
+          fi
         else
           pnpm install --frozen-lockfile
         fi
