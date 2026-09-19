@@ -6,7 +6,7 @@ description: >-
   success and failure-like outcomes across recent runs — to surface
   chronically flaky pipelines. Use when asked "which workflows are flaky",
   "audit CI stability", or "detect unstable workflows from run history".
-allowed-tools: Bash(gh run view --json:*) Bash(gh run list:*) Bash(gh repo view:*) Bash(jq --arg repo:*) Bash(mkdir -p artifacts:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*)
+allowed-tools: Bash(gh run view --json:*) Bash(gh run list:*) Bash(gh repo view:*) Bash(jq --arg repo:*) Bash(grep -qxF 'artifacts/' .gitignore:*) Bash(echo 'artifacts/' >> .gitignore:*) Bash(mkdir -p artifacts:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*)
 ---
 
 # GitHub Actions Conclusion Volatility Audit
@@ -61,9 +61,12 @@ run-history JSON exported via `gh run view --json`.
 ## Collect run JSON
 
 `gh run view --json` does **not** accept a `repository` field — requesting it errors outright. Collect
-the repository name separately and inject it into the JSON payload:
+the repository name separately and inject it into the JSON payload. Add `artifacts/` to your own
+repository's `.gitignore` before the first collection run (once per repo, not once per run) so these
+exports never show up as untracked clutter:
 
 ```bash
+grep -qxF 'artifacts/' .gitignore 2>/dev/null || echo 'artifacts/' >> .gitignore
 mkdir -p artifacts/github-actions
 gh run view --json databaseId,workflowName,headBranch,conclusion,createdAt,updatedAt,url <run-id> \
   | jq --arg repo "$(gh repo view --json nameWithOwner -q .nameWithOwner)" '. + {repository: $repo}' \
@@ -84,8 +87,8 @@ for id in $(gh run list --workflow=<workflow-file> --branch=<branch> --json data
 done
 ```
 
-Recommend adding `artifacts/` (or whichever directory `RUN_GLOB` points at) to your own repository's
-`.gitignore` — these are scratch run-history exports, not something meant to be committed.
+If `RUN_GLOB` is pointed at a different directory than `artifacts/`, gitignore that directory instead
+— these are scratch run-history exports, not something meant to be committed.
 
 This convention differs intentionally from `github-actions-log-analyzer`'s scratchpad-only output: run
 exports here are meant to accumulate across collection runs for later volatility comparison, not to be
