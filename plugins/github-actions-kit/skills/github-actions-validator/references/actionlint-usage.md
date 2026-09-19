@@ -226,8 +226,12 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Download actionlint
-        # Pinned to a tagged release, not `main` — check https://github.com/rhysd/actionlint/releases for latest version
-        run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.9/scripts/download-actionlint.bash) 1.7.9
+        # Both the installer script (via commit SHA, not the mutable `v1.7.9` tag — a
+        # retargeted tag or compromised upstream repo could otherwise substitute different
+        # script content while this comment still says "v1.7.9") and the actionlint version
+        # it installs are pinned; check https://github.com/rhysd/actionlint/releases for the
+        # latest version and re-resolve the tag's commit SHA when bumping it.
+        run: bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/a443f344ff32813837fa49f7aa6cbc478d770e62/scripts/download-actionlint.bash) 1.7.9
       - name: Run actionlint
         run: ./actionlint
 ```
