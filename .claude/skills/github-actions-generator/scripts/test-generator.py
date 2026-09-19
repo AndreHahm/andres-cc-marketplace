@@ -92,9 +92,8 @@ def assert_text_not_matches_pattern(label: str, text: str, pattern: str) -> None
 
 
 def yamllint_errors(file: Path) -> str:
-    yamllint_path = shutil.which("yamllint") or "yamllint"
     proc = subprocess.run(
-        [yamllint_path, "-d", "relaxed", str(file)],
+        ["yamllint", "-d", "relaxed", str(file)],
         capture_output=True,
         text=True,
     )
