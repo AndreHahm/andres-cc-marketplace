@@ -76,7 +76,11 @@ runs:
           ${{ runner.os }}-${{ inputs.package-manager }}-
 
     - name: Install dependencies
-      if: steps.cache.outputs.cache-hit != 'true'
+      # Always run the install command, even on a cache hit — the cache above only holds
+      # the package manager's download cache (npm's tarball cache / yarn's cache dir /
+      # pnpm's content-addressable store), never node_modules itself. Skipping install on
+      # cache-hit leaves node_modules empty; the cache still speeds up install by avoiding
+      # re-downloads, it just can't replace running install entirely.
       shell: bash
       env:
         PACKAGE_MANAGER: ${{ inputs.package-manager }}
