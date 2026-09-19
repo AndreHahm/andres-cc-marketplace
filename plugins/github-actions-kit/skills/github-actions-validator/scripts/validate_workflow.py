@@ -272,6 +272,101 @@ OIDC_ACTION_RE = re.compile(
     r"hashicorp/vault-action|actions/attest-build-provenance)@",
     re.IGNORECASE,
 )
+JOB_KEY_RE = re.compile(r"^(?:\"[^\"]+\"|'[^']+'|[A-Za-z0-9_.-]+):\s*(#.*)?$")
+ID_TOKEN_WRITE_RE = re.compile(r"id-token\s*:\s*write\s*(#.*)?$", re.IGNORECASE)
+
+
+def _permissions_block_has_id_token_write(lines: list[str], perm_line_idx: int) -> bool:
+    """`perm_line_idx` is a 0-based index into `lines` for a `permissions:` line (workflow-
+    or job-level). Returns True if that specific block declares id-token: write -- either as
+    an inline mapping (`permissions: {id-token: write}`) on the same line, or as a nested
+    `id-token: write` line inside the block (terminated by the first line back at or above
+    the permissions: line's own indent)."""
+    perm_line = lines[perm_line_idx]
+    perm_indent = len(perm_line) - len(perm_line.lstrip(" "))
+    if ID_TOKEN_WRITE_RE.search(perm_line):
+        return True
+    for later_line in lines[perm_line_idx + 1 :]:
+        stripped = later_line.strip()
+        if not stripped:
+            continue
+        indent = len(later_line) - len(later_line.lstrip(" "))
+        if indent <= perm_indent:
+            break
+        if ID_TOKEN_WRITE_RE.match(stripped):
+            return True
+    return False
+
+
+def find_oidc_permission_gaps(lines: list[str]) -> list[tuple[int, str]]:
+    """Per-job replacement for a whole-file `id-token: write` substring search: resolves
+    each job's own *effective* permissions (its own job-level `permissions:` block if
+    present, else the workflow-level block, else GitHub's default -- which never includes
+    id-token: write -- per GitHub's replace-not-merge job-permissions model) and flags a
+    job that uses an OIDC-integrated action without id-token: write in that effective set.
+    Returns (line_no, job_name) pairs, one per non-compliant job, line_no pointing at the
+    job's first OIDC-action uses: line."""
+    workflow_perm_line_idx: int | None = None
+    in_jobs = False
+    jobs_indent = -1
+    job_key_indent: int | None = None
+    current_job: str | None = None
+    job_body_indent: dict[str, int] = {}
+    job_own_perm_line_idx: dict[str, int] = {}
+    job_first_oidc_line: dict[str, int] = {}
+    job_order: list[str] = []
+
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+
+        if workflow_perm_line_idx is None and indent == 0 and re.match(r"^permissions\s*:", line):
+            workflow_perm_line_idx = idx
+
+        if not in_jobs and indent == 0 and re.match(r"^jobs\s*:\s*$", line):
+            in_jobs = True
+            jobs_indent = indent
+            continue
+
+        if not in_jobs:
+            continue
+
+        if indent <= jobs_indent:
+            in_jobs = False
+            current_job = None
+            continue
+
+        if job_key_indent is None:
+            job_key_indent = indent
+
+        if indent == job_key_indent and JOB_KEY_RE.match(stripped):
+            current_job = stripped.split(":", 1)[0].strip().strip("'\"")
+            job_order.append(current_job)
+            continue
+
+        if current_job is None or indent <= job_key_indent:
+            continue
+
+        job_body_indent.setdefault(current_job, indent)
+        if indent == job_body_indent[current_job] and re.match(r"^permissions\s*:", stripped):
+            job_own_perm_line_idx.setdefault(current_job, idx)
+
+        if OIDC_ACTION_RE.search(line):
+            job_first_oidc_line.setdefault(current_job, idx)
+
+    gaps: list[tuple[int, str]] = []
+    for job in job_order:
+        if job not in job_first_oidc_line:
+            continue
+        perm_line_idx = job_own_perm_line_idx.get(job, workflow_perm_line_idx)
+        has_id_token_write = perm_line_idx is not None and _permissions_block_has_id_token_write(
+            lines, perm_line_idx
+        )
+        if not has_id_token_write:
+            gaps.append((job_first_oidc_line[job] + 1, job))
+    return gaps
 
 
 def check_security_policies(workflow_path: str) -> int:
@@ -337,11 +432,14 @@ def check_security_policies(workflow_path: str) -> int:
             )
             warning_count += 1
 
-        # 4) OIDC-integrated actions should explicitly request id-token: write.
-        if OIDC_ACTION_RE.search(text) and not re.search(r"id-token:\s*write", text, re.IGNORECASE):
+        # 4) OIDC-integrated actions should explicitly request id-token: write, resolved
+        # per-job against that job's own effective permissions (job-level block if present,
+        # else workflow-level, else GitHub's default) -- not a whole-file substring search,
+        # which would let one job's unrelated id-token: write "cover" every other job.
+        for line_no, job_name in find_oidc_permission_gaps(lines):
             log_warn(
-                f"{file} uses an OIDC-related action but does not declare "
-                "id-token: write in permissions."
+                f"{file}:{line_no} job '{job_name}' uses an OIDC-related action but its "
+                "effective permissions do not include id-token: write."
             )
             warning_count += 1
 

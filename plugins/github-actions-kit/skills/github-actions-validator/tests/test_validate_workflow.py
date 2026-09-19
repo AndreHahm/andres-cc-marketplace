@@ -249,7 +249,8 @@ def main() -> int:
         assert_contains(
             "warns for missing id-token with OIDC action",
             output,
-            "OIDC-related action but does not declare id-token: write",
+            r"job 'release' uses an OIDC-related action but its effective permissions "
+            "do not include id-token: write",
         )
         assert_contains("prints policy warning summary", output, "Security policy warnings:")
 
@@ -284,6 +285,71 @@ def main() -> int:
         assert_contains("prints clean policy summary", output, "No security policy warnings found")
         assert_not_contains(
             "does not print warning summary when clean", output, "Security policy warnings:"
+        )
+
+        print()
+        print("[P1] id-token check resolves per-job effective permissions (issue #356)")
+        sb = Sandbox(tmp_root)
+        sb.create_actionlint_stub()
+        sb.write_repo_file(
+            "examples/policy-oidc-per-job.yml",
+            "name: Policy OIDC Per Job\n"
+            "on: pull_request\n"
+            "jobs:\n"
+            "  job-a:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: aws-actions/configure-aws-credentials@"
+            "0123456789abcdef0123456789abcdef01234567\n"
+            "  job-b:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    permissions:\n"
+            "      id-token: write\n"
+            "    steps:\n"
+            "      - run: echo unrelated\n"
+            "  job-c:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    permissions:\n"
+            "      id-token: write\n"
+            "    steps:\n"
+            "      - uses: azure/login@0123456789abcdef0123456789abcdef01234567\n"
+            "  job-d:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    permissions:\n"
+            "      contents: read\n"
+            "    steps:\n"
+            "      - uses: hashicorp/vault-action@"
+            "0123456789abcdef0123456789abcdef01234567\n",
+        )
+        exit_code, output = sb.run_validator(
+            "--lint-only",
+            "--policy-checks",
+            str(sb.repo_dir / "examples" / "policy-oidc-per-job.yml"),
+        )
+        assert_exit("per-job id-token check does not change exit code", exit_code, 0, output)
+        assert_contains(
+            "warns for job-a (no own permissions, unrelated job-b's id-token: write "
+            "does not cover it -- the original issue #356 false negative)",
+            output,
+            r"job 'job-a' uses an OIDC-related action but its effective permissions "
+            "do not include id-token: write",
+        )
+        assert_not_contains(
+            "does not warn for job-b (has id-token: write, uses no OIDC action itself)",
+            output,
+            r"job 'job-b'",
+        )
+        assert_not_contains(
+            "does not warn for job-c (own permissions block declares id-token: write)",
+            output,
+            r"job 'job-c'",
+        )
+        assert_contains(
+            "warns for job-d (own permissions block replaces, not merges with, workflow-"
+            "level -- its own block has contents: read only, no id-token: write)",
+            output,
+            r"job 'job-d' uses an OIDC-related action but its effective permissions "
+            "do not include id-token: write",
         )
 
         print()
