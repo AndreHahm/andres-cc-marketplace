@@ -32,18 +32,28 @@ list_candidates() {
   # directory showed as one candidate, and selecting it staged both files).
   # Y (worktree status, 2nd char) non-space covers both "has unstaged worktree changes" and
   # untracked ("??") -- exactly the set of files step 6 would otherwise offer to stage. A
-  # staged rename/copy (X in R/C) carries an extra NUL-terminated ORIG_PATH field regardless of
-  # Y -- read and discard it so it's never misread as an unrelated second entry.
+  # rename/copy (R/C in EITHER the X or Y column -- git reports a rename in the worktree (Y)
+  # column with a blank X for e.g. a renamed-then-intent-added file, not only as a staged (X)
+  # rename) carries an extra NUL-terminated ORIG_PATH field regardless of which column it's in.
+  # Each emitted candidate is always exactly TWO NUL-terminated fields -- the primary path, then
+  # the orig path (empty string when this isn't a rename/copy) -- so the orig path is staged
+  # together with the primary path as one atomic change, rather than read-and-discarded: staging
+  # only the new path while leaving the old path's deletion unstaged records a brand-new file and
+  # leaves the original still fully tracked, i.e. a duplicate instead of a rename once committed
+  # (live-reproduced; found by Codex's automated PR review). Staging both paths together lets
+  # git's own content-based rename detection recognize it as a rename again at commit/status time.
   git -c diff.relative=false status --porcelain -z --untracked-files=all | \
   while IFS= read -r -d '' entry; do
-    case "$entry" in
-      R*|C*)
-        IFS= read -r -d '' _orig_path
+    x_char="${entry:0:1}"
+    y_char="${entry:1:1}"
+    orig_path=""
+    case "$x_char$y_char" in
+      *R*|*C*)
+        IFS= read -r -d '' orig_path
         ;;
     esac
-    y_char="${entry:1:1}"
     if [ "$y_char" != " " ]; then
-      printf '%s\0' "${entry:3}"
+      printf '%s\0%s\0' "${entry:3}" "$orig_path"
     fi
   done
 }
@@ -51,14 +61,18 @@ list_candidates() {
 if [ "${1:-}" = "--list" ]; then
   list_candidates > "$SNAPSHOT"
   i=0
-  while IFS= read -r -d '' path; do
+  while IFS= read -r -d '' path && IFS= read -r -d '' orig_path; do
     i=$((i + 1))
     # %q (display only): a filename can contain newlines/control bytes that would make the
     # numbered listing itself misleading (a multi-line "name" pushing later indices out of
     # place, or an invisible control byte hiding part of the name) -- the snapshot file and the
     # pathspec fed to `git add` below both keep the raw, unescaped bytes; only this printed line
     # is quoted for safe, unambiguous display.
-    printf '%d\t%q\n' "$i" "$path"
+    if [ -n "$orig_path" ]; then
+      printf '%d\t%q -> %q\n' "$i" "$orig_path" "$path"
+    else
+      printf '%d\t%q\n' "$i" "$path"
+    fi
   done < "$SNAPSHOT"
   exit 0
 fi
@@ -83,15 +97,20 @@ for arg in "$@"; do
 done
 
 matched=()
+matched_indices=0
 i=0
-while IFS= read -r -d '' path; do
+while IFS= read -r -d '' path && IFS= read -r -d '' orig_path; do
   i=$((i + 1))
   if [ -n "${wanted[$i]:-}" ]; then
     matched+=("$path")
+    # Stage the orig path alongside the primary path -- see list_candidates' comment above for
+    # why both halves of a rename/copy must be staged together, not just the primary path.
+    [ -n "$orig_path" ] && matched+=("$orig_path")
+    matched_indices=$((matched_indices + 1))
   fi
 done < "$SNAPSHOT"
 
-if [ "${#matched[@]}" -ne "${#wanted[@]}" ]; then
+if [ "$matched_indices" -ne "${#wanted[@]}" ]; then
   echo "Error: one or more requested indices are out of range -- run --list again and retry" >&2
   exit 1
 fi
