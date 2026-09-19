@@ -103,6 +103,41 @@ def find_generic_boundaries(lines: list[str]) -> list[Boundary]:
     return boundaries
 
 
+DETECTOR_PRECEDENCE = {"flue": 0, "group": 1, "custom": 2}
+
+
+def deduplicate_boundaries(boundaries: list[Boundary]) -> list[Boundary]:
+    """Drop a lower-precedence span that is equivalent to or fully nested within a higher-precedence
+    span from a *different* detector, so the same log region isn't returned as two separate `steps`
+    entries (and dispatched to two redundant subagents downstream).
+
+    Precedence, highest first: flue markers > group markers > generic custom markers — flue and
+    group are purpose-built, structured delimiters (a skill-name-tagged marker, GitHub's own
+    `##[group]`/`##[endgroup]` syntax), while the generic START/END heuristic is the broadest and
+    least reliable of the three, most likely to coincidentally match text already captured by a
+    more specific marker pair.
+
+    Spans from the *same* detector are never compared here — each detector's own stack-based
+    pairing already resolves its own nesting. Spans that only partially overlap, or don't overlap
+    at all, are both kept unchanged: this only removes an exact duplicate or full subset, it never
+    merges distinct spans.
+    """
+    deduped: list[Boundary] = []
+    for candidate in boundaries:
+        subsumed = False
+        for other in boundaries:
+            if other is candidate or other.source == candidate.source:
+                continue
+            if DETECTOR_PRECEDENCE[other.source] >= DETECTOR_PRECEDENCE[candidate.source]:
+                continue
+            if other.start_line <= candidate.start_line and candidate.end_line <= other.end_line:
+                subsumed = True
+                break
+        if not subsumed:
+            deduped.append(candidate)
+    return deduped
+
+
 def find_result_markers(lines: list[str]) -> list[dict]:
     markers = []
     open_start = None
@@ -126,6 +161,7 @@ def main() -> int:
     steps = (
         find_flue_boundaries(lines) + find_group_boundaries(lines) + find_generic_boundaries(lines)
     )
+    steps = deduplicate_boundaries(steps)
     steps.sort(key=lambda b: b.start_line)
 
     result = {

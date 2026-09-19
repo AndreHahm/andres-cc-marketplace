@@ -7,6 +7,9 @@ on:
   # Run dependency audit daily at 2 AM UTC
   schedule:
     - cron: '0 2 * * *'
+    # Also run at the same time on Mondays so the weekly-metrics job's
+    # Monday-only condition (github.event.schedule == '0 2 * * 1') is genuinely emitted
+    - cron: '0 2 * * 1'
 
   # Allow manual trigger for testing
   workflow_dispatch:
@@ -24,9 +27,7 @@ on:
         default: 'all'
 
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}
@@ -42,6 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event.inputs.task == 'all' || github.event.inputs.task == 'dependency-audit'
     timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code
@@ -63,7 +67,7 @@ jobs:
 
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dependency-audit-report
           path: audit-report.txt
@@ -105,6 +109,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event.inputs.task == 'all' || github.event.inputs.task == 'stale-branches'
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code
@@ -176,6 +183,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event.inputs.task == 'all' || github.event.inputs.task == 'cache-cleanup'
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - name: Checkout code
@@ -225,6 +235,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event.inputs.task == 'all' || github.event.inputs.task == 'health-check'
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code

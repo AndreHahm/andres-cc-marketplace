@@ -174,9 +174,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Create GitHub Release
-        run: gh release create ${{ github.ref_name }} --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --generate-notes
 
       # Update the major version tag (e.g. v1) to point at this release —
       # see "Git Tags" above for the underlying `git tag -fa`/`push --force` commands.

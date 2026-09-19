@@ -41,7 +41,7 @@ Required property is missing: name
 
 **Fix:**
 ```yaml
-# Every workflow needs a name
+# A workflow name is recommended, not required (GitHub falls back to the file path if omitted)
 name: CI Pipeline
 
 on: [push]
@@ -83,13 +83,10 @@ Unrecognized named-value: 'github'. Located at position 1 within expression: git
 
 **Fix:**
 ```yaml
-# Bad - missing ${{ }}
-if: github.ref == 'refs/heads/main'
-
-# Good
+# Explicit form
 if: ${{ github.ref == 'refs/heads/main' }}
 
-# Even better (GitHub Actions auto-evaluates if conditions)
+# Equivalent - GitHub Actions auto-evaluates a bare if: condition
 if: github.ref == 'refs/heads/main'
 ```
 
@@ -363,12 +360,15 @@ steps:
 
 # Good - use env
 steps:
-  - name: Print variable
+  - name: Print variable (Unix)
     env:
       MY_VAR: ${{ secrets.MY_SECRET }}
-    run: echo "$MY_VAR"  # Unix
-    # or
-    run: echo $env:MY_VAR  # Windows PowerShell
+    run: echo "$MY_VAR"
+
+  - name: Print variable (Windows PowerShell)
+    env:
+      MY_VAR: ${{ secrets.MY_SECRET }}
+    run: echo $env:MY_VAR
 ```
 
 ## Matrix Strategy Errors
@@ -443,7 +443,7 @@ Set secrets in repository settings:
 steps:
   - name: Setup tmate session
     if: failure()
-    uses: mxschmitt/action-tmate@v3
+    uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113  # v3.24
 ```
 
 ### 3. Print Context Information
@@ -462,7 +462,7 @@ steps:
 
 ## Best Practices
 
-1. **Always use specific action versions**: `actions/checkout@v6` not `actions/checkout@main`
+1. **Pin actions to a full commit SHA**: `actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0` not `actions/checkout@v6` or `actions/checkout@main`
 2. **Quote strings with special characters**: `name: "My: Workflow"`
 3. **Use shellcheck**: Enable shell script linting
 4. **Validate locally**: Use act and actionlint before pushing

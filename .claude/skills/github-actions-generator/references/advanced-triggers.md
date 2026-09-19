@@ -66,7 +66,10 @@ jobs:
           name: build-artifacts
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: echo "Deploying commit ${{ github.event.workflow_run.head_sha }}"
+      - name: Report deployed commit
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: echo "Deploying commit $HEAD_SHA"
 ```
 
 See `examples/triggers/workflow-orchestration.yml` (+ its 3 companion files, `-security-scan.yml`/`-deploy.yml`/`-performance-test.yml`) for the complete, runnable workflow-chaining example — one workflow definition per file, since GitHub Actions doesn't support multiple workflows in a single file, chained together via `workflow_run`.
@@ -107,13 +110,20 @@ jobs:
 ```yaml
 steps:
   - name: Get workflow run details
+    env:
+      RUN_NAME: ${{ github.event.workflow_run.name }}
+      RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_EVENT: ${{ github.event.workflow_run.event }}
     run: |
-      echo "Workflow: ${{ github.event.workflow_run.name }}"
-      echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-      echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
-      echo "Head Branch: ${{ github.event.workflow_run.head_branch }}"
-      echo "Run ID: ${{ github.event.workflow_run.id }}"
-      echo "Event: ${{ github.event.workflow_run.event }}"
+      echo "Workflow: $RUN_NAME"
+      echo "Conclusion: $RUN_CONCLUSION"
+      echo "Head SHA: $RUN_HEAD_SHA"
+      echo "Head Branch: $RUN_HEAD_BRANCH"
+      echo "Run ID: $RUN_ID"
+      echo "Event: $RUN_EVENT"
 ```
 
 #### Security Benefits
@@ -226,7 +236,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.client_payload.version }}
-      - run: echo "Deploying to ${{ github.event.client_payload.environment }}"
+      - name: Report deployment target
+        env:
+          DEPLOY_ENV: ${{ github.event.client_payload.environment }}
+        run: echo "Deploying to $DEPLOY_ENV"
 ```
 
 See `examples/triggers/repository-dispatch.yml` for the complete, runnable version (payload parsing, output-passing between steps, and full deployment job).
@@ -247,10 +260,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Process alert
+        env:
+          SEVERITY: ${{ github.event.client_payload.severity }}
+          MESSAGE: ${{ github.event.client_payload.message }}
         run: |
-          SEVERITY="${{ github.event.client_payload.severity }}"
-          MESSAGE="${{ github.event.client_payload.message }}"
-
           echo "Alert received: $MESSAGE (Severity: $SEVERITY)"
 
           if [[ "$SEVERITY" == "critical" ]]; then
@@ -277,17 +290,23 @@ jobs:
 
     steps:
       - name: Validate payload
+        env:
+          DEPLOY_VERSION: ${{ github.event.client_payload.version }}
+          DEPLOY_APPROVER: ${{ github.event.client_payload.approver }}
         run: |
           # Required fields: version, approver
-          if [[ -z "${{ github.event.client_payload.version }}" || -z "${{ github.event.client_payload.approver }}" ]]; then
+          if [[ -z "$DEPLOY_VERSION" || -z "$DEPLOY_APPROVER" ]]; then
             echo "Error: version and approver are required"
             exit 1
           fi
 
       - name: Deploy
+        env:
+          DEPLOY_VERSION: ${{ github.event.client_payload.version }}
+          DEPLOY_APPROVER: ${{ github.event.client_payload.approver }}
         run: |
-          echo "Deploying version ${{ github.event.client_payload.version }}"
-          echo "Approved by: ${{ github.event.client_payload.approver }}"
+          echo "Deploying version $DEPLOY_VERSION"
+          echo "Approved by: $DEPLOY_APPROVER"
 ```
 
 **3. Cross-Repository Triggers**
@@ -305,8 +324,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Rebuild with new dependency
+        env:
+          DEPENDENCY_NAME: ${{ github.event.client_payload.dependency }}
+          DEPENDENCY_VERSION: ${{ github.event.client_payload.version }}
         run: |
-          echo "Dependency ${{ github.event.client_payload.dependency }} updated to ${{ github.event.client_payload.version }}"
+          echo "Dependency $DEPENDENCY_NAME updated to $DEPENDENCY_VERSION"
           # Rebuild logic
 ```
 
@@ -325,9 +347,9 @@ jobs:
 
 ```yaml
 - name: Validate environment
+  env:
+    ENV: ${{ github.event.client_payload.environment }}
   run: |
-    ENV="${{ github.event.client_payload.environment }}"
-
     # Only allow specific environments
     if [[ ! "$ENV" =~ ^(dev|staging|production)$ ]]; then
       echo "Error: Invalid environment: $ENV"
@@ -383,10 +405,15 @@ jobs:
     steps:
       - name: Parse deploy command
         id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          ENV=$(echo "${{ github.event.comment.body }}" | grep -oP '/deploy\s+\K\w+' || echo 'staging')
+          ENV=$(echo "$COMMENT_BODY" | grep -oP '/deploy\s+\K\w+' || echo 'staging')
           echo "environment=$ENV" >> $GITHUB_OUTPUT
-      - run: echo "Deploying to ${{ steps.parse.outputs.environment }}"
+      - name: Report deployment target
+        env:
+          DEPLOY_ENV: ${{ steps.parse.outputs.environment }}
+        run: echo "Deploying to $DEPLOY_ENV"
 ```
 
 See `examples/triggers/chatops-commands.yml` for the complete, runnable 7-step example (comment reaction,
@@ -514,11 +541,16 @@ jobs:
 
     steps:
       - name: Get deployment info
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          DEPLOY_REF: ${{ github.event.deployment.ref }}
+          DEPLOY_TASK: ${{ github.event.deployment.task }}
+          DEPLOY_PAYLOAD: ${{ toJSON(github.event.deployment.payload) }}
         run: |
-          echo "Environment: ${{ github.event.deployment.environment }}"
-          echo "Ref: ${{ github.event.deployment.ref }}"
-          echo "Task: ${{ github.event.deployment.task }}"
-          echo "Payload: ${{ toJSON(github.event.deployment.payload) }}"
+          echo "Environment: $DEPLOY_ENVIRONMENT"
+          echo "Ref: $DEPLOY_REF"
+          echo "Task: $DEPLOY_TASK"
+          echo "Payload: $DEPLOY_PAYLOAD"
 ```
 
 #### deployment_status Trigger
@@ -536,8 +568,10 @@ jobs:
 
     steps:
       - name: Send notification
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.event.deployment.environment }}
         run: |
-          echo "Deployment to ${{ github.event.deployment.environment }} succeeded"
+          echo "Deployment to $DEPLOY_ENVIRONMENT succeeded"
           # Send Slack/email notification
 ```
 
@@ -695,9 +729,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check status
+        env:
+          EVENT_STATE: ${{ github.event.state }}
+          EVENT_CONTEXT: ${{ github.event.context }}
         run: |
-          echo "State: ${{ github.event.state }}"
-          echo "Context: ${{ github.event.context }}"
+          echo "State: $EVENT_STATE"
+          echo "Context: $EVENT_CONTEXT"
 ```
 
 ### package
@@ -747,9 +784,12 @@ on:
 
 ```yaml
 - name: Debug trigger info
+  env:
+    EVENT_NAME: ${{ github.event_name }}
+    EVENT_JSON: ${{ toJSON(github.event) }}
   run: |
-    echo "Event name: ${{ github.event_name }}"
-    echo "Event: ${{ toJSON(github.event) }}"
+    echo "Event name: $EVENT_NAME"
+    echo "Event: $EVENT_JSON"
 ```
 
 **Test repository_dispatch locally:**

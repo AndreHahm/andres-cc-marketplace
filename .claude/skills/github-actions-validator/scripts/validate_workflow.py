@@ -220,7 +220,7 @@ def check_action_versions(workflow_path: str) -> int:
 
 
 INJECTION_CONTEXT_RE = re.compile(
-    r"\$\{\{\s*(?:"
+    r"\$\{\{.*(?:"
     r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
     r"|needs\.[\w-]+\.outputs\.[\w-]+"
     r"|steps\.[\w-]+\.outputs\.[\w-]+"
@@ -229,7 +229,7 @@ INJECTION_CONTEXT_RE = re.compile(
 )
 RUN_BLOCK_START_RE = re.compile(r"^\s*run:\s*[|>][-+]?\d*\s*$")
 RUN_INLINE_RISK_RE = re.compile(
-    r"^\s*run:\s*.*\$\{\{\s*(?:"
+    r"^\s*run:\s*.*\$\{\{.*(?:"
     r"github\.(?:event|head_ref|ref_name|actor|triggering_actor|repository_owner|base_ref)"
     r"|needs\.[\w-]+\.outputs\.[\w-]+"
     r"|steps\.[\w-]+\.outputs\.[\w-]+"
@@ -569,21 +569,19 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
     target_description = ""
 
     if abs_workflow_path.is_file():
-        if "/.github/workflows/" in str(abs_workflow_path):
-            rel = str(abs_workflow_path.relative_to(repo_root))
-            workflow_flag = ["-W", rel]
-            target_description = f"workflow: {abs_workflow_path.name}"
-        else:
+        try:
+            abs_workflow_path.relative_to(repo_root / ".github" / "workflows")
+        except ValueError:
             log_warn(f"Target file is outside .github/workflows/: {abs_workflow_path}")
             log_warn("act can only validate workflows in .github/workflows/ directory")
             log_info("Skipping act validation for this file")
             log_info("Note: actionlint validation still applies to this file")
             return 2, "target file is outside .github/workflows"
+        rel = str(abs_workflow_path.relative_to(repo_root))
+        workflow_flag = ["-W", rel]
+        target_description = f"workflow: {abs_workflow_path.name}"
     elif abs_workflow_path.is_dir():
-        if (
-            str(abs_workflow_path).endswith("/.github/workflows")
-            or abs_workflow_path == repo_root / ".github" / "workflows"
-        ):
+        if abs_workflow_path == repo_root / ".github" / "workflows":
             target_description = "all workflows in .github/workflows/"
         else:
             log_warn(f"Target directory is outside .github/workflows/: {abs_workflow_path}")
@@ -663,8 +661,8 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
         log_warn("  - Configuration problems")
         return 1, ""
 
-    log_warn(f"act completed with warnings (exit code: {act_exit_code})")
-    return 0, ""
+    log_error(f"✗ act validation failed (exit code: {act_exit_code})")
+    return 1, ""
 
 
 def usage(prog: str, exit_code: int = 0) -> None:

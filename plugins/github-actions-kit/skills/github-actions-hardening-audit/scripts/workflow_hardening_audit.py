@@ -112,18 +112,26 @@ def truncate_value(value: str, limit: int = MAX_FIELD_LEN) -> str:
     return value if len(value) <= limit else value[:limit] + "...(truncated)"
 
 
+FULL_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
+
+
 def classify_ref(uses_value: str, allow_ref_regex: re.Pattern[str] | None) -> str | None:
     if "@" not in uses_value:
         return None
     ref = uses_value.rsplit("@", 1)[1].strip()
     if allow_ref_regex and allow_ref_regex.search(ref):
         return None
+    if FULL_SHA_RE.match(ref):
+        return None
     lowered = ref.lower()
     if lowered in {"main", "master", "head", "latest", "stable", "trunk", "dev", "develop"}:
         return "branch-like"
     if re.match(r"^v\d+$", lowered):
         return "major-tag"
-    return None
+    # Anything else (full semver tags, release branches, feature branches, etc.) is just as
+    # mutable/retaggable as the branch-like/major-tag cases above — only a full commit SHA (or
+    # an ALLOW_REF_REGEX exception) counts as properly pinned.
+    return "mutable-tag"
 
 
 def main() -> int:
@@ -203,6 +211,7 @@ def main() -> int:
 
         in_jobs = False
         jobs_indent = -1
+        job_key_indent: int | None = None
         current_job: str | None = None
         total_jobs = 0
         job_timeout: dict[str, bool] = {}
@@ -265,7 +274,14 @@ def main() -> int:
                     current_job = None
                     continue
 
-                if indent == jobs_indent + 2 and JOB_KEY_RE.match(stripped):
+                # The job-key indent (2 spaces in the common case, but not guaranteed) is
+                # established from the first line seen directly under `jobs:`, before any job
+                # is established — the same dynamic-indent approach `job_body_indent` already
+                # uses per-job below, applied once here for the job-key level itself.
+                if job_key_indent is None:
+                    job_key_indent = indent
+
+                if indent == job_key_indent and JOB_KEY_RE.match(stripped):
                     current_job = stripped.split(":", 1)[0]
                     total_jobs += 1
                     job_timeout[current_job] = False
@@ -274,7 +290,7 @@ def main() -> int:
                     job_uses[current_job] = False
                     continue
 
-                if current_job and indent > jobs_indent + 2:
+                if current_job and indent > job_key_indent:
                     # The job's own direct attributes (runs-on:, uses:, timeout-minutes:, etc.)
                     # all share one indent level — the first such line establishes it, so a
                     # `uses:` seen deeper (e.g. a step's `- uses: action@ref` under `steps:`)
@@ -282,11 +298,17 @@ def main() -> int:
                     job_body_indent.setdefault(current_job, indent)
                     if indent == job_body_indent[current_job] and re.match(r"^uses\s*:", stripped):
                         job_uses[current_job] = True
-                    if re.match(r"^\s*timeout-minutes\s*:", line):
+                    if indent == job_body_indent[current_job] and re.match(
+                        r"^\s*timeout-minutes\s*:", line
+                    ):
                         job_timeout[current_job] = True
-                    if re.match(r"^\s*permissions\s*:", line):
+                    if indent == job_body_indent[current_job] and re.match(
+                        r"^\s*permissions\s*:", line
+                    ):
                         job_permissions[current_job] = True
-                    if re.match(r"^\s*concurrency\s*:", line):
+                    if indent == job_body_indent[current_job] and re.match(
+                        r"^\s*concurrency\s*:", line
+                    ):
                         job_concurrency[current_job] = True
 
         matched_events = sorted(events)
@@ -425,7 +447,7 @@ def main() -> int:
                     f"events={','.join(row['events']) if row['events'] else '<none>'}"
                 )
 
-    return 1 if (fail_on_critical and critical_rows) else 0
+    return 1 if (fail_on_critical and (critical_rows or parse_errors)) else 0
 
 
 if __name__ == "__main__":

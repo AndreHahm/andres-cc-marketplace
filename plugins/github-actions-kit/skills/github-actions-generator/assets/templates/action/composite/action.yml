@@ -34,8 +34,10 @@ runs:
     # Step 1: Validation
     - name: Validate inputs
       shell: bash
+      env:
+        INPUT_VALUE: ${{ inputs.[input-name] }}
       run: |
-        if [ -z "${{ inputs.[input-name] }}" ]; then
+        if [ -z "$INPUT_VALUE" ]; then
           echo "::error::Input [input-name] is required"
           exit 1
         fi
@@ -69,9 +71,11 @@ runs:
     - name: Post-processing
       if: success()
       shell: bash
+      env:
+        OUTPUT_VALUE: ${{ steps.[step-id].outputs.[output-name] }}
       run: |
         echo "✅ Action completed successfully"
-        echo "Output: ${{ steps.[step-id].outputs.[output-name] }}"
+        echo "Output: $OUTPUT_VALUE"
 
     # Step 5: Cleanup (optional)
     - name: Cleanup

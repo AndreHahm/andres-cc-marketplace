@@ -123,7 +123,7 @@ workflow.yml:12:14: job "deploy" needs job "biuld" which does not exist [job-nee
 > run: echo "$TITLE"
 > ```
 >
-> **Why:** Untrusted input (issue titles, PR bodies, commit messages) can contain malicious commands. Using environment variables sanitizes the input.
+> **Why:** Untrusted input (issue titles, PR bodies, commit messages) can contain malicious commands. Passing it through `env:` keeps it out of the generated shell source text — the actual injection vector — rather than "sanitizing" it; the resulting shell variable must still be quoted properly (`"$TITLE"`, not `$TITLE`) when used.
 
 **Fix:** Pass untrusted input through environment variable.
 
