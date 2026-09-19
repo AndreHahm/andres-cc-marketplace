@@ -206,15 +206,22 @@ Present the full consolidated report. Do NOT edit any workflow or skill files �
       `grep` fallback is only used when the script finds zero steps
 - [ ] This skill never edits workflow or skill files — output is report-only
 
-A single-arm (with-skill) eval suite exists at `evals/github-actions-log-analyzer/evals.json`: 1 of 3 declared
-scenarios is covered (eval-1: synthetic-log step-boundary detection plus the dispatch-scope
-`AskUserQuestion` gate), and that scenario's `with_skill` run passed all 3 assertions — a synthetic log
-was created, `find_step_boundaries.py` correctly detected the step boundaries, and the gate stated an
-accurate computed dispatch count before stopping, with no subagent actually dispatched. The other two
-declared scenarios (the live `gh`-data path, and a full multi-subagent analysis run) remain uncovered —
-see the eval file's own `testing_validation_coverage` note. The deterministic boundary-detection logic
-is additionally directly tested by `find_step_boundaries.py`'s own verification steps above (flue
-markers, group markers, custom delimiters, null-byte handling).
+A real baseline-comparison eval suite exists at `evals/github-actions-log-analyzer/evals.json`: 1 of 3
+declared scenarios is covered (eval-1: synthetic-log step-boundary detection plus the dispatch-scope
+`AskUserQuestion` gate). `with_skill` passed all 3 assertions (pass rate 1.0) — a synthetic log was
+created, `find_step_boundaries.py` correctly detected the step boundaries, and the gate stated an
+accurate computed dispatch count before stopping, with no subagent actually dispatched. `baseline` (no
+skill guidance) passed 2 of 3 (pass rate 0.667): it created a valid synthetic log and correctly detected
+step boundaries by manually scanning markers, but only reasoned in prose about *when* it would dispatch
+subagents rather than producing this skill's actual required gate — a computed dispatch count presented
+via `AskUserQuestion` before proceeding — a +33.3 percentage-point improvement specifically on the safety
+gate the skill exists to enforce. The other two declared scenarios (the live `gh`-data path, and a full
+multi-subagent analysis run) remain uncovered — see the eval file's own `testing_validation_coverage`
+note. The deterministic boundary-detection logic is additionally directly tested by
+`find_step_boundaries.py`'s own verification steps above (flue markers, group markers, custom
+delimiters, null-byte handling).
 
-**Last dated run record:** `evals/github-actions-log-analyzer/workspace/iteration-1/eval-1/`
-(2026-09-18) -- 1 of 3 declared scenarios covered, eval-1 3/3 assertions passed (PASS).
+**Last dated run record:** 2026-09-19 — eval-1 baseline-comparison, with_skill 3/3 (1.0) vs baseline 2/3
+(0.667), +33.3pp — see
+`evals/github-actions-log-analyzer/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json` and
+`evals/github-actions-log-analyzer/workspace/iteration-1/benchmark.json`.

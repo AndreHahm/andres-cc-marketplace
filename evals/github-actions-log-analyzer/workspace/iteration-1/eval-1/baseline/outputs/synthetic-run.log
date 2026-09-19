@@ -1,0 +1,30 @@
+2026-09-19T10:00:01.1000000Z Current runner version: '2.319.1'
+2026-09-19T10:00:01.2000000Z ##[group]Runner Image Provisioner
+2026-09-19T10:00:01.2500000Z Hosted Compute Agent
+2026-09-19T10:00:01.3000000Z Version: 20250912.1
+2026-09-19T10:00:01.3500000Z ##[endgroup]
+2026-09-19T10:00:02.0000000Z ##[group]Run actions/checkout@v4
+2026-09-19T10:00:02.1000000Z Syncing repository: andres-cc-marketplace
+2026-09-19T10:00:02.5000000Z /usr/bin/git checkout --progress --force refs/heads/main
+2026-09-19T10:00:03.0000000Z ##[endgroup]
+2026-09-19T10:00:03.1000000Z ##[group]Run actions/setup-node@v4
+2026-09-19T10:00:03.2000000Z Found in cache @ /opt/hostedtoolcache/node/20.11.1/x64
+2026-09-19T10:00:03.4000000Z ##[endgroup]
+2026-09-19T10:00:03.5000000Z ##[group]Run npm ci
+2026-09-19T10:00:03.6000000Z npm warn deprecated inflight@1.0.6: This module is not supported
+2026-09-19T10:00:10.0000000Z added 842 packages in 6.4s
+2026-09-19T10:00:10.1000000Z ##[endgroup]
+2026-09-19T10:00:10.2000000Z ##[group]Run npm test
+2026-09-19T10:00:10.3000000Z > project@1.0.0 test
+2026-09-19T10:00:10.4000000Z > jest --ci
+2026-09-19T10:00:15.0000000Z FAIL src/utils/parser.test.ts
+2026-09-19T10:00:15.1000000Z   ● parser > handles empty input
+2026-09-19T10:00:15.2000000Z     Expected: []
+2026-09-19T10:00:15.3000000Z     Received: undefined
+2026-09-19T10:00:15.4000000Z       at Object.<anonymous> (src/utils/parser.test.ts:14:22)
+2026-09-19T10:00:15.5000000Z Tests:       1 failed, 47 passed, 48 total
+2026-09-19T10:00:15.6000000Z ##[error]Process completed with exit code 1.
+2026-09-19T10:00:15.7000000Z ##[endgroup]
+2026-09-19T10:00:15.8000000Z ##[group]Post Run actions/setup-node@v4
+2026-09-19T10:00:15.9000000Z Cleaning up node cache
+2026-09-19T10:00:16.0000000Z ##[endgroup]

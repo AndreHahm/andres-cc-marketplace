@@ -385,17 +385,21 @@ Requires `yamllint` (`pip install yamllint`). Run with:
 python3 scripts/test-generator.py
 ```
 
-A single-arm (with-skill) eval run covers 1 of the 5 scenarios listed above (the basic Node.js CI workflow
-generation case) — see `evals/github-actions-generator/evals.json`. That scenario passed all 5 assertions
-(SHA-pinned actions, explicit minimal permissions, checkout + setup-node + npm ci + npm test sequence,
-concurrency controls). No `baseline/` (no-skill) arm has been run for this scenario, so this is not a
-blind comparison — only the with-skill output has been verified against the assertions. The remaining 4
-scenarios (composite action, reusable workflow, security scanning, and the negative validator-trigger
-case) are not yet covered by any eval run; generation for those routes is otherwise mechanically verified
+A real baseline-comparison eval run covers 1 of the 5 scenarios listed above (the basic Node.js CI
+workflow generation case) — see `evals/github-actions-generator/evals.json`. `with_skill` passed all 5
+assertions (SHA-pinned actions, explicit minimal permissions, checkout + setup-node + npm ci + npm test
+sequence, concurrency controls; pass rate 1.0); `baseline` (no skill guidance) passed 2 of 5 (pass rate
+0.4: it built a correct push/pull_request Node.js matrix workflow, but used bare `@v4` tags instead of
+SHA-pinning, and included no `permissions:` or `concurrency:` block) — a +60 percentage-point
+improvement. See `evals/github-actions-generator/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`
+and `evals/github-actions-generator/workspace/iteration-1/benchmark.json`. The remaining 4 scenarios
+(composite action, reusable workflow, security scanning, and the negative validator-trigger case) are
+not yet covered by any eval run; generation for those routes is otherwise mechanically verified
 end-to-end by `scripts/test-generator.py`, and the trigger-phrase and quality-gate lists above cover their
 activation correctness.
 
-**Last dated run record:** `evals/github-actions-generator/workspace/iteration-1/eval-1/with_skill/grading.json` — PASS (5/5 assertions).
+**Last dated run record:** 2026-09-19 -- eval-1 baseline-comparison, with_skill 5/5 (1.0) vs baseline 2/5
+(0.4), +60pp — see `evals/github-actions-generator/workspace/iteration-1/eval-1/{with_skill,baseline}/grading.json`.
 
 **Quality gates:**
 - [ ] Every third-party action in generated output is pinned to a commit SHA with a version comment

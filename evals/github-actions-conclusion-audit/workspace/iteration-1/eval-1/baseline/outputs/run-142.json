@@ -1,0 +1,36 @@
+{
+  "databaseId": 10480234211,
+  "number": 142,
+  "attempt": 1,
+  "workflowName": "CI",
+  "workflowDatabaseId": 9876543,
+  "name": "CI",
+  "displayTitle": "Add retry helper to integration test harness",
+  "headBranch": "main",
+  "headSha": "abc1234def5678901234567890123456789abcd",
+  "event": "push",
+  "status": "completed",
+  "conclusion": "success",
+  "createdAt": "2026-09-18T09:12:03Z",
+  "startedAt": "2026-09-18T09:12:07Z",
+  "updatedAt": "2026-09-18T09:15:41Z",
+  "url": "https://github.com/example-org/example-repo/actions/runs/10480234211",
+  "jobs": [
+    {
+      "databaseId": 29011000142,
+      "name": "build-and-test",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-09-18T09:12:10Z",
+      "completedAt": "2026-09-18T09:15:38Z",
+      "steps": [
+        { "number": 1, "name": "Checkout", "status": "completed", "conclusion": "success" },
+        { "number": 2, "name": "Setup Node", "status": "completed", "conclusion": "success" },
+        { "number": 3, "name": "Install dependencies", "status": "completed", "conclusion": "success" },
+        { "number": 4, "name": "Run unit tests", "status": "completed", "conclusion": "success" },
+        { "number": 5, "name": "Run integration tests", "status": "completed", "conclusion": "success" },
+        { "number": 6, "name": "Upload coverage", "status": "completed", "conclusion": "success" }
+      ]
+    }
+  ]
+}

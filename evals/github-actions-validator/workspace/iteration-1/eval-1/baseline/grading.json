@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The agent actually runs scripts/validate_workflow.py against the target file (not just eyeballs it)", "passed": false, "evidence": "used a locally-installed raw actionlint instead of the skill's own script"},
+    {"text": "Each reported error is mapped to a specific reference file/section, not left generic", "passed": false, "evidence": "no references/ files consulted or cited (none available to baseline)"},
+    {"text": "Corrected workflow code is shown for at least one identified error", "passed": true, "evidence": "full corrected YAML with all 4 fixes included in report.md"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.333}
+}
