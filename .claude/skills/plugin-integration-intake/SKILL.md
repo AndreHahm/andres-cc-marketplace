@@ -201,6 +201,7 @@ Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-
       QA (2026-08-30) — the Critical (unauthenticated identity) and Major (missing enumeration
       grant) findings from that pass are fixed in this file's Trust Model section and
       `allowed-tools`. Re-run before this gate is wired to a live connector.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
 
 ## Reference Guide
 

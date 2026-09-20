@@ -215,3 +215,4 @@ resume point (which phase to re-enter). On resume:
 - [ ] A focused skill's own structured handoff is always surfaced directly, never silently absorbed
       to keep the overall sequence moving.
 - [ ] Reconciliation only runs on demand — never unconditionally on every phase transition.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

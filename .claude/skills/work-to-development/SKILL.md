@@ -120,3 +120,4 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       `work-started` Git/GitHub evidence entry.
 - [ ] A Git-succeeds/Linear-fails outcome always resumes only the Linear step on retry — never
       re-requests a second branch.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

@@ -130,3 +130,4 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       absorbed or reverse-written against.
 - [ ] A repair is always bounded to the specific drifted field/link — never a broad bidirectional
       sync.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

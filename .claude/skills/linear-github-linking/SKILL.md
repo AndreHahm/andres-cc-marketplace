@@ -150,3 +150,4 @@ attachment, and never fights configured native automation with a competing write
 - [ ] A repair never produces a reverse-write loop against native GitHub → Linear automation.
 - [ ] Multiple commits/PRs per Issue are always modeled as separate array entries, never collapsed
       into one.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

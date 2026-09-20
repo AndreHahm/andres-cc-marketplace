@@ -122,6 +122,7 @@ evals/idea-to-implementation/workspace/iteration-1/ (2026-08-30)
       newly created record (the transition is deferred to that record's next write, not carried in
       the create itself), its ordinary next-write convention for an adopted one — and the reciprocal
       link is recorded via `work-linking` after read-back.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
 
 ## Reference Guide
 

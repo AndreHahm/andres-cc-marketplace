@@ -222,6 +222,7 @@ gate; evals/notion-knowledge-management/workspace/iteration-1/ (2026-08-30)
 - [ ] Every write is preceded by a preview and, where required, live approval.
 - [ ] Every write is followed by a read-back before the transition is recorded.
 - [ ] A Decision state change never overwrites prior rationale.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
 
 ## Reference Guide
 

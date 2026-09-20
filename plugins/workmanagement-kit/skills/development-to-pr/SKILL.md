@@ -294,3 +294,4 @@ passed the gate); prior run: evals/development-to-pr/workspace/iteration-1/ (202
       never lets `commit`'s step 16 push whatever repository/branch the checkout happens to be on, and never
       treats a branch-name match alone as sufficient when the repository could differ.
 - [ ] Native GitHub → Linear status changes are always verified absent, never assumed absent.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
