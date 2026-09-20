@@ -70,8 +70,13 @@ def check_referenced_files():
     repo_root = _find_repo_root(SKILL_DIR)
     skill_dirs = _skill_dir_candidates(repo_root)
 
+    # (?:\.\./[\w-]+/)? admits one cross-skill hop (`../<skill-name>/references/...`) in
+    # addition to a same-skill reference with no `../` prefix at all -- a bare (?:\.\./)*
+    # only matches an unbroken run of "../" segments, so it can never match a real cross-skill
+    # path like `../linear-work-management/references/linear-entity-fields.md`, where a skill
+    # directory name sits between the ".." hop and "references/".
     skill_relative = (
-        r"`((?:\.\./)*(?:references|scripts|assets|examples)/[\w./-]+\.(?:md|py|sh|json))`"
+        r"`((?:\.\./[\w-]+/)?(?:references|scripts|assets|examples)/[\w./-]+\.(?:md|py|sh|json))`"
     )
     for match in re.finditer(skill_relative, text):
         if (SKILL_DIR / match.group(1)).resolve().exists():
@@ -227,7 +232,9 @@ def check_step_sequence():
     # Validation") legitimately restart their own numbered lists for unrelated scenarios,
     # which a whole-file scan would wrongly flag as non-sequential. Within a found section,
     # a "### " subsection (e.g. distinct scenarios/paths) is checked independently too --
-    # each subsection legitimately restarts its own numbering.
+    # but a later subsection can legitimately *continue* numbering from an earlier one's last
+    # step rather than restarting (verified live: merge-to-completion and pr-to-linear both do
+    # this), so only the section's first numbered chunk is required to start at 1.
     text = SKILL_MD.read_text(encoding="utf-8")
     found_any = False
     for header in SECTION_HEADERS:
@@ -252,11 +259,19 @@ def check_step_sequence():
         else:
             chunks = [section]
 
+        first_chunk_numbers_seen = False
         for chunk in chunks:
             numbers = [int(n) for n in re.findall(r"^(\d+)\. ", chunk, re.MULTILINE)]
             if not numbers:
                 continue
-            expected = list(range(numbers[0], numbers[0] + len(numbers)))
+            if not first_chunk_numbers_seen:
+                # The section's first numbered chunk must start at 1 -- this is what catches a
+                # regression where step 1 itself was removed (e.g. the list becomes [2, 3, 4]),
+                # which anchoring at numbers[0] would otherwise silently accept as "sequential".
+                expected = list(range(1, 1 + len(numbers)))
+                first_chunk_numbers_seen = True
+            else:
+                expected = list(range(numbers[0], numbers[0] + len(numbers)))
             if numbers != expected:
                 return False, (
                     f"step numbering not sequential in '{header}': "
