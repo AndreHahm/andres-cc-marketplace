@@ -89,13 +89,19 @@ def check_referenced_files():
         if not any((cand / match.group(1)).resolve().exists() for cand in skill_dirs):
             missing.append(match.group(1))
 
-    repo_relative = r"`((?:docs|evals|plugins)/[\w./-]+\.(?:md|py|json))`"
+    repo_relative = r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`"
     for match in re.finditer(repo_relative, text):
-        if repo_root is None:
-            missing.append(match.group(1) + " (repo root not found)")
+        path_str = match.group(1)
+        if path_str.endswith(".local.json"):
+            # A `.claude/<plugin>.local.json`-style reference is this repo's own established
+            # local-override convention (.claude/rules/ask-before-config-decisions.md) --
+            # gitignored and install-time-optional, so it legitimately may not exist here.
             continue
-        if not (repo_root / match.group(1)).exists():
-            missing.append(match.group(1))
+        if repo_root is None:
+            missing.append(path_str + " (repo root not found)")
+            continue
+        if not (repo_root / path_str).exists():
+            missing.append(path_str)
 
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
@@ -103,7 +109,10 @@ def check_referenced_files():
 
 
 def _grant_pattern(cmd: str) -> str:
-    return r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!/)"
+    # (?![\w/-]) requires a real token boundary after the match -- without it, a grant like
+    # "gh pr view" would be reported "used" by an unrelated "gh pr viewer" or "gh pr view-only"
+    # elsewhere in the body, and a grant like "foo" would match inside "foobar".
+    return r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?![\w/-])"
 
 
 def _collect_search_text(body: str) -> str:
