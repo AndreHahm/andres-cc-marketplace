@@ -284,8 +284,8 @@ Validation work is complete when all are true:
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
 `validate_workflow.py --lint-only` against `examples/with-errors.yml` (must be flagged) and
 `examples/valid-ci.yml` (must run to completion without crashing) — a fast surface-level check
-distinct from `tests/test_validate_workflow.py`'s deeper suite below. Requires `PyYAML>=6.0`
-(already a repo dependency). Run with `python3 scripts/smoke_test.py`.
+distinct from `tests/test_validate_workflow.py`'s deeper suite below. Dependency-free (no
+PyYAML). Run with `python3 scripts/smoke_test.py`.
 
 **Quality gates:**
 - [ ] `tests/test_validate_workflow.py` passes (run: `python3 tests/test_validate_workflow.py`)

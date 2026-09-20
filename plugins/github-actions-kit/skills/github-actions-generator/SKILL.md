@@ -386,8 +386,8 @@ python3 scripts/test-generator.py
 ```
 
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and invokes
-`scripts/test-generator.py` above as its regression check (not a duplicate suite). Requires
-`PyYAML>=6.0` (already a repo dependency). Run with `python3 scripts/smoke_test.py`.
+`scripts/test-generator.py` above as its regression check (not a duplicate suite).
+Dependency-free (no PyYAML). Run with `python3 scripts/smoke_test.py`.
 
 A real baseline-comparison eval run covers 1 of the 5 scenarios listed above (the basic Node.js CI
 workflow generation case) — see `evals/github-actions-generator/evals.json`. `with_skill` passed all 5

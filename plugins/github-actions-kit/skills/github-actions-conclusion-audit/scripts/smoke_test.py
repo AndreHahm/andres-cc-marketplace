@@ -10,11 +10,10 @@ malformed-file-never-silently-passes gate).
 import json
 import os
 import pathlib
+import re
 import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 import tempfile
-
-import yaml
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -58,16 +57,37 @@ def _make_run_files(tmp_dir: pathlib.Path, conclusions):
 
 
 def _parse_frontmatter_fields(fm: str) -> dict:
-    # A real YAML parser, not a naive `:`-split -- a line-split parser accepts malformed YAML
-    # (e.g. an unterminated quoted description) as long as the split still produces a non-empty
-    # value, which silently defeats the "frontmatter missing/invalid" checks below.
-    try:
-        parsed = yaml.safe_load(fm)
-    except yaml.YAMLError:
-        return {}
-    if not isinstance(parsed, dict):
-        return {}
-    return {str(k): ("" if v is None else str(v)) for k, v in parsed.items()}
+    # Dependency-free by design (no PyYAML) -- this script must run standalone when the plugin is
+    # installed from the marketplace, where PyYAML is only a repo *dev* dependency, not something
+    # available to a plugin end user. Handles the two YAML shapes these frontmatter blocks actually
+    # use: a `key: >-`/`key: |` block scalar (collects the following more-indented lines as the
+    # real value) and a plain scalar, rejecting an unterminated quoted value (e.g.
+    # `description: "unterminated`) as malformed rather than silently accepting it.
+    lines = fm.splitlines()
+    fields = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if ":" in line and not line[:1].isspace():
+            key, _, value = line.partition(":")
+            key = key.strip()
+            value = value.strip()
+            if re.match(r"^[|>][+-]?\d*$", value):
+                block = []
+                i += 1
+                while i < len(lines) and (lines[i][:1].isspace() or not lines[i].strip()):
+                    block.append(lines[i].strip())
+                    i += 1
+                fields[key] = " ".join(block).strip()
+                continue
+            if value[:1] in ("'", '"'):
+                quote = value[0]
+                if len(value) < 2 or value[-1] != quote:
+                    return {}
+                value = value[1:-1]
+            fields[key] = value
+        i += 1
+    return fields
 
 
 def check_frontmatter():
