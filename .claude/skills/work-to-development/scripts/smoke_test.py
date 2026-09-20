@@ -108,16 +108,28 @@ def _grant_pattern(cmd: str) -> str:
 
 def _collect_search_text(body: str) -> str:
     search_text = body
+    self_path = pathlib.Path(__file__).resolve()
 
     for sub in ("references", "scripts", "assets", "examples"):
         d = SKILL_DIR / sub
         if d.is_dir():
             for f in sorted(d.rglob("*")):
-                if f.is_file():
-                    try:
-                        search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
-                    except OSError:
-                        pass
+                if not f.is_file():
+                    continue
+                # Exclude this smoke test's own source (and any compiled bytecode next to it,
+                # e.g. __pycache__/*.pyc from a local run) from the scripts/ scan below -- the
+                # smoke test lives in scripts/ itself, and its own comments/docstrings mention
+                # example grant strings like "gh pr view"/"bridge_caller.py" that would
+                # otherwise leak into search_text and make check_bash_grants match against its
+                # own commentary instead of the skill's real body/references.
+                if f.resolve() == self_path:
+                    continue
+                if f.suffix == ".pyc" or "__pycache__" in f.parts:
+                    continue
+                try:
+                    search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    pass
 
     # A cross-skill reference file this skill's own body explicitly names (e.g.
     # "skills/linear-work-management/references/linear-entity-fields.md") is fair game too --
