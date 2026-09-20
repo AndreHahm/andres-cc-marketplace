@@ -202,7 +202,7 @@ Present the full consolidated report. Do NOT edit any workflow or skill files â€
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
 `find_step_boundaries.py` against a synthetic log covering all three boundary types plus
 `RESULT_START`/`RESULT_END` and null-byte content â€” the mechanical version of the checklist above.
-Requires `PyYAML>=6.0` (already a repo dependency). Run with `python3 scripts/smoke_test.py`.
+Dependency-free (no PyYAML). Run with `python3 scripts/smoke_test.py`.
 
 **Quality gates:**
 - [ ] Step 4 never dispatches a subagent before the dispatch-scope `AskUserQuestion` gate has

@@ -131,8 +131,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
 
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
 `workflow_hardening_audit.py` against `fixtures/*.yml`, asserting the exact scores below
-(`clean.yml`=0, `risky.yml`=9, `reusable-caller.yml`=0). Requires `PyYAML>=6.0` (already a repo
-dependency). Run with `python3 scripts/smoke_test.py`.
+(`clean.yml`=0, `risky.yml`=9, `reusable-caller.yml`=0). Dependency-free (no PyYAML). Run with
+`python3 scripts/smoke_test.py`.
 
 **Quality gates (verified against the bundled fixtures this session):**
 - [ ] `fixtures/clean.yml` scores `0` (severity `ok`) — has workflow-level `permissions:`, every job has `timeout-minutes`, and its one `uses:` ref is pinned to a full commit SHA.
