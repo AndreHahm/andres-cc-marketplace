@@ -82,8 +82,8 @@ def _run_lint_only(target: pathlib.Path):
     # validate_workflow.py's own actionlint/act subprocess calls.
     # Fixed argv (sys.executable + this skill's own script path resolved from __file__,
     # "--lint-only", and one of two hardcoded example filenames -- no shell, no untrusted input)
-    # -- Bandit's static heuristic can't see that SCRIPT/target are constants.
-    return subprocess.run(
+    # -- static analysis can't see that SCRIPT/target are constants.
+    return subprocess.run(  # nosemgrep
         [sys.executable, str(SCRIPT), "--lint-only", str(target)],
         capture_output=True,
         text=True,

@@ -57,9 +57,8 @@ def check_regression_suite():
         return False, f"{REGRESSION_SCRIPT} does not exist"
 
     # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
-    # no untrusted input) -- Bandit's static heuristic can't see that REGRESSION_SCRIPT is a
-    # constant.
-    proc = subprocess.run(
+    # no untrusted input) -- static analysis can't see that REGRESSION_SCRIPT is a constant.
+    proc = subprocess.run(  # nosemgrep
         [sys.executable, str(REGRESSION_SCRIPT)],
         capture_output=True,
         text=True,
