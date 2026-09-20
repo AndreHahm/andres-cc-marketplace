@@ -4,7 +4,7 @@ description: >-
   Create, generate, or scaffold GitHub Actions workflows, action.yml, or .github/workflows CI/CD
   pipelines. Use when asked to "create a workflow for...", "build a CI/CD pipeline...", "create a
   composite/Docker/JavaScript action", or "make this workflow reusable/callable".
-allowed-tools: Read Write Edit WebSearch Skill(github-actions-kit:github-actions-validator) Bash(actionlint:*) Bash(yamllint:*) Bash(python3 */github-actions-generator/scripts/test-generator.py)
+allowed-tools: Read Write Edit WebSearch Skill(github-actions-kit:github-actions-validator) Bash(actionlint:*) Bash(yamllint:*) Bash(python3 */github-actions-generator/scripts/test-generator.py) Bash(python3 */github-actions-generator/scripts/smoke_test.py:*)
 ---
 
 # GitHub Actions Generator
@@ -386,8 +386,8 @@ python3 scripts/test-generator.py
 ```
 
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and invokes
-`scripts/test-generator.py` above as its regression check (not a duplicate suite). Run with
-`python3 scripts/smoke_test.py`.
+`scripts/test-generator.py` above as its regression check (not a duplicate suite). Requires
+`PyYAML>=6.0` (already a repo dependency). Run with `python3 scripts/smoke_test.py`.
 
 A real baseline-comparison eval run covers 1 of the 5 scenarios listed above (the basic Node.js CI
 workflow generation case) — see `evals/github-actions-generator/evals.json`. `with_skill` passed all 5

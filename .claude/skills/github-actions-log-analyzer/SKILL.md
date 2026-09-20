@@ -5,7 +5,7 @@ description: >-
   --log`), dispatching a subagent per step/skill boundary, to identify wasted effort, mistakes,
   and instruction-compliance gaps. Use when asked to "analyze workflow logs", "review action
   runs", or "why is this CI run wasting time".
-allowed-tools: Bash(gh run list:*) Bash(gh run view:*) Bash(grep -n:*) Bash(python3 */github-actions-log-analyzer/scripts/find_step_boundaries.py:*) Read Agent AskUserQuestion
+allowed-tools: Bash(gh run list:*) Bash(gh run view:*) Bash(grep -n:*) Bash(python3 */github-actions-log-analyzer/scripts/find_step_boundaries.py:*) Bash(python3 */github-actions-log-analyzer/scripts/smoke_test.py:*) Read Agent AskUserQuestion
 ---
 
 # Analyze GitHub Action Logs
@@ -202,7 +202,7 @@ Present the full consolidated report. Do NOT edit any workflow or skill files â€
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
 `find_step_boundaries.py` against a synthetic log covering all three boundary types plus
 `RESULT_START`/`RESULT_END` and null-byte content â€” the mechanical version of the checklist above.
-Run with `python3 scripts/smoke_test.py`.
+Requires `PyYAML>=6.0` (already a repo dependency). Run with `python3 scripts/smoke_test.py`.
 
 **Quality gates:**
 - [ ] Step 4 never dispatches a subagent before the dispatch-scope `AskUserQuestion` gate has
