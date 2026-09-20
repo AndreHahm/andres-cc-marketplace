@@ -129,6 +129,10 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-hardening-audit/scripts/work
 - "why is this CI run wasting time" / "analyze workflow logs" → `github-actions-log-analyzer`
 - "create a workflow for..." → `github-actions-generator`
 
+**Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
+`workflow_hardening_audit.py` against `fixtures/*.yml`, asserting the exact scores below
+(`clean.yml`=0, `risky.yml`=9, `reusable-caller.yml`=0). Run with `python3 scripts/smoke_test.py`.
+
 **Quality gates (verified against the bundled fixtures this session):**
 - [ ] `fixtures/clean.yml` scores `0` (severity `ok`) — has workflow-level `permissions:`, every job has `timeout-minutes`, and its one `uses:` ref is pinned to a full commit SHA.
 - [ ] `fixtures/risky.yml` scores `9` (severity `critical`) — missing `permissions`, missing `timeout-minutes` on its `deploy` job, two floating refs (`@main`, `@v4`), and a `pull_request_target` trigger (`on: [push, pull_request_target]`, single-line flow-sequence form — exercises the inline `on:` parser, not just the block-style one).
