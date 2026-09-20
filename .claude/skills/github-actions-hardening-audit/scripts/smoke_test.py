@@ -10,14 +10,36 @@ risky.yml=9/critical, reusable-caller.yml=0/ok).
 import json
 import os
 import pathlib
-import re
 import subprocess
 import sys
+
+import yaml
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SCRIPT = SKILL_DIR / "scripts" / "workflow_hardening_audit.py"
 FIXTURES_DIR = SKILL_DIR / "fixtures"
+
+# Every documented audit option, reset to workflow_hardening_audit.py's own default before the run --
+# a caller with e.g. REQUIRE_CONCURRENCY or FAIL_ON_CRITICAL already exported would otherwise leak
+# into these fixed-score assertions.
+AUDIT_DEFAULTS = {
+    "WORKFLOW_GLOB": ".github/workflows/*.y*ml",
+    "TOP_N": "20",
+    "OUTPUT_FORMAT": "text",
+    "WARN_SCORE": "3",
+    "CRITICAL_SCORE": "7",
+    "REQUIRE_TIMEOUT": "1",
+    "REQUIRE_PERMISSIONS": "1",
+    "REQUIRE_CONCURRENCY": "0",
+    "FLAG_FLOATING_REFS": "1",
+    "ALLOW_REF_REGEX": "",
+    "WORKFLOW_FILE_MATCH": "",
+    "WORKFLOW_FILE_EXCLUDE": "",
+    "EVENT_MATCH": "",
+    "EVENT_EXCLUDE": "",
+    "FAIL_ON_CRITICAL": "0",
+}
 
 EXPECTED_SCORES = {
     "clean.yml": 0,
@@ -27,30 +49,16 @@ EXPECTED_SCORES = {
 
 
 def _parse_frontmatter_fields(fm: str) -> dict:
-    # A top-level `key: >-`/`key: |` starts a YAML block scalar whose real value is the
-    # following more-indented lines, not the `>-`/`|` marker itself -- every SKILL.md in this
-    # plugin uses `description: >-`, so a naive single-line split would always see a truthy
-    # 2-character placeholder instead of the actual description body.
-    lines = fm.splitlines()
-    fields = {}
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if ":" in line and not line[:1].isspace():
-            key, _, value = line.partition(":")
-            key = key.strip()
-            value = value.strip()
-            if re.match(r"^[|>][+-]?\d*$", value):
-                block = []
-                i += 1
-                while i < len(lines) and (lines[i][:1].isspace() or not lines[i].strip()):
-                    block.append(lines[i].strip())
-                    i += 1
-                fields[key] = " ".join(block).strip()
-                continue
-            fields[key] = value
-        i += 1
-    return fields
+    # A real YAML parser, not a naive `:`-split -- a line-split parser accepts malformed YAML
+    # (e.g. an unterminated quoted description) as long as the split still produces a non-empty
+    # value, which silently defeats the "frontmatter missing/invalid" checks below.
+    try:
+        parsed = yaml.safe_load(fm)
+    except yaml.YAMLError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(k): ("" if v is None else str(v)) for k, v in parsed.items()}
 
 
 def check_frontmatter():
@@ -91,6 +99,7 @@ def check_fixture_scores():
         return False, "script or fixtures/ missing -- skipping execution check"
 
     env = dict(os.environ)
+    env.update(AUDIT_DEFAULTS)
     env["WORKFLOW_GLOB"] = str(FIXTURES_DIR / "*.y*ml")
     env["OUTPUT_FORMAT"] = "json"
 

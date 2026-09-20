@@ -6,7 +6,7 @@ description: >-
   success and failure-like outcomes across recent runs — to surface
   chronically flaky pipelines. Use when asked "which workflows are flaky",
   "audit CI stability", or "detect unstable workflows from run history".
-allowed-tools: Bash(gh run view --json:*) Bash(gh run list:*) Bash(gh repo view:*) Bash(jq --arg repo:*) Bash(grep -qxF 'artifacts/' .gitignore:*) Bash(echo 'artifacts/' >> .gitignore:*) Bash(mkdir -p artifacts:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*)
+allowed-tools: Bash(gh run view --json:*) Bash(gh run list:*) Bash(gh repo view:*) Bash(jq --arg repo:*) Bash(grep -qxF 'artifacts/' .gitignore:*) Bash(echo 'artifacts/' >> .gitignore:*) Bash(mkdir -p artifacts:*) Bash(python3 */github-actions-conclusion-audit/scripts/conclusion_volatility_audit.py:*) Bash(python3 */github-actions-conclusion-audit/scripts/smoke_test.py:*)
 ---
 
 # GitHub Actions Conclusion Volatility Audit
@@ -145,7 +145,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
 
 **Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
 `conclusion_volatility_audit.py` against synthetic run-history JSON, verifying the quality gates
-below. Run with `python3 scripts/smoke_test.py`.
+below. Requires `PyYAML>=6.0` (already a repo dependency). Run with `python3 scripts/smoke_test.py`.
 
 **Quality gates:**
 - [ ] `python3 scripts/conclusion_volatility_audit.py` exits `0` in reporting mode with no critical

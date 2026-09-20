@@ -10,16 +10,36 @@ malformed-file-never-silently-passes gate).
 import json
 import os
 import pathlib
-import re
 import subprocess
 import sys
 import tempfile
+
+import yaml
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SCRIPT = SKILL_DIR / "scripts" / "conclusion_volatility_audit.py"
 
 CONCLUSIONS = ["success", "failure", "success", "failure", "success", "failure"]
+
+# Every documented audit option, reset to conclusion_volatility_audit.py's own default before each
+# run -- a caller with e.g. WARN_INSTABILITY_PCT or FAIL_ON_CRITICAL already exported would otherwise
+# leak into these fixed-score assertions.
+AUDIT_DEFAULTS = {
+    "RUN_GLOB": "artifacts/github-actions/*.json",
+    "TOP_N": "20",
+    "OUTPUT_FORMAT": "text",
+    "MIN_RUNS": "5",
+    "WARN_INSTABILITY_PCT": "35",
+    "CRITICAL_INSTABILITY_PCT": "60",
+    "FAIL_ON_CRITICAL": "0",
+    "WORKFLOW_MATCH": "",
+    "WORKFLOW_EXCLUDE": "",
+    "BRANCH_MATCH": "",
+    "BRANCH_EXCLUDE": "",
+    "REPO_MATCH": "",
+    "REPO_EXCLUDE": "",
+}
 
 
 def _make_run_files(tmp_dir: pathlib.Path, conclusions):
@@ -38,30 +58,16 @@ def _make_run_files(tmp_dir: pathlib.Path, conclusions):
 
 
 def _parse_frontmatter_fields(fm: str) -> dict:
-    # A top-level `key: >-`/`key: |` starts a YAML block scalar whose real value is the
-    # following more-indented lines, not the `>-`/`|` marker itself -- every SKILL.md in this
-    # plugin uses `description: >-`, so a naive single-line split would always see a truthy
-    # 2-character placeholder instead of the actual description body.
-    lines = fm.splitlines()
-    fields = {}
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if ":" in line and not line[:1].isspace():
-            key, _, value = line.partition(":")
-            key = key.strip()
-            value = value.strip()
-            if re.match(r"^[|>][+-]?\d*$", value):
-                block = []
-                i += 1
-                while i < len(lines) and (lines[i][:1].isspace() or not lines[i].strip()):
-                    block.append(lines[i].strip())
-                    i += 1
-                fields[key] = " ".join(block).strip()
-                continue
-            fields[key] = value
-        i += 1
-    return fields
+    # A real YAML parser, not a naive `:`-split -- a line-split parser accepts malformed YAML
+    # (e.g. an unterminated quoted description) as long as the split still produces a non-empty
+    # value, which silently defeats the "frontmatter missing/invalid" checks below.
+    try:
+        parsed = yaml.safe_load(fm)
+    except yaml.YAMLError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(k): ("" if v is None else str(v)) for k, v in parsed.items()}
 
 
 def check_frontmatter():
@@ -93,6 +99,7 @@ def check_script_exists():
 
 def _run(run_glob, extra_env=None):
     env = dict(os.environ)
+    env.update(AUDIT_DEFAULTS)
     env["RUN_GLOB"] = run_glob
     env["OUTPUT_FORMAT"] = "json"
     env["FAIL_ON_CRITICAL"] = "1"
