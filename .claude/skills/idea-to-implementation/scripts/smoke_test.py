@@ -94,6 +94,23 @@ def check_referenced_files():
         if not any((cand / match.group(1)).resolve().exists() for cand in skill_dirs):
             missing.append(match.group(1))
 
+    # A skill body sometimes names a plugin-root file bare, with no "../" prefix at all (e.g.
+    # `versioned-configuration.json`) -- deliberately checked against a small, explicit,
+    # hardcoded name list rather than a generic bare-filename regex: a generic pattern would also
+    # match `evals.json` (a generic-concept mention, not a specific path), a same-skill file
+    # already covered by skill_relative mentioned a second time without its path prefix (e.g.
+    # `intake-payload-schema.md`), or `SKILL.md` (sometimes another plugin's SKILL.md entirely,
+    # e.g. "codex-review-bridge's SKILL.md") -- none of which this check could safely resolve.
+    for bare_name in (
+        "FOUNDATION_CONTRACTS.md",
+        "host-profile.json",
+        "versioned-configuration.json",
+    ):
+        if f"`{bare_name}`" in text and not any(
+            (cand.parent.parent / bare_name).resolve().exists() for cand in skill_dirs
+        ):
+            missing.append(bare_name)
+
     repo_relative = r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`"
     for match in re.finditer(repo_relative, text):
         path_str = match.group(1)
@@ -231,10 +248,11 @@ def check_step_sequence():
     # Scoped to the declared SECTION_HEADERS only -- other sections (e.g. "Testing &
     # Validation") legitimately restart their own numbered lists for unrelated scenarios,
     # which a whole-file scan would wrongly flag as non-sequential. Within a found section,
-    # a "### " subsection (e.g. distinct scenarios/paths) is checked independently too --
-    # but a later subsection can legitimately *continue* numbering from an earlier one's last
-    # step rather than restarting (verified live: merge-to-completion and pr-to-linear both do
-    # this), so only the section's first numbered chunk is required to start at 1.
+    # a "### " subsection (e.g. distinct scenarios/paths) is checked against a running baseline
+    # that carries forward across chunks -- a later subsection can legitimately *continue*
+    # numbering from an earlier one's last step (verified live: merge-to-completion and
+    # pr-to-linear both do this) or start its own fresh 1-based sequence, but never silently
+    # skip steps at either a chunk's own start or a section-wide start.
     text = SKILL_MD.read_text(encoding="utf-8")
     found_any = False
     for header in SECTION_HEADERS:
@@ -259,24 +277,31 @@ def check_step_sequence():
         else:
             chunks = [section]
 
-        first_chunk_numbers_seen = False
+        # expected_next tracks the running baseline across chunks -- a later "### " subsection
+        # is expected to *continue* numbering from the prior chunk's last step (verified live:
+        # merge-to-completion, pr-to-linear), not restart at 1. This also catches a regression
+        # in a later chunk alone (e.g. its own first step removed, leaving [10, 11, ...] when
+        # [9, 10, 11, ...] was expected) -- anchoring each chunk only at its own numbers[0], as
+        # an earlier version of this check did, silently accepted that. A chunk that doesn't
+        # continue is still accepted if it matches a fresh 1-based restart instead -- an
+        # intentionally independent numbered list in a later subsection, not a continuation.
+        expected_next = 1
         for chunk in chunks:
             numbers = [int(n) for n in re.findall(r"^(\d+)\. ", chunk, re.MULTILINE)]
             if not numbers:
                 continue
-            if not first_chunk_numbers_seen:
-                # The section's first numbered chunk must start at 1 -- this is what catches a
-                # regression where step 1 itself was removed (e.g. the list becomes [2, 3, 4]),
-                # which anchoring at numbers[0] would otherwise silently accept as "sequential".
-                expected = list(range(1, 1 + len(numbers)))
-                first_chunk_numbers_seen = True
-            else:
-                expected = list(range(numbers[0], numbers[0] + len(numbers)))
-            if numbers != expected:
-                return False, (
-                    f"step numbering not sequential in '{header}': "
-                    f"found {numbers}, expected {expected}"
-                )
+            expected_continue = list(range(expected_next, expected_next + len(numbers)))
+            if numbers == expected_continue:
+                expected_next = numbers[-1] + 1
+                continue
+            expected_restart = list(range(1, 1 + len(numbers)))
+            if expected_next != 1 and numbers == expected_restart:
+                expected_next = numbers[-1] + 1
+                continue
+            return False, (
+                f"step numbering not sequential in '{header}': "
+                f"found {numbers}, expected {expected_continue}"
+            )
     if not found_any:
         if not SECTION_HEADERS:
             return True, "no tracked section for this skill (skip)"
