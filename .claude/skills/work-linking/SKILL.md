@@ -131,3 +131,4 @@ Foundational Setup.
       without an `Unknown` classification.
 - [ ] Repair never touches an authoritative field, and never resolves by newest timestamp.
 - [ ] A repair never produces a reverse-write loop.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

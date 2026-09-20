@@ -187,3 +187,4 @@ Foundational Setup.
 - [ ] Every proposed follow-up carries a source anchor.
 - [ ] The disposition-recording write (step 6) always gets its own preview and approval before it
       persists — never written on the strength of step 5's follow-up-batch approval alone.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

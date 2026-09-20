@@ -179,6 +179,7 @@ updated risks a duplicate or conflicting change.
 - [ ] No priority/owner/scope derived from Notion content without explicit approval for that
       specific change.
 - [ ] Target resolution never infers from a display name when more than one match exists.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
 
 ## Reference Guide
 

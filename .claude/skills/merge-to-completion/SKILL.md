@@ -171,3 +171,4 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       re-attempts the merge.
 - [ ] Never invokes `git-kit:finishing-work` itself — no tool grant for it — since `git-kit:merge-pr`'s
       own step 8 (inside step 5's delegation) already owns asking about and running post-merge cleanup.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

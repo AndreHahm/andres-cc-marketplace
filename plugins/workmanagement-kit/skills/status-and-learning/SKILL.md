@@ -129,3 +129,4 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 **Quality gates:**
 - [ ] Every summary is explicitly dated and labeled as a snapshot, never implied to be live.
 - [ ] Every write is preceded by approval and followed by a read-back of both source and destination.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

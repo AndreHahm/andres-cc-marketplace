@@ -192,3 +192,4 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - [ ] Unresolved-thread state is never independently re-derived via `gh pr view`/`gh pr checks` —
       both lack a thread-resolution field; this skill always relies on `handling-review-findings`'s
       own report as its sole source of truth for that state.
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).

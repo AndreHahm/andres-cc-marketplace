@@ -183,3 +183,4 @@ to check validity after new commits or a changed base:
 - [ ] Gate evidence invalidation always compares two SHAs the calling skill supplied — never assumes
       prior evidence still applies after a new commit or force-push, and never attempts to determine
       "current HEAD" independently (this skill holds no tool grant that could).
+- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
