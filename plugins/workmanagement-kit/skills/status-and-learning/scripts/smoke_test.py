@@ -29,7 +29,7 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
+    if not re.search(r"(?m)^name:\s", fm) or not re.search(r"(?m)^description:\s", fm):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 
@@ -172,7 +172,10 @@ def _collect_plugin_contract_text(body: str) -> str:
 
 def check_bash_grants():
     fm_text = SKILL_MD.read_text(encoding="utf-8")
-    header_end = fm_text.find("\n---\n", 4) + 5
+    close = fm_text.find("\n---\n", 4)
+    if close == -1:
+        return True, "frontmatter never closed (skip -- check_frontmatter already reports this)"
+    header_end = close + 5
     frontmatter = fm_text[:header_end]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
@@ -219,12 +222,19 @@ def check_step_sequence():
     text = SKILL_MD.read_text(encoding="utf-8")
     found_any = False
     for header in SECTION_HEADERS:
-        start = text.find("\n" + header + "\n")
-        if start == -1:
+        # Tolerant of trailing spaces/tabs after the header text (a bare "\n"+header+"\n"
+        # substring match would silently fall through to "not found" on those, masking a real
+        # tracked section instead of flagging the mismatch).
+        header_match = re.search(r"\n" + re.escape(header) + r"[ \t]*\n", text)
+        if header_match is None:
             continue
         found_any = True
+        start = header_match.start()
         end = text.find("\n## ", start + 1)
         section = text[start : end if end != -1 else len(text)]
+        # Fenced code blocks can legitimately contain an illustrative numbered example that
+        # isn't part of the real tracked procedure -- strip them before scanning for numbers.
+        section = re.sub(r"```.*?```", "", section, flags=re.DOTALL)
 
         sub_starts = [m.start() for m in re.finditer(r"^### ", section, re.MULTILINE)]
         if sub_starts:
@@ -244,7 +254,12 @@ def check_step_sequence():
                     f"found {numbers}, expected {expected}"
                 )
     if not found_any:
-        return True, f"none of {SECTION_HEADERS} found (skip)"
+        if not SECTION_HEADERS:
+            return True, "no tracked section for this skill (skip)"
+        return False, (
+            f"none of the tracked headers {SECTION_HEADERS} were found in SKILL.md -- "
+            "a header may have been renamed without updating this script"
+        )
     return True, "step headers sequential in every found section/subsection"
 
 
