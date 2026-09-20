@@ -23,11 +23,21 @@
       "prompt": "Linear issue AND-7's notion-link field points to a Notion page ID that now returns \"Page not found\". Repair this broken link.",
       "expected_output": "Classifies this as a Broken link per the six defined drift states, re-resolves by stable ID within the owning system (Notion) before concluding the target record was deleted rather than guessing from a content/title search, and does not silently write a repair (via a guessed replacement or newest-timestamp resolution) without surfacing the uncertainty to the user.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/work-linking/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

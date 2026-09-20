@@ -1,0 +1,16 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'revalidate the open questions from this report' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'disposition the follow-ups from this decision' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

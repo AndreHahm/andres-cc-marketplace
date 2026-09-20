@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'run the full Linear-to-GitHub lifecycle for issue X' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"run the full Linear-to-GitHub lifecycle for an issue\""
+    },
+    {
+      "text": "Trigger phrase 'take this accepted issue all the way to merge' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"take an accepted issue all the way to merge\""
+    },
+    {
+      "text": "Trigger phrase 'resume this interrupted Wave 2 lifecycle run' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"resume an interrupted Wave 2 lifecycle run\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

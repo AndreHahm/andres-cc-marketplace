@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'summarize progress on this project to Notion' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"summarize progress to Notion\""
+    },
+    {
+      "text": "Trigger phrase 'capture what we learned from this' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"capture what was learned from a completed piece of work\""
+    },
+    {
+      "text": "Trigger phrase 'capture this outcome' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"capture what was learned from a completed piece of work\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

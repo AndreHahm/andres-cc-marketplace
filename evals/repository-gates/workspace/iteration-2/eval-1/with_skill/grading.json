@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'what gates apply to this repo' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"what gates apply to this repository\""
+    },
+    {
+      "text": "Trigger phrase 'discover repository policy and gates' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"discover repository policy before starting Wave 2 work\""
+    },
+    {
+      "text": "Trigger phrase 'check if the gates for this PR are still valid after the new commit' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"check whether prior gate evidence is still valid after new commits\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

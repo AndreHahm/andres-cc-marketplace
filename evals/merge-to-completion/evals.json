@@ -23,11 +23,21 @@
       "prompt": "PR #92 (linked to Linear issue ENG-518) merged cleanly via the standard merge flow -- squash merge, all 4 acceptance criteria are straightforward and were already verified complete by the implementer during development, with nothing ambiguous or in question. Record delivery after merge and disposition the Linear issue.",
       "expected_output": "Records pr-merged via linear-github-linking using GitHub's own fresh read-back merge SHA, never assumed from the request or the implementer's own claim that the criteria are already verified; still runs the Linear disposition as a separate, explicit step with an individual criterion-by-criterion comparison against all 4 acceptance criteria before closing, rather than treating 'merged, criteria already verified' as sufficient on its own; discloses -- rather than accepts as the disposition -- any status change GitHub's native Linear integration may have already made as a side effect of the merge; records work-closed only once condition (a) (every criterion literally met, nothing outstanding) is confirmed; and never re-invokes git-kit:finishing-work itself, since merge-pr's own step 8 already owns that.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

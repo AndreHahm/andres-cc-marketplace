@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'capture this as an idea in Notion' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'record a decision: we're going with X' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'propose a goal for Q3' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'log this as a research note' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'another plugin's workflow requesting content storage in Notion or Linear (host-mediated, not a user-typed phrase)' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

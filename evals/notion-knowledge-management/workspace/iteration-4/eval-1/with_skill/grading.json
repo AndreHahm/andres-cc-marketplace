@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'capture this as an idea in Notion' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"capture an idea\""
+    },
+    {
+      "text": "Trigger phrase 'record a decision: we're going with X' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"record/accept/supersede/reverse a Decision\""
+    },
+    {
+      "text": "Trigger phrase 'propose a goal for Q3' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"propose a Goal\""
+    },
+    {
+      "text": "Trigger phrase 'log this as a research note' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"log a Note/Research item/Report\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

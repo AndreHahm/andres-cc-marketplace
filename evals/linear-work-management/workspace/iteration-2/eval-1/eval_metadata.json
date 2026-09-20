@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'create a Linear issue for this' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'revise this milestone's date' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'check the status of this Linear project' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

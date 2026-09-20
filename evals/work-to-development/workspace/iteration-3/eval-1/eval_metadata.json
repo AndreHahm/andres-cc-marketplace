@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/work-to-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'start work on this Linear issue' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'begin development for issue X' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'prepare this accepted issue for implementation' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

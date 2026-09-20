@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'summarize the PR review status to Linear' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'reflect the blocking findings into the Linear issue' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'mark this PR ready for review' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

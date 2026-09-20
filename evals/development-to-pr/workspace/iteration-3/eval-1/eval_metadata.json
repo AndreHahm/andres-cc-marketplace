@@ -1,0 +1,16 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'commit this and open a PR linked to issue X' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'publish a draft PR for this Linear issue' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

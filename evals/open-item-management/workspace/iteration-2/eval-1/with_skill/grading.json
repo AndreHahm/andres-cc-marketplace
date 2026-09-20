@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'revalidate the open questions from this report' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"revalidate open questions\""
+    },
+    {
+      "text": "Trigger phrase 'disposition the follow-ups from this decision' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"disposition follow-ups from a report\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

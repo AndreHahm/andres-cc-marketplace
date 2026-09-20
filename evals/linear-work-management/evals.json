@@ -21,13 +21,23 @@
       "id": 3,
       "name": "Check status of an unnamed project",
       "prompt": "Check the status of this Linear project.",
-      "expected_output": "Recognizes that no project name, ID, or link was given (and none was established earlier in the conversation), asks the user to identify the target rather than guessing one, and states that checking status is a read-only operation needing no approval once a target is resolved — without fabricating any status data for an unresolved target.",
+      "expected_output": "Recognizes that no project name, ID, or link was given (and none was established earlier in the conversation), asks the user to identify the target rather than guessing one, and states that checking status is a read-only operation needing no approval once a target is resolved \u2014 without fabricating any status data for an unresolved target.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

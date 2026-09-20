@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'create a Linear issue for this' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"create/refine a Linear Issue\""
+    },
+    {
+      "text": "Trigger phrase 'revise this milestone's date' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"revise a Roadmap or Milestone\""
+    },
+    {
+      "text": "Trigger phrase 'check the status of this Linear project' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"check Linear project/issue status\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

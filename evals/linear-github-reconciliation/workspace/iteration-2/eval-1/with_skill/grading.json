@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'reconcile Linear and GitHub state' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"reconcile Linear and GitHub state\""
+    },
+    {
+      "text": "Trigger phrase 'why did this issue's status change unexpectedly' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"investigate an unexplained status change\""
+    },
+    {
+      "text": "Trigger phrase 'check for drift across this issue's whole lifecycle' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"check for drift across the whole lifecycle (not just one link)\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

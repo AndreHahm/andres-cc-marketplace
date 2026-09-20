@@ -23,11 +23,21 @@
       "prompt": "Wave 2's merge-to-completion just routed Linear issue ENG-207's remaining follow-up items here for disposition.",
       "expected_output": "Revalidates each item against current state rather than just replaying merge-to-completion's own preliminary classification; classifies each item as exactly one of resolved/retained-knowledge/decision-needed/actionable-work; gets two separate approvals (the follow-up batch, and the full disposition record).",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/open-item-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 2,
     "declared_scenarios_covered": 2,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

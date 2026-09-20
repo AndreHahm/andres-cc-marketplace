@@ -13,7 +13,7 @@
     {
       "id": 2,
       "name": "linear-github-lifecycle \"take this accepted issue all the way to merge\" trigger",
-      "prompt": "Take this accepted issue all the way to merge — Linear issue ENG-311, 'Add rate limiting to the public API', is already Accepted. Run it through to a merged PR and Linear disposition.",
+      "prompt": "Take this accepted issue all the way to merge \u2014 Linear issue ENG-311, 'Add rate limiting to the public API', is already Accepted. Run it through to a merged PR and Linear disposition.",
       "expected_output": "Activates on this exact declared trigger phrase and delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) in the documented phase order, rather than performing any phase's logic itself; fires an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate.",
       "files": []
     },
@@ -23,11 +23,21 @@
       "prompt": "Resume this interrupted Wave 2 lifecycle run for Linear issue ENG-288. The git-github-evidence array shows, in order: a work-started entry (repository acme/api, branch feat/eng-288-webhook-retries), a commit-linked entry for the same branch, and a pr-published entry for the same branch whose gates[] array is [{name: lint, result: pass}, {name: unit-tests, result: pass}]. No pr-ready or pr-merged entry exists. The issue currently shows status 'In Review' in Linear. Continue the lifecycle from here.",
       "expected_output": "Activates on this exact declared trigger phrase, applies Resume Behavior to determine the furthest-completed phase (Commit + gates + Publish, via the pr-published entry) and correctly identifies Review/fix + Ready (pr-to-linear) as the resume point without re-running already-completed phases; presents the resume point to the user via AskUserQuestion before continuing rather than silently resuming; treats the Issue's 'In Review' Linear status as informative context only, never as proof of phase completion.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

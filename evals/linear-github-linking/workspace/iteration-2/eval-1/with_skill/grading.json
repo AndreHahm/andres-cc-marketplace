@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'link this Linear issue to its PR' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"link a Linear issue to its branch/commit/PR\""
+    },
+    {
+      "text": "Trigger phrase 'check for drift between Linear and GitHub' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"check for drift between Linear and GitHub\""
+    },
+    {
+      "text": "Trigger phrase 'repair this broken GitHub link' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"repair a broken/stale Git/GitHub link\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

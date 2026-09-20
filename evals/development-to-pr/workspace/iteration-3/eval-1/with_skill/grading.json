@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'commit this and open a PR linked to issue X' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"commit and open a PR linked to a Linear issue\""
+    },
+    {
+      "text": "Trigger phrase 'publish a draft PR for this Linear issue' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"publish a draft PR for an issue\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

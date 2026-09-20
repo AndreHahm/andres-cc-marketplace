@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'merge this PR and disposition the Linear issue' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"merge a PR and disposition its Linear issue\""
+    },
+    {
+      "text": "Trigger phrase 'record delivery after merge' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"record delivery after a merge\""
+    },
+    {
+      "text": "Trigger phrase 'close out this issue now that the PR is merged' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"disposition its Linear issue\" (semantic match: closing out = dispositioning)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
