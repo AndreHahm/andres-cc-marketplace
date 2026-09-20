@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'promote this idea to Linear' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"promote an idea to Linear\""
+    },
+    {
+      "text": "Trigger phrase 'turn this decision into tracked work' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"turn a decision into tracked work\""
+    },
+    {
+      "text": "Trigger phrase 'accept this proposed goal into execution' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"accept a proposed Goal into execution\""
+    },
+    {
+      "text": "Trigger phrase 'create a Linear issue based on/from this idea' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"create a Linear issue explicitly based on a named Notion source\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

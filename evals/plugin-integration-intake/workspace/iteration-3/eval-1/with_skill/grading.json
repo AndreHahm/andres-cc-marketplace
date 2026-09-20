@@ -1,0 +1,16 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'another plugin's workflow requesting content storage in Notion or Linear (host-mediated, not a user-typed phrase)' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"another plugin's workflow needs to store something in Notion or act on something in Linear\" -- structural/host-mediated match, consistent with this skill's own documented non-phrase trigger type"
+    }
+  ],
+  "summary": {
+    "assertions_total": 1,
+    "assertions_passed": 1,
+    "pass_rate": 1.0
+  }
+}

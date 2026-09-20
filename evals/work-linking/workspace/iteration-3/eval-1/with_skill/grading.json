@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'link this idea to the Linear issue' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"link a Notion record to a Linear record\" (an Idea is a Notion record type)"
+    },
+    {
+      "text": "Trigger phrase 'check for drift between Notion and Linear' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"check for drift between Notion and Linear\""
+    },
+    {
+      "text": "Trigger phrase 'repair this broken link' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"repair a broken/stale link\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

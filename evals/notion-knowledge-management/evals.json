@@ -28,7 +28,7 @@
       "id": 4,
       "name": "Clear decision does not over-trigger new tool grants",
       "prompt": "Record a decision: we're deprecating the legacy CSV importer in favor of the new bulk API endpoint, effective next release.",
-      "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or bridge_caller.py — those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
+      "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or bridge_caller.py \u2014 those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
       "files": []
     },
     {
@@ -44,11 +44,21 @@
       "prompt": "Log this as a research note: users are hitting rate limits on the bulk export API more than expected, worth investigating pagination strategies.",
       "expected_output": "Builds a Research record per the record-type property table (title, area, body, shared fields), previews it, states approval is required before writing, and does not claim to have actually written to Notion without a working connector.",
       "files": []
+    },
+    {
+      "id": 7,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
     "declared_scenarios_covered": 4,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

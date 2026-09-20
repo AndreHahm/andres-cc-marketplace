@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'promote this idea to Linear' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'turn this decision into tracked work' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'accept this proposed goal into execution' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'create a Linear issue based on/from this idea' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

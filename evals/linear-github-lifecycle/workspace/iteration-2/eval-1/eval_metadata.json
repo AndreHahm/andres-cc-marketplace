@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+  "assertions": [
+    {
+      "text": "Trigger phrase 'run the full Linear-to-GitHub lifecycle for issue X' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'take this accepted issue all the way to merge' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    },
+    {
+      "text": "Trigger phrase 'resume this interrupted Wave 2 lifecycle run' maps to vocabulary in the frontmatter description",
+      "type": "functionality",
+      "target": "SKILL.md frontmatter description"
+    }
+  ]
+}

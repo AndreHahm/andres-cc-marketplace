@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'start work on this Linear issue' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"start work on a Linear issue\""
+    },
+    {
+      "text": "Trigger phrase 'begin development for issue X' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"begin development for an accepted issue\""
+    },
+    {
+      "text": "Trigger phrase 'prepare this accepted issue for implementation' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"prepare an accepted issue for implementation\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

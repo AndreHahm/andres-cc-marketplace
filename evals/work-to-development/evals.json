@@ -13,7 +13,7 @@
     {
       "id": 2,
       "name": "work-to-development \"begin development for issue X\" scenario",
-      "prompt": "Begin development for Linear issue ENG-310 — it's accepted and ready to implement in this repository.",
+      "prompt": "Begin development for Linear issue ENG-310 \u2014 it's accepted and ready to implement in this repository.",
       "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
       "files": []
     },
@@ -23,11 +23,21 @@
       "prompt": "Prepare this accepted issue for implementation: ENG-415 is accepted and ready to go in this repository.",
       "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/work-to-development/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

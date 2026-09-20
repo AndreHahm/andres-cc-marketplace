@@ -23,11 +23,21 @@
       "prompt": "Before closing out Linear issue ENG-311, do a full reconciliation across its whole lifecycle -- not just its current status. Check Linear's current recorded state, the full Git/GitHub Evidence Record history recorded for it so far, and current GitHub state (its PR/branch), and flag anything across that whole history that doesn't line up, not just the most recent change.",
       "expected_output": "Checks multiple lifecycle dimensions (Linear's current recorded state, the Git/GitHub Evidence Record history, and current GitHub state), not only the most recent change; classifies each discrepancy found as exactly one of the nine defined states, never leaving one unclassified (including 'Ambiguous' when evidence is genuinely insufficient); proposes only bounded repairs scoped to the specific drifted field/link, never a broad bidirectional sync across the whole lifecycle.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-github-reconciliation/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

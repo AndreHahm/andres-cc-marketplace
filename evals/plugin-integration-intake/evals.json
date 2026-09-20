@@ -19,15 +19,25 @@
     },
     {
       "id": 3,
-      "name": "Ambiguous target — no confident classifier pick",
+      "name": "Ambiguous target \u2014 no confident classifier pick",
       "prompt": "Another plugin's workflow (source_plugin: analysis-kit, source_skill: running-a-full-retrospective) submits: {\"content\": {\"title\": \"Retrospective Notes\", \"summary\": \"Loose notes, not yet categorized.\", \"body\": \"Assorted findings.\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": null, \"rationale\": \"not sure if this belongs in Reports or Notes\"}}. Process this submission.",
       "expected_output": "Recognizes the target as ambiguous (no clear single Notion database/page), never infers or picks one itself. Either returns a structured handoff directly, or asks via AskUserQuestion whether to request independent classification first -- and if it describes a classifier dispatch, attributes it to work-intake-classifier reached through plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure (a scoped Bash(bridge_caller.py) call), not a direct Agent()/Skill() call. Never presents a preview with a confirmed target scope for this payload.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 1,
     "declared_scenarios_covered": 1,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

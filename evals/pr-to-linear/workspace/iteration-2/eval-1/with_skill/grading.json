@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Trigger phrase 'summarize the PR review status to Linear' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"summarize PR review status to Linear\""
+    },
+    {
+      "text": "Trigger phrase 'reflect the blocking findings into the Linear issue' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"reflect blocking findings into an issue\""
+    },
+    {
+      "text": "Trigger phrase 'mark this PR ready for review' maps to vocabulary in the frontmatter description",
+      "passed": true,
+      "evidence": "\"mark a PR ready for review\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -23,11 +23,21 @@
       "prompt": "PR #77 (linked to Linear issue ENG-230) looks done to me. Mark this PR ready for review.",
       "expected_output": "Routes the request through step 2 (git-kit:handling-review-findings) first per step 1.5's explicit named routing for readiness requests, never treated as a pure-summary shortcut; never invokes gh pr ready or any raw gh pr mutation directly, instead presenting the ready-state action as a structured handoff via AskUserQuestion asking the user to run it themselves; records pr-ready only for the exact current head SHA re-verified immediately before the mutation, with provider \"manual (gh pr ready, per pr-to-linear's disclosed handoff)\" and never a fabricated git-kit:... provider.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Frontmatter-description vs. declared-trigger-phrase consistency (Quick Workflow, methodology note below)",
+      "prompt": "For each phrase in this skill's own '## Testing & Validation' > 'Verify this skill activates on' list, would this skill's frontmatter description plausibly trigger on it?",
+      "expected_output": "Every declared positive trigger phrase maps to vocabulary actually present in the frontmatter description.",
+      "files": [
+        "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": []
-  }
+  },
+  "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed this session -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }
