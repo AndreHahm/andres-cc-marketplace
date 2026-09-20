@@ -104,8 +104,10 @@ def check_fixture_scores():
     env["OUTPUT_FORMAT"] = "json"
 
     # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
-    # no untrusted input) -- Bandit's static heuristic can't see that SCRIPT is a constant.
-    proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)  # nosec B603
+    # no untrusted input) -- static analysis can't see that SCRIPT is a constant.
+    proc = subprocess.run(  # nosemgrep
+        [sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env
+    )  # nosec B603
     if proc.returncode != 0:
         return (
             False,

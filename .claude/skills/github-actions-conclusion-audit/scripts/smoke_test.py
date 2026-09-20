@@ -106,8 +106,10 @@ def _run(run_glob, extra_env=None):
     if extra_env:
         env.update(extra_env)
     # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
-    # no untrusted input) -- Bandit's static heuristic can't see that SCRIPT is a constant.
-    return subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)  # nosec B603
+    # no untrusted input) -- static analysis can't see that SCRIPT is a constant.
+    return subprocess.run(  # nosemgrep
+        [sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env
+    )  # nosec B603
 
 
 def check_critical_instability_detected():
