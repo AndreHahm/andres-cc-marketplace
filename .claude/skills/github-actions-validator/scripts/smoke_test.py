@@ -17,7 +17,7 @@ follows the parent's own locale, not the child's.
 """
 
 import pathlib
-import subprocess
+import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 
 import yaml
@@ -80,13 +80,16 @@ def _run_lint_only(target: pathlib.Path):
     # otherwise -- on a non-UTF-8 Windows console that silently mojibakes the captured ✓/✗
     # diagnostics instead of raising, the same decode-side gap already fixed inside
     # validate_workflow.py's own actionlint/act subprocess calls.
+    # Fixed argv (sys.executable + this skill's own script path resolved from __file__,
+    # "--lint-only", and one of two hardcoded example filenames -- no shell, no untrusted input)
+    # -- Bandit's static heuristic can't see that SCRIPT/target are constants.
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--lint-only", str(target)],
         capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
-    )
+    )  # nosec B603
 
 
 def check_with_errors_detected():

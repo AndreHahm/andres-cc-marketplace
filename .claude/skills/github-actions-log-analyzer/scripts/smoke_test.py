@@ -9,7 +9,7 @@ Validation "Verify find_step_boundaries.py" checklist.
 
 import json
 import pathlib
-import subprocess
+import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 import tempfile
 
@@ -84,11 +84,14 @@ def check_boundary_detection():
         log_path = pathlib.Path(tmp) / "synthetic-run.log"
         log_path.write_bytes(SYNTHETIC_LOG.encode("utf-8"))
 
+        # Fixed argv (sys.executable + this skill's own script path resolved from __file__, plus a
+        # log_path this same function just wrote under tempfile.TemporaryDirectory() -- no shell,
+        # no untrusted input) -- Bandit's static heuristic can't see either is a constant/self-made.
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), str(log_path)],
             capture_output=True,
             text=True,
-        )
+        )  # nosec B603
         if proc.returncode != 0:
             return False, f"script exited {proc.returncode}: {proc.stderr.strip()}"
 

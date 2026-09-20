@@ -10,7 +10,7 @@ malformed-file-never-silently-passes gate).
 import json
 import os
 import pathlib
-import subprocess
+import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 import tempfile
 
@@ -23,8 +23,8 @@ SCRIPT = SKILL_DIR / "scripts" / "conclusion_volatility_audit.py"
 CONCLUSIONS = ["success", "failure", "success", "failure", "success", "failure"]
 
 # Every documented audit option, reset to conclusion_volatility_audit.py's own default before each
-# run -- a caller with e.g. WARN_INSTABILITY_PCT or FAIL_ON_CRITICAL already exported would otherwise
-# leak into these fixed-score assertions.
+# run -- a caller with e.g. WARN_INSTABILITY_PCT or FAIL_ON_CRITICAL already exported would
+# otherwise leak into these fixed-score assertions.
 AUDIT_DEFAULTS = {
     "RUN_GLOB": "artifacts/github-actions/*.json",
     "TOP_N": "20",
@@ -105,7 +105,9 @@ def _run(run_glob, extra_env=None):
     env["FAIL_ON_CRITICAL"] = "1"
     if extra_env:
         env.update(extra_env)
-    return subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)
+    # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
+    # no untrusted input) -- Bandit's static heuristic can't see that SCRIPT is a constant.
+    return subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)  # nosec B603
 
 
 def check_critical_instability_detected():
