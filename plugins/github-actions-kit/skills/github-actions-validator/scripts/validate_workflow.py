@@ -577,13 +577,16 @@ def validate_with_actionlint(workflow_path: str) -> tuple[int, str]:
 
     if p.is_file():
         log_info(f"Validating: {workflow_path}")
+        # List-form argv, no shell=True -- the OS exec call never interprets shell metacharacters
+        # in workflow_path, so a caller-supplied file path is safe here regardless of its content;
+        # the shell-injection risk B603 flags requires shell=True, which this call never sets.
         proc = subprocess.run(
             [actionlint_path, workflow_path],
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
-        )
+        )  # nosec B603
         output = proc.stdout + proc.stderr
         if output:
             print(output, end="" if output.endswith("\n") else "\n")
@@ -601,13 +604,14 @@ def validate_with_actionlint(workflow_path: str) -> tuple[int, str]:
         if not workflow_files:
             log_warn(f"No workflow files found in: {workflow_path}")
             return 0, ""
+        # List-form argv, no shell=True -- same rationale as the single-file call above.
         proc = subprocess.run(
             [actionlint_path, *workflow_files],
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
-        )
+        )  # nosec B603
         output = proc.stdout + proc.stderr
         if output:
             print(output, end="" if output.endswith("\n") else "\n")
@@ -709,6 +713,7 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
 
     list_cmd = [act_path, "--list", *workflow_flag, *RUNNER_IMAGES]
     log_info(f"Running: act --list {' '.join(workflow_flag)}")
+    # List-form argv, no shell=True -- same rationale as the actionlint calls above.
     list_proc = subprocess.run(
         list_cmd,
         cwd=repo_root,
@@ -716,7 +721,7 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
         text=True,
         encoding="utf-8",
         errors="replace",
-    )
+    )  # nosec B603
     list_output = list_proc.stdout + list_proc.stderr
     print("\n".join(list_output.splitlines()[:30]))
     if list_proc.returncode != 0:
@@ -743,6 +748,7 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
     log_info(
         f"Running: act --dryrun {' '.join(workflow_flag)} --container-architecture linux/amd64"
     )
+    # List-form argv, no shell=True -- same rationale as the actionlint calls above.
     dryrun_proc = subprocess.run(
         dryrun_cmd,
         cwd=repo_root,
@@ -750,7 +756,7 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
         text=True,
         encoding="utf-8",
         errors="replace",
-    )
+    )  # nosec B603
     act_output = dryrun_proc.stdout + dryrun_proc.stderr
     act_exit_code = dryrun_proc.returncode
 

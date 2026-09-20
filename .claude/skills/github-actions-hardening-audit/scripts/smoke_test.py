@@ -10,7 +10,7 @@ risky.yml=9/critical, reusable-caller.yml=0/ok).
 import json
 import os
 import pathlib
-import subprocess
+import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 
 import yaml
@@ -20,9 +20,9 @@ SKILL_MD = SKILL_DIR / "SKILL.md"
 SCRIPT = SKILL_DIR / "scripts" / "workflow_hardening_audit.py"
 FIXTURES_DIR = SKILL_DIR / "fixtures"
 
-# Every documented audit option, reset to workflow_hardening_audit.py's own default before the run --
-# a caller with e.g. REQUIRE_CONCURRENCY or FAIL_ON_CRITICAL already exported would otherwise leak
-# into these fixed-score assertions.
+# Every documented audit option, reset to workflow_hardening_audit.py's own default before the
+# run -- a caller with e.g. REQUIRE_CONCURRENCY or FAIL_ON_CRITICAL already exported would
+# otherwise leak into these fixed-score assertions.
 AUDIT_DEFAULTS = {
     "WORKFLOW_GLOB": ".github/workflows/*.y*ml",
     "TOP_N": "20",
@@ -103,7 +103,9 @@ def check_fixture_scores():
     env["WORKFLOW_GLOB"] = str(FIXTURES_DIR / "*.y*ml")
     env["OUTPUT_FORMAT"] = "json"
 
-    proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)
+    # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
+    # no untrusted input) -- Bandit's static heuristic can't see that SCRIPT is a constant.
+    proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, env=env)  # nosec B603
     if proc.returncode != 0:
         return (
             False,

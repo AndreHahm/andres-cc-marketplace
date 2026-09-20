@@ -8,7 +8,7 @@ risk). This smoke test delegates to it rather than duplicating its checks.
 """
 
 import pathlib
-import subprocess
+import subprocess  # nosec B404 -- only used to invoke this skill's own bundled script
 import sys
 
 import yaml
@@ -56,12 +56,15 @@ def check_regression_suite():
     if not REGRESSION_SCRIPT.is_file():
         return False, f"{REGRESSION_SCRIPT} does not exist"
 
+    # Fixed argv (sys.executable + this skill's own script path resolved from __file__, no shell,
+    # no untrusted input) -- Bandit's static heuristic can't see that REGRESSION_SCRIPT is a
+    # constant.
     proc = subprocess.run(
         [sys.executable, str(REGRESSION_SCRIPT)],
         capture_output=True,
         text=True,
         cwd=str(SKILL_DIR),
-    )
+    )  # nosec B603
     if proc.returncode != 0:
         tail = "\n".join(proc.stdout.strip().splitlines()[-15:])
         return False, f"test-generator.py exited {proc.returncode}:\n{tail}\n{proc.stderr.strip()}"
