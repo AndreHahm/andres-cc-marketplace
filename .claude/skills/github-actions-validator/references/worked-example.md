@@ -100,7 +100,7 @@ workflow.yml:12:14: job "deploy" needs job "biuld" which does not exist [job-nee
 > **SHA Pinning Best Practice:**
 > ```yaml
 > # Recommended: SHA pinning with version comment
-> - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+> - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 > ```
 
 **Fix:** Update from `@v3` to `@v6` (or SHA-pinned version).
@@ -166,7 +166,7 @@ jobs:
   build:
     runs-on: ubuntu-latest  # Fixed: typo corrected
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0 - Fixed: updated version
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2 - Fixed: updated version
       - name: Process issue
         env:
           TITLE: ${{ github.event.issue.title }}  # Fixed: use env var
