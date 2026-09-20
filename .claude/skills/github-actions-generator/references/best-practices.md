@@ -256,7 +256,7 @@ steps:
 
 **.NET Dependencies:**
 ```yaml
-- uses: actions/setup-dotnet@v4
+- uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
   with:
     dotnet-version: '8.x'
     cache: true  # Caches NuGet global-packages folder

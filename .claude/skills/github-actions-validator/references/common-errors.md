@@ -36,12 +36,11 @@ jobs:
 
 **Error:**
 ```
-Required property is missing: name
+"runs-on" section is missing in job "build" [syntax-check]
 ```
 
-**Fix:**
+**Fix:** every job needs its own `runs-on:` — add the missing field:
 ```yaml
-# A workflow name is recommended, not required (GitHub falls back to the file path if omitted)
 name: CI Pipeline
 
 on: [push]
@@ -50,7 +49,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 ```
 
 ### 3. Invalid Workflow Triggers
@@ -202,7 +201,7 @@ are the current supported runtimes.
 - uses: actions/checkout@v3
 
 # Current
-- uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903  # v6.0.0
 ```
 
@@ -462,7 +461,7 @@ steps:
 
 ## Best Practices
 
-1. **Pin actions to a full commit SHA**: `actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0` not `actions/checkout@v6` or `actions/checkout@main`
+1. **Pin actions to a full commit SHA**: `actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2` not `actions/checkout@v6` or `actions/checkout@main`
 2. **Quote strings with special characters**: `name: "My: Workflow"`
 3. **Use shellcheck**: Enable shell script linting
 4. **Validate locally**: Use act and actionlint before pushing
@@ -485,7 +484,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - env:
           API_KEY: ${{ secrets.API_KEY }}
         run: ./deploy.sh

@@ -11,6 +11,7 @@ installation instructions.
 
 from __future__ import annotations
 
+import io
 import os
 import re
 import shutil
@@ -576,7 +577,13 @@ def validate_with_actionlint(workflow_path: str) -> tuple[int, str]:
 
     if p.is_file():
         log_info(f"Validating: {workflow_path}")
-        proc = subprocess.run([actionlint_path, workflow_path], capture_output=True, text=True)
+        proc = subprocess.run(
+            [actionlint_path, workflow_path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         output = proc.stdout + proc.stderr
         if output:
             print(output, end="" if output.endswith("\n") else "\n")
@@ -594,7 +601,13 @@ def validate_with_actionlint(workflow_path: str) -> tuple[int, str]:
         if not workflow_files:
             log_warn(f"No workflow files found in: {workflow_path}")
             return 0, ""
-        proc = subprocess.run([actionlint_path, *workflow_files], capture_output=True, text=True)
+        proc = subprocess.run(
+            [actionlint_path, *workflow_files],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         output = proc.stdout + proc.stderr
         if output:
             print(output, end="" if output.endswith("\n") else "\n")
@@ -696,7 +709,14 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
 
     list_cmd = [act_path, "--list", *workflow_flag, *RUNNER_IMAGES]
     log_info(f"Running: act --list {' '.join(workflow_flag)}")
-    list_proc = subprocess.run(list_cmd, cwd=repo_root, capture_output=True, text=True)
+    list_proc = subprocess.run(
+        list_cmd,
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     list_output = list_proc.stdout + list_proc.stderr
     print("\n".join(list_output.splitlines()[:30]))
     if list_proc.returncode != 0:
@@ -723,7 +743,14 @@ def test_with_act(workflow_path: str) -> tuple[int, str]:
     log_info(
         f"Running: act --dryrun {' '.join(workflow_flag)} --container-architecture linux/amd64"
     )
-    dryrun_proc = subprocess.run(dryrun_cmd, cwd=repo_root, capture_output=True, text=True)
+    dryrun_proc = subprocess.run(
+        dryrun_cmd,
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     act_output = dryrun_proc.stdout + dryrun_proc.stderr
     act_exit_code = dryrun_proc.returncode
 
@@ -791,6 +818,18 @@ def usage(prog: str, exit_code: int = 0) -> None:
 
 
 def main(argv: list[str]) -> int:
+    # Log messages below embed unicode glyphs (e.g. "✗"/"✓"). print() encodes using
+    # sys.stdout.encoding, which on Windows defaults to the console's active codepage (often
+    # cp1252) rather than UTF-8 unless PYTHONUTF8/PYTHONIOENCODING was already set before the
+    # interpreter started -- reconfigure explicitly so this doesn't depend on the caller's
+    # environment, matching Python 3.7+'s TextIOWrapper.reconfigure(). isinstance-narrowed (rather
+    # than a bare call) since sys.stdout/sys.stderr are typed as the broader TextIO protocol, which
+    # doesn't declare reconfigure(); a redirected stream that isn't a real TextIOWrapper (e.g. a
+    # test harness's StringIO) is left alone instead of raising.
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
     prog = "validate_workflow.py"
     workflow_path = ""
     lint_only = False

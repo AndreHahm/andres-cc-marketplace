@@ -90,7 +90,7 @@ For security, pin actions to specific commit SHAs:
 
 ```yaml
 # Recommended: SHA pinning with version comment
-- uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903  # v6.0.0
 
 # Acceptable: Major version tag, but only for official GitHub-owned actions

@@ -4,15 +4,14 @@ validity, plus real --lint-only invocations of scripts/validate_workflow.py
 against the skill's own bundled examples/with-errors.yml (must be flagged)
 and examples/valid-ci.yml (must run to completion without crashing).
 
-PYTHONIOENCODING=utf-8 is set explicitly for the subprocess: the script's
-own log helpers print unicode glyphs (e.g. "✗"), and a Windows console
-using a non-UTF-8 codepage otherwise raises UnicodeEncodeError before the
-validation summary is ever printed -- this smoke test exists to catch
-exactly that kind of crash, not to paper over it, so it fails loudly if the
-crash reappears even with the workaround in place.
+No PYTHONIOENCODING override is set for the subprocess: validate_workflow.py's
+own log helpers print unicode glyphs (e.g. "✗"), and main() now reconfigures
+sys.stdout/sys.stderr to UTF-8 itself so this doesn't depend on the caller's
+console codepage -- running the subprocess with the plain inherited
+environment is what actually exercises that self-healing, rather than
+papering over a regression with an env override of our own.
 """
 
-import os
 import pathlib
 import re
 import subprocess
@@ -85,13 +84,10 @@ def check_script_and_examples_exist():
 
 
 def _run_lint_only(target: pathlib.Path):
-    env = dict(os.environ)
-    env["PYTHONIOENCODING"] = "utf-8"
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--lint-only", str(target)],
         capture_output=True,
         text=True,
-        env=env,
     )
 
 

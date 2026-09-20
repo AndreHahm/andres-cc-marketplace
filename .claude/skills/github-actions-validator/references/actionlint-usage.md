@@ -224,7 +224,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Download actionlint
         # Both the installer script (via commit SHA, not the mutable `v1.7.9` tag — a
         # retargeted tag or compromised upstream repo could otherwise substitute different
