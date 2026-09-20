@@ -385,6 +385,10 @@ Requires `yamllint` (`pip install yamllint`). Run with:
 python3 scripts/test-generator.py
 ```
 
+**Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and invokes
+`scripts/test-generator.py` above as its regression check (not a duplicate suite). Run with
+`python3 scripts/smoke_test.py`.
+
 A real baseline-comparison eval run covers 1 of the 5 scenarios listed above (the basic Node.js CI
 workflow generation case) — see `evals/github-actions-generator/evals.json`. `with_skill` passed all 5
 assertions (SHA-pinned actions, explicit minimal permissions, checkout + setup-node + npm ci + npm test

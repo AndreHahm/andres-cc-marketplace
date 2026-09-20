@@ -10,6 +10,7 @@ malformed-file-never-silently-passes gate).
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,33 @@ def _make_run_files(tmp_dir: pathlib.Path, conclusions):
         (tmp_dir / f"run-{1000 + i}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+def _parse_frontmatter_fields(fm: str) -> dict:
+    # A top-level `key: >-`/`key: |` starts a YAML block scalar whose real value is the
+    # following more-indented lines, not the `>-`/`|` marker itself -- every SKILL.md in this
+    # plugin uses `description: >-`, so a naive single-line split would always see a truthy
+    # 2-character placeholder instead of the actual description body.
+    lines = fm.splitlines()
+    fields = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if ":" in line and not line[:1].isspace():
+            key, _, value = line.partition(":")
+            key = key.strip()
+            value = value.strip()
+            if re.match(r"^[|>][+-]?\d*$", value):
+                block = []
+                i += 1
+                while i < len(lines) and (lines[i][:1].isspace() or not lines[i].strip()):
+                    block.append(lines[i].strip())
+                    i += 1
+                fields[key] = " ".join(block).strip()
+                continue
+            fields[key] = value
+        i += 1
+    return fields
+
+
 def check_frontmatter():
     text = SKILL_MD.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
@@ -44,11 +72,7 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    fields = {}
-    for line in fm.splitlines():
-        if ":" in line:
-            key, _, value = line.partition(":")
-            fields[key.strip()] = value.strip()
+    fields = _parse_frontmatter_fields(fm)
     if not fields.get("name"):
         return False, "frontmatter missing non-empty 'name' field"
     if not fields.get("description"):

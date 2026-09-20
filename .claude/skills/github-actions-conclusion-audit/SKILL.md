@@ -143,6 +143,10 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/github-actions-conclusion-audit/scripts/con
 - "validate this workflow" / "debug actionlint errors" → `github-actions-validator`
 - "create a workflow for..." → `github-actions-generator`
 
+**Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
+`conclusion_volatility_audit.py` against synthetic run-history JSON, verifying the quality gates
+below. Run with `python3 scripts/smoke_test.py`.
+
 **Quality gates:**
 - [ ] `python3 scripts/conclusion_volatility_audit.py` exits `0` in reporting mode with no critical
       groups found

@@ -199,6 +199,11 @@ Present the full consolidated report. Do NOT edit any workflow or skill files �
 - Run it against a log containing null bytes — confirm it doesn't crash and still detects
   boundaries in the surrounding text.
 
+**Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
+`find_step_boundaries.py` against a synthetic log covering all three boundary types plus
+`RESULT_START`/`RESULT_END` and null-byte content — the mechanical version of the checklist above.
+Run with `python3 scripts/smoke_test.py`.
+
 **Quality gates:**
 - [ ] Step 4 never dispatches a subagent before the dispatch-scope `AskUserQuestion` gate has
       been shown and answered

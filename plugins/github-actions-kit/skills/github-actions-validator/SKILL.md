@@ -281,6 +281,12 @@ Validation work is complete when all are true:
 - "score this workflow's hardening risk" → `github-actions-hardening-audit`
 - "why does this workflow keep failing intermittently" → `github-actions-conclusion-audit`
 
+**Smoke test:** `scripts/smoke_test.py` checks SKILL.md frontmatter validity and re-runs
+`validate_workflow.py --lint-only` against `examples/with-errors.yml` (must be flagged) and
+`examples/valid-ci.yml` (must run to completion without crashing) — a fast surface-level check
+distinct from `tests/test_validate_workflow.py`'s deeper suite below. Run with
+`python3 scripts/smoke_test.py`.
+
 **Quality gates:**
 - [ ] `tests/test_validate_workflow.py` passes (run: `python3 tests/test_validate_workflow.py`)
 - [ ] `python3 scripts/validate_workflow.py --lint-only <file>` produces mapped, referenced output for a known bad workflow (e.g. `examples/with-errors.yml`)
