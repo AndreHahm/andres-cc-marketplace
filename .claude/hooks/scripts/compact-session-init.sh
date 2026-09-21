@@ -24,8 +24,11 @@ fi
 TRACK_DIR="${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact"
 mkdir -p "$TRACK_DIR"
 
-# Clean up old session files (older than 24 hours)
+# Clean up old session files (older than 24 hours). Also sweeps mode-* --
+# detect_mode.py's own per-session mode-switch state file (added 2026-09-21) --
+# so it doesn't accumulate indefinitely the same way session-* wouldn't.
 find "$TRACK_DIR" -name "session-*" -mtime +1 -delete 2>/dev/null || true
+find "$TRACK_DIR" -name "mode-*" -mtime +1 -delete 2>/dev/null || true
 
 # Get session hash
 if command -v md5sum &>/dev/null; then

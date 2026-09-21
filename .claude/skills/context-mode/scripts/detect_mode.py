@@ -35,6 +35,23 @@ correctly on arbitrary user phrasing. The skill itself only honors this tag when
 as this hook's own additionalContext output for the current turn - see SKILL.md's provenance
 boundary.
 
+Side effect (disclosed, added 2026-09-21): on a turn where exactly one candidate mode is
+detected, this hook also compares it against the last confidently-detected mode (a
+single-candidate turn only - a turn with zero or multiple candidates is too ambiguous to
+treat as a mode reading, and leaves the tracked mode unchanged rather than risk a false
+"switch"). On an actual change, throttled to once per MODE_SWITCH_COOLDOWN_SECONDS (matching
+strategic-compact's own 5-minute milestone-suggestion cooldown), it writes a
+"[StrategicCompact] "-prefixed pending-suggestion file under
+~/.claude/strategic-compact/pending-<session-hash> for strategic-compact's own Stop hook
+(compact-stop-check.sh) to deliver - the same delivery mechanism compact-track-and-suggest.sh
+already uses, extended to a second writer. This is best-effort, single-writer state (its own
+mode-<session-hash> file, never strategic-compact's own $TRACK_FILE counters, which stay
+lock-protected and untouched by this script) - see _maybe_suggest_mode_switch()'s own
+docstring for the full rationale, including why no cross-process lock is needed here. Gated
+on strategic-compact's own tracking file already existing for the session (i.e. context-kit's
+compact-session-init.sh has run), and entirely fail-open: any error here is swallowed and can
+never prevent this hook's own primary mode-tag output above from still being produced.
+
 Hook Event: UserPromptSubmit
 Returns: exit 0 in all cases; stdout is the additionalContext JSON, or empty when no mode matched.
 Fail-open: any error -> exit 0 with no output, never blocks or alters the prompt on a bug.
@@ -42,12 +59,16 @@ Fail-open: any error -> exit 0 with no output, never blocks or alters the prompt
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 TRIGGERS_PATH = Path(__file__).resolve().parent.parent / "triggers.json"
 VALID_MODES = ("dev", "review", "ship", "admin")
+MODE_SWITCH_COOLDOWN_SECONDS = 300
 
 
 def load_triggers() -> dict[str, list[str]]:
@@ -85,6 +106,96 @@ def build_tag(candidates: list[str]) -> str:
     return f"[Context-Mode candidates: {', '.join(candidates)}]"
 
 
+def _strategic_compact_track_dir() -> Path:
+    # Matches the bash strategic-compact hooks' own
+    # ${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact resolution -
+    # deliberately re-derived here rather than imported, matching this
+    # plugin's own established convention of duplicating this exact
+    # resolution logic per-script (see get_session_dir()'s identical
+    # hand-duplication across context-monitor.py/pre-compact.py/
+    # post-compact-restore.py) rather than adding a shared module.
+    home = os.environ.get("HOME") or os.environ.get("USERPROFILE") or "/tmp"
+    return Path(home) / ".claude" / "strategic-compact"
+
+
+def _strategic_compact_session_hash(session_id: str) -> str:
+    # Matches the bash hooks' own `echo "$SESSION_ID" | md5sum` - echo
+    # appends a trailing newline, so the hash input must include it too.
+    return hashlib.md5((session_id + "\n").encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
+
+
+def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
+    """Best-effort, single-writer state: this hook is the only writer of its
+    own mode-<hash> file, so unlike strategic-compact's own $TRACK_FILE
+    (read-modify-written by 2 bash hooks, guarded by a shared mkdir-based
+    lock), no lock is needed here for correctness - there is no second
+    writer to race against. This mirrors the same no-lock, best-effort
+    convention strategic-compact's own pending-<hash> delivery file already
+    uses for its sole existing writer (compact-track-and-suggest.sh); this
+    function becomes that file's second writer, accepting the same narrow,
+    already-disclosed last-write-wins risk class, not a new one.
+
+    Fails open (silently) on any error - this is a pure enhancement layered
+    on top of the primary mode-detection behavior above, never allowed to
+    prevent that primary output from still being produced.
+    """
+    if len(candidates) != 1:
+        return
+    current_mode = candidates[0]
+    try:
+        track_dir = _strategic_compact_track_dir()
+        track_dir.mkdir(parents=True, exist_ok=True)
+        session_hash = _strategic_compact_session_hash(session_id or "default")
+
+        # Gate on strategic-compact's own tracking file already existing for
+        # this session - the same "session already initialized" precondition
+        # its own bash hooks use, so this never fires before
+        # compact-session-init.sh has run for the session.
+        if not (track_dir / f"session-{session_hash}").exists():
+            return
+
+        state_file = track_dir / f"mode-{session_hash}"
+        last_mode = ""
+        last_switch_time = 0
+        if state_file.exists():
+            for line in state_file.read_text(encoding="utf-8").splitlines():
+                if line.startswith("LAST_MODE="):
+                    last_mode = line.split("=", 1)[1]
+                elif line.startswith("LAST_SWITCH_TIME="):
+                    raw = line.split("=", 1)[1]
+                    if raw.isdigit():
+                        last_switch_time = int(raw)
+
+        now = int(time.time())
+        switched = bool(last_mode) and last_mode != current_mode
+        throttled = (now - last_switch_time) < MODE_SWITCH_COOLDOWN_SECONDS
+        emit = switched and not throttled
+
+        # LAST_MODE always tracks the freshest confidently-detected mode.
+        # LAST_SWITCH_TIME only advances when a suggestion is actually
+        # emitted (matching strategic-compact's own LAST_MILESTONE_TIME
+        # semantics: that field updates only on a real suggestion, not on
+        # every milestone-type command).
+        new_switch_time = now if emit else last_switch_time
+        tmp_file = state_file.with_suffix(".tmp")
+        tmp_file.write_text(
+            f"LAST_MODE={current_mode}\nLAST_SWITCH_TIME={new_switch_time}\n", encoding="utf-8"
+        )
+        os.replace(tmp_file, state_file)
+
+        if not emit:
+            return
+
+        pending_file = track_dir / f"pending-{session_hash}"
+        suggestion = (
+            f"[StrategicCompact] Context-mode switched ({last_mode} -> {current_mode}). "
+            "Consider /compact if the prior mode's context is no longer needed."
+        )
+        pending_file.write_text(suggestion, encoding="utf-8")
+    except Exception:
+        return
+
+
 def main() -> int:
     # Decode stdin as UTF-8 explicitly rather than via json.load(sys.stdin), which uses the
     # platform's default text-stream encoding - on Windows this is often not UTF-8, and a
@@ -114,6 +225,11 @@ def main() -> int:
         return 0
 
     candidates = detect_candidates(prompt, triggers)
+
+    session_id = hook_input.get("session_id", "")
+    if isinstance(session_id, str):
+        _maybe_suggest_mode_switch(session_id, candidates)
+
     if not candidates:
         return 0
 
