@@ -375,8 +375,9 @@ pattern/examples, never as a separate source of truth):**
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
-**Last dated run record:** `2026-09-21, evals/commit/` — 7 scenarios (step 16.5's own bypass-attestation
-behavior), 30/30 assertions passed via `skill-tester` Quick Workflow dry-run agents (see
+**Last dated run record:** `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
+behavior, including eval 8's injection-payload scenario added after cross-model-review round 2), 36/36
+assertions passed via `skill-tester` Quick Workflow dry-run agents (see
 `evals/commit/evals.json` and its `workspace/iteration-1/` grading files) — plus the per-step dated
 entries below and in `references/staging-fix-verification-log.md` for the rest of this skill's steps.
 `scripts/smoke_test.py` covers frontmatter validity, `allowed-tools`-grant usage, and step-header
@@ -447,7 +448,7 @@ sequencing only (structural checks).
 - [ ] Step 16.5(c-g)'s shared protocol never polls for the re-triggered check's completion — it reports the attestation was posted and returns, unlike `merge-pr`'s own version of this protocol
 - [ ] Step 16.5(c-g)'s shared protocol finding insufficient actor permission always stops before marker construction/posting/labeling — never posts a comment or touches the label — and reports that the push already succeeded and only the attestation was skipped, never that the whole run failed
 
-  All 7 boxes above stay unchecked deliberately, the same convention the 2026-08-11 entry states for the earlier test-behavior-change checklist: the 2026-09-21 dry-run eval battery (`evals/commit/`, 30/30 assertions, see `references/staging-fix-verification-log.md`'s own "Step 16.5" entry) confirmed each scenario's documented procedure is correct, but none of it was a real `git`/`gh` execution against a live PR — check these off only after a live invocation.
+  All 7 boxes above stay unchecked deliberately, the same convention the 2026-08-11 entry states for the earlier test-behavior-change checklist: the 2026-09-21 dry-run eval battery (`evals/commit/`, 36/36 assertions across 8 scenarios, see `references/staging-fix-verification-log.md`'s own "Step 16.5" entry) confirmed each scenario's documented procedure is correct, but none of it was a real `git`/`gh` execution against a live PR — check these off only after a live invocation.
 
 **Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16.** See
 `references/staging-fix-verification-log.md` for the full run narrative (`ruff format`/`ruff check --fix`/
@@ -487,4 +488,4 @@ it instead of re-narrating.
 
 **Step 16.5 (bypass attestation for an already-open PR) — added 2026-09-21, not yet exercised live.** Reuses `create-pr`/`merge-pr`'s already-reviewed SHA-bound comment-plus-label protocol for the one case neither of them covers: a new commit pushed to a branch that already has an open PR. See `references/staging-fix-verification-log.md`'s own "Step 16.5" entry for the full narrative (why this gap existed, exactly what's reused vs. genuinely new, and why it deliberately doesn't poll for CI completion the way `merge-pr`'s version does).
 
-This skill uses a mix of mechanisms rather than one uniform one, matched to what each step actually needs: `check_staged_parity`'s own deterministic test suite for step 8's repair logic; a `skill-tester` Quick Workflow dry-run battery (7 scenarios, 30/30 assertions) for step 16.5's own bypass-attestation behavior, since `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for the full blind with-skill/baseline A/B comparison `require-tests-for-behavior-changes.md` names first, and step 16.5 specifically posts real, permanent GitHub comments and mutates real labels, which a baseline agent has no way to produce for comparison and a live eval run has no safe way to exercise repeatedly; and this documented checklist itself for everything else, the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
+This skill uses a mix of mechanisms rather than one uniform one, matched to what each step actually needs: `check_staged_parity`'s own deterministic test suite for step 8's repair logic; a `skill-tester` Quick Workflow dry-run battery (8 scenarios, 36/36 assertions) for step 16.5's own bypass-attestation behavior, since `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for the full blind with-skill/baseline A/B comparison `require-tests-for-behavior-changes.md` names first, and step 16.5 specifically posts real, permanent GitHub comments and mutates real labels, which a baseline agent has no way to produce for comparison and a live eval run has no safe way to exercise repeatedly; and this documented checklist itself for everything else, the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
