@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review), Skill(git-kit:github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review), Skill(git-kit:github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -464,8 +464,9 @@ behavior (R30 extraction — kept out of this file to stay under R13's line budg
       label action — never silently attested with a blank reason
 - [ ] `--bypass-codex-review`'s reason text is always checked for a literal bot-trigger mention before
       step 5d posts it — rejected the same way as an empty reason if one is found, never posted verbatim
-- [ ] The attestation comment body is always built via `jq -n --arg` (or equivalent safe construction),
-      never by interpolating the reason text directly into a shell string
+- [ ] The attestation comment body is always built with the reason written to a scratchpad file via
+      `Write` and read back via `jq -n --rawfile` — never by interpolating the reason text directly into
+      a shell string, even as a quoted `jq --arg` value
 - [ ] A failed attestation attempt (insufficient permission, missing label) is always reported as a
       failure — never presented as if the bypass succeeded
 - [ ] The `s: codex review bypassed` label is only applied if it already exists in the repo — this skill

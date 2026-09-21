@@ -9,7 +9,7 @@ description: >-
   GitHub label (`--bypass-codex-review`) to attest a Codex-review bypass on an already-open PR.
 argument-hint: Optional flags (--no-verify, --amend, --push, --bypass-codex-review "<reason>") followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(jq -n --arg:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/stage-selected-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh:*), AskUserQuestion, Read, Write, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/stage-selected-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh:*), AskUserQuestion, Read, Write, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -38,7 +38,7 @@ unstaged changes into a properly formatted commit.
 
 ## Flags
 
-Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the others, in any order, optionally followed by a commit message to use instead of generating one). `--bypass-codex-review "<reason>"` is handled independently, the same way `merge-pr`/`create-pr` already isolate it — its `<reason>` text is never reached by the commit-message parsing below, and it never reaches a command line directly, only ever flowing through `jq -n --arg` at step 16.5(c-g)'s shared protocol:
+Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the others, in any order, optionally followed by a commit message to use instead of generating one). `--bypass-codex-review "<reason>"` is handled independently, the same way `merge-pr`/`create-pr` already isolate it — its `<reason>` text is never reached by the commit-message parsing below, and it never reaches a command line directly — it's written to a scratchpad file via `Write` and read back with `jq -n --rawfile` at step 16.5(c-g)'s shared protocol, never composed into a Bash command string:
 
 | Flag | Effect |
 |------|--------|
@@ -443,7 +443,7 @@ sequencing only (structural checks).
 - [ ] Step 16.5(b) finding no open PR always defers to step 17 rather than attempting to attest against nothing — and step 17 always forwards the deferred flag+reason verbatim to whichever `Skill(git-kit:create-pr)` call it goes on to make
 - [ ] If step 17 never ends up creating a PR (one was already open, or the user declined), a deferred step-16.5 bypass request is always reported as having had no effect this run — never silently dropped
 - [ ] Step 16.5(c-g)'s shared protocol (step 4) always re-applies (remove then re-add) the label when it's already present on the PR from a prior round, rather than a plain `--add-label` that GitHub silently no-ops and never re-triggers `publish` — this is the primary case this step exists for
-- [ ] Step 16.5(c-g)'s shared protocol never interpolates the reason text directly into a shell string — only ever via `jq -n --arg`, and only ever after the bot-trigger-mention check (step 1) passes
+- [ ] Step 16.5(c-g)'s shared protocol never interpolates the reason text directly into a shell string — the reason is written to a file via `Write` and read back with `jq -n --rawfile`, and only ever after the bot-trigger-mention check (step 1) passes
 - [ ] Step 16.5(c-g)'s shared protocol never polls for the re-triggered check's completion — it reports the attestation was posted and returns, unlike `merge-pr`'s own version of this protocol
 - [ ] Step 16.5(c-g)'s shared protocol finding insufficient actor permission always stops before marker construction/posting/labeling — never posts a comment or touches the label — and reports that the push already succeeded and only the attestation was skipped, never that the whole run failed
 
