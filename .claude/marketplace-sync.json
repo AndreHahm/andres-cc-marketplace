@@ -11,7 +11,13 @@
       "subagent-reviewer",
       "smoke-tester",
       "work-transition-reviewer",
-      "work-intake-classifier"
+      "work-intake-classifier",
+      "scripts-reviewer",
+      "consistency-reviewer",
+      "rule-reviewer",
+      "completeness-reviewer",
+      "hook-reviewer",
+      "plugin-validator"
     ]
   },
   "divergence_exceptions": [
