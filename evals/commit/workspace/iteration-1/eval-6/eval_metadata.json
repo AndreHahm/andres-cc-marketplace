@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Stops at step 16.5(d) once insufficient permission is detected", "type": "functionality", "target": "outputs/"},
+    {"text": "Never proceeds to post a comment or touch the label after detecting insufficient permission", "type": "functionality", "target": "outputs/"},
+    {"text": "States clearly that the push already succeeded and only the attestation was skipped", "type": "quality", "target": "outputs/"},
+    {"text": "Never reports the whole run as failed, and never reports the attestation as if it succeeded", "type": "quality", "target": "outputs/"}
+  ]
+}

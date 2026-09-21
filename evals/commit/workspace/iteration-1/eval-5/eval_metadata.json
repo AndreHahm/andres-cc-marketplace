@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Detects the literal bot-trigger mention (@codex review) inside the reason text before posting", "type": "functionality", "target": "outputs/"},
+    {"text": "Rejects the flag on that basis and reports why, rather than proceeding to post it", "type": "quality", "target": "outputs/"},
+    {"text": "Does not silently strip the mention and post a sanitized version instead", "type": "quality", "target": "outputs/"},
+    {"text": "Does not proceed to steps (d) onward (permission check, marker build, comment post) once the mention is found", "type": "functionality", "target": "outputs/"}
+  ]
+}

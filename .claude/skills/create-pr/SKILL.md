@@ -28,6 +28,10 @@ This guide explains how to create pull requests using GitHub CLI in our project.
   `handling-review-findings`'s job, for a PR that already exists. Pre-flight Checks step 3.5 below is a
   distinct, earlier check: a self-review of this session's own conversation for issues that were never
   posted anywhere, before a PR/thread exists to post them against.
+- **Attesting a Codex-review bypass for a commit pushed to an already-open PR outside of creation time, or
+  once the PR is at merge-readiness evaluation** — see `commit`'s step 16.5 and `merge-pr`'s step 4
+  respectively. `create-pr`'s own `--bypass-codex-review` (step 5) only ever attests for the PR this run
+  just created.
 
 ## Flags
 

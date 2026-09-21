@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Step 16.5 checks for an already-open PR and finds none", "passed": true, "evidence": "\"gh pr view --json number,url,headRefOid,labels ... Since this is a brand-new branch with no PR open yet, this call finds no PR\""},
+    {"text": "Explicitly defers rather than attempting to attest against a nonexistent PR", "passed": true, "evidence": "\"So step 16.5 stops here. I state plainly, in this run's output, that... `--bypass-codex-review` will be forwarded to Auto-PR's create-pr call\""},
+    {"text": "States plainly that the flag will be forwarded to step 17", "passed": true, "evidence": "Direct quote matches skill text verbatim, stated explicitly"},
+    {"text": "Step 17 forwards --bypass-codex-review verbatim to the Skill(git-kit:create-pr) invocation it makes", "passed": true, "evidence": "\"Skill(git-kit:create-pr) --bypass-codex-review \\\"scripts/ hotfix, tested locally\\\" — the reason string forwarded byte-for-byte, unmodified\""},
+    {"text": "Does not attempt to run create-pr's own attestation logic itself, redundantly, inside commit", "passed": true, "evidence": "\"create-pr's own step 5 (not commit's step 16.5) is what actually performs the SHA-bound comment-plus-label attestation protocol\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

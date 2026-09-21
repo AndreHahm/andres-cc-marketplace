@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States step 16.5 is skipped entirely because step 16 did not actually push", "passed": true, "evidence": "\"Result: step 16 does not push... So the second half of the AND fails, and step 16.5 is skipped in its entirety\""},
+    {"text": "Does not treat the non-empty, valid reason as sufficient on its own to run step 16.5", "passed": true, "evidence": "\"`--bypass-codex-review \\\"fix flaky test\\\"` *was* given, but step 16 did **not** push successfully... So the second half of the AND fails\""},
+    {"text": "Reports that the bypass request had no effect this run, rather than silently dropping it with no mention", "passed": true, "evidence": "\"the run's output should state this plainly — e.g. 'Push declined; `--bypass-codex-review` not attested this run...'\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

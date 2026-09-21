@@ -18,7 +18,9 @@ Check whether a PR is ready to merge, tell the user its status, and — only if 
 
 Checking whether a PR (the current branch's, or a named one) is ready to merge, and merging it once it
 is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or an explicit
-`--bypass-codex-review` request.
+`--bypass-codex-review` request against a PR already at merge-readiness evaluation — not a fresh commit
+push to an already-open PR (see `commit`'s step 16.5) or a PR just being created (see `create-pr`'s
+step 5).
 
 ## When NOT to Use
 
@@ -28,6 +30,10 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
   never posted anywhere — not a triage of findings already posted to this PR's review threads.
 - **Creating or editing `.github/CODEOWNERS`** — that's `manage-codeowners`'s job; this skill only reads
   CODEOWNERS-related merge-rights failures and offers to bootstrap one when missing.
+- **Attesting a Codex-review bypass before the PR reaches merge-readiness evaluation** — a fresh commit
+  pushed mid-review to an already-open PR, or at PR-creation time — see `commit`'s step 16.5 and
+  `create-pr`'s step 5 respectively. `merge-pr`'s own `--bypass-codex-review` (step 4) only applies when
+  `Publish Codex policy result` is the *sole* remaining failing required check at merge-readiness time.
 - **Resolving review comments or summarizing what changed in a PR** — that's `explain-pr-changes`'s job.
 
 ## Instructions

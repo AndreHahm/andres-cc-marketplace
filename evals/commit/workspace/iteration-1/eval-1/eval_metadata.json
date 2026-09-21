@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "States that an empty/missing reason means --bypass-codex-review is treated as if never passed", "type": "quality", "target": "outputs/"},
+    {"text": "Step 16.5 is explicitly skipped, with no error raised", "type": "functionality", "target": "outputs/"},
+    {"text": "No gh pr comment or gh pr edit --add-label command is proposed for the bypass attestation", "type": "functionality", "target": "outputs/"},
+    {"text": "The rest of the commit flow (staging, scan, commit, push) is described as proceeding normally", "type": "presence", "target": "outputs/"}
+  ]
+}

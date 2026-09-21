@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Uses gh pr edit --remove-label \"s: codex review bypassed\" followed by gh pr edit --add-label \"s: codex review bypassed\", not a single --add-label call", "type": "functionality", "target": "outputs/"},
+    {"text": "Explicitly states that a plain --add-label on an already-present label is a silent GitHub no-op that would not re-trigger publish's re-evaluation", "type": "quality", "target": "outputs/"},
+    {"text": "Resolves owner/repo from the PR's own url field, never a separate gh repo view", "type": "functionality", "target": "outputs/"},
+    {"text": "Resolves the actor via gh api user --jq '.login' and verifies permission via gh api repos/{owner}/{repo}/collaborators/{actor}/permission", "type": "functionality", "target": "outputs/"},
+    {"text": "Builds the marker JSON via jq -n --arg, never raw string interpolation of the reason text", "type": "functionality", "target": "outputs/"},
+    {"text": "Posts via gh pr comment --body-file, not an inline --body with interpolated text", "type": "functionality", "target": "outputs/"},
+    {"text": "States it does not poll for the re-triggered check's completion, unlike merge-pr's version", "type": "quality", "target": "outputs/"}
+  ]
+}

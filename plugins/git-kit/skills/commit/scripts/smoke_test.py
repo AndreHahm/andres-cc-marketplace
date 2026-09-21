@@ -24,15 +24,38 @@ def check_frontmatter():
     return True, "frontmatter present and closed"
 
 
+def _allowed_tools_value(frontmatter):
+    """Extract allowed-tools' value, handling both a same-line value and a
+    '>-'/'|'/'>' block-scalar followed by indented continuation lines."""
+    line_match = re.search(r"^allowed-tools:[ \t]*(.*)$", frontmatter, re.MULTILINE)
+    if not line_match:
+        return None
+    rest = line_match.group(1).strip()
+    if rest and not re.fullmatch(r"[|>][+-]?", rest):
+        return rest
+    # Block-scalar form: collect the indented lines that follow.
+    start = line_match.end()
+    block_lines = []
+    for line in frontmatter[start:].splitlines():
+        if line.strip() == "" or line.startswith((" ", "\t")):
+            block_lines.append(line.strip())
+        else:
+            break
+    return " ".join(block_lines)
+
+
 def check_bash_grants():
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
     frontmatter = fm_text[:header_end]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not fm_line_match:
+    value = _allowed_tools_value(frontmatter)
+    if value is None:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${}-]+?)(?::|\))", fm_line_match.group(1))
-    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
+    # Command text may contain spaces (e.g. "git status", "gh api user") -- match
+    # everything up to an optional ':<args>' before the closing paren, not just
+    # word/path characters.
+    granted_cmds = re.findall(r"Bash\(([^():]+?)(?::[^)]*)?\)", value)
+    granted_cmds = [c.strip().lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
     unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
@@ -45,6 +68,9 @@ def check_step_sequence():
     # Scoped to the "## Instructions" section only -- "## Branch Naming Convention" and
     # other later sections legitimately restart their own numbered lists for unrelated
     # workflow descriptions, which a whole-file scan would wrongly flag as non-sequential.
+    # Note: the ^(\d+)\. pattern below only matches whole-integer step headers, so
+    # decimal sub-steps (7.5., 13.5., 16.5.) are intentionally excluded from this check --
+    # it validates the 1-18 whole-number sequence only, not sub-step placement/ordering.
     text = SKILL_MD.read_text(encoding="utf-8")
     start = text.find("\n## Instructions\n")
     if start == -1:
