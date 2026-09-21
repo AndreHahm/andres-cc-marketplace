@@ -17,13 +17,20 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from scripts.marketplace_ci.conversion import plan_exports
 from scripts.marketplace_ci.git_state import ChangedPath
+from scripts.marketplace_ci.registry import Registry
+from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
 BRIDGE_INVOKE_RELATIVE_PATH = Path(
     "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs"
 )
 
-STRUCTURAL_CHECK_REF = "scripts.marketplace_ci.validators:run_delta_structural_checks"
+# A plain label, never importlib-resolved (see ReviewScope.structural_check's
+# own docstring) -- kept in sync with run_delta_structural_checks' actual
+# module below by hand; two tests (test_review.py, test_cli.py) pin this
+# exact string.
+STRUCTURAL_CHECK_REF = "scripts.marketplace_ci.review:run_delta_structural_checks"
 
 # Paths plugin-rulebook-checker's own R1-R27 rules never review, per its
 # documented scope (plugin-rulebook/SKILL.md's R1 "Scope" line covers
@@ -348,6 +355,69 @@ def derive_review_scope(
     )
 
 
+@dataclass(frozen=True)
+class StructuralFinding:
+    path: str
+    operation: str
+    reason: str
+
+
+def _component_key(path: str, depth: int = 4) -> str:
+    parts = path.split("/")
+    return "/".join(parts[:depth])
+
+
+def run_delta_structural_checks(
+    repo: Path, changed: tuple[ChangedPath, ...]
+) -> tuple[StructuralFinding, ...]:
+    """Scope `check-all`'s mirror/export parity checks to only the components
+    touched by `changed`. This is the same structural-validation logic
+    `check-all` runs in full; Task 9's Delta Validate calls it directly.
+
+    Lives here (Tier 1), not in validators.py (Tier 2), because it's on the
+    review-dispatch-critical path: `_handle_run_codex_review` calls it
+    directly, and moving it here (with `plan_plugin_sync`/`plan_exports`
+    imported from their own Tier 1 homes above) is what lets that handler
+    avoid ever importing sync.py/validators.py at all -- see issue #351."""
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    if not registry_path.is_file():
+        return ()
+    registry = Registry.load(registry_path)
+
+    # Both sides of a rename, not just new_path -- a rename away from a
+    # component (e.g. plugins/x/skills/y/SKILL.md -> plugins/x/LICENSE)
+    # must still check that component's own key for stale mirror/export
+    # actions, not just the destination's. Same fix as this module's own
+    # _changed_path_set, for the same PR #50 external-review finding.
+    changed_paths = {cp.new_path for cp in changed if cp.new_path is not None}
+    changed_paths |= {cp.old_path for cp in changed if cp.old_path is not None}
+    changed_keys = {_component_key(p) for p in changed_paths}
+    if not changed_keys:
+        return ()
+
+    # repo_rules_path deliberately omitted (defaults to None): passing it would let
+    # plan_plugin_sync also read scripts/marketplace_ci/rules/ -- Tier 2 mirror-source
+    # data -- as part of this review-dispatch-critical path. Omitting it is what keeps
+    # that directory out of run-codex-review's own reach (security review, issue #351).
+    mirror_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    export_plan = plan_exports(repo, registry, previous=None)
+
+    findings: list[StructuralFinding] = []
+    for action in (*mirror_plan.actions, *export_plan.actions):
+        if action.operation == "delete" or action.source is None:
+            continue
+        try:
+            rel_source = action.source.relative_to(repo).as_posix()
+        except ValueError:
+            rel_source = action.source.as_posix()
+        if _component_key(rel_source) in changed_keys:
+            findings.append(
+                StructuralFinding(path=rel_source, operation=action.operation, reason=action.reason)
+            )
+
+    return tuple(findings)
+
+
 # Paths whose own content decides whether Codex review runs at all, or that
 # feed a separate privilege/policy decision (check-pr's CODEOWNERS
 # matching, the PR template, uv's own dependency resolution) -- a change to
@@ -377,6 +447,34 @@ def derive_review_scope(
 # the workflow file for a same-repo PR), which is a pre-existing property
 # of every check in this workflow, not something this bypass introduces or
 # could close from inside `review.py`.
+#
+# Deliberately kept as the blanket `scripts/` prefix, NOT narrowed to the
+# Tier 1 (review-dispatch-critical) module set the __main__.py lazy-import
+# split (issue #351, direction #3) introduced -- unlike the codex-review
+# job's own separate hard-refuse gate in marketplace-ci.yml, which DOES use
+# that narrower Tier 1 list. This list's job is different: it forces every
+# scripts/marketplace_ci change, Tier 1 or Tier 2, through a real reviewer
+# dispatch (never the zero-reviewer light-mode bypass) via the light-mode
+# gate above -- narrowing it to Tier 1 only would let a Tier-2-only diff
+# (e.g. a sync.py fix) fall into light mode instead, computing
+# bypass_eligible=True and skipping the codex-review job entirely. That is
+# the opposite of this issue's actual goal (get Tier 2 changes *real*
+# review coverage, not less). The workflow's own gate is the one that
+# safely narrows, because the Tier 1/Tier 2 module split is what makes a
+# Tier-2-only PR provably unable to tamper with run-codex-review's own
+# behavior in the first place -- see that gate's own comment.
+#
+# That workflow gate's own Tier 1 pathspec list also includes
+# scripts/marketplace_ci/pr_policy.py, even though pr_policy.py is NOT
+# part of run-codex-review's own import closure (a security review of the
+# split confirmed it isn't) -- it's gated there for a distinct reason
+# (merge-privilege-deciding code, evaluated by a sibling job with no
+# base-SHA restore of its own), not because narrowing this constant would
+# affect it. See that gate's own comment for the full rationale, and
+# tests/marketplace_ci/test_import_isolation.py's
+# test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set, which
+# cross-checks the two module/pathspec lists mechanically rather than
+# relying on either comment alone.
 BYPASS_INELIGIBLE_PREFIXES = (
     ".github/",  # also covers .github/CODEOWNERS, one of 3 candidates below
     "scripts/",

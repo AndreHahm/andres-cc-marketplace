@@ -621,44 +621,93 @@ jobs:
       # gate itself, not just a bypass path -- publish only checks this
       # job's bare pass/fail status (needs.codex-review.result), never the
       # generated artifact's content, so a same-repo PR that edits
-      # run_codex_review() (or anything it calls in review.py) to always
-      # exit 0 would defeat the whole review gate with no label,
-      # attestation, or variable needed at all (Codex cross-model-review
-      # finding). Restoring scripts/pyproject.toml/uv.lock from the base
-      # SHA here -- the pattern compute-scope/publish use for the same
-      # class of decision code -- was tried and reverted: this job's own
-      # dispatched Codex reviewer reads target-path files directly off
-      # disk as evidence (confirmed against codex-review-bridge's own
-      # briefing text), so overwriting scripts/ on disk would silently
-      # hide this PR's own real changes there from the reviewer, exactly
-      # the failure mode compute-scope/publish don't have (they only use
-      # the restored code to make an internal decision, never hand file
-      # content to an external reader). Detect instead of substitute: if
-      # this PR's own copy of scripts/pyproject.toml/uv.lock is byte-
-      # identical to the trusted base SHA, there is nothing to distrust in
-      # the first place; if it differs, the PR is modifying the very code
-      # that decides and reports this review's own outcome, which no
-      # automated dispatch can safely self-evaluate -- fail closed and
-      # require the existing bypass-attestation mechanism (a maintainer
-      # manually reviews the change and attests) instead of ever running
-      # the review from an unverified copy of its own control-plane code.
-      - name: Refuse automated Codex dispatch when this PR modifies its own review-dispatch code (trust boundary)
+      # run_codex_review() (or anything it calls) to always exit 0 would
+      # defeat the whole review gate with no label, attestation, or
+      # variable needed at all (Codex cross-model-review finding).
+      # Restoring these paths from the base SHA here -- the pattern
+      # compute-scope/publish use for the same class of decision code --
+      # was tried and reverted: this job's own dispatched Codex reviewer
+      # reads target-path files directly off disk as evidence (confirmed
+      # against codex-review-bridge's own briefing text), so overwriting
+      # them on disk would silently hide this PR's own real changes there
+      # from the reviewer, exactly the failure mode compute-scope/publish
+      # don't have (they only use the restored code to make an internal
+      # decision, never hand file content to an external reader). Detect
+      # instead of substitute: if this PR's own copy of these paths is
+      # byte-identical to the trusted base SHA, there is nothing to
+      # distrust in the first place; if it differs, the PR is modifying
+      # the very code that decides and reports this review's own outcome,
+      # which no automated dispatch can safely self-evaluate -- fail
+      # closed and require the existing bypass-attestation mechanism (a
+      # maintainer manually reviews the change and attests) instead of
+      # ever running the review from an unverified copy of its own
+      # control-plane code.
+      #
+      # Scoped to the review-dispatch-critical (Tier 1) module set only --
+      # not the whole scripts/ tree -- per issue #351 (direction #3):
+      # __main__.py imports every handler's own dependencies lazily,
+      # inside that handler's function body (never at module level), so
+      # `run-codex-review`/`check-scope-bypass`/`check-bypass`/
+      # `resolve-attested-actor` provably never load sync.py/validators.py
+      # (Tier 2 -- the mirror/export apply-and-staging side, which only
+      # other, non-critical subcommands use) at all -- see
+      # tests/marketplace_ci/test_import_isolation.py for the tests
+      # proving that isolation holds, both at runtime and statically
+      # (source-level, covering a function-local import a shallow runtime
+      # probe wouldn't reach). A same-repo PR touching only sync.py/
+      # validators.py therefore can't tamper with this job's own
+      # review-dispatch decision, so it no longer needs this gate's hard
+      # refusal -- it still gets real, non-bypassed reviewer coverage via
+      # the ordinary delta-mode dispatch below (BYPASS_INELIGIBLE_PREFIXES
+      # in review.py keeps forcing that for any scripts/marketplace_ci
+      # change, regardless of tier -- unchanged by this refactor).
+      #
+      # pr_policy.py stays in this list even though it is NOT part of
+      # run-codex-review's own import closure (a security review of this
+      # split confirmed it) -- it's gated here for a distinct reason: it's
+      # merge-privilege-deciding code (`check_merge_rights`'s CODEOWNERS
+      # matching), evaluated by the `hygiene` job's `check-pr` step, which
+      # -- unlike this job and `compute-scope`/`publish` -- has no
+      # base-SHA restore of its own. Reclassifying it alongside sync.py/
+      # validators.py would let a same-repo PR tamper with its own
+      # merge-privilege evaluation with only automated (not mandatory
+      # human) review. This list must stay in sync with review.py's own
+      # comment note if either changes (R20 duplicate-fact-sweep risk --
+      # both are hand-duplicated restatements of the same Tier 1 file set,
+      # by necessity: this is a shell pathspec list, review.py's is a
+      # Python tuple, and neither can `$ref` the other) --
+      # tests/marketplace_ci/test_import_isolation.py's
+      # test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set
+      # cross-checks the two mechanically rather than relying on this
+      # comment alone.
+      - name: Refuse automated Codex dispatch when this PR modifies review-dispatch-critical code (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Three-dot (merge-base) diff, not two-dot: this job checks out
           # refs/pull/<n>/merge, which always reflects the *current* base
           # branch tip, while $BASE_SHA can lag behind it (e.g. no push to
-          # this PR since an unrelated, already-merged PR touched scripts/
-          # after $BASE_SHA). A two-dot diff against $BASE_SHA would compare
-          # the full trees and pick up that unrelated upstream change too,
-          # failing this gate closed for a PR that never touched these paths
-          # itself (CodeRabbit finding). Three-dot scopes the comparison to
-          # commits reachable from HEAD but not from $BASE_SHA -- this PR's
-          # own changes only, matching the base...head convention check-pr
-          # already uses.
-          if ! git diff --quiet "$BASE_SHA"...HEAD -- scripts pyproject.toml uv.lock; then
-            echo "::error::This PR changes scripts/, pyproject.toml, or uv.lock -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
+          # this PR since an unrelated, already-merged PR touched one of
+          # these paths after $BASE_SHA). A two-dot diff against $BASE_SHA
+          # would compare the full trees and pick up that unrelated
+          # upstream change too, failing this gate closed for a PR that
+          # never touched these paths itself (CodeRabbit finding).
+          # Three-dot scopes the comparison to commits reachable from HEAD
+          # but not from $BASE_SHA -- this PR's own changes only, matching
+          # the base...head convention check-pr already uses.
+          if ! git diff --quiet "$BASE_SHA"...HEAD -- \
+              scripts/__init__.py \
+              scripts/marketplace_ci/__init__.py \
+              scripts/marketplace_ci/__main__.py \
+              scripts/marketplace_ci/review.py \
+              scripts/marketplace_ci/git_state.py \
+              scripts/marketplace_ci/registry.py \
+              scripts/marketplace_ci/sync_plan.py \
+              scripts/marketplace_ci/conversion.py \
+              scripts/marketplace_ci/pr_policy.py \
+              pyproject.toml \
+              uv.lock; then
+            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec (pyproject.toml, uv.lock) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi
 

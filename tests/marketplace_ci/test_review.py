@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from scripts.marketplace_ci.git_state import ChangedPath
@@ -7,6 +9,7 @@ from scripts.marketplace_ci.review import (
     FULL_MODE_GOVERNANCE_REVIEWERS,
     ReviewOutputError,
     ReviewResult,
+    StructuralFinding,
     _changed_path_set,
     _is_bypass_scoped_path,
     _is_rulebook_scoped_path,
@@ -14,6 +17,7 @@ from scripts.marketplace_ci.review import (
     derive_review_scope,
     is_bypass_eligible,
     rebase_onto_base_absorbed,
+    run_delta_structural_checks,
     validate_review_output,
 )
 
@@ -80,7 +84,7 @@ def test_full_escalation_paths_and_governance_reviewers_stay_in_sync():
 def test_skill_change_selects_delta_validate_and_skill_audit(change, dependency_index):
     scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
     assert scope.mode == "delta"
-    assert scope.structural_check == "scripts.marketplace_ci.validators:run_delta_structural_checks"
+    assert scope.structural_check == "scripts.marketplace_ci.review:run_delta_structural_checks"
     assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
     assert scope.audit == ("skill-reviewer",)
 
@@ -695,3 +699,69 @@ def test_validate_review_output_accepts_location_without_line():
     result = validate_review_output(data)
     assert result.findings[0].path == "plugins/x/SKILL.md"
     assert result.findings[0].line is None
+
+
+# run_delta_structural_checks moved here from validators.py (issue #351,
+# direction #3) -- it's on the review-dispatch-critical path
+# (_handle_run_codex_review calls it directly), so it lives in this Tier 1
+# module rather than validators.py (Tier 2). See test_import_isolation.py
+# for the test proving that split's actual isolation guarantee holds.
+
+
+def test_run_delta_structural_checks_scopes_to_changed_component(repo, change):
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
+        encoding="utf-8",
+    )
+
+    findings = run_delta_structural_checks(
+        repo, (change("plugins/sample-kit/skills/demo/SKILL.md"),)
+    )
+    assert all(f.path.startswith("plugins/sample-kit/skills/demo") for f in findings)
+    assert isinstance(findings, tuple)
+    assert all(isinstance(f, StructuralFinding) for f in findings)
+    # this changed component actually has un-synced content, so it must produce
+    # at least one real, correctly-scoped finding, not just satisfy the check vacuously
+    assert len(findings) >= 1
+
+
+def test_run_delta_structural_checks_ignores_unrelated_changes(repo, change):
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
+        encoding="utf-8",
+    )
+
+    findings = run_delta_structural_checks(repo, (change("some/unrelated/file.md"),))
+    assert findings == ()
+
+
+def test_run_delta_structural_checks_returns_empty_without_registry(repo, change):
+    findings = run_delta_structural_checks(
+        repo, (change("plugins/sample-kit/skills/demo/SKILL.md"),)
+    )
+    assert findings == ()
+
+
+def test_run_delta_structural_checks_checks_rename_source_component_too(repo):
+    """PR #50 external-review regression: a rename away from a component
+    (e.g. onto an inert plugin-root basename) must still check that
+    component's own key for stale mirror/export actions -- keying only off
+    new_path would silently drop the source component's parity check."""
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
+        encoding="utf-8",
+    )
+
+    rename = ChangedPath(
+        status="R",
+        old_path="plugins/sample-kit/skills/demo/SKILL.md",
+        new_path="plugins/sample-kit/LICENSE",
+    )
+    findings = run_delta_structural_checks(repo, (rename,))
+    assert any(f.path.startswith("plugins/sample-kit/skills/demo") for f in findings)

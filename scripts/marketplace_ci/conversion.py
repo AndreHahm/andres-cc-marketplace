@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 from scripts.marketplace_ci.registry import Registry, RemovalSet
-from scripts.marketplace_ci.sync import SyncAction, SyncPlan
+from scripts.marketplace_ci.sync_plan import SyncAction, SyncPlan
 
 _ALLOWED_FRONTMATTER_KEYS = {
     "name",

@@ -148,7 +148,8 @@ def test_repair_all_bootstrap_with_apply_writes(monkeypatch, repo):
 def test_repair_all_applied_count_excludes_warn_actions(monkeypatch, repo, capsys):
     from scripts.marketplace_ci.conversion import plan_exports
     from scripts.marketplace_ci.registry import Registry
-    from scripts.marketplace_ci.sync import plan_hooks_merge, plan_plugin_sync
+    from scripts.marketplace_ci.sync import plan_hooks_merge
+    from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
     orphan = repo / ".claude" / "skills" / "ghost" / "SKILL.md"
     orphan.parent.mkdir(parents=True)
@@ -1234,13 +1235,20 @@ def test_run_codex_review_full_mode_still_fails_closed_if_a_trigger_defines_no_r
 
     undefined_full_scope = ReviewScope(
         mode="full",
-        structural_check="scripts.marketplace_ci.validators:run_delta_structural_checks",
+        structural_check="scripts.marketplace_ci.review:run_delta_structural_checks",
         validate=(),
         audit=(),
         paths=("README.md",),
     )
+    # __main__.py imports derive_review_scope lazily, inside
+    # _handle_run_codex_review's own body (issue #351) -- patching
+    # scripts.marketplace_ci.__main__.derive_review_scope no longer works
+    # since that name is never bound at module scope. Patch the real source
+    # instead: the handler's `from scripts.marketplace_ci.review import
+    # derive_review_scope` re-resolves review.py's current attribute every
+    # time it runs, so patching it there is what the handler actually sees.
     monkeypatch.setattr(
-        "scripts.marketplace_ci.__main__.derive_review_scope", lambda *a, **kw: undefined_full_scope
+        "scripts.marketplace_ci.review.derive_review_scope", lambda *a, **kw: undefined_full_scope
     )
 
     calls = []

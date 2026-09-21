@@ -10,10 +10,10 @@ from scripts.marketplace_ci.sync import (
     apply_hooks_merge_plan,
     apply_sync_plan,
     plan_hooks_merge,
-    plan_plugin_sync,
     stage_generated_destinations,
     stage_hooks_merge_result,
 )
+from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FIXTURE_REPO_HOOKS = FIXTURES / "repo-hooks" / "hooks.json"

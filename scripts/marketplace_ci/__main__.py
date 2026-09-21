@@ -1,7 +1,18 @@
 """Stable command-line interface for scripts.marketplace_ci.
 
 Exit codes: 0 = pass, 1 = policy failure, 2 = invalid invocation/configuration.
-"""
+
+Every handler below imports its own dependencies inside its function body,
+not at module level (issue #351, direction #3). This is what makes the
+review-dispatch-critical subcommands (check-scope-bypass, run-codex-review,
+check-bypass, resolve-attested-actor) provably never load sync.py/
+validators.py/pr_policy.py (Tier 2) at all: `python -m scripts.marketplace_ci
+<subcommand>` only ever executes the one handler function `args.handler`
+resolves to, and Python only runs a function's own `import` statements when
+that function actually executes. Module-level imports here would defeat
+this -- they'd all run unconditionally on every invocation, regardless of
+which subcommand was requested. See tests/marketplace_ci/test_import_isolation.py
+for the test proving this guarantee actually holds."""
 
 from __future__ import annotations
 
@@ -10,40 +21,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-
-from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
-from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
-from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
-from scripts.marketplace_ci.registry import Registry, RegistryError
-from scripts.marketplace_ci.review import (
-    FULL_ESCALATION_PATHS,
-    ReviewOutputError,
-    aggregate_findings,
-    check_bypass,
-    derive_review_scope,
-    dispatch_reviewers,
-    is_bypass_eligible,
-    parse_attestation_marker,
-    prepare_reviewer_instruction,
-    rebase_onto_base_absorbed,
-    resolve_attested_actor,
-    validate_review_output,
-)
-from scripts.marketplace_ci.sync import (
-    DEFAULT_REPO_RULES_PATH,
-    SyncError,
-    apply_hooks_merge_plan,
-    apply_sync_plan,
-    plan_hooks_merge,
-    plan_plugin_sync,
-    stage_generated_destinations,
-    stage_hooks_merge_result,
-)
-from scripts.marketplace_ci.validators import (
-    check_staged_parity,
-    run_delta_structural_checks,
-    run_post_edit,
-)
 
 PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
 
@@ -68,11 +45,15 @@ def _split_nul_delimited_paths(raw: bytes) -> list[str]:
     return [p for p in raw.decode("utf-8", errors="surrogateescape").split("\0") if p]
 
 
-def _load_registry(repo: Path) -> Registry:
+def _load_registry(repo: Path):
+    from scripts.marketplace_ci.registry import Registry
+
     return Registry.load(repo / REGISTRY_RELATIVE_PATH)
 
 
-def _load_previous_registry(repo: Path) -> Registry | None:
+def _load_previous_registry(repo: Path):
+    from scripts.marketplace_ci.registry import Registry
+
     result = subprocess.run(
         ["git", "show", f"HEAD:{REGISTRY_RELATIVE_PATH.as_posix()}"],
         cwd=repo,
@@ -101,11 +82,16 @@ def _report(label: str, actions, repo: Path) -> bool:
 
 
 def _repo_rules_path(repo: Path) -> Path | None:
+    from scripts.marketplace_ci.sync_plan import DEFAULT_REPO_RULES_PATH
+
     candidate = repo / DEFAULT_REPO_RULES_PATH
     return candidate if candidate.is_dir() else None
 
 
 def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync_plan import plan_plugin_sync
+
     repo = Path.cwd()
     try:
         registry = _load_registry(repo)
@@ -125,6 +111,17 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
 
 
 def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync import (
+        SyncError,
+        apply_hooks_merge_plan,
+        apply_sync_plan,
+        plan_hooks_merge,
+        stage_generated_destinations,
+        stage_hooks_merge_result,
+    )
+    from scripts.marketplace_ci.sync_plan import plan_plugin_sync
+
     repo = Path.cwd()
     try:
         registry = _load_registry(repo)
@@ -157,6 +154,9 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
 
 
 def _handle_check_codex_exports(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
+    from scripts.marketplace_ci.registry import RegistryError
+
     repo = Path.cwd()
     legacy = find_legacy_command_exports(repo)
     if legacy:
@@ -179,6 +179,10 @@ def _handle_check_codex_exports(args: argparse.Namespace) -> int:
 
 
 def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.conversion import plan_exports
+    from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync import SyncError, apply_sync_plan, stage_generated_destinations
+
     repo = Path.cwd()
     try:
         registry = _load_registry(repo)
@@ -208,6 +212,8 @@ def _handle_check_all(args: argparse.Namespace) -> int:
     repo = Path.cwd()
 
     if getattr(args, "staged", False):
+        from scripts.marketplace_ci.validators import check_staged_parity
+
         # Fast pre-commit stage: compare the Git index only, never the
         # working tree — see check_staged_parity's own docstring for why.
         result = check_staged_parity(repo)
@@ -252,6 +258,16 @@ def _handle_check_all(args: argparse.Namespace) -> int:
 
 
 def _handle_repair_all(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.conversion import plan_exports
+    from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync import (
+        SyncError,
+        apply_hooks_merge_plan,
+        apply_sync_plan,
+        plan_hooks_merge,
+    )
+    from scripts.marketplace_ci.sync_plan import plan_plugin_sync
+
     repo = Path.cwd()
     try:
         registry = _load_registry(repo)
@@ -297,6 +313,8 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
 
 
 def _handle_check_pr(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
+
     repo = Path.cwd()
     event_path = Path(args.event)
     try:
@@ -364,6 +382,10 @@ def _handle_handle_post_edit(args: argparse.Namespace) -> int:
     failure is reported via `systemMessage`, matching this hook's own
     `onError: warn` posture (report and fall back to pre-commit, never block
     the turn)."""
+    from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync import SyncError
+    from scripts.marketplace_ci.validators import run_post_edit
+
     repo = Path.cwd()
     try:
         payload = json.load(sys.stdin)
@@ -396,6 +418,9 @@ def _handle_handle_post_edit(args: argparse.Namespace) -> int:
 
 
 def _handle_run_delta_structural_checks(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.git_state import ChangedPath
+    from scripts.marketplace_ci.review import run_delta_structural_checks
+
     repo = Path.cwd()
     changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in args.changed)
     findings = run_delta_structural_checks(repo, changed)
@@ -408,6 +433,8 @@ def _handle_run_delta_structural_checks(args: argparse.Namespace) -> int:
 
 
 def _handle_prepare_reviewer_instruction(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.review import prepare_reviewer_instruction
+
     repo = Path.cwd()
     try:
         prepare_reviewer_instruction(
@@ -420,6 +447,9 @@ def _handle_prepare_reviewer_instruction(args: argparse.Namespace) -> int:
 
 
 def _handle_prepare_review(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.git_state import ChangedPath
+    from scripts.marketplace_ci.review import derive_review_scope
+
     changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in args.changed)
     # No cross-component dependency graph exists yet in this plan; an empty
     # index is an honest default, not a silent omission — see review.py's
@@ -440,6 +470,8 @@ def _handle_prepare_review(args: argparse.Namespace) -> int:
 
 
 def _handle_check_review_output(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.review import ReviewOutputError, validate_review_output
+
     path = Path(args.file)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -458,6 +490,8 @@ def _handle_check_review_output(args: argparse.Namespace) -> int:
 
 
 def _handle_check_bypass(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.review import check_bypass, parse_attestation_marker
+
     event_path = Path(args.event)
     try:
         data = json.loads(event_path.read_text(encoding="utf-8"))
@@ -484,6 +518,8 @@ def _handle_check_bypass(args: argparse.Namespace) -> int:
 
 
 def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.review import resolve_attested_actor
+
     path = Path(args.comments_with_login)
     try:
         comments = json.loads(path.read_text(encoding="utf-8"))
@@ -523,6 +559,13 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     again, defeating the rebase carve-out entirely. Exits 0 on a computed
     decision (bypass_eligible in the JSON payload either way), 2 only on an
     infrastructure failure the caller must treat as not-eligible."""
+    from scripts.marketplace_ci.git_state import parse_name_status_z
+    from scripts.marketplace_ci.review import (
+        derive_review_scope,
+        is_bypass_eligible,
+        rebase_onto_base_absorbed,
+    )
+
     repo = Path.cwd()
     base_sha = args.base_sha
 
@@ -593,6 +636,17 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     failure, malformed output) — never silently treated as a passing review.
     Exit 1 only for a genuine blocking (Critical/Major) finding.
     """
+    from scripts.marketplace_ci.git_state import parse_name_status_z
+    from scripts.marketplace_ci.review import (
+        FULL_ESCALATION_PATHS,
+        ReviewOutputError,
+        aggregate_findings,
+        derive_review_scope,
+        dispatch_reviewers,
+        run_delta_structural_checks,
+        validate_review_output,
+    )
+
     repo = Path.cwd()
     base_sha = args.base_sha
 
