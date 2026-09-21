@@ -6,7 +6,7 @@
     {"text": "Explicitly states that a plain --add-label on an already-present label is a silent GitHub no-op that would not re-trigger publish's re-evaluation", "type": "quality", "target": "outputs/"},
     {"text": "Resolves owner/repo from the PR's own url field, never a separate gh repo view", "type": "functionality", "target": "outputs/"},
     {"text": "Resolves the actor via gh api user --jq '.login' and verifies permission via gh api repos/{owner}/{repo}/collaborators/{actor}/permission", "type": "functionality", "target": "outputs/"},
-    {"text": "Builds the marker JSON via jq -n --arg, never raw string interpolation of the reason text", "type": "functionality", "target": "outputs/"},
+    {"text": "Writes the reason text to a scratchpad file via Write, then builds the marker JSON via jq -n --rawfile reason <path> --arg actor ... --arg head_sha ... --arg created_at ..., never composing the reason into a Bash command string", "type": "functionality", "target": "outputs/"},
     {"text": "Posts via gh pr comment --body-file, not an inline --body with interpolated text", "type": "functionality", "target": "outputs/"},
     {"text": "States it does not poll for the re-triggered check's completion, unlike merge-pr's version", "type": "quality", "target": "outputs/"}
   ]
