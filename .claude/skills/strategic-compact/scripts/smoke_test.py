@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Persisted smoke test for strategic-compact: exercises the hook scripts' real
-stdin/stdout contracts (compact-milestone-detector.sh, compact-stop-check.sh) against
-realistic and adversarial JSON payloads, matching this skill's own documented Pass
-Criteria in SKILL.md.
+stdin/stdout contracts (compact-milestone-detector.sh, compact-stop-check.sh,
+compact-skill-category-detector.sh) against realistic and adversarial JSON
+payloads, matching this skill's own documented Pass Criteria in SKILL.md.
 
 Unlike the other 6 context-kit skills, strategic-compact's actual behavior is
 hook-driven automation, not model-invoked guidance -- so this smoke test exercises the
@@ -21,17 +21,35 @@ import tempfile
 import time
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
-HOOKS_DIR = SKILL_DIR.parent.parent / "hooks" / "scripts"
+PLUGIN_ROOT = SKILL_DIR.parent.parent
+HOOKS_DIR = PLUGIN_ROOT / "hooks" / "scripts"
 MILESTONE_SCRIPT = HOOKS_DIR / "compact-milestone-detector.sh"
 STOP_SCRIPT = HOOKS_DIR / "compact-stop-check.sh"
 TRACK_SCRIPT = HOOKS_DIR / "compact-track-and-suggest.sh"
-PLUGIN_SCRIPTS_DIR = SKILL_DIR.parent.parent / "scripts"
+CATEGORY_SCRIPT = HOOKS_DIR / "compact-skill-category-detector.sh"
+PLUGIN_SCRIPTS_DIR = PLUGIN_ROOT / "scripts"
 
 
 def run(script, stdin_text, home):
     env = {**os.environ, "HOME": str(home)}
     return subprocess.run(
         ["bash", str(script)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+
+
+def run_category_detector(phase: str, stdin_text: str, home, project_dir=None):
+    env: dict[str, str] = {**os.environ, "HOME": str(home), "CLAUDE_PLUGIN_ROOT": str(PLUGIN_ROOT)}
+    if project_dir is not None:
+        env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+    else:
+        env.pop("CLAUDE_PROJECT_DIR", None)
+    return subprocess.run(
+        ["bash", str(CATEGORY_SCRIPT), phase],
         input=stdin_text,
         capture_output=True,
         text=True,
@@ -530,6 +548,36 @@ def check_normalization_loop_preserves_normal_values(tmp_path):
     )
 
 
+def check_powershell_tool_payload_still_triggers_milestone(tmp_path):
+    # Regression guard for the 2026-09-21 Windows fix: hooks.json's PostToolUse matcher
+    # was broadened from "^Bash$" to "^(Bash|PowerShell)$" so this hook actually gets
+    # dispatched for a git-kit `commit` run through the PowerShell tool (the tool this
+    # environment's own guidance steers git/npm/etc. invocations through on Windows).
+    # The matcher change itself lives in hooks.json, outside what this script can
+    # exercise directly -- what this check *can* verify is the other half: that the
+    # script's own command-extraction/pattern logic doesn't depend on tool_name at all,
+    # so a PowerShell-shaped payload (tool_name present, same tool_input.command shape)
+    # produces the identical "commit" milestone a Bash-shaped payload does.
+    home = make_home_with_tracking_file(tmp_path, "pwshtest")
+    payload = json.dumps(
+        {
+            "session_id": "pwshtest",
+            "tool_name": "PowerShell",
+            "tool_input": {"command": 'git commit -m "test"'},
+        }
+    )
+    result = run(MILESTONE_SCRIPT, payload, home)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0: {result.stderr[:300]}"
+    if "commit" not in (result.stdout + result.stderr).lower():
+        return (
+            False,
+            f"a PowerShell-tool_name 'git commit' payload produced no commit milestone: "
+            f"stdout={result.stdout!r}",
+        )
+    return True, "a PowerShell-tool_name payload correctly triggers a commit milestone"
+
+
 def check_hyphenated_prefix_command_not_misclassified(tmp_path):
     # Regression guard for the 2026-09-17 scripts-reviewer finding: `-w` (word
     # boundary) only requires a *non-word* character on each side, and `-` is
@@ -554,6 +602,129 @@ def check_hyphenated_prefix_command_not_misclassified(tmp_path):
     )
 
 
+def check_skill_category_heavy_operation_start_and_finish(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "catheavy")
+    payload = json.dumps({"session_id": "catheavy", "tool_input": {"skill": "plugin-auditor"}})
+    start_result = run_category_detector("start", payload, home)
+    if start_result.returncode != 0:
+        return (
+            False,
+            f"start exited {start_result.returncode}, expected 0: {start_result.stderr[:300]}",
+        )
+    if "About to run 'plugin-auditor'" not in start_result.stdout:
+        return (
+            False,
+            f"expected a start-phase heavy_operation suggestion, got: {start_result.stdout!r}",
+        )
+    finish_result = run_category_detector("finish", payload, home)
+    if finish_result.returncode != 0:
+        return False, f"finish exited {finish_result.returncode}, expected 0"
+    if "'plugin-auditor' (heavy operation) finished" not in finish_result.stdout:
+        return (
+            False,
+            f"expected a finish-phase heavy_operation suggestion, got: {finish_result.stdout!r}",
+        )
+    return True, "a known heavy_operation skill produces distinct start and finish suggestions"
+
+
+def check_skill_category_session_analysis_start_and_finish(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "catanalysis")
+    payload = json.dumps(
+        {"session_id": "catanalysis", "tool_input": {"skill": "starting-an-analysis"}}
+    )
+    start_result = run_category_detector("start", payload, home)
+    if "session-analysis skill" not in start_result.stdout:
+        return (
+            False,
+            f"expected a start-phase session_analysis suggestion, got: {start_result.stdout!r}",
+        )
+    finish_result = run_category_detector("finish", payload, home)
+    if "(session analysis) finished" not in finish_result.stdout:
+        return (
+            False,
+            f"expected a finish-phase session_analysis suggestion, got: {finish_result.stdout!r}",
+        )
+    return True, "a known session_analysis skill produces distinct start and finish suggestions"
+
+
+def check_skill_category_priority_heavy_over_session_analysis(tmp_path):
+    # analyzing-sessions is deliberately listed under heavy_operation (not
+    # session_analysis) in context-kit.settings.json -- confirms the priority
+    # order actually resolves overlap the way it's documented to, not just
+    # that the two lists happen not to overlap by accident.
+    home = make_home_with_tracking_file(tmp_path, "catpriority")
+    payload = json.dumps(
+        {"session_id": "catpriority", "tool_input": {"skill": "analyzing-sessions"}}
+    )
+    result = run_category_detector("start", payload, home)
+    if "heavy operation" not in result.stdout:
+        return (
+            False,
+            f"expected analyzing-sessions to classify as heavy_operation, got: {result.stdout!r}",
+        )
+    if "session-analysis" in result.stdout:
+        return False, "analyzing-sessions incorrectly also matched session_analysis wording"
+    return (
+        True,
+        "an overlap-eligible skill resolves to heavy_operation, the higher-priority category",
+    )
+
+
+def check_skill_category_no_match_produces_no_output(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "catnomatch")
+    payload = json.dumps({"session_id": "catnomatch", "tool_input": {"skill": "commit"}})
+    result = run_category_detector("start", payload, home)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0"
+    if result.stdout.strip():
+        return False, f"an uncategorized skill incorrectly produced output: {result.stdout!r}"
+    return True, "a skill matching no category produces no suggestion"
+
+
+def check_skill_category_skipped_without_tracking_file(tmp_path):
+    home = tmp_path / "home_cat_no_tracking"
+    home.mkdir()
+    payload = json.dumps({"session_id": "notinit", "tool_input": {"skill": "plugin-auditor"}})
+    result = run_category_detector("start", payload, home)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0"
+    if result.stdout.strip():
+        return False, f"expected no output with no tracking file, got: {result.stdout!r}"
+    return True, "skill-category detection correctly skipped when no tracking file exists"
+
+
+def check_skill_category_local_override_is_additive(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "catlocal")
+    project_dir = tmp_path / "fake_project"
+    (project_dir / ".claude").mkdir(parents=True)
+    (project_dir / ".claude" / "context-kit.local.json").write_text(
+        json.dumps({"skill_categories": {"heavy_operation": ["my-custom-heavy-skill"]}}),
+        encoding="utf-8",
+    )
+
+    local_payload = json.dumps(
+        {"session_id": "catlocal", "tool_input": {"skill": "my-custom-heavy-skill"}}
+    )
+    local_result = run_category_detector("start", local_payload, home, project_dir=project_dir)
+    if "my-custom-heavy-skill" not in local_result.stdout:
+        return False, f"a local-override-only skill was not classified: {local_result.stdout!r}"
+
+    default_payload = json.dumps(
+        {"session_id": "catlocal", "tool_input": {"skill": "plugin-auditor"}}
+    )
+    default_result = run_category_detector("start", default_payload, home, project_dir=project_dir)
+    if "plugin-auditor" not in default_result.stdout:
+        return (
+            False,
+            f"a tracked-default skill stopped matching once a local override was present: "
+            f"{default_result.stdout!r}",
+        )
+    return (
+        True,
+        "a local override additively extends, never replaces, the tracked default categories",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -570,8 +741,15 @@ CHECKS = [
     check_leading_zero_tracking_value_does_not_crash,
     check_leading_zero_lock_created_does_not_crash,
     check_normalization_loop_preserves_normal_values,
+    check_powershell_tool_payload_still_triggers_milestone,
     check_hyphenated_prefix_command_not_misclassified,
     check_prefixed_content_with_hostile_tail_is_discarded,
+    check_skill_category_heavy_operation_start_and_finish,
+    check_skill_category_session_analysis_start_and_finish,
+    check_skill_category_priority_heavy_over_session_analysis,
+    check_skill_category_no_match_produces_no_output,
+    check_skill_category_skipped_without_tracking_file,
+    check_skill_category_local_override_is_additive,
 ]
 
 

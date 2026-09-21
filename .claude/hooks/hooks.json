@@ -13,11 +13,23 @@
         ]
       },
       {
-        "matcher": "^Bash$",
+        "matcher": "^(Bash|PowerShell)$",
         "hooks": [
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-milestone-detector.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^Skill$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-skill-category-detector.sh finish",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -191,6 +203,18 @@
             "timeout": 5,
             "onError": "warn",
             "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "^Skill$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-skill-category-detector.sh start",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
           }
         ]
       },

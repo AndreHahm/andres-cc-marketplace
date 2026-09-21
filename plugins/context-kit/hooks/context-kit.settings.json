@@ -1,0 +1,36 @@
+{
+  "skill_categories": {
+    "heavy_operation": [
+      "plugin-auditor",
+      "plugin-lifecycle-downstream",
+      "plugin-lifecycle-upstream",
+      "plugin-lifecycle-maintenance",
+      "plugin-grader",
+      "plugin-comparison",
+      "running-a-full-retrospective",
+      "cross-model-review",
+      "codex-audit-loop",
+      "analyzing-sessions",
+      "security-review"
+    ],
+    "session_analysis": [
+      "analyzing-actor-behavior",
+      "analyzing-governance-and-conflicts",
+      "analyzing-plugin-components",
+      "analyzing-security-and-privacy",
+      "analyzing-session-operations",
+      "analyzing-session-outcomes",
+      "analyzing-tool-and-framework-use",
+      "analyzing-verification-effectiveness",
+      "analyzing-workflow-usability",
+      "mining-recurring-patterns",
+      "mining-review-learnings",
+      "comparing-session-to-specification",
+      "comparing-sessions",
+      "starting-an-analysis",
+      "reviewing-analysis-findings",
+      "generating-analysis-recommendations",
+      "tracking-recommendation-lifecycle"
+    ]
+  }
+}

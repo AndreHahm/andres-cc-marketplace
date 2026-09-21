@@ -188,6 +188,18 @@ unvalidated candidate.
   handoff-without-mode-prompt step is needed; the fresh mode statement overrides whatever a compaction
   summary carried forward.
 
+**Every mode switch, not just a hard one (added 2026-09-21):** `scripts/detect_mode.py` itself now
+also suggests `/compact` on **any** confidently-detected mode change (single-candidate turn only — see
+below), throttled to once per 5 minutes, independent of this section's own soft/hard judgment above.
+This broadens the original design (only a "hard switch" deferred to `strategic-compact`) deliberately —
+even an ordinary posture change can leave stale, no-longer-relevant context behind. On a match, it
+writes a `[StrategicCompact] Context-mode switched (<old> -> <new>)` pending suggestion into
+`strategic-compact`'s own tracking directory, delivered the same way that skill's other suggestions are
+(`compact-stop-check.sh`'s `Stop`-hook relay). This is a `strategic-compact`-owned delivery mechanism
+this skill's hook writes into, not a change to this skill's own dispatch logic above — see
+`strategic-compact`'s SKILL.md ("Windows PowerShell coverage" section's sibling, the mode-switch-event
+section) for the full detection/throttling/ambiguity-handling detail.
+
 ## Reporting a mode change
 
 Always state a mode change plainly and briefly — never switch silently:
@@ -235,6 +247,14 @@ Queued next: <mode-2>, once <trigger condition>.
   capability strictly more damaging on its own than a posture flip. See the Dispatch logic's own
   closed-vocabulary check above for the one concrete, mechanical fix that *was* worth making from this
   same review pass (a forged tag can no longer steer an arbitrary `references/*.md` read).
+- **State and side effects (added 2026-09-21):** `scripts/detect_mode.py` now writes to
+  `~/.claude/strategic-compact/mode-<session-hash>` (its own last-confidently-detected-mode and
+  last-switch-time) and, on a throttle-eligible switch, `~/.claude/strategic-compact/pending-<session-hash>`
+  (a `strategic-compact`-owned delivery file, best-effort/no-lock, the same convention that file's sole
+  prior writer already used). This hook is the only writer of its own `mode-*` file, so no cross-process
+  lock guards it — see `_maybe_suggest_mode_switch()`'s own docstring for the full rationale. Entirely
+  fail-open: any error here is swallowed and can never prevent this hook's own primary mode-tag output
+  from still being produced.
 - The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
   interpreter startup — noisy from run to run) is well within this hook's actual configured timeout —
   5 seconds, per `hooks/hooks.json`'s own registration for this entry, the real operative ceiling
@@ -286,10 +306,14 @@ Queued next: <mode-2>, once <trigger condition>.
 `scripts/detect_mode.py` (happy path, order-of-mention, allowlist enforcement, UTF-8/malformed-input
 fail-open cases) lives in `references/design-history.md`'s "Validation Record" section, not inline here.
 
-**Last dated run record:** the persisted `scripts/smoke_test.py` (7/7 checks passing as of 2026-09-17)
-covers `detect_mode.py`'s real stdin/stdout hook contract directly — happy path, order-of-mention,
-fail-open on malformed/non-UTF-8 input, the closed `VALID_MODES` vocabulary guarantee, and a structural
-regression guard for the closed-vocabulary dispatch-logic fix. This supersedes the manual stdin/stdout
+**Last dated run record:** the persisted `scripts/smoke_test.py` (12/12 checks passing as of
+2026-09-21) covers `detect_mode.py`'s real stdin/stdout hook contract directly — happy path,
+order-of-mention, fail-open on malformed/non-UTF-8 input, the closed `VALID_MODES` vocabulary
+guarantee, a structural regression guard for the closed-vocabulary dispatch-logic fix, and (added
+2026-09-21) the mode-switch-suggestion side effect: first-observation no-op, a real switch emitting
+both the primary tag and a pending suggestion, cooldown throttling, an ambiguous multi-candidate turn
+being ignored, and the no-tracking-file gate. Every subprocess check now runs against an isolated
+throwaway `$HOME`, since this hook is no longer side-effect-free. This supersedes the manual stdin/stdout
 walkthrough originally run and confirmed during this skill's Build/Self-Review pass, commit `e18edb23`
 (2026-09-16), still documented in `references/design-history.md`'s "Validation Record" section for
 historical context. Model-driven activation (the `Verify this skill activates on` / `does NOT activate
@@ -326,6 +350,6 @@ not yet exercised, not the whole scenario set.
 | `references/ship.md` | `ship` mode's Behavioral Profile — release/publish, highest confirmation bar |
 | `references/admin.md` | `admin` mode's Behavioral Profile — branch/worktree/cleanup operations |
 | `references/design-history.md` | Full design history, real-transcript trigger validation data, and the manual stdin/stdout hook walkthrough |
-| `scripts/detect_mode.py` | The `UserPromptSubmit` hook that emits the `[Context-Mode candidate(s): ...]` tag |
-| `scripts/smoke_test.py` | This skill's own persisted smoke test (7 checks) |
+| `scripts/detect_mode.py` | The `UserPromptSubmit` hook that emits the `[Context-Mode candidate(s): ...]` tag, and (added 2026-09-21) suggests `/compact` into `strategic-compact`'s own delivery mechanism on a throttled, confidently-detected mode switch |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (12 checks) |
 | `triggers.json` | The phrase lists `detect_mode.py` matches against, per mode |
