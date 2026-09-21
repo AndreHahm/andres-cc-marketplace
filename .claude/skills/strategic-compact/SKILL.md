@@ -57,8 +57,8 @@ Auto-compact triggers at context limits, often mid-task. Strategic compaction pr
 | Switching to unrelated task | Previous context not relevant |
 | Configured tool-call threshold reached (T1/T2/T3, default 50/75/100, overridable via `STRATEGIC_COMPACT_T1`/`_T2`/`_T3` — see the plugin README) | Accumulated context likely stale |
 | Context-mode switched (added 2026-09-21 — any confidently-detected dev/review/ship/admin change, not just a "hard" one; see "Context-mode switch events" below) | The prior mode's context is often no longer relevant to the new posture |
-| A known `heavy_operation` skill starts or finishes (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | Start: run it against a clean budget. Finish: its own dispatch/report context is no longer needed |
-| A known `session_analysis` skill starts or finishes (added 2026-09-21 — e.g. `analyzing-sessions`, `starting-an-analysis`; see "Skill-category events" below) | Start: run it against a clean budget. Finish: its own transcript-reading context is no longer needed |
+| A known `heavy_operation` skill starts or finishes (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — can't itself precede this specific call). Finish: its own dispatch/report context is no longer needed |
+| A known `session_analysis` skill starts or finishes (added 2026-09-21 — e.g. `analyzing-sessions`, `starting-an-analysis`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — can't itself precede this specific call). Finish: its own transcript-reading context is no longer needed |
 
 ### Avoid Compaction During
 
@@ -144,6 +144,14 @@ and `PostToolUse` (one that just finished), classifying the invoked skill's name
 lists and suggesting `/compact` with different wording for start vs. finish — both directions fire, with
 no cooldown between them (each Skill() invocation is a fresh, bounded event worth its own suggestion,
 not a potentially-noisy repeated command the way a Bash milestone pattern can be):
+
+**Disclosed limitation — the `start` suggestion is advisory, not a guarantee.** `PreToolUse` fires
+before the Skill() call executes, but by the time it fires the decision to invoke that skill has
+already been made — the call is about to run regardless of what the hook suggests. A `/compact` run in
+response to the suggestion can't retroactively change the context the about-to-run skill will operate
+against; it can only get the session into a better state for whatever comes *after* this particular
+call. The `start`-phase wording below reflects this: it nudges toward compacting soon if it hasn't
+happened recently, rather than claiming to precede or gate the specific Skill() call it fired on.
 
 - **`heavy_operation`** — a skill that does multi-agent fan-out or a whole-plugin/whole-repo
   re-verification (e.g. `plugin-auditor`, `plugin-lifecycle-downstream`, `running-a-full-retrospective`).

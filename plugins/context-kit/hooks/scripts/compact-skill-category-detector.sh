@@ -51,7 +51,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 if command -v md5sum &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5sum | cut -c1-8)
 elif command -v md5 &>/dev/null; then
-    SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 | cut -c1-8)
+    SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
     # different hash algorithm (cksum). See compact-session-init.sh's
@@ -108,13 +108,13 @@ fi
 SUGGESTION=""
 case "${CATEGORY}:${PHASE}" in
     heavy_operation:start)
-        SUGGESTION="[StrategicCompact] About to run '${SKILL_NAME}', a known heavy operation. Consider /compact first so it runs against a clean context budget."
+        SUGGESTION="[StrategicCompact] '${SKILL_NAME}' is a known heavy operation. If you haven't compacted recently, this is a good moment to."
         ;;
     heavy_operation:finish)
         SUGGESTION="[StrategicCompact] '${SKILL_NAME}' (heavy operation) finished. Good time for /compact -- its own dispatch/report context is no longer needed."
         ;;
     session_analysis:start)
-        SUGGESTION="[StrategicCompact] About to run '${SKILL_NAME}', a session-analysis skill. Consider /compact first so it runs against a clean context budget."
+        SUGGESTION="[StrategicCompact] '${SKILL_NAME}' is a session-analysis skill. If you haven't compacted recently, this is a good moment to."
         ;;
     session_analysis:finish)
         SUGGESTION="[StrategicCompact] '${SKILL_NAME}' (session analysis) finished. Good time for /compact -- its own transcript-reading context is no longer needed."

@@ -38,7 +38,7 @@ fi
 if command -v md5sum &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5sum | cut -c1-8)
 elif command -v md5 &>/dev/null; then
-    SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 | cut -c1-8)
+    SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
     # different hash algorithm (cksum). See compact-session-init.sh's
