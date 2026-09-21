@@ -57,8 +57,8 @@ Auto-compact triggers at context limits, often mid-task. Strategic compaction pr
 | Switching to unrelated task | Previous context not relevant |
 | Configured tool-call threshold reached (T1/T2/T3, default 50/75/100, overridable via `STRATEGIC_COMPACT_T1`/`_T2`/`_T3` — see the plugin README) | Accumulated context likely stale |
 | Context-mode switched (added 2026-09-21 — any confidently-detected dev/review/ship/admin change, not just a "hard" one; see "Context-mode switch events" below) | The prior mode's context is often no longer relevant to the new posture |
-| A known `heavy_operation` skill starts or finishes (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — can't itself precede this specific call). Finish: its own dispatch/report context is no longer needed |
-| A known `session_analysis` skill starts or finishes (added 2026-09-21 — e.g. `analyzing-sessions`, `starting-an-analysis`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — can't itself precede this specific call). Finish: its own transcript-reading context is no longer needed |
+| A known `heavy_operation` skill starts or finishes (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless). Finish: its own dispatch/report context is no longer needed |
+| A known `session_analysis` skill starts or finishes (added 2026-09-21 — e.g. `analyzing-sessions`, `starting-an-analysis`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless). Finish: its own transcript-reading context is no longer needed |
 
 ### Avoid Compaction During
 
