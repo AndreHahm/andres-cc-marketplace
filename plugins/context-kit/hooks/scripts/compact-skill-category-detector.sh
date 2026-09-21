@@ -1,12 +1,21 @@
 #!/bin/bash
 # Strategic Compact - Skill Category Detector
-# Runs on PreToolUse (arg "start") and PostToolUse (arg "finish") for Skill
-# calls to detect a known "heavy_operation" or "session_analysis" skill
-# beginning or completing, and suggests /compact accordingly -- both
-# directions fire, with different wording, no cooldown between them: each
-# Skill() invocation is a fresh, bounded event worth its own suggestion
-# every time, not a potentially-noisy repeated command the way
-# compact-milestone-detector.sh's Bash patterns can be.
+# Runs on PreToolUse for Skill calls to detect a known "heavy_operation" or
+# "session_analysis" skill about to start, and suggests /compact accordingly
+# if it's been a while.
+#
+# PreToolUse-only by design (no PostToolUse "finish" counterpart): a Skill()
+# call's own PostToolUse event fires once the skill's instructions have
+# loaded into the conversation as a message, not once the model has actually
+# finished executing the workflow those instructions describe (see
+# plugin-devkit's skill-development/references/design-patterns.md, "Skill
+# content lifecycle") -- there is no hook event in Claude Code that fires on
+# real workflow completion for a foreground skill. An earlier version of this
+# script wired both phases and had PostToolUse claim the skill "finished";
+# that claim was false almost every time it fired (found by Codex's
+# automated PR review, 2026-09-21, against PR #368). Rather than keep a
+# message that reads as factually wrong most of the time, the finish phase
+# was dropped entirely.
 #
 # Unlike compact-track-and-suggest.sh / compact-milestone-detector.sh, this
 # script never reads or writes $TRACK_FILE's own counters, so it never
@@ -27,8 +36,6 @@
 # defaults). Requires jq: this classification needs real JSON array
 # membership, not a regex approximation, so this script fails open (silently,
 # no suggestion) rather than attempt one when jq is unavailable.
-
-PHASE="$1"  # "start" or "finish"
 
 INPUT=$(cat)
 
@@ -76,21 +83,39 @@ TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 DEFAULTS_FILE="${CLAUDE_PLUGIN_ROOT:-}/hooks/context-kit.settings.json"
 [ ! -f "$DEFAULTS_FILE" ] && exit 0
 
+DEFAULTS_CATEGORIES=$(jq '{
+    heavy_operation: (.skill_categories.heavy_operation // []),
+    session_analysis: (.skill_categories.session_analysis // [])
+}' "$DEFAULTS_FILE" 2>/dev/null)
+
+[ -z "$DEFAULTS_CATEGORIES" ] && exit 0
+
 LOCAL_FILE="${CLAUDE_PROJECT_DIR:-}/.claude/context-kit.local.json"
+CATEGORIES="$DEFAULTS_CATEGORIES"
 
 if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -f "$LOCAL_FILE" ]; then
-    CATEGORIES=$(jq -s '{
-        heavy_operation: (((.[0].skill_categories.heavy_operation // []) + (.[1].skill_categories.heavy_operation // [])) | unique),
-        session_analysis: (((.[0].skill_categories.session_analysis // []) + (.[1].skill_categories.session_analysis // [])) | unique)
-    }' "$DEFAULTS_FILE" "$LOCAL_FILE" 2>/dev/null)
-else
-    CATEGORIES=$(jq '{
+    LOCAL_CATEGORIES=$(jq '{
         heavy_operation: (.skill_categories.heavy_operation // []),
         session_analysis: (.skill_categories.session_analysis // [])
-    }' "$DEFAULTS_FILE" 2>/dev/null)
+    }' "$LOCAL_FILE" 2>/dev/null)
+    if [ -n "$LOCAL_CATEGORIES" ]; then
+        # Additive merge, each file parsed independently -- a malformed
+        # local override (invalid JSON, wrong types) must never take the
+        # shipped defaults down with it. The prior version ran both files
+        # through one combined `jq -s` call, so a parse failure on the
+        # local file alone emptied CATEGORIES entirely, silently disabling
+        # even shipped-default skills (found by Codex + CodeRabbit's
+        # automated PR reviews, 2026-09-21, against PR #368 -- contradicted
+        # this skill's own documented "additive, never replaces" contract).
+        MERGED_CATEGORIES=$(jq -n --argjson d "$DEFAULTS_CATEGORIES" --argjson l "$LOCAL_CATEGORIES" '{
+            heavy_operation: (($d.heavy_operation + $l.heavy_operation) | unique),
+            session_analysis: (($d.session_analysis + $l.session_analysis) | unique)
+        }' 2>/dev/null)
+        [ -n "$MERGED_CATEGORIES" ] && CATEGORIES="$MERGED_CATEGORIES"
+    else
+        echo "compact-skill-category-detector.sh: local override file is malformed JSON; using shipped defaults only" >&2
+    fi
 fi
-
-[ -z "$CATEGORIES" ] && exit 0
 
 # Priority on overlap: heavy_operation wins over session_analysis (the
 # more resource-costly classification, matching compact-milestone-detector.sh's
@@ -106,32 +131,23 @@ fi
 [ -z "$CATEGORY" ] && exit 0
 
 SUGGESTION=""
-case "${CATEGORY}:${PHASE}" in
-    heavy_operation:start)
+case "$CATEGORY" in
+    heavy_operation)
         SUGGESTION="[StrategicCompact] '${SKILL_NAME}' is a known heavy operation. If you haven't compacted recently, this is a good moment to."
         ;;
-    heavy_operation:finish)
-        SUGGESTION="[StrategicCompact] '${SKILL_NAME}' (heavy operation) finished. Good time for /compact -- its own dispatch/report context is no longer needed."
-        ;;
-    session_analysis:start)
+    session_analysis)
         SUGGESTION="[StrategicCompact] '${SKILL_NAME}' is a session-analysis skill. If you haven't compacted recently, this is a good moment to."
-        ;;
-    session_analysis:finish)
-        SUGGESTION="[StrategicCompact] '${SKILL_NAME}' (session analysis) finished. Good time for /compact -- its own transcript-reading context is no longer needed."
         ;;
 esac
 
 [ -z "$SUGGESTION" ] && exit 0
-
-HOOK_EVENT_NAME="PostToolUse"
-[ "$PHASE" = "start" ] && HOOK_EVENT_NAME="PreToolUse"
 
 # Built via jq -n --arg, not heredoc string interpolation -- $SKILL_NAME is
 # embedded in $SUGGESTION and, while it should always be a real registered
 # skill name, this is the same safe-construction discipline
 # compact-stop-check.sh already uses for suggestion text that could contain
 # a character that would otherwise break the JSON shape.
-jq -n --arg msg "$SUGGESTION" --arg event "$HOOK_EVENT_NAME" \
-    '{systemMessage: $msg, hookSpecificOutput: {hookEventName: $event, additionalContext: $msg}}'
+jq -n --arg msg "$SUGGESTION" \
+    '{systemMessage: $msg, hookSpecificOutput: {hookEventName: "PreToolUse", additionalContext: $msg}}'
 
 exit 0

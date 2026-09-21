@@ -290,6 +290,35 @@ def check_mode_switch_emits_on_real_change(tmp_path):
     return True, "a real mode switch emits both the primary tag and a pending suggestion"
 
 
+def check_mode_switch_pending_write_is_additive(tmp_path):
+    # Regression guard (CodeRabbit's automated PR review, 2026-09-21, PR #368):
+    # detect_mode.py used to overwrite the pending file, so a not-yet-delivered
+    # suggestion another writer (compact-track-and-suggest.sh) already queued
+    # there would be silently clobbered. It must append instead.
+    session_id = "additivewrite"
+    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
+    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
+    pending_file.write_text(
+        "[StrategicCompact] Pre-existing queued suggestion.\n", encoding="utf-8"
+    )
+
+    run_hook(json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8"), home)
+    result = run_hook(
+        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
+    )
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0"
+    content = pending_file.read_text(encoding="utf-8")
+    if "[StrategicCompact] Pre-existing queued suggestion." not in content:
+        return (
+            False,
+            f"a pre-existing queued suggestion was clobbered instead of preserved: {content!r}",
+        )
+    if "[StrategicCompact] Context-mode switched (ship -> review)." not in content:
+        return False, f"the new mode-switch suggestion was not appended: {content!r}"
+    return True, "a mode-switch suggestion is appended, never overwriting an already-queued one"
+
+
 def check_mode_switch_throttled_within_cooldown(tmp_path):
     session_id = "throttled"
     home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
@@ -358,6 +387,7 @@ CHECKS = [
     check_mode_switch_skipped_without_tracking_file,
     check_mode_switch_first_observation_no_suggestion,
     check_mode_switch_emits_on_real_change,
+    check_mode_switch_pending_write_is_additive,
     check_mode_switch_throttled_within_cooldown,
     check_mode_switch_ignores_ambiguous_multi_candidate_turn,
     check_mode_switch_future_timestamp_self_heals,

@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-skill-category-detector.sh start",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-skill-category-detector.sh",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -74,18 +74,6 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-milestone-detector.sh",
-            "shell": "bash",
-            "timeout": 5,
-            "onError": "warn"
-          }
-        ]
-      },
-      {
-        "matcher": "^Skill$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-skill-category-detector.sh finish",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"

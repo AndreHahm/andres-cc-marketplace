@@ -12,8 +12,13 @@ tool-call counters, thresholds, and generated suggestion text. `compact-session-
 can remove a lock directory under the same path. On macOS/Linux, a detected suggestion can also spawn a
 desktop-notification process (`osascript`/`notify-send`) — best-effort, fails silently if unavailable.
 As of 2026-09-21, `context-mode`'s `detect_mode.py` is a second writer into this same directory
-(`mode-<hash>`, and `pending-<hash>` on a throttled switch) — see `SKILL.md`'s "Context-mode switch
-events" section. On `startup`/`clear`/`compact`, `compact-session-init.sh` also resets the current
+(`mode-<hash>` on every confidently-detected mode observation, and `pending-<hash>` only on an
+unthrottled, actually-emitted switch — never on a throttled one, which updates `mode-<hash>` alone and
+produces no suggestion) — see `SKILL.md`'s "Context-mode switch events" section. `pending-<hash>` is a
+queue, not a single slot: `detect_mode.py` appends its own line rather than overwriting, since
+`compact-track-and-suggest.sh` may already have an unconsumed suggestion queued there (fixed 2026-09-21,
+found by CodeRabbit's automated PR review against PR #368 — see `hook-wiring.md`'s `Stop`-hook entry for
+the draining side of this same contract). On `startup`/`clear`/`compact`, `compact-session-init.sh` also resets the current
 session's own `mode-<hash>` file (deletes it) alongside its reset of `$TRACK_FILE`'s counters — kept
 symmetric so a mode observed before the reset is never treated as a "prior mode" a post-reset switch
 gets compared against. `compact-skill-category-detector.sh` additionally reads

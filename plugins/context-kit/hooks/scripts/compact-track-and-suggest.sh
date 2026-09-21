@@ -304,8 +304,13 @@ fi
 
 # Output JSON with suggestion if any
 if [ -n "$SUGGESTION" ]; then
-    # Write pending suggestion for Stop hook to pick up
-    echo "$SUGGESTION" > "${TRACK_DIR}/pending-${SESSION_HASH}"
+    # Append this suggestion for the Stop hook to pick up -- other writers
+    # (detect_mode.py) may also append to this same file before Stop drains
+    # it, so this must never overwrite an already-queued, not-yet-delivered
+    # suggestion (found by CodeRabbit's automated PR review, 2026-09-21,
+    # against PR #368; see compact-stop-check.sh for the queue-draining
+    # side of this contract).
+    echo "$SUGGESTION" >> "${TRACK_DIR}/pending-${SESSION_HASH}"
 
     # Send system notification (macOS or Linux)
     if [[ "$OSTYPE" == "darwin"* ]]; then
