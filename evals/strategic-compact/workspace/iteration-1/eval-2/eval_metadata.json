@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response answers using the skill's actual named criteria (phase transition, milestone completed, plan finalized, debug session resolved, switching to an unrelated task, or a configured tool-call threshold), not a generic answer",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "If none of the named conditions clearly apply from the prompt alone, the response says so explicitly rather than guessing or fabricating a trigger",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response does not answer with no reference to any real trigger from the skill (e.g. a bare 'sure, whenever you want')",
+      "type": "presence",
+      "target": "outputs/ directory"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response answers using the skill's actual named criteria (phase transition, milestone completed, plan finalized, debug session resolved, switching to an unrelated task, or a configured tool-call threshold), not a generic answer",
+      "passed": true,
+      "evidence": "Response lists all five Optimal Compaction Points triggers near-verbatim ('You just finished exploring/reading...', 'A milestone just landed', 'A plan is finalized and written down', 'A debugging thread just got resolved', 'about to pivot to a different, unrelated task') plus the tool-call threshold ('if you've crossed a threshold like 50+ tool calls')."
+    },
+    {
+      "text": "If none of the named conditions clearly apply from the prompt alone, the response says so explicitly rather than guessing or fabricating a trigger",
+      "passed": true,
+      "evidence": "The prompt gave no phase information. Response explicitly declines to guess and instead asks back: 'are you between phases right now..., or are you still mid-task? If you're between phases, compact now. If you're mid-implementation or mid-debug, finish that thread first.'"
+    },
+    {
+      "text": "Response does not answer with no reference to any real trigger from the skill (e.g. a bare 'sure, whenever you want')",
+      "passed": true,
+      "evidence": "No generic non-answer given anywhere in the response; every recommendation ties back to a named skill trigger or the Avoid Compaction During table."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
