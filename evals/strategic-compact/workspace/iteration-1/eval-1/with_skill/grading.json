@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response proactively suggests /compact (or session-kit's session-handoff) without being explicitly asked",
+      "passed": true,
+      "evidence": "User only asked 'what should I do next?' — response unprompted adds an 'On context:' section: 'this is also a good moment to think about compaction... /compact now, before that work starts.'"
+    },
+    {
+      "text": "Response cites a real, named trigger from the skill's Optimal Compaction Points table (e.g. 'milestone completed', tests passing, commit made) as the reason, not a generic justification",
+      "passed": true,
+      "evidence": "'You've just closed out a clean, self-contained unit of work — tests passed, the fix is committed, nothing is mid-flight. That's exactly the kind of milestone where manual compaction beats waiting for auto-compact at some arbitrary later point.'"
+    },
+    {
+      "text": "Response does not give generic/unrelated advice that ignores the milestone entirely",
+      "passed": true,
+      "evidence": "Entire 'On context' section is scoped to the specific milestone just reported (tests passed + commit), including a caveat for the case where the user is about to keep editing the same code (not yet at a transition point) rather than a blanket recommendation."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

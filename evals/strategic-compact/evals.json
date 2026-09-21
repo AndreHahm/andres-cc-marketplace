@@ -1,0 +1,37 @@
+{
+  "skill_name": "strategic-compact",
+  "skill_path": "plugins/context-kit/skills/strategic-compact/SKILL.md",
+  "description": "Context management intelligence that suggests strategic /compact timing at phase transitions and milestones.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "User reports a milestone with no explicit question",
+      "prompt": "I just finished running the test suite and everything passed. Also committed the change with `git commit -m \"fix: resolve off-by-one in pagination\"`. What should I do next?",
+      "expected_output": "Proactively suggests /compact (or session-kit's session-handoff for richer state), citing a real trigger from the skill's Optimal Compaction Points table (e.g. \"milestone completed\", tests passing, commit made) as the reason — not generic advice unrelated to compaction timing.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "User explicitly asks whether now is a good time to compact",
+      "prompt": "We've been going for a while on this task. Should I compact now?",
+      "expected_output": "Answers using the skill's actual criteria (phase transition, milestone completed, plan finalized, debug session resolved, switching to an unrelated task, or a configured tool-call threshold) rather than a generic \"sure, whenever you feel like it\" — and, if none of those conditions clearly apply from the prompt alone, says so explicitly rather than guessing.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 0,
+    "uncovered": [
+      "A session starting (SessionStart, any source) — tool-call tracking initializes; a compact/resume source additionally triggers the restore hook.",
+      "Any tool call — PreToolUse tracking fires on every call; context-monitor.py additionally fires on every successful tool call.",
+      "A Bash or PowerShell command matching a known test/build/commit/deploy pattern — compact-milestone-detector.sh fires on PostToolUse.",
+      "A compaction event (manual /compact or automatic) — both PreCompact hooks fire; the matching SessionStart restore hook fires on the following turn.",
+      "A Stop event where stop_hook_active is already true — must exit cleanly, never re-block.",
+      "A Bash command containing an unrelated word that happens to substring-match a milestone-detection pattern — must not produce a false milestone suggestion.",
+      "A session with 50+ tool calls produces exactly one threshold suggestion per configured threshold, not a repeated suggestion on every call past the threshold.",
+      "A successful pytest/npm test/etc. command produces a test_pass milestone suggestion; a successful npm run build/cargo build/etc. command produces a build milestone suggestion.",
+      "A git commit (or other milestone-pattern command) run via the PowerShell tool produces the same milestone suggestion as the identical command run via Bash.",
+      "A compaction event followed by a SessionStart with source=compact restores the previously-captured plan state via additionalContext, with no crash if no state was ever captured."
+    ]
+  }
+}
