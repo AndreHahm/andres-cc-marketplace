@@ -19,14 +19,14 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 19,
+    "declared_scenarios_total": 21,
     "declared_scenarios_covered": 0,
-    "coverage_note": "Recounted 2026-09-21 (cross-model-review, Codex+Claude) -- the original count of 10 was stale even at generation time, missing scenarios SKILL.md had already declared for the Skill()-category and context-mode-switch events before this eval ran. 0/19 remains correct: this eval methodology (with_skill vs. baseline prompt comparison) structurally cannot exercise any hook-activation scenario, per strategic-compact's own documented reasoning in its Testing & Validation section.",
+    "coverage_note": "Recounted 2026-09-21 (Codex's automated PR review, round 2 on PR #368): the finish-phase wording in two entries was stale after the finish phase was dropped in the prior fix (found by Codex), and the same fix had also added two new Quality Gates entries (the pending-file queue delivery and per-line-drop checks) that were never added here. 0/21 remains correct: this eval methodology (with_skill vs. baseline prompt comparison) structurally cannot exercise any hook-activation scenario, per strategic-compact's own documented reasoning in its Testing & Validation section.",
     "uncovered": [
       "A session starting (SessionStart, any source) — tool-call tracking initializes; a compact/resume source additionally triggers the restore hook.",
       "Any tool call — PreToolUse tracking fires on every call; context-monitor.py additionally fires on every successful tool call.",
       "A Bash or PowerShell command matching a known test/build/commit/deploy pattern — compact-milestone-detector.sh fires on PostToolUse for either tool.",
-      "A Skill() call to a known heavy_operation/session_analysis skill — compact-skill-category-detector.sh fires on PreToolUse (start) and PostToolUse (finish).",
+      "A Skill() call to a known heavy_operation/session_analysis skill about to start — compact-skill-category-detector.sh fires on PreToolUse only; there is no PostToolUse finish counterpart (dropped 2026-09-21).",
       "A confidently-detected context-mode switch (exactly one candidate, differing from the last one) — context-mode's detect_mode.py writes into this skill's own delivery mechanism, throttled to once per 5 minutes.",
       "A compaction event (manual /compact or automatic) — both PreCompact hooks fire; the matching SessionStart restore hook fires on the following turn.",
       "A Stop event where stop_hook_active is already true — must exit cleanly, never re-block.",
@@ -38,10 +38,12 @@
       "A git commit (or other milestone-pattern command) run via the PowerShell tool produces the same milestone suggestion as the identical command run via Bash.",
       "A compaction event followed by a SessionStart with source=compact restores the previously-captured plan state via additionalContext, with no crash if no state was ever captured.",
       "An env var like STRATEGIC_COMPACT_T1 set to a non-numeric or malicious value falls back to its default rather than corrupting the tracking file or executing as shell code.",
-      "A heavy_operation/session_analysis skill produces both a start suggestion (PreToolUse) and a differently-worded finish suggestion (PostToolUse) for the same invocation, with no cooldown suppressing either.",
-      "A skill matching both category lists resolves to heavy_operation, never session_analysis.",
-      "A .claude/context-kit.local.json entry adds to, never replaces, the tracked-default category lists.",
-      "A confidently-detected context-mode switch produces exactly one suggestion per 5-minute window, not a repeated suggestion on every subsequent switch within that window."
+      "A heavy_operation/session_analysis skill produces its PreToolUse start suggestion — there is no PostToolUse finish counterpart to test (dropped 2026-09-21).",
+      "A skill matching both category lists resolves to heavy_operation, never session_analysis, when a genuine overlap actually exists between the two lists — not merely a skill that only appears in one of them.",
+      "A .claude/context-kit.local.json entry adds to, never replaces, the tracked-default category lists — a tracked-default skill still classifies correctly even when a local override is present, including when that local override file is malformed JSON.",
+      "A confidently-detected context-mode switch produces exactly one suggestion per 5-minute window, not a repeated suggestion on every subsequent switch within that window.",
+      "Two suggestions queued in the same pending-<hash> file before compact-stop-check.sh drains it are both delivered in one decision: block — neither silently overwrites the other.",
+      "A malformed line appended to the pending file alongside an otherwise-valid one is dropped on its own, without discarding the still-valid queued suggestion(s) next to it."
     ]
   }
 }
