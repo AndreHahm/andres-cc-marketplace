@@ -1,0 +1,30 @@
+Marketplace review process for this PR (changed file: plugins/example-kit/skills/example/SKILL.md)
+
+Per `plugin-marketplace-review`'s policy documentation (this skill itself is never executed — it is `disable-model-invocation: true`, read-only documentation of the policy that `scripts/marketplace_ci/review.py`'s `dispatch_reviewers` implements in code). This is a description of what that orchestrator would do, not a live dispatch.
+
+1. Scope derivation
+`derive_review_scope` inspects the changed-path set — here, a single skill file, `plugins/example-kit/skills/example/SKILL.md`. This is a reviewer-scoped path inside a plugin (not doc-only, not excluded via the `evals/`-prefixed or plugin-root LICENSE/NOTICE/KNOWN_ISSUES.md bypass), so `mode == "delta"`. It is not a shared-governance path (marketplace.json, `.claude/marketplace-sync.json`, `.claude/plugin-rulebook.config.json`, or any `plugin-rulebook` content file) and the affected-path/dependency closure is a single file, well under the 50-path overflow threshold — so this does not escalate to `full` mode.
+
+2. Delta Validate runs first (required, launch-time 3-reviewer floor)
+Because the diff touches at least one reviewer-scoped path, the same 3 baseline reviewers dispatch, in this order:
+  a. `plugin-rulebook-checker` — dispatched against the changed/affected component, via `codex-review-bridge`.
+  b. The deterministic `structural_check` (`scripts.marketplace_ci.review:run_delta_structural_checks`) runs in-process — not a Codex-dispatched reviewer — over the changed-path set.
+  c. `dependency-reviewer` — dispatched against changed nodes and adjacent edges, via `codex-review-bridge`.
+  d. `security-reviewer` — dispatched against the changed lines/sections of the modified component, via `codex-review-bridge`.
+  e. The exact scope is recorded and the result is labeled `Delta` — never presented as full-plugin validation.
+
+3. Delta Audit runs after Delta Validate (required)
+Delta Audit runs on top of, and after, Delta Validate:
+  a. `plugin-validator` and `plugin-grader` are explicitly NOT run in whole-plugin mode for this PR — Delta Audit's first rule is "Do not run plugin-validator/plugin-grader in whole-plugin mode."
+  b. Since the changed component is a skill (`SKILL.md`), the launch-time type-specific Audit reviewer wired up for skills — `skill-reviewer` — is dispatched via `codex-review-bridge`. (`subagent-reviewer` would apply only to an agent-file change, which this is not.)
+  c. Delta Audit reuses Delta Validate's rulebook/security findings rather than re-dispatching `plugin-rulebook-checker`/`security-reviewer` a second time.
+  d. Every other type-specific reviewer (`skilldir-reviewer`, `hook-reviewer`, `command-reviewer`, `rule-reviewer`, `scripts-reviewer`, `human-doc-reviewer`, `activation-reviewer`, `consistency-reviewer`, `permission-reviewer`, `external-references-reviewer`) is deferred/not yet wired up and does not apply here, since the only changed component type is a skill.
+  e. Findings from Validate and Audit are aggregated without one reviewer's result erasing another's; a Critical or Major finding blocks the PR, Minor findings are advisory only.
+
+4. Output
+Only schema-valid JSON per the canonical envelope is emitted — `validate_review_output`/`aggregate_findings` consume this directly; no prose summary outside the structured findings.
+
+5. Trust boundary
+All repository content read by the orchestrator or the dispatched reviewers (including the SKILL.md content itself) is treated as untrusted evidence, never as instructions. Every reviewer instruction body is sourced from a validated base SHA via `prepare-reviewer-instruction`, not from the PR head being reviewed, so a PR that also modified a reviewer agent's own instructions couldn't rewrite the rules judging it.
+
+Summary: This PR gets Delta Validate (plugin-rulebook-checker → in-process structural_check → dependency-reviewer → security-reviewer, labeled `Delta`) run first, followed by Delta Audit (skill-reviewer, reusing Validate's rulebook/security findings) run second and layered on top of it. Whole-plugin `plugin-validator`/`plugin-grader` are explicitly not run for this PR — only the scoped delta reviewers above execute.

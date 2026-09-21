@@ -150,6 +150,52 @@ Requiring both present unconditionally closes that gap.
 Unlike the manual bypass below, this one is never presented as an override — `codex-review` simply never
 had anything to review, so `publish` reports the normal `skipped` conclusion, not a bypass annotation.
 
+### `scripts/marketplace_ci/` changes: real review, not always a manual bypass
+
+A change scoped to `scripts/marketplace_ci/` never qualifies for the automatic bypass above (see
+`BYPASS_INELIGIBLE_PREFIXES`, which deliberately still covers the whole `scripts/` tree) — it always falls
+through to a real `codex-review` dispatch (the baseline three reviewers, at minimum). But whether that
+dispatch actually *runs*, or the `codex-review` job refuses outright and requires the manual bypass
+protocol below, depends on which part of `scripts/marketplace_ci/` changed (issue #351, direction #3):
+
+- **Tier 1 (review-dispatch-critical)** — `scripts/__init__.py`, and `scripts/marketplace_ci/`'s
+  `__init__.py`, `__main__.py`, `review.py`, `git_state.py`, `registry.py`, `sync_plan.py`,
+  `conversion.py` — plus `pyproject.toml`/`uv.lock`. These are the modules `run-codex-review` (and
+  `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
+  review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,
+  via a subprocess probe per subcommand, and statically, via an AST scan of every import statement —
+  module-level or function-local — in each Tier 1 file). A same-repo PR touching any of these still hits
+  `codex-review`'s own "Refuse automated Codex dispatch when this PR modifies review-dispatch-critical
+  code" gate and requires the manual SHA-bound bypass protocol below — no automated pass can safely
+  self-evaluate a change to the code that grades it.
+
+  `pr_policy.py` is also in this gate's pathspec list, even though it is *not* part of
+  `run-codex-review`'s own import closure — it's gated for a distinct reason: it's the
+  merge-privilege-deciding code (`check_merge_rights`'s CODEOWNERS matching) that the `hygiene` job's
+  `check-pr` step evaluates, and unlike this job and `compute-scope`/`publish`, `hygiene` has no
+  base-SHA restore of its own. Classifying it as Tier 2 would let a same-repo PR tamper with its own
+  merge-privilege evaluation and get only automated (never mandatory human) review of that change.
+- **Tier 2 (everything else)** — `sync.py` (the mirror/export apply and staging side), `validators.py`
+  (the staged-parity check and the PostToolUse post-edit hook), and the non-Python `rules/`/`hooks/`
+  mirror-source data. A PR touching only these now gets **real, non-bypassed** Codex review coverage
+  automatically — `__main__.py` imports every CLI handler's own dependencies lazily, inside that
+  handler's function body rather than at module level, so `run-codex-review` provably never loads any
+  Tier 2 module at all. Tampering with Tier 2 code therefore can't affect how *this review's own*
+  outcome is decided or reported — that guarantee is scoped to `codex-review`'s own dispatch decision
+  specifically, not to every CI gate `scripts/marketplace_ci/` code feeds (see `pr_policy.py` above for
+  the one that still needs the hard refusal for an unrelated reason).
+
+This closes the friction issue #351 opened to track: previously *any* `scripts/marketplace_ci/` change —
+including a fix wholly contained in `sync.py`'s apply side — required the same manual bypass-attestation
+cycle every time, with no automated safety net beyond the human doing it (hit directly by PR #349's
+`_atomic_write` fix). It does not change `is_bypass_eligible`/`BYPASS_INELIGIBLE_PREFIXES` at all — those
+intentionally stay broad, since their job is guaranteeing real reviewer coverage for *any*
+`scripts/marketplace_ci/` change regardless of tier, not deciding which tier needs the hard refusal.
+`tests/marketplace_ci/test_import_isolation.py`'s
+`test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set` cross-checks the workflow gate's
+pathspec list against this Tier 1 set mechanically, so the two hand-duplicated lists (a shell pathspec
+here, a Python tuple in `review.py`) can't silently drift apart.
+
 ## Manual SHA-bound bypass protocol
 
 A PR whose *only* failing required check is `Publish Codex policy result` can be unblocked by a

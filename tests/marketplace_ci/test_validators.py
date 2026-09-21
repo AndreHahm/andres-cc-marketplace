@@ -1,17 +1,13 @@
-import json
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.validators import (
-    Finding,
     PluginValidatorEntry,
     ValidatorCatalog,
     load_catalog,
     run_catalog,
-    run_delta_structural_checks,
 )
 
 
@@ -87,62 +83,3 @@ def test_load_catalog_reads_real_marketplace_validators_json():
     assert len(catalog.plugin_validators) >= 1
     ids = {e.id for e in catalog.plugin_validators}
     assert len(ids) == len(catalog.plugin_validators)  # no duplicate ids
-
-
-def test_run_delta_structural_checks_scopes_to_changed_component(repo, change):
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(
-        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
-        encoding="utf-8",
-    )
-
-    findings = run_delta_structural_checks(
-        repo, (change("plugins/sample-kit/skills/demo/SKILL.md"),)
-    )
-    assert all(f.path.startswith("plugins/sample-kit/skills/demo") for f in findings)
-    assert isinstance(findings, tuple)
-    assert all(isinstance(f, Finding) for f in findings)
-    # this changed component actually has un-synced content, so it must produce
-    # at least one real, correctly-scoped finding, not just satisfy the check vacuously
-    assert len(findings) >= 1
-
-
-def test_run_delta_structural_checks_ignores_unrelated_changes(repo, change):
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(
-        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
-        encoding="utf-8",
-    )
-
-    findings = run_delta_structural_checks(repo, (change("some/unrelated/file.md"),))
-    assert findings == ()
-
-
-def test_run_delta_structural_checks_returns_empty_without_registry(repo, change):
-    findings = run_delta_structural_checks(
-        repo, (change("plugins/sample-kit/skills/demo/SKILL.md"),)
-    )
-    assert findings == ()
-
-
-def test_run_delta_structural_checks_checks_rename_source_component_too(repo):
-    """PR #50 external-review regression: a rename away from a component
-    (e.g. onto an inert plugin-root basename) must still check that
-    component's own key for stale mirror/export actions -- keying only off
-    new_path would silently drop the source component's parity check."""
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(
-        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
-        encoding="utf-8",
-    )
-
-    rename = ChangedPath(
-        status="R",
-        old_path="plugins/sample-kit/skills/demo/SKILL.md",
-        new_path="plugins/sample-kit/LICENSE",
-    )
-    findings = run_delta_structural_checks(repo, (rename,))
-    assert any(f.path.startswith("plugins/sample-kit/skills/demo") for f in findings)

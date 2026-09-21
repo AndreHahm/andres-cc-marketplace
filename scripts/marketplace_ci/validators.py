@@ -1,6 +1,13 @@
 """Portable validator orchestration: the repository/plugin validator catalog,
-subprocess-based black-box execution of plugin validators, and the delta-scoped
-structural check `dispatch_reviewers` (Task 9) reuses in-process."""
+subprocess-based black-box execution of plugin validators, plus the staged-
+parity pre-commit check and the PostToolUse post-edit hook.
+
+This module is Tier 2 (apply-side) -- never imported by the review-dispatch-
+critical CLI subcommands (check-scope-bypass, run-codex-review, check-bypass,
+resolve-attested-actor). The delta-scoped structural check
+`dispatch_reviewers` needs in-process (`run_delta_structural_checks`) lives in
+review.py instead, since that check is itself on the critical path -- see
+review.py's own docstring on that function for why (issue #351)."""
 
 from __future__ import annotations
 
@@ -10,9 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from scripts.marketplace_ci.conversion import convert_agent, plan_exports
-from scripts.marketplace_ci.git_state import ChangedPath, GitState
+from scripts.marketplace_ci.git_state import GitState
 from scripts.marketplace_ci.registry import Registry
-from scripts.marketplace_ci.sync import _iter_component_files, apply_sync_plan, plan_plugin_sync
+from scripts.marketplace_ci.sync import apply_sync_plan
+from scripts.marketplace_ci.sync_plan import _iter_component_files, plan_plugin_sync
 
 _INTERPRETER_COMMAND = {"python": "python", "bash": "bash"}
 
@@ -109,59 +117,6 @@ def run_catalog(catalog: ValidatorCatalog, platform: str) -> tuple[ValidatorResu
                 )
             )
     return tuple(results)
-
-
-@dataclass(frozen=True)
-class Finding:
-    path: str
-    operation: str
-    reason: str
-
-
-def _component_key(path: str, depth: int = 4) -> str:
-    parts = path.split("/")
-    return "/".join(parts[:depth])
-
-
-def run_delta_structural_checks(
-    repo: Path, changed: tuple[ChangedPath, ...]
-) -> tuple[Finding, ...]:
-    """Scope `check-all`'s mirror/export parity checks to only the components
-    touched by `changed`. This is the same structural-validation logic
-    `check-all` runs in full; Task 9's Delta Validate calls it directly."""
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    if not registry_path.is_file():
-        return ()
-    registry = Registry.load(registry_path)
-
-    # Both sides of a rename, not just new_path -- a rename away from a
-    # component (e.g. plugins/x/skills/y/SKILL.md -> plugins/x/LICENSE)
-    # must still check that component's own key for stale mirror/export
-    # actions, not just the destination's. Same fix as review.py's
-    # _changed_path_set, for the same PR #50 external-review finding.
-    changed_paths = {cp.new_path for cp in changed if cp.new_path is not None}
-    changed_paths |= {cp.old_path for cp in changed if cp.old_path is not None}
-    changed_keys = {_component_key(p) for p in changed_paths}
-    if not changed_keys:
-        return ()
-
-    mirror_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
-    export_plan = plan_exports(repo, registry, previous=None)
-
-    findings: list[Finding] = []
-    for action in (*mirror_plan.actions, *export_plan.actions):
-        if action.operation == "delete" or action.source is None:
-            continue
-        try:
-            rel_source = action.source.relative_to(repo).as_posix()
-        except ValueError:
-            rel_source = action.source.as_posix()
-        if _component_key(rel_source) in changed_keys:
-            findings.append(
-                Finding(path=rel_source, operation=action.operation, reason=action.reason)
-            )
-
-    return tuple(findings)
 
 
 @dataclass(frozen=True)
