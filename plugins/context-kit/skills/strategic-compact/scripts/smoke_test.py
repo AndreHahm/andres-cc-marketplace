@@ -617,7 +617,7 @@ def check_skill_category_heavy_operation_start_and_finish(tmp_path):
             False,
             f"start exited {start_result.returncode}, expected 0: {start_result.stderr[:300]}",
         )
-    if "About to run 'plugin-auditor'" not in start_result.stdout:
+    if "'plugin-auditor' is a known heavy operation" not in start_result.stdout:
         return (
             False,
             f"expected a start-phase heavy_operation suggestion, got: {start_result.stdout!r}",
