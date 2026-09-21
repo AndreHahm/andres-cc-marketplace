@@ -59,6 +59,15 @@ def check_referenced_files():
         if not path.exists():
             missing.append(match.group(1))
 
+    # A plugin-root-level shared reference (e.g. "../../references/bypass-attestation-protocol.md")
+    # is resolved relative to the plugin root, not the skill's own directory.
+    plugin_root = SKILL_DIR.parent.parent
+    plugin_relative = r"`(\.\./\.\./references/[\w./-]+\.md)`"
+    for match in re.finditer(plugin_relative, text):
+        rel = match.group(1).removeprefix("../../")
+        if not (plugin_root / rel).exists():
+            missing.append(match.group(1))
+
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
     return True, "all referenced files exist"
@@ -88,6 +97,17 @@ def _collect_search_text(body: str) -> str:
     plugin_root = SKILL_DIR.parent.parent
     for m in re.finditer(r"skills/([\w-]+)/references/([\w.-]+\.md)", body):
         other = plugin_root / "skills" / m.group(1) / "references" / m.group(2)
+        if other.is_file():
+            try:
+                search_text += "\n" + other.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                pass
+
+    # A plugin-root-level shared reference file (e.g. "../../references/bypass-attestation-
+    # protocol.md") -- the analysis-kit-style convention for a doc read by more than one
+    # sibling skill in the same plugin -- is fair game too, same reasoning as above.
+    for m in re.finditer(r"\.\./\.\./references/([\w.-]+\.md)", body):
+        other = plugin_root / "references" / m.group(1)
         if other.is_file():
             try:
                 search_text += "\n" + other.read_text(encoding="utf-8", errors="ignore")

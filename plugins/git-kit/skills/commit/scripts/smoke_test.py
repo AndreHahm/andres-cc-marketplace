@@ -3,9 +3,10 @@
 usage, and step-header sequencing within the '## Instructions' section --
 structural checks only, since this is a conversational, AskUserQuestion-driven
 skill with no executable logic of its own to simulate."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -44,6 +45,43 @@ def _allowed_tools_value(frontmatter):
     return " ".join(block_lines)
 
 
+def _grant_pattern(cmd: str) -> str:
+    # Boundary-safe on both ends, built from the full grant phrase (not just its first word)
+    # so distinct sibling commands sharing a first word ("gh pr comment" vs "gh pr edit")
+    # aren't conflated, and wildcard-aware so "gh api repos/*/labels/*" matches the real
+    # "gh api repos/{owner}/{repo}/labels/..." invocation -- same logic create-pr's own
+    # smoke test uses, ported here after this check was found to only match a grant's first
+    # word (a false-pass risk once a grant's only real use moved into a shared reference file).
+    return r"(?<!\w)" + r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!\w)"
+
+
+def _collect_search_text(body: str) -> str:
+    search_text = body
+    for sub in ("references", "scripts"):
+        d = SKILL_DIR / sub
+        if d.is_dir():
+            for f in sorted(d.rglob("*")):
+                if f.is_file():
+                    try:
+                        search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
+                    except OSError:
+                        pass
+
+    # A plugin-root-level shared reference (e.g. "../../references/bypass-attestation-
+    # protocol.md") this skill's own body points at -- a grant whose only real invocation
+    # lives there still counts as used.
+    plugin_root = SKILL_DIR.parent.parent
+    for m in re.finditer(r"\.\./\.\./references/([\w.-]+\.md)", body):
+        other = plugin_root / "references" / m.group(1)
+        if other.is_file():
+            try:
+                search_text += "\n" + other.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                pass
+
+    return search_text
+
+
 def check_bash_grants():
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
@@ -58,10 +96,14 @@ def check_bash_grants():
     granted_cmds = [c.strip().lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
-    unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
+    search_text = _collect_search_text(body)
+    unused = [cmd for cmd in granted_cmds if not re.search(_grant_pattern(cmd), search_text)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
-    return True, "every granted Bash command is invoked somewhere in the body"
+        return False, (
+            "Bash grant(s) never invoked anywhere in the body/references/scripts (or a "
+            "plugin-root reference file it names): " + ", ".join(sorted(set(unused)))
+        )
+    return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
 def check_step_sequence():
@@ -76,7 +118,7 @@ def check_step_sequence():
     if start == -1:
         return True, "no '## Instructions' section found (skip)"
     end = text.find("\n## ", start + 1)
-    section = text[start:end if end != -1 else len(text)]
+    section = text[start : end if end != -1 else len(text)]
     numbers = [int(n) for n in re.findall(r"^(\d+)\. ", section, re.MULTILINE)]
     if not numbers:
         return True, "no numbered steps found (skip)"
