@@ -235,7 +235,7 @@ def test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set():
     text = workflow_path.read_text(encoding="utf-8")
 
     marker = "Refuse automated Codex dispatch when this PR modifies review-dispatch-critical code"
-    idx = text.index(marker)
+    idx = text.find(marker)
     assert idx != -1, "could not find the hard-refuse gate step by its own name"
     run_block = text[idx : idx + 4000]
 
