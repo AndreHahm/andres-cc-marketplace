@@ -352,7 +352,7 @@ jobs:
 
   compute-scope:
     name: Compute Codex review scope
-    if: github.event.pull_request.head.repo.fork == false
+    if: github.event.pull_request.head.repo.fork == false && vars.EMERGENCY_SWITCH_OFF == '0'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -524,7 +524,7 @@ jobs:
   codex-review:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity, compute-scope]
-    if: github.event.pull_request.head.repo.fork == false && needs.compute-scope.outputs.bypass_eligible != 'true'
+    if: github.event.pull_request.head.repo.fork == false && needs.compute-scope.outputs.bypass_eligible != 'true' && vars.EMERGENCY_SWITCH_OFF == '0'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -773,7 +773,7 @@ jobs:
     # legitimate bypass-eligible case. The "Determine final policy result"
     # step below now explicitly checks compute-scope's own result before
     # trusting codex-review's skip as legitimate.
-    if: always() && github.event.pull_request.head.repo.fork == false
+    if: always() && github.event.pull_request.head.repo.fork == false && vars.EMERGENCY_SWITCH_OFF == '0'
     runs-on: ubuntu-latest
     permissions:
       contents: read
