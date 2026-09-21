@@ -354,6 +354,13 @@ pattern/examples, never as a separate source of truth):**
 - After a push, if no PR is already open for the branch, a PR gets created automatically when `push_auto_pr: true`, otherwise you're asked whether to create one
 - `--bypass-codex-review "<reason>"` attests a SHA-bound bypass of the marketplace's `Publish Codex policy result` check for the newly pushed commit, when a PR is already open for the branch (the mid-review-cycle re-push case `create-pr`/`merge-pr`'s own versions of this flag don't cover) — reuses the identical comment-plus-label protocol those two skills already implement, never invents a second version of it, and never polls for CI completion the way `merge-pr`'s does. If no PR is open yet, the flag is forwarded to Auto-PR's nested `create-pr` call instead
 
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/staging-fix-verification-log.md` | Full verification-run narratives for behavior changes to this skill's steps — extracted here per R30, cited inline throughout Testing & Validation rather than restated |
+| `../../references/bypass-attestation-protocol.md` | Shared Codex-review bypass-attestation protocol (step 16.5), also used by `create-pr`/`merge-pr` |
+
 ## Testing & Validation
 
 **Verify this skill activates on:**
