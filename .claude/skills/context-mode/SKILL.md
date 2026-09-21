@@ -326,5 +326,5 @@ not yet exercised, not the whole scenario set.
 | `references/admin.md` | `admin` mode's Behavioral Profile — branch/worktree/cleanup operations |
 | `references/design-history.md` | Full design history, real-transcript trigger validation data, and the manual stdin/stdout hook walkthrough |
 | `scripts/detect_mode.py` | The `UserPromptSubmit` hook that emits the `[Context-Mode candidate(s): ...]` tag, and (added 2026-09-21) suggests `/compact` into `strategic-compact`'s own delivery mechanism on a throttled, confidently-detected mode switch |
-| `scripts/smoke_test.py` | This skill's own persisted smoke test (12 checks) |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (13 checks) |
 | `triggers.json` | The phrase lists `detect_mode.py` matches against, per mode |

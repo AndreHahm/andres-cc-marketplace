@@ -29,7 +29,11 @@ if command -v md5sum &>/dev/null; then
 elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 | cut -c1-8)
 else
-    SESSION_HASH=$(echo "${SESSION_ID:-default}" | cksum | cut -d' ' -f1)
+    # No md5 tool available -- fail open rather than fall back to a
+    # different hash algorithm (cksum). See compact-session-init.sh's
+    # matching comment for the full rationale (found by cross-model-review,
+    # 2026-09-21).
+    exit 0
 fi
 
 TRACK_DIR="${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact"
