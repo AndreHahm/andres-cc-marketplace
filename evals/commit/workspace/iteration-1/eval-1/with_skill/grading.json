@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States that an empty/missing reason means --bypass-codex-review is treated as if never passed", "passed": true, "evidence": "\"This is the key branch this scenario is testing: an empty-reason `--bypass-codex-review` is a complete no-op, functionally identical to not having passed the flag at all\""},
+    {"text": "Step 16.5 is explicitly skipped, with no error raised", "passed": true, "evidence": "\"So I stop here, immediately, without ever running: gh pr view ... none of that protocol runs.\""},
+    {"text": "No gh pr comment or gh pr edit --add-label command is proposed for the bypass attestation", "passed": true, "evidence": "Explicitly lists every command NOT run: gh pr view, gh api user, permission check, jq -n --arg, gh pr comment, gh api labels, gh pr edit"},
+    {"text": "The rest of the commit flow (staging, scan, commit, push) is described as proceeding normally", "passed": true, "evidence": "Full step-by-step narration of steps 1-18, all proceeding normally including git push origin HEAD"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

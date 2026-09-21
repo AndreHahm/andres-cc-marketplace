@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Stops at step 16.5(d) once insufficient permission is detected", "passed": true, "evidence": "\"Execution stops inside step 16.5(d).\""},
+    {"text": "Never proceeds to post a comment or touch the label after detecting insufficient permission", "passed": true, "evidence": "\"(e)... is not reached. (f)... is not reached — the label is left completely untouched\""},
+    {"text": "States clearly that the push already succeeded and only the attestation was skipped", "passed": true, "evidence": "\"stop here and report the bypass was not attested — the push already succeeded; only the attestation is skipped\" (quoted directly, then restated in step 18's report)"},
+    {"text": "Never reports the whole run as failed, and never reports the attestation as if it succeeded", "passed": true, "evidence": "\"Net effect of this run: the code is pushed and live on the remote branch, but the Codex review bypass... did not take effect\" — clearly distinguishes success of push from failure of attestation"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

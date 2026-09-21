@@ -1,0 +1,14 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses gh pr edit --remove-label then gh pr edit --add-label, not a single --add-label call", "passed": true, "evidence": "\"the label must be removed first and then re-added: gh pr edit --remove-label ... gh pr edit --add-label ...\""},
+    {"text": "Explicitly states a plain --add-label on an already-present label is a silent no-op that would not re-trigger publish's re-evaluation", "passed": true, "evidence": "\"A plain `gh pr edit --add-label` on an already-present label is a silent no-op on GitHub's side and would not re-trigger `publish`'s re-evaluation\""},
+    {"text": "Resolves owner/repo from the PR's own url field, never a separate gh repo view", "passed": true, "evidence": "\"Resolve {owner}/{repo} from (b)'s own url field ... never a separate gh repo view call\""},
+    {"text": "Resolves the actor via gh api user --jq and verifies permission via gh api repos/.../permission", "passed": true, "evidence": "Both commands quoted literally in (d)"},
+    {"text": "Builds the marker JSON via jq -n --arg, never raw string interpolation", "passed": true, "evidence": "Full jq -n --arg invocation quoted with all fields"},
+    {"text": "Posts via gh pr comment --body-file, not inline --body", "passed": true, "evidence": "\"gh pr comment --body-file <scratchpad-dir>/bypass-attestation-pr77.md\""},
+    {"text": "States it does not poll for the re-triggered check's completion, unlike merge-pr's version", "passed": true, "evidence": "\"Unlike merge-pr's own version of this protocol, this step does not poll for that re-triggered check's completion\""}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

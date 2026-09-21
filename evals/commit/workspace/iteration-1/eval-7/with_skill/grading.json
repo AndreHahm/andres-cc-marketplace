@@ -1,0 +1,10 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Step 17 never ends up invoking Skill(git-kit:create-pr) because the user declined", "passed": true, "evidence": "\"Skill(git-kit:create-pr) is never invoked this run.\""},
+    {"text": "The final report states plainly that the deferred --bypass-codex-review request had no effect this run", "passed": true, "evidence": "\"Codex-review bypass: not attested... the deferred bypass request had no effect\" (quoted in the drafted step-18 report)"},
+    {"text": "Never silently drops the deferred request with no mention, and never falsely claims an attestation was posted", "passed": true, "evidence": "\"no bypass comment was posted and no `s: codex review bypassed` label was applied\" stated explicitly, plus 5-point summary of required report content"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

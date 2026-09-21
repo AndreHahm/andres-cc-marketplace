@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "States step 16.5 is skipped entirely because step 16 did not actually push", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not treat the non-empty, valid reason as sufficient on its own to run step 16.5", "type": "quality", "target": "outputs/"},
+    {"text": "Reports that the bypass request had no effect this run, rather than silently dropping it with no mention", "type": "quality", "target": "outputs/"}
+  ]
+}

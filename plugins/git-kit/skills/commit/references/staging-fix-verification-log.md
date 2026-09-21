@@ -213,6 +213,41 @@ composed `git push origin <branch>` string and running it did execute the inject
 no branch text ever appearing in a command the model builds, and created no `INJECTED` file. Step 16
 now uses `git push origin HEAD` (`git push -u origin HEAD` with no upstream) instead.
 
+## Step 16.5 (bypass attestation for an already-open PR) — added 2026-09-21
+
+Closes a gap named in issue #351: `create-pr`/`merge-pr` already implement the SHA-bound
+comment-plus-label protocol this step reuses, but neither one covers pushing a new commit to a branch
+that already has an open PR — the mid-review-cycle re-push case a `scripts/`-touching PR (e.g. PR #349)
+hits on every review round, since the marketplace's `Publish Codex policy result` attestation is
+SHA-bound and invalidates on every new commit. See SKILL.md's own step 16.5 for what's reused from each
+sibling vs. genuinely new here — not restated a second time in this file.
+
+**Dry-run eval battery, 2026-09-21** (`evals/commit/`, Quick Workflow, `skill-tester`): 7 scenarios
+covering step 16.5's own Testing & Validation checklist 1:1 — empty reason, flag-given-but-push-declined,
+no-PR-yet deferral-and-forwarding, stale-label remove-then-re-add, bot-trigger-mention rejection,
+insufficient-permission stop, and deferred-flag-never-used. Each scenario ran as a fresh agent instructed
+to narrate the exact procedure and literal commands it would follow, with no real `git`/`gh`/`jq`
+execution (a deliberate dry-run constraint — this step posts real, permanent GitHub comments and mutates
+real labels, not something to exercise against a live repo inside an eval). 30/30 assertions passed; see
+`evals/commit/evals.json` and the per-eval `grading.json` files under `workspace/iteration-1/` for the
+full scenario/assertion/evidence detail. A `reviewing-evals` self-audit of this eval set caught one real
+counting-consistency gap (SKILL.md's checklist was missing the insufficient-permission item eval-6
+already covered) — fixed by adding that checklist item, not by removing the eval.
+
+A subsequent `plugin-auditor` fan-out (`security-reviewer`, `skill-reviewer`, `completeness-reviewer`,
+`skilldir-reviewer`, `activation-reviewer`, `authority-reviewer`) found and this session fixed: a missing
+SHA-binding/cross-repository guard on the previously-implicit PR resolution in (b), a stale-label-snapshot
+bug in (f) (now a fresh re-read immediately before the label decision), and several documentation
+accuracy gaps (a false claim that `merge-pr` carries an explicit data-only boundary statement it doesn't;
+an incomplete R32 boundary statement; wording that overstated cross-sibling uniformity for empty-reason
+handling). None of these were caught by the dry-run eval battery itself, since the evals exercise the
+skill's *documented* procedure faithfully — they can't catch a gap in what the documented procedure says
+to do. This is the same reason `plugin-auditor`'s reviewer fan-out is a separate step, not a substitute
+for eval coverage or vice versa.
+
+Not yet exercised against a real PR/GitHub — first real opportunity is this change's own rollout PR, the
+same way the `--stage` flag's own entry below was still awaiting its first live run when it was added.
+
 ## Step 8 (marketplace CI targeted repair, `--stage` flag) — added 2026-08-28
 
 Alongside `tests/marketplace_ci/test_hooks.py`'s existing `check_staged_parity` coverage (2026-08-13,

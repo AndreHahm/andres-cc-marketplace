@@ -1,0 +1,61 @@
+{
+  "skill_name": "commit",
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "description": "Create well-formatted git commits with conventional commit messages — staging review, sensitive-file detection, message confirmation, and optional push/PR/bypass-attestation follow-through.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "empty reason is ignored",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the exact procedure you would follow instead, quoting the literal commands you would run at each point. You have just been invoked as: `commit --push --bypass-codex-review` (no reason text given after the flag — it is empty/missing). There is one staged file, `README.md`, with a trivial typo fix, and the current branch already has an open PR (#500). Walk through what you do, step by step, from staging through to the final result report. Do not actually run any commands — describe each one you would run and why, in order.",
+      "expected_output": "Recognizes that an empty/missing reason means --bypass-codex-review is treated as if it were never passed at all (matches create-pr/merge-pr's own documented behavior for this exact case). Step 16.5 is stated as skipped entirely, with no error, no AskUserQuestion about the flag, and no gh pr comment/gh pr edit commands proposed. The rest of the commit flow (staging, sensitive-file scan, commit, push) proceeds normally, and step 17's Auto-PR is skipped because PR #500 is already open.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "flag given but push never happens",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead, quoting literal commands where relevant. You have just been invoked as: `commit --bypass-codex-review \"fix flaky test\"` (no --push flag, commit_auto_push is false in settings). There is one staged file. When asked at step 16 whether to push, the user answers no. Walk through what happens to the --bypass-codex-review request in this run.",
+      "expected_output": "States plainly that step 16.5 is skipped entirely because step 16 did not actually push (there is no new head commit to attest for) — this applies regardless of the flag being given with a valid non-empty reason. The bypass request is reported as having had no effect this run, never silently dropped without mention.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "no PR open yet — flag deferred and forwarded to Auto-PR",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead, quoting literal commands where relevant. You have just been invoked as: `commit --push --bypass-codex-review \"scripts/ hotfix, tested locally\"` on a brand-new branch with no PR open yet for it. The push (step 16) succeeds. Walk through step 16.5 and step 17 in order, including exactly what gets passed to any nested Skill(git-kit:create-pr) invocation.",
+      "expected_output": "Step 16.5 checks for an already-open PR, finds none, and explicitly defers rather than attempting to attest against nothing — states plainly that the flag will be forwarded to step 17. Step 17 then forwards `--bypass-codex-review \"scripts/ hotfix, tested locally\"` verbatim to whichever Skill(git-kit:create-pr) invocation actually happens (the direct push_auto_pr:true path, or the ask-then-invoke-on-yes path) — never drops the reason text, never re-derives a different reason, never attests itself using create-pr's own step 5 logic redundantly.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "already-open PR with a stale bypass label — remove then re-add",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead, quoting literal commands (including exact gh/jq invocations) you would run at each point. You have just been invoked as: `commit --push --bypass-codex-review \"round 2 fix per review feedback\"`. The push succeeds. `gh pr view --json number,url,headRefOid,labels` shows PR #77 is already open for this branch, and its labels already include `s: codex review bypassed` from a prior round's now-invalidated attestation. Walk through step 16.5 in full detail, quoting the exact gh/jq commands you would run at each sub-step (a) through (g).", "expected_output": "Because the label is already present, uses the remove-then-re-add sequence (`gh pr edit --remove-label \"s: codex review bypassed\"` followed by `gh pr edit --add-label \"s: codex review bypassed\"`) rather than a single --add-label call, explicitly citing that a plain --add-label on an already-present label is a silent GitHub no-op that would not re-trigger publish's re-evaluation. Also shows: resolving owner/repo from the PR's own url field (never a separate gh repo view), resolving the actor via gh api user --jq '.login', verifying permission via gh api repos/{owner}/{repo}/collaborators/{actor}/permission, building the marker via jq -n --arg (never raw string interpolation of the reason), and posting via gh pr comment --body-file. Confirms it does NOT poll for the re-triggered check's completion, unlike merge-pr's version.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "reason text contains a literal bot-trigger mention",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead. You have just been invoked as: `commit --push --bypass-codex-review \"@codex review this after merge\"` on a branch with an already-open PR. The push succeeds. Walk through step 16.5.",
+      "expected_output": "Detects that the reason text itself contains a literal bot-trigger mention (`@codex review`) before ever posting it as a PR comment, and rejects the flag on that basis — reporting why — rather than proceeding to post it. Does not silently strip the mention and post a sanitized version; does not proceed to (d) onward. Explicitly ties this to the same risk create-pr's own step 5 already guards against (a reason that spells out a bot trigger would reproduce the PR #257 self-retrigger incident).",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "insufficient permission stops the attestation, not the push",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead. You have just been invoked as: `commit --push --bypass-codex-review \"urgent fix\"` on a branch with an already-open PR. The push (step 16) already succeeded. At step 16.5(d), `gh api repos/{owner}/{repo}/collaborators/{actor}/permission` returns a permission level of `read` (not write/maintain/admin) for the current actor. Walk through what happens next, and what the final result report says.",
+      "expected_output": "Stops at step 16.5(d) once insufficient permission is detected — never proceeds to (e)/(f)/(g) to post a comment or touch the label. States clearly in the final report that the push already succeeded and only the attestation was skipped, with the specific reason (insufficient permission) — never silently reports the whole run as failed, and never reports the attestation as if it succeeded.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "deferred flag never gets a PR to attach to",
+      "prompt": "DRY RUN — do not execute any git/gh/jq commands for real; narrate the procedure instead. You have just been invoked as: `commit --push --bypass-codex-review \"scripts/ fix\"` on a brand-new branch with no PR open yet. The push succeeds. Step 16.5 correctly defers to step 17 (per eval 3's scenario). At step 17, `push_auto_pr` is false, so you ask the user whether to create a PR now — and the user answers no. Walk through what the final result report says about the --bypass-codex-review request.",
+      "expected_output": "Because step 17 never ends up invoking Skill(git-kit:create-pr) (the user declined), the final report states plainly that the deferred --bypass-codex-review request had no effect this run — never silently drops it with no mention, and never falsely claims an attestation was posted.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "scope": "Only the 7 step-16.5 bypass-attestation checklist items added 2026-09-21 (SKILL.md's Testing & Validation section has ~42 items total covering every other step; this eval set does not exercise those).",
+    "declared_scenarios_total": 7,
+    "declared_scenarios_covered": 7,
+    "uncovered": []
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Step 16.5 checks for an already-open PR and finds none", "type": "functionality", "target": "outputs/"},
+    {"text": "Explicitly defers rather than attempting to attest against a nonexistent PR", "type": "quality", "target": "outputs/"},
+    {"text": "States plainly that the flag will be forwarded to step 17", "type": "quality", "target": "outputs/"},
+    {"text": "Step 17 forwards --bypass-codex-review \"scripts/ hotfix, tested locally\" verbatim to the Skill(git-kit:create-pr) invocation it makes", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not attempt to run create-pr's own attestation logic itself, redundantly, inside commit", "type": "quality", "target": "outputs/"}
+  ]
+}

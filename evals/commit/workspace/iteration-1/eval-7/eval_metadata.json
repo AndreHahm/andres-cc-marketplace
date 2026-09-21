@@ -1,0 +1,9 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Step 17 never ends up invoking Skill(git-kit:create-pr) because the user declined", "type": "presence", "target": "outputs/"},
+    {"text": "The final report states plainly that the deferred --bypass-codex-review request had no effect this run", "type": "quality", "target": "outputs/"},
+    {"text": "Never silently drops the deferred request with no mention, and never falsely claims an attestation was posted", "type": "quality", "target": "outputs/"}
+  ]
+}

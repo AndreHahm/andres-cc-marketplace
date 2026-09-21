@@ -197,8 +197,12 @@ on that real author. A PR with no matching attestation comment is unaffected by 
 regardless of its value — every PR still needs its own SHA-bound attestation; this only changes how
 the check discovers one.
 
-`Skill(git-kit:create-pr)` and `Skill(git-kit:merge-pr)` both support `--bypass-codex-review "<reason>"`
-to run this protocol as part of the normal PR-creation/merge flow rather than by hand. Neither skips any
+`Skill(git-kit:create-pr)`, `Skill(git-kit:merge-pr)`, and `Skill(git-kit:commit)` all support
+`--bypass-codex-review "<reason>"` to run this protocol as part of the normal PR-creation/merge/push flow
+rather than by hand. `create-pr` attests for the PR it just created; `merge-pr` attests (and waits for the
+replacement check) for an already-open PR immediately before merging; `commit` attests for an already-open
+PR right after pushing a new commit to it — the mid-review-cycle re-push case neither of the other two
+covers, since the attestation is SHA-bound and invalidates on every new commit. None of the three skips any
 other check, the merge-rights check, or the explicit human merge confirmation — see each skill's own
 Boundaries section.
 

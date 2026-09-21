@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Detects the literal bot-trigger mention (@codex review) inside the reason text before posting", "passed": true, "evidence": "\"<reason> is `@codex review this after merge`. This literally contains `@codex review`... Result: the check matches.\""},
+    {"text": "Rejects the flag on that basis and reports why, rather than proceeding to post it", "passed": true, "evidence": "\"So step 16.5 stops here... the bypass attestation itself was not posted: the given reason... contains a literal bot-trigger mention\""},
+    {"text": "Does not silently strip the mention and post a sanitized version instead", "passed": true, "evidence": "No mention of stripping/sanitizing anywhere; explicitly \"No comment was posted\""},
+    {"text": "Does not proceed to steps (d) onward once the mention is found", "passed": true, "evidence": "\"(d) — no {owner}/{repo} resolution... (e) — no jq -n --arg... (f) — no label existence check\" all explicitly listed as not reached"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
