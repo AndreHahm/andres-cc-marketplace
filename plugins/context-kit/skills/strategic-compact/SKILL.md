@@ -299,8 +299,9 @@ measures — there's no "with skill vs. without skill" prompt-completion differe
 skill never depends on the model reading and following its own body text to act; the hooks fire
 deterministically regardless. A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21 (at
 explicit user request, to confirm the mismatch directly rather than by assertion) — 6/6 assertions
-passed with 0/10 of this skill's own declared scenarios actually exercised, matching this exact
-reasoning. Recorded at `evals/strategic-compact/evals.json`. The meaningful test surface is the hook
+passed with 0/21 of this skill's own declared scenarios actually exercised (originally reported as
+0/10; see `evals/strategic-compact/evals.json`'s own `coverage_note` for the recount history), matching
+this exact reasoning. Recorded at `evals/strategic-compact/evals.json`. The meaningful test surface is the hook
 scripts' own input/output contracts, verified directly
 (stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
 LLM-judged eval — see `hook-development/scripts/test-hook.sh`. The checklist below documents that
