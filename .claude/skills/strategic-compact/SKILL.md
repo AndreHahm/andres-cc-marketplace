@@ -282,11 +282,12 @@ suggest.sh` (the most complex script — async, cross-process locking), `compact
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 26/26 checks passing as of 2026-09-21 (added
+**Last dated run record:** `scripts/smoke_test.py` — 27/27 checks passing as of 2026-09-21 (added
 `check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
-`check_skill_category_*` checks for the new heavy_operation/session_analysis events, plus
+`check_skill_category_*` checks for the new heavy_operation/session_analysis events,
 `check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`
-for 2 fixes found by scripts-reviewer's own pass on this batch).
+for 2 fixes found by scripts-reviewer's own pass on this batch, plus
+`check_no_hook_script_falls_back_to_cksum` for a `cross-model-review` finding on the same batch).
 `context-mode`'s own `scripts/smoke_test.py` — 13/13 checks passing as of 2026-09-21 (6 pre-existing +
 6 `check_mode_switch_*`/gate checks for the context-mode-switch event, plus
 `check_mode_switch_future_timestamp_self_heals` for the same scripts-reviewer pass).

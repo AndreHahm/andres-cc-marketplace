@@ -749,6 +749,45 @@ def check_skill_category_unset_plugin_root_fails_open(tmp_path):
     )
 
 
+def check_no_hook_script_falls_back_to_cksum(tmp_path):
+    # Regression guard (cross-model-review, 2026-09-21): every bash hook that
+    # computes SESSION_HASH used to fall back to `cksum` when neither md5sum
+    # nor md5 was on PATH -- a different algorithm than detect_mode.py's own
+    # Python-side hashlib.md5, which has no cksum-equivalent fallback at all.
+    # On such a system the two hashes would silently diverge, breaking
+    # cross-hook/cross-language tracking-file lookups with no error anywhere.
+    # A full subprocess simulation (stripping md5sum/md5 from PATH) is too
+    # fragile -- bash needs many other PATH tools (date, mkdir, find, head,
+    # kill, jq) these scripts also depend on -- so this checks the simpler,
+    # directly-meaningful invariant instead: the actual `| cksum` command
+    # invocation must not appear in any hook script that computes a
+    # SESSION_HASH, in any of the 6 sibling scripts that share this exact
+    # pattern, not just the one originally flagged. Matches the invocation
+    # shape specifically (piped into cksum), not the bare word "cksum" --
+    # several of these scripts' own explanatory comments now name cksum by
+    # word to document why the fallback was removed, which a bare substring
+    # match would false-positive against.
+    import re
+
+    hook_scripts = [
+        "compact-session-init.sh",
+        "compact-skill-category-detector.sh",
+        "compact-track-and-suggest.sh",
+        "compact-stop-check.sh",
+        "compact-milestone-detector.sh",
+        "compact-instructions.sh",
+    ]
+    offenders = []
+    for name in hook_scripts:
+        script_path = HOOKS_DIR / name
+        content = script_path.read_text(encoding="utf-8")
+        if re.search(r"\|\s*cksum\b", content):
+            offenders.append(name)
+    if offenders:
+        return False, f"cksum fallback still present in: {offenders}"
+    return True, "no hook script falls back to cksum for SESSION_HASH -- MD5 is the only algorithm"
+
+
 def check_session_init_resets_mode_file_on_startup(tmp_path):
     # Regression guard (scripts-reviewer, 2026-09-21): compact-session-init.sh's
     # startup/clear/compact reset must also delete the session's own mode-<hash>
@@ -806,6 +845,7 @@ CHECKS = [
     check_skill_category_local_override_is_additive,
     check_skill_category_unset_plugin_root_fails_open,
     check_session_init_resets_mode_file_on_startup,
+    check_no_hook_script_falls_back_to_cksum,
 ]
 
 

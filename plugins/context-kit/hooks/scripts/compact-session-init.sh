@@ -36,7 +36,15 @@ if command -v md5sum &>/dev/null; then
 elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 | cut -c1-8)
 else
-    SESSION_HASH=$(echo "${SESSION_ID:-default}" | cksum | cut -d' ' -f1)
+    # No md5 tool available -- fail open rather than fall back to a
+    # different hash algorithm (cksum). detect_mode.py's own Python-side
+    # session-hash computation only ever uses hashlib.md5 with no
+    # cksum-equivalent fallback; a bash script computing a cksum-based
+    # hash here would silently diverge from every other hash in this
+    # plugin (Python and the other bash hooks alike), breaking
+    # cross-hook/cross-language state lookups with no error anywhere
+    # (found by cross-model-review, 2026-09-21). Exit instead of guessing.
+    exit 0
 fi
 
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
