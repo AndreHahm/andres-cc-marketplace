@@ -185,6 +185,15 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   specifically, not to every CI gate `scripts/marketplace_ci/` code feeds (see `pr_policy.py` above for
   the one that still needs the hard refusal for an unrelated reason).
 
+  "Real coverage" here also means a **type-specific** reviewer, not just DELTA_VALIDATE's baseline
+  three — none of which review script/rule/hook-manifest correctness (found live, PR #370, Codex
+  connector review). `_audit_types_for` (`review.py`) dispatches `scripts-reviewer` for a `.py` change
+  under `scripts/marketplace_ci/`, `rule-reviewer` for a `.md` change under
+  `scripts/marketplace_ci/rules/`, and `hook-reviewer` for a `.json` change under
+  `scripts/marketplace_ci/hooks/` — the same `LAUNCH_AUDIT_BY_COMPONENT_TYPE` mechanism `skills/`/
+  `agents/` changes already get, extended to these three Tier 2 surfaces since none of them are a
+  `plugins/<name>/<type>/` path that mechanism's own component-type keying can match.
+
 This closes the friction issue #351 opened to track: previously *any* `scripts/marketplace_ci/` change —
 including a fix wholly contained in `sync.py`'s apply side — required the same manual bypass-attestation
 cycle every time, with no automated safety net beyond the human doing it (hit directly by PR #349's

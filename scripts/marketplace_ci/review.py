@@ -13,7 +13,7 @@ import re
 import secrets
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -117,6 +117,54 @@ LAUNCH_AUDIT_BY_COMPONENT_TYPE = {
     "skills": "skill-reviewer",
     "agents": "subagent-reviewer",
 }
+
+# scripts/marketplace_ci/ isn't a plugins/<name>/<type>/ path, so
+# LAUNCH_AUDIT_BY_COMPONENT_TYPE's component-type keying never matches any of
+# it -- a change there only ever got DELTA_VALIDATE's baseline three
+# (plugin-rulebook-checker, dependency-reviewer, security-reviewer), none of
+# which review script/rule/hook-manifest correctness. Before issue #351's
+# Tier 1/Tier 2 split, this didn't matter -- BYPASS_INELIGIBLE_PREFIXES's
+# blanket "scripts/" forced every scripts/marketplace_ci change through the
+# manual bypass-attestation protocol, so a human always looked at it
+# regardless. Now that a Tier 2 change (sync.py/validators.py, and the
+# non-Python rules/hooks mirror-source data) can pass on automated review
+# alone, the gap is real. Confirmed live, PR #370 (Codex connector review,
+# P1, on this PR's own diff) -- fixed in the same PR rather than filed, since
+# it's a real, in-scope gap in the change this PR itself makes.
+#
+# scripts-reviewer's own catalogue is a closed set of named bug patterns
+# (missing file-I/O encoding, set -e/pipefail interactions, YAML frontmatter
+# parsing gaps, glob/prefix matching, etc.) -- only the missing-encoding check
+# actually applies to an arbitrary .py file; it is real, targeted coverage
+# where there was previously none, not a general Python-logic-correctness
+# reviewer (a security review of this fix, PR #370, flagged the original
+# comment here as overstating that). rule-reviewer/hook-reviewer are the
+# correctness-focused reviewers for the two non-Python Tier 2 surfaces
+# (scripts/marketplace_ci/rules/*.md, the canonical mirror source for
+# .claude/rules/; scripts/marketplace_ci/hooks/hooks.json, this repo's own
+# hooks manifest source) -- neither is keyed by LAUNCH_AUDIT_BY_COMPONENT_TYPE
+# either, for the same reason.
+_SCRIPTS_REVIEWER_PATH_PREFIX = "scripts/marketplace_ci/"
+_RULES_MIRROR_SOURCE_PREFIX = "scripts/marketplace_ci/rules/"
+_HOOKS_MIRROR_SOURCE_PREFIX = "scripts/marketplace_ci/hooks/"
+
+
+def _audit_types_for(paths: Iterable[str]) -> set[str]:
+    paths = list(paths)  # `any(...)` below would otherwise silently exhaust a
+    # one-shot generator before the set comprehension gets a chance to see it
+    audit_types = {
+        LAUNCH_AUDIT_BY_COMPONENT_TYPE[component]
+        for p in paths
+        if (component := _component_type(p)) in LAUNCH_AUDIT_BY_COMPONENT_TYPE
+    }
+    if any(p.startswith(_SCRIPTS_REVIEWER_PATH_PREFIX) and p.endswith(".py") for p in paths):
+        audit_types.add("scripts-reviewer")
+    if any(p.startswith(_RULES_MIRROR_SOURCE_PREFIX) and p.endswith(".md") for p in paths):
+        audit_types.add("rule-reviewer")
+    if any(p.startswith(_HOOKS_MIRROR_SOURCE_PREFIX) and p.endswith(".json") for p in paths):
+        audit_types.add("hook-reviewer")
+    return audit_types
+
 
 # The rulebook-content files a reviewer agent's own instructions Glob/Read
 # live from whatever checkout it's running in -- never base-SHA-pinned the
@@ -281,11 +329,7 @@ def derive_review_scope(
         # reviewers (security-reviewer, dependency-reviewer) off the diff.
         # See the "escalation is never a subset of delta" test below.
         scoped_paths = closure if closure_overflow else set(paths)
-        audit_types = {
-            LAUNCH_AUDIT_BY_COMPONENT_TYPE[component]
-            for p in scoped_paths
-            if (component := _component_type(p)) in LAUNCH_AUDIT_BY_COMPONENT_TYPE
-        }
+        audit_types = _audit_types_for(scoped_paths)
         governance_reviewers = {
             name
             for p in triggering_governance_paths
@@ -331,11 +375,7 @@ def derive_review_scope(
             mode="light", structural_check=STRUCTURAL_CHECK_REF, validate=(), audit=(), paths=paths
         )
 
-    audit_types = {
-        LAUNCH_AUDIT_BY_COMPONENT_TYPE[component]
-        for path in paths
-        if (component := _component_type(path)) in LAUNCH_AUDIT_BY_COMPONENT_TYPE
-    }
+    audit_types = _audit_types_for(paths)
 
     # Reviewer-scope bypass: a plugins/ change whose every path is an evals/
     # fixture (see _is_bypass_scoped_path -- deliberately narrower than
@@ -679,8 +719,23 @@ def prepare_reviewer_instruction(
     validated base SHA — never the PR working tree or index, with no
     fallback — and write its `developer_instructions` field verbatim to
     `out`. Exits 2 (never falls back to the current checkout) if the base
-    SHA can't be resolved, or if `<agent_name>` has no `.toml` export at
-    that SHA (i.e. it isn't registered in `codex_exports.agents`)."""
+    SHA can't be resolved, if `<agent_name>` has no `.toml` export at that
+    SHA (i.e. it isn't registered in `codex_exports.agents`), or if the
+    export's `developer_instructions` field can't actually be extracted
+    (empty or missing -- e.g. a `.toml` using single-quoted triple-quotes
+    instead of the double-quoted triple-quote form
+    `_DEVELOPER_INSTRUCTIONS_PATTERN` matches, or hand-edited without the
+    field at all). The last case matters as much as the other two: a
+    silent empty extraction previously wrote an empty instruction file and
+    let dispatch proceed as if the reviewer had real instructions -- Codex
+    then ran with nothing to check against, `validate_review_output` still
+    accepted its (necessarily empty) findings as schema-valid, and the run
+    reported that reviewer as having completed. Found live on PR #370: this
+    exact bug was about to ship a *second* time (a newly-added
+    `scripts-reviewer` dispatch) on top of an already-live instance
+    (`consistency-reviewer`, dispatched on every governance escalation) --
+    fixing extraction to fail closed here is what actually closes the class
+    of bug, not just the two instances found so far."""
     repo = repo or Path.cwd()
     rel = f".codex/agents/{agent_name}.toml"
 
@@ -705,6 +760,15 @@ def prepare_reviewer_instruction(
         raise SystemExit(2)
 
     instructions = _extract_developer_instructions(result.stdout.decode("utf-8"))
+    if not instructions.strip():
+        print(
+            f"prepare-reviewer-instruction: {rel} at {base_sha} has no extractable "
+            f"developer_instructions ({agent_name!r} would dispatch with an empty "
+            "instruction body) -- refusing rather than silently reporting a completed "
+            "review that never actually reviewed anything",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(instructions, encoding="utf-8")
     return out

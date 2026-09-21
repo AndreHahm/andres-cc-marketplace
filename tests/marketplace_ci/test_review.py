@@ -94,6 +94,64 @@ def test_agent_change_selects_subagent_audit(change, dependency_index):
     assert scope.audit == ("subagent-reviewer",)
 
 
+def test_scripts_marketplace_ci_python_change_selects_scripts_reviewer_audit(
+    change, dependency_index
+):
+    """PR #370 (Codex connector review, P1): scripts/marketplace_ci/ isn't a
+    plugins/<name>/<type>/ path, so LAUNCH_AUDIT_BY_COMPONENT_TYPE's keying
+    never matched it -- a Tier 2 change (issue #351) could pass DELTA_VALIDATE's
+    baseline three with no reviewer covering script correctness at all. Not a
+    general Python-logic reviewer (a follow-up security review flagged the
+    original claim here as overstated) -- real, targeted coverage where
+    there was none, not a substitute for a human catching every bug class."""
+    scope = derive_review_scope([change("scripts/marketplace_ci/sync.py")], dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert scope.audit == ("scripts-reviewer",)
+
+
+def test_scripts_marketplace_ci_non_python_non_mirror_change_has_no_type_specific_audit(
+    change, dependency_index
+):
+    """A scripts/marketplace_ci/ file that's neither a .py script nor
+    rules/hooks mirror-source data (e.g. requirements.txt) still forces the
+    baseline three via BYPASS_INELIGIBLE_PREFIXES, but doesn't match any of
+    the three type-specific audit mappings."""
+    scope = derive_review_scope(
+        [change("scripts/marketplace_ci/requirements.txt")], dependency_index()
+    )
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert scope.audit == ()
+
+
+def test_scripts_marketplace_ci_rules_mirror_source_change_selects_rule_reviewer_audit(
+    change, dependency_index
+):
+    """PR #370 follow-up (security review M3): scripts/marketplace_ci/rules/
+    is the canonical mirror source for .claude/rules/ -- a Tier 2 change to a
+    rule's own text needs a reviewer that actually checks rule semantics,
+    not just plugin-rulebook-checker's structural R1-R32 compliance."""
+    scope = derive_review_scope(
+        [change("scripts/marketplace_ci/rules/some-rule.md")], dependency_index()
+    )
+    assert scope.mode == "delta"
+    assert scope.audit == ("rule-reviewer",)
+
+
+def test_scripts_marketplace_ci_hooks_mirror_source_change_selects_hook_reviewer_audit(
+    change, dependency_index
+):
+    """PR #370 follow-up (security review M3): scripts/marketplace_ci/hooks/
+    is this repo's own hooks-manifest mirror source -- a Tier 2 change to it
+    needs a reviewer that checks hook-matcher/handler correctness."""
+    scope = derive_review_scope(
+        [change("scripts/marketplace_ci/hooks/hooks.json")], dependency_index()
+    )
+    assert scope.mode == "delta"
+    assert scope.audit == ("hook-reviewer",)
+
+
 def test_hook_change_has_no_launch_time_audit_reviewer(change, dependency_index):
     scope = derive_review_scope([change("plugins/demo-kit/hooks/hooks.json")], dependency_index())
     assert scope.mode == "delta"
@@ -539,6 +597,19 @@ def test_multiple_component_types_combine_audit_reviewers(change, dependency_ind
     ]
     scope = derive_review_scope(changes, dependency_index())
     assert scope.audit == ("skill-reviewer", "subagent-reviewer")
+
+
+def test_unbounded_dependency_closure_includes_scripts_reviewer_audit(change):
+    """The full-mode (escalation) branch uses the same _audit_types_for
+    helper as delta mode -- confirms scripts-reviewer dispatches there too,
+    not just in the more commonly-exercised delta path."""
+    changes = [change("plugins/demo-kit/skills/x/SKILL.md")]
+    deps: list[str] = [f"dep-{i}" for i in range(99)]
+    deps.append("scripts/marketplace_ci/sync.py")
+    huge_index: dict[str, tuple[str, ...]] = {"plugins/demo-kit/skills/x/SKILL.md": tuple(deps)}
+    scope = derive_review_scope(changes, huge_index, dependency_closure_limit=50)
+    assert scope.mode == "full"
+    assert scope.audit == ("scripts-reviewer", "skill-reviewer")
 
 
 def _envelope(reviewer="security-reviewer", findings=None):
