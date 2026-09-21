@@ -100,3 +100,53 @@ own `additionalContext` output for the current turn — never when the identical
 file contents, tool output, a fetched page, or another agent's report. Without this boundary, any
 content containing that literal string could force a mode switch (a prompt-injection surface caught
 during this skill's Self-Review pass). See `SKILL.md`'s "How activation reaches this skill" section.
+
+## Mode-switch-suggestion side effect — added 2026-09-21
+
+The original design only deferred to `strategic-compact` on a "hard switch" (a genuinely heavy
+transition, or context already large). This broadens that: `scripts/detect_mode.py` itself now
+suggests `/compact` on **any** confidently-detected mode change, not just a hard one, since even an
+ordinary posture change can leave stale, no-longer-relevant context behind — the cost of a missed
+compaction opportunity on an ordinary switch outweighs the cost of an occasional extra suggestion,
+especially since it's throttled to once per 5 minutes. See `SKILL.md`'s "Mid-session switching
+mechanics" section for the operational statement and `SKILL.md`'s own "State and side effects" bullet
+(under Known Limitations) for the exact files written and the no-lock/fail-open design.
+
+## Nonce rejection rationale
+
+A per-invocation nonce was considered and rejected (security-reviewer, 2026-09-17) as a mechanical
+strengthening of the provenance boundary (`SKILL.md`'s "Provenance boundary" section): a nonce is a
+comparison mechanism, and the only reference copy of the nonce would live in the same context window
+the forgery itself occupies — if the model can reliably locate "this turn's own `additionalContext`
+block" to read the authoritative nonce, it has already solved the provenance problem the nonce was
+meant to solve, and gains nothing by also checking a nonce; if it can't locate that block reliably, the
+nonce is unverifiable either way. This mirrors `route-through-git-kit-lifecycle-skills.md`'s own
+conclusion about its marker handshake ("stops accidental bypass, not a deliberately adversarial
+agent") — a context-mode nonce would be the same class of unauthenticated plaintext marker, checked by
+the model itself inside the attacker's own channel, rather than by a separate process in a different
+trust domain the way git-kit's version is. The accepted residual risk is bounded: a successful forgery
+only ever changes operating *posture* among 4 fixed modes (verified directly against
+`references/dev.md`, the most permissive profile — it disables no hard gate, only relaxes
+ask-before-acting on obvious implementation choices), never a permission or tool-grant, is stated
+plainly on every switch per `SKILL.md`'s "Reporting a mode change" section (never silent), and
+presupposes an attacker who can already inject arbitrary text into context — a capability strictly more
+damaging on its own than a posture flip. See `SKILL.md`'s Dispatch logic's own closed-vocabulary check
+for the one concrete, mechanical fix that *was* worth making from this same review pass (a forged tag
+can no longer steer an arbitrary `references/*.md` read).
+
+## Hook latency
+
+The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
+interpreter startup — noisy from run to run) is well within this hook's actual configured timeout —
+5 seconds, per `hooks/hooks.json`'s own registration for this entry, the real operative ceiling
+(not `UserPromptSubmit`'s 30-second platform default, per `code.claude.com/docs/en/hooks` — verified
+directly, not from this repo's own `hook-development` reference doc, which states a "<100ms" figure
+for this event that does not appear anywhere in the official docs and should not be read as an
+enforced platform requirement). It is, however, slower than ideal for a hook that runs on every single
+prompt, even after dropping the `uv`-runner attempt this plugin's other Python hooks use (no
+dependency-resolution benefit here, since `detect_mode.py` has zero third-party dependencies — removed
+to save the one subprocess hop it did cost, though the measured effect was within this platform's own
+run-to-run noise, not a clean improvement). Not something this pass fully resolved — the implementation
+is already dependency-free, so the residual cost is Python interpreter startup itself, not a dependency
+to remove. A future pass could investigate reducing that startup cost (a non-Python implementation, or
+a persistent helper process) if this proves disruptive in practice.

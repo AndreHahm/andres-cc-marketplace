@@ -41,6 +41,7 @@ fi
 
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 TRACK_LOCK="${TRACK_FILE}.lock"
+MODE_FILE="${TRACK_DIR}/mode-${SESSION_HASH}"
 
 # Get current timestamp
 START_TIME=$(date +%s)
@@ -128,6 +129,15 @@ if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compac
             echo "T3=$T3"
             echo "TIME_THRESHOLD=$TIME_THRESHOLD"
         } > "${TRACK_FILE}.tmp" && mv "${TRACK_FILE}.tmp" "$TRACK_FILE"
+
+        # Reset detect_mode.py's own per-session mode-switch state alongside
+        # $TRACK_FILE -- kept symmetric (found by scripts-reviewer, 2026-09-21):
+        # a switch relative to a mode observed before this reset shouldn't be
+        # treated as a real switch afterward, the same way stale tool-call
+        # counters aren't carried forward either. Single-writer file (only
+        # detect_mode.py itself writes it), so a plain rm -f under this same
+        # lock is sufficient -- no separate lock exists for it to race.
+        rm -f "$MODE_FILE" 2>/dev/null
 
         _owner_pid=$(head -n1 "${TRACK_LOCK}/created" 2>/dev/null)
         if [ -z "$_owner_pid" ] || [ "$_owner_pid" = "$$" ]; then

@@ -144,15 +144,20 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
     current_mode = candidates[0]
     try:
         track_dir = _strategic_compact_track_dir()
-        track_dir.mkdir(parents=True, exist_ok=True)
         session_hash = _strategic_compact_session_hash(session_id or "default")
 
         # Gate on strategic-compact's own tracking file already existing for
         # this session - the same "session already initialized" precondition
         # its own bash hooks use, so this never fires before
-        # compact-session-init.sh has run for the session.
+        # compact-session-init.sh has run for the session. Path.exists() on a
+        # not-yet-created track_dir just returns False, so this check needs no
+        # mkdir first -- deferred below, past this gate, so an install where
+        # strategic-compact's SessionStart hook never ran doesn't get
+        # ~/.claude/strategic-compact/ created as a side effect of context-mode
+        # alone (found by scripts-reviewer, 2026-09-21).
         if not (track_dir / f"session-{session_hash}").exists():
             return
+        track_dir.mkdir(parents=True, exist_ok=True)
 
         state_file = track_dir / f"mode-{session_hash}"
         last_mode = ""
@@ -167,6 +172,15 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
                         last_switch_time = int(raw)
 
         now = int(time.time())
+        # A last_switch_time in the future (a corrupted or tampered state
+        # file) would otherwise keep `throttled` permanently True (an
+        # arbitrarily large negative gap), wedging the suggestion dark until
+        # the 24h sweep deletes the file -- treat it the same as "never
+        # emitted" instead of trusting it (found by scripts-reviewer,
+        # 2026-09-21). This file has a single, non-adversarial writer, so
+        # this is a robustness/self-healing check, not a security fix.
+        if last_switch_time > now:
+            last_switch_time = 0
         switched = bool(last_mode) and last_mode != current_mode
         throttled = (now - last_switch_time) < MODE_SWITCH_COOLDOWN_SECONDS
         emit = switched and not throttled

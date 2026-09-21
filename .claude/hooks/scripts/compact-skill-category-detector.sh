@@ -63,7 +63,13 @@ TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 # session yet (same precondition compact-milestone-detector.sh uses).
 [ ! -f "$TRACK_FILE" ] && exit 0
 
-DEFAULTS_FILE="${CLAUDE_PLUGIN_ROOT}/hooks/context-kit.settings.json"
+# Guard against an unset CLAUDE_PLUGIN_ROOT the same way LOCAL_FILE below already
+# guards CLAUDE_PROJECT_DIR -- unguarded, this would build the root-relative path
+# "/hooks/context-kit.settings.json", which on Windows/Git-Bash is subject to
+# MSYS's automatic POSIX-to-Windows path translation rather than failing cleanly
+# (found by scripts-reviewer, 2026-09-21).
+[ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && exit 0
+DEFAULTS_FILE="${CLAUDE_PLUGIN_ROOT:-}/hooks/context-kit.settings.json"
 [ ! -f "$DEFAULTS_FILE" ] && exit 0
 
 LOCAL_FILE="${CLAUDE_PROJECT_DIR:-}/.claude/context-kit.local.json"

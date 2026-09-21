@@ -42,8 +42,14 @@ def run(script, stdin_text, home):
     )
 
 
-def run_category_detector(phase: str, stdin_text: str, home, project_dir=None):
-    env: dict[str, str] = {**os.environ, "HOME": str(home), "CLAUDE_PLUGIN_ROOT": str(PLUGIN_ROOT)}
+def run_category_detector(
+    phase: str, stdin_text: str, home, project_dir=None, unset_plugin_root=False
+):
+    env: dict[str, str] = {**os.environ, "HOME": str(home)}
+    if unset_plugin_root:
+        env.pop("CLAUDE_PLUGIN_ROOT", None)
+    else:
+        env["CLAUDE_PLUGIN_ROOT"] = str(PLUGIN_ROOT)
     if project_dir is not None:
         env["CLAUDE_PROJECT_DIR"] = str(project_dir)
     else:
@@ -725,6 +731,54 @@ def check_skill_category_local_override_is_additive(tmp_path):
     )
 
 
+def check_skill_category_unset_plugin_root_fails_open(tmp_path):
+    # Regression guard (scripts-reviewer, 2026-09-21): CLAUDE_PLUGIN_ROOT used
+    # to be interpolated with no ${VAR:-} guard, so an unset value silently
+    # built the root-relative path "/hooks/context-kit.settings.json" instead
+    # of failing cleanly. Must exit 0 with no output when unset.
+    home = make_home_with_tracking_file(tmp_path, "catunsetroot")
+    payload = json.dumps({"session_id": "catunsetroot", "tool_input": {"skill": "plugin-auditor"}})
+    result = run_category_detector("start", payload, home, unset_plugin_root=True)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0: {result.stderr[:300]}"
+    if result.stdout.strip():
+        return False, f"an unset CLAUDE_PLUGIN_ROOT incorrectly produced output: {result.stdout!r}"
+    return (
+        True,
+        "an unset CLAUDE_PLUGIN_ROOT fails open (exit 0, no output) instead of building a bad path",
+    )
+
+
+def check_session_init_resets_mode_file_on_startup(tmp_path):
+    # Regression guard (scripts-reviewer, 2026-09-21): compact-session-init.sh's
+    # startup/clear/compact reset must also delete the session's own mode-<hash>
+    # file (detect_mode.py's state), kept symmetric with its existing $TRACK_FILE
+    # counter reset -- otherwise a mode observed before the reset could still be
+    # compared against as a "prior mode" after it.
+    session_init = HOOKS_DIR / "compact-session-init.sh"
+    home = tmp_path / "home_mode_reset"
+    home.mkdir()
+    import hashlib
+
+    session_id = "modereset"
+    session_hash = hashlib.md5((session_id + "\n").encode(), usedforsecurity=False).hexdigest()[:8]
+    track_dir = home / ".claude" / "strategic-compact"
+    track_dir.mkdir(parents=True)
+    mode_file = track_dir / f"mode-{session_hash}"
+    mode_file.write_text("LAST_MODE=ship\nLAST_SWITCH_TIME=0\n", encoding="utf-8")
+
+    payload = json.dumps({"session_id": session_id, "source": "startup"})
+    result = run(session_init, payload, home)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0: {result.stderr[:300]}"
+    if mode_file.exists():
+        return False, "mode-<hash> file was not reset alongside TRACK_FILE on a startup source"
+    return (
+        True,
+        "compact-session-init.sh resets the session's mode-<hash> file alongside TRACK_FILE",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -750,6 +804,8 @@ CHECKS = [
     check_skill_category_no_match_produces_no_output,
     check_skill_category_skipped_without_tracking_file,
     check_skill_category_local_override_is_additive,
+    check_skill_category_unset_plugin_root_fails_open,
+    check_session_init_resets_mode_file_on_startup,
 ]
 
 

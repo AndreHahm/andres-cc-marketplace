@@ -126,11 +126,10 @@ Shrink context without losing the information that matters.
 | Tool result clearing | Subagent results auto-clear after reporting | Heavy exploration |
 | Semantic selection | Summarize findings, discard raw data | Research phases |
 
-**Compaction triggers:** `strategic-compact`'s own "Optimal Compaction Points" table is the canonical
-list (exploration→implementation, milestone completed, plan finalized, debug resolved, switching to
-an unrelated task, or its configured tool-call thresholds — T1/T2/T3, default 50/75/100, overridable
-via `STRATEGIC_COMPACT_T1`/`_T2`/`_T3`, see the plugin README). In addition to those detected moments,
-manually compact when context exceeds 80% (set `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80`).
+**Compaction triggers:** `strategic-compact`'s own "Optimal Compaction Points" table is the canonical,
+current list — not restated here, since a hand-copied enumeration would go stale every time that table
+grows (as it already has once, 2026-09-21). In addition to those detected moments, manually compact
+when context exceeds 80% (set `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80`).
 
 **Re-inject critical context after compaction:** this plugin already ships this mechanism —
 `strategic-compact`'s own `pre-compact.py` (`PreCompact`) captures the active plan's state, and

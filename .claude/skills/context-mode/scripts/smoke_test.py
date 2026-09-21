@@ -21,6 +21,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import time
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SCRIPT = SKILL_DIR / "scripts" / "detect_mode.py"
@@ -194,7 +195,11 @@ def check_skill_md_validates_candidates_before_reading(tmp_path):
 def check_mode_switch_skipped_without_tracking_file(tmp_path):
     # No session-<hash> file exists -- the same "session already initialized"
     # precondition strategic-compact's own bash hooks use. Confirms no
-    # mode-<hash> state file is created at all when this gate isn't met.
+    # mode-<hash> state file is created at all when this gate isn't met, and
+    # (regression guard, scripts-reviewer 2026-09-21) that the mkdir is
+    # correctly deferred past this gate -- ~/.claude/strategic-compact/
+    # itself must never be created as a side effect of context-mode alone in
+    # an install where strategic-compact's own SessionStart hook never ran.
     home = tmp_path / "home_no_tracking_file"
     home.mkdir()
     session_id = "notinit"
@@ -202,10 +207,49 @@ def check_mode_switch_skipped_without_tracking_file(tmp_path):
     result = run_hook(payload, home)
     if result.returncode != 0:
         return False, f"exited {result.returncode}, expected 0"
-    state_file = home / ".claude" / "strategic-compact" / f"mode-{_session_hash(session_id)}"
-    if state_file.exists():
-        return False, "mode state file was created despite no session tracking file existing"
-    return True, "mode-switch side effect correctly skipped when no tracking file exists"
+    track_dir = home / ".claude" / "strategic-compact"
+    if track_dir.exists():
+        return (
+            False,
+            "~/.claude/strategic-compact/ was created despite no session tracking file existing "
+            "-- the mkdir is not correctly deferred past the tracking-file gate",
+        )
+    return (
+        True,
+        "mode-switch side effect skipped, creates no directory, when no tracking file exists",
+    )
+
+
+def check_mode_switch_future_timestamp_self_heals(tmp_path):
+    # Regression guard (scripts-reviewer, 2026-09-21): a corrupted/tampered
+    # mode-<hash> file with LAST_SWITCH_TIME set in the future must not
+    # permanently wedge the throttle -- `throttled = (now - last_switch_time)
+    # < 300` would otherwise stay True forever (an arbitrarily large negative
+    # gap), silently disabling the mode-switch suggestion until the 24h sweep
+    # deletes the file. A future timestamp must be treated the same as
+    # "never emitted" instead.
+    session_id = "futuretimestamp"
+    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
+    state_file = track_dir / f"mode-{_session_hash(session_id)}"
+    far_future = int(time.time()) + 10_000_000
+    state_file.write_text(f"LAST_MODE=ship\nLAST_SWITCH_TIME={far_future}\n", encoding="utf-8")
+
+    result = run_hook(
+        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
+    )
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}, expected 0"
+    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
+    if not pending_file.exists():
+        return (
+            False,
+            "a real mode switch was suppressed by a corrupted future LAST_SWITCH_TIME instead of "
+            "self-healing",
+        )
+    return (
+        True,
+        "a future/corrupted LAST_SWITCH_TIME self-heals, not a permanently wedged throttle",
+    )
 
 
 def check_mode_switch_first_observation_no_suggestion(tmp_path):
@@ -316,6 +360,7 @@ CHECKS = [
     check_mode_switch_emits_on_real_change,
     check_mode_switch_throttled_within_cooldown,
     check_mode_switch_ignores_ambiguous_multi_candidate_turn,
+    check_mode_switch_future_timestamp_self_heals,
 ]
 
 
