@@ -205,7 +205,14 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
             f"[StrategicCompact] Context-mode switched ({last_mode} -> {current_mode}). "
             "Consider /compact if the prior mode's context is no longer needed."
         )
-        pending_file.write_text(suggestion, encoding="utf-8")
+        # Append, never overwrite -- compact-track-and-suggest.sh may already
+        # have an unconsumed suggestion queued in this same file, and this
+        # write must not silently clobber it (found by CodeRabbit's
+        # automated PR review, 2026-09-21, against PR #368; see
+        # compact-stop-check.sh for the queue-draining side of this
+        # contract).
+        with pending_file.open("a", encoding="utf-8") as f:
+            f.write(suggestion + "\n")
     except Exception:
         return
 

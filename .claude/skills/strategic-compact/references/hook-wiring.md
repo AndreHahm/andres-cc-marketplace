@@ -21,21 +21,24 @@ sibling skills — e.g. `context-mode`'s `UserPromptSubmit` hook lives in the sa
   overhead), well above `PreToolUse`'s documented budget, so it no longer blocks the tool call it's
   attached to or synchronously injects `additionalContext`. It still writes any detected suggestion to
   a pending-suggestion file synchronously within its own (backgrounded) run — the `Stop` hook below is
-  what actually delivers it to the user, not this hook's own return value. `compact-skill-category-detector.sh
-  start` (matcher `^Skill$`, added 2026-09-21 — see `SKILL.md`'s "Skill-category events" section)
+  what actually delivers it to the user, not this hook's own return value. `compact-skill-category-detector.sh`
+  (matcher `^Skill$`, added 2026-09-21 — see `SKILL.md`'s "Skill-category events" section)
   separately detects a
-  known `heavy_operation`/`session_analysis` skill about to start. Unlike `compact-track-and-suggest.sh`,
-  this one runs synchronously (not `async`) — its own cost (jq parsing two small config files plus a
-  tracking-file existence check) is reasoned as comparable to `context-monitor.py`'s own measured
-  83-97ms tier, not independently live-benchmarked; disclosed as an assumption, not a measurement.
+  known `heavy_operation`/`session_analysis` skill about to start. It's `PreToolUse`-only by design —
+  there's no `PostToolUse` counterpart, since a Skill() call's own `PostToolUse` event fires once the
+  skill's instructions have loaded, not once the model has actually finished executing them; an earlier
+  version wired both phases and had the `PostToolUse` one claim the skill had "finished," which was
+  false almost every time it fired (dropped after Codex's automated PR review, 2026-09-21, against
+  PR #368; see `SKILL.md`'s "Skill-category events" section for the full rationale). Unlike
+  `compact-track-and-suggest.sh`, this one runs synchronously (not `async`) — its own cost (jq parsing
+  two small config files plus a tracking-file existence check) is reasoned as comparable to
+  `context-monitor.py`'s own measured 83-97ms tier, not independently live-benchmarked; disclosed as an
+  assumption, not a measurement. It also delivers its own suggestion directly via this call's
+  synchronous JSON output, the same as `context-monitor.py` below — it never touches the
+  pending-file/`Stop`-hook relay at all.
 - **`PostToolUse`** — `compact-milestone-detector.sh` (matcher `^(Bash|PowerShell)$`, broadened
   2026-09-21 — see "Windows PowerShell coverage" below) detects milestones (tests passing, commits,
-  builds, deploys) from the command that just ran. `compact-skill-category-detector.sh finish` (matcher
-  `^Skill$`, added 2026-09-21) detects a known `heavy_operation`/`session_analysis` skill that just
-  completed, delivering its own suggestion directly via this call's synchronous JSON output — unlike the
-  milestone/threshold suggestions above, it never touches the pending-file/`Stop`-hook relay at all,
-  since a `PostToolUse` hook that isn't `async` can already deliver `additionalContext` synchronously
-  and reliably. `context-monitor.py` (matcher
+  builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
   from transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds — its
   own throttling (60s between checks below the warning threshold, once per threshold above it) gates
@@ -54,15 +57,22 @@ sibling skills — e.g. `context-mode`'s `UserPromptSubmit` hook lives in the sa
   limitation; see the script's own comment). The plugin's actual state-preservation guarantee is
   `pre-compact.py`, which captures the active plan's state (see `SessionStart` above) for
   `post-compact-restore.py` to restore afterward via `additionalContext` on `SessionStart`.
-- **`Stop`** — `compact-stop-check.sh` checks for a pending suggestion that hasn't reached the user
-  yet and **blocks the stop once** (`{"decision": "block", ...}`) when one exists, guarded by
+- **`Stop`** — `compact-stop-check.sh` checks for pending suggestions that haven't reached the user
+  yet and **blocks the stop once** (`{"decision": "block", ...}`) when at least one exists, guarded by
   `stop_hook_active` so it never re-triggers itself on the resulting continuation. This is the
   suggestion's actual delivery mechanism (see the `PreToolUse` note above), though not an absolute
   guarantee: since `compact-track-and-suggest.sh` now runs async, its background write of the
   pending-suggestion file could in principle still be in flight when `Stop` fires immediately after
   (e.g. a suggestion detected on the very last tool call of a turn). In practice the write completes
   well within the hook's own timeout, so this is a narrow, disclosed edge case, not a routine failure
-  mode.
+  mode. **The pending file is a queue, not a single slot (updated 2026-09-21):** two writers
+  (`compact-track-and-suggest.sh`, `context-mode`'s `detect_mode.py`) can each append a suggestion
+  before this hook drains it — a plain overwrite would let a later write silently clobber an earlier,
+  not-yet-delivered one (found by CodeRabbit's automated PR review, 2026-09-21, against PR #368). Both
+  writers append rather than overwrite; this hook reads every line, validates each independently
+  against the same strict single-line shape the original single-suggestion check used, and delivers all
+  still-valid lines in one `decision: block`, capped at 20 delivered suggestions as a defense-in-depth
+  bound.
 
 `compact-track-and-suggest.sh` and `compact-milestone-detector.sh` share one tracking file per
 session; a `mkdir`-based lock (bounded retries, fail-open, with stale-lock detection for a

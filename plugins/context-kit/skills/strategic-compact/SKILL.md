@@ -57,8 +57,8 @@ Auto-compact triggers at context limits, often mid-task. Strategic compaction pr
 | Switching to unrelated task | Previous context not relevant |
 | Configured tool-call threshold reached (T1/T2/T3, default 50/75/100, overridable via `STRATEGIC_COMPACT_T1`/`_T2`/`_T3` — see the plugin README) | Accumulated context likely stale |
 | Context-mode switched (added 2026-09-21 — any confidently-detected dev/review/ship/admin change, not just a "hard" one; see "Context-mode switch events" below) | The prior mode's context is often no longer relevant to the new posture |
-| A known `heavy_operation` skill starts or finishes (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless). Finish: its own dispatch/report context is no longer needed |
-| A known `session_analysis` skill starts or finishes (added 2026-09-21 — e.g. `analyzing-sessions`, `starting-an-analysis`; see "Skill-category events" below) | Start: a nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless). Finish: its own transcript-reading context is no longer needed |
+| A known `heavy_operation` skill is about to start (added 2026-09-21 — e.g. `plugin-auditor`, `plugin-lifecycle-downstream`; see "Skill-category events" below) | A nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless) |
+| A known `session_analysis` skill is about to start (added 2026-09-21 — e.g. `starting-an-analysis`, `analyzing-plugin-components`; see "Skill-category events" below) | A nudge if you haven't compacted recently (informational only — the call itself is already committed to run regardless) |
 
 ### Avoid Compaction During
 
@@ -139,19 +139,27 @@ itself, which lives in `context-mode`'s own script.
 
 ## Skill-category events (added 2026-09-21)
 
-A new hook, `compact-skill-category-detector.sh`, fires on `PreToolUse` (a Skill() call about to start)
-and `PostToolUse` (one that just finished), classifying the invoked skill's name against two category
-lists and suggesting `/compact` with different wording for start vs. finish — both directions fire, with
-no cooldown between them (each Skill() invocation is a fresh, bounded event worth its own suggestion,
-not a potentially-noisy repeated command the way a Bash milestone pattern can be):
+A new hook, `compact-skill-category-detector.sh`, fires on `PreToolUse` for a Skill() call about to
+start, classifying the invoked skill's name against two category lists and suggesting `/compact` if
+it's been a while, with no cooldown (each Skill() invocation is a fresh, bounded event worth its own
+suggestion, not a potentially-noisy repeated command the way a Bash milestone pattern can be).
 
-**Disclosed limitation — the `start` suggestion is advisory, not a guarantee.** `PreToolUse` fires
-before the Skill() call executes, but by the time it fires the decision to invoke that skill has
+**`PreToolUse`-only by design — there is no `PostToolUse` "finish" counterpart.** An earlier version of
+this hook also fired on `PostToolUse`, claiming the skill had "finished." That claim was false almost
+every time it fired: a Skill() call's own `PostToolUse` event fires once the skill's instructions have
+loaded into the conversation as a message, not once the model has actually finished executing the
+workflow those instructions describe (see `skill-development`'s `references/design-patterns.md`, "Skill
+content lifecycle") — there is no hook event in Claude Code that fires on real workflow completion for
+a foreground skill. Rather than keep a message that reads as factually wrong most of the time, the
+finish phase was dropped entirely (found by Codex's automated PR review, 2026-09-21, against PR #368).
+
+**Disclosed limitation — the remaining `start` suggestion is advisory, not a guarantee.** `PreToolUse`
+fires before the Skill() call executes, but by the time it fires the decision to invoke that skill has
 already been made — the call is about to run regardless of what the hook suggests. A `/compact` run in
 response to the suggestion can't retroactively change the context the about-to-run skill will operate
 against; it can only get the session into a better state for whatever comes *after* this particular
-call. The `start`-phase wording below reflects this: it nudges toward compacting soon if it hasn't
-happened recently, rather than claiming to precede or gate the specific Skill() call it fired on.
+call. The wording below reflects this: it nudges toward compacting soon if it hasn't happened recently,
+rather than claiming to precede or gate the specific Skill() call it fired on.
 
 - **`heavy_operation`** — a skill that does multi-agent fan-out or a whole-plugin/whole-repo
   re-verification (e.g. `plugin-auditor`, `plugin-lifecycle-downstream`, `running-a-full-retrospective`).
@@ -177,7 +185,10 @@ replaces the shipped defaults) — resolved via `${CLAUDE_PROJECT_DIR}`, matchin
 `divergence_exceptions` precedent for why that variable, not `${CLAUDE_PLUGIN_ROOT}`, is correct for a
 project-local file. Requires `jq`: classification needs real JSON array membership, not a regex
 approximation, so this hook fails open (silently, no suggestion) when `jq` is unavailable rather than
-attempt one.
+attempt one. Each file is parsed independently before merging — a malformed local override file falls
+back to the shipped defaults alone rather than disabling classification entirely (found by Codex +
+CodeRabbit's automated PR reviews, 2026-09-21, against PR #368: the original combined-parse approach let
+a broken local file take the shipped defaults down with it too).
 
 **A `workflow_skill` category (skills that orchestrate other components, per
 `plugin-rulebook-enforcement.md`'s own existing definition) was considered and deliberately dropped**,
@@ -243,8 +254,19 @@ where, and the data-only boundary governing state content read back — required
 any of this plugin's tracking-file logic.
 
 See `references/hook-wiring.md` for this skill's own hook wiring by event (`SessionStart` through
-`Stop`, including the two new `^Skill$`-matcher entries added 2026-09-21), the shared-tracking-file
+`Stop`, including the `^Skill$`-matcher entry added 2026-09-21), the shared-tracking-file
 locking convention, and the Windows PowerShell milestone-matcher fix.
+
+**The `pending-<hash>` file is a queue, not a single slot (updated 2026-09-21).** Two writers
+(`compact-track-and-suggest.sh`, `context-mode`'s `detect_mode.py`) can each append a suggestion to
+this same file before `compact-stop-check.sh` drains it — a plain overwrite would let a later write
+silently clobber an earlier, not-yet-delivered one (found by CodeRabbit's automated PR review,
+2026-09-21, against PR #368: adding `detect_mode.py` as a second writer to a file only one hook
+previously wrote to made this a real, no-longer-rare collision risk). Both writers now append
+(`>>`/open-in-append-mode) rather than overwrite; `compact-stop-check.sh` reads every line, validates
+each independently against the same strict single-line shape the original single-suggestion check
+used, and delivers all still-valid lines in one `decision: block`, capped at 20 delivered suggestions
+as a defense-in-depth bound (not a realistic accumulation scenario in practice).
 
 ## Reference Guide
 
@@ -256,7 +278,7 @@ locking convention, and the Windows PowerShell milestone-matcher fix.
 | `hooks/scripts/compact-session-init.sh` | `SessionStart` — initializes per-session tool-call tracking |
 | `hooks/scripts/compact-track-and-suggest.sh` | `PreToolUse` — counts tool calls, detects phase transitions, generates suggestions |
 | `hooks/scripts/compact-milestone-detector.sh` | `PostToolUse` — detects test/build/commit/deploy milestones |
-| `hooks/scripts/compact-skill-category-detector.sh` | `PreToolUse`/`PostToolUse` (matcher `^Skill$`) — detects a known `heavy_operation`/`session_analysis` skill starting/finishing |
+| `hooks/scripts/compact-skill-category-detector.sh` | `PreToolUse` (matcher `^Skill$`) — detects a known `heavy_operation`/`session_analysis` skill about to start |
 | `hooks/context-kit.settings.json` | Git-tracked default `heavy_operation`/`session_analysis` skill-category lists |
 | `hooks/scripts/compact-instructions.sh` | `PreCompact` — emits compaction guidance |
 | `hooks/scripts/compact-stop-check.sh` | `Stop` — delivers a pending suggestion, if any |
@@ -267,16 +289,19 @@ locking convention, and the Windows PowerShell milestone-matcher fix.
 
 ## Testing & Validation
 
-**No `evals/strategic-compact/evals.json` — by design, not omission.** This skill's actual behavior
-is hook-driven automation (6 Bash scripts + 3 shared Python hooks, all wired via `hooks/hooks.json`,
-plus `context-mode`'s own `detect_mode.py` as of 2026-09-21), not model-invoked guidance a
-`skill-tester` blind-comparison eval measures — there's no "with skill
-vs. without skill" prompt-completion difference to compare, since the skill never depends on the
-model reading and following its own body text to act; the hooks fire deterministically regardless.
-A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21 (at explicit user request, to
-confirm the mismatch directly rather than by assertion) — 6/6 assertions passed with 0/10 of this
-skill's own declared scenarios actually exercised, matching this exact reasoning. Recorded at
-`evals/strategic-compact/evals.json`. The meaningful test surface is the hook scripts' own input/output contracts, verified directly
+**`evals/strategic-compact/evals.json` exists, but doesn't exercise this skill's actual hook-driven
+behavior — by design, not omission** (fixed 2026-09-21: this section previously said the file didn't
+exist at all, which contradicted the recorded-run sentence two sentences later; found by CodeRabbit's
+automated PR review against PR #368). This skill's actual behavior is hook-driven automation (6 Bash
+scripts + 3 shared Python hooks, all wired via `hooks/hooks.json`, plus `context-mode`'s own
+`detect_mode.py` as of 2026-09-21), not model-invoked guidance a `skill-tester` blind-comparison eval
+measures — there's no "with skill vs. without skill" prompt-completion difference to compare, since the
+skill never depends on the model reading and following its own body text to act; the hooks fire
+deterministically regardless. A `skill-tester` Quick Workflow run was performed anyway on 2026-09-21 (at
+explicit user request, to confirm the mismatch directly rather than by assertion) — 6/6 assertions
+passed with 0/10 of this skill's own declared scenarios actually exercised, matching this exact
+reasoning. Recorded at `evals/strategic-compact/evals.json`. The meaningful test surface is the hook
+scripts' own input/output contracts, verified directly
 (stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
 LLM-judged eval — see `hook-development/scripts/test-hook.sh`. The checklist below documents that
 direct-verification surface, and the persisted `scripts/smoke_test.py` exercises
@@ -290,15 +315,23 @@ suggest.sh` (the most complex script — async, cross-process locking), `compact
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 27/27 checks passing as of 2026-09-21 (added
+**Last dated run record:** `scripts/smoke_test.py` — 29/29 checks passing as of 2026-09-21 (added
 `check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
 `check_skill_category_*` checks for the new heavy_operation/session_analysis events,
 `check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`
-for 2 fixes found by scripts-reviewer's own pass on this batch, plus
-`check_no_hook_script_falls_back_to_cksum` for a `cross-model-review` finding on the same batch).
-`context-mode`'s own `scripts/smoke_test.py` — 13/13 checks passing as of 2026-09-21 (6 pre-existing +
-6 `check_mode_switch_*`/gate checks for the context-mode-switch event, plus
-`check_mode_switch_future_timestamp_self_heals` for the same scripts-reviewer pass).
+for 2 fixes found by scripts-reviewer's own pass on this batch,
+`check_no_hook_script_falls_back_to_cksum` for a `cross-model-review` finding on the same batch, and —
+from Codex + CodeRabbit's automated PR reviews on PR #368 —
+`check_skill_category_malformed_local_json_falls_back_to_defaults` and
+`check_stop_hook_delivers_multiple_queued_suggestions`, plus renaming the two
+`check_skill_category_*_start_and_finish` checks to `*_start` and rewriting
+`check_skill_category_priority_heavy_over_session_analysis` and
+`check_prefixed_content_with_hostile_tail_is_discarded` for the finish-phase removal and pending-file
+queue rewrite respectively).
+`context-mode`'s own `scripts/smoke_test.py` — 14/14 checks passing as of 2026-09-21 (6 pre-existing +
+6 `check_mode_switch_*`/gate checks for the context-mode-switch event,
+`check_mode_switch_future_timestamp_self_heals` for the same scripts-reviewer pass, plus
+`check_mode_switch_pending_write_is_additive` for CodeRabbit's automated PR review on PR #368).
 
 **Verify this skill's hooks activate on:**
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/
@@ -308,9 +341,9 @@ for 2 fixes found by scripts-reviewer's own pass on this batch, plus
 - A `Bash` **or `PowerShell`** command matching a known test/build/commit/deploy pattern (e.g.
   `pytest`, `git commit`, `npm run build`) — `compact-milestone-detector.sh` fires on `PostToolUse`
   for either tool (matcher `^(Bash|PowerShell)$`; see "Windows PowerShell coverage" above).
-- A `Skill()` call to a known `heavy_operation`/`session_analysis` skill — `compact-skill-category-
-  detector.sh` fires on `PreToolUse` (start) and `PostToolUse` (finish), both matcher `^Skill$` (see
-  "Skill-category events" above).
+- A `Skill()` call to a known `heavy_operation`/`session_analysis` skill about to start —
+  `compact-skill-category-detector.sh` fires on `PreToolUse`, matcher `^Skill$` (see "Skill-category
+  events" above).
 - A confidently-detected context-mode switch (exactly one candidate, differing from the last one) —
   `context-mode`'s `detect_mode.py` writes into this skill's own delivery mechanism, throttled to once
   per 5 minutes (see "Context-mode switch events" above).
@@ -351,12 +384,19 @@ removed rather than fixed to check a real field, since `PostToolUse` already gua
       `additionalContext`, with no crash if no state was ever captured.
 - [ ] An env var like `STRATEGIC_COMPACT_T1` set to a non-numeric or malicious value falls back to
       its default rather than corrupting the tracking file or executing as shell code.
-- [ ] A `heavy_operation`/`session_analysis` skill produces both a start suggestion (`PreToolUse`) and
-      a differently-worded finish suggestion (`PostToolUse`) for the same invocation, with no cooldown
-      suppressing either.
-- [ ] A skill matching both category lists resolves to `heavy_operation`, never `session_analysis`.
+- [ ] A `heavy_operation`/`session_analysis` skill produces its `PreToolUse` start suggestion — there is
+      no `PostToolUse` finish counterpart to test (dropped 2026-09-21; see "Skill-category events").
+- [ ] A skill matching both category lists resolves to `heavy_operation`, never `session_analysis`, when
+      a genuine overlap actually exists between the two lists — not merely a skill that only appears in
+      one of them.
 - [ ] A `.claude/context-kit.local.json` entry adds to, never replaces, the tracked-default category
-      lists — a tracked-default skill still classifies correctly even when a local override is present.
+      lists — a tracked-default skill still classifies correctly even when a local override is present,
+      including when that local override file is malformed JSON.
 - [ ] A confidently-detected context-mode switch produces exactly one suggestion per 5-minute window,
       not a repeated suggestion on every subsequent switch within that window — while the tracked
       "current mode" itself still updates every time, even while throttled.
+- [ ] Two suggestions queued in the same `pending-<hash>` file before `compact-stop-check.sh` drains it
+      (e.g. a threshold suggestion and a context-mode-switch suggestion arriving close together) are
+      both delivered in one `decision: block` — neither silently overwrites the other.
+- [ ] A malformed line appended to the pending file alongside an otherwise-valid one is dropped on its
+      own, without discarding the still-valid queued suggestion(s) next to it.
