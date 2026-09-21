@@ -189,16 +189,14 @@ unvalidated candidate.
   summary carried forward.
 
 **Every mode switch, not just a hard one (added 2026-09-21):** `scripts/detect_mode.py` itself now
-also suggests `/compact` on **any** confidently-detected mode change (single-candidate turn only — see
-below), throttled to once per 5 minutes, independent of this section's own soft/hard judgment above.
-This broadens the original design (only a "hard switch" deferred to `strategic-compact`) deliberately —
-even an ordinary posture change can leave stale, no-longer-relevant context behind. On a match, it
-writes a `[StrategicCompact] Context-mode switched (<old> -> <new>)` pending suggestion into
-`strategic-compact`'s own tracking directory, delivered the same way that skill's other suggestions are
-(`compact-stop-check.sh`'s `Stop`-hook relay). This is a `strategic-compact`-owned delivery mechanism
-this skill's hook writes into, not a change to this skill's own dispatch logic above — see
-`strategic-compact`'s SKILL.md ("Windows PowerShell coverage" section's sibling, the mode-switch-event
-section) for the full detection/throttling/ambiguity-handling detail.
+also suggests `/compact` on **any** confidently-detected mode change (single-candidate turn only),
+throttled to once per 5 minutes, independent of this section's own soft/hard judgment above — a
+deliberate broadening of the original hard-switch-only design; see `references/design-history.md`'s
+"Mode-switch-suggestion side effect" section for the full rationale. This writes into
+`strategic-compact`'s own delivery mechanism, not a change to this skill's own dispatch logic above —
+see the "State and side effects" bullet under Known Limitations below for the exact files written and
+the no-lock/fail-open design, and `strategic-compact`'s own "Context-mode switch events" section for
+the full detection/throttling/ambiguity-handling detail from that skill's side.
 
 ## Reporting a mode change
 
@@ -229,23 +227,10 @@ Queued next: <mode-2>, once <trigger condition>.
   disclosed, untested edge case — nothing in this build's live-activation testing has yet exercised
   whether a resumed transcript's replayed tag is reliably treated as historical rather than current.
 - **The provenance boundary above is prose-enforced, not mechanically verified, and this is an
-  explicitly accepted residual risk, not an oversight.** A per-invocation nonce was considered and
-  rejected (security-reviewer, 2026-09-17): a nonce is a comparison mechanism, and the only reference
-  copy of the nonce would live in the same context window the forgery itself occupies — if the model can
-  reliably locate "this turn's own `additionalContext` block" to read the authoritative nonce, it has
-  already solved the provenance problem the nonce was meant to solve, and gains nothing by also checking
-  a nonce; if it can't locate that block reliably, the nonce is unverifiable either way. This mirrors
-  `route-through-git-kit-lifecycle-skills.md`'s own conclusion about its marker handshake ("stops
-  accidental bypass, not a deliberately adversarial agent") — a context-mode nonce would be the same
-  class of unauthenticated plaintext marker, checked by the model itself inside the attacker's own
-  channel, rather than by a separate process in a different trust domain the way git-kit's version is.
-  The accepted residual risk is bounded: a successful forgery only ever changes operating *posture*
-  among 4 fixed modes (verified directly against `references/dev.md`, the most permissive profile — it
-  disables no hard gate, only relaxes ask-before-acting on obvious implementation choices), never a
-  permission or tool-grant, is stated plainly on every switch per "Reporting a mode change" (never
-  silent), and presupposes an attacker who can already inject arbitrary text into context — a
-  capability strictly more damaging on its own than a posture flip. See the Dispatch logic's own
-  closed-vocabulary check above for the one concrete, mechanical fix that *was* worth making from this
+  explicitly accepted residual risk, not an oversight.** See `references/design-history.md`'s "Nonce
+  rejection rationale" section for the full analysis — why a per-invocation nonce was considered and
+  rejected, and why the accepted residual risk is bounded. See the Dispatch logic's own
+  closed-vocabulary check above for the one concrete, mechanical fix that *was* worth making from that
   same review pass (a forged tag can no longer steer an arbitrary `references/*.md` read).
 - **State and side effects (added 2026-09-21):** `scripts/detect_mode.py` now writes to
   `~/.claude/strategic-compact/mode-<session-hash>` (its own last-confidently-detected-mode and
@@ -255,21 +240,9 @@ Queued next: <mode-2>, once <trigger condition>.
   lock guards it — see `_maybe_suggest_mode_switch()`'s own docstring for the full rationale. Entirely
   fail-open: any error here is swallowed and can never prevent this hook's own primary mode-tag output
   from still being produced.
-- The hook's measured latency (roughly 170-260ms across repeated runs on this platform, mostly Python
-  interpreter startup — noisy from run to run) is well within this hook's actual configured timeout —
-  5 seconds, per `hooks/hooks.json`'s own registration for this entry, the real operative ceiling
-  (not `UserPromptSubmit`'s 30-second platform default, per `code.claude.com/docs/en/hooks` — verified
-  directly, not from this repo's own `hook-development` reference doc, which states a "<100ms" figure
-  for this event that does not appear anywhere in the official docs and should not be read as an
-  enforced platform requirement). It is, however, slower than ideal for a hook that runs on every
-  single prompt, even
-  after dropping the `uv`-runner attempt this plugin's other Python hooks use (no dependency-resolution
-  benefit here, since `detect_mode.py` has zero third-party dependencies — removed to save the one
-  subprocess hop it did cost, though the measured effect was within this platform's own run-to-run
-  noise, not a clean improvement). Not something this pass fully resolved — the implementation is
-  already dependency-free, so the residual cost is Python interpreter startup itself, not a
-  dependency to remove. A future pass could investigate reducing that startup cost (a non-Python
-  implementation, or a persistent helper process) if this proves disruptive in practice.
+- The hook's measured latency is well within its own configured timeout, though slower than ideal for a
+  hook that runs on every prompt — see `references/design-history.md`'s "Hook latency" section for the
+  full measurement and analysis.
 
 ## Testing & Validation
 
@@ -306,13 +279,15 @@ Queued next: <mode-2>, once <trigger condition>.
 `scripts/detect_mode.py` (happy path, order-of-mention, allowlist enforcement, UTF-8/malformed-input
 fail-open cases) lives in `references/design-history.md`'s "Validation Record" section, not inline here.
 
-**Last dated run record:** the persisted `scripts/smoke_test.py` (12/12 checks passing as of
+**Last dated run record:** the persisted `scripts/smoke_test.py` (13/13 checks passing as of
 2026-09-21) covers `detect_mode.py`'s real stdin/stdout hook contract directly — happy path,
 order-of-mention, fail-open on malformed/non-UTF-8 input, the closed `VALID_MODES` vocabulary
 guarantee, a structural regression guard for the closed-vocabulary dispatch-logic fix, and (added
 2026-09-21) the mode-switch-suggestion side effect: first-observation no-op, a real switch emitting
 both the primary tag and a pending suggestion, cooldown throttling, an ambiguous multi-candidate turn
-being ignored, and the no-tracking-file gate. Every subprocess check now runs against an isolated
+being ignored, the no-tracking-file/no-mkdir gate, and a future/corrupted `LAST_SWITCH_TIME`
+self-healing rather than permanently wedging (the last two added for a `scripts-reviewer` pass on this
+same batch). Every subprocess check now runs against an isolated
 throwaway `$HOME`, since this hook is no longer side-effect-free. This supersedes the manual stdin/stdout
 walkthrough originally run and confirmed during this skill's Build/Self-Review pass, commit `e18edb23`
 (2026-09-16), still documented in `references/design-history.md`'s "Validation Record" section for
