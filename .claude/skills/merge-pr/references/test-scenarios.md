@@ -8,6 +8,20 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
 2. **Post-merge sync declined** — confirm the skill still reports the merge result cleanly on "No — skip", without invoking `finishing-work`
 3. **Merge fails or is never reached** (readiness/rights check fails, user declines the step-5 confirmation) — confirm step 8 never fires; it's conditioned on a successful merge, not on the skill having run at all
 
+**Verify step 1's origin-binding check on the empty-`$ARGUMENTS` case (Codex round-2 review finding on
+PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposure):**
+- `$ARGUMENTS`'s PR-reference portion is empty, `GH_REPO`/`gh repo set-default` points at a different
+  repository than `origin`, and that other repository coincidentally has a same-named branch at the
+  same head SHA → step 1 resolves the PR there via the bare `gh pr view`, then detects the mismatch
+  between that resolved `{owner}/{repo}` and `git remote get-url origin`'s actual destination — stops
+  and reports which repository was actually resolved versus what `origin` targets; never proceeds to
+  step 2, and never merges the wrong PR in step 7(b)
+- Same setup, but `$ARGUMENTS`'s PR-reference portion is a specific PR number or URL naming that other
+  repository deliberately → the origin-binding check is skipped entirely; the user's explicit
+  cross-repository target is honored, not blocked
+- `$ARGUMENTS` is empty and `GH_REPO`/`gh repo set-default` is unset (the common case) → the resolved
+  `{owner}/{repo}` matches `origin`'s destination trivially; the check passes silently, no interruption
+
 **Verify step 7's remote-branch-deletion fallback (`merge_auto_delete_branch: true`) -- `git ls-remote` always runs on a `MERGED` state, regardless of the merge command's own exit code:**
 - `gh pr merge --delete-branch` exits 0 → `git ls-remote --heads origin <headRefName>` returns empty; step 7 proceeds straight to reporting, no `gh api -X DELETE` call
 - `gh pr merge --delete-branch` exits 0, but `git ls-remote --heads origin <headRefName>` returns non-empty (a silent server-side deletion failure with no local error to signal it) → step 7 still catches this, since the check runs regardless of exit code, and completes the deletion via `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>`

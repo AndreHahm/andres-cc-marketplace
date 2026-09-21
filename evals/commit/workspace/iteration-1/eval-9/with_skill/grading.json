@@ -1,0 +1,13 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Derives {owner}/{repo} from the resolved PR's url field before checking anything else", "passed": true, "evidence": "\"Resolved {owner}/{repo} = someorg/some-fork (parsed from https://github.com/someorg/some-fork/pull/12)\""},
+    {"text": "Resolves origin's actual destination via git remote get-url origin piped through the documented sed -E strip-prefix/strip-.git command", "passed": true, "evidence": "\"git remote get-url origin | sed -E 's#^(https://github\\.com/|git@github\\.com:)##; s#\\.git$##'\" quoted literally, with the strip-prefix/strip-.git behavior explained"},
+    {"text": "Compares the resolved {owner}/{repo} against origin's actual destination and detects the mismatch", "passed": true, "evidence": "\"Compare the two: Resolved from gh pr view: someorg/some-fork; Resolved from origin: ... not someorg/some-fork ... These do not match. Step 16.5(b) stops here.\""},
+    {"text": "Stops and reports the bypass was not attested because gh pr view resolved a different repository than origin, naming GH_REPO/gh repo set-default as the likely cause", "passed": true, "evidence": "\"That GH_REPO (or a local gh repo set-default) is the likely cause, since it's what redirected the bare gh pr view call away from origin's own repository\""},
+    {"text": "States plainly that the push already succeeded and is unaffected -- only the attestation is skipped", "passed": true, "evidence": "\"The report names GH_REPO ... as the likely cause and states the push itself is unaffected -- only the attestation step was skipped\""},
+    {"text": "Never proceeds to the shared protocol's steps 1-5 on the mismatched PR, and never treats the coincidentally-passing isCrossRepository/headRefOid checks as sufficient on their own", "passed": true, "evidence": "\"Because (b) stopped the procedure, steps (c)-(g) ... are never entered. No gh pr comment, no gh api ... no label mutation\"; \"The skill does not treat either of these two coincidentally-passing checks (isCrossRepository and the would-be headRefOid match) as sufficient on their own to proceed\""}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}

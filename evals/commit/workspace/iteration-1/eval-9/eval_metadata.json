@@ -1,0 +1,12 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Derives {owner}/{repo} from the resolved PR's url field before checking anything else", "type": "functionality", "target": "outputs/"},
+    {"text": "Resolves origin's actual destination via git remote get-url origin piped through the documented sed -E strip-prefix/strip-.git command", "type": "functionality", "target": "outputs/"},
+    {"text": "Compares the resolved {owner}/{repo} against origin's actual destination and detects the mismatch", "type": "functionality", "target": "outputs/"},
+    {"text": "Stops and reports the bypass was not attested because gh pr view resolved a different repository than origin, naming GH_REPO/gh repo set-default as the likely cause", "type": "functionality", "target": "outputs/"},
+    {"text": "States plainly that the push already succeeded and is unaffected -- only the attestation is skipped", "type": "quality", "target": "outputs/"},
+    {"text": "Never proceeds to the shared protocol's steps 1-5 on the mismatched PR, and never treats the coincidentally-passing isCrossRepository/headRefOid checks as sufficient on their own", "type": "functionality", "target": "outputs/"}
+  ]
+}
