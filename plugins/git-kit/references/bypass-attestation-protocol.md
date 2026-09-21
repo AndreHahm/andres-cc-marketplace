@@ -66,13 +66,25 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       heredoc/echo that would itself require embedding the text in a shell command) — e.g.
       `<scratchpad>/bypass-reason.txt`.
    b. Build the versioned attestation marker (`schema_version: 1`, this `actor`, the validated
-      `head_sha`, a current UTC `created_at`, and the `reason` read back from that file) as JSON:
-      `jq -n --rawfile reason <scratchpad-path> --arg actor "$ACTOR" --arg head_sha "$HEAD_SHA" --arg
-      created_at "$CREATED_AT" '{schema_version: 1, actor: $actor, head_sha: $head_sha, reason: $reason,
-      created_at: $created_at}'` — `--rawfile` reads the file's raw content directly, bypassing shell
-      parsing of the reason text entirely; `actor`/`head_sha`/`created_at` are structurally-constrained,
-      non-free-text values (a GitHub login, a 40-hex-char SHA, an ISO-8601 timestamp) and stay safe via
-      ordinary `--arg`.
+      `head_sha`, a current UTC `created_at`, and the `reason` read back from that file) as JSON. **Use
+      the literal resolved values for `actor`/`head_sha`/`created_at`, typed directly into the command —
+      never a shell-variable reference like `$ACTOR`/`$HEAD_SHA`/`$CREATED_AT`.** Claude Code's `Bash`
+      tool has no persistent shell state across calls (each call is a fresh subprocess — see
+      `.claude/rules/verify-tool-behavior-before-instructing.md`), and step 2's actor/permission
+      resolution and this marker-building step are naturally separate `Bash` calls; a variable set in one
+      does not survive into the other. A command that references `$ACTOR` here would silently expand to
+      an empty string in the real invocation, producing a marker with `actor: ""`/`head_sha: ""` that the
+      server-side exact-match check rejects — while a non-polling caller (`commit`, `create-pr`) would
+      still report apparent success, since nothing here re-checks the posted marker's own content. For
+      example, with an actor resolved as `octocat`, a head SHA `a1b2c3d4e5f6...`, and a timestamp
+      `2026-09-21T00:00:00Z`:
+      `jq -n --rawfile reason <scratchpad-path> --arg actor "octocat" --arg head_sha "a1b2c3d4e5f6..."
+      --arg created_at "2026-09-21T00:00:00Z" '{schema_version: 1, actor: $actor, head_sha: $head_sha,
+      reason: $reason, created_at: $created_at}'` — `--rawfile` reads the file's raw content directly,
+      bypassing shell parsing of the reason text entirely; `actor`/`head_sha`/`created_at` are
+      structurally-constrained, non-free-text values (a GitHub login, a 40-hex-char SHA, an ISO-8601
+      timestamp) and stay safe via ordinary `--arg` — but only once substituted as literal text, not a
+      variable reference.
    c. Write the comment body (marker wrapped in `<!-- marketplace-ci-bypass-attestation {...} -->`) to a
       second scratchpad file, then post it against the caller's own resolved PR number:
       `gh pr comment <number> --body-file <scratchpad-path>` — never the argument-less form, now that the
@@ -85,8 +97,10 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
    earlier snapshot from a prior step: real time passes between an earlier label read and this decision
    (a bot-trigger check, a permission verification, a comment post), and a label applied by anyone else in
    that window must not be missed. If this fresh read already includes the label (re-attesting after a
-   prior, now-invalidated round — the case `merge-pr` and `commit` both need this for; `create-pr` never
-   hits it, since it only ever labels a PR it just created), remove it first
+   prior, now-invalidated round — the case `merge-pr` and `commit` both need this for; `create-pr` is
+   expected to land on the plain-apply branch below instead, since it typically labels a PR it just
+   created — though this fresh-read branch still applies unconditionally to `create-pr` too, in the rare
+   case the label was somehow already present), remove it first
    (`gh pr edit <number> --remove-label "s: codex review bypassed"`) then re-add it — a plain
    `--add-label` on an already-present label is a silent no-op on GitHub's side and won't re-trigger the
    policy check's re-evaluation. If not yet present, apply it directly:
