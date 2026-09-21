@@ -28,6 +28,11 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
 - Step 4's re-triggered check comes back failing (bad attestation, actor/SHA mismatch server-side) → step 4(e)'s rerun of step 2 reports not-ready and stops; never proceeds to step 5 on an assumption that the bypass "should" have worked
 - `s: codex review bypassed` label missing from the repo → step 4(c) stops and reports failure; the skill never creates the label itself
 
+**Verify step 4(a)'s reason screening covers the shared protocol's full step 1, not just the bot-trigger check (cross-model-review round, 2026-09-21 — Codex's fresh-eyes full-diff pass found step 4(a) previously named only the bot-trigger-mention check):**
+- Reason contains a literal bot-trigger mention (e.g. `@codex full review`) → step 4(a) rejects the flag and reports why; never proceeds to (b)
+- Reason contains no bot-trigger mention but reads as internal ticket detail, a personnel/customer name, an internal hostname, or a credential-shaped string → step 4(a) rejects the flag and reports why, the same as the bot-trigger case; never posts it as a PR comment on the theory that only bot-trigger mentions are screened
+- Reason contains neither category → step 4(a) passes it through to (b) unchanged
+
 **Verify step 2's four-state CI classification never collapses a state into another:**
 - A required context has no entry anywhere in `statusCheckRollup` (never ran for the current head SHA) → classified **missing**, reported distinctly from "pending" (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit"), never silently folded into a "still running" message
 - A required `StatusContext` entry has `state: EXPECTED` → classified **missing**, same as an absent entry

@@ -223,12 +223,14 @@ SHA-bound and invalidates on every new commit. See SKILL.md's own step 16.5 for 
 sibling vs. genuinely new here — not restated a second time in this file.
 
 **Dry-run eval battery, 2026-09-21** (`evals/commit/`, Quick Workflow, `skill-tester`): 7 scenarios
-covering step 16.5's own Testing & Validation checklist 1:1 — empty reason, flag-given-but-push-declined,
+(later extended to 8 — see the round-2 entry below) covering step 16.5's own Testing & Validation
+checklist 1:1 — empty reason, flag-given-but-push-declined,
 no-PR-yet deferral-and-forwarding, stale-label remove-then-re-add, bot-trigger-mention rejection,
 insufficient-permission stop, and deferred-flag-never-used. Each scenario ran as a fresh agent instructed
 to narrate the exact procedure and literal commands it would follow, with no real `git`/`gh`/`jq`
 execution (a deliberate dry-run constraint — this step posts real, permanent GitHub comments and mutates
-real labels, not something to exercise against a live repo inside an eval). 30/30 assertions passed; see
+real labels, not something to exercise against a live repo inside an eval). 30/30 assertions passed at
+this stage (later 36/36 across 8 scenarios — see the round-2 entry below); see
 `evals/commit/evals.json` and the per-eval `grading.json` files under `workspace/iteration-1/` for the
 full scenario/assertion/evidence detail. A `reviewing-evals` self-audit of this eval set caught one real
 counting-consistency gap (SKILL.md's checklist was missing the insufficient-permission item eval-6
@@ -259,6 +261,24 @@ Claude) caught that eval-4's own recorded answer, generated *before* this change
 argument-less form. Regenerated eval-4 against the current SKILL.md + shared reference; the new answer
 and `grading.json` both reflect the current, correct invocation. Still 7/7 assertions passing for that
 scenario, now against accurate content.
+
+**Round-2 fix (`jq -n --rawfile` reason transport) and eval-8 addition, 2026-09-21.** A second
+`cross-model-review` round (Codex fresh-eyes + challenger, Claude challenger) found the shared protocol's
+`jq -n --arg reason "<reason>"` pattern is a real shell-injection surface if an agent composes the Bash
+command with the reason text embedded inline — confirmed against `marketplace-ci.yml`'s own actual
+discipline, which transports its free-text field via `--slurpfile` from a file, never inline `--arg`. Also
+found the `.claude/` mirror's `../../references/bypass-attestation-protocol.md` reference resolved to a
+non-existent file — plugin-root `references/` dirs aren't covered by `sync-plugin-mirrors`'s automated
+scope, so `.claude/references/bypass-attestation-protocol.md` needed a manual copy, matching
+`analysis-kit/references/`'s existing (tooling-unenforced) manual-mirror convention. Fixed by switching
+the reason's transport to `Write` (scratchpad file) + `jq -n --rawfile`, and adding eval-8 (a reason
+containing `$(...)`/semicolon shell metacharacters, confirming the marker's `reason` field ends up as the
+literal, unexpanded text). Eval-4 regenerated again to reflect the new `--rawfile` mechanism. Eval battery
+now 8 scenarios, 36/36 assertions. A third `cross-model-review` round (scoped to this fix, then again
+against the full branch diff for `create-pr`'s own mandatory step-4 gate) found the fix itself clean; the
+full-diff pass separately found `merge-pr`'s step 4(a) only screened for a bot-trigger mention, not the
+shared protocol's full step-1 sensitive-content screening (fixed in `merge-pr`'s own step 4(a)), and this
+file's own scenario/assertion counts were stale after eval-8 (fixed above).
 
 ## Step 8 (marketplace CI targeted repair, `--stage` flag) — added 2026-08-28
 
