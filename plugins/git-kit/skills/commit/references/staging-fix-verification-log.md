@@ -248,6 +248,18 @@ for eval coverage or vice versa.
 Not yet exercised against a real PR/GitHub — first real opportunity is this change's own rollout PR, the
 same way the `--stage` flag's own entry below was still awaiting its first live run when it was added.
 
+**M4 extraction (shared `../../references/bypass-attestation-protocol.md`) and eval-4 regeneration,
+2026-09-21.** After the fan-out above, the SHA-bound protocol (bot-trigger check, permission check,
+marker build, label toggle) was extracted into a plugin-root shared reference used by `create-pr`,
+`merge-pr`, and `commit` alike — closing the "hand-implemented three times, drifting independently"
+finding, and along the way giving `merge-pr` a bot-trigger check it had never had. This changed the
+literal `gh pr comment` invocation shape (now always `gh pr comment <number> --body-file ...`, never the
+argument-less form) — a follow-up `cross-model-review` pass (Codex Phase 1 + Phase 2, cross-examined by
+Claude) caught that eval-4's own recorded answer, generated *before* this change, still asserted the old
+argument-less form. Regenerated eval-4 against the current SKILL.md + shared reference; the new answer
+and `grading.json` both reflect the current, correct invocation. Still 7/7 assertions passing for that
+scenario, now against accurate content.
+
 ## Step 8 (marketplace CI targeted repair, `--stage` flag) — added 2026-08-28
 
 Alongside `tests/marketplace_ci/test_hooks.py`'s existing `check_staged_parity` coverage (2026-08-13,
