@@ -247,6 +247,54 @@ def test_stage_settings_hooks_result_skips_when_no_contributing_source_staged(
     assert staged == ()
 
 
+def test_stage_settings_hooks_result_skips_when_settings_json_preexists_untracked(
+    git_repo, registry_for
+):
+    # The exact residual gap round-3's fix (tracked-in-index check) still had: Codex's
+    # cross-model review round 4 found that a settings.json which existed on disk with
+    # real, unrelated content -- but was NEVER tracked by git at all -- also isn't "fully
+    # staged" (an untracked file has no staged baseline), yet the round-3 fix's
+    # tracked-in-index gate skipped the check entirely for anything untracked, treating
+    # it the same as a genuinely brand-new file. This exercises the fix that replaced
+    # that gate with plan.actions[0].operation ("create" vs "update"), which correctly
+    # tells a genuinely-new file apart from a pre-existing-but-untracked one.
+    _commit_baseline(git_repo)
+    settings_path = git_repo.root / ".claude" / "settings.json"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    # Pre-existing, real content -- never `git add`-ed, so it's untracked, not "new".
+    settings_path.write_text(
+        json.dumps({"worktree": {"bgIsolation": "none"}}, indent=2) + "\n", encoding="utf-8"
+    )
+
+    hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
+    source = git_repo.root / "plugins" / "widget-kit" / "hooks" / "hooks.json"
+    source.write_text(source.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/widget-kit/hooks/hooks.json"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+
+    settings_plan = plan_settings_hooks_sync(
+        git_repo.root, hooks_plan, external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    assert settings_plan.actions[0].operation == "update"  # pre-existing content, not "create"
+    apply_sync_plan(_as_sync_plan(settings_plan))
+
+    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/settings.json" not in result.stdout.splitlines()
+
+
 def _as_sync_plan(settings_plan):
     from scripts.marketplace_ci.sync_plan import SyncPlan
 

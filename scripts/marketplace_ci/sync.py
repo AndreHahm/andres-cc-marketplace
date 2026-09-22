@@ -462,10 +462,22 @@ def _is_fully_staged(repo: Path, path: Path) -> bool:
     word only makes sense applied to a repo-relative pathspec; `path` itself may be absolute
     (every `SyncAction.source`/`HooksMergePlan.sources` entry is), so it's resolved relative to
     `repo` first.
+
+    `--ignored` is required for a path under `.claude/` (as `stage_settings_hooks_result`
+    checks): some machines' *global* gitignore excludes `.claude`/`.codex`/`.agents`
+    everywhere (the exact reason `_git_add_forced` below already force-adds with `-f`) --
+    without `--ignored`, plain `git status --porcelain` silently omits such a path
+    entirely, and the "nothing pending" branch below would then wrongly report a
+    genuinely untracked, real-content file as "trivially fully staged" (found by Codex's
+    cross-model review, round 4, live-reproduced against this repo's own machine-global
+    `.claude` exclusion). Harmless for every existing caller's own use (canonical sources
+    under `plugins/`, never machine-ignored) -- `--ignored` only ever reveals *additional*
+    untracked-and-ignored state; it never hides or changes a result for an already-tracked
+    path.
     """
     rel_path = path.resolve().relative_to(repo.resolve()).as_posix()
     result = subprocess.run(
-        ["git", "status", "--porcelain", "-z", "--", f":(top,literal){rel_path}"],
+        ["git", "status", "--porcelain", "-z", "--ignored", "--", f":(top,literal){rel_path}"],
         cwd=repo,
         check=True,
         capture_output=True,
@@ -567,17 +579,6 @@ def stage_hooks_merge_result(repo: Path, plan: HooksMergePlan) -> tuple[Path, ..
     return tuple(staged_destinations)
 
 
-def _is_tracked_in_index(repo: Path, path: Path) -> bool:
-    """True if `path` already has an entry in the Git index (staged or committed at some
-    prior point), independent of whether it currently has any pending changes."""
-    rel_path = path.resolve().relative_to(repo.resolve()).as_posix()
-    result = subprocess.run(
-        ["git", "-C", str(repo), "ls-files", "--error-unmatch", "--", f":(top,literal){rel_path}"],
-        capture_output=True,
-    )
-    return result.returncode == 0
-
-
 def stage_settings_hooks_result(
     repo: Path, plan: HooksMergePlan, settings_path: Path | None = None
 ) -> tuple[Path, ...]:
@@ -586,29 +587,33 @@ def stage_settings_hooks_result(
     (delegated to it below), PLUS a check that function alone can't provide: unlike
     `.claude/hooks/hooks.json` (purely derived from its contributors, never reads its own
     prior content), `plan_settings_hooks_sync` reads `.claude/settings.json`'s own CURRENT
-    content and preserves every non-`hooks` key from it. If that file has any unstaged
-    edit of its own -- e.g. an unrelated local settings.json tweak sitting in the working
-    tree while an unrelated plugin hook change is staged -- `stage_hooks_merge_result`
-    alone would happily stage the regenerated destination the moment its own
-    hooks-manifest-only gate passes, silently pulling that unrelated edit into the commit
-    (found by Codex's cross-model review of this same change: neither this function's
-    caller nor `stage_hooks_merge_result` itself ever checked the *destination's* own
-    staged/unstaged state, only its N *contributing sources'*). Refuses to stage at all in
-    that case, leaving the regenerated destination on disk, unstaged -- the same fail-safe
-    posture `stage_generated_destinations`/`stage_hooks_merge_result` already use for an
-    analogous risk on their own destinations.
+    content and preserves every non-`hooks` key from it. If that file already had content
+    of its own -- staged, unstaged, or never-tracked -- that content rode into what was
+    just computed, and `stage_hooks_merge_result` alone would happily force-stage the
+    result the moment its own hooks-manifest-only gate passes, silently pulling that
+    pre-existing content into the commit (found by Codex's cross-model review of this
+    same change, across two rounds: round 3 caught an unstaged edit to an
+    already-*tracked* settings.json; round 4 caught the same risk for a pre-existing but
+    never-*tracked* settings.json -- a plain "is it fully staged" check alone can't
+    distinguish "genuinely new, nothing to preserve" from "existing, untracked, real
+    content" the way `plan.actions[0].operation` can, since an untracked file is never
+    "fully staged" either way).
 
-    The full-staging check only applies when the file was *already tracked in the index*
-    before this call (i.e. it had a prior committed-or-staged baseline an edit could be
-    "unstaged" relative to). A brand-new `.claude/settings.json` this very run created for
-    the first time (plan_settings_hooks_sync's `current_settings = {}` case) has no such
-    baseline -- there's nothing an unstaged edit could have ridden in on top of -- so it's
-    always safe to stage regardless of its (necessarily untracked, "??") git status.
-    Skipping this distinction would make `--stage` never able to stage settings.json's very
-    first creation at all, since a freshly-written untracked file is never "fully staged."
+    Uses `plan.actions[0].operation` (the actual `SettingsHooksSyncPlan` action, carried
+    through unmutated by `apply_sync_plan`) as the authoritative signal instead of
+    re-deriving an approximation from git state after the fact: `"create"` means
+    `plan_settings_hooks_sync` found no `.claude/settings.json` on disk at all when it
+    ran -- `current_settings = {}`, nothing preserved, always safe to stage regardless of
+    git status. Anything else (`"update"`, or no action at all because content already
+    matched) requires the full-staging check below, which correctly refuses for *both*
+    an unstaged edit on a tracked file *and* a pre-existing untracked one -- both report
+    as not-fully-staged. Skipping the `"create"` exception entirely would make `--stage`
+    never able to stage settings.json's very first creation at all, since a freshly
+    written untracked file is never "fully staged."
     """
     if settings_path is None:
         settings_path = repo / DEFAULT_REPO_SETTINGS_PATH
-    if _is_tracked_in_index(repo, settings_path) and not _is_fully_staged(repo, settings_path):
+    is_first_creation = all(a.operation == "create" for a in plan.actions)
+    if not is_first_creation and not _is_fully_staged(repo, settings_path):
         return ()
     return stage_hooks_merge_result(repo, plan)
