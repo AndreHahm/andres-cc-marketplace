@@ -245,6 +245,33 @@ def test_apply_sync_plan_preserves_executable_bit_on_create(repo, registry_for):
     assert dest.stat().st_mode & 0o777 == 0o755
 
 
+def test_plan_plugin_sync_detects_executable_bit_only_drift(repo, registry_for):
+    # Codex review finding on PR #349: the content-only `dest.read_bytes() ==
+    # source_bytes` comparison treated a byte-identical destination as fully synced
+    # forever, even if its mode drifted afterward (e.g. a mirror lost its +x bit while
+    # keeping identical content) -- apply_sync_plan's copymode fix (the test above)
+    # never re-runs for an already-existing, byte-identical-but-wrongly-moded file.
+    source = repo / "plugins" / "sample-kit-two" / "hooks" / "scripts" / "guard.sh"
+    source.chmod(0o755)
+    registry = registry_for("sample-kit-two")
+    apply_sync_plan(plan_plugin_sync(repo, registry, previous=None, bootstrap=True))
+    dest = repo / ".claude" / "hooks" / "scripts" / "guard.sh"
+    assert dest.stat().st_mode & 0o777 == 0o755
+
+    # Simulate mode drift with content left untouched (identical bytes).
+    dest.chmod(0o644)
+
+    drift_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=True)
+    update_actions = [a for a in drift_plan.actions if a.destination == dest]
+    assert len(update_actions) == 1
+    assert update_actions[0].operation == "update"
+    assert "executable bit" in update_actions[0].reason
+
+    apply_sync_plan(drift_plan)
+    assert dest.stat().st_mode & 0o777 == 0o755
+    assert dest.read_bytes() == source.read_bytes()
+
+
 def test_apply_sync_plan_rejects_collisions(repo, registry_for):
     plan = plan_plugin_sync(
         repo, registry_for("sample-kit-two", "sample-kit-two-clone"), previous=None, bootstrap=True
