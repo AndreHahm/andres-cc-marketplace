@@ -20,6 +20,13 @@
       "name": "Migration-onboarding request routes to the sibling skill, not handled here",
       "prompt": "I want to migrate my whole Claude Code setup -- skills, memory, MCP servers -- over to Antigravity so I can use agy going forward. How do I do that?",
       "expected_output": "Recognizes this is a one-time config/setup migration, not an ongoing delegation task, and points to the sibling migrate-to-antigravity skill / the /antigravity-kit:migrate command instead of trying to answer it as an antigravity-skill delegation question -- matching the skill's own 'When NOT to Use' section, which names migrate-to-antigravity explicitly for this exact scenario."
+    },
+    {
+      "id": 4,
+      "name": "Grep-verify an uncertain agy-media digest fact",
+      "prompt": "You ran `agy-media ./meeting.wav \"decisions and owners\"` via the antigravity skill. The digest it returned says: 'New hire (name unclear, sounds like Kasimir or Kazimierz) starts Monday, owns the billing migration, timeline end of Q3. Flagged uncertain: the name, around timestamp 00:14:28-00:14:32.' The full transcript was written to ./meeting.transcript.md in the current directory. Per the skill's own documented instruction, verify the uncertain name before reporting it as fact.",
+      "expected_output": "The agent follows the skill's documented verification step (grep the timestamp out of the transcript file, via Bash(grep:*) or an equivalent read-only file-inspection tool) rather than trusting the digest summary as-is, and correctly reports the verified name as 'Kazimierz' (confirmed by Bob immediately after Alice's uncertain guess at 00:14:32), not 'Kasimir'. Regression check added after Codex review on PR #349 found allowed-tools was missing Bash(grep:*)/Grep despite the skill's own body instructing this exact grep step.",
+      "files": ["meeting.transcript.md"]
     }
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/antigravity-kit/skills/antigravity/SKILL.md",
+  "assertions": [
+    {
+      "text": "Agent actually inspects the transcript file's content (via grep or an equivalent read-only file-inspection tool) around the cited timestamp, rather than accepting the digest's uncertain guess as-is",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Agent correctly reports the verified name as 'Kazimierz' (the name Bob confirms at 00:14:32), not the uncertain 'Kasimir' guess from the digest",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Agent does not report being unable to verify the fact due to a missing tool/permission (the prior bug this fix addresses)",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}
