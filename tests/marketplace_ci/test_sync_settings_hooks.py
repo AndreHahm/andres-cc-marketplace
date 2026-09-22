@@ -9,6 +9,7 @@ itself, independent of EXTERNAL_HOOK_SCRIPT_MIRRORS's real, currently-live entri
 """
 
 import json
+import subprocess
 
 import pytest
 
@@ -18,9 +19,21 @@ from scripts.marketplace_ci.sync import (
     plan_external_hook_scripts_mirror,
     plan_hooks_merge,
     plan_settings_hooks_sync,
+    stage_settings_hooks_result,
 )
 
 WIDGET_EXTERNAL_MIRRORS = (("widget-kit", "scripts/widget.py"),)
+
+
+def _commit_baseline(git_repo) -> None:
+    """Commit every fixture file as-is -- the state before the change under test."""
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "baseline"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
 
 
 def test_plan_settings_hooks_sync_rewrites_component_dir_reference(repo, registry_for):
@@ -140,3 +153,111 @@ def test_plan_external_hook_scripts_mirror_raises_when_registered_source_missing
         plan_external_hook_scripts_mirror(
             repo, registry_for("widget-kit"), external_mirrors=stale_mirrors
         )
+
+
+def test_stage_settings_hooks_result_stages_when_contributing_source_staged(git_repo, registry_for):
+    _commit_baseline(git_repo)
+    hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
+    source = git_repo.root / "plugins" / "widget-kit" / "hooks" / "hooks.json"
+    source.write_text(source.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/widget-kit/hooks/hooks.json"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+    settings_plan = plan_settings_hooks_sync(
+        git_repo.root, hooks_plan, external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    apply_sync_plan(_as_sync_plan(settings_plan))
+
+    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+
+    dest = (git_repo.root / ".claude" / "settings.json").resolve()
+    assert dest in staged
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/settings.json" in result.stdout.splitlines()
+
+
+def test_stage_settings_hooks_result_skips_when_settings_json_has_unstaged_edit(
+    git_repo, registry_for
+):
+    # The exact regression this test guards: Codex's cross-model review (round 3) found
+    # that reusing stage_hooks_merge_result alone for settings.json only checks the
+    # contributing hook-manifest sources are fully staged -- it never checks whether
+    # .claude/settings.json ITSELF has an unstaged edit of its own, even though
+    # plan_settings_hooks_sync reads that file's current content directly. Without
+    # stage_settings_hooks_result's own extra check, an unrelated unstaged settings.json
+    # tweak would be silently swept into the commit the moment the unrelated hook change
+    # is staged.
+    settings_path = git_repo.root / ".claude" / "settings.json"
+    git_repo.stage(".claude/settings.json", json.dumps({"worktree": {"bgIsolation": "none"}}))
+    _commit_baseline(git_repo)
+
+    hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
+    source = git_repo.root / "plugins" / "widget-kit" / "hooks" / "hooks.json"
+    source.write_text(source.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/widget-kit/hooks/hooks.json"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+    # Unrelated, unstaged local edit directly to settings.json -- never `git add`-ed.
+    settings_path.write_text(
+        json.dumps({"worktree": {"bgIsolation": "full"}}, indent=2) + "\n", encoding="utf-8"
+    )
+
+    settings_plan = plan_settings_hooks_sync(
+        git_repo.root, hooks_plan, external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    apply_sync_plan(_as_sync_plan(settings_plan))
+
+    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/settings.json" not in result.stdout.splitlines()
+
+
+def test_stage_settings_hooks_result_skips_when_no_contributing_source_staged(
+    git_repo, registry_for
+):
+    _commit_baseline(git_repo)
+    hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
+    settings_plan = plan_settings_hooks_sync(
+        git_repo.root, hooks_plan, external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    apply_sync_plan(_as_sync_plan(settings_plan))
+
+    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+
+    assert staged == ()
+
+
+def _as_sync_plan(settings_plan):
+    from scripts.marketplace_ci.sync_plan import SyncPlan
+
+    return SyncPlan(actions=settings_plan.actions)
+
+
+def _as_hooks_merge_plan(settings_plan):
+    from scripts.marketplace_ci.sync import HooksMergePlan
+
+    return HooksMergePlan(
+        actions=settings_plan.actions,
+        merged_document=settings_plan.rewritten_hooks_document,
+        sources=settings_plan.sources,
+    )
