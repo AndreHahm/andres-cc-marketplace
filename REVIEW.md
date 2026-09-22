@@ -11,11 +11,16 @@ CI gates `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Marketpl
 | Reviewer | Triggered by | What it owns |
 |---|---|---|
 | **Codex review (CI-dispatched)** | Automatic on same-repository PR open, synchronize, reopen, edit, and label events | The primary automated reviewer. Dispatches `plugin-rulebook-checker`, `dependency-reviewer`, `security-reviewer` (Delta Validate floor) plus `skill-reviewer`/`subagent-reviewer` (Delta Audit) via `codex-review-bridge`. See [`plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md`](plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md). |
-| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
+| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). Does **not** read this file — it discovers rules from `AGENTS.md`'s own `## Code Review Rules` section instead (see that section's own note). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
 | **Devin review** | `/devin review` | Reads this `REVIEW.md` by default. |
 | **CodeRabbit** | `@coderabbitai review` / `@coderabbitai full review` | |
 | **Claude review** | `@claude` mention (per repo config) | |
 | **Human reviewers** | GitHub review UI | The final authority. A bot's LGTM is never a substitute for a human's when branch protection requires one. |
+
+A bullet appearing near-verbatim in both this file and `AGENTS.md`'s `## Code Review Rules` section is
+not accidental drift: `chatgpt-codex-connector[bot]` only ever reads `AGENTS.md`, so a policy it needs
+the full nuance of (not just a condensed pointer) is deliberately mirrored there. Flag a *divergence*
+in substance between the two copies, not the duplication itself.
 
 Round budget and next-round triggering are owned by `handling-review-findings` (see its `references/settings-and-round-budget.md`). A Critical/Major finding is never silently deferred-and-merged.
 
@@ -44,6 +49,7 @@ A well-meaning workflow or Python change can undo a trust boundary without faili
 - **Path parsing for scope/bypass uses `git diff -z --name-only` (NUL-delimited), never newline-split `--name-only`.** With git's default `core.quotePath=true`, a non-ASCII path is emitted C-quoted in plain output and would fail every `startswith("plugins/")` check downstream, silently misrouting a real component change into light/bypass-eligible mode. A change that switches back to newline-splitting reopens that gap.
 - **Every `actions/checkout` is SHA-pinned with a version comment.** An unpinned `@v4`-style ref is a regression. Note: most of this workflow's checkouts now set `persist-credentials: false` — the two exceptions (`Check out the PR's own head commit` and `Check out the PR's merge commit`, both in the `codex-review` job) keep the default, which persists a token; that's the existing baseline for those two specifically, not a protection to check for regressions against. Flag a *new* job that only needs read access but persists credentials anyway as a hardening opportunity, not a regression.
 - **A `pull_request_target` trigger, or any new job that combines a write permission with running contributor code, breaks the trusted/untrusted split.** Flag it.
+- **A local `check-trust-boundary` pre-push check (`scripts/marketplace_ci/trust_boundary.py`, wired into `.pre-commit-config.yaml`) previews this gate for contributors — it is not the gate itself.** It warns, non-blockingly, when a diff touches one of the same Tier-1 paths CI's `compute-scope` restores from `base.sha`, using a local merge-base diff as a cheap, unauthoritative approximation of the PR's real `base.sha`. A PR that adds or extends this local check will itself trigger its own warning — extending it edits `scripts/marketplace_ci/__main__.py`, a Tier-1 path — and that's the expected, disclosed cost of a gate that also covers its own extension (see the PR template's `Known CI Failures (Accepted)` section, issue #351), not evidence of an attempt to weaken it. `TIER1_FILES` in `trust_boundary.py` is a duplicated copy that `tests/marketplace_ci/test_import_isolation.py` cross-checks against the workflow's own pathspec — flag a change that edits one list without the other, or that makes the real `compute-scope`/`check-scope-bypass` restore-from-base-SHA logic defer to this local script's result instead of computing its own base.sha-scoped diff.
 
 ## Plugin components (skills, agents, commands, hooks, rules)
 

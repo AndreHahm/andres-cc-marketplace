@@ -87,8 +87,14 @@ Read by the external `chatgpt-codex-connector[bot]` GitHub App reviewer (trigger
 CI-dispatched Codex pipeline, which reads `.codex/agents/*.toml` directly instead. The fuller version of
 these rules, plus every other reviewer's severity scale and process rules, lives in
 [`REVIEW.md`](REVIEW.md); this section is the condensed, consequential subset formatted for this
-reviewer's own rule-discovery convention. Avoid mechanical checks here — formatting, linting, and
-rulebook compliance are already enforced in CI.
+reviewer's own rule-discovery convention (see OpenAI's [custom code review rules for
+Codex](https://developers.openai.com/blog/custom-code-review-rules-for-codex) for why `AGENTS.md` is
+what this reviewer actually discovers). "Condensed" means *this section only carries what this
+reviewer needs*, not that every bullet is shortened — a bullet whose full nuance is operationally
+necessary for `chatgpt-codex-connector[bot]` to self-classify correctly (e.g. a self-referential
+gotcha) is mirrored here near-verbatim from `REVIEW.md` on purpose; that's an intentional duplicate
+for a distinct reviewer, not drift. Avoid mechanical checks here — formatting, linting, and rulebook
+compliance are already enforced in CI.
 
 ### Trust boundary
 
@@ -114,6 +120,18 @@ rulebook compliance are already enforced in CI.
   regression — flag it even if CI stays green.
 - A `|| true`, a broad `except`, or a default flipped to fail-open on an infrastructure error is a
   regression, not a fix.
+- A local `check-trust-boundary` pre-push check (`scripts/marketplace_ci/trust_boundary.py`, wired into
+  `.pre-commit-config.yaml`) previews this gate for contributors — it is not the gate itself. It warns,
+  non-blockingly, when a diff touches one of the same Tier-1 paths CI's `compute-scope` restores from
+  `base.sha`, using a local merge-base diff as a cheap, unauthoritative approximation of the PR's real
+  `base.sha`. A PR that adds or extends this local check will itself trigger its own warning — extending
+  it edits `scripts/marketplace_ci/__main__.py`, a Tier-1 path — and that's the expected, disclosed cost
+  of a gate that also covers its own extension (see the PR template's `Known CI Failures (Accepted)`
+  section, issue #351), not evidence of an attempt to weaken it. `TIER1_FILES` in `trust_boundary.py` is
+  a duplicated copy that `tests/marketplace_ci/test_import_isolation.py` cross-checks against the
+  workflow's own pathspec — flag a change that edits one list without the other, or that makes the real
+  `compute-scope`/`check-scope-bypass` restore-from-base-SHA logic defer to this local script's result
+  instead of computing its own base.sha-scoped diff.
 
 ### Plugin components (`plugins/*/skills`, `agents`, `commands`, `hooks`, `rules`)
 

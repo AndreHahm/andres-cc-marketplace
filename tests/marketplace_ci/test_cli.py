@@ -1265,3 +1265,145 @@ def test_run_codex_review_full_mode_still_fails_closed_if_a_trigger_defines_no_r
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 2  # fails closed -- never a silent pass with zero coverage
     assert calls == []  # no reviewer was dispatched at all for an undefined trigger
+
+
+def test_check_trust_boundary_unresolvable_target_returns_0(monkeypatch, git_repo, capsys):
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-q", "-m", "base"], cwd=git_repo.root, check=True
+    )
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", "does-not-exist"])
+    assert rc == 0  # warn-only: never fails the push, even on a bad --target
+    assert "could not resolve merge-base" in capsys.readouterr().err
+
+
+def test_check_trust_boundary_warns_on_tier1_touch(monkeypatch, git_repo, capsys):
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("pyproject.toml", "[project]\nname = 'demo'\n")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "touch a tier-1 file"], cwd=git_repo.root, check=True
+    )
+
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0  # warn-only: still exits 0 even when a Tier-1 file is touched
+    err = capsys.readouterr().err
+    assert "review-dispatch-critical file(s)" in err
+    assert "pyproject.toml" in err
+
+
+def test_check_trust_boundary_silent_when_no_tier1_touch(monkeypatch, git_repo, capsys):
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("README.md", "changed, not a tier-1 path")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "docs only"], cwd=git_repo.root, check=True)
+
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_check_trust_boundary_diff_failure_returns_0(monkeypatch, git_repo, capsys):
+    """Regression test: find_tier1_touches's own git-diff call can raise
+    subprocess.CalledProcessError (check=True) -- the handler must degrade to
+    a skip notice + return 0, the same way an unresolvable --target already
+    does, rather than letting the exception propagate and fail the pre-push
+    hook (contradicting this command's own 'never fails' contract)."""
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-q", "-m", "base"], cwd=git_repo.root, check=True
+    )
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    def raise_diff_failure(base_ref, repo, to_ref="HEAD"):
+        raise subprocess.CalledProcessError(returncode=128, cmd=["git", "diff"])
+
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.trust_boundary.find_tier1_touches", raise_diff_failure
+    )
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0  # must not propagate -- this command must never fail the push
+    assert "could not compute the Tier-1 diff" in capsys.readouterr().err
+
+
+def test_check_trust_boundary_uses_pre_commit_to_ref_when_set(monkeypatch, git_repo, capsys):
+    """Regression test for Codex's automated review finding on PR #372:
+    _handle_check_trust_boundary hardcoded HEAD, so pushing a ref other than
+    the checked-out one (e.g. `git push origin other-branch`) got no warning
+    for a Tier-1 touch in the actually-pushed object. pre-commit's own
+    pre-push stage exposes that object as PRE_COMMIT_TO_REF -- the fix reads
+    it when set, falling back to HEAD otherwise."""
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    subprocess.run(["git", "checkout", "-q", "-b", "feature"], cwd=git_repo.root, check=True)
+    git_repo.write("pyproject.toml", "[project]\nname = 'demo'\n")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "tier-1 change on feature"], cwd=git_repo.root, check=True
+    )
+    feature_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    # Back to the base branch -- HEAD is base_sha again, not feature_sha.
+    subprocess.run(["git", "checkout", "-q", "-"], cwd=git_repo.root, check=True)
+
+    monkeypatch.setenv("PRE_COMMIT_TO_REF", feature_sha)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "review-dispatch-critical file(s)" in err
+    assert "pyproject.toml" in err
+
+
+def test_check_trust_boundary_falls_back_to_head_without_pre_commit_to_ref(
+    monkeypatch, git_repo, capsys
+):
+    """Documents the intentional fallback: with no PRE_COMMIT_TO_REF (a
+    manual run, or `pre-commit run` outside a real push event), the check
+    still evaluates HEAD -- the same setup as the test above, but the
+    Tier-1 touch lives only on the unchecked-out feature branch, so no
+    warning fires."""
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    subprocess.run(["git", "checkout", "-q", "-b", "feature"], cwd=git_repo.root, check=True)
+    git_repo.write("pyproject.toml", "[project]\nname = 'demo'\n")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "tier-1 change on feature"], cwd=git_repo.root, check=True
+    )
+    # Back to the base branch -- HEAD is base_sha again; the Tier-1 touch
+    # above lives only on the unchecked-out feature branch.
+    subprocess.run(["git", "checkout", "-q", "-"], cwd=git_repo.root, check=True)
+
+    monkeypatch.delenv("PRE_COMMIT_TO_REF", raising=False)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0
+    assert capsys.readouterr().err == ""

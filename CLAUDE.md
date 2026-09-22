@@ -87,3 +87,14 @@ When asked to fix Codacy's security findings on a PR, use the `codacy-skills` pl
 **Before changing code to satisfy a flagged finding, verify the change actually reduces Codacy's count** — a fix aimed at one static-analysis rule (e.g. Bandit's B607, "partial executable path") can trip a *different*, stricter rule on the same line (e.g. a "non-static subprocess command" rule that flags any variable-based command as worse than a literal one), trading a low-severity warning for a Critical finding with no net improvement. Re-check via the Cloud CLI or a fresh push+re-analysis before assuming a code change helped.
 
 **For a genuine false positive or test-only code, use Codacy's own issue-management instead of chasing it with code changes**: `codacy pull-request ... --ignore-issue <id> --ignore-reason <FalsePositive|NotExploitable|TestCode|AcceptedUse|ExternalCode>`. `.codacy.yml`'s `exclude_paths` can only exclude a whole file from a whole engine (never a single rule on an otherwise-scanned file), so it's only appropriate for structurally false-positive-prone code (test harnesses, fixtures) — never as a workaround for one specific finding on production code.
+
+## Marketplace-Specific: AGENTS.md vs. REVIEW.md Duplication Is Intentional
+
+`AGENTS.md`'s `## Code Review Rules` section and `REVIEW.md` are read by different reviewers, not by
+the same one at different verbosity: `REVIEW.md` is the canonical, detailed review policy for every
+reviewer except the external `chatgpt-codex-connector[bot]` GitHub App, which discovers its own rules
+from `AGENTS.md` instead (a convention OpenAI documents for Codex specifically) and never reads
+`REVIEW.md` at all. Where a policy's full nuance matters for that reviewer's own self-classification
+(not just a one-line pointer), `AGENTS.md` deliberately mirrors `REVIEW.md`'s wording near-verbatim.
+Don't flag that near-verbatim overlap as accidental drift or an R20-style duplicate-fact violation —
+check whether the two copies actually *disagree* in substance before treating either as stale.

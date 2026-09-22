@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -614,6 +615,60 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
+    """Local, informational-only preview of the codex-review job's
+    hard-refuse trust-boundary gate (marketplace-ci.yml, issue #351) --
+    warns if this branch's diff since --target touches a Tier-1
+    (review-dispatch-critical) file, so a push doesn't land in CI as a
+    surprise. Never fails: this is a developer convenience, not a policy
+    gate -- the real gate in CI is still what decides.
+
+    Diffs against `PRE_COMMIT_TO_REF` when set -- the actual object a
+    pre-push hook invocation is pushing, per pre-commit's own pre-push
+    stage (it parses git's `<local ref> <local oid> <remote ref>
+    <remote oid>` pre-push contract and exposes the local oid this way) --
+    falling back to `HEAD` otherwise (e.g. a manual `check-trust-boundary`
+    run, or `pre-commit run` with no real push event). `HEAD` alone is
+    wrong whenever the pushed ref isn't what's currently checked out (e.g.
+    `git push origin other-branch` while on a different branch) -- Codex's
+    automated PR review caught this, PR #372, 2026-09-22, confirmed via a
+    live repro against pre-commit's real pre-push hook."""
+    from scripts.marketplace_ci.trust_boundary import find_tier1_touches
+
+    repo = Path.cwd()
+    to_ref = os.environ.get("PRE_COMMIT_TO_REF") or "HEAD"
+    base_ref = subprocess.run(
+        ["git", "merge-base", args.target, to_ref], cwd=repo, capture_output=True, text=True
+    )
+    if base_ref.returncode != 0:
+        print(
+            f"check-trust-boundary: could not resolve merge-base with {args.target!r} "
+            f"(is it fetched locally?) -- skipping local preview",
+            file=sys.stderr,
+        )
+        return 0
+
+    try:
+        touched = find_tier1_touches(base_ref.stdout.strip(), repo, to_ref=to_ref)
+    except subprocess.CalledProcessError:
+        print(
+            "check-trust-boundary: could not compute the Tier-1 diff -- skipping local preview",
+            file=sys.stderr,
+        )
+        return 0
+
+    if touched:
+        print(
+            "check-trust-boundary: this push touches review-dispatch-critical file(s) "
+            f"({', '.join(sorted(touched))}) -- codex-review's trust-boundary gate will "
+            "refuse automated dispatch in CI and require a manual bypass attestation, "
+            "unless this content is already identical to the target branch (e.g. a stale "
+            "local base -- try syncing this branch first). See docs/ci.md.",
+            file=sys.stderr,
+        )
+    return 0
+
+
 def _finding_to_dict(finding) -> dict:
     return {
         "reviewer": finding.reviewer,
@@ -870,6 +925,15 @@ def build_parser() -> argparse.ArgumentParser:
     run_codex_review.add_argument("--base-sha", required=True, metavar="SHA")
     run_codex_review.add_argument("--output", metavar="PATH")
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
+
+    check_trust_boundary = subparsers.add_parser(
+        "check-trust-boundary",
+        help="local, warn-only preview of codex-review's Tier-1 trust-boundary gate",
+    )
+    check_trust_boundary.add_argument(
+        "--target", default="origin/main", metavar="REF", help="branch to diff against"
+    )
+    check_trust_boundary.set_defaults(handler=_handle_check_trust_boundary)
 
     return parser
 

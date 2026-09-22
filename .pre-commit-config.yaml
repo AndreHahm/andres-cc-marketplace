@@ -161,3 +161,11 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      - id: marketplace-ci-check-trust-boundary
+        name: marketplace-ci check-trust-boundary (warn-only preview)
+        entry: uv run python -m scripts.marketplace_ci check-trust-boundary
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+        stages: [pre-push]
