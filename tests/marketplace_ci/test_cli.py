@@ -148,7 +148,11 @@ def test_repair_all_bootstrap_with_apply_writes(monkeypatch, repo):
 def test_repair_all_applied_count_excludes_warn_actions(monkeypatch, repo, capsys):
     from scripts.marketplace_ci.conversion import plan_exports
     from scripts.marketplace_ci.registry import Registry
-    from scripts.marketplace_ci.sync import plan_hooks_merge
+    from scripts.marketplace_ci.sync import (
+        plan_external_hook_scripts_mirror,
+        plan_hooks_merge,
+        plan_settings_hooks_sync,
+    )
     from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
     orphan = repo / ".claude" / "skills" / "ghost" / "SKILL.md"
@@ -160,7 +164,15 @@ def test_repair_all_applied_count_excludes_warn_actions(monkeypatch, repo, capsy
     mirror_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=True)
     export_plan = plan_exports(repo, registry, previous=None, bootstrap=True)
     hooks_plan = plan_hooks_merge(repo, registry)
-    all_actions = (*mirror_plan.actions, *export_plan.actions, *hooks_plan.actions)
+    external_scripts_plan = plan_external_hook_scripts_mirror(repo, registry)
+    settings_hooks_plan = plan_settings_hooks_sync(repo, hooks_plan)
+    all_actions = (
+        *mirror_plan.actions,
+        *export_plan.actions,
+        *hooks_plan.actions,
+        *external_scripts_plan.actions,
+        *settings_hooks_plan.actions,
+    )
     expected_applied = sum(1 for a in all_actions if a.operation != "warn")
     assert any(a.operation == "warn" for a in all_actions)  # the orphan is really in the plan
 
