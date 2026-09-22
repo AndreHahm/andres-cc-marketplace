@@ -31,3 +31,15 @@
 - [ ] Self-reviewed the diff
 - [ ] Tests added/updated where applicable
 - [ ] Documentation updated where applicable
+
+## Known CI Failures (Accepted)
+
+<!-- Any CI check expected to fail for a known, already-reviewed reason -- e.g. a flaky external
+     check, a documented incompatibility, or a gate that's intentionally bypassed by design for
+     this class of change. Describe which check(s) and why below. -->
+
+- [ ] A specific CI check is expected to fail for a known, accepted reason (described above) — N/A otherwise
+
+## Open Items (disclosed, not blocking)
+
+<!-- Known limitations, deferred work, or gaps disclosed but not blocking this merge. Use "None" if none. -->
