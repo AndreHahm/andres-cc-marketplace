@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -620,12 +621,24 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     warns if this branch's diff since --target touches a Tier-1
     (review-dispatch-critical) file, so a push doesn't land in CI as a
     surprise. Never fails: this is a developer convenience, not a policy
-    gate -- the real gate in CI is still what decides."""
+    gate -- the real gate in CI is still what decides.
+
+    Diffs against `PRE_COMMIT_TO_REF` when set -- the actual object a
+    pre-push hook invocation is pushing, per pre-commit's own pre-push
+    stage (it parses git's `<local ref> <local oid> <remote ref>
+    <remote oid>` pre-push contract and exposes the local oid this way) --
+    falling back to `HEAD` otherwise (e.g. a manual `check-trust-boundary`
+    run, or `pre-commit run` with no real push event). `HEAD` alone is
+    wrong whenever the pushed ref isn't what's currently checked out (e.g.
+    `git push origin other-branch` while on a different branch) -- Codex's
+    automated PR review caught this, PR #372, 2026-09-22, confirmed via a
+    live repro against pre-commit's real pre-push hook."""
     from scripts.marketplace_ci.trust_boundary import find_tier1_touches
 
     repo = Path.cwd()
+    to_ref = os.environ.get("PRE_COMMIT_TO_REF") or "HEAD"
     base_ref = subprocess.run(
-        ["git", "merge-base", args.target, "HEAD"], cwd=repo, capture_output=True, text=True
+        ["git", "merge-base", args.target, to_ref], cwd=repo, capture_output=True, text=True
     )
     if base_ref.returncode != 0:
         print(
@@ -636,7 +649,7 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
         return 0
 
     try:
-        touched = find_tier1_touches(base_ref.stdout.strip(), repo)
+        touched = find_tier1_touches(base_ref.stdout.strip(), repo, to_ref=to_ref)
     except subprocess.CalledProcessError:
         print(
             "check-trust-boundary: could not compute the Tier-1 diff -- skipping local preview",

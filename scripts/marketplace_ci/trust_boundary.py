@@ -36,11 +36,17 @@ TIER1_FILES = frozenset(
 )
 
 
-def find_tier1_touches(base_ref: str, repo: Path) -> frozenset[str]:
-    """Tier-1 paths with a real diff between `base_ref` and HEAD (three-dot,
-    matching the workflow gate's own `git diff ... "$BASE_SHA"...HEAD`)."""
+def find_tier1_touches(base_ref: str, repo: Path, to_ref: str = "HEAD") -> frozenset[str]:
+    """Tier-1 paths with a real diff between `base_ref` and `to_ref` (three-dot,
+    matching the workflow gate's own `git diff ... "$BASE_SHA"...HEAD`).
+
+    `to_ref` defaults to `HEAD`, but a pre-push hook invocation should pass the
+    actually-pushed object instead (see `_handle_check_trust_boundary` in
+    `__main__.py`) -- `HEAD` is only what's currently checked out, which can
+    differ from what's being pushed (e.g. `git push origin other-branch` while
+    on a different branch)."""
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base_ref}...HEAD", "--", *sorted(TIER1_FILES)],
+        ["git", "diff", "--name-only", f"{base_ref}...{to_ref}", "--", *sorted(TIER1_FILES)],
         cwd=repo,
         capture_output=True,
         text=True,
