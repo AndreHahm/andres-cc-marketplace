@@ -114,10 +114,14 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
 def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.registry import RegistryError
     from scripts.marketplace_ci.sync import (
+        HooksMergePlan,
         SyncError,
+        SyncPlan,
         apply_hooks_merge_plan,
         apply_sync_plan,
+        plan_external_hook_scripts_mirror,
         plan_hooks_merge,
+        plan_settings_hooks_sync,
         stage_generated_destinations,
         stage_hooks_merge_result,
     )
@@ -139,12 +143,34 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
         return 1
     hooks_plan = plan_hooks_merge(repo, registry)
     hooks_result = apply_hooks_merge_plan(hooks_plan)
-    applied_count = len(result.applied) + len(hooks_result.applied)
+    try:
+        external_scripts_plan = plan_external_hook_scripts_mirror(repo, registry)
+        external_scripts_result = apply_sync_plan(external_scripts_plan)
+        settings_hooks_plan = plan_settings_hooks_sync(repo, hooks_plan)
+        settings_hooks_result = apply_sync_plan(SyncPlan(actions=settings_hooks_plan.actions))
+    except SyncError as exc:
+        print(f"sync-plugin-mirrors: {exc}", file=sys.stderr)
+        return 1
+    applied_count = (
+        len(result.applied)
+        + len(hooks_result.applied)
+        + len(external_scripts_result.applied)
+        + len(settings_hooks_result.applied)
+    )
     print(f"sync-plugin-mirrors: applied {applied_count} action(s)")
     if getattr(args, "stage", False):
         try:
             staged = stage_generated_destinations(repo, result.applied)
             staged += stage_hooks_merge_result(repo, hooks_plan)
+            staged += stage_generated_destinations(repo, external_scripts_result.applied)
+            staged += stage_hooks_merge_result(
+                repo,
+                HooksMergePlan(
+                    actions=settings_hooks_result.applied,
+                    merged_document=settings_hooks_plan.rewritten_hooks_document,
+                    sources=settings_hooks_plan.sources,
+                ),
+            )
         except SyncError as exc:
             print(f"sync-plugin-mirrors: {exc}", file=sys.stderr)
             return 1
@@ -263,9 +289,12 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.registry import RegistryError
     from scripts.marketplace_ci.sync import (
         SyncError,
+        SyncPlan,
         apply_hooks_merge_plan,
         apply_sync_plan,
+        plan_external_hook_scripts_mirror,
         plan_hooks_merge,
+        plan_settings_hooks_sync,
     )
     from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
@@ -284,8 +313,20 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
     )
     export_plan = plan_exports(repo, registry, previous=previous, bootstrap=args.bootstrap)
     hooks_plan = plan_hooks_merge(repo, registry)
+    try:
+        external_scripts_plan = plan_external_hook_scripts_mirror(repo, registry)
+        settings_hooks_plan = plan_settings_hooks_sync(repo, hooks_plan)
+    except SyncError as exc:
+        print(f"repair-all: {exc}", file=sys.stderr)
+        return 1
 
-    all_actions = (*mirror_plan.actions, *export_plan.actions, *hooks_plan.actions)
+    all_actions = (
+        *mirror_plan.actions,
+        *export_plan.actions,
+        *hooks_plan.actions,
+        *external_scripts_plan.actions,
+        *settings_hooks_plan.actions,
+    )
     if not all_actions:
         print("repair-all: nothing to do")
         return 0
@@ -293,6 +334,8 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
     _report("mirrors", mirror_plan.actions, repo)
     _report("exports", export_plan.actions, repo)
     _report("hooks", hooks_plan.actions, repo)
+    _report("external-hook-scripts", external_scripts_plan.actions, repo)
+    _report("settings-hooks", settings_hooks_plan.actions, repo)
 
     if args.bootstrap and not args.apply:
         print("repair-all: bootstrap plan printed above; re-run with --apply to execute")
@@ -302,12 +345,18 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
         mirror_result = apply_sync_plan(mirror_plan)
         export_result = apply_sync_plan(export_plan)
         hooks_result = apply_hooks_merge_plan(hooks_plan)
+        external_scripts_result = apply_sync_plan(external_scripts_plan)
+        settings_hooks_result = apply_sync_plan(SyncPlan(actions=settings_hooks_plan.actions))
     except SyncError as exc:
         print(f"repair-all: {exc}", file=sys.stderr)
         return 1
 
     applied_count = (
-        len(mirror_result.applied) + len(export_result.applied) + len(hooks_result.applied)
+        len(mirror_result.applied)
+        + len(export_result.applied)
+        + len(hooks_result.applied)
+        + len(external_scripts_result.applied)
+        + len(settings_hooks_result.applied)
     )
     print(f"repair-all: applied {applied_count} action(s)")
     return 0

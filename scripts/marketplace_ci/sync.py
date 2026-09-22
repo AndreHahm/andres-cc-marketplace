@@ -20,7 +20,29 @@ from scripts.marketplace_ci.registry import Registry
 from scripts.marketplace_ci.sync_plan import SyncAction, SyncError, SyncPlan
 
 DEFAULT_REPO_HOOKS_PATH = Path("scripts/marketplace_ci/hooks/hooks.json")
+DEFAULT_REPO_SETTINGS_PATH = Path(".claude/settings.json")
 _HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
+
+# Hook `command` strings that reference a script outside the mirrored COMPONENT_DIRS
+# (skills, agents, commands, hooks, rules) -- most commonly a plugin's own root-level
+# `scripts/` directory. plan_plugin_sync (sync_plan.py) never mirrors those paths into
+# .claude/, so plan_settings_hooks_sync's ${CLAUDE_PLUGIN_ROOT} rewrite has nowhere to
+# point without an explicit destination. Hand-maintained rather than mirroring every
+# plugin's entire scripts/ directory (deliberately out of scope -- see
+# .claude/hooks/README.md: only 5 of 122 files across 8 plugins' scripts/ directories
+# are ever referenced by a hook). Adding a new hook that references a script outside
+# the five component dirs requires a new entry here; plan_settings_hooks_sync raises a
+# SyncError if any ${CLAUDE_PLUGIN_ROOT} reference survives rewriting, so a missed
+# addition is a build-time failure, not a silently broken hook path (issue #374).
+EXTERNAL_HOOK_SCRIPT_MIRRORS: tuple[tuple[str, str], ...] = (
+    ("codex-kit", "scripts/session-lifecycle-hook.mjs"),
+    ("codex-kit", "scripts/stop-review-gate-hook.mjs"),
+    ("context-kit", "scripts/context-monitor.py"),
+    ("context-kit", "scripts/post-compact-restore.py"),
+    ("context-kit", "scripts/pre-compact.py"),
+)
+
+EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT = Path(".claude/hooks/_external-scripts")
 
 
 @dataclass(frozen=True)
@@ -88,6 +110,228 @@ def plan_hooks_merge(
         merged_document=merged_document,
         sources=tuple(path for _, path in sources),
     )
+
+
+def _plugin_name_for_hooks_source(repo: Path, source: Path) -> str | None:
+    """Which plugin a plan_hooks_merge source belongs to, or None for the repo-owned
+    fragment (DEFAULT_REPO_HOOKS_PATH), which is never plugin-scoped."""
+    rel = source.resolve().relative_to(repo.resolve()).as_posix()
+    match = _HOOKS_SOURCE_PATTERN.match(rel)
+    if match is None:
+        return None
+    return rel.split("/")[1]
+
+
+_PLUGIN_ROOT_REFERENCE_PATTERN = re.compile(
+    r'\$\{CLAUDE_PLUGIN_ROOT\}("?)((?:/[A-Za-z0-9_.\-/]*)?)'
+)
+_MIRRORED_COMPONENT_DIR_PREFIXES = tuple(
+    f"/{d}/" for d in ("skills", "agents", "commands", "hooks", "rules")
+)
+
+
+def _rewrite_plugin_root_references(
+    value,
+    *,
+    plugin_name: str | None,
+    external_mirrors: tuple[tuple[str, str], ...] = EXTERNAL_HOOK_SCRIPT_MIRRORS,
+):
+    """Recursively rewrite every ${CLAUDE_PLUGIN_ROOT} reference in `value` (a
+    plan_hooks_merge source document's already-parsed `hooks` section) to a
+    project-relative equivalent resolvable via .claude/settings.json's own `hooks` key
+    -- as opposed to only resolving when Claude Code loads the hook from an actually-
+    installed plugin's own manifest (issue #374).
+
+    Each occurrence is classified individually (not by a single per-string blanket
+    replace, which would silently rewrite an unrecognized reference too): a reference
+    into one of the five mirrored component dirs (hooks/, skills/, agents/, commands/,
+    rules/) rewrites to ${CLAUDE_PROJECT_DIR}/.claude/..., since plan_plugin_sync
+    guarantees that subtree is a byte-identical mirror of the owning plugin's own
+    copy; a reference matching `external_mirrors` (production default:
+    EXTERNAL_HOOK_SCRIPT_MIRRORS -- overridable so this function's rewrite logic is
+    testable without depending on this repo's own real plugin content) rewrites to
+    that entry's dedicated mirror under EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT; a bare
+    ${CLAUDE_PLUGIN_ROOT} reference with no path suffix rewrites to the mirrored
+    project root alone. Anything else raises SyncError -- an unrecognized reference
+    with no known destination must fail loud here, not ship as a silently broken path.
+    """
+    if isinstance(value, dict):
+        return {
+            k: _rewrite_plugin_root_references(
+                v, plugin_name=plugin_name, external_mirrors=external_mirrors
+            )
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            _rewrite_plugin_root_references(
+                v, plugin_name=plugin_name, external_mirrors=external_mirrors
+            )
+            for v in value
+        ]
+    if isinstance(value, str) and "CLAUDE_PLUGIN_ROOT" in value:
+
+        def _replace(match: re.Match) -> str:
+            # Two literal quoting forms appear in this repo's real hook manifests:
+            # `"${CLAUDE_PLUGIN_ROOT}"/hooks/x` (quote closes right after the
+            # variable -- captured as `quote`) and `"${CLAUDE_PLUGIN_ROOT}/hooks/x"`
+            # (quote wraps the whole path, entirely outside this match -- `quote`
+            # empty). Re-attaching `quote` after the rewritten suffix reproduces a
+            # shell-valid result either way: it only ever moves a closing quote to
+            # wrap more of the same already-safe path, never changes word-splitting.
+            quote, suffix = match.group(1), match.group(2)
+            if not suffix:
+                return f"${{CLAUDE_PROJECT_DIR}}/.claude{quote}"
+            if suffix.startswith(_MIRRORED_COMPONENT_DIR_PREFIXES):
+                return f"${{CLAUDE_PROJECT_DIR}}/.claude{suffix}{quote}"
+            if plugin_name is not None:
+                relative_path = suffix[1:]  # drop the leading '/'
+                for entry_plugin, entry_relative_path in external_mirrors:
+                    if entry_plugin == plugin_name and entry_relative_path == relative_path:
+                        return (
+                            "${CLAUDE_PROJECT_DIR}/"
+                            + EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT.as_posix()
+                            + f"/{plugin_name}/{relative_path}{quote}"
+                        )
+            raise SyncError(
+                "plan_settings_hooks_sync: unresolvable ${CLAUDE_PLUGIN_ROOT} reference in "
+                f"plugin {plugin_name!r} hook command, no mirrored destination for it -- add "
+                f"an EXTERNAL_HOOK_SCRIPT_MIRRORS entry: {value!r}"
+            )
+
+        return _PLUGIN_ROOT_REFERENCE_PATTERN.sub(_replace, value)
+    return value
+
+
+@dataclass(frozen=True)
+class SettingsHooksSyncPlan:
+    actions: tuple[SyncAction, ...]
+    rewritten_hooks_document: dict
+    sources: tuple[Path, ...] = ()
+
+
+def plan_settings_hooks_sync(
+    repo: Path,
+    hooks_merge_plan: HooksMergePlan,
+    repo_settings_path: Path | None = None,
+    external_mirrors: tuple[tuple[str, str], ...] = EXTERNAL_HOOK_SCRIPT_MIRRORS,
+) -> SettingsHooksSyncPlan:
+    """Derive a project-relative copy of plan_hooks_merge's merged hooks content and
+    plan writing it into .claude/settings.json's own `hooks` key, preserving every
+    other existing top-level settings.json key untouched. This is what makes the
+    merge in .claude/hooks/hooks.json (which stays in its original, plugin-manifest
+    ${CLAUDE_PLUGIN_ROOT} form -- see .claude/hooks/README.md) actually live-loadable
+    (issue #374). Never mutates plan_hooks_merge/apply_hooks_merge_plan's own output;
+    this independently re-reads the same source files. `external_mirrors` defaults to
+    EXTERNAL_HOOK_SCRIPT_MIRRORS in production; overridable for testing this
+    function's rewrite logic without depending on this repo's own real plugin content.
+    """
+    if repo_settings_path is None:
+        repo_settings_path = repo / DEFAULT_REPO_SETTINGS_PATH
+
+    merged: dict[str, list[dict]] = {}
+    for source in hooks_merge_plan.sources:
+        document = json.loads(source.read_text(encoding="utf-8"))
+        plugin_name = _plugin_name_for_hooks_source(repo, source)
+        rewritten = _rewrite_plugin_root_references(
+            document.get("hooks", {}), plugin_name=plugin_name, external_mirrors=external_mirrors
+        )
+        for event_key, entries in rewritten.items():
+            merged.setdefault(event_key, []).extend(entries)
+
+    current_settings: dict = {}
+    if repo_settings_path.is_file():
+        current_settings = json.loads(repo_settings_path.read_text(encoding="utf-8"))
+
+    new_settings = dict(current_settings)
+    new_settings["hooks"] = merged
+    new_bytes = (json.dumps(new_settings, indent=2) + "\n").encode("utf-8")
+
+    actions: list[SyncAction] = []
+    destination = repo_settings_path.resolve()
+    if destination.exists():
+        if destination.read_bytes() != new_bytes:
+            actions.append(
+                SyncAction(
+                    operation="update",
+                    source=None,
+                    destination=destination,
+                    reason="merged, project-relative hooks content changed",
+                    content=new_bytes,
+                )
+            )
+    else:
+        actions.append(
+            SyncAction(
+                operation="create",
+                source=None,
+                destination=destination,
+                reason="settings.json missing",
+                content=new_bytes,
+            )
+        )
+
+    return SettingsHooksSyncPlan(
+        actions=tuple(actions),
+        rewritten_hooks_document={"hooks": merged},
+        sources=hooks_merge_plan.sources,
+    )
+
+
+def plan_external_hook_scripts_mirror(
+    repo: Path,
+    registry: Registry,
+    external_mirrors: tuple[tuple[str, str], ...] = EXTERNAL_HOOK_SCRIPT_MIRRORS,
+) -> SyncPlan:
+    """Mirror exactly the plugin scripts named in `external_mirrors` (production
+    default: EXTERNAL_HOOK_SCRIPT_MIRRORS) into
+    EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT/<plugin>/<relative_path> -- a small, explicit
+    exception list, not a general plugins/*/scripts/ mirror (see
+    .claude/hooks/README.md). An entry whose plugin isn't in `registry.plugin_mirrors`
+    is skipped entirely, matching plan_hooks_merge's own registry-scoped source
+    discovery -- this keeps the function usable against any registry (e.g. a test
+    fixture registering only a synthetic plugin), not hardcoded to this repo's own
+    current plugin set. Raises SyncError if a *registered* entry's source file is
+    missing -- plan_settings_hooks_sync trusts this list blindly when rewriting
+    references, so a stale entry must fail loud here rather than silently produce a
+    settings.json hook pointing at a destination this function never created.
+    """
+    actions: list[SyncAction] = []
+    for plugin_name, relative_path in external_mirrors:
+        if plugin_name not in registry.plugin_mirrors:
+            continue
+        source = repo / "plugins" / plugin_name / relative_path
+        destination = (
+            repo / EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT / plugin_name / relative_path
+        ).resolve()
+        if not source.is_file():
+            raise SyncError(
+                "plan_external_hook_scripts_mirror: EXTERNAL_HOOK_SCRIPT_MIRRORS entry "
+                f"({plugin_name!r}, {relative_path!r}) has no source file at {source} -- "
+                "update or remove this entry"
+            )
+        source_bytes = source.read_bytes()
+        if destination.exists():
+            if destination.read_bytes() == source_bytes:
+                continue
+            actions.append(
+                SyncAction(
+                    operation="update",
+                    source=source,
+                    destination=destination,
+                    reason="content differs from canonical source",
+                )
+            )
+        else:
+            actions.append(
+                SyncAction(
+                    operation="create",
+                    source=source,
+                    destination=destination,
+                    reason="missing from destination",
+                )
+            )
+    return SyncPlan(actions=tuple(actions))
 
 
 def _atomic_write(destination: Path, data: bytes, *, source: Path | None = None) -> None:

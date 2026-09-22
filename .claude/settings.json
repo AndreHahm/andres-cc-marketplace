@@ -1,5 +1,293 @@
 {
   "worktree": {
     "bgIsolation": "none"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m scripts.marketplace_ci handle-post-edit",
+            "onError": "warn",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "^(Bash|PowerShell)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-milestone-detector.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; fi",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/rulebook-check.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/hooks-schema-check.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Skill|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r26-expensive-action-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r25-overhead-disclosure-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/session-lifecycle-hook.mjs\" SessionStart",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-session-init.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^(compact|resume)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; fi",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/session-lifecycle-hook.mjs\" SessionEnd",
+            "timeout": 12,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/stop-review-gate-hook.mjs\"",
+            "timeout": 600,
+            "onError": "warn",
+            "statusMessage": "Running Codex stop-time review gate (can take up to 9 minutes)..."
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-stop-check.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-dirty-worktree-exit.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-hook.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/skills/context-mode/scripts/detect_mode.py\" || exec python \"${CLAUDE_PROJECT_DIR}/.claude/skills/context-mode/scripts/detect_mode.py\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-track-and-suggest.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "^Skill$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-skill-category-detector.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Bash|PowerShell)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-commit.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-pr-ops.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-branch-create.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-pr-review.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-destructive-cleanup.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/security-precommit-check.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "^(manual|auto)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/compact-instructions.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; fi",
+            "shell": "bash",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^(Agent|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r25-overhead-disclosure-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ]
   }
 }
