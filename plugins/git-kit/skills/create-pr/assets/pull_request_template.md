@@ -34,12 +34,9 @@
 
 ## Known CI Failures (Accepted)
 
-<!-- Any CI check expected to fail for a known, already-reviewed reason -- e.g. this PR touches
-     review-dispatch-critical (Tier-1) code, so `Codex delta review` will hard-refuse per
-     marketplace-ci.yml's trust-boundary gate (see docs/ci.md, issue #351) and needs the
-     SHA-bound bypass-attestation protocol (comment + `s: codex review bypassed` label, or
-     `--bypass-codex-review "<reason>"` via commit/create-pr/merge-pr). Describe which check(s)
-     and why below. -->
+<!-- Any CI check expected to fail for a known, already-reviewed reason -- e.g. a flaky external
+     check, a documented incompatibility, or a gate that's intentionally bypassed by design for
+     this class of change. Describe which check(s) and why below. -->
 
 - [ ] A specific CI check is expected to fail for a known, accepted reason (described above) — N/A otherwise
 
