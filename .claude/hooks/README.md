@@ -30,6 +30,11 @@ execution context. **That copy is the one that's actually live** — `hooks.json
 this directory stays the unmodified, plugin-manifest-shaped reference copy described
 above.
 
+Like `hooks.json`, `.claude/settings.json`'s own `hooks` key is fully machine-generated
+too — every run replaces it wholesale from the current merge rather than patching it,
+so a removed hook actually disappears instead of lingering as a stale entry. Never
+hand-add an entry directly into that key either; it's overwritten the same way.
+
 ## `_external-scripts/`
 
 A handful of hook commands reference a script outside the five mirrored component
