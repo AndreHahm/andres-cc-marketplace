@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,26 @@ def test_agent_conversion_preserves_description_and_prompt_but_drops_tools():
     assert 'description = "Reviews demo components"' in rendered
     assert "tools" not in rendered
     assert "Review the target carefully." in rendered
+
+
+def test_convert_agent_escapes_backslashes_in_body_into_valid_toml():
+    # Codex review finding on PR #349: an unescaped literal backslash in the
+    # agent body (e.g. `\ ` from a regex/shell example) isn't a valid TOML
+    # multi-line-string escape sequence, so tomllib.load rejects the whole
+    # export -- confirmed live against .codex/agents/scripts-reviewer.toml,
+    # consistency-reviewer.toml, completeness-reviewer.toml.
+    markdown = """---
+name: demo
+description: Reviews demo components
+---
+
+Match a pattern like `word\\ ` and a literal quote: "value".
+"""
+    rendered = convert_agent(markdown, "demo")
+    parsed = tomllib.loads(rendered)
+    assert parsed["developer_instructions"] == (
+        'Match a pattern like `word\\ ` and a literal quote: "value".'
+    )
 
 
 def test_convert_agent_always_emits_read_only_sandbox_mode():

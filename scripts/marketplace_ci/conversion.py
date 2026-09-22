@@ -135,7 +135,7 @@ def convert_agent(source: str, agent_name: str) -> str:
     lines.append(f'sandbox_mode = "{sandbox_mode}"')
 
     body_text = body.rstrip("\n")
-    lines.append(f'developer_instructions = """\n{body_text}"""')
+    lines.append(f'developer_instructions = """\n{_toml_escape(body_text)}"""')
 
     return "\n".join(lines) + "\n"
 
