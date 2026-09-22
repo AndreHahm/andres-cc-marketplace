@@ -635,7 +635,15 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
         )
         return 0
 
-    touched = find_tier1_touches(base_ref.stdout.strip(), repo)
+    try:
+        touched = find_tier1_touches(base_ref.stdout.strip(), repo)
+    except subprocess.CalledProcessError:
+        print(
+            "check-trust-boundary: could not compute the Tier-1 diff -- skipping local preview",
+            file=sys.stderr,
+        )
+        return 0
+
     if touched:
         print(
             "check-trust-boundary: this push touches review-dispatch-critical file(s) "

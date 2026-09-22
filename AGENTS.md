@@ -87,8 +87,14 @@ Read by the external `chatgpt-codex-connector[bot]` GitHub App reviewer (trigger
 CI-dispatched Codex pipeline, which reads `.codex/agents/*.toml` directly instead. The fuller version of
 these rules, plus every other reviewer's severity scale and process rules, lives in
 [`REVIEW.md`](REVIEW.md); this section is the condensed, consequential subset formatted for this
-reviewer's own rule-discovery convention. Avoid mechanical checks here — formatting, linting, and
-rulebook compliance are already enforced in CI.
+reviewer's own rule-discovery convention (see OpenAI's [custom code review rules for
+Codex](https://developers.openai.com/blog/custom-code-review-rules-for-codex) for why `AGENTS.md` is
+what this reviewer actually discovers). "Condensed" means *this section only carries what this
+reviewer needs*, not that every bullet is shortened — a bullet whose full nuance is operationally
+necessary for `chatgpt-codex-connector[bot]` to self-classify correctly (e.g. a self-referential
+gotcha) is mirrored here near-verbatim from `REVIEW.md` on purpose; that's an intentional duplicate
+for a distinct reviewer, not drift. Avoid mechanical checks here — formatting, linting, and rulebook
+compliance are already enforced in CI.
 
 ### Trust boundary
 

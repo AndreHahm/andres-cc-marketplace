@@ -1265,3 +1265,78 @@ def test_run_codex_review_full_mode_still_fails_closed_if_a_trigger_defines_no_r
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 2  # fails closed -- never a silent pass with zero coverage
     assert calls == []  # no reviewer was dispatched at all for an undefined trigger
+
+
+def test_check_trust_boundary_unresolvable_target_returns_0(monkeypatch, git_repo, capsys):
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-q", "-m", "base"], cwd=git_repo.root, check=True
+    )
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", "does-not-exist"])
+    assert rc == 0  # warn-only: never fails the push, even on a bad --target
+    assert "could not resolve merge-base" in capsys.readouterr().err
+
+
+def test_check_trust_boundary_warns_on_tier1_touch(monkeypatch, git_repo, capsys):
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("pyproject.toml", "[project]\nname = 'demo'\n")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "touch a tier-1 file"], cwd=git_repo.root, check=True
+    )
+
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0  # warn-only: still exits 0 even when a Tier-1 file is touched
+    err = capsys.readouterr().err
+    assert "review-dispatch-critical file(s)" in err
+    assert "pyproject.toml" in err
+
+
+def test_check_trust_boundary_silent_when_no_tier1_touch(monkeypatch, git_repo, capsys):
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("README.md", "changed, not a tier-1 path")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "docs only"], cwd=git_repo.root, check=True)
+
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_check_trust_boundary_diff_failure_returns_0(monkeypatch, git_repo, capsys):
+    """Regression test: find_tier1_touches's own git-diff call can raise
+    subprocess.CalledProcessError (check=True) -- the handler must degrade to
+    a skip notice + return 0, the same way an unresolvable --target already
+    does, rather than letting the exception propagate and fail the pre-push
+    hook (contradicting this command's own 'never fails' contract)."""
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-q", "-m", "base"], cwd=git_repo.root, check=True
+    )
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    def raise_diff_failure(base_ref, repo):
+        raise subprocess.CalledProcessError(returncode=128, cmd=["git", "diff"])
+
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.trust_boundary.find_tier1_touches", raise_diff_failure
+    )
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-trust-boundary", "--target", base_sha])
+    assert rc == 0  # must not propagate -- this command must never fail the push
+    assert "could not compute the Tier-1 diff" in capsys.readouterr().err

@@ -11,11 +11,16 @@ CI gates `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Marketpl
 | Reviewer | Triggered by | What it owns |
 |---|---|---|
 | **Codex review (CI-dispatched)** | Automatic on same-repository PR open, synchronize, reopen, edit, and label events | The primary automated reviewer. Dispatches `plugin-rulebook-checker`, `dependency-reviewer`, `security-reviewer` (Delta Validate floor) plus `skill-reviewer`/`subagent-reviewer` (Delta Audit) via `codex-review-bridge`. See [`plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md`](plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md). |
-| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
+| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). Does **not** read this file — it discovers rules from `AGENTS.md`'s own `## Code Review Rules` section instead (see that section's own note). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
 | **Devin review** | `/devin review` | Reads this `REVIEW.md` by default. |
 | **CodeRabbit** | `@coderabbitai review` / `@coderabbitai full review` | |
 | **Claude review** | `@claude` mention (per repo config) | |
 | **Human reviewers** | GitHub review UI | The final authority. A bot's LGTM is never a substitute for a human's when branch protection requires one. |
+
+A bullet appearing near-verbatim in both this file and `AGENTS.md`'s `## Code Review Rules` section is
+not accidental drift: `chatgpt-codex-connector[bot]` only ever reads `AGENTS.md`, so a policy it needs
+the full nuance of (not just a condensed pointer) is deliberately mirrored there. Flag a *divergence*
+in substance between the two copies, not the duplication itself.
 
 Round budget and next-round triggering are owned by `handling-review-findings` (see its `references/settings-and-round-budget.md`). A Critical/Major finding is never silently deferred-and-merged.
 
