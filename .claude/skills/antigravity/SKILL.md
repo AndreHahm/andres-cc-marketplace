@@ -486,4 +486,3 @@ via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`
 | Resource | Read when |
 |---|---|
 | `references/advanced-recipes.md` | The task needs agy's internal fan-out (agy spawning its own subagents on the cheap side) or a Claude-orchestrated, multi-source, cited deep-research report — both supplementary to the core SDLC routing/cost/verification guidance above |
-
