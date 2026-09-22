@@ -12,7 +12,7 @@ description: >-
   `migrate-to-antigravity` skill instead — this skill is for ongoing delegation, not migration.
   Naming Codex instead routes to codex-kit's `codex-peer-review`/`codex-research`/`codex-rescue`.
   Claude always verifies Antigravity's output.
-allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*), Bash(agy-trace:*), Bash(agy-cost-compare:*), Bash(agy-media:*), Bash(git status:*), Bash(git diff:*), Read
+allowed-tools: Bash(agy-delegate:*), Bash(agy-job:*), Bash(agy-trace:*), Bash(agy-cost-compare:*), Bash(agy-media:*), Bash(git status:*), Bash(git diff:*), Bash(grep:*), Read
 ---
 
 # Antigravity for Claude Code — hybrid SDLC
@@ -462,6 +462,8 @@ via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`
 ## Testing & Validation
 
 **Last dated run record:** 2026-09-16, `evals/antigravity/` — 3/3 evals, 11/11 assertions passed (Quick Workflow).
+
+**2026-09-22 regression check:** eval-4 added (Quick Workflow, 3/3 assertions) after Codex's cross-model-review on PR #349 found `allowed-tools` missing `Bash(grep:*)`/`Grep` despite this skill's own body instructing that exact grep-verification step for `agy-media` digests. Fixed by adding `Bash(grep:*)`; the new eval confirms the documented verification step now actually executes.
 
 **Verify this skill activates on:**
 - "delegate this to antigravity / agy"
