@@ -39,18 +39,50 @@ counterpart under `.claude/` by default, so `plan_settings_hooks_sync`'s rewrite
 nowhere to point without one.
 
 `sync.py`'s `EXTERNAL_HOOK_SCRIPT_MIRRORS` is a small, explicit, hand-maintained list
-of exactly these scripts (5 files, from `codex-kit` and `context-kit`), individually
-mirrored into `_external-scripts/<plugin>/<relative-path>` by
-`plan_external_hook_scripts_mirror`. This is deliberately **not** a general
-`plugins/*/scripts/` mirror — across the 8 plugins that have a root-level `scripts/`
-directory, only these 5 of 122 files are ever referenced by a hook; the rest (tooling,
-skill implementation scripts, etc.) have nothing to do with hooks and stay out of
-`.claude/` entirely.
+of exactly the scripts two plugins' hooks actually need, individually mirrored into
+`_external-scripts/<plugin>/<relative-path>` by `plan_external_hook_scripts_mirror`.
+This is deliberately **not** a general `plugins/*/scripts/` mirror — of the 8 plugins
+with a root-level `scripts/` directory, only `context-kit` and `codex-kit` are involved
+at all, and even for those two, most of their `scripts/` content (tooling, smoke tests,
+etc.) has nothing to do with hooks and stays out of `.claude/` entirely:
+
+- **`context-kit`'s 3 hook scripts are each self-contained** (stdlib-only imports) — the
+  entry point alone is enough.
+- **`codex-kit`'s 2 hook scripts are not self-contained, and their real closure is
+  large.** Mirroring only the two entry-point files initially shipped with this broken
+  — the mirrored copies couldn't even load (`ERR_MODULE_NOT_FOUND`), caught by
+  cross-model review before merge. Tracing the actual dependency graph (relative
+  `import`s, `new URL(..., import.meta.url)` references, and two scripts spawned
+  dynamically via `path.join(...)` + `spawn()` rather than a static import) turned up
+  26 files across four different locations in the plugin, not just `scripts/`:
+  - `.claude-plugin/plugin.json` — read by `lib/app-server.mjs` for its own version string.
+  - `prompts/stop-review-gate.md` — the prompt template `stop-review-gate-hook.mjs` loads.
+  - `schemas/review-output.schema.json` — read by `codex-companion.mjs`.
+  - `scripts/session-lifecycle-hook.mjs`, `scripts/stop-review-gate-hook.mjs` — the two
+    entry points.
+  - `scripts/codex-companion.mjs`, `scripts/app-server-broker.mjs` — spawned as
+    subprocesses by the entry points/`lib/`, not statically imported.
+  - Every file under `scripts/lib/` except `app-server-protocol.d.ts` (a type-only
+    file, referenced only from JSDoc comments, never a runtime `import`).
+
+  `prompts/adversarial-review.md` is deliberately excluded: it's read only by
+  `codex-companion.mjs`'s `adversarial-review` subcommand, which
+  `stop-review-gate-hook.mjs` never invokes (it only ever calls the `task` subcommand).
+  Verified by actually executing all four entry points (both hooks,
+  `codex-companion.mjs`, `app-server-broker.mjs`) from their mirrored destination —
+  not just reading the source — after each newly-discovered dependency, until all four
+  ran clean.
 
 Adding a new hook that references a script outside the five component dirs requires a
-new entry in `EXTERNAL_HOOK_SCRIPT_MIRRORS`. `plan_settings_hooks_sync` raises a
-`SyncError` if any `${CLAUDE_PLUGIN_ROOT}` reference survives rewriting, so a missed
-addition is a build-time failure, not a silently broken hook path.
+new entry in `EXTERNAL_HOOK_SCRIPT_MIRRORS` — and, if that script has its own
+dependencies (imports, spawned sibling scripts, or a runtime read of another file
+relative to its own location), every file in that closure too, not just the entry
+point. `plan_settings_hooks_sync` raises a `SyncError` if any `${CLAUDE_PLUGIN_ROOT}`
+reference survives rewriting, which catches a missing *entry point*, but nothing here
+automatically detects a missing *transitive dependency* of an entry that's already
+listed — that still requires actually tracing the real dependency graph and executing
+the mirrored copies end-to-end, the way this list itself was built, whenever one of
+these scripts' own dependencies change.
 
 ## Background
 
