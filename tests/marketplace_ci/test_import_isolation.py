@@ -27,6 +27,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.marketplace_ci.trust_boundary import TIER1_FILES
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # The exact dotted-module set the four review-dispatch-critical subcommands'
@@ -72,21 +74,10 @@ CRITICAL_HANDLERS = (
 
 # The workflow's own hard-refuse gate pathspec -- a superset of TIER1_MODULES'
 # files: includes pr_policy.py (see module docstring) and the dependency spec.
-TIER1_FILES = frozenset(
-    {
-        "scripts/__init__.py",
-        "scripts/marketplace_ci/__init__.py",
-        "scripts/marketplace_ci/__main__.py",
-        "scripts/marketplace_ci/review.py",
-        "scripts/marketplace_ci/git_state.py",
-        "scripts/marketplace_ci/registry.py",
-        "scripts/marketplace_ci/sync_plan.py",
-        "scripts/marketplace_ci/conversion.py",
-        "scripts/marketplace_ci/pr_policy.py",
-        "pyproject.toml",
-        "uv.lock",
-    }
-)
+# TIER1_FILES itself now lives in trust_boundary.py (imported above), which
+# also backs the local `check-trust-boundary` pre-push preview -- this test
+# is what keeps that copy, and the workflow's own hand-maintained pathspec,
+# from silently drifting apart.
 
 TIER2_MODULES = ("scripts.marketplace_ci.sync", "scripts.marketplace_ci.validators")
 
