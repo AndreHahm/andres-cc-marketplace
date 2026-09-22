@@ -565,3 +565,50 @@ def stage_hooks_merge_result(repo: Path, plan: HooksMergePlan) -> tuple[Path, ..
         _git_add_forced(repo, action.destination)
         staged_destinations.append(action.destination)
     return tuple(staged_destinations)
+
+
+def _is_tracked_in_index(repo: Path, path: Path) -> bool:
+    """True if `path` already has an entry in the Git index (staged or committed at some
+    prior point), independent of whether it currently has any pending changes."""
+    rel_path = path.resolve().relative_to(repo.resolve()).as_posix()
+    result = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "--error-unmatch", "--", f":(top,literal){rel_path}"],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def stage_settings_hooks_result(
+    repo: Path, plan: HooksMergePlan, settings_path: Path | None = None
+) -> tuple[Path, ...]:
+    """Stage `plan_settings_hooks_sync`'s `.claude/settings.json` destination -- the same
+    contributing-hook-manifest-sources-fully-staged gate as `stage_hooks_merge_result`
+    (delegated to it below), PLUS a check that function alone can't provide: unlike
+    `.claude/hooks/hooks.json` (purely derived from its contributors, never reads its own
+    prior content), `plan_settings_hooks_sync` reads `.claude/settings.json`'s own CURRENT
+    content and preserves every non-`hooks` key from it. If that file has any unstaged
+    edit of its own -- e.g. an unrelated local settings.json tweak sitting in the working
+    tree while an unrelated plugin hook change is staged -- `stage_hooks_merge_result`
+    alone would happily stage the regenerated destination the moment its own
+    hooks-manifest-only gate passes, silently pulling that unrelated edit into the commit
+    (found by Codex's cross-model review of this same change: neither this function's
+    caller nor `stage_hooks_merge_result` itself ever checked the *destination's* own
+    staged/unstaged state, only its N *contributing sources'*). Refuses to stage at all in
+    that case, leaving the regenerated destination on disk, unstaged -- the same fail-safe
+    posture `stage_generated_destinations`/`stage_hooks_merge_result` already use for an
+    analogous risk on their own destinations.
+
+    The full-staging check only applies when the file was *already tracked in the index*
+    before this call (i.e. it had a prior committed-or-staged baseline an edit could be
+    "unstaged" relative to). A brand-new `.claude/settings.json` this very run created for
+    the first time (plan_settings_hooks_sync's `current_settings = {}` case) has no such
+    baseline -- there's nothing an unstaged edit could have ridden in on top of -- so it's
+    always safe to stage regardless of its (necessarily untracked, "??") git status.
+    Skipping this distinction would make `--stage` never able to stage settings.json's very
+    first creation at all, since a freshly-written untracked file is never "fully staged."
+    """
+    if settings_path is None:
+        settings_path = repo / DEFAULT_REPO_SETTINGS_PATH
+    if _is_tracked_in_index(repo, settings_path) and not _is_fully_staged(repo, settings_path):
+        return ()
+    return stage_hooks_merge_result(repo, plan)

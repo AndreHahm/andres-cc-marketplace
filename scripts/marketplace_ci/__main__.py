@@ -124,6 +124,7 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
         plan_settings_hooks_sync,
         stage_generated_destinations,
         stage_hooks_merge_result,
+        stage_settings_hooks_result,
     )
     from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
@@ -163,7 +164,7 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
             staged = stage_generated_destinations(repo, result.applied)
             staged += stage_hooks_merge_result(repo, hooks_plan)
             staged += stage_generated_destinations(repo, external_scripts_result.applied)
-            staged += stage_hooks_merge_result(
+            staged += stage_settings_hooks_result(
                 repo,
                 HooksMergePlan(
                     actions=settings_hooks_result.applied,
