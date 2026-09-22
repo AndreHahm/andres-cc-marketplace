@@ -29,14 +29,65 @@ _HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
 # .claude/, so plan_settings_hooks_sync's ${CLAUDE_PLUGIN_ROOT} rewrite has nowhere to
 # point without an explicit destination. Hand-maintained rather than mirroring every
 # plugin's entire scripts/ directory (deliberately out of scope -- see
-# .claude/hooks/README.md: only 5 of 122 files across 8 plugins' scripts/ directories
-# are ever referenced by a hook). Adding a new hook that references a script outside
-# the five component dirs requires a new entry here; plan_settings_hooks_sync raises a
-# SyncError if any ${CLAUDE_PLUGIN_ROOT} reference survives rewriting, so a missed
-# addition is a build-time failure, not a silently broken hook path (issue #374).
+# .claude/hooks/README.md). Adding a new hook that references a script outside the five
+# component dirs requires a new entry here; plan_settings_hooks_sync raises a SyncError
+# if any ${CLAUDE_PLUGIN_ROOT} reference survives rewriting, so a missed addition is a
+# build-time failure, not a silently broken hook path (issue #374).
+#
+# context-kit's 3 scripts are each self-contained (stdlib-only imports, confirmed by
+# grep) -- listing the entry point alone is sufficient. codex-kit's 2 hook scripts are
+# NOT: they pull in a much larger closure, computed with an automated recursive
+# resolver (relative `import`/`new URL(..., import.meta.url)` references, followed
+# transitively) seeded from both entry points PLUS two scripts spawned dynamically via
+# `path.join(SCRIPT_DIR, "...")` + `spawn()`/`spawnSync()` rather than a static import
+# (codex-companion.mjs, app-server-broker.mjs) -- the resolver can't follow a dynamic
+# path.join, so each spawn target had to be added as its own seed and re-resolved.
+# Mirroring only the two entry-point files initially shipped with this broken
+# (ERR_MODULE_NOT_FOUND on load) -- found by Codex's cross-model review of this same
+# change; the deeper layers (the two spawn targets, the plugin manifest, the prompt
+# template, the JSON schema) were found only by then actually executing the mirrored
+# scripts end-to-end and following each new error, not by reading the source once.
+# Every remaining `path.join(var, ...)` site was individually checked against the
+# real source: the rest resolve to runtime state directories (session/broker
+# pid/sock/log files, plugin data dirs) or an optional user-repo file
+# (.secretlintignore), never another static plugin file to mirror.
+# scripts/lib/app-server-protocol.d.ts is deliberately excluded: every reference to it
+# is inside a JSDoc @typedef/@param comment, never a runtime `import`. prompts/
+# adversarial-review.md is deliberately excluded: only codex-companion.mjs's
+# `adversarial-review` subcommand reads it, and stop-review-gate-hook.mjs only ever
+# invokes the `task` subcommand.
+# This closure is NOT automatically re-verified -- a future codex-kit change adding a
+# new relative import, spawned script, or path.join-constructed static file read to
+# any file in this closure could silently reintroduce the same missing-dependency
+# failure. Re-run the recursive resolver (or an equivalent live execution of the
+# mirrored copies) whenever codex-kit's own hook scripts change.
 EXTERNAL_HOOK_SCRIPT_MIRRORS: tuple[tuple[str, str], ...] = (
+    ("codex-kit", ".claude-plugin/plugin.json"),
+    ("codex-kit", "prompts/stop-review-gate.md"),
+    ("codex-kit", "schemas/review-output.schema.json"),
     ("codex-kit", "scripts/session-lifecycle-hook.mjs"),
     ("codex-kit", "scripts/stop-review-gate-hook.mjs"),
+    ("codex-kit", "scripts/codex-companion.mjs"),
+    ("codex-kit", "scripts/app-server-broker.mjs"),
+    ("codex-kit", "scripts/lib/app-server.mjs"),
+    ("codex-kit", "scripts/lib/args.mjs"),
+    ("codex-kit", "scripts/lib/broker-endpoint.mjs"),
+    ("codex-kit", "scripts/lib/broker-lifecycle.mjs"),
+    ("codex-kit", "scripts/lib/claude-session-transfer.mjs"),
+    ("codex-kit", "scripts/lib/codex-config.mjs"),
+    ("codex-kit", "scripts/lib/codex-exec.mjs"),
+    ("codex-kit", "scripts/lib/codex.mjs"),
+    ("codex-kit", "scripts/lib/fs.mjs"),
+    ("codex-kit", "scripts/lib/git.mjs"),
+    ("codex-kit", "scripts/lib/job-control.mjs"),
+    ("codex-kit", "scripts/lib/process.mjs"),
+    ("codex-kit", "scripts/lib/prompts.mjs"),
+    ("codex-kit", "scripts/lib/render.mjs"),
+    ("codex-kit", "scripts/lib/sandbox-check.mjs"),
+    ("codex-kit", "scripts/lib/secret-filenames.mjs"),
+    ("codex-kit", "scripts/lib/state.mjs"),
+    ("codex-kit", "scripts/lib/tracked-jobs.mjs"),
+    ("codex-kit", "scripts/lib/workspace.mjs"),
     ("context-kit", "scripts/context-monitor.py"),
     ("context-kit", "scripts/post-compact-restore.py"),
     ("context-kit", "scripts/pre-compact.py"),
