@@ -9,6 +9,7 @@ lazy imports for how that isolation is actually used.
 
 from __future__ import annotations
 
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,6 +52,10 @@ def _iter_component_files(plugin_root: Path):
             ):
                 continue  # excluded; handled by plan_hooks_merge
             yield path
+
+
+def _is_executable(path: Path) -> bool:
+    return bool(stat.S_IMODE(path.stat().st_mode) & 0o111)
 
 
 def _resolve_destination(source: Path, relative_from: Path, dest_root: Path) -> Path:
@@ -128,6 +133,24 @@ def plan_plugin_sync(
             matched_exceptions.add(exception_key)
         if dest.exists():
             if dest.read_bytes() == source_bytes:
+                if _is_executable(dest) == _is_executable(source):
+                    continue
+                # Content already matches, but the executable bit has drifted (e.g.
+                # a mirror lost its +x while retaining identical bytes) -- the
+                # content-only comparison above would otherwise skip this file
+                # forever, since it never re-runs once bytes match. Schedule an
+                # "update" purely to let apply_sync_plan's _atomic_write(source=...)
+                # re-copy the correct mode; the content it (re)writes is identical.
+                actions.append(
+                    SyncAction(
+                        operation="update",
+                        source=source,
+                        destination=dest,
+                        reason=(
+                            "executable bit differs from canonical source (content already matches)"
+                        ),
+                    )
+                )
                 continue
             if is_excepted:
                 # Whole-file exception (see registry.DivergenceException docstring) --
