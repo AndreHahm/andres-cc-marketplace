@@ -100,9 +100,27 @@
 # fixtures with no real secrets, and a false-positive-plagued required check blocking
 # every context-kit smoke-test edit is a worse practical outcome than losing this one
 # narrow path's own secret-scan coverage.
+#
+# tests/** (repo root, distinct from plugins/**/tests/** above -- this is
+# scripts/marketplace_ci's own pytest suite, not any single plugin's) hits the
+# identical B101/B603/B607 false-positive class as plugins/**/tests/** above,
+# just at a path that glob never reaches. Confirmed via issue #374's PR #375:
+# Codacy reported "45 new security issues" entirely inside one new test file,
+# tests/marketplace_ci/test_sync_settings_hooks.py -- 35 B101 (bare `assert`,
+# pytest's own mechanism), 6 B603/B607 (subprocess.run(["git", ...], ...),
+# every call list-form with a literal "git" and literal subcommand strings,
+# no shell=True, no attacker-influenced content reaching the command itself),
+# 1 B404 (the subprocess import itself). Zero findings anywhere outside this
+# one test file. Same whole-path/whole-engine tradeoff as every entry above:
+# this also silences secret-detection for tests/**, accepted for the same
+# reason -- this directory has no real secrets, and a false-positive-plagued
+# required check blocking every marketplace_ci test addition is a worse
+# practical outcome than losing this one directory's own secret-scan
+# coverage.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/**/tests/**"
+  - "tests/**"
   - ".github/scripts/test-issue-auto-labeling.js"
   - ".claude/skills/**"
   - ".claude/agents/**"
