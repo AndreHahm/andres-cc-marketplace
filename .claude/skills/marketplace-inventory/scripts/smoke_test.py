@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Persisted smoke test for marketplace-inventory: frontmatter validity, referenced-file
-existence, Bash-scope grant consistency, and 29 behavioral scenario checks against the
+existence, Bash-scope grant consistency, and 33 behavioral scenario checks against the
 shared CLI script's own subcommands."""
 
 import json

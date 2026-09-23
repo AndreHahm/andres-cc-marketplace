@@ -119,13 +119,18 @@ letter, lowercase-only prefix candidate (pattern `^[a-z]{3,4}$`) for the plugin'
 plugin's `prefix` — never derived algorithmically, always a curated proposal a human confirms or
 overrides. Fold the approval into the same `AskUserQuestion` this step already requires before its
 `marketplace-inventory` write, rather than asking a second time — present the minted `plugin_id` and the
-proposed `prefix` together. Once approved, set it via the same `marketplace-inventory` `update`-operation
-apply path used for the `plugin_id` mint itself, then register the identical value on the plugin's own
-inventory via `plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`
-(see `plugin-inventory/SKILL.md`'s "Set Prefix" mode). This registers the plugin's permanent prefix
-before any of its in-scope `scripts/`/`references/`/`assets/`/`hooks/`/`commands/` files exist, so R33
-and `scripts/marketplace_ci/prefix_check.py` are both already active for it from the very first commit —
-never inert-by-omission the way an unmigrated pre-existing plugin currently is.
+proposed `prefix` together as one combined ask. Mechanically, though, this still takes two separate
+`marketplace-inventory` Plan → Apply passes, not one: the mint itself runs through the `add` operation
+(which is what actually generates the `plugin_id`), and only once that `add` has been applied does the
+plugin's record exist for an `update` operation (naming `prefix`) to target — `update` cannot be folded
+into the same apply call as the `add` that creates the id it would need to reference. After that second
+apply lands, register the identical value on the plugin's own inventory via
+`plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>` (see
+`plugin-inventory/SKILL.md`'s "Set Prefix" mode). Because Inventory Sync runs after Commit — by which
+point Phase 5 (Build) has already written every in-scope file and Phase 7 (Test) has already run against
+them — this step does not register the prefix *before* those files exist; what it does secure is that
+R33 and `scripts/marketplace_ci/prefix_check.py` are both active starting from this plugin's very first
+commit, rather than leaving it inert-by-omission the way an unmigrated pre-existing plugin currently is.
 
 ## Mirror Sync
 
@@ -214,7 +219,7 @@ scenarios below, including the newly-added 15/15a, are design-review-verified on
 **Last dated run record:** 2026-09-16 — `scripts/smoke_test.py` re-run after the Marketplace-Root Doc
 Sync step was added (5/5 checks passing). The eval evidence above (11/11 assertions across scenarios
 1a/1b/14/14a, 100% with_skill pass rate, dated 2026-09-10) predates this addition and does not cover
-scenarios 15/15a — treat those as design-review-verified only until eval coverage is extended. Mirror
+scenarios 15/15a/16 — treat those as design-review-verified only until eval coverage is extended. Mirror
 Sync's own detection logic dry-run against `example-plugin`:
 `.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
 
@@ -242,6 +247,7 @@ Sync's own detection logic dry-run against `example-plugin`:
 14a. **Mirror Sync step, already-mirrored plugin or new component in one** — the built plugin's name is already in `plugin_mirrors`; confirm this step states "nothing to do" and moves on with no `AskUserQuestion` at all
 15. **Marketplace-Root Doc Sync step, brand-new plugin** — Phase 5 (Build) produced a brand-new plugin directory (which always changes `marketplace.json`'s plugin list); confirm `marketplace-documentation` is invoked and its commit is separate from the build commit, the Inventory Sync commit, and the Mirror Sync commit
 15a. **Marketplace-Root Doc Sync step, new component in an already-listed plugin** — Build only added a component to a plugin already in `marketplace.json`'s list; confirm this step states "no marketplace-root doc sync needed" and moves on with no `Skill(marketplace-documentation)` dispatch
+16. **Inventory Sync step, prefix assignment for a brand-new plugin (R33)** — Inventory Sync mints a `plugin_id` via `marketplace-inventory`'s `add` operation for a genuinely new plugin; confirm the curated prefix proposal is folded into the same `AskUserQuestion` as the `plugin_id` mint (one ask, not two), but that registering the approved prefix still runs as a second, separate `marketplace-inventory` Plan → Apply pass (an `update` operation targeting the now-existing id, with its own freshly-computed hash) — never folded into the same apply call as the `add` operation that minted the id
 
 **Verify this skill activates on:**
 - "build a plugin from scratch"
@@ -273,6 +279,7 @@ Sync's own detection logic dry-run against `example-plugin`:
 - [ ] The Open-PR check always runs before Phase 1 starts, and always uses `AskUserQuestion` (merge-first / continue-anyway) when an open PR is found — never silently skipped or hard-blocked with no escape hatch
 - [ ] The Branch-scope check always runs right before Phase 5's first write — never earlier (Phases 1-4 write nothing) and never skipped — and always uses `AskUserQuestion` (new branch / continue-anyway) when the current branch isn't scoped
 - [ ] Every phase's own Phase-Completion check runs before that phase's gate is presented as passed, per `plugin-rulebook/references/open-item-discipline.md`
+- [ ] Inventory Sync's prefix-assignment step (R33) never folds the prefix `update` operation into the same apply call as the `plugin_id` mint's `add` operation — always a second, separate Plan → Apply pass after the mint; the human approval itself can still be a single combined `AskUserQuestion`
 
 ## Reference Guide
 

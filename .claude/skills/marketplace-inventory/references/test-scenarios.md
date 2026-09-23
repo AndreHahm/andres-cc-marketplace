@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 32-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
+Full 36-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -109,3 +109,15 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
     self-lockout bug: the original implementation pre-validated the *current* inventory with
     `validate_inventory` before doing anything else, which would have rejected the malformed file
     outright and locked the operator out of the one command meant to fix it
+33. **Apply accepts a valid curated prefix via `update` (R33)** — construct an approved plan naming
+    `field: "prefix"` with a well-formed value (`^[a-z]{3,4}$`); confirm `apply` accepts it and the value
+    is persisted and readable back
+34. **Apply rejects a malformed prefix (R33)** — construct an approved plan naming `field: "prefix"` with
+    a value that doesn't match `^[a-z]{3,4}$`; confirm `apply` rejects it before any write
+35. **Apply rejects a marketplace-wide duplicate prefix (R33)** — register a prefix on one plugin, then
+    construct an approved plan assigning the identical prefix to a second plugin; confirm `apply` rejects
+    the second write — no two plugins may ever share a registered prefix
+36. **`plan` surfaces a prefix mismatch as a conflict (R33)** — construct a `plugin-inventory.json` whose
+    `prefix` disagrees with its marketplace record's own `prefix`; confirm `plan` emits a `conflict`,
+    mirroring the existing `plugin_id`-mismatch check (scenario 5) — never derive one side from the other
+    to resolve it automatically

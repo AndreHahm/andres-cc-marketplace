@@ -269,7 +269,8 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - "grade this plugin" → `plugin-grader`; this skill only imports its completed reports
 - "decide what a plugin should contain" → `plugin-planning`/`plugin-lifecycle-upstream`
 
-**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (32/32 checks passing) and
+**Last dated run record:** 2026-09-23 — `scripts/smoke_test.py` (36/36 checks passing, including 4 new
+`check_prefix_*` checks added for R33) and
 `evals/marketplace-inventory/` `skill-tester` Full Pipeline, iteration-2, live-executed 2026-08-29:
 4 evals (17/18 with_skill assertions, 17/18 baseline) including a new eval 4 covering Repair History's
 diff-then-confirm flow. Eval 1's assertion 3 was found stale mid-run (it assumed a repo state that
@@ -290,7 +291,7 @@ checks added (`check_repair_history_stale_replacement_hash_rejected`,
 `check_repair_history_evidence_item_type_rejected`,
 `check_repair_history_succeeds_on_malformed_current_inventory`).
 
-See `references/test-scenarios.md` for the full 32-scenario test walkthrough.
+See `references/test-scenarios.md` for the full 36-scenario test walkthrough.
 
 **Quality gates:**
 - [ ] `scripts/marketplace-inventory.py` is always invoked for discovery, plan construction, and apply
@@ -323,9 +324,9 @@ See `references/test-scenarios.md` for the full 32-scenario test walkthrough.
 | Resource | Purpose |
 |---|---|
 | `scripts/marketplace-inventory.py` | Deterministic discovery, plan construction, atomic apply, and grading-import CLI |
-| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 29 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 33 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
 | `references/reconciliation.md` | Reconciliation operations, the missing-plugin-inventory report, and the Repair Plugins delegation sequence |
-| `references/test-scenarios.md` | Full 32-scenario test walkthrough, extracted from this file's own Testing & Validation section |
+| `references/test-scenarios.md` | Full 36-scenario test walkthrough, extracted from this file's own Testing & Validation section |
 | `assets/marketplace-inventory.schema.json` | The canonical JSON Schema this inventory file must validate against |
 | `../../scripts/inventory_common/` | Shared ID generation, history append/validation, canonical serialization/hashing, and grading-report reading — used by both this script and `plugin-inventory`'s |
 | `plugin-inventory` skill | Per-plugin sibling — invoked here only after explicit approval, never called for a batch of plugins in one pass |

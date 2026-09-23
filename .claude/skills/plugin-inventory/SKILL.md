@@ -315,7 +315,8 @@ until a future mode gives it a writer.
 - "decide what components to build" → `plugin-planning`
 - "validate plugin.json/directory structure" → `plugin-validator`
 
-**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (29/29 checks passing) and
+**Last dated run record:** 2026-09-23 — `scripts/smoke_test.py` (33/33 checks passing, including 4 new
+`check_set_prefix_*` checks added for R33's `set-prefix` mode) and
 `evals/plugin-inventory/` `skill-tester` Quick Workflow, iteration-2, live-executed 2026-08-29: 3 evals,
 13/13 assertions passed, including a new eval 3 covering the `provenance` field (real-origin update vs.
 correctly leaving `{}` with no evidence). A same-day PR review (#238) found Repair History's `--confirm`
@@ -335,7 +336,7 @@ checks added (`check_repair_history_stale_replacement_hash_rejected`,
 `check_repair_history_evidence_item_type_rejected`,
 `check_repair_history_succeeds_on_malformed_current_inventory`).
 
-See `references/test-scenarios.md` for the full 28-scenario test walkthrough.
+See `references/test-scenarios.md` for the full 32-scenario test walkthrough.
 
 **Quality gates:**
 - [ ] `scripts/plugin-inventory.py` is always invoked for discovery, plan construction, and apply — the
@@ -368,7 +369,7 @@ See `references/test-scenarios.md` for the full 28-scenario test walkthrough.
 | `scripts/plugin-inventory.py` | Deterministic discovery, plan construction, atomic apply, and grading-import CLI — the only source of truth for this skill's reconciliation mechanics |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and a live bootstrap+check round-trip) — re-run before packaging or after any edit |
 | `references/component-detectors.md` | Exactly which logical component types are detected, and how, per type |
-| `references/test-scenarios.md` | Full 28-scenario test walkthrough, extracted from this file's own Testing & Validation section |
+| `references/test-scenarios.md` | Full 32-scenario test walkthrough, extracted from this file's own Testing & Validation section |
 | `assets/plugin-inventory.schema.json` | The canonical JSON Schema this inventory file must validate against |
 | `../../scripts/inventory_common/` | Shared ID generation, history append/validation, canonical serialization/hashing, and grading-report reading — used by both this script and `marketplace-inventory`'s |
 | `plugin-grader` skill | Source of quality/security scores this skill imports, never computes |
