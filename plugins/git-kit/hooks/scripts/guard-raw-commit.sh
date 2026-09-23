@@ -78,6 +78,26 @@ fi
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0  # not in a git repo -- nothing to guard
 MARKER="$GIT_DIR/git-kit-marker.txt"
 
+# Diagnostics (issue #373/#83): best-effort logging to a gitignored, per-repo file -- never to
+# stdout, which is this hook's exclusive JSON-decision channel. The `start` line below and the
+# `trap ... EXIT` handler together bracket every normal completion path -- an explicit `exit 0`
+# anywhere in this file, the ERR trap's own `exit 0` inside fail_closed_deny, or simply reaching
+# the end of the script all trigger an EXIT trap uniformly (verified live: exiting from within the
+# ERR trap's own handler does still fire it), so this doesn't need hand-instrumenting every
+# individual exit point. What it CANNOT catch, also verified live via a killed-subprocess test: an
+# unblockable kill (this hook's own timeout, or an OS-level SIGKILL) and an interpreter that never
+# launches at all -- both leave a `start` line with no matching `finish` line, which is itself the
+# diagnostic signal a future investigation into #373's still-unconfirmed root cause needs. A
+# failure to write here (e.g. a read-only .git) is silently ignored -- this is diagnostics, not a
+# security boundary, and must never itself change this guard's own allow/deny behavior.
+DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
+DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
+printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" 2>/dev/null || true
+# `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
+# printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
+# ever read, silently logging date's own exit status instead of this script's real one.
+trap 'rc=$?; printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" 2>/dev/null || true' EXIT
+
 now=$(date +%s)
 allowed=false
 
