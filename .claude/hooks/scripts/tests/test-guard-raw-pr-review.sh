@@ -202,6 +202,25 @@ unit_check "M2(r2): PowerShell backslash-semicolon is NOT an escape there" \
   'gh api repos/o/r/pulls/5/reviews\; echo unrelated' \
   "reviews" "PowerShell"
 
+# --- Round 4 case: Codex's cross-model-review finding F1 ---
+# PowerShell has no backtick command substitution at all -- a backtick there is ALWAYS an escape
+# character (like backslash in Bash). Treating every backtick as a Bash-style substitution
+# delimiter regardless of shell let a PowerShell caller hide a real separator behind an escaped
+# backtick pair, the same bug class M2(r2) already fixed for backslash -- just missed for backtick.
+
+unit_check "F1: PowerShell backtick-escaped \$ and ; -- must still deny" \
+  'gh api -H X:`$`; repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "reviews" "PowerShell"
+unit_check "F1 control: Bash -- backtick opens real substitution, then a genuine unescaped ; really does separate commands (correctly allowed)" \
+  'gh api -H X:`echo hi`; repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "none" "Bash"
+unit_check "F1b: PowerShell backtick-escaped backtick itself, endpoint still reachable" \
+  'gh api -H X:``` repos/o/r/pulls/5/reviews' \
+  "reviews" "PowerShell"
+unit_check "F1c: Bash backtick substitution with embedded pipe still works (no regression)" \
+  'gh api repos/o/r/pulls/`gh pr view --json number | jq -r .number`/reviews' \
+  "reviews" "Bash"
+
 echo ""
 echo "=== Layer 2: end-to-end, the real script's actual JSON contract ==="
 
@@ -274,6 +293,9 @@ e2e_check "M1(r2) shape A via real script -- must deny" \
   "deny"
 e2e_check "M2(r2) PowerShell via real script -- must deny" \
   'gh api -H "X: a\" -H "Y: ;b" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny" "PowerShell"
+e2e_check "F1 via real script -- PowerShell backtick-escape bypass (Codex, cross-model-review) -- must deny" \
+  'gh api -H X:`$`; repos/o/r/pulls/5/reviews -f event=APPROVE' \
   "deny" "PowerShell"
 m3_big_payload=$(head -c 200000 /dev/zero | tr '\0' 'x')
 e2e_check "M3: oversized command containing a gh api prefix -- must deny without hanging" \
