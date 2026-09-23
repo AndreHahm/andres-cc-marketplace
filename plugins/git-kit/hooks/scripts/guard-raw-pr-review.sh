@@ -261,12 +261,17 @@ elif [ "$TOOL_NAME" = "PowerShell" ]; then
   COMMAND_FLAT="${COMMAND_FLAT//$'`\n'/}"
 fi
 COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
-# De-fang redirection operators that contain a `;`/`&`/`|` byte the API_SPANS
-# terminator class below (`[^;&|]`) would otherwise mistake for a real command
-# separator, narrowing (not closing) the residual noted at API_SPANS' own
-# definition -- same operator set and same rationale as
-# guard-raw-destructive-cleanup.sh's own copy of this fix (issue #120); see
-# that file's own comment for the full per-operator coverage table.
+# De-fang redirection operators that contain a `;`/`&`/`|` byte the span
+# scanner below would otherwise mistake for a real command separator -- still
+# needed after issue #365's tokenizer fix, since that scanner reads one
+# character at a time with no operator-level look-ahead, so an un-de-fanged
+# `&>` would still hit its lone `&` and terminate the span there. Narrows,
+# doesn't close, a distinct residual from #365's own (now-closed) one: an
+# unenumerated redirection form (e.g. a numbered-fd redirect like `2>&1`)
+# containing one of these bytes would still be misread the same way -- same
+# operator set and same rationale as guard-raw-destructive-cleanup.sh's own
+# copy of this fix (issue #120); see that file's own comment for the full
+# per-operator coverage table.
 COMMAND_FLAT="${COMMAND_FLAT//&>/ >}"
 COMMAND_FLAT="${COMMAND_FLAT//>&/> }"
 COMMAND_FLAT="${COMMAND_FLAT//<&/< }"
@@ -367,45 +372,130 @@ else
   # line-oriented `grep -oE`, which silently missed an endpoint match sitting
   # on a later line -- a real fail-open bypass found by a security-reviewer
   # pass on this exact fix, closed by the COMMAND_FLAT normalization above.
-  # Residual, same class as issue #120's already-accepted residual on the
-  # sibling guard-raw-destructive-cleanup.sh: this span terminator class
-  # (`[^;&|]`) still can't distinguish a real shell separator from the same
-  # byte inside two related cases the COMMAND_FLAT de-fang step above doesn't
-  # reach: (1) a quoted argument value placed before the endpoint text (e.g.
-  # `gh api --jq '.[] | .id' repos/.../reviews`, where the quoted `|` inside
-  # `--jq`'s own value truncates the span before it ever reaches the
-  # endpoint), and (2) an unquoted nested construct -- `$(...)`, backticks,
-  # `$((...))`, `<(...)` -- whose own body contains one of these bytes (e.g.
+  #
+  # Issue #365 (fixed here): the previous span terminator was a character
+  # class (`[^;&|]`), which can't distinguish a real shell separator from the
+  # same byte sitting inside a quoted argument value or an unquoted nested
+  # construct -- both were disclosed, unclosed residuals ((1) `gh api --jq
+  # '.[] | .id' repos/.../reviews`, where the quoted `|` inside `--jq`'s own
+  # value truncated the span before it ever reached the endpoint; (2)
   # `gh api repos/o/r/pulls/$(gh pr view --json number | jq -r .number)/reviews`,
-  # where the `|` inside `$(...)` truncates the span before `/reviews`, and
-  # the inner `gh pr view` call itself matches none of this file's other
-  # checks either) -- arguably the more likely shape in practice, since a
-  # `gh api` endpoint is often built by interpolation rather than typed
-  # literally. Neither case is closed here, since doing so needs real shell
-  # tokenization, not a character-class cut. The enumerated redirection
-  # operator set (`&>`/`&>>`/`>&`/`<&`/`>|`) IS de-fanged by the
-  # COMMAND_FLAT step above, before this span is ever extracted.
-  API_SPANS=$(grep -oE "${API_SPAN_PREFIX_RE}[^;&|]*" <<< "$COMMAND_FLAT" || true)
-  if [ -n "$API_SPANS" ]; then
-    while IFS= read -r api_span; do
-      # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- same
-      # set -e/ERR-trap exemption reasoning as BRANCH_SPANS' own loop.
-      if [ -n "$api_span" ] && grep -qE "$REPLIES_RE" <<< "$api_span"; then
-        GH_SUBCOMMAND="gh api .../comments/{id}/replies"
-        break
-      elif [ -n "$api_span" ] && grep -qE "$REVIEWS_RE" <<< "$api_span"; then
-        GH_SUBCOMMAND="gh api .../pulls/{n}/reviews"
-        break
-      elif [ -n "$api_span" ] && grep -qE "$GRAPHQL_RE" <<< "$api_span"; then
-        # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment
-        # for why: a substring-matching carve-out here was tried and independently defeated by 3
-        # different reviewers using 4 different techniques, so every `gh api graphql` call is
-        # guarded now, including a genuine read-only `reviewThreads` lookup.
-        GH_SUBCOMMAND="gh api graphql"
-        break
+  # where the `|` inside `$(...)` truncated the span before `/reviews`).
+  # `extract_api_span`/`find_api_spans` below replace the character-class cut
+  # with a real scan: single-quote, double-quote, and backtick state, plus
+  # paren-nesting depth (covers `$(...)`, `$((...))`, and `<(...)` uniformly,
+  # since each opens with a literal `(`), are tracked character-by-character.
+  # A `;`/`&`/`|` byte only ends the span when it sits outside every quote and
+  # at nesting depth 0 -- closing residual (2). Each balanced nested
+  # construct is also collapsed into a single non-space placeholder (`X`)
+  # rather than copied verbatim, so a construct's own internal spaces (e.g.
+  # `$(gh pr view --json number | jq -r .number)` contains several) don't
+  # break REPLIES_RE/REVIEWS_RE's `[^[:space:]]+` requirement between the
+  # fixed path segments on either side of it -- without this, span-boundary
+  # tracking alone still wouldn't have closed #365's own reported repro,
+  # since the correctly-extracted span would still contain the nested call's
+  # internal whitespace. A quoted literal (single- or double-quoted, outside
+  # any nesting) is copied verbatim, unchanged from before -- closing
+  # residual (1) needed no whitespace handling beyond following the existing
+  # regex through the quote unchanged.
+  #
+  # **Not a claim of full shell tokenization -- one disclosed simplification
+  # remains:** no backslash-escape handling. A backslash-escaped quote,
+  # paren, or separator character sitting outside any quote context is
+  # treated the same as an unescaped one (e.g. `gh api repos/o/r/pulls/5\
+  # /reviews` is scanned as if the backslash weren't there). Real bash
+  # backslash-escaping requires counting consecutive preceding backslashes
+  # (odd = escaped, even = not), which this scanner does not do -- out of
+  # scope for what issue #365 itself reported or disclosed, and adding it
+  # would be scope creep into a case with no known live trigger. Verified via
+  # a 23-case standalone test suite before landing here (the two residuals
+  # above, every previously-verified bypass/false-positive this file already
+  # carried forward from PR #177 -- including the chained-benign-call false
+  # positive Devin found there -- and malformed-input cases: unmatched
+  # parens, unterminated quotes, an empty `gh api` call) -- not shipped on
+  # read-through confidence alone. The enumerated redirection operator set
+  # (`&>`/`&>>`/`>&`/`<&`/`>|`) is still de-fanged by the COMMAND_FLAT step
+  # above, before this span is ever extracted.
+  extract_api_span() {
+    local text="$1" start="$2"
+    local i="$start" len="${#text}"
+    local depth=0 in_squote=0 in_dquote=0 in_backtick=0 c out=""
+    while [ "$i" -lt "$len" ]; do
+      c="${text:$i:1}"
+      if [ "$in_squote" -eq 1 ]; then
+        [ "$c" = "'" ] && in_squote=0
+        if [ "$depth" -eq 0 ]; then out+="$c"; fi
+      elif [ "$in_dquote" -eq 1 ]; then
+        [ "$c" = '"' ] && in_dquote=0
+        if [ "$depth" -eq 0 ]; then out+="$c"; fi
+      elif [ "$in_backtick" -eq 1 ]; then
+        if [ "$c" = '`' ]; then
+          in_backtick=0
+          if [ "$depth" -eq 0 ]; then out+='X'; fi
+        fi
+      else
+        case "$c" in
+          "'") in_squote=1; if [ "$depth" -eq 0 ]; then out+="$c"; fi ;;
+          '"') in_dquote=1; if [ "$depth" -eq 0 ]; then out+="$c"; fi ;;
+          '`') in_backtick=1 ;;
+          '(')
+            if [ "$depth" -eq 0 ]; then out+='X'; fi
+            depth=$((depth + 1))
+            ;;
+          ')')
+            if [ "$depth" -gt 0 ]; then depth=$((depth - 1)); fi
+            ;;
+          ';'|'&'|'|')
+            if [ "$depth" -eq 0 ]; then
+              printf '%s' "$out"
+              return 0
+            fi
+            ;;
+          *)
+            if [ "$depth" -eq 0 ]; then out+="$c"; fi
+            ;;
+        esac
       fi
-    done <<< "$API_SPANS"
-  fi
+      i=$((i + 1))
+    done
+    printf '%s' "$out"
+  }
+  # One extracted (and placeholder-collapsed) span per `gh api` prefix match in
+  # $1, via `grep -boE`'s byte-offset output -- handles multiple independent
+  # `gh api` invocations in one command the same way the old API_SPANS loop
+  # did (issue #116/#177-style span-bounding), including a nested `gh api`
+  # call inside another invocation's own `$(...)`, which gets its own
+  # independent span and match check.
+  find_api_spans() {
+    local text="$1" prefix_re="$2"
+    local line off matched start
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      off="${line%%:*}"
+      matched="${line#*:}"
+      start=$((off + ${#matched}))
+      extract_api_span "$text" "$start"
+      printf '\n'
+    done < <(grep -boE "$prefix_re" <<< "$text" || true)
+  }
+  while IFS= read -r api_span; do
+    # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- same
+    # set -e/ERR-trap exemption reasoning as BRANCH_SPANS' own loop.
+    if [ -n "$api_span" ] && grep -qE "$REPLIES_RE" <<< "$api_span"; then
+      GH_SUBCOMMAND="gh api .../comments/{id}/replies"
+      break
+    elif [ -n "$api_span" ] && grep -qE "$REVIEWS_RE" <<< "$api_span"; then
+      GH_SUBCOMMAND="gh api .../pulls/{n}/reviews"
+      break
+    elif [ -n "$api_span" ] && grep -qE "$GRAPHQL_RE" <<< "$api_span"; then
+      # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment
+      # for why: a substring-matching carve-out here was tried and independently defeated by 3
+      # different reviewers using 4 different techniques, so every `gh api graphql` call is
+      # guarded now, including a genuine read-only `reviewThreads` lookup.
+      GH_SUBCOMMAND="gh api graphql"
+      break
+    fi
+  done < <(find_api_spans "$COMMAND_FLAT" "$API_SPAN_PREFIX_RE")
   if [ -z "$GH_SUBCOMMAND" ]; then
     exit 0
   fi

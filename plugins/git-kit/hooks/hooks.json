@@ -8,31 +8,31 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-commit.sh",
-            "timeout": 5,
+            "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-pr-ops.sh",
-            "timeout": 5,
+            "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-branch-create.sh",
-            "timeout": 5,
+            "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-pr-review.sh",
-            "timeout": 5,
+            "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-destructive-cleanup.sh",
-            "timeout": 5,
+            "timeout": 15,
             "onError": "warn"
           }
         ]
