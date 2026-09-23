@@ -1,0 +1,22 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "note": "Regression check: confirm the new set-prefix/R33 activation trigger did not broaden this skill's activation to swallow its documented non-trigger examples.",
+  "assertions": [
+    {
+      "text": "For 'check all plugin inventories for drift', response redirects to marketplace-inventory, not plugin-inventory",
+      "type": "functionality",
+      "target": "with_skill output"
+    },
+    {
+      "text": "For 'grade this component', response redirects to plugin-grader, not plugin-inventory",
+      "type": "functionality",
+      "target": "with_skill output"
+    },
+    {
+      "text": "For 'validate plugin.json/directory structure', response redirects to plugin-validator, not plugin-inventory",
+      "type": "functionality",
+      "target": "with_skill output"
+    }
+  ]
+}

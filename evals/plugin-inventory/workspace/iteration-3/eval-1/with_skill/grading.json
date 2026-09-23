@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response identifies plugin-inventory as the skill to use for this request",
+      "passed": true,
+      "evidence": "\"Skill/tool to use: `plugin-inventory` (the `set-prefix` mode), not `marketplace-inventory`\""
+    },
+    {
+      "text": "Response references the 'Set Prefix' mode / set-prefix CLI subcommand",
+      "passed": true,
+      "evidence": "Cites the exact CLI invocation: `python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`"
+    },
+    {
+      "text": "Response does not redirect to marketplace-inventory or another sibling skill",
+      "passed": true,
+      "evidence": "Explicitly distinguishes: \"marketplace-inventory is only the source of the already-assigned prefix (it minted it), never the writer of this plugin-level copy.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

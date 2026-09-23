@@ -1,0 +1,22 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "note": "Targeted Quick Workflow check for the new set-prefix/R33 activation trigger added this session (not part of the skill's persisted evals.json core suite).",
+  "assertions": [
+    {
+      "text": "Response identifies plugin-inventory as the skill to use for this request",
+      "type": "presence",
+      "target": "with_skill output"
+    },
+    {
+      "text": "Response references the 'Set Prefix' mode / set-prefix CLI subcommand",
+      "type": "functionality",
+      "target": "with_skill output"
+    },
+    {
+      "text": "Response does not redirect to marketplace-inventory or another sibling skill",
+      "type": "quality",
+      "target": "with_skill output"
+    }
+  ]
+}

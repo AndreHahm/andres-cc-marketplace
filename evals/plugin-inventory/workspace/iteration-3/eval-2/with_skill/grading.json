@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "For 'check all plugin inventories for drift', response redirects to marketplace-inventory, not plugin-inventory",
+      "passed": true,
+      "evidence": "\"Use `marketplace-inventory`, not `plugin-inventory`... 'All plugin inventories' is cross-plugin/marketplace-wide scope\""
+    },
+    {
+      "text": "For 'grade this component', response redirects to plugin-grader, not plugin-inventory",
+      "passed": true,
+      "evidence": "\"Use `plugin-grader`, not `plugin-inventory`... never computes or reinterprets a score\""
+    },
+    {
+      "text": "For 'validate plugin.json/directory structure', response redirects to plugin-validator, not plugin-inventory",
+      "passed": true,
+      "evidence": "\"Use `plugin-validator`, not `plugin-inventory`... not a manifest-schema or directory-structure correctness validator\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
