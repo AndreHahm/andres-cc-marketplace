@@ -44,10 +44,15 @@ export LC_ALL=C
 # what this suite is meant to catch, not a hand-maintained copy of it.
 eval "$(sed -n '/^  extract_api_span() {/,/^  }$/p' "$GUARD")"
 eval "$(sed -n '/^    find_api_spans() {/,/^    }$/p' "$GUARD")"
-API_SPAN_PREFIX_RE=$(grep -oP "(?<=^API_SPAN_PREFIX_RE=').*(?=')" "$GUARD")
-REPLIES_RE=$(grep -oP "(?<=^REPLIES_RE=').*(?=')" "$GUARD")
-REVIEWS_RE=$(grep -oP "(?<=^REVIEWS_RE=').*(?=')" "$GUARD")
-GRAPHQL_RE=$(grep -oP "(?<=^GRAPHQL_RE=').*(?=')" "$GUARD")
+# Portable POSIX sed, not `grep -oP` (hook-reviewer: GNU-only, would silently fail this suite on
+# BSD/macOS grep) -- each of these 4 lines in the real script is `VAR='...'` with the value's own
+# outermost quotes at the very start and end of the line, so a greedy `.*` between the first and
+# last `'` correctly captures the full value, embedded `'"'"'`-style bash quote concatenation
+# included (sed matches raw text, not bash quoting semantics, so this doesn't need to understand it).
+API_SPAN_PREFIX_RE=$(sed -n "s/^API_SPAN_PREFIX_RE='\(.*\)'\$/\1/p" "$GUARD")
+REPLIES_RE=$(sed -n "s/^REPLIES_RE='\(.*\)'\$/\1/p" "$GUARD")
+REVIEWS_RE=$(sed -n "s/^REVIEWS_RE='\(.*\)'\$/\1/p" "$GUARD")
+GRAPHQL_RE=$(sed -n "s/^GRAPHQL_RE='\(.*\)'\$/\1/p" "$GUARD")
 
 # Checks a span (either the collapsed or raw half of a combined
 # "collapsed<0x1E>raw" line) against all three endpoint regexes.
