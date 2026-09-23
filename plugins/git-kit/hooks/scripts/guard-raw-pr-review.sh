@@ -405,9 +405,9 @@ else
   # on a later line -- a real fail-open bypass found by a security-reviewer
   # pass on this exact fix, closed by the COMMAND_FLAT normalization above.
   #
-  # Issue #365 (fixed here, round 3 -- rounds 1 and 2 each shipped real regressions caught by a
-  # security-reviewer + hook-reviewer pass; see git history/PR discussion for the full round-1 and
-  # round-2 finding list rather than restating it here). The previous span terminator was a
+  # Issue #365 (fixed here, round 4 -- rounds 1 through 3 each shipped real regressions caught by
+  # a review pass; see git history/PR discussion for the full round-by-round finding list rather
+  # than restating it here). The previous span terminator was a
   # character class (`[^;&|]`), which can't distinguish a real shell separator from the same byte
   # sitting inside a quoted argument value or an unquoted nested construct.
   #
@@ -436,16 +436,25 @@ else
   # alone would replace the whole `$(...)` with a single `X`, silently discarding the real endpoint
   # text the raw form still finds intact).
   #
-  # Backslash-escaping is context- and shell-aware, not a blanket rule (round 2's own regression:
-  # applying one universal escape rule broke both a real double-quote-close detection AND
-  # PowerShell, whose escape character is the backtick, not `\`, and was live-verified via
-  # `printf '%s\n'`-based bash arg-parsing tests to reproduce the exact desync the fix needed to
-  # close): for `TOOL_NAME=Bash` only, outside single quotes and while NOT inside an open double
-  # quote, `\` escapes any following character; while inside an open double quote, `\` only
-  # escapes `"`, `\`, `$`, or a backtick (real bash's own narrower double-quote escape set) --
-  # anything else, the backslash is literal and the double-quote's own close-detection still runs
-  # on the very next character, so an escaped quote correctly keeps the string open instead of
-  # getting silently skipped past. PowerShell calls never enter either escape branch.
+  # Escaping is shell-aware, not a blanket rule -- each shell's own escape character only escapes
+  # in that shell's own context, never the other's:
+  # - `TOOL_NAME=Bash`: `\` escapes. Outside any open double quote, it escapes any following
+  #   character; inside one, it only escapes `"`, `\`, `$`, or a backtick (real bash's own
+  #   narrower double-quote escape set) -- anything else, the backslash is literal and the
+  #   double-quote's own close-detection still runs on the very next character, so an escaped
+  #   quote correctly keeps the string open instead of getting silently skipped past. (Round 2's
+  #   own regression: applying this rule universally, to Bash and PowerShell alike, broke a real
+  #   double-quote-close detection and, separately, broke PowerShell -- live-verified via
+  #   `printf '%s\n'`-based bash arg-parsing tests to reproduce the exact desync the fix needed
+  #   to close.)
+  # - `TOOL_NAME=PowerShell`: a backtick escapes, unconditionally, in both quoted and unquoted
+  #   contexts (PowerShell has no backtick command substitution at all, so a backtick there is
+  #   never a substitution delimiter the way it is in Bash). Missing this was a real, live-verified
+  #   bypass found by Codex during this fix's own cross-model-review: `gh api -H X:`$`;
+  #   repos/.../reviews ...` as a PowerShell call was allowed through, because the unconditional
+  #   Bash-style handling opened backtick-substitution state on the first backtick, consumed the
+  #   escaped `;` as ordinary substitution content, then a later real separator ended the span
+  #   before the endpoint.
   #
   # `export LC_ALL=C` near the top of this file keeps `grep -boE`'s byte offsets and this
   # scanner's own `${text:i:1}` character indexing in agreement (a multibyte character anywhere
@@ -453,14 +462,16 @@ else
   # own comment. The same change also keeps this scan close to linear cost (empirically measured:
   # ~2.7s for a 50KB quoted payload), which is what API_SPAN_MAX_LEN below is sized against.
   #
-  # Verified via the persisted regression suite at `tests/test-guard-raw-pr-review.sh` (53 cases
-  # as of round 3: unit-level function tests plus end-to-end tests against this script's own
-  # PreToolUse JSON contract) before landing here, covering every prior round's cases plus round
-  # 3's own (the per-depth quote-context bug, both a Bash- and a PowerShell-shaped repro, a case
-  # cross-checked against real bash's own `for a in ...; do printf ...` argument parsing rather
-  # than hand-traced assumption, and the size-cap's own oversized-payload case) -- not shipped on
-  # read-through confidence alone. The enumerated redirection operator set (`&>`/`&>>`/`>&`/`<&`/
-  # `>|`) is still de-fanged by the COMMAND_FLAT step above, before this span is ever extracted.
+  # Verified via the persisted regression suite at `tests/test-guard-raw-pr-review.sh` (58 cases as
+  # of round 4: unit-level function tests plus end-to-end tests against this script's own
+  # PreToolUse JSON contract) before landing here, covering every prior round's cases plus each
+  # round's own new ones (round 3: the per-depth quote-context bug, both a Bash- and a
+  # PowerShell-shaped repro, a case cross-checked against real bash's own
+  # `for a in ...; do printf ...` argument parsing rather than hand-traced assumption, and the
+  # size-cap's own oversized-payload case; round 4: the PowerShell backtick-escape bypass above) --
+  # not shipped on read-through confidence alone. The enumerated redirection operator set
+  # (`&>`/`&>>`/`>&`/`<&`/`>|`) is still de-fanged by the COMMAND_FLAT step above, before this span
+  # is ever extracted.
   extract_api_span() {
     local text="$1" start="$2" tool_name="$3"
     local i="$start" len="${#text}"
@@ -484,6 +495,21 @@ else
         i=$((i + 1))
         continue
       fi
+      # PowerShell (cross-model-review finding F1): a backtick is ALWAYS an escape character
+      # there -- PowerShell has no backtick command substitution at all, unlike Bash -- so it
+      # must never open `in_backtick` state. Checked before the dquote/unquoted split below
+      # since PowerShell's own escape rule is uniformly broad in both contexts (unlike Bash's
+      # narrower double-quote-specific backslash rule), so one check covers both. Live-verified:
+      # `gh api -H X:` + backtick + `$` + backtick + `; repos/.../reviews ...` as a PowerShell call
+      # was allowed before this check existed (the unconditional Bash-style backtick handling
+      # opened substitution state, consumed the escaped `;` as ordinary content, then the *next*
+      # real separator ended the span before the endpoint) and is denied after.
+      if [ "$tool_name" = "PowerShell" ] && [ "$c" = '`' ] && [ "$((i + 1))" -lt "$len" ]; then
+        nc="${text:$((i + 1)):1}"
+        if [ "$depth" -eq 0 ]; then out+="$c$nc"; fi
+        i=$((i + 2))
+        continue
+      fi
       if [ "${in_dquote_stack[$depth]}" -eq 1 ]; then
         if [ "$tool_name" = "Bash" ] && [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
           nc="${text:$((i + 1)):1}"
@@ -503,7 +529,14 @@ else
             if [ "$depth" -eq 0 ]; then out+="$c"; fi
             ;;
           '`')
-            in_backtick=1
+            # Only reachable for Bash here -- a PowerShell backtick was already consumed as an
+            # escape pair above, unless it was the very last character in the string (no next
+            # char), in which case it falls through to this default-literal branch instead.
+            if [ "$tool_name" = "Bash" ]; then
+              in_backtick=1
+            else
+              if [ "$depth" -eq 0 ]; then out+="$c"; fi
+            fi
             ;;
           '$')
             if [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = "(" ]; then
@@ -539,7 +572,13 @@ else
           if [ "$depth" -eq 0 ]; then out+="$c"; fi
           ;;
         '`')
-          in_backtick=1
+          # PowerShell backticks are consumed as an escape pair above before reaching this
+          # dispatch, unless trailing with no next character -- see that check's own comment.
+          if [ "$tool_name" = "Bash" ]; then
+            in_backtick=1
+          else
+            if [ "$depth" -eq 0 ]; then out+="$c"; fi
+          fi
           ;;
         '(')
           if [ "$depth" -eq 0 ]; then out+='X'; fi
