@@ -12,7 +12,7 @@ description: >-
   score, no gates, no SWOT. Use when the user asks to 'audit this plugin',
   'gather findings without scoring', 'run just the reviewer fan-out', or when
   plugin-lifecycle-downstream's Audit phase or plugin-grader need raw evidence
-  instead of a computed score. For just R1-R32 naming/formatting/tool-scoping
+  instead of a computed score. For just R1-R33 naming/formatting/tool-scoping
   compliance, without the full multi-axis reviewer fan-out, use plugin-rulebook
   instead.
 argument-hint: "[target]"
@@ -118,7 +118,7 @@ every applicable reviewer runs as documented below.
   wins) vs. "does it only want the findings themselves" (this skill wins), the same precedence
   test `plugin-grader`'s own docs already state for the type-matched-reviewer case.
 - **A single-axis check only** (just dependency cycles, just security, just activation overlap,
-  just R1-R32 naming/formatting/rule compliance — for the last, use `plugin-rulebook` directly) —
+  just R1-R33 naming/formatting/rule compliance — for the last, use `plugin-rulebook` directly) —
   invoke that specific reviewer agent/skill directly; this skill's value is the combined,
   normalized fan-out, not any one axis alone.
 - **Structural manifest validation with no other reviewers** — invoke `plugin-validator`
@@ -203,7 +203,7 @@ rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped 
 
 **Verify it does NOT activate on:**
 - "grade this plugin" / "score this skill" → `plugin-grader` (a scoring/ranking cue wins over this skill)
-- "just check R1-R32 rule compliance" → `plugin-rulebook` directly, single-axis only
+- "just check R1-R33 rule compliance" → `plugin-rulebook` directly, single-axis only
 - "validate plugin structure" with no other reviewers wanted → `plugin-validator` directly
 
 **Quality gates:**

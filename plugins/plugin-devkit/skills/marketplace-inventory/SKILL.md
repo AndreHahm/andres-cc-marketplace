@@ -224,6 +224,12 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - **`plugin_id` mismatch** (a `conflict` operation, regardless of the record's own `status` — not
   restricted to `active`): a plugin's own `plugin-inventory.json` disagrees with this record's `id` —
   needs a human decision about which is correct, never silently trusted.
+- **`prefix` mismatch** (a `conflict` operation, same scope as the `plugin_id` check above — independent
+  of it, both can fire together): a plugin's own `plugin-inventory.json` `prefix` disagrees with — or is
+  present on only one side of — this record's own `prefix`. Register the same curated value on both via
+  `plugin-inventory`'s own `set-prefix` mode; never derive one side from the other to resolve this
+  automatically. Both sides absent is not a conflict — that plugin simply hasn't been assigned a prefix
+  yet.
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (including a
   `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`, or a `graded_at`
   that isn't a non-empty string, doesn't end in `'Z'` (UTC), or doesn't parse as ISO-8601) — reject the
@@ -232,11 +238,13 @@ generic JSON Schema validator against it (no such dependency is available in thi
   retired and an active plugin happen to share the same `name`, the lookup refuses to guess and exits
   before any write, rather than silently updating whichever record happens to come first in array order.
 - **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
-  `source`/`functional_role`/`domains`/`compatibility`/`created_on`/`provenance` — `id`, `status`, `name`,
-  and every history/scoring field are refused with `SystemExit` before any write. `status` only ever
-  changes via `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field
-  (see Plan mode above); history/scoring fields are append-only, editable only through Repair History's
-  own explicit-confirmation gate.
+  `source`/`functional_role`/`domains`/`compatibility`/`created_on`/`provenance`/`prefix` — `id`,
+  `status`, `name`, and every history/scoring field are refused with `SystemExit` before any write.
+  `prefix` format (`^[a-z]{3,4}$`) and marketplace-wide uniqueness are validated the same way as any
+  other record field; the curated value itself is never derived by this script (see plugin-rulebook's
+  R33 component-file-prefix rule). `status` only ever changes via `status-transition`; `name` only ever
+  changes via `status-transition`'s own `new_name` field (see Plan mode above); history/scoring fields
+  are append-only, editable only through Repair History's own explicit-confirmation gate.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.

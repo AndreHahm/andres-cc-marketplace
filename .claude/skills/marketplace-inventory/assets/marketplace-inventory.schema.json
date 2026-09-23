@@ -108,6 +108,7 @@
       "properties": {
         "id": { "type": "string", "pattern": "^plugin_[0-9a-f]{8}$" },
         "name": { "type": "string" },
+        "prefix": { "type": "string", "pattern": "^[a-z]{3,4}$" },
         "source": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
         "status": { "$ref": "#/definitions/status" },
         "status_history": { "type": "array", "items": { "$ref": "#/definitions/statusHistoryPeriod" }, "minItems": 1 },

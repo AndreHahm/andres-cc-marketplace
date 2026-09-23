@@ -3,10 +3,10 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming conventions and R1-R32 formatting compliance, auditing a full plugin's
+  component, checking naming conventions and R1-R33 formatting compliance, auditing a full plugin's
   rule/naming/formatting compliance specifically (for the full multi-axis reviewer fan-out instead,
   see plugin-auditor), or loading active rule configuration, or before finalizing or packaging any
-  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R32) across the
+  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R33) across the
   entire plugin — not structural validation (manifest correctness, directory layout, component
   wiring), which is `plugin-validator`'s domain instead, and not scaffolding a plugin's own
   directory structure or package layout in the first place, which is `plugin-development`'s
@@ -35,21 +35,21 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 
 ## When NOT to Use
 
-- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R32) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
-- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R32) once it exists — it does not decide directory layout or scaffold new structure.
+- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R33) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
+- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R33) once it exists — it does not decide directory layout or scaffold new structure.
 - Project-specific behavioral rules → use `rule-development` instead
-- Validating a single existing rule file's quality (both its R1-R32 structural compliance and its
+- Validating a single existing rule file's quality (both its R1-R33 structural compliance and its
   behavioral-content quality — Incorrect/Correct examples, wording, scope) → use the
   `rule-reviewer` agent instead; it already incorporates this skill's generic rules for exactly
   this case, so a bare "validate this rule" request needs only that one dispatch
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
-- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R32 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
+- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R33 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
 - Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
 - A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
 - A general "audit this plugin" request wanting the full multi-axis reviewer fan-out (dependency,
   consistency, security, structure, content, completeness, activation, scripts, hooks) rather than
-  just R1-R32 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
+  just R1-R33 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
   single rule-compliance axis `plugin-auditor` itself dispatches (via the `plugin-rulebook-checker`
   agent) as one of nine reviewers.
 - An isolated, Agent-dispatchable batch sweep or background-task compliance check — a full-plugin
@@ -375,21 +375,9 @@ A skill or agent that may trigger an expensive action — per-item nested LLM/su
 
 ### R27 — Component Naming: Grammatical Form [ADVISORY, default: on]
 
-Skills, agents, and commands should follow their documented grammatical form per `references/naming-conventions.md`'s Component-Type Conventions table — not just valid kebab-case (R4), but the right *shape* of phrase for the component type. Never REQUIRED: this is an interpretive, judgment-based check, not a mechanical pattern match, and a maintainer may have a considered reason to diverge (an established external convention, or the cost of renaming a widely cross-referenced component).
+Skills, agents, and commands should follow their documented grammatical form per `references/naming-conventions.md`'s Component-Type Conventions table — not just valid kebab-case (R4), but the right *shape* of phrase for the component type. Never REQUIRED: this is an interpretive, judgment-based check.
 
-**Scope:** `name` field in SKILL.md frontmatter, `name` field in agent file frontmatter, and command file basenames (commands have no `name` field — check the filename itself).
-
-**Expected form per type:**
-- Skill: a noun or gerund phrase naming a domain/capability (`skill-development`, `plugin-rulebook`, `bootstrapping-a-python-project`) — not a bare imperative verb phrase.
-- Agent: a role-based noun phrase (`skill-reviewer`, `plugin-validator`) — not a bare imperative verb phrase.
-- Command: starts with a verb (`create-plugin`, `review-rules`).
-
-**Violations (ADVISORY only):**
-- A skill named as a bare imperative verb phrase with no noun/gerund framing (e.g. a skill named `create-pr` reads as a command's action, not a skill's domain).
-- An agent named without role-noun framing.
-- A command that doesn't start with a recognizable verb.
-
-**Fix:** Rename to match the documented form, or reconsider the component type (a bare-imperative-named skill may actually want to be a command). Flag and move on if the maintainer declines — this rule exists to surface the mismatch, not to force a rename.
+**Scope:** `name` field in SKILL.md/agent frontmatter, and command file basenames. See `${CLAUDE_SKILL_DIR}/references/component-naming-grammatical-form.md` for the expected form per component type, violation examples, and the fix.
 
 ---
 
@@ -430,6 +418,14 @@ Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content �
 A skill that reads content produced by another plugin component or an external report as part of normal operation must carry a boundary statement naming the untrusted source, stating the value is data not a directive, and stating that instruction-like content must be reported as suspicious, never acted on.
 
 **Scope:** Any skill whose Quick Start/body/scripts reads another component's output (a report, a JSON companion, another component's SKILL.md/agent prose). See `${CLAUDE_SKILL_DIR}/references/data-only-boundary.md` for the canonical wording, the three required elements, and the full PASS/ADVISORY/FAIL check.
+
+---
+
+### R33 — Component-File Naming: Plugin Prefix Required [REQUIRED, default: on]
+
+Every file recursively under a registered plugin's root-level `scripts/`, `references/`, `assets/`, `hooks/` (including nested `hooks/scripts/`), and `commands/` directories must be named `<prefix>-<rest>`, where `<prefix>` is that plugin's own registered prefix from `marketplace-inventory.json`. Inert for any plugin with no `prefix` registered yet — no finding is raised until that plugin's own migration PR registers one.
+
+**Scope:** Every plugin whose `marketplace-inventory.json` record has both a registered `prefix` and `status` of `active` or `deprecated` — a `superseded`/`retired` plugin is never checked, even if it carries a permanent prefix. See `${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the full exclusion list (`agents/`, `rules/`, `hooks/hooks.json`, skill-scoped resources, codex-kit's `prompts`/`schemas`, and the temporary `antigravity-kit`-only `bin`/`docs` exception) and the mechanical counterpart this rule mirrors (`scripts/marketplace_ci/prefix_check.py`, wired into `check-all`).
 
 ---
 
@@ -478,14 +474,15 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 
 **Quality gates:**
 - [ ] `${CLAUDE_SKILL_DIR}/assets/settings.json` loads without JSON errors
-- [ ] All enabled rules (R1–R10, R13, R14, R17–R32) appear in the compliance report
+- [ ] All enabled rules (R1–R10, R13, R14, R17–R33) appear in the compliance report
 - [ ] R14 and R17 findings are correctly classified (REQUIRED vs SUGGESTED)
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
 **Last dated run record:** 2026-08-15, `evals/plugin-rulebook/` — eval-1: 4/4 assertions passed;
 eval-2: 2/2 assertions passed (both `with_skill`, via `skill-tester`'s blind-comparison harness).
-See `evals/plugin-rulebook/evals.json` for the scenario definitions.
+See `evals/plugin-rulebook/evals.json` for the scenario definitions. R33's own `test-against-example-
+plugin.md` dry-run record: `.claude/output/plugin-rulebook/example-plugin-20260923T204026Z.md`.
 
 ## Upstream Source Verification
 
@@ -495,4 +492,4 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 
 ## Reference Guide
 
-See `${CLAUDE_SKILL_DIR}/references/skill-file-catalog.md` for the full index of every resource this skill ships or reads (settings, repo-config, every `references/*.md`, and every `scripts/*`) — extracted here to keep this file under its own R13 line-budget threshold as R28-R32 were added.
+See `${CLAUDE_SKILL_DIR}/references/skill-file-catalog.md` for the full index of every resource this skill ships or reads (settings, repo-config, every `references/*.md`, and every `scripts/*`) — extracted here to keep this file under its own R13 line-budget threshold as R28-R33 were added.

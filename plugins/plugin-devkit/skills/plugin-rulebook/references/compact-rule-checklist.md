@@ -1,7 +1,7 @@
 # Compact Rule Checklist
 
-Mechanical pattern → violation → severity reference for all 28 currently-enabled rules (R1-R10, R13, R14,
-R17-R32; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
+Mechanical pattern → violation → severity reference for all 29 currently-enabled rules (R1-R10, R13, R14,
+R17-R33; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
 "why enable" content — read `SKILL.md` instead for that. Kept in sync with `assets/settings.json` and
 `SKILL.md`'s own Active Rules section; any threshold shown here must match those two files exactly (R20).
 
@@ -39,6 +39,7 @@ model quality regardless of dispatch mode).
 | R30 Eval Samples Extracted | REQUIRED | J | SKILL.md (newly-created/structurally-modified skills) | A full eval/test-scenario walkthrough beyond R29's inline lists stays in SKILL.md, or duplicates an `evals.json` scenario verbatim | Move to `references/<topic>.md` or `evals.json` |
 | R31 Eval Fixture Integrity | REQUIRED | M | Any existing `evals.json`/`smoke_test.*` | `check_evals.py` zero-match guard, anchored-matching, or coverage-arithmetic check fails (dispatched from `plugin-auditor`) | Fix the vacuous assertion, unanchored needle, or arithmetic mismatch |
 | R32 Data-Only Boundary Disclosure Required | TIERED | J | SKILL.md body (skills reading another component's output) | No boundary statement, or missing "report as suspicious" element → REQUIRED (forward-looking). One of the 5 pre-existing hand-written skills missing that element or diverging in wording → ADVISORY | Add/complete the boundary statement per `references/data-only-boundary.md` |
+| R33 Component-File Naming: Plugin Prefix Required | REQUIRED | M | Registered plugin's `scripts/`, `references/`, `assets/`, `hooks/` (incl. nested), `commands/` (recursive basenames) | File basename doesn't start with `<prefix>-`; inert until the plugin has a registered `marketplace-inventory.json` prefix | Rename to `<prefix>-<rest>` and update every reference, per `references/component-file-prefix.md` |
 
 ## R19/R20 Procedure Reminder (always full-quality, never skipped in Fast path)
 

@@ -22,7 +22,7 @@ consistency, dependency cycles, authority/precedence) by hand.
 - **Reviewing a plugin component** (skill/agent/command/hook/rule): dispatch the type-matched
   `*-reviewer` agent, or `plugin-auditor` for the full fan-out (skilldir-reviewer, completeness,
   activation, security, dependency, authority, scripts, hooks, `plugin-rulebook-checker`,
-  consistency, plugin-validator). Any component in scope for R1-R32 needs an actual
+  consistency, plugin-validator). Any component in scope for R1-R33 needs an actual
   `Skill(plugin-rulebook)`/`plugin-rulebook-checker` invocation before being called compliant — a
   recollection of an earlier pass doesn't satisfy it (`plugin-rulebook-enforcement.md`).
 - **Reviewing a PR**: `collaborating-on-a-pr`, not raw `gh pr review` — it adds CODEOWNERS context
@@ -33,7 +33,7 @@ consistency, dependency cycles, authority/precedence) by hand.
 - **A new or structurally-changed reviewer-class component** (one that inspects a plugin's real
   structure) needs a live dry-run against `example-plugin` recorded before it's trusted
   (`test-against-example-plugin.md`).
-- For a plugin-component decision specifically, R1-R32 outranks CLAUDE.md and inline preference
+- For a plugin-component decision specifically, R1-R33 outranks CLAUDE.md and inline preference
   (`plugin-rulebook-enforcement.md`'s Rule Conflict Resolution) — flag a conflict rather than silently
   picking one side.
 

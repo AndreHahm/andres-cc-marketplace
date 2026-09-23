@@ -117,7 +117,7 @@ correctness of content that already exists, not whether content exists at all.
 capability on an agent that has never had shell access. `plugin-auditor` (skill) already carries
 narrowly-scoped per-script `Bash` grants in this exact shape (`Bash(node .../bridge-invoke.mjs:*)`,
 `Bash(node .../guarded-dispatch.mjs:*)`). `plugin-auditor` runs `reviewing-evals/scripts/check_evals.py`
-directly as an additional fan-out step (alongside dispatching `plugin-rulebook-checker` for R1-R32) and
+directly as an additional fan-out step (alongside dispatching `plugin-rulebook-checker` for R1-R33) and
 folds the result into the same evidence schema — see `plugin-auditor/SKILL.md` Step 4a. **The Bash grant
 and Step 4a's own invocation must anchor the script by its full repo-relative path
 (`Bash(python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py:*)`), not a

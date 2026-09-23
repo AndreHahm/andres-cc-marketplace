@@ -28,7 +28,7 @@ tunes *how* to move through it, not what it says.
    (`require-gitignored-scratch-locations.md`; CLAUDE.md's "No Scratch Files at Repo Root").
 4. **Before finalizing** any create/modify/rename/delete of a skill, agent, command, hook, or rule:
    run `Skill(plugin-rulebook)` (or dispatch the type-matched `*-reviewer` / `plugin-auditor` for a
-   fuller pass). R1-R32 outranks CLAUDE.md and inline preference for naming/language/formatting/
+   fuller pass). R1-R33 outranks CLAUDE.md and inline preference for naming/language/formatting/
    tool-scoping decisions on that component (`plugin-rulebook-enforcement.md`).
 5. **New plugin, or a new component in a plugin with never-inventoried state**: sync
    `marketplace-inventory` then `plugin-inventory` before finalizing, with explicit

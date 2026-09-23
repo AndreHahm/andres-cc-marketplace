@@ -1327,6 +1327,136 @@ def check_bootstrap_refuses_existing_inventory():
         return True, "bootstrap correctly refused to overwrite an existing inventory"
 
 
+def check_set_prefix_succeeds():
+    """R33 scenario: set-prefix persists a curated, valid prefix on a fresh
+    (never-registered) plugin inventory."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        result = _run(
+            "set-prefix",
+            plugin_dir,
+            inventory_path,
+            "fix",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if result.returncode != 0:
+            return (
+                False,
+                f"set-prefix rejected a valid, unregistered prefix: {result.stderr.strip()}",
+            )
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["prefix"]
+        if stored != "fix":
+            return False, f"expected stored prefix 'fix', got {stored!r}"
+        return True, "set-prefix correctly persisted a valid curated prefix"
+
+
+def check_set_prefix_format_rejected():
+    """R33 scenario: set-prefix rejects a malformed prefix before any write."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        result = _run(
+            "set-prefix",
+            plugin_dir,
+            inventory_path,
+            "TooLong1",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if result.returncode == 0:
+            return False, "set-prefix accepted a malformed prefix -- should have been rejected"
+        before = json.loads(inventory_path.read_text(encoding="utf-8")).get("prefix")
+        if before is not None:
+            return False, "inventory was modified despite the malformed prefix being refused"
+        return True, "set-prefix correctly rejected a malformed (non ^[a-z]{3,4}$) prefix"
+
+
+def check_set_prefix_stale_hash_rejected():
+    """R33 scenario: set-prefix with a deliberately wrong expected_hash must
+    be rejected outright, matching apply/repair-history's own guard."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        result = _run(
+            "set-prefix",
+            plugin_dir,
+            inventory_path,
+            "fix",
+            "--expected-hash",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        if result.returncode == 0:
+            return False, "set-prefix with a wrong expected_hash succeeded -- should be rejected"
+        if "stale set-prefix" not in result.stderr:
+            return (
+                False,
+                f"expected a 'stale set-prefix' rejection message, got: {result.stderr.strip()}",
+            )
+        return True, "set-prefix correctly rejected a stale/wrong expected_hash"
+
+
+def check_set_prefix_overwrite_refused():
+    """R33 scenario: a prefix is permanent once assigned -- set-prefix must
+    refuse to silently overwrite an already-registered, different value."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        first = _run(
+            "set-prefix",
+            plugin_dir,
+            inventory_path,
+            "fix",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if first.returncode != 0:
+            return (
+                False,
+                f"first set-prefix (fresh, valid) unexpectedly failed: {first.stderr.strip()}",
+            )
+
+        second = _run(
+            "set-prefix",
+            plugin_dir,
+            inventory_path,
+            "oth",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if second.returncode == 0:
+            return False, "set-prefix overwrote an already-registered prefix -- should be refused"
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["prefix"]
+        if stored != "fix":
+            return False, f"stored prefix changed despite refusal: expected 'fix', got {stored!r}"
+        return True, "set-prefix correctly refused to overwrite an already-registered prefix"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1357,6 +1487,10 @@ CHECKS = [
     check_reconciliation_prefers_active_on_duplicate_key,
     check_check_rejects_malformed_compatibility,
     check_bootstrap_refuses_existing_inventory,
+    check_set_prefix_succeeds,
+    check_set_prefix_format_rejected,
+    check_set_prefix_stale_hash_rejected,
+    check_set_prefix_overwrite_refused,
 ]
 
 

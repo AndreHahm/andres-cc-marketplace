@@ -258,6 +258,20 @@
         "required_elements": ["names_untrusted_source", "data_not_directive", "instruction_like_content_response"],
         "existing_skills_advisory_only": ["plugin-grader", "plugin-rulebook", "reviewing-evals", "marketplace-inventory", "plugin-inventory"]
       }
+    },
+    "R33_component_file_prefix": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Every file recursively under a registered plugin's root-level scripts/, references/, assets/, hooks/ (incl. nested), and commands/ directories must be named <prefix>-<rest>, where <prefix> is that plugin's own registered marketplace-inventory.json prefix -- inert until a plugin registers one; see references/component-file-prefix.md",
+      "config": {
+        "canonical_reference": "references/component-file-prefix.md",
+        "prefix_pattern": "^[a-z]{3,4}$",
+        "in_scope_dirs": ["scripts", "references", "assets", "hooks", "commands"],
+        "antigravity_kit_only_dirs": ["bin", "docs"],
+        "excluded_dirs": ["agents", "rules"],
+        "checked_statuses": ["active", "deprecated"],
+        "mechanical_counterpart": "scripts/marketplace_ci/prefix_check.py"
+      }
     }
   },
   "languages": {

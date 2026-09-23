@@ -11,7 +11,7 @@ description: >-
   "check whether plugin-inventory is stale". Reads completed plugin-grader
   reports for scores and accepted plugin-planning output for planned
   components — it never grades, plans, or scores anything itself.
-argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|repair-history]"
+argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|set-prefix|repair-history]"
 allowed-tools: Read AskUserQuestion Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/smoke_test.py:*)
 ---
 
@@ -58,7 +58,7 @@ inventory. See `../marketplace-inventory` for the root-scope sibling.
 /plugin-inventory <plugin path> [mode]
 ```
 
-`mode` is one of `build` / `check` / `plan` / `apply` / `import-grading` / `repair-history`. If omitted,
+`mode` is one of `build` / `check` / `plan` / `apply` / `import-grading` / `set-prefix` / `repair-history`. If omitted,
 ask via `AskUserQuestion` rather than guessing — `build` only applies when no inventory exists yet, and
 running it against an existing one is a mistake worth catching before any file is touched.
 
@@ -170,6 +170,27 @@ was actually appended or was a no-op duplicate (same report hash already importe
 or reinterpret the score — copy `final_score`/`dimensions.safety_risk_handling.score` exactly as
 `plugin-grader` reported them.
 
+### Set Prefix
+
+Sets this plugin's own `prefix` field — the local mirrored copy of `marketplace-inventory.json`'s
+canonical per-plugin `prefix` (plugin-rulebook's R33 component-file-prefix rule). Unlike every other
+field this script writes, `prefix` is a top-level scalar describing the single plugin this whole file
+is about (like `plugin_id`/`plugin_name`), not a per-component record — so it doesn't go through the
+generic `plan`/`apply` add/update/status-transition vocabulary:
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>
+```
+
+`<prefix>` must already be the same curated value registered in `marketplace-inventory.json` for this
+plugin — `set-prefix` never invents one; the calling skill (`marketplace-inventory`'s own Build/Plan
+step, or `plugin-lifecycle-upstream`'s Inventory Sync step for a brand-new plugin) proposes it and gets
+explicit `AskUserQuestion` approval before this command runs, per `require-inventory-updates-for-new-
+plugins-and-components.md`'s "no silent writes" rule. `--expected-hash` is the same
+`json_store.compute_hash` staleness guard `apply`/`repair-history` already use. The command refuses to
+silently overwrite an already-registered *different* prefix — a prefix is permanent once assigned;
+correcting a wrong one is a deliberate human decision made explicitly, not this command's job.
+
 ### Repair History
 
 The only mode allowed to alter an existing history entry.
@@ -261,6 +282,11 @@ until a future mode gives it a writer.
   (see Plan mode above); history/scoring fields are append-only, editable only through Repair History's
   own `--confirm` gate.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
+- **`set-prefix` failures**: a malformed prefix (not `^[a-z]{3,4}$`) is rejected before any write; a
+  stale `--expected-hash` is rejected the same way `apply`/`repair-history` reject one; and an
+  already-registered, *different* prefix is refused with `SystemExit` rather than silently overwritten
+  — a prefix is permanent once assigned, so correcting one requires a deliberate, explicit decision, not
+  a routine `set-prefix` call.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
 - **Out-of-scope `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
