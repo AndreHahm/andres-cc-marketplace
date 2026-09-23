@@ -261,6 +261,19 @@ def plan_plugin_sync(
                     continue
                 if (
                     component_dir_name == "hooks"
+                    and (claude_root / "hooks" / "_external-scripts").resolve()
+                    in existing_file.resolve().parents
+                ):
+                    # .claude/hooks/_external-scripts/ is plan_external_hook_scripts_mirror's
+                    # own destination tree (sync.py's EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT) --
+                    # not a hand-authored plugin component, so it has no canonical source in
+                    # any plugin's own hooks/ directory for this scan to match against. Left
+                    # unexcluded, bootstrap flagged every mirrored file here as a spurious
+                    # "no canonical source found... requires manual classification" warning
+                    # (issue #374 review finding, CodeRabbit).
+                    continue
+                if (
+                    component_dir_name == "hooks"
                     and existing_file.name == "hooks.json"
                     and existing_file.parent == dest_component_dir
                 ):

@@ -15,6 +15,7 @@ import pytest
 
 from scripts.marketplace_ci.sync import (
     SyncError,
+    _rewrite_plugin_root_references,
     apply_sync_plan,
     plan_external_hook_scripts_mirror,
     plan_hooks_merge,
@@ -171,7 +172,54 @@ def test_stage_settings_hooks_result_stages_when_contributing_source_staged(git_
     )
     apply_sync_plan(_as_sync_plan(settings_plan))
 
-    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+    staged = stage_settings_hooks_result(git_repo.root, settings_plan)
+
+    dest = (git_repo.root / ".claude" / "settings.json").resolve()
+    assert dest in staged
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/settings.json" in result.stdout.splitlines()
+
+
+def test_stage_settings_hooks_result_stages_legitimate_update_to_tracked_settings(
+    git_repo, registry_for
+):
+    # Regression test for the most severe review finding (Codex, round 5, PR #375):
+    # stage_settings_hooks_result used to re-derive its own safety check AFTER
+    # apply_sync_plan had already overwritten settings.json with the newly-regenerated
+    # content -- so the check always compared the fresh content against the still-old
+    # tracked index content and reported "unstaged," meaning --stage could never
+    # successfully stage a legitimate settings.json UPDATE, only a brand-new file
+    # creation (which happened to look "safe" by accident). plan_settings_hooks_sync
+    # now computes destination_safe_to_stage at plan time, strictly before any write --
+    # this exercises exactly the previously-broken path: an existing, tracked, otherwise
+    # untouched settings.json getting a real content update.
+    git_repo.stage(".claude/settings.json", json.dumps({"worktree": {"bgIsolation": "none"}}))
+    _commit_baseline(git_repo)
+
+    hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
+    source = git_repo.root / "plugins" / "widget-kit" / "hooks" / "hooks.json"
+    source.write_text(source.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/widget-kit/hooks/hooks.json"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+
+    settings_plan = plan_settings_hooks_sync(
+        git_repo.root, hooks_plan, external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    assert settings_plan.actions[0].operation == "update"  # tracked file, not "create"
+    assert settings_plan.destination_safe_to_stage is True
+    apply_sync_plan(_as_sync_plan(settings_plan))
+
+    staged = stage_settings_hooks_result(git_repo.root, settings_plan)
 
     dest = (git_repo.root / ".claude" / "settings.json").resolve()
     assert dest in staged
@@ -219,7 +267,7 @@ def test_stage_settings_hooks_result_skips_when_settings_json_has_unstaged_edit(
     )
     apply_sync_plan(_as_sync_plan(settings_plan))
 
-    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+    staged = stage_settings_hooks_result(git_repo.root, settings_plan)
 
     assert staged == ()
     result = subprocess.run(
@@ -242,7 +290,7 @@ def test_stage_settings_hooks_result_skips_when_no_contributing_source_staged(
     )
     apply_sync_plan(_as_sync_plan(settings_plan))
 
-    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+    staged = stage_settings_hooks_result(git_repo.root, settings_plan)
 
     assert staged == ()
 
@@ -282,7 +330,7 @@ def test_stage_settings_hooks_result_skips_when_settings_json_preexists_untracke
     assert settings_plan.actions[0].operation == "update"  # pre-existing content, not "create"
     apply_sync_plan(_as_sync_plan(settings_plan))
 
-    staged = stage_settings_hooks_result(git_repo.root, _as_hooks_merge_plan(settings_plan))
+    staged = stage_settings_hooks_result(git_repo.root, settings_plan)
 
     assert staged == ()
     result = subprocess.run(
@@ -295,17 +343,32 @@ def test_stage_settings_hooks_result_skips_when_settings_json_preexists_untracke
     assert ".claude/settings.json" not in result.stdout.splitlines()
 
 
+def test_rewrite_plugin_root_references_raises_on_unbraced_form():
+    # Regression test for the CodeRabbit-found gap (Fix 5): _PLUGIN_ROOT_REFERENCE_PATTERN
+    # only matches the braced ${CLAUDE_PLUGIN_ROOT} form, so an unbraced $CLAUDE_PLUGIN_ROOT
+    # reference passed through .sub() completely untouched -- with no SyncError, since
+    # _replace (and its own unresolvable-reference check) is never invoked for it at all.
+    # The fix adds a post-.sub() backstop that fails loud whenever "CLAUDE_PLUGIN_ROOT"
+    # still appears in the rewritten string, catching this and any other form the regex
+    # doesn't recognize (e.g. a modified ${CLAUDE_PLUGIN_ROOT:-default}).
+    with pytest.raises(SyncError, match="unrecognized"):
+        _rewrite_plugin_root_references(
+            "$CLAUDE_PLUGIN_ROOT/hooks/scripts/thing.sh",
+            plugin_name="widget-kit",
+            external_mirrors=WIDGET_EXTERNAL_MIRRORS,
+        )
+
+
+def test_rewrite_plugin_root_references_raises_on_modified_form():
+    with pytest.raises(SyncError, match="unrecognized"):
+        _rewrite_plugin_root_references(
+            '"${CLAUDE_PLUGIN_ROOT:-.}/hooks/scripts/thing.sh"',
+            plugin_name="widget-kit",
+            external_mirrors=WIDGET_EXTERNAL_MIRRORS,
+        )
+
+
 def _as_sync_plan(settings_plan):
     from scripts.marketplace_ci.sync_plan import SyncPlan
 
     return SyncPlan(actions=settings_plan.actions)
-
-
-def _as_hooks_merge_plan(settings_plan):
-    from scripts.marketplace_ci.sync import HooksMergePlan
-
-    return HooksMergePlan(
-        actions=settings_plan.actions,
-        merged_document=settings_plan.rewritten_hooks_document,
-        sources=settings_plan.sources,
-    )

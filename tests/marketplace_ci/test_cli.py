@@ -67,11 +67,16 @@ def test_check_plugin_mirrors_passes_with_only_warn_actions(monkeypatch, repo):
             }
         ],
     )
+    monkeypatch.chdir(repo)
+    # Sync everything to a clean baseline first -- since check-plugin-mirrors now also
+    # verifies .claude/settings.json's hooks key and .claude/hooks/_external-scripts/
+    # (Fix 2 for issue #374), a real "settings-hooks: create" drift would otherwise mask
+    # whether the *warn-only* exit-0 behavior under test here still holds on its own.
+    assert main(["sync-plugin-mirrors"]) == 0
     (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
     (repo / ".claude" / "skills" / "demo" / "SKILL.md").write_text(
         "genuinely different mirror content", encoding="utf-8"
     )
-    monkeypatch.chdir(repo)
     assert main(["check-plugin-mirrors"]) == 0
 
 
@@ -90,6 +95,27 @@ def test_check_plugin_mirrors_still_blocks_on_missing_excepted_destination(monke
         ],
     )
     monkeypatch.chdir(repo)
+    assert main(["check-plugin-mirrors"]) == 1
+
+
+def test_check_plugin_mirrors_detects_stale_settings_hooks_key(monkeypatch, repo):
+    # Regression test for review Finding 2 (Codex, PR #375): _handle_check_plugin_mirrors
+    # only ever called plan_plugin_sync -- never plan_hooks_merge / plan_settings_hooks_sync /
+    # plan_external_hook_scripts_mirror -- so this read-only CI gate ("Marketplace
+    # mirror/export parity") could report success even while .claude/settings.json's own
+    # `hooks` key was stale relative to the real, live plugin hooks.json content it's
+    # supposed to mirror. Sync fresh, confirm a clean pass, then mutate the plugin's
+    # hooks.json without re-syncing and confirm the check now catches the resulting drift.
+    _write_registry(repo, plugin_mirrors=["sample-kit"])
+    monkeypatch.chdir(repo)
+    assert main(["sync-plugin-mirrors"]) == 0
+    assert main(["check-plugin-mirrors"]) == 0
+
+    hooks_path = repo / "plugins" / "sample-kit" / "hooks" / "hooks.json"
+    hooks_data = json.loads(hooks_path.read_text(encoding="utf-8"))
+    hooks_data["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = "echo sample-kit-changed"
+    hooks_path.write_text(json.dumps(hooks_data), encoding="utf-8")
+
     assert main(["check-plugin-mirrors"]) == 1
 
 
