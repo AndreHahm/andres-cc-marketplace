@@ -79,8 +79,21 @@ TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 # "/hooks/context-kit.settings.json", which on Windows/Git-Bash is subject to
 # MSYS's automatic POSIX-to-Windows path translation rather than failing cleanly
 # (found by scripts-reviewer, 2026-09-21).
-[ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && exit 0
-DEFAULTS_FILE="${CLAUDE_PLUGIN_ROOT:-}/hooks/context-kit.settings.json"
+#
+# CLAUDE_PLUGIN_ROOT only resolves for an installed plugin's own hook manifest --
+# it's never set in a project-level execution context (e.g. this repo's own
+# .claude/settings.json-driven hooks, dogfooding this plugin's own hooks). Fall
+# back to CLAUDE_PROJECT_DIR there: sync.py mirrors this file into
+# .claude/hooks/context-kit.settings.json alongside every other component-dir
+# mirror, so the same defaults are still reachable, just via the project-relative
+# mirror path instead of the plugin-root path (issue #374).
+if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    DEFAULTS_FILE="${CLAUDE_PLUGIN_ROOT}/hooks/context-kit.settings.json"
+elif [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+    DEFAULTS_FILE="${CLAUDE_PROJECT_DIR}/.claude/hooks/context-kit.settings.json"
+else
+    exit 0
+fi
 [ ! -f "$DEFAULTS_FILE" ] && exit 0
 
 DEFAULTS_CATEGORIES=$(jq '{

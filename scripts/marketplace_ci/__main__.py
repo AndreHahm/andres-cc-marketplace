@@ -91,6 +91,12 @@ def _repo_rules_path(repo: Path) -> Path | None:
 
 def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.registry import RegistryError
+    from scripts.marketplace_ci.sync import (
+        SyncError,
+        plan_external_hook_scripts_mirror,
+        plan_hooks_merge,
+        plan_settings_hooks_sync,
+    )
     from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
     repo = Path.cwd()
@@ -102,10 +108,30 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
     plan = plan_plugin_sync(
         repo, registry, previous=None, bootstrap=False, repo_rules_path=_repo_rules_path(repo)
     )
-    if not plan.actions:
+    # Also verify the live .claude/settings.json hooks key and .claude/hooks/_external-scripts/
+    # mirror -- without this, a hook-manifest or external-script change could leave the
+    # actually-live artifacts stale while this read-only check still reports success, since
+    # neither was previously wired into any verification path (found by Codex's cross-model
+    # review of this same change, round 5). hooks_plan itself (plan_hooks_merge) is
+    # deliberately NOT re-checked here -- that's a pre-existing gap predating this change
+    # (.claude/hooks/hooks.json has never had a dedicated check step; only sync-plugin-mirrors/
+    # repair-all apply it), out of scope for this fix.
+    hooks_plan = plan_hooks_merge(repo, registry)
+    try:
+        external_scripts_plan = plan_external_hook_scripts_mirror(repo, registry)
+        settings_hooks_plan = plan_settings_hooks_sync(repo, hooks_plan)
+    except SyncError as exc:
+        print(f"check-plugin-mirrors: {exc}", file=sys.stderr)
+        return 1
+    all_actions = (*plan.actions, *external_scripts_plan.actions, *settings_hooks_plan.actions)
+    if not all_actions:
         print("check-plugin-mirrors: OK")
         return 0
     has_problem = _report("mirrors", plan.actions, repo)
+    has_problem = (
+        _report("external-hook-scripts", external_scripts_plan.actions, repo) or has_problem
+    )
+    has_problem = _report("settings-hooks", settings_hooks_plan.actions, repo) or has_problem
     if not has_problem:
         print("check-plugin-mirrors: OK (informational warnings only)")
     return 1 if has_problem else 0
@@ -114,7 +140,6 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
 def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.registry import RegistryError
     from scripts.marketplace_ci.sync import (
-        HooksMergePlan,
         SyncError,
         SyncPlan,
         apply_hooks_merge_plan,
@@ -164,14 +189,7 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
             staged = stage_generated_destinations(repo, result.applied)
             staged += stage_hooks_merge_result(repo, hooks_plan)
             staged += stage_generated_destinations(repo, external_scripts_result.applied)
-            staged += stage_settings_hooks_result(
-                repo,
-                HooksMergePlan(
-                    actions=settings_hooks_result.applied,
-                    merged_document=settings_hooks_plan.rewritten_hooks_document,
-                    sources=settings_hooks_plan.sources,
-                ),
-            )
+            staged += stage_settings_hooks_result(repo, settings_hooks_plan)
         except SyncError as exc:
             print(f"sync-plugin-mirrors: {exc}", file=sys.stderr)
             return 1

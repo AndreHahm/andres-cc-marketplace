@@ -546,3 +546,21 @@ def test_bootstrap_flags_orphan_destination_with_no_source(repo, registry_for):
     plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
     warnings = [a for a in plan.actions if a.operation == "warn"]
     assert any(a.destination == orphan.resolve() for a in warnings)
+
+
+def test_bootstrap_does_not_flag_external_hook_scripts_mirror_as_orphan(repo, registry_for):
+    # Regression test for the CodeRabbit-found gap (Fix 4): .claude/hooks/_external-scripts/
+    # is plan_external_hook_scripts_mirror's own destination tree, not a hand-authored
+    # plugin component -- it has no canonical source in any plugin's own hooks/
+    # directory, so before this fix, bootstrap's orphan-scan flagged every file mirrored
+    # there as a spurious "no canonical source found... requires manual classification"
+    # warning.
+    mirrored = (
+        repo / ".claude" / "hooks" / "_external-scripts" / "widget-kit" / "scripts" / "widget.py"
+    )
+    mirrored.parent.mkdir(parents=True)
+    mirrored.write_text("mirrored external hook script content", encoding="utf-8")
+
+    plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
+    warnings = [a for a in plan.actions if a.operation == "warn"]
+    assert not any(a.destination == mirrored.resolve() for a in warnings)
