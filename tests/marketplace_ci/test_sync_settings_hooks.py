@@ -156,6 +156,58 @@ def test_plan_external_hook_scripts_mirror_raises_when_registered_source_missing
         )
 
 
+def test_plan_external_hook_scripts_mirror_deletes_stale_entry(repo, registry_for):
+    # Regression test for the Codex-found gap (round 2, PR #375): removing/renaming an
+    # EXTERNAL_HOOK_SCRIPT_MIRRORS entry used to leave its old mirrored file behind
+    # forever -- nothing scanned the destination tree for files no longer covered by a
+    # current entry, and plan_plugin_sync's own bootstrap orphan-scan deliberately
+    # excludes this tree (Fix 4, earlier this same PR), so check-plugin-mirrors would
+    # report success indefinitely.
+    from scripts.marketplace_ci.sync_plan import SyncPlan
+
+    stale = repo / ".claude" / "hooks" / "_external-scripts" / "widget-kit" / "scripts" / "gone.py"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("stale mirrored content", encoding="utf-8")
+
+    plan = plan_external_hook_scripts_mirror(
+        repo, registry_for("widget-kit"), external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    delete_actions = [a for a in plan.actions if a.operation == "delete"]
+    assert len(delete_actions) == 1
+    assert delete_actions[0].destination == stale.resolve()
+
+    apply_sync_plan(SyncPlan(actions=plan.actions))
+    assert not stale.exists()
+    # The still-current entry is untouched by the same run.
+    current = (
+        repo / ".claude" / "hooks" / "_external-scripts" / "widget-kit" / "scripts" / "widget.py"
+    )
+    assert current.exists()
+
+
+def test_plan_external_hook_scripts_mirror_deletes_unregistered_plugins_mirror(repo, registry_for):
+    # The other half of the same gap: a plugin removed from plugin_mirrors entirely
+    # (not just one entry renamed) must also have its existing mirrored files deleted,
+    # not merely skipped from future creation.
+    from scripts.marketplace_ci.sync_plan import SyncPlan
+
+    existing = (
+        repo / ".claude" / "hooks" / "_external-scripts" / "widget-kit" / "scripts" / "widget.py"
+    )
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text("previously mirrored content", encoding="utf-8")
+
+    plan = plan_external_hook_scripts_mirror(
+        repo, registry_for("sample-kit"), external_mirrors=WIDGET_EXTERNAL_MIRRORS
+    )
+    assert len(plan.actions) == 1
+    assert plan.actions[0].operation == "delete"
+    assert plan.actions[0].destination == existing.resolve()
+
+    apply_sync_plan(SyncPlan(actions=plan.actions))
+    assert not existing.exists()
+
+
 def test_stage_settings_hooks_result_stages_when_contributing_source_staged(git_repo, registry_for):
     _commit_baseline(git_repo)
     hooks_plan = plan_hooks_merge(git_repo.root, registry_for("widget-kit"))
