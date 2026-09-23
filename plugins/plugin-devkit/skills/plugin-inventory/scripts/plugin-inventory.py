@@ -9,6 +9,7 @@ Subcommands:
   apply           <plugin_dir> <inventory_path> <approved_plan.json> <expected_hash>
   import-grading  <plugin_dir> <inventory_path> <report_path> <target> <target_type>
   check           <inventory_path> <plugin_dir>
+  set-prefix      <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>
   repair-history  <plugin_dir> <inventory_path> <component_id> <history_field> \
                   <replacement_history.json> --confirm <component_id> --expected-hash <hash> \
                   --expected-replacement-hash <hash>
@@ -313,11 +314,19 @@ def apply_plan(inventory, approved_operations):
 def validate_inventory(inventory):
     """Cross-record invariants JSON Schema alone can't express. Delegates to
     the shared `inventory_common.reconcile.validate_records`, using this
-    inventory's own `(name, type)` active-record uniqueness key."""
+    inventory's own `(name, type)` active-record uniqueness key. Also
+    validates the optional top-level `prefix` field's format when present
+    -- marketplace-wide uniqueness is marketplace-inventory.json's own
+    concern (this file describes only one plugin, so there is nothing to
+    compare it against locally); cross-file equality against the
+    marketplace record is checked by marketplace-inventory.py's own
+    build_plan/cmd_check."""
     reconcile.validate_records(
         inventory.get("components", []),
         uniqueness_key=lambda c: (c["name"], c["type"]),
     )
+    if inventory.get("prefix") is not None:
+        models.validate_prefix(inventory["prefix"])
 
 
 def cmd_discover(args):
@@ -427,6 +436,52 @@ def cmd_import_grading(args):
             indent=2,
         )
     )
+
+
+def cmd_set_prefix(args):
+    """Set this plugin's own top-level `prefix` field -- the mirrored copy of
+    marketplace-inventory.json's canonical per-plugin `prefix`. Unlike
+    every other field this script writes, `prefix` is a top-level scalar
+    describing the single plugin this whole file is about (like `plugin_id`/
+    `plugin_name`), not a per-component record field -- so it doesn't fit
+    the generic add/update/status-transition/no-op vocabulary `apply_plan`
+    already supports for `components`, and gets this small dedicated
+    subcommand instead, hash-gated the same way `apply`/`repair-history`
+    already guard against a stale write. Refuses to silently overwrite an
+    already-registered, different prefix -- a prefix is permanent once
+    assigned; correcting a wrong one is a deliberate human decision, not
+    this command's job."""
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
+    reconcile.validate_or_exit(models.validate_prefix, args.prefix, context="set-prefix")
+    with json_store.InventoryLock(args.inventory_path):
+        inventory = reconcile.validate_or_exit(
+            json_store.read_json, args.inventory_path, context="set-prefix"
+        )
+        current_hash = json_store.compute_hash(inventory)
+        if current_hash != args.expected_hash:
+            raise SystemExit(
+                f"stale set-prefix: inventory hash is {current_hash} but --expected-hash was "
+                f"{args.expected_hash} -- re-read the inventory before setting the prefix"
+            )
+        existing_prefix = inventory.get("prefix")
+        if existing_prefix is not None and existing_prefix != args.prefix:
+            raise SystemExit(
+                f"refusing to overwrite already-registered prefix {existing_prefix!r} with "
+                f"{args.prefix!r} -- a prefix is permanent once assigned; this command only "
+                "sets a prefix that is not yet registered"
+            )
+        inventory["prefix"] = args.prefix
+        inventory["updated_on"] = reconcile.today()
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="set-prefix",
+        )
+    print(json.dumps({"prefix": args.prefix, "path": args.inventory_path}, indent=2))
 
 
 def cmd_check(args):
@@ -593,6 +648,18 @@ def main():
     p.add_argument("inventory_path")
     p.add_argument("plugin_dir")
     p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("set-prefix")
+    p.add_argument("plugin_dir")
+    p.add_argument("inventory_path")
+    p.add_argument("prefix")
+    p.add_argument(
+        "--expected-hash",
+        required=True,
+        help="json_store.compute_hash of the inventory exactly as shown to the user for "
+        "approval -- rejected if the live inventory's hash no longer matches (stale snapshot)",
+    )
+    p.set_defaults(func=cmd_set_prefix)
 
     p = sub.add_parser("repair-history")
     p.add_argument("plugin_dir")

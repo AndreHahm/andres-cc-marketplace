@@ -12,7 +12,7 @@ description: >-
   for authoring a brand-new rule from scratch, use the rule-development
   skill instead — this agent reviews an already-existing rule file's
   quality, it does not author one. Already incorporates plugin-rulebook's
-  generic R1-R32 structural checks where they apply to rule files, so a
+  generic R1-R33 structural checks where they apply to rule files, so a
   bare "validate this rule" request is fully answered here — no separate
   plugin-rulebook dispatch is needed for a single rule file.
 model: sonnet

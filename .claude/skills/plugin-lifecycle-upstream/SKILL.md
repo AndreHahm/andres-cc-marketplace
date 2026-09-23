@@ -112,6 +112,21 @@ After Phase 7 (Test)'s gate is approved, stage and commit the built files per th
 
 After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet — the actual current state of every plugin in this repo) → run `marketplace-inventory` (mints/confirms the `plugin_id`, through its own Plan → `AskUserQuestion` approval → Apply gate) then `plugin-inventory` to bootstrap the component list — `bootstrap` has no plan/apply step of its own, so get explicit `AskUserQuestion` approval *before* invoking it, not after (see the rule's "No silent writes" bullet); a new component in an existing plugin that already has a `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
 
+**Prefix assignment for a brand-new plugin (plugin-rulebook's R33):** when this step mints a `plugin_id`
+for a genuinely new plugin (not just a new component in an existing one), also propose a curated 3-4
+letter, lowercase-only prefix candidate (pattern `^[a-z]{3,4}$`) for the plugin's own
+`marketplace-inventory.json` record, checked for marketplace-wide uniqueness against every existing
+plugin's `prefix` — never derived algorithmically, always a curated proposal a human confirms or
+overrides. Fold the approval into the same `AskUserQuestion` this step already requires before its
+`marketplace-inventory` write, rather than asking a second time — present the minted `plugin_id` and the
+proposed `prefix` together. Once approved, set it via the same `marketplace-inventory` `update`-operation
+apply path used for the `plugin_id` mint itself, then register the identical value on the plugin's own
+inventory via `plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`
+(see `plugin-inventory/SKILL.md`'s "Set Prefix" mode). This registers the plugin's permanent prefix
+before any of its in-scope `scripts/`/`references/`/`assets/`/`hooks/`/`commands/` files exist, so R33
+and `scripts/marketplace_ci/prefix_check.py` are both already active for it from the very first commit —
+never inert-by-omission the way an unmigrated pre-existing plugin currently is.
+
 ## Mirror Sync
 
 This repository's own dogfooding step only — a no-op if `scripts/marketplace_ci/` and

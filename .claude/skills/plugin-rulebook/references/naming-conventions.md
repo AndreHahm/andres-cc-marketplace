@@ -79,3 +79,20 @@ These names are not allowed because they provide no information about content:
 This file has no row for plugin-level naming. This marketplace's own hyphen-placement convention (`<domain>-kit`/`<domain>-devkit`, exactly one hyphen before the suffix) is documented in this repo's `CLAUDE.md`, not here — it's repo-specific, not a portable plugin-rulebook default.
 
 **Not yet decided, and not implemented as a rule:** which suffix (`-kit` vs. `-devkit`) or prefix applies to which kind of plugin, and what the full list of allowed suffixes/prefixes even is. A rule can't check against a list that doesn't exist yet. Once that list is defined, the natural implementation mirrors R23's whitelist pattern: a portable rule that checks a plugin name's suffix/prefix against an allowed list, with the actual list itself living in a repo-specific override file (like `{REPO_ROOT}/.claude/plugin-rulebook.config.json` already does for R23) rather than hardcoded into the portable rulebook.
+
+## R33 — Component-File Prefix (Not the Same "Prefix" as the Open Item Above)
+
+**This is a different concept from the Open Item above, despite sharing the word "prefix."** The Open
+Item above is about a plugin's own *name* — whether `git-kit` should be suffixed `-kit` vs. `-devkit`.
+R33 is about *file naming inside an already-named plugin* — once a plugin is named `git-kit`, must its
+own `scripts/check-pr-title.py` be renamed `scripts/git-check-pr-title.py`. The two are independently
+decided, unrelated in scope, and this section exists specifically to prevent conflating them.
+
+R33 requires every file recursively under a registered plugin's root-level `scripts/`, `references/`,
+`assets/`, `hooks/` (including nested `hooks/scripts/`), and `commands/` directories to be named
+`<prefix>-<rest>`, where `<prefix>` is that plugin's own curated, permanent, marketplace-wide-unique
+value registered in `marketplace-inventory.json` (pattern `^[a-z]{3,4}$`, no separator — the hyphen is
+prepended when used as a filename prefix). Inert for any plugin with no `prefix` registered yet. See
+`${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the full scope, exclusions, and the
+`antigravity-kit`-only temporary `bin`/`docs` exception, and `SKILL.md`'s R33 entry for the rule's
+severity and gating summary.

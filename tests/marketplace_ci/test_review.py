@@ -131,7 +131,7 @@ def test_scripts_marketplace_ci_rules_mirror_source_change_selects_rule_reviewer
     """PR #370 follow-up (security review M3): scripts/marketplace_ci/rules/
     is the canonical mirror source for .claude/rules/ -- a Tier 2 change to a
     rule's own text needs a reviewer that actually checks rule semantics,
-    not just plugin-rulebook-checker's structural R1-R32 compliance."""
+    not just plugin-rulebook-checker's structural R1-R33 compliance."""
     scope = derive_review_scope(
         [change("scripts/marketplace_ci/rules/some-rule.md")], dependency_index()
     )

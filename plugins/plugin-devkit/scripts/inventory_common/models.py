@@ -7,9 +7,11 @@ json_store.py and grading.py for those.
 """
 
 import datetime
+import re
 import secrets
 
 STATUS_VALUES = {"planned", "active", "deprecated", "superseded", "retired"}
+PREFIX_PATTERN = re.compile(r"^[a-z]{3,4}$")
 FUNCTIONAL_ROLE_VALUES = {
     "workflow",
     "reviewer",
@@ -56,6 +58,19 @@ def validate_functional_role(role):
     if role not in FUNCTIONAL_ROLE_VALUES:
         raise ValueError(
             f"invalid functional_role {role!r}; must be one of {sorted(FUNCTIONAL_ROLE_VALUES)}"
+        )
+
+
+def validate_prefix(prefix):
+    """Validate a plugin component-file prefix: 3-4 lowercase letters, no
+    separator (the hyphen is prepended by the rule/tooling that uses this
+    value as a filename prefix, e.g. 'git' -> 'git-<rest>'). Mirrors the
+    `^[a-z]{3,4}$` pattern in marketplace-inventory.schema.json /
+    plugin-inventory.schema.json -- keep both in sync (R20)."""
+    if not isinstance(prefix, str) or not PREFIX_PATTERN.match(prefix):
+        raise ValueError(
+            f"invalid prefix {prefix!r}; must match {PREFIX_PATTERN.pattern!r} "
+            "(3-4 lowercase letters, no separator)"
         )
 
 

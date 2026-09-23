@@ -254,6 +254,23 @@ def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_check_prefixes(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.prefix_check import find_prefix_violations
+
+    repo = Path.cwd()
+    violations = find_prefix_violations(repo)
+    if not violations:
+        print("check-prefixes: OK")
+        return 0
+    for violation in violations:
+        try:
+            shown = violation.path.relative_to(repo).as_posix()
+        except ValueError:
+            shown = violation.path.as_posix()
+        print(f"[prefixes] {violation.plugin}: {shown} - {violation.reason}")
+    return 1
+
+
 def _handle_check_all(args: argparse.Namespace) -> int:
     repo = Path.cwd()
 
@@ -290,12 +307,18 @@ def _handle_check_all(args: argparse.Namespace) -> int:
 
     mirrors_rc = _handle_check_plugin_mirrors(args)
     exports_rc = _handle_check_codex_exports(args)
-    rc = 2 if (mirrors_rc == 2 or exports_rc == 2) else (1 if (mirrors_rc or exports_rc) else 0)
+    prefixes_rc = _handle_check_prefixes(args)
+    rc = (
+        2
+        if (mirrors_rc == 2 or exports_rc == 2 or prefixes_rc == 2)
+        else (1 if (mirrors_rc or exports_rc or prefixes_rc) else 0)
+    )
 
     if getattr(args, "json_output", None):
         payload = {
             "check_plugin_mirrors": mirrors_rc,
             "check_codex_exports": exports_rc,
+            "check_prefixes": prefixes_rc,
             "exit_code": rc,
         }
         Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -900,6 +923,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="also `git add` each applied destination whose own canonical source is already staged",
     )
     convert_exports.set_defaults(handler=_handle_convert_codex_exports)
+
+    subparsers.add_parser(
+        "check-prefixes", help="verify plugin-root files carry their registered prefix"
+    ).set_defaults(handler=_handle_check_prefixes)
 
     check_all = subparsers.add_parser("check-all", help="run every deterministic check")
     check_all.add_argument("--json-output", metavar="PATH", help="also write a JSON report")

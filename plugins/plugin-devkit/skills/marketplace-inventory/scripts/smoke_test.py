@@ -1517,6 +1517,167 @@ def check_repair_history_succeeds_on_malformed_current_inventory():
         )
 
 
+def check_apply_valid_prefix_succeeds():
+    """R33 scenario: a curated, valid prefix set via 'update' is persisted."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": plugin_id, "field": "prefix", "new_value": "pla"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"apply rejected a valid prefix: {apply.stderr.strip()}"
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["prefix"]
+        if stored != "pla":
+            return False, f"expected stored prefix 'pla', got {stored!r}"
+        return True, "valid curated prefix accepted and persisted via update"
+
+
+def check_prefix_format_rejected():
+    """R33 scenario: a malformed prefix (wrong pattern) is rejected before any write."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "bad_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "prefix",
+                        "new_value": "TooLong1",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted a malformed prefix -- should have been rejected"
+        return True, "apply correctly rejected a malformed (non ^[a-z]{3,4}$) prefix"
+
+
+def check_prefix_duplicate_rejected():
+    """R33 scenario: two plugins can never share the same registered prefix,
+    marketplace-wide."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a", "plugin-b"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugins = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"]
+        id_a = next(p["id"] for p in plugins if p["name"] == "plugin-a")
+        id_b = next(p["id"] for p in plugins if p["name"] == "plugin-b")
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "first_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": id_a, "field": "prefix", "new_value": "dup"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"first apply (unique prefix) unexpectedly failed: {apply.stderr.strip()}"
+
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "dup_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": id_b, "field": "prefix", "new_value": "dup"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted a duplicate prefix across two plugins -- should reject"
+        return True, "apply correctly rejected a marketplace-wide duplicate prefix"
+
+
+def check_prefix_mismatch_conflict():
+    """R33 scenario: a plugin-inventory.json whose prefix disagrees with the
+    marketplace record's own prefix must surface as a conflict, mirroring
+    the existing plugin_id-mismatch check above."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
+        plugin_id, plugin_name = plugin["id"], plugin["name"]
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "set_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": plugin_id, "field": "prefix", "new_value": "pla"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"setting the marketplace-side prefix failed: {apply.stderr.strip()}"
+
+        plugin_inventory_dir = repo_root / "plugin-a" / ".claude-plugin"
+        plugin_inventory_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_inventory_dir / "plugin-inventory.json").write_text(
+            json.dumps({"plugin_id": plugin_id, "prefix": "oth", "components": []}),
+            encoding="utf-8",
+        )
+
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op
+            for op in operations
+            if op["operation"] == "conflict"
+            and op["name"] == plugin_name
+            and "prefix" in op["reason"]
+        ]
+        if not conflicts:
+            return (
+                False,
+                f"expected a prefix-mismatch conflict for {plugin_name}, got: {operations}",
+            )
+        return (
+            True,
+            "plugin-inventory.json/marketplace prefix mismatch correctly surfaced as a conflict",
+        )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1550,6 +1711,10 @@ CHECKS = [
     check_repair_history_stale_replacement_hash_rejected,
     check_repair_history_evidence_item_type_rejected,
     check_repair_history_succeeds_on_malformed_current_inventory,
+    check_apply_valid_prefix_succeeds,
+    check_prefix_format_rejected,
+    check_prefix_duplicate_rejected,
+    check_prefix_mismatch_conflict,
 ]
 
 

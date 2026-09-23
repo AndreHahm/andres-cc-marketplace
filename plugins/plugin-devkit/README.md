@@ -108,7 +108,7 @@ Twenty-five specialized agents, eighteen of which are quality-gate reviewers cro
 | Agent | Purpose |
 |---|---|
 | `plugin-validator` | Validates overall plugin structure, manifest, and component wiring |
-| `plugin-rulebook-checker` | Isolated, Agent-dispatchable R1-R32 compliance checker for plugin-rulebook -- full-plugin batch sweep, fast targeted delta re-check, or a Structured Output Mode pass returning machine-readable YAML findings, without a general-purpose Agent's tool-schema and full-SKILL.md-reading overhead |
+| `plugin-rulebook-checker` | Isolated, Agent-dispatchable R1-R33 compliance checker for plugin-rulebook -- full-plugin batch sweep, fast targeted delta re-check, or a Structured Output Mode pass returning machine-readable YAML findings, without a general-purpose Agent's tool-schema and full-SKILL.md-reading overhead |
 | `skill-reviewer` | Reviews skill files for structure and best-practice adherence |
 | `hook-reviewer` | Reviews hook configurations for safety and correctness before deployment |
 | `rule-reviewer` | Reviews `.claude/rules/` files before they load into every session |
