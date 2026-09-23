@@ -223,6 +223,10 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # diagnostic signal a future investigation into #373's still-unconfirmed root cause needs. A
 # failure to write here (e.g. a read-only .git) is silently ignored -- this is diagnostics, not a
 # security boundary, and must never itself change this guard's own allow/deny behavior.
+# Disclosed tradeoff (hook-reviewer pass): this log has no size cap or rotation -- it grows for as
+# long as the repo exists. Accepted deliberately rather than adding rotation logic to a security
+# guard's own hot path; a stale/oversized log is a housekeeping concern, not a correctness or
+# security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
 printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" 2>/dev/null || true
