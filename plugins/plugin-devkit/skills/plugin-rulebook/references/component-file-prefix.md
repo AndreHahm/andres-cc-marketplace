@@ -4,10 +4,9 @@ Extracted from `SKILL.md`'s R33 entry to keep the skill under its own R13 line-b
 same reason R28-R32's detail already lives in dedicated reference files). See `SKILL.md`'s R33 entry
 for the one-line summary and severity.
 
-**Design of record:** `.draft/_open/marketplace/prefixes/2026-09-23-plugin-file-prefixes-concept-v3.md`
-(and its implementation plan). This rule and `scripts/marketplace_ci/prefix_check.py` are two
-independent enforcement layers — a policy check here, a mechanical CI check there — that must always
-agree on scope; if either changes, update both together (R20).
+This rule and `scripts/marketplace_ci/prefix_check.py` are two independent enforcement layers — a policy
+check here, a mechanical CI check there — that must always agree on scope; if either changes, update
+both together (R20).
 
 ## In scope (recursive)
 

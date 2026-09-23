@@ -151,6 +151,16 @@ approval *before* invoking it, not after; a new component in an existing plugin 
 `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit,
 separate from the build commit and from any doc-fix commit the Document step below produces.
 
+**Prefix assignment for a brand-new plugin (R33):** when this step mints a `plugin_id` for a genuinely
+new plugin, also propose a curated 3-4 letter lowercase prefix (pattern `^[a-z]{3,4}$`), checked for
+marketplace-wide uniqueness — never derived algorithmically, always a curated proposal a human confirms.
+Fold the approval into the same `AskUserQuestion` as the `plugin_id` mint. Mechanically this still takes
+two separate `marketplace-inventory` Plan → Apply passes: the mint runs through `add`; only once that's
+applied does the record exist for a second `update` pass (naming `prefix`) to target — never fold
+`update` into the same apply call as the `add`. After that second apply lands, register the identical
+value via `plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`
+(see `plugin-inventory/SKILL.md`'s "Set Prefix" mode).
+
 ## Mirror Sync
 
 This repository's own dogfooding step only — a no-op if `scripts/marketplace_ci/` and

@@ -7,8 +7,9 @@ description: >-
   history) with curated lifecycle decisions and append-only naming, status,
   quality-scoring, and security-scoring histories. Use when the user asks to
   "build the plugin inventory", "update this plugin's component database",
-  "record this component rename", "import the latest component grades", or
-  "check whether plugin-inventory is stale". Reads completed plugin-grader
+  "record this component rename", "import the latest component grades",
+  "check whether plugin-inventory is stale", or "register this plugin's
+  file prefix" once marketplace-inventory has assigned one. Reads completed plugin-grader
   reports for scores and accepted plugin-planning output for planned
   components — it never grades, plans, or scores anything itself.
 argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|set-prefix|repair-history]"
@@ -38,6 +39,7 @@ inventory. See `../marketplace-inventory` for the root-scope sibling.
 - Importing completed `plugin-grader` component reports' quality/security scores
 - Importing accepted `plugin-planning` output as `planned`-status records
 - A read-only drift/staleness check between the canonical inventory and the current filesystem/manifest
+- Registering a plugin's own component-file prefix (R33) once `marketplace-inventory` has assigned one
 
 ## When NOT to Use
 
@@ -290,7 +292,7 @@ until a future mode gives it a writer.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
 - **Out-of-scope `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
-  `import-grading`/`repair-history`) takes `plugin_dir` and calls
+  `import-grading`/`repair-history`/`set-prefix`) takes `plugin_dir` and calls
   `reconcile.require_inventory_path_under_scope_dir` before touching the file —
   `inventory_path` must resolve (after symlink resolution) to exactly
   `<plugin_dir>/.claude-plugin/plugin-inventory.json` or the command fails closed with `SystemExit`,
@@ -307,6 +309,7 @@ until a future mode gives it a writer.
 - "record this component rename"
 - "import the latest component grades"
 - "check whether plugin-inventory is stale"
+- "register this plugin's file prefix"
 
 **Verify it does NOT activate on:**
 - "check all plugin inventories for drift" → `marketplace-inventory` instead; this skill never edits

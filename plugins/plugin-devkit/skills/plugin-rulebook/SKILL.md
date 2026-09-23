@@ -199,19 +199,10 @@ Reference files use lowercase, hyphen-separated, descriptive topic names.
 
 ### R13 — SKILL.md Line Count: Tiered Severity [REQUIRED, default: on]
 
-Enforce quality thresholds on SKILL.md total line count using four severity tiers.
-
-**Thresholds** (configurable in `assets/settings.json → rules.R13_skillmd_line_limit.config.thresholds`):
-
-| Lines | Severity | Required Action |
-|-------|----------|-----------------|
-| ≤ 100 | OK | None |
-| > 100 | Weak Warning | Record as informational; no fix required |
-| > 300 | Soft Warning | Recommend planning extraction soon; do not block |
-| > 490 | Warning | Recommend moving content to `references/`; do not block |
-| > 500 | Critical | Must move content to `references/` before proceeding |
-
-See `${CLAUDE_SKILL_DIR}/references/size-rules.md` for the full severity behavior definitions.
+Enforce quality thresholds on SKILL.md total line count using four severity tiers (≤100 OK · >100 Weak
+Warning · >300 Soft Warning · >490 Warning · >500 Critical, blocking). Configurable in
+`assets/settings.json → rules.R13_skillmd_line_limit.config.thresholds`; see
+`${CLAUDE_SKILL_DIR}/references/size-rules.md` for the full tables and severity behavior definitions.
 
 ---
 
@@ -244,18 +235,11 @@ All hyperlinks must use named reference syntax — text in brackets, URL in pare
 
 ### R18 — Inline Code Block Size: Tiered Severity [REQUIRED, default: on]
 
-Enforce quality thresholds on inline fenced code blocks using three severity tiers.
-
-**Thresholds** (configurable in `assets/settings.json → rules.R18_code_block_line_limit.config.thresholds`):
-
-| Block Lines | Severity | Required Action |
-|-------------|----------|-----------------|
-| ≤ 10 | OK | None |
-| > 10 | Weak Warning | Suggest extracting; no fix required |
-| > 20 | Warning | Recommend extracting to `scripts/` or `references/`; do not block |
-| > 30 | Critical | Must extract to `scripts/` file and replace with pointer before proceeding |
-
-See `${CLAUDE_SKILL_DIR}/references/size-rules.md` for the full severity behavior definitions and extraction targets.
+Enforce quality thresholds on inline fenced code blocks using three severity tiers (≤10 OK · >10 Weak
+Warning · >20 Warning · >30 Critical, blocking). Configurable in
+`assets/settings.json → rules.R18_code_block_line_limit.config.thresholds`; see
+`${CLAUDE_SKILL_DIR}/references/size-rules.md` for the full tables, severity behavior definitions, and
+extraction targets.
 
 ---
 
