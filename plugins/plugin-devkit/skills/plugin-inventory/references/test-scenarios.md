@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 28-scenario test walkthrough for `plugin-inventory`, extracted from `SKILL.md`'s own
+Full 32-scenario test walkthrough for `plugin-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -96,3 +96,16 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
     self-lockout bug: the original implementation pre-validated the *current* inventory with
     `validate_inventory` before doing anything else, which would have rejected the malformed file
     outright and locked the operator out of the one command meant to fix it
+29. **Set-prefix persists a valid curated prefix (R33)** — call `set-prefix` on a fresh (never-registered)
+    plugin inventory with a well-formed prefix (`^[a-z]{3,4}$`); confirm it's written and readable back
+    from the on-disk inventory
+30. **Set-prefix rejects a malformed prefix (R33)** — call `set-prefix` with a value that doesn't match
+    `^[a-z]{3,4}$`; confirm it's rejected before any write, and the inventory's `prefix` field stays
+    unset
+31. **Set-prefix rejects a stale/wrong `--expected-hash` (R33)** — call `set-prefix` with a deliberately
+    wrong `--expected-hash`; confirm it's rejected with a `stale set-prefix` message before any write,
+    matching `apply`/`repair-history`'s own hash-staleness guard
+32. **Set-prefix refuses to silently overwrite an already-registered, different prefix (R33)** — call
+    `set-prefix` a second time with a different value against an inventory that already has a prefix
+    registered; confirm the write is refused and the originally-registered value is unchanged on disk —
+    a prefix is permanent once assigned
