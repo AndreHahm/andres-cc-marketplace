@@ -396,8 +396,18 @@ def plan_external_hook_scripts_mirror(
     missing -- plan_settings_hooks_sync trusts this list blindly when rewriting
     references, so a stale entry must fail loud here rather than silently produce a
     settings.json hook pointing at a destination this function never created.
+
+    Also plans deletion of any existing file under EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT
+    that no longer corresponds to a current `external_mirrors` entry for a plugin
+    still in `registry.plugin_mirrors` -- otherwise, renaming/removing an entry (or
+    unregistering its plugin) leaves the old mirrored file behind forever: nothing
+    else ever visits this destination tree to catch it (plan_plugin_sync's own
+    bootstrap orphan-scan deliberately excludes it, since every *current* entry here
+    would otherwise be misreported as orphaned) (found by Codex's automated PR
+    review, round 2, PR #375).
     """
     actions: list[SyncAction] = []
+    known_destinations: set[Path] = set()
     for plugin_name, relative_path in external_mirrors:
         if plugin_name not in registry.plugin_mirrors:
             continue
@@ -405,6 +415,7 @@ def plan_external_hook_scripts_mirror(
         destination = (
             repo / EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT / plugin_name / relative_path
         ).resolve()
+        known_destinations.add(destination)
         if not source.is_file():
             raise SyncError(
                 "plan_external_hook_scripts_mirror: EXTERNAL_HOOK_SCRIPT_MIRRORS entry "
@@ -430,6 +441,26 @@ def plan_external_hook_scripts_mirror(
                     source=source,
                     destination=destination,
                     reason="missing from destination",
+                )
+            )
+
+    mirror_root = (repo / EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT).resolve()
+    if mirror_root.is_dir():
+        for existing_file in sorted(mirror_root.rglob("*")):
+            if not existing_file.is_file():
+                continue
+            resolved = existing_file.resolve()
+            if resolved in known_destinations:
+                continue
+            actions.append(
+                SyncAction(
+                    operation="delete",
+                    source=None,
+                    destination=resolved,
+                    reason=(
+                        "no longer covered by a registered EXTERNAL_HOOK_SCRIPT_MIRRORS "
+                        "entry for a plugin currently in plugin_mirrors"
+                    ),
                 )
             )
     return SyncPlan(actions=tuple(actions))
