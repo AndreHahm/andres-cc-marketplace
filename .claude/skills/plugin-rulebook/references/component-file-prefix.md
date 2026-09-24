@@ -61,9 +61,14 @@ registered" gate `prefix_check.py` uses mechanically, so a plugin migrates from 
 checked" atomically the moment its own migration PR registers a curated prefix — no plugin is ever
 partially or ambiguously in scope.
 
-Additionally, a plugin whose `status` is `superseded` or `retired` is never checked, even if it carries
-a registered (permanent) prefix — its source files may be stale or entirely gone, and checking them
-would produce false positives on content nobody maintains anymore.
+Additionally, a plugin whose `status` is `superseded` or `retired` is skipped **only if it has also been
+removed from `.claude-plugin/marketplace.json`** — its source files may be stale or entirely gone at that
+point, and checking them would produce false positives on content nobody maintains anymore. A
+`superseded`/`retired` plugin that is still listed in `marketplace.json` (still installed) is checked
+regardless of its curated status: `status` is a separately human-editable field, and a PR could otherwise
+set it to a skip-eligible value while the plugin remains live, exempting it from the check entirely. See
+`prefix_check.py`'s own `CHECKED_STATUSES`/`authoritative_sources` logic — a plugin is in scope if
+*either* its status is `active`/`deprecated` *or* its name still appears in the manifest.
 
 ## Fix
 

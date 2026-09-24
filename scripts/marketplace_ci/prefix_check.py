@@ -21,6 +21,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Mirrors inventory_common.models.PREFIX_PATTERN / the identical
 # `^[a-z]{3,4}$` pattern hand-duplicated in marketplace-inventory.schema.json
@@ -75,7 +76,7 @@ class PrefixPermanenceViolation:
 
 
 def find_prefix_permanence_violations(
-    base_inventory: dict, head_inventory: dict
+    base_inventory: dict, head_inventory: dict, repo: Path | None = None
 ) -> list[PrefixPermanenceViolation]:
     """Compare `plugins[].prefix` between a base and a head marketplace-
     inventory.json and return every record whose base-assigned prefix was
@@ -88,7 +89,14 @@ def find_prefix_permanence_violations(
     PR's diff (base vs head) is the only layer that catches either of
     those, since it runs at the point that matters -- PR review -- rather
     than trusting that every change went through the tool. Found by a live
-    security-reviewer pass (M2)."""
+    security-reviewer pass (M2).
+
+    `repo` (optional) enables the rename-tolerance check below: a `name`
+    change is only a violation when it breaks the head record's join to
+    marketplace.json's authoritative entry. Without `repo` (e.g. a caller
+    with no working tree to read a manifest from), every rename is
+    conservatively flagged, matching this module's existing fail-closed
+    posture."""
     # Deliberately a truthy check, not `is not None`: an empty-string or
     # other falsy base value is not a meaningful prior assignment to
     # protect -- find_prefix_violations' own format validation is what
@@ -97,6 +105,11 @@ def find_prefix_permanence_violations(
     # legitimate first assignment here, not a permanence violation.
     base_by_id = {p["id"]: p for p in base_inventory.get("plugins", []) if p.get("prefix")}
     head_by_id = {p["id"]: p for p in head_inventory.get("plugins", [])}
+
+    authoritative_sources: dict[str, str] = {}
+    duplicate_manifest_names: set[str] = set()
+    if repo is not None:
+        authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
 
     violations: list[PrefixPermanenceViolation] = []
     for plugin_id, base_plugin in base_by_id.items():
@@ -133,24 +146,40 @@ def find_prefix_permanence_violations(
             # marketplace.json's authoritative source (via
             # `_load_authoritative_sources`) -- an unchanged `id`/`prefix`
             # with a renamed `name` un-joins a still-live, still-installed
-            # plugin from its manifest entry, so find_prefix_violations
-            # never scans it again under either the old or the new name
-            # (the manifest still lists the old name; no inventory record
-            # holds it anymore). Same permanence posture as `prefix` itself
-            # above: once registered, both stay fixed together. Found by a
-            # live security-reviewer pass, round 9.
-            violations.append(
-                PrefixPermanenceViolation(
-                    plugin_id=plugin_id,
-                    plugin_name=head_name if head_name is not None else base_name,
-                    reason=(
-                        f"name changed from {base_name!r} (base) to {head_name!r} (head) "
-                        f"while prefix {base_prefix!r} stayed registered -- renaming a "
-                        "prefixed record un-links it from marketplace.json's authoritative "
-                        "entry, hiding it from the prefix scan entirely"
-                    ),
-                )
+            # plugin from its manifest entry unless the rename is
+            # coordinated with a matching marketplace.json update in the
+            # same PR, in which case find_prefix_violations still finds and
+            # scans it under the new name. Only a rename that breaks that
+            # join is a real permanence violation -- `reconcile.
+            # apply_status_transition`'s own `new_name` field is a
+            # supported, `naming_history`-tracked rename, not something
+            # this check should make permanently impossible. Originally
+            # found by a live security-reviewer pass (round 9) as an
+            # unconditional rename-is-always-a-violation rule; loosened
+            # after a live CodeRabbit + Codex review (PR #387) both
+            # independently flagged that rule as over-broad.
+            still_joins = (
+                repo is not None
+                and head_name is not None
+                and head_name not in duplicate_manifest_names
+                and head_plugin.get("source") is not None
+                and authoritative_sources.get(head_name) == head_plugin.get("source")
             )
+            if not still_joins:
+                violations.append(
+                    PrefixPermanenceViolation(
+                        plugin_id=plugin_id,
+                        plugin_name=head_name if head_name is not None else base_name,
+                        reason=(
+                            f"name changed from {base_name!r} (base) to {head_name!r} (head) "
+                            f"while prefix {base_prefix!r} stayed registered, and the head "
+                            "record does not join marketplace.json's authoritative entry for "
+                            "the new name via a matching `source` -- renaming a prefixed "
+                            "record must stay linked to its manifest entry, or it silently "
+                            "escapes the prefix scan entirely"
+                        ),
+                    )
+                )
     return violations
 
 
@@ -303,27 +332,73 @@ def find_prefix_violations(
 
     authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
 
+    # Select at most one inventory record to scan per plugin `name`, before
+    # ever reaching the per-record checks below. Two records can
+    # legitimately share a `name` (e.g. a retired copy and its active
+    # successor both still present in marketplace-inventory.json) --
+    # scanning both against their own distinct permanent prefixes would
+    # check the same manifest-registered directory against two different
+    # `<prefix>-` requirements at once, which no real file tree can
+    # satisfy. `status` is a curated, separately human-editable field --
+    # the same risk the `source` comment below already documents for that
+    # field applies here too: a PR could set `status` to a skip-eligible
+    # value (e.g. 'retired'/'planned') while marketplace.json still lists
+    # the plugin as installed, exempting a still-live, still-installed
+    # plugin from both this check and the file scan below. A plugin
+    # present in the authoritative manifest (marketplace.json, via
+    # `authoritative_sources`) is always checked regardless of its curated
+    # status; only a plugin genuinely absent from the manifest is exempted
+    # via CHECKED_STATUSES. Found by a live Codex cross-model-review pass
+    # (P1), round 9; the multi-record-per-name gap found by a live
+    # CodeRabbit review (Major), PR #387 round 2.
+    by_name: dict[str, list[dict[str, Any]]] = {}
     for plugin in inventory.get("plugins", []):
-        prefix = plugin.get("prefix")
-        if prefix is None:
+        if plugin.get("prefix") is None:
             continue
-        plugin_name = plugin.get("name", "?")
-        # `status` is a curated, separately human-editable field -- the
-        # same risk the `source` comment below already documents for that
-        # field applies here too: a PR could set `status` to a
-        # skip-eligible value (e.g. 'retired'/'planned') while
-        # marketplace.json still lists the plugin as installed, exempting
-        # a still-live, still-installed plugin from both this check and the
-        # file scan below. A plugin present in the authoritative manifest
-        # (marketplace.json, via `authoritative_sources`) is always
-        # checked regardless of its curated status; only a plugin genuinely
-        # absent from the manifest is exempted via CHECKED_STATUSES. Found
-        # by a live Codex cross-model-review pass (P1), round 9.
-        if (
-            plugin.get("status") not in CHECKED_STATUSES
-            and plugin_name not in authoritative_sources
-        ):
+        by_name.setdefault(plugin.get("name", "?"), []).append(plugin)
+
+    scan_candidates: dict[str, dict[str, Any]] = {}
+    for plugin_name, records in by_name.items():
+        checked_records = [r for r in records if r.get("status") in CHECKED_STATUSES]
+        if len(checked_records) > 1:
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"{len(checked_records)} active/deprecated marketplace-inventory.json "
+                        f"records share name {plugin_name!r}, each with its own registered "
+                        "prefix -- refusing to guess which one's prefix governs this plugin's "
+                        "files"
+                    ),
+                )
+            )
             continue
+        if checked_records:
+            scan_candidates[plugin_name] = checked_records[0]
+            continue
+        if plugin_name not in authoritative_sources:
+            # Genuinely out of scope: no active/deprecated record, and
+            # marketplace.json doesn't list this name either.
+            continue
+        if len(records) > 1:
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"marketplace.json lists {plugin_name!r} but {len(records)} "
+                        "non-active/deprecated marketplace-inventory.json records share that "
+                        "name, each with its own registered prefix -- refusing to guess which "
+                        "one's prefix governs this plugin's files"
+                    ),
+                )
+            )
+            continue
+        scan_candidates[plugin_name] = records[0]
+
+    for plugin_name, plugin in scan_candidates.items():
+        prefix = plugin["prefix"]
         if plugin_name in invalid_prefix_plugins:
             # Already flagged above; a malformed prefix has no well-formed
             # `<prefix>-` pattern to scan this plugin's files against.
@@ -360,7 +435,16 @@ def find_prefix_violations(
         # cross-model-review pass, round 6.
         source = plugin.get("source")
         authoritative_source = authoritative_sources.get(plugin_name)
-        if authoritative_source != source:
+        # `source is None` is checked explicitly, not folded into the `!=`
+        # comparison alone: a plugin genuinely absent from marketplace.json
+        # (checked-status but never installed, or removed) makes
+        # `authoritative_source` None too, so `None != None` would be
+        # False and let a null `source` slip through to `repo / source`
+        # below -- a TypeError at runtime, not a reported violation. Found
+        # via `ty check` surfacing the type of `source` for the first time
+        # after this function's per-name selection refactor (PR #387
+        # round 2); the underlying gap predates that refactor.
+        if source is None or authoritative_source != source:
             # marketplace-inventory.json's own `source` is a curated,
             # separately human-update-able copy (ALLOWED_UPDATE_FIELDS),
             # not necessarily live-synced with marketplace.json -- trusting
@@ -416,8 +500,13 @@ def find_prefix_violations(
 
         for dirname in scope_dirs:
             for file_path in _iter_files(plugin_dir / dirname, repo_resolved):
-                if file_path == hooks_manifest:
-                    continue
+                # Symlink check must run before the hooks.json manifest
+                # exemption below: `_iter_files` yields a symlinked
+                # `hooks/hooks.json` as that same path, so checking the
+                # exemption first would let a symlinked manifest silently
+                # skip the symlink rejection and evade the prefix scan via
+                # its real target. Found by a live Codex cross-model-review
+                # pass (P1), PR #387 round 2.
                 if file_path.is_symlink():
                     violations.append(
                         PrefixViolation(
@@ -430,6 +519,8 @@ def find_prefix_violations(
                             ),
                         )
                     )
+                    continue
+                if file_path == hooks_manifest:
                     continue
                 if not file_path.name.startswith(expected_prefix):
                     violations.append(
