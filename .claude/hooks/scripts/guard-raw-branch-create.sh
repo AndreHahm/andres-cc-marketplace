@@ -93,11 +93,11 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" 2>/dev/null || true
+{ printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
 # printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
 # ever read, silently logging date's own exit status instead of this script's real one.
-trap 'rc=$?; printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" 2>/dev/null || true' EXIT
+trap 'rc=$?; { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null' EXIT
 
 now=$(date +%s)
 allowed=false

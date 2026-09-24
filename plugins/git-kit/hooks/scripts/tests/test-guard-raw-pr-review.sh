@@ -30,6 +30,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GUARD="$SCRIPT_DIR/guard-raw-pr-review.sh"
 PASS_COUNT=0
 FAIL_COUNT=0
+# Safety net for M4 (round 5): if a future edit reintroduces the span-budget-cap regression this
+# suite guards against, an e2e case exercising it should fail fast as a FAIL, not hang the whole
+# suite (and CI) indefinitely. GNU `timeout` is expected on this repo's Linux CI; degrades to no
+# wrapper (best-effort only) if unavailable, e.g. on a bare macOS host without coreutils.
+E2E_TIMEOUT_CMD=()
+if command -v timeout >/dev/null 2>&1; then
+  E2E_TIMEOUT_CMD=(timeout 20)
+fi
 
 # --- Layer 1: unit-level, sourced from the real script -----------------
 
@@ -66,11 +74,14 @@ match_span() {
 
 unit_check() {
   local desc="$1" cmd="$2" expect="$3" tool="${4:-Bash}"
-  local got="none" combined collapsed raw m
+  local got="none" combined collapsed rest raw force_deny m
   while IFS= read -r combined; do
     if [ -z "$combined" ]; then continue; fi
     collapsed="${combined%%$'\x1e'*}"
-    raw="${combined#*$'\x1e'}"
+    rest="${combined#*$'\x1e'}"
+    raw="${rest%%$'\x1e'*}"
+    force_deny="${rest#*$'\x1e'}"
+    if [ -n "$force_deny" ]; then got="force_deny"; break; fi
     m=$(match_span "$collapsed")
     if [ -z "$m" ]; then m=$(match_span "$raw"); fi
     if [ -n "$m" ]; then got="$m"; break; fi
@@ -226,8 +237,107 @@ unit_check "F1c: Bash backtick substitution with embedded pipe still works (no r
   'gh api repos/o/r/pulls/`gh pr view --json number | jq -r .number`/reviews' \
   "reviews" "Bash"
 
+# --- Round 5 cases: CodeRabbit + Codex, PR #380's own automated review round ---
+# ANSI-C quoting (`$'...'`): unlike a plain `'...'` string, `\'` inside it is an escaped quote and
+# does not close the string. The old scanner treated every `'` as a closing quote regardless of
+# how the quote was opened, so an escaped `\'` inside `$'...'` closed the quote early, letting a
+# real `;` right after reopen at depth 0 and truncate the span before the endpoint ever appeared
+# in it -- a live, independently-confirmed bypass (CodeRabbit + Codex both found the same defect).
+unit_check "G1: Bash ANSI-C \$'...' escaped-quote bypass -- must still deny" \
+  "gh api -H \$'x\\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "reviews" "Bash"
+unit_check "G1 control: plain '...' single-quote still closes on the first quote (no regression)" \
+  "gh api -H 'x'; echo repos/o/r/pulls/5/reviews" \
+  "none" "Bash"
+# Escaped backtick nesting: POSIX -- "within the backquoted style of command substitution,
+# backslash shall retain its literal meaning, except when followed by '$', '`', or '\'". The old
+# scanner didn't track that escape at all, so it closed `in_backtick` at the first LITERAL
+# backtick character even when it was escaped (`\``), absorbing the real closing backtick(s) and
+# whatever followed them as ordinary scanned content instead of recognizing the genuinely separate
+# command real bash runs after the substitution actually closes.
+unit_check "G2: Bash escaped-backtick nested substitution, real ; after -- span must not leak past the real close" \
+  'gh api user `echo \`printf x\`` ; echo repos/o/r/pulls/5/reviews' \
+  "none" "Bash"
+unit_check "G2 control: Bash backtick substitution still closes on a genuine unescaped backtick (no regression)" \
+  'gh api -H X:`echo hi` repos/o/r/pulls/5/reviews' \
+  "reviews" "Bash"
+
+# --- Round 6 cases: security-reviewer, dispatched on this session's own round-5 fixes ---
+# H1 (regression in round 5's OWN fix): the ansi-c detection used a raw textual lookback
+# (`${text:i-1:1} = '$'`) instead of scanner state, so it couldn't tell a genuinely fresh,
+# unconsumed `$` from one already consumed elsewhere (an escaped `\$`, or the second `$` of `$$`).
+# `\$'a\' 'pre;post' ...reviews...` is, in real bash, one literal-`$` argument immediately
+# followed by one ORDINARY plain-quoted string (closes normally) -- not ansi-c at all. The buggy
+# lookback still marked it ansi-c, so the plain string's own real closing quote was misread as an
+# escaped (non-closing) one, staying "in quote" until the NEXT real string's OPENING quote, which
+# it then mistook for its own close -- from there a literal `;` genuinely inside that next real
+# string read as a live separator, ending the span before the reviews endpoint that followed in
+# the same real invocation.
+unit_check "H1a: escaped \\\$ before a plain quote must NOT be treated as ansi-c (fixed round-5 regression)" \
+  'gh api -H \$'"'"'a\'"'"' '"'"'pre;post-reviews-marker'"'"' repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "reviews" "Bash"
+unit_check "H1b: \$\$ (PID) before a plain quote must NOT be treated as ansi-c" \
+  'gh api -H $$'"'"'a\'"'"' '"'"'pre;post-reviews-marker'"'"' repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "reviews" "Bash"
+unit_check "H1 control: genuine \$'...' ansi-c still detected correctly (no regression from G1)" \
+  "gh api -H \$'x\\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "reviews" "Bash"
+
+# H2: `${...}` parameter expansion wasn't tracked as a nesting boundary at all -- an unquoted `;`
+# inside `${v:-...}` is literal content in real bash (confirmed live), but the old scanner had no
+# `{`/`}` handling, so it read that `;` as a real depth-0 separator and stopped the span before an
+# endpoint that followed in the same real invocation. Closed by `}`, tracked separately from `)`
+# per depth, so a stray `)`/`}` of the wrong type inside either construct can't prematurely close
+# the other (`${v:-x)y}` and `$(echo }y)` are both literal content in real bash).
+unit_check "H2a: unquoted \${v:-...;...} must not let the ; end the span early" \
+  'gh api -H "X:${v:-a;b}" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "reviews" "Bash"
+unit_check "H2b: nested \"...\" inside \${v:-\"...\"} (from within an outer dquote) same fix" \
+  'gh api -H "${v:-"a;b"}" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "reviews" "Bash"
+unit_check "H2 control: ordinary \$(...) nesting unaffected by the type-aware )/} change" \
+  'gh api repos/o/r/pulls/$(gh pr view --json number | jq -r .number)/reviews' \
+  "reviews" "Bash"
+
+# H3: a bare `)` inside `$(...)` isn't always this substitution's own closer in real bash -- a
+# `case` pattern's own `x)` terminator is the clearest example (live-verified: `$(case hi in hi)
+# echo matched;; esac)` runs as one substitution in real bash). The old scanner decremented depth
+# on every bare `)` unconditionally, returning to depth 0 at the case-pattern's own `)` and then
+# treating a later real separator as ending the span before an endpoint that, in real bash, was
+# still safely inside the still-open substitution. Rather than implement a real case/heredoc/
+# comment parser, this scanner denies outright the moment one of those markers appears while
+# genuinely unquoted at depth > 0 -- a disclosed false-deny risk in the rare legitimate case one is
+# nested this way, never a bypass.
+unit_check "H3: case-pattern ) inside \$(...) must force-deny rather than desync depth" \
+  'gh api $(case hi in hi) echo unrelated;; esac) repos/o/r/pulls/5/reviews' \
+  "force_deny" "Bash"
+unit_check "H3 control: ordinary \$(...) with no case/comment/heredoc is unaffected" \
+  'gh api repos/o/r/issues/1/comments -f body=$(echo hi)' \
+  "none" "Bash"
+
+# H4 (round 6, security-reviewer): four PowerShell-specific constructs this scanner doesn't model
+# at all -- a `<# ... #>` block comment, the `--%` stop-parsing token, an `@'...'@`/`@"..."@`
+# here-string, and a bare `{...}` script block -- were considered for a fix here, the same
+# early-stop risk shape as H1-H3 above. Deliberately deferred, not fixed in this round: this
+# environment has no live `pwsh` to verify any of them against, unlike every other fix in this
+# file's history. Tracked as a follow-up rather than shipped unverified.
+
 echo ""
 echo "=== Layer 2: end-to-end, the real script's actual JSON contract ==="
+
+# Isolate every plain e2e_run/e2e_check case below in one dedicated temp git repo, not this
+# script's own cwd. Running against the caller's cwd caused three problems: outside a git repo,
+# `git rev-parse --git-dir` fails and the guard exits 0 before any check runs, so every "deny"
+# case would falsely report a FAIL; inside the real repo, each case would append start/finish
+# lines to the real .git/git-kit-guard-diagnostics.log; and inside the real repo with a marker
+# present, a deny case could consume a genuinely pending .git/git-kit-marker.txt, reporting a
+# false FAIL while also losing the real marker (CodeRabbit finding, PR #380). One shared repo,
+# initialized once here (not per-check, unlike e2e_marker_allow_check/e2e_diagnostics_check
+# below, which each need their OWN fresh repo to test marker-consumption/diagnostics-append in
+# isolation), removed when the whole suite exits.
+E2E_GIT_DIR=$(mktemp -d)
+trap 'rm -rf "$E2E_GIT_DIR"' EXIT
+git -C "$E2E_GIT_DIR" init -q
 
 # Runs the guard as a subprocess and captures BOTH stdout and the real exit
 # code explicitly (hook-reviewer, round 2) -- `set -e` must never abort this
@@ -243,7 +353,7 @@ e2e_run() {
   printf '%s' "$cmd" > "$cmd_file"
   input=$(jq -n --rawfile cmd "$cmd_file" --arg tool "$tool" '{tool_name: $tool, tool_input: {command: $cmd}}')
   rm -f "$cmd_file"
-  E2E_LAST_OUT=$(printf '%s' "$input" | bash "$GUARD" 2>&1) || rc=$?
+  E2E_LAST_OUT=$(cd "$E2E_GIT_DIR" && printf '%s' "$input" | "${E2E_TIMEOUT_CMD[@]}" bash "$GUARD" 2>&1) || rc=$?
   E2E_LAST_RC="$rc"
 }
 
@@ -309,6 +419,37 @@ e2e_check "M3: oversized command containing a gh api prefix -- must deny without
 e2e_check "M3 control: oversized command with NO gh api prefix at all -- must allow" \
   "echo '${m3_big_payload}'" \
   "ALLOW"
+e2e_check "G1 via real script -- Bash ANSI-C \$'...' escaped-quote bypass (CodeRabbit + Codex, round 5) -- must deny" \
+  "gh api -H \$'x\\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "G2 via real script -- escaped-backtick nesting (Codex, round 5) -- must allow (benign, real ; genuinely separates commands)" \
+  'gh api user `echo \`printf x\`` ; echo repos/o/r/pulls/5/reviews' \
+  "ALLOW"
+# M4 (round 5, CodeRabbit): a command well under API_SPAN_MAX_LEN bytes can still pack in
+# thousands of short `gh api $(`-shaped prefix matches, each independently triggering its own
+# worst-case full-remaining-length scan. Left unbounded this is a timeout/fail-open DoS, not just
+# a slow test -- live-measured before the api_span_budget_exceeded fix landed: this exact payload
+# (13,000 repeats, ~117KB, well under the 131072-byte length cap) took long enough to extrapolate
+# to tens of thousands of seconds; after the fix it denies in well under a second.
+m4_many_prefix_payload=$(printf 'gh api $(%.0s' $(seq 1 13000))
+e2e_check "M4: many short gh-api-prefix matches under the byte cap -- must deny without hanging (span-budget cap)" \
+  "$m4_many_prefix_payload" \
+  "deny"
+e2e_check "H1a via real script -- escaped \\\$ before a plain quote (round 6, security-reviewer) -- must deny" \
+  'gh api -H \$'"'"'a\'"'"' '"'"'pre;post-reviews-marker'"'"' repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "H1b via real script -- \$\$ before a plain quote (round 6) -- must deny" \
+  'gh api -H $$'"'"'a\'"'"' '"'"'pre;post-reviews-marker'"'"' repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "H2 via real script -- \${...} nesting gap (round 6) -- must deny" \
+  'gh api -H "X:${v:-a;b}" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "H2 control via real script -- \${...} with a ; but no dangerous endpoint -- must allow" \
+  'gh api -H "X:${v:-a;b}" repos/o/r/issues/1/comments -f body=hi' \
+  "ALLOW"
+e2e_check "H3 via real script -- case-pattern ) inside \$(...) (round 6) -- must deny (force-closed)" \
+  'gh api $(case hi in hi) echo unrelated;; esac) repos/o/r/issues/1/comments' \
+  "deny"
 
 # Marker-handshake allow path + consumption, and diagnostics logging, both run
 # in a temp git dir so this suite never touches the real repo's own marker
@@ -370,6 +511,43 @@ e2e_diagnostics_check() {
 diag_result=$(e2e_diagnostics_check)
 echo "$diag_result"
 if grep -q PASS <<< "$diag_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# Round 5 (CodeRabbit): a failed diagnostics-log open (e.g. an unwritable .git dir) must stay
+# silent, not leak Bash's own "Permission denied" onto stdout/stderr despite the write's own
+# `2>/dev/null` -- an ungrouped `printf ... >> "$DIAG_LOG" 2>/dev/null` still leaks that error
+# because the redirect-open failure is reported before the trailing `2>/dev/null` takes effect;
+# wrapping the write in a `{ ...; }` group before `2>/dev/null` fixes it. Skipped when running as
+# root (root ignores the chmod, so the open wouldn't actually fail and the test proves nothing).
+e2e_diag_log_open_failure_check() {
+  local tmp_git input out
+  if [ "$(id -u)" -eq 0 ]; then
+    echo "SKIP (e2e): diagnostics log-open failure stays silent -- running as root, chmod has no effect"
+    return
+  fi
+  tmp_git=$(mktemp -d)
+  trap 'chmod 755 "$tmp_git/.git" 2>/dev/null || true; rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    chmod 555 .git
+    input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
+    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): diagnostics log-open failure -- guard exited non-zero: $out"; exit 0; }
+    if jq -e '.hookSpecificOutput.permissionDecision == "deny"' <<< "$out" >/dev/null 2>&1; then
+      echo "PASS (e2e): diagnostics log-open failure stays silent, stdout stayed pure JSON"
+    else
+      echo "FAIL (e2e): diagnostics log-open failure -- stdout was not the expected pure deny JSON: [$out]"
+    fi
+  )
+}
+diag_perm_result=$(e2e_diag_log_open_failure_check)
+echo "$diag_perm_result"
+if grep -q SKIP <<< "$diag_perm_result"; then
+  :
+elif grep -q PASS <<< "$diag_perm_result"; then
   PASS_COUNT=$((PASS_COUNT + 1))
 else
   FAIL_COUNT=$((FAIL_COUNT + 1))

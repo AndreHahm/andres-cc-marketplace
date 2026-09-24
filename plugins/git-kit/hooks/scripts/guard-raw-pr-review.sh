@@ -124,6 +124,28 @@
 # commands. Deliberately left unfixed here: this ordering is shared by the
 # sibling guard scripts too, and reordering it deserves its own dedicated
 # review rather than a side effect of one skill's narrower feature change.
+# A fourth and fifth residual, surfaced by a security-reviewer pass dispatched on this file's own
+# round-5 fixes (round 6, PR #380) and deliberately left unfixed here rather than expanding this
+# round's already-large scope further -- tracked for follow-up, not silently dropped:
+# - The `api`/`review`/`comment` subcommand word in each prefix regex below must appear as a bare,
+#   unquoted, unescaped word to match at all. A quoted (`"api"`/`'api'`), ANSI-C-quoted, or
+#   backslash-escaped subcommand word (e.g. `gh \api ...`) produces no prefix match, so
+#   `find_api_spans` never runs for that invocation and the whole span-scanning apparatus above is
+#   silently skipped -- this predates round 5 and is outside the scanner functions this round's own
+#   fixes touch, but is the same class of gap as the bypasses those fixes closed.
+# - The scan-time budget/cap sizing throughout this file (LC_ALL=C-scan rate, API_SPAN_MAX_LEN,
+#   api_span_budget_exceeded) rests on one measured rate (~2.7s/50KB) on one unspecified platform.
+#   Bash's own `${text:i:1}`/`${#text}` re-derive the string's length on each call, and `out+=`
+#   reallocates -- both plausibly super-linear in practice, and a slower interpreter (e.g. Git Bash
+#   on Windows, implied as a real target by this file's own PowerShell handling) could see
+#   materially different per-character cost than whatever this file's own comments were measured
+#   against. Re-measuring at the actual cap size on the slowest supported platform, rather than
+#   trusting the linear extrapolation as-is, is a follow-up item, not done in this round.
+# Also disclosed here, not a new residual but a gap in an EXISTING one above: issue #85's own
+# residual (two paragraphs up) covers a `gh api graphql` call reached through a script file this
+# hook never inspects -- the same construction applies to a user-defined `gh alias set` alias that
+# expands to `api .../reviews`-shaped text; the alias invocation's own command text never contains
+# the literal words this file matches on, so it's invisible to this guard by the same mechanism.
 set -euo pipefail
 # Force byte-consistent indexing for extract_api_span/find_api_spans below (issue #365 round-2
 # security review, finding C2): grep -boE reports a BYTE offset, but bash's own ${#var}/
@@ -229,11 +251,17 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" 2>/dev/null || true
+{ printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
 # printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
 # ever read, silently logging date's own exit status instead of this script's real one.
-trap 'rc=$?; printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" 2>/dev/null || true' EXIT
+# The write is wrapped in a `{ ...; }` group before `2>/dev/null` (not appended directly to the
+# `printf`), since a failed `>> "$DIAG_LOG"` open reports its own error to stderr *before* an
+# inline `2>/dev/null` on the same simple command takes effect -- live-verified: an ungrouped
+# `printf ... >> file 2>/dev/null` still leaks "Permission denied" to real stderr on a failed
+# open, while `{ printf ... >> file || true; } 2>/dev/null` reliably suppresses it (CodeRabbit
+# finding, PR #380).
+trap 'rc=$?; { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null' EXIT
 
 now=$(date +%s)
 allowed=false
@@ -482,16 +510,106 @@ else
     local depth=0 c nc out=""
     local -a in_squote_stack=(0)
     local -a in_dquote_stack=(0)
+    # Bash ANSI-C quoting (`$'...'`): unlike a plain `'...'` string, `\'` inside it is an escaped
+    # quote and does not close the string -- the plain in_squote_stack handling below didn't make
+    # that distinction (round 5 finding, CodeRabbit + Codex independently). Live-verified bypass:
+    # `gh api -H $'x\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE` -- real bash passes `x'; ` as
+    # a single argument and never runs a second command, but the old scanner closed the quote at
+    # the escaped `'`, saw the real `;` as a depth-0 separator, and stopped the span before the
+    # reviews endpoint ever appeared in it, silently allowing the call through.
+    #
+    # `in_ansiq_stack` is tracked per depth, set only when a `'` is immediately preceded by a
+    # GENUINELY UNCONSUMED `$` (Bash only -- PowerShell has no equivalent construct). This must be
+    # scanner STATE, not a raw textual lookback at `${text:i-1:1}` -- round 5's own first attempt
+    # used the textual form and shipped a fresh, live-verified bypass of its own (round 6 finding,
+    # security-reviewer): `\$'a\' 'pre;post-marker' ...reviews...` is, in real bash, one ordinary
+    # argument `\$` (literal `$`, backslash-escaped) immediately followed by one ordinary plain
+    # `'a\'` string (closes normally at its own real `'`) -- NOT ansi-c at all, since the `$` was
+    # already consumed by the backslash escape. A raw lookback still sees "`$` right before `'`"
+    # and wrongly marks it ansi-c anyway; the scanner then treats the plain string's own real
+    # closing `'` as an escaped (non-closing) quote, stays "in quote" through the following space
+    # and into the NEXT real string's OPENING `'`, mistakes that for its own close, and from there
+    # treats the next real string's own content as unquoted -- so a literal `;` genuinely inside
+    # that later real string (harmless in actual bash) reads as a real depth-0 separator, ending
+    # the span before the reviews endpoint that follows in the very same real invocation.
+    # `$$'` (the `$$` PID special parameter immediately followed by a plain quote) has the same
+    # failure shape: real bash consumes `$$` as one complete 2-character token, so the following
+    # `'` opens an ordinary plain string, not ansi-c -- a raw lookback can't tell the two `$`s
+    # apart. `bash_ansiq_pending` below is set ONLY in the dedicated `$` case's own one-step
+    # lookahead (never by a later textual reread), so it reflects an actually-fresh, unconsumed `$`
+    # and consumes `$$` as a unit before it can ever be mistaken for one.
+    local -a in_ansiq_stack=(0)
+    local bash_ansiq_pending=0
+    # `${...}` parameter expansion is a depth-opening construct too (round 6 finding, security-
+    # reviewer): an unquoted `;`/`&`/`|` inside `${var:-...}` is literal content, not a real
+    # separator -- e.g. `${v:-a;b}` -- and real bash also lets a NESTED `"..."` open freely inside
+    # `${...}` even from within an already-open outer `"..."`, e.g. `"${v:-"a;b"}"`, both live-
+    # verified. The old scanner had no `{`/`}` handling at all, so a `;` in either shape ended the
+    # span before an endpoint that came after it in the same real invocation. Closed by `}`, not
+    # `)` -- and a `$(...)`'s own `)` must not be satisfied by a stray `}` inside it, or vice versa
+    # (a bare `)` is literal content inside `${...}`, e.g. `${v:-x)y}`, and a bare `}` is literal
+    # inside `$(...)`) -- so nesting type is tracked per depth alongside the existing quote stacks,
+    # and each closer only pops when it matches the type that opened the current depth.
+    local -a nest_type_stack=("")
+    local -a in_ansiq_stack=(0)
     local in_backtick=0
+    # Fail-closed guard for constructs this scanner does not (and, short of a real shell parser,
+    # cannot cheaply) model correctly: a bare `)` inside a `case` pattern (`x) ...;; esac`), a `#`
+    # comment, or a `<<`/`<<-` heredoc, each nested inside a `$(...)`/`(...)` substitution. Live-
+    # verified (round 6, security-reviewer): `$(case hi in hi) echo matched;; esac)` -- the `)`
+    # right after `hi` is a case-pattern terminator in real bash, not this substitution's own
+    # close, but the old scanner's naive "every bare `)` decrements depth" treated it as one,
+    # returning to depth 0 early and letting a later real separator end the span before an
+    # endpoint that (in real bash) was still safely inside the still-open substitution. Rather
+    # than implement a real `case`/heredoc/comment parser, deny outright the moment any of these
+    # markers appears while genuinely unquoted at depth > 0 -- a false deny in the rare legitimate
+    # case one of these words/markers is nested this way, never a bypass.
+    local force_deny=""
+    # A PowerShell-specific set of markers (`<# ... #>` block comments, `@'...'@`/`@"..."@`
+    # here-strings, the `--%` stop-parsing token) were considered for the same fail-closed
+    # treatment here (round 6, security-reviewer) -- deliberately deferred, not shipped, since this
+    # environment has no live `pwsh` to verify any of them against. Tracked as a follow-up.
     while [ "$i" -lt "$len" ]; do
       c="${text:$i:1}"
+      if [ "$depth" -gt 0 ] && [ "${in_squote_stack[$depth]}" -eq 0 ] && [ "${in_dquote_stack[$depth]}" -eq 0 ] && [ "$in_backtick" -eq 0 ]; then
+        if [ "$c" = '#' ] \
+          || { [ "$c" = '<' ] && [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = '<' ]; } \
+          || [ "${text:$i:4}" = "case" ]; then
+          force_deny="nested case/comment/heredoc construct, not fully modeled by this scanner"
+          printf '%s\x1e%s\x1e%s' "$out" "${text:$start:$((i - start + 1))}" "$force_deny"
+          return 0
+        fi
+      fi
       if [ "${in_squote_stack[$depth]}" -eq 1 ]; then
-        if [ "$c" = "'" ]; then in_squote_stack[$depth]=0; fi
+        if [ "${in_ansiq_stack[$depth]}" -eq 1 ] && [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+          if [ "$depth" -eq 0 ]; then out+="$c${text:$((i + 1)):1}"; fi
+          i=$((i + 2))
+          continue
+        fi
+        if [ "$c" = "'" ]; then in_squote_stack[$depth]=0; in_ansiq_stack[$depth]=0; fi
         if [ "$depth" -eq 0 ]; then out+="$c"; fi
         i=$((i + 1))
         continue
       fi
       if [ "$in_backtick" -eq 1 ]; then
+        # Only reachable for Bash (only Bash sets in_backtick=1, below). Real bash lets a backslash
+        # escape a nested backtick/backslash/dollar inside an old-style backquoted substitution --
+        # POSIX: "within the backquoted style of command substitution, backslash shall retain its
+        # literal meaning, except when followed by '$', '`', or '\'". Without this, an escaped
+        # nested backtick (`` `echo \`printf x\`` ``) was misread as closing the OUTER substitution
+        # at the first (escaped) backtick, absorbing the real closing backtick(s) and any separator
+        # after them as ordinary scanned content instead of the genuinely separate command that
+        # follows in real bash (Codex finding, round 5, live-verified).
+        if [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+          nc="${text:$((i + 1)):1}"
+          case "$nc" in
+            '`'|'\'|'$')
+              if [ "$depth" -eq 0 ]; then out+="$c$nc"; fi
+              i=$((i + 2))
+              continue
+              ;;
+          esac
+        fi
         if [ "$c" = '`' ]; then
           in_backtick=0
           if [ "$depth" -eq 0 ]; then out+='X'; fi
@@ -543,11 +661,15 @@ else
             fi
             ;;
           '$')
-            if [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = "(" ]; then
-              if [ "$depth" -eq 0 ]; then out+='X$'; fi
+            nc=""
+            if [ "$((i + 1))" -lt "$len" ]; then nc="${text:$((i + 1)):1}"; fi
+            if [ "$nc" = "(" ] || [ "$nc" = "{" ]; then
+              if [ "$depth" -eq 0 ]; then out+="X\$$nc"; fi
               depth=$((depth + 1))
+              if [ "$nc" = "(" ]; then nest_type_stack[$depth]="paren"; else nest_type_stack[$depth]="brace"; fi
               in_squote_stack[$depth]=0
               in_dquote_stack[$depth]=0
+              in_ansiq_stack[$depth]=0
               i=$((i + 1))
             else
               if [ "$depth" -eq 0 ]; then out+="$c"; fi
@@ -569,6 +691,8 @@ else
       case "$c" in
         "'")
           in_squote_stack[$depth]=1
+          if [ "$bash_ansiq_pending" -eq 1 ]; then in_ansiq_stack[$depth]=1; fi
+          bash_ansiq_pending=0
           if [ "$depth" -eq 0 ]; then out+="$c"; fi
           ;;
         '"')
@@ -587,15 +711,76 @@ else
         '(')
           if [ "$depth" -eq 0 ]; then out+='X'; fi
           depth=$((depth + 1))
+          nest_type_stack[$depth]="paren"
           in_squote_stack[$depth]=0
           in_dquote_stack[$depth]=0
+          in_ansiq_stack[$depth]=0
           ;;
         ')')
-          if [ "$depth" -gt 0 ]; then depth=$((depth - 1)); fi
+          # Only pops a depth actually opened by `(` (bare or `$(`) -- a bare `)` inside a `${...}`
+          # (e.g. `${v:-x)y}`) is literal content there, not this call's own closer (round 6).
+          if [ "$depth" -gt 0 ] && [ "${nest_type_stack[$depth]}" = "paren" ]; then
+            depth=$((depth - 1))
+          fi
+          ;;
+        '{')
+          # Bare `{` alone (command grouping, not `${...}`) isn't modeled -- out of scope for the
+          # C2 finding this depth-opener fixes, which is specifically `${...}` parameter expansion,
+          # reached via the `$` case below, not this one. A bare `{` is unaffected: same as any
+          # other unmatched character, just appended at depth 0 (falls to default below).
+          #
+          # A PowerShell `{...}` script-block argument has the same "own `;` isn't a real
+          # separator" shape and was considered for the same fix here (round 6, security-reviewer)
+          # -- deliberately deferred, not fixed, since this environment has no live `pwsh` to
+          # verify it against, unlike every other fix in this file's history. Tracked as a
+          # follow-up rather than shipped unverified.
+          if [ "$depth" -eq 0 ]; then out+="$c"; fi
+          ;;
+        '}')
+          # Mirror of `)` above -- only pops a depth actually opened by `${`. A `}` while inside a
+          # `$(...)`/`(...)` (nest type "paren") is literal content there, not this call's closer.
+          if [ "$depth" -gt 0 ] && [ "${nest_type_stack[$depth]}" = "brace" ]; then
+            depth=$((depth - 1))
+          elif [ "$depth" -eq 0 ]; then
+            out+="$c"
+          fi
+          ;;
+        '$')
+          # A genuinely fresh, unconsumed `$` (this branch is unreached for one already eaten by
+          # the backslash-escape check above). Four lookaheads matter here: a following `'` marks
+          # the NEXT iteration's quote-open as ansi-c (see in_ansiq_stack's own comment above); a
+          # following `$` is the complete 2-character `$$` (PID) token, consumed as a unit so its
+          # own second `$` can never be mistaken for a fresh one by a later `'`; a following `(` is
+          # still opened by the existing bare `(` case above on its own next iteration, unaffected
+          # by this case at all; a following `{` opens a `${...}` depth right here (round 6 finding
+          # -- see nest_type_stack's own comment above), consuming both characters together the
+          # same way `$(` is consumed by the dquote branch's mirror of this case. Any other
+          # following character (a name, end of string, ...) is unaffected -- just appends the
+          # literal `$` and falls through one character at a time, same as the default case.
+          if [ "$tool_name" = "Bash" ] && [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = "'" ]; then
+            bash_ansiq_pending=1
+            if [ "$depth" -eq 0 ]; then out+="$c"; fi
+            i=$((i + 1))
+            continue
+          elif [ "$tool_name" = "Bash" ] && [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = '$' ]; then
+            if [ "$depth" -eq 0 ]; then out+='$$'; fi
+            i=$((i + 2))
+            continue
+          elif [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = '{' ]; then
+            if [ "$depth" -eq 0 ]; then out+='X${'; fi
+            depth=$((depth + 1))
+            nest_type_stack[$depth]="brace"
+            in_squote_stack[$depth]=0
+            in_dquote_stack[$depth]=0
+            in_ansiq_stack[$depth]=0
+            i=$((i + 2))
+            continue
+          fi
+          if [ "$depth" -eq 0 ]; then out+="$c"; fi
           ;;
         ';'|'&'|'|')
           if [ "$depth" -eq 0 ]; then
-            printf '%s\x1e%s' "$out" "${text:$start:$((i - start))}"
+            printf '%s\x1e%s\x1e' "$out" "${text:$start:$((i - start))}"
             return 0
           fi
           ;;
@@ -605,7 +790,7 @@ else
       esac
       i=$((i + 1))
     done
-    printf '%s\x1e%s' "$out" "${text:$start}"
+    printf '%s\x1e%s\x1e' "$out" "${text:$start}"
   }
   # Fail closed on an oversized command containing a `gh api` prefix, rather than let the scan
   # itself risk running long enough to hit the hook's own timeout -- which fails OPEN under
@@ -615,8 +800,39 @@ else
   # itself caps comment/PR bodies around 65K characters) but not impossible to construct
   # deliberately (e.g. a large heredoc or --input payload built inline).
   API_SPAN_MAX_LEN=131072
+  # A command well under API_SPAN_MAX_LEN bytes can still pack in thousands of short `gh api $(`-
+  # shaped prefix matches, each independently triggering its own extract_api_span scan below. In
+  # the worst case (an unmatched `(` that never returns depth to 0), a single such scan runs all
+  # the way to the end of the string -- already the accepted per-scan cost the length cap above is
+  # sized against. But find_api_spans starts one of those scans per prefix match, so the SUM across
+  # many matches grows roughly quadratically in match count: e.g. ~14,000 short matches packed into
+  # a 131072-byte command extrapolate to tens of thousands of scan-seconds, far past the hook's 15s
+  # timeout, which fails OPEN under onError: warn (CodeRabbit finding, PR #380, live-estimated
+  # against this file's own measured ~2.7s/50KB scan rate). api_span_budget_exceeded bounds the SUM
+  # of every match's own worst-case cost (its remaining string length) to the same per-invocation
+  # budget the length check already uses, regardless of how many matches there are or how they're
+  # distributed -- a match whose remaining length alone would exhaust what's left of the budget is
+  # denied without ever starting that scan.
+  api_span_budget_exceeded() {
+    local text="$1" prefix_re="$2" budget="$3"
+    local line off matched start remaining
+    while IFS= read -r line; do
+      if [ -z "$line" ]; then continue; fi
+      off="${line%%:*}"
+      matched="${line#*:}"
+      start=$((off + ${#matched}))
+      remaining=$((${#text} - start))
+      if [ "$remaining" -gt "$budget" ]; then
+        return 0
+      fi
+      budget=$((budget - remaining))
+    done < <(grep -boE "$prefix_re" <<< "$text" || true)
+    return 1
+  }
   if [ "${#COMMAND_FLAT}" -gt "$API_SPAN_MAX_LEN" ] && grep -qE "$API_SPAN_PREFIX_RE" <<< "$COMMAND_FLAT"; then
     GH_SUBCOMMAND="gh api (oversized command, denied without scanning)"
+  elif api_span_budget_exceeded "$COMMAND_FLAT" "$API_SPAN_PREFIX_RE" "$API_SPAN_MAX_LEN"; then
+    GH_SUBCOMMAND="gh api (too many scan spans, denied without full scan)"
   else
     # One extracted span per `gh api` prefix match in $1, via `grep -boE`'s byte-offset output --
     # handles multiple independent `gh api` invocations in one command the same way the old
@@ -639,7 +855,13 @@ else
     while IFS= read -r api_span_combined; do
       if [ -z "$api_span_combined" ]; then continue; fi
       api_span_collapsed="${api_span_combined%%$'\x1e'*}"
-      api_span_raw="${api_span_combined#*$'\x1e'}"
+      api_span_rest="${api_span_combined#*$'\x1e'}"
+      api_span_raw="${api_span_rest%%$'\x1e'*}"
+      api_span_force_deny="${api_span_rest#*$'\x1e'}"
+      if [ -n "$api_span_force_deny" ]; then
+        GH_SUBCOMMAND="gh api ($api_span_force_deny)"
+        break 2
+      fi
       for api_span in "$api_span_collapsed" "$api_span_raw"; do
         if grep -qE "$REPLIES_RE" <<< "$api_span"; then
           GH_SUBCOMMAND="gh api .../comments/{id}/replies"
