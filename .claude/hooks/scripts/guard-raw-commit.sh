@@ -96,13 +96,18 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-# `[ -f "$DIAG_LOG" ]` (which dereferences a symlink and tests the final target's type) guards
-# every write below -- if the path exists but isn't a regular file (e.g. a FIFO planted by an
-# attacker), opening it for append could block indefinitely, and combined with this hook's
-# `onError: "warn"` timeout, that turns the guarded operation into a fail-open bypass (Codex
-# finding, PR #380). Live-verified: an `mkfifo`'d path skips the write instantly instead of
-# hanging; a regular/nonexistent path still logs normally.
-if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+# `[ ! -L "$DIAG_LOG" ]` rejects the path outright if it's a symlink -- `[ -f "$DIAG_LOG" ]` alone
+# dereferences a symlink and tests the FINAL target's type, so a symlink to a regular file passed
+# `-f` and a dangling symlink passed `! -e`, both following the link and appending to whatever
+# arbitrary file it points at instead of staying inside the repo (Codex finding, PR #380 round 8,
+# live-verified: a symlinked `$DIAG_LOG` pointing outside the repo received both diagnostic lines
+# from an unrelated benign command). Rejecting any FIFO or other non-regular-file target this path
+# might resolve to (not just a symlink) still matters too -- opening it for append could block
+# indefinitely, and combined with this hook's `onError: "warn"` timeout, that turns the guarded
+# operation into a fail-open bypass (Codex finding, PR #380 round 7). Live-verified: an `mkfifo`'d
+# path and a symlinked path both skip the write instantly instead of hanging/following; a regular/
+# nonexistent path still logs normally.
+if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
   { printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 fi
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
@@ -115,7 +120,7 @@ fi
 # same scope (Codacy, PR #380).
 guard_diag_log_finish() {
   local rc=$?
-  if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+  if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
     { printf '%s guard=%s event=finish exit=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null
   fi
 }

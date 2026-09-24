@@ -146,6 +146,25 @@
 # hook never inspects -- the same construction applies to a user-defined `gh alias set` alias that
 # expands to `api .../reviews`-shaped text; the alias invocation's own command text never contains
 # the literal words this file matches on, so it's invisible to this guard by the same mechanism.
+# A sixth residual, from a security-reviewer pass dispatched on this file's own round-8 fixes (PR
+# #380): the endpoint regexes below, plus the round-8 quote/backslash-dequoted check, all match
+# against the command's own literal text -- a dangerous endpoint reconstructed only at bash's own
+# variable- or command-substitution-expansion time (`EP=repos/o/r/pulls/5/reviews; gh api $EP ...`,
+# or `gh api $(printf repos/o/r/pulls/5/revi; printf ews) ...`) is invisible to this guard the same
+# way a script-file or alias indirection already is -- no regex over the literal command text can
+# reconstruct what a shell variable or a command substitution's own output will evaluate to.
+# Tracked for follow-up, not silently dropped; also filed as issue #386 (already tracking this
+# same file's other deferred residuals from earlier rounds of this PR), alongside this file's
+# PowerShell typographic-quote gap (U+2018/2019/201A/201B/201C/201D/201E are
+# real quote characters to PowerShell's own tokenizer but ordinary multi-byte text to this scanner
+# under `LC_ALL=C`, deferred like the other PowerShell-specific gaps in this PR's history since no
+# live `pwsh` is available here to verify a fix against) and several lower-severity items (a
+# diagnostics-log hardlink isn't rejected the same way a symlink is; a TOCTOU window exists between
+# the diagnostics-log's `-L`/`-e`/`-f` checks and the actual write; the round-8 RS-byte and CR-byte
+# early-deny checks run before the marker-consumption logic below, so either deny leaves an
+# already-written marker unconsumed for the rest of its TTL; those same two early-deny paths also
+# produce no diagnostics start/finish log entry; and whether a NUL byte embedded in the JSON
+# command survives `jq -r` intact or gets silently truncated is unverified).
 set -euo pipefail
 # Force byte-consistent indexing for extract_api_span/find_api_spans below (issue #365 round-2
 # security review, finding C2): grep -boE reports a BYTE offset, but bash's own ${#var}/
@@ -223,6 +242,33 @@ if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "
   exit 0
 fi
 
+# `extract_api_span`/`find_api_spans` (below) serialize their own return values using a literal
+# ASCII RS (0x1E) byte as the field delimiter between the collapsed/raw/force_deny fields. If the
+# command text itself contains a literal 0x1E byte (fully legal inside a quoted shell argument,
+# e.g. via `$'\x1e'`), it gets copied into the scanner's own "collapsed"/"raw" output alongside the
+# real delimiters, and the caller's `${var%%$'\x1e'*}`-style field-splitting stops at whichever 0x1E
+# comes first -- the attacker's injected one, not the real one -- truncating both parsed fields
+# short of the actual dangerous endpoint text even though real bash still routes it to `gh`
+# untouched. Live-verified: `gh api 'a<RS>b<RS>c' repos/o/r/pulls/5/reviews -f event=APPROVE` reaches
+# `gh` with the reviews endpoint as its own clean, unmodified argument, but this guard allowed it
+# before this check (Codex finding, PR #380 round 8). 0x1E has no legitimate purpose in a real shell
+# command; rejecting its mere presence outright, before any span-extraction runs, is fail-closed and
+# sidesteps the whole delimiter-injection class rather than trying to make the parser injection-safe.
+case "$COMMAND" in
+  *$'\x1e'*)
+    cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's reviewer-action guard detected a literal ASCII record-separator (0x1E) byte in this command -- this guard's own internal parser uses that byte as a field delimiter, so denying outright avoids a delimiter-injection bypass rather than risking a desynced parse."
+  }
+}
+EOF
+    exit 0
+    ;;
+esac
+
 # Consume our own marker on every Bash/PowerShell call, before the subcommand
 # match below -- not just on the call that turns out to match. See
 # guard-raw-destructive-cleanup.sh's header comment for the full rationale
@@ -251,13 +297,18 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-# `[ -f "$DIAG_LOG" ]` (which dereferences a symlink and tests the final target's type) guards
-# every write below -- if the path exists but isn't a regular file (e.g. a FIFO planted by an
-# attacker), opening it for append could block indefinitely, and combined with this hook's
-# `onError: "warn"` timeout, that turns the guarded operation into a fail-open bypass (Codex
-# finding, PR #380). Live-verified: an `mkfifo`'d path skips the write instantly instead of
-# hanging; a regular/nonexistent path still logs normally.
-if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+# `[ ! -L "$DIAG_LOG" ]` rejects the path outright if it's a symlink -- `[ -f "$DIAG_LOG" ]` alone
+# dereferences a symlink and tests the FINAL target's type, so a symlink to a regular file passed
+# `-f` and a dangling symlink passed `! -e`, both following the link and appending to whatever
+# arbitrary file it points at instead of staying inside the repo (Codex finding, PR #380 round 8,
+# live-verified: a symlinked `$DIAG_LOG` pointing outside the repo received both diagnostic lines
+# from an unrelated benign command). Rejecting any FIFO or other non-regular-file target this path
+# might resolve to (not just a symlink) still matters too -- opening it for append could block
+# indefinitely, and combined with this hook's `onError: "warn"` timeout, that turns the guarded
+# operation into a fail-open bypass (Codex finding, PR #380 round 7). Live-verified: an `mkfifo`'d
+# path and a symlinked path both skip the write instantly instead of hanging/following; a regular/
+# nonexistent path still logs normally.
+if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
   { printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 fi
 # A named function, not an inline `trap '...' EXIT` string -- ShellCheck's SC2154 ("rc is
@@ -275,7 +326,7 @@ fi
 # (CodeRabbit finding, PR #380).
 guard_diag_log_finish() {
   local rc=$?
-  if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+  if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
     { printf '%s guard=%s event=finish exit=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null
   fi
 }
@@ -336,7 +387,35 @@ fi
 # line-oriented and vulnerable to the same continuation-escaping gap, just
 # pre-existing rather than introduced by this fix -- not previously disclosed
 # anywhere in this file until now.
-COMMAND_FLAT="${COMMAND//$'\r'/}"
+COMMAND_FLAT="${COMMAND//$'\r\n'/$'\n'}"
+# Only a genuine CRLF pair is collapsed above, not every lone CR -- an unconditional blanket strip
+# of every CR byte (this file's own earlier form) changes what the scanner sees relative to real
+# bash whenever a lone CR (not part of CRLF) sits next to a backslash or a quote: e.g. a backslash
+# immediately followed by a real CR is bash's own "escape this literal character" rule, embedding a
+# literal CR into the current word with the backslash consumed -- stripping that CR out from under
+# the scanner turns `\<CR>'x;y'` into `\'x;y'`, which the scanner reads as an escaped (non-opening)
+# quote, so it treats the unquoted `;` right after as a real top-level separator and ends the span
+# before a dangerous endpoint that, in real bash, was still part of the very same word/span. Same
+# delimiter-desync class as the 0x1E check above, via a different byte. Live-verified: `gh api -H
+# \<CR>'x;y' repos/o/r/pulls/5/reviews -f event=APPROVE` reaches `gh` with the reviews endpoint as
+# its own clean argument, but this guard allowed it before this check (security-reviewer finding on
+# PR #380 round 8's own fixes). A lone CR has no legitimate purpose in a real shell command outside
+# a CRLF pair; rejecting its mere presence outright, before any further flattening or span-
+# extraction runs, is the same fail-closed choice the 0x1E check above already makes.
+case "$COMMAND_FLAT" in
+  *$'\r'*)
+    cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's reviewer-action guard detected a lone carriage-return byte (not part of a CRLF pair) in this command -- this guard's own command-flattening step can only safely collapse a full CRLF pair, so a bare CR is denied outright rather than risking a desynced parse."
+  }
+}
+EOF
+    exit 0
+    ;;
+esac
 if [ "$TOOL_NAME" = "Bash" ]; then
   COMMAND_FLAT="${COMMAND_FLAT//$'\\\n'/}"
 elif [ "$TOOL_NAME" = "PowerShell" ]; then
@@ -347,13 +426,17 @@ COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
 # scanner below would otherwise mistake for a real command separator -- still
 # needed after issue #365's tokenizer fix, since that scanner reads one
 # character at a time with no operator-level look-ahead, so an un-de-fanged
-# `&>` would still hit its lone `&` and terminate the span there. Narrows,
-# doesn't close, a distinct residual from #365's own (now-closed) one: an
-# unenumerated redirection form (e.g. a numbered-fd redirect like `2>&1`)
-# containing one of these bytes would still be misread the same way -- same
-# operator set and same rationale as guard-raw-destructive-cleanup.sh's own
-# copy of this fix (issue #120); see that file's own comment for the full
-# per-operator coverage table.
+# `&>` would still hit its lone `&` and terminate the span there. A numbered-
+# fd form (e.g. `2>&1`) is still covered -- the substring match below fires
+# regardless of a leading digit (security-reviewer pass, PR #380 round 8;
+# corrects an earlier version of this comment that named `2>&1` itself as an
+# unhandled example, which it never was). Narrows, doesn't close, a distinct
+# residual from #365's own (now-closed) one: any OTHER redirection form
+# containing one of these bytes that isn't one of the four operators below
+# would still be misread the same way -- same operator set and same
+# rationale as guard-raw-destructive-cleanup.sh's own copy of this fix
+# (issue #120); see that file's own comment for the full per-operator
+# coverage table.
 COMMAND_FLAT="${COMMAND_FLAT//&>/ >}"
 COMMAND_FLAT="${COMMAND_FLAT//>&/> }"
 COMMAND_FLAT="${COMMAND_FLAT//<&/< }"
@@ -569,7 +652,6 @@ else
     # inside `$(...)`) -- so nesting type is tracked per depth alongside the existing quote stacks,
     # and each closer only pops when it matches the type that opened the current depth.
     local -a nest_type_stack=("")
-    local -a in_ansiq_stack=(0)
     local in_backtick=0
     # Fail-closed guard for constructs this scanner does not (and, short of a real shell parser,
     # cannot cheaply) model correctly: a bare `)` inside a `case` pattern (`x) ...;; esac`), a `#`
@@ -884,17 +966,31 @@ else
       api_span_rest="${api_span_combined#*$'\x1e'}"
       api_span_raw="${api_span_rest%%$'\x1e'*}"
       api_span_force_deny="${api_span_rest#*$'\x1e'}"
+      # A quote-removed/backslash-removed rendering of the raw span, alongside collapsed/raw below --
+      # the endpoint regexes match the span's own literal text, but bash removes quote marks and
+      # escaping backslashes before `gh` ever sees the argument, so `graph''ql` and `gr\aphql` both
+      # reconstruct to the literal string `graphql` in real bash while neither collapsed nor raw
+      # contains that contiguous substring for GRAPHQL_RE to match. Live-verified: both forms reached
+      # `gh` with `graphql` as a clean, single argument, but this guard allowed both before this check
+      # (security-reviewer finding, PR #380 round 8). Blunt on purpose: removing every `'`/`"`/`\`
+      # byte, not a precise bash-quote-removal emulation, is a strict widening of what gets checked
+      # (a spurious match here only over-denies, never under-denies) -- the same "false deny in a rare
+      # legitimate case, never a bypass" tradeoff this file's force_deny logic already accepts.
+      api_span_dequoted="${api_span_raw//\'/}"
+      api_span_dequoted="${api_span_dequoted//\"/}"
+      api_span_dequoted="${api_span_dequoted//\\/}"
       if [ -n "$api_span_force_deny" ]; then
         # Only deny if the (now end-of-string) raw span actually reaches a dangerous endpoint --
         # an unmodeled construct with no dangerous endpoint after it is not itself a reason to
         # deny (CodeRabbit, PR #380 round 7; see extract_api_span's own force_deny comment above).
-        if grep -qE "$REPLIES_RE|$REVIEWS_RE|$GRAPHQL_RE" <<< "$api_span_raw"; then
+        if grep -qE "$REPLIES_RE|$REVIEWS_RE|$GRAPHQL_RE" <<< "$api_span_raw
+$api_span_dequoted"; then
           GH_SUBCOMMAND="gh api ($api_span_force_deny)"
           break 2
         fi
         continue
       fi
-      for api_span in "$api_span_collapsed" "$api_span_raw"; do
+      for api_span in "$api_span_collapsed" "$api_span_raw" "$api_span_dequoted"; do
         if grep -qE "$REPLIES_RE" <<< "$api_span"; then
           GH_SUBCOMMAND="gh api .../comments/{id}/replies"
           break 2

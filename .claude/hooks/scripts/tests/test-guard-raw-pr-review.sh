@@ -618,6 +618,86 @@ else
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
+# Round 8 (Codex, P1): a literal ASCII RS (0x1E) byte in the command -- legal inside a quoted shell
+# argument -- desyncs extract_api_span/find_api_spans' own 0x1E-delimited return-value protocol,
+# letting an attacker-injected delimiter truncate the parsed fields short of a real dangerous
+# endpoint that real bash still reaches untouched. Must be rejected outright before any
+# span-extraction runs, regardless of what endpoint follows.
+e2e_check "I1 (round 8, Codex) -- literal ASCII RS byte before the endpoint -- must deny (delimiter-injection defense)" \
+  "gh api 'a$(printf '\x1e')b$(printf '\x1e')c' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "record-separator"
+e2e_check "I1 control (round 8) -- ordinary command with no RS byte -- must allow" \
+  'gh api repos/o/r/issues/1/comments -f body=hi' \
+  "ALLOW"
+
+# Round 8 (Codex, P2): a diagnostics-log path that's a symlink -- to an existing regular file, or
+# dangling -- must never be followed. `[ -f ]`/`[ ! -e ]` alone both dereference a symlink and
+# report on its FINAL target, so either shape (symlink-to-regular-file, or a dangling symlink) was
+# previously followed, letting the guard repeatedly append diagnostic content to an arbitrary
+# external file on every subsequent guarded command.
+e2e_diag_log_symlink_check() {
+  local tmp_git input target
+  tmp_git=$(mktemp -d)
+  target=$(mktemp)
+  trap 'rm -rf "$tmp_git"; rm -f "$target"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    ln -s "$target" .git/git-kit-guard-diagnostics.log
+    input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
+    printf '%s' "$input" | bash "$GUARD" >/dev/null 2>&1
+    if [ -s "$target" ]; then
+      echo "FAIL (e2e): diagnostics symlink -- guard wrote through the symlink to an external file: $(cat "$target")"
+    else
+      echo "PASS (e2e): diagnostics log symlink is not followed (round 8, Codex)"
+    fi
+  )
+}
+diag_symlink_result=$(e2e_diag_log_symlink_check)
+echo "$diag_symlink_result"
+if grep -q PASS <<< "$diag_symlink_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# Round 8 (security-reviewer, on round 8's own fixes): an unconditional blanket strip of every CR
+# byte (not just CRLF pairs) changed what the scanner saw relative to real bash whenever a lone CR
+# sat next to a backslash or quote -- `\<CR>'x;y'` in real bash embeds a literal CR (backslash
+# escapes it) and then opens a real single-quoted string, so the `;` inside never terminates the
+# span; after blanket CR-stripping the scanner instead saw `\'x;y'`, read the backslash as escaping
+# the quote itself (not opening one), and then treated the bare `;` as a real top-level separator,
+# ending the span before a dangerous endpoint real bash still reached. Only a genuine CRLF pair is
+# collapsed now; any residual lone CR denies outright instead.
+e2e_check "I2 (round 8, security-reviewer) -- lone CR next to a backslash-quote sequence -- must deny (delimiter-injection defense)" \
+  "gh api -H \\$(printf '\r')'x;y' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "carriage-return"
+e2e_check "I2 control (round 8) -- ordinary command with no CR byte -- must allow" \
+  'gh api repos/o/r/issues/1/comments -f body=hi' \
+  "ALLOW"
+e2e_check "I2 control 2 (round 8) -- benign CRLF-only multi-line command -- must allow" \
+  "gh api repos/o/r/issues/1/comments $(printf '\r')
+-f body=hi" \
+  "ALLOW"
+
+# Round 8 (security-reviewer): the endpoint regexes match a span's own literal text, but bash
+# removes quote marks and escaping backslashes before `gh` ever sees the argument -- `graph''ql`
+# and `gr\aphql` both reconstruct to the literal string `graphql` in real bash (live-verified via a
+# stub `gh`), evading GRAPHQL_RE's unconditional deny-by-default even though neither the collapsed
+# nor raw span contains "graphql" as a contiguous substring for the regex to match.
+e2e_check "I3 (round 8, security-reviewer) -- graphql split via adjacent empty quotes -- must deny" \
+  "gh api graph''ql -f query=hi" \
+  "graphql"
+e2e_check "I3b (round 8) -- graphql split via a mid-word backslash escape -- must deny" \
+  'gh api gr\aphql -f query=hi' \
+  "graphql"
+e2e_check "I3c (round 8) -- reviews endpoint split via adjacent empty double-quotes -- must deny" \
+  'gh api repos/o/r/pulls/5/re""views -f event=APPROVE' \
+  "deny"
+e2e_check "I3 control (round 8) -- ordinary quoted/escaped text with no disguised endpoint -- must allow" \
+  "gh api repos/o/r/issues/1/comments -f body='it'\\''s fine' -f other=\\x" \
+  "ALLOW"
+
 echo ""
 echo "=== $PASS_COUNT passed, $FAIL_COUNT failed ==="
 [ "$FAIL_COUNT" -eq 0 ]
