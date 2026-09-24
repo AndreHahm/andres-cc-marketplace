@@ -19,13 +19,18 @@ file basenames (commands have no `name` field — check the filename itself).
   `bootstrapping-a-python-project`) — not a bare imperative verb phrase.
 - Agent: a role-based noun phrase (`skill-reviewer`, `plugin-validator`) — not a bare imperative verb
   phrase.
-- Command: starts with a verb (`create-plugin`, `review-rules`).
+- Command: starts with a verb (`create-plugin`, `review-rules`). For a command in a plugin that has an
+  R33-registered prefix, check the filename portion *after* the prefix — `<prefix>-<rest>`, where
+  `<rest>` must start with a verb (e.g. `git-commit.md` in a `git`-prefixed plugin: `commit` is the
+  verb, `git` is not expected to be one). For a plugin with no prefix registered yet, check the full
+  basename as before.
 
 **Violations (ADVISORY only):**
 - A skill named as a bare imperative verb phrase with no noun/gerund framing (e.g. a skill named
   `create-pr` reads as a command's action, not a skill's domain).
 - An agent named without role-noun framing.
-- A command that doesn't start with a recognizable verb.
+- A command that doesn't start with a recognizable verb (checked after stripping a registered R33
+  prefix, if one applies — see above).
 
 **Fix:** Rename to match the documented form, or reconsider the component type (a bare-imperative-named
 skill may actually want to be a command). Flag and move on if the maintainer declines — this rule exists

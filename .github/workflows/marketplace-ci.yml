@@ -921,7 +921,7 @@ jobs:
 
   publish:
     name: Publish Codex policy result
-    needs: [compute-scope, codex-review]
+    needs: [compute-scope, codex-review, prefix-permanence]
     # Always runs for a same-repo PR (fork-unsupported owns the fork case
     # and already fails explicitly, independently of this job) -- a
     # security review found the earlier `needs.codex-review.result !=
@@ -932,7 +932,17 @@ jobs:
     # satisfies a required check" is supposed to mean only for the
     # legitimate bypass-eligible case. The "Determine final policy result"
     # step below now explicitly checks compute-scope's own result before
-    # trusting codex-review's skip as legitimate.
+    # trusting codex-review's skip as legitimate. `prefix-permanence` was
+    # added to codex-review's own `needs` when that job was introduced, but
+    # this job's policy-result step wasn't updated to match: an
+    # inventory-only PR can be `bypass_eligible=true` (unrelated to
+    # prefix-permanence) while ALSO failing prefix-permanence -- that
+    # failure makes codex-review 'skipped' as a side effect of its own
+    # failed dependency, which this job's policy step, seeing
+    # bypass_eligible=true, would otherwise accept as a legitimate skip.
+    # prefix-permanence is now both a direct dependency here and
+    # independently checked below, closing that gap. Found by CodeRabbit,
+    # round 9.
     if: always() && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
@@ -1197,7 +1207,17 @@ jobs:
           SCOPE_RESULT: ${{ needs.compute-scope.result }}
           BYPASS_ELIGIBLE: ${{ needs.compute-scope.outputs.bypass_eligible }}
           CODEX_RESULT: ${{ needs.codex-review.result }}
+          PREFIX_PERMANENCE_RESULT: ${{ needs.prefix-permanence.result }}
         run: |
+          # Checked before the BYPASSED short-circuit below, deliberately:
+          # prefix-permanence is a deterministic, mechanical gate, not the
+          # (expensive, rate-limited) Codex review the bypass label/variable
+          # exists to skip -- same "deterministic ... gates still apply
+          # unchanged" principle the BYPASSED message below already states.
+          if [ "$PREFIX_PERMANENCE_RESULT" != "success" ]; then
+            echo "prefix-permanence did not succeed (result: $PREFIX_PERMANENCE_RESULT) -- failing closed."
+            exit 1
+          fi
           if [ "$BYPASSED" = "true" ]; then
             echo "Codex review bypassed (attested SHA-bound label exception or CODEX_CI_REVIEW_BYPASS variable). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0

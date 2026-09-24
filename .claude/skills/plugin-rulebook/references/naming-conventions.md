@@ -18,6 +18,11 @@ All component identifiers in a plugin must use **lowercase kebab-case**. This ap
 | Reference file | Topic noun phrase | `naming-conventions`, `allowed-tools`, `movement-pattern` |
 | Directory | Same as component name | `skills/skill-development/`, `agents/skill-reviewer/` |
 
+For a command in a plugin with an R33-registered prefix, the verb-first convention above is checked on
+the filename portion *after* `<prefix>-`, not the full basename — e.g. `git-commit.md` in a
+`git`-prefixed plugin: `commit` is the verb, `git` is not expected to be one. For a plugin with no
+prefix registered yet, check the full basename as before.
+
 ## Reference File Naming (R10)
 
 Reference files live in `references/` and use a topic-first naming scheme.

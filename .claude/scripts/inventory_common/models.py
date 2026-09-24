@@ -67,7 +67,11 @@ def validate_prefix(prefix):
     value as a filename prefix, e.g. 'git' -> 'git-<rest>'). Mirrors the
     `^[a-z]{3,4}$` pattern in marketplace-inventory.schema.json /
     plugin-inventory.schema.json -- keep both in sync (R20)."""
-    if not isinstance(prefix, str) or not PREFIX_PATTERN.match(prefix):
+    # fullmatch, not match: with `match`, `$` matches just before a
+    # trailing newline, so e.g. "abc\n" would pass as a valid 3-letter
+    # prefix despite not actually being one -- fullmatch requires the
+    # entire string to satisfy the pattern, no trailing-newline exception.
+    if not isinstance(prefix, str) or not PREFIX_PATTERN.fullmatch(prefix):
         raise ValueError(
             f"invalid prefix {prefix!r}; must match {PREFIX_PATTERN.pattern!r} "
             "(3-4 lowercase letters, no separator)"

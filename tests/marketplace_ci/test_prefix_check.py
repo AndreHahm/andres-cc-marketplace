@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from scripts.marketplace_ci.prefix_check import (
+    CHECKED_STATUSES,
     find_prefix_permanence_violations,
     find_prefix_violations,
 )
@@ -50,8 +51,20 @@ def _write_inventory(repo: Path, plugins: list[dict], write_manifest: bool = Tru
         # cross-checks the two) -- derive one automatically from the same
         # plugins list so tests that aren't specifically about the
         # authoritative-source check don't each need to write their own.
+        # Only a genuinely-live (active/deprecated) plugin is listed here --
+        # matching real repo state, where a retired/superseded/planned
+        # plugin is removed from (or not yet added to) marketplace.json. A
+        # test that needs to model a *mismatched* status/manifest state
+        # (a curated `status` saying retired while the manifest still lists
+        # the plugin) writes its own manifest explicitly instead of relying
+        # on this default.
         _write_marketplace_manifest(
-            repo, [{"name": p["name"], "source": p["source"]} for p in plugins if p.get("source")]
+            repo,
+            [
+                {"name": p["name"], "source": p["source"]}
+                for p in plugins
+                if p.get("source") and p.get("status", "active") in CHECKED_STATUSES
+            ],
         )
     return path
 
@@ -154,6 +167,30 @@ def test_superseded_plugin_skipped_even_with_prefix(tmp_path):
     (plugin_dir / "scripts" / "not-prefixed.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("old-kit", "./old-kit", prefix="old", status="superseded")])
     assert find_prefix_violations(tmp_path) == []
+
+
+def test_status_retired_but_still_manifest_listed_is_still_checked(tmp_path):
+    # Codex P1 finding: `status` is a curated, separately human-editable
+    # field, just like `source` (see the null-source regression above) --
+    # a PR could set status to 'retired'/'planned' while marketplace.json
+    # still lists the plugin as installed, exempting a still-live plugin
+    # from the entire check. A plugin present in the authoritative manifest
+    # must be checked regardless of its curated status.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "not-prefixed.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path,
+        [_plugin("git-kit", "./git-kit", prefix="git", status="retired")],
+        write_manifest=False,
+    )
+    # Unlike the default helper above, explicitly list this plugin in
+    # marketplace.json despite its curated 'retired' status -- modeling the
+    # exact mismatch this check must catch.
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path.name == "not-prefixed.py"
 
 
 def test_relative_traversal_source_reported_not_scanned(tmp_path):
@@ -293,6 +330,28 @@ def test_permanence_record_removed_is_violation():
     assert "no longer exists" in violations[0].reason
 
 
+def test_permanence_renamed_prefixed_record_is_violation():
+    # Security-reviewer finding (round 9, Critical): renaming a prefixed
+    # record while keeping id and prefix unchanged un-joins it from
+    # marketplace.json's authoritative entry (find_prefix_violations looks
+    # up the manifest by the inventory's own `name` field) -- the manifest
+    # still lists the old name as installed, but no inventory record holds
+    # it anymore, so the plugin escapes the prefix scan entirely under
+    # either name.
+    base = {"plugins": [{"id": "p1", "name": "git-kit", "prefix": "git"}]}
+    head = {"plugins": [{"id": "p1", "name": "git-kit-legacy", "prefix": "git"}]}
+    violations = find_prefix_permanence_violations(base, head)
+    assert len(violations) == 1
+    assert violations[0].plugin_id == "p1"
+    assert "git-kit" in violations[0].reason and "git-kit-legacy" in violations[0].reason
+
+
+def test_permanence_unrenamed_prefixed_record_no_violation():
+    base = {"plugins": [{"id": "p1", "name": "git-kit", "prefix": "git"}]}
+    head = {"plugins": [{"id": "p1", "name": "git-kit", "prefix": "git"}]}
+    assert find_prefix_permanence_violations(base, head) == []
+
+
 def test_malformed_prefix_rejected(tmp_path):
     # Found by a live Codex cross-model-review pass (round 4): a
     # hand-edited marketplace-inventory.json bypassing the CLI's own
@@ -302,6 +361,20 @@ def test_malformed_prefix_rejected(tmp_path):
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "TOOLONG-check-pr-title.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="TOOLONG")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "does not match" in violations[0].reason
+
+
+def test_trailing_newline_prefix_rejected(tmp_path):
+    # CodeRabbit finding (round 9): PREFIX_PATTERN.match("abc\n") succeeds
+    # because `$` matches just before a trailing newline -- fullmatch is
+    # required to actually reject it as an invalid 3-4-letter prefix.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git\n")])
     violations = find_prefix_violations(tmp_path)
     assert len(violations) == 1
     assert violations[0].plugin == "git-kit"
@@ -392,6 +465,33 @@ def test_plugin_absent_from_authoritative_manifest_rejected(tmp_path):
     assert len(violations) == 1
     assert violations[0].plugin == "git-kit"
     assert "does not match the authoritative" in violations[0].reason
+
+
+def test_duplicate_manifest_name_rejected_not_silently_resolved(tmp_path):
+    # Security-reviewer finding (round 9, Major): a second, spoofed
+    # marketplace.json entry sharing a live prefixed plugin's name was
+    # previously resolved by silent last-entry-wins in
+    # _load_authoritative_sources' dict comprehension -- an attacker-
+    # controlled second entry could redirect the scan to an empty/
+    # nonexistent directory while the real, unprefixed files sat untouched
+    # under the first entry's real source.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "not-prefixed.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")], write_manifest=False
+    )
+    _write_marketplace_manifest(
+        tmp_path,
+        [
+            {"name": "git-kit", "source": "./git-kit"},
+            {"name": "git-kit", "source": "./empty-decoy"},
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "more than once" in violations[0].reason
 
 
 def test_falsy_prefix_values_validated_not_silently_skipped(tmp_path):

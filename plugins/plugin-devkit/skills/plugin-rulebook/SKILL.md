@@ -465,6 +465,9 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 
 **Last dated run record:** 2026-08-15, `evals/plugin-rulebook/` — eval-1: 4/4 assertions passed;
 eval-2: 2/2 assertions passed (both `with_skill`, via `skill-tester`'s blind-comparison harness).
+Iteration-3 (2026-09-24, `skill-tester` Quick Workflow, `with_skill`-only): eval-3 (R27 applies
+verb-first to the filename portion after an R33-registered prefix) 3/3 assertions passed; eval-4 (R27
+still checks the full basename when no prefix is registered) 3/3 assertions passed.
 See `evals/plugin-rulebook/evals.json` for the scenario definitions. R33's own `test-against-example-
 plugin.md` dry-run record: `.claude/output/plugin-rulebook/example-plugin-20260923T204026Z.md`.
 

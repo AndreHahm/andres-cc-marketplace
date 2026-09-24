@@ -16,6 +16,20 @@
       "prompt": "Apply the plugin-rulebook skill's Compliance Check Procedure against plugins/plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) -- this is a real, already-shipped, presumed-compliant file. Report your findings.",
       "expected_output": "Reports the file as compliant (or with only pre-existing, already-known advisory items if any) -- does not invent a false REQUIRED violation against a real, shipped file.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "R27 respects an R33-registered prefix on a command filename",
+      "prompt": "A plugin named 'git-kit' has a registered R33 prefix of 'git' in marketplace-inventory.json, status 'active'. It has a command file at commands/git-commit.md (frontmatter name 'git-commit', a minimal valid description and body). Apply the plugin-rulebook skill's R27 (Component Naming: Grammatical Form) check to this command file, given the plugin's registered prefix. Report whether R27 flags it, and why.",
+      "expected_output": "Does NOT flag 'git-commit.md' under R27 -- correctly strips the registered 'git-' prefix first, then recognizes 'commit' as a verb, so the command is verb-first per the documented convention. Explicitly reasons about the prefix-stripping step, not just the full basename.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "R27 still checks the full basename when no prefix is registered",
+      "prompt": "A plugin named 'misc-kit' has NO registered R33 prefix (no 'prefix' field in marketplace-inventory.json). It has a command file at commands/config-settings.md (frontmatter name 'config-settings', a minimal valid description and body -- 'config' is a noun, not a verb). Apply the plugin-rulebook skill's R27 (Component Naming: Grammatical Form) check to this command file. Report whether R27 flags it, and why.",
+      "expected_output": "DOES flag 'config-settings.md' under R27 (ADVISORY) -- since no prefix is registered, the full basename is checked as-is, and 'config' is not a recognizable verb.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
