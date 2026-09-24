@@ -395,3 +395,24 @@ def test_permanence_falsy_base_prefix_treated_as_no_prior_prefix():
     base = {"plugins": [{"id": "p1", "name": "a", "prefix": ""}]}
     head = {"plugins": [{"id": "p1", "name": "a", "prefix": "abc"}]}
     assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_null_source_on_prefixed_plugin_rejected_not_silently_skipped(tmp_path):
+    # Found by a live Codex cross-model-review pass (round 6): an earlier
+    # version of the authoritative-source check had `if not source:
+    # continue` before ever comparing against marketplace.json, so a PR
+    # could set source: null on a prefixed record and bypass R33 entirely
+    # -- the plugin's real, manifest-registered directory (still containing
+    # unprefixed files) was never scanned, and check-prefix-permanence
+    # alone doesn't compensate since it only compares prefix values.
+    real_plugin_dir = tmp_path / "git-kit"
+    (real_plugin_dir / "scripts").mkdir(parents=True)
+    (real_plugin_dir / "scripts" / "not-prefixed.py").write_text("", encoding="utf-8")
+    entry = _plugin("git-kit", "./git-kit", prefix="git")
+    entry["source"] = None
+    _write_inventory(tmp_path, [entry], write_manifest=False)
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "does not match the authoritative" in violations[0].reason

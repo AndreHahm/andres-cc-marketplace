@@ -261,9 +261,17 @@ def find_prefix_violations(
             # Already flagged above; a malformed prefix has no well-formed
             # `<prefix>-` pattern to scan this plugin's files against.
             continue
+        # No `if not source: continue` short-circuit here -- a null/empty
+        # inventory `source` on an active, prefixed plugin must be treated
+        # exactly like a mismatched one below, not silently skipped. An
+        # earlier version of this check exempted a falsy `source` from
+        # ever reaching the authoritative-manifest comparison, letting a PR
+        # bypass R33 entirely by setting `source: null` on a prefixed
+        # record -- its real, manifest-registered directory was then never
+        # scanned, while check-prefix-permanence's own comparison (prefix
+        # values only) stayed satisfied throughout. Found by a live Codex
+        # cross-model-review pass, round 6.
         source = plugin.get("source")
-        if not source:
-            continue
         plugin_name = plugin["name"]
         authoritative_source = authoritative_sources.get(plugin_name)
         if authoritative_source != source:
@@ -275,9 +283,10 @@ def find_prefix_violations(
             # files in the plugin's real, still-registered location
             # untouched. Only the manifest's own value is the plugin's real
             # location; refuse to scan on any mismatch (including the
-            # manifest not listing this plugin at all) rather than trust
-            # the inventory's unverified copy. Found by a live Codex
-            # cross-model-review pass, round 5.
+            # manifest not listing this plugin at all, or this record's own
+            # `source` being null/absent) rather than trust the inventory's
+            # unverified copy. Found by a live Codex cross-model-review
+            # pass, round 5 (mismatch case) and round 6 (null-source case).
             violations.append(
                 PrefixViolation(
                     plugin=plugin_name,
