@@ -10,7 +10,7 @@
     "schema_version": { "type": "string" },
     "plugin_id": { "type": "string", "pattern": "^plugin_[0-9a-f]{8}$" },
     "plugin_name": { "type": "string" },
-    "prefix": { "type": "string", "pattern": "^[a-z]{3,4}$" },
+    "prefix": { "anyOf": [{ "type": "null" }, { "type": "string", "pattern": "^[a-z]{3,4}$" }] },
     "updated_on": { "type": "string", "format": "date" },
     "components": { "type": "array", "items": { "$ref": "#/definitions/component" } },
     "extensions": { "type": "object", "additionalProperties": { "$ref": "#/definitions/extensionSummary" } }
