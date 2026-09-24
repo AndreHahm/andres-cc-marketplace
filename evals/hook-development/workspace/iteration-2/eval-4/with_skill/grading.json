@@ -25,7 +25,7 @@
     {
       "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
       "passed": true,
-      "evidence": "The response makes no unqualified 'timeout always overrides/is always enforced' claim this time — it never asserts async hooks still get killed at their timeout. Vacuously satisfied by this response alone; see the separate direct-probe agent (dispatched specifically to force engagement with Pattern 9's async claim) for a non-vacuous confirmation that the corrected text is what the skill now surfaces."
+      "evidence": "The response makes no unqualified 'timeout always overrides/is always enforced' claim this time — it never asserts async hooks still get killed at their timeout. This eval-4 prompt itself doesn't ask about async hooks, so this alone is a vacuous pass; the non-vacuous confirmation is a separate, persisted direct-probe transcript that explicitly forces engagement with Pattern 9's async claim — see ../async-timeout-direct-probe.md (cross-model-review finding, 2026-09-24: flagged as unpersisted/unverifiable, fixed by adding that file)."
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",

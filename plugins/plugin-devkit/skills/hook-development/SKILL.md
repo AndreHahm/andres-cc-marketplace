@@ -421,8 +421,8 @@ the human-readable text output.
 2 of 4 declared trigger scenarios aren't yet exercised by an eval (auto-format-on-write, session-context
 loading) — see `evals.json`'s `testing_validation_coverage` field. **eval-4 re-checked 2026-09-24**
 (issue #388 fix — Pattern 9's async-timeout-enforcement claim in `advanced-hooks.md` corrected to match
-official docs): 6/6 assertions now pass, up from 5/6 (`evals/hook-development/workspace/iteration-2/
-eval-4/with_skill/grading.json`).
+official docs): 6/6 assertions now pass, up from 5/6
+(`evals/hook-development/workspace/iteration-2/eval-4/with_skill/grading.json`).
 
 ---
 

@@ -395,7 +395,7 @@ exit 0  # All checks passed
 **Characteristics:**
 - `async: true` ensures hook runs in background without blocking Claude
 - `onError: "warn"` is appropriate (background failures don't affect execution)
-- Timeout is not enforced — the process isn't killed if it runs long; `async: true` only removes the blocking wait, not the timeout guarantee
+- Timeout is not enforced — the process isn't killed if it runs long; `async: true` removes both the blocking wait and the timeout guarantee
 - Perfect for: logging, metrics, webhooks, notifications, file I/O
 - Cannot return decisions — use only for side effects
 
