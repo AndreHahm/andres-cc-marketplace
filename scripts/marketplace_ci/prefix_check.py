@@ -57,6 +57,7 @@ HOOKS_MANIFEST_BASENAME = "hooks.json"
 CHECKED_STATUSES = frozenset({"active", "deprecated"})
 
 DEFAULT_MARKETPLACE_INVENTORY_PATH = Path(".claude-plugin/marketplace-inventory.json")
+DEFAULT_MARKETPLACE_MANIFEST_PATH = Path(".claude-plugin/marketplace.json")
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,12 @@ def find_prefix_permanence_violations(
     those, since it runs at the point that matters -- PR review -- rather
     than trusting that every change went through the tool. Found by a live
     security-reviewer pass (M2)."""
+    # Deliberately a truthy check, not `is not None`: an empty-string or
+    # other falsy base value is not a meaningful prior assignment to
+    # protect -- find_prefix_violations' own format validation is what
+    # flags a falsy/malformed value as a defect in whichever commit it
+    # exists in; once corrected to a real first-time prefix, that's a
+    # legitimate first assignment here, not a permanence violation.
     base_by_id = {p["id"]: p for p in base_inventory.get("plugins", []) if p.get("prefix")}
     head_by_id = {p["id"]: p for p in head_inventory.get("plugins", [])}
 
@@ -120,6 +127,34 @@ def find_prefix_permanence_violations(
                 )
             )
     return violations
+
+
+def _load_authoritative_sources(
+    repo: Path, marketplace_manifest_path: Path | None = None
+) -> dict[str, str]:
+    """Read `.claude-plugin/marketplace.json` (the actual plugin registry
+    `discover_plugins()` in marketplace-inventory.py derives every record's
+    `source` from) and return `{plugin_name: source}`. `marketplace-
+    inventory.json`'s own per-record `source` field is a curated, separately
+    human-update-able copy (it's in ALLOWED_UPDATE_FIELDS) -- not
+    necessarily kept live-in-sync with the manifest -- so trusting it alone
+    for the directory to scan lets a PR redirect a prefixed plugin's `source`
+    to an empty or nonexistent in-repo path while leaving unprefixed files
+    in the plugin's real, still-registered location untouched. Returns an
+    empty dict (never raises) if the manifest itself is missing -- callers
+    treat "not found in the authoritative manifest" as its own violation,
+    the same fail-visible discipline `find_prefix_violations` already uses
+    for every other malformed-input case."""
+    if marketplace_manifest_path is None:
+        marketplace_manifest_path = repo / DEFAULT_MARKETPLACE_MANIFEST_PATH
+    if not marketplace_manifest_path.is_file():
+        return {}
+    manifest = json.loads(marketplace_manifest_path.read_text(encoding="utf-8"))
+    return {
+        entry["name"]: entry["source"]
+        for entry in manifest.get("plugins", [])
+        if entry.get("name") and entry.get("source")
+    }
 
 
 def _iter_files(root: Path, repo_resolved: Path):
@@ -184,7 +219,7 @@ def find_prefix_violations(
     assigned_prefixes: dict[str, str] = {}
     for plugin in inventory.get("plugins", []):
         prefix = plugin.get("prefix")
-        if not prefix:
+        if prefix is None:
             continue
         plugin_name = plugin.get("name", "?")
         if not isinstance(prefix, str) or not PREFIX_PATTERN.match(prefix):
@@ -214,9 +249,11 @@ def find_prefix_violations(
             continue
         assigned_prefixes[prefix] = plugin_name
 
+    authoritative_sources = _load_authoritative_sources(repo)
+
     for plugin in inventory.get("plugins", []):
         prefix = plugin.get("prefix")
-        if not prefix:
+        if prefix is None:
             continue
         if plugin.get("status") not in CHECKED_STATUSES:
             continue
@@ -228,6 +265,31 @@ def find_prefix_violations(
         if not source:
             continue
         plugin_name = plugin["name"]
+        authoritative_source = authoritative_sources.get(plugin_name)
+        if authoritative_source != source:
+            # marketplace-inventory.json's own `source` is a curated,
+            # separately human-update-able copy (ALLOWED_UPDATE_FIELDS),
+            # not necessarily live-synced with marketplace.json -- trusting
+            # it alone lets a PR redirect a prefixed plugin's scan target to
+            # an empty/nonexistent in-repo path while leaving unprefixed
+            # files in the plugin's real, still-registered location
+            # untouched. Only the manifest's own value is the plugin's real
+            # location; refuse to scan on any mismatch (including the
+            # manifest not listing this plugin at all) rather than trust
+            # the inventory's unverified copy. Found by a live Codex
+            # cross-model-review pass, round 5.
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"source {source!r} does not match the authoritative "
+                        f"marketplace.json entry ({authoritative_source!r}) -- refusing to scan "
+                        "a location marketplace.json doesn't confirm is this plugin's real one"
+                    ),
+                )
+            )
+            continue
         plugin_dir = (repo / source).resolve()
         if not plugin_dir.is_relative_to(repo_resolved) or plugin_dir == repo_resolved:
             # `source` is repo-tracked, curated input -- not remote-attacker

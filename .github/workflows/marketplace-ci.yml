@@ -357,40 +357,64 @@ jobs:
       - run: pip install uv
 
       # This job's own enforcement logic (scripts/marketplace_ci/__main__.py's
-      # check-prefix-permanence handler, prefix_check.py's comparison
-      # function) must never run from the PR's own untrusted checkout --
-      # same principle compute-scope/codex-review/publish already apply to
-      # their own decision code. Without this, a same-repo PR could edit
+      # check-prefixes/check-prefix-permanence handlers, prefix_check.py's
+      # own comparison/validation functions) must never run from the PR's
+      # own untrusted checkout -- same principle compute-scope/codex-review/
+      # publish already apply to their own decision code. Without this, a
+      # same-repo PR could edit _handle_check_prefixes/
       # _handle_check_prefix_permanence to always return 0 in the same
-      # commit that reassigns a prefix, defeating this whole gate with no
-      # label or attestation needed (Codex cross-model-review finding, F1).
+      # commit that reassigns/misregisters a prefix, defeating this whole
+      # gate with no label or attestation needed (Codex cross-model-review
+      # findings, F1 round 2 and F1 round 5 -- marketplace-parity's own
+      # check-all also runs check-prefixes, but from the untrusted PR
+      # checkout with no restore of its own; this job is check-prefixes'
+      # one trusted evaluation point, marketplace-parity's copy stays
+      # best-effort only, the same characteristic that job's pre-existing
+      # check-plugin-mirrors/check-codex-exports constituents already have).
       #
       # Bootstrapping exception, same shape as this file's own
       # restore_from_base() "keep" branch above: this PR is what introduces
-      # the check-prefix-permanence subcommand in the first place, so
-      # $BASE_SHA's copy of scripts/ doesn't have it yet -- restoring
-      # unconditionally would make this job fail on its own rollout PR
-      # (argparse: invalid choice), which would also cascade into blocking
-      # codex-review below, since it now depends on this job (Codex
-      # cross-model-review finding, round 3). Check whether the subcommand
-      # already exists at base before restoring; only this one-time rollout
-      # PR takes the "use the PR's own copy" branch -- every later PR's
-      # base SHA has the real subcommand, and the restore's fail-closed
-      # `else` branch below is unaffected by this bootstrapping check.
-      - name: Restore the base SHA's copy of the permanence-check code and its dependency spec (trust boundary)
+      # both the check-prefixes and check-prefix-permanence subcommands in
+      # the first place, so $BASE_SHA's copy of scripts/ doesn't have
+      # either yet -- restoring unconditionally would make this job fail on
+      # its own rollout PR (argparse: invalid choice), which would also
+      # cascade into blocking codex-review below, since it now depends on
+      # this job (Codex cross-model-review finding, round 3). Check whether
+      # check-prefixes already exists at base before restoring (a
+      # prerequisite for check-prefix-permanence too, since both share
+      # prefix_check.py and were introduced together) -- only this one-time
+      # rollout PR takes the "use the PR's own copy" branch -- every later
+      # PR's base SHA has both real subcommands, and the restore's
+      # fail-closed `else` branch below is unaffected by this bootstrapping
+      # check.
+      - name: Restore the base SHA's copy of the prefix-check code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git show "$BASE_SHA:scripts/marketplace_ci/__main__.py" 2>/dev/null | grep -q "check-prefix-permanence"; then
-            echo "check-prefix-permanence does not exist at base $BASE_SHA yet -- this is the bootstrapping PR introducing it; using the PR's own copy for this one-time rollout only. Every later PR's base SHA will have a real trusted copy to restore against."
+          if ! git show "$BASE_SHA:scripts/marketplace_ci/__main__.py" 2>/dev/null | grep -q "check-prefixes"; then
+            echo "check-prefixes does not exist at base $BASE_SHA yet -- this is the bootstrapping PR introducing it (and check-prefix-permanence); using the PR's own copy for this one-time rollout only. Every later PR's base SHA will have real trusted copies to restore against."
           elif git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
             echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
           else
-            echo "::error::could not restore permanence-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"
+            echo "::error::could not restore prefix-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"
             exit 1
           fi
 
       - run: uv sync --group dev
+      # Mechanical enforcement of plugin-rulebook's R33 (every file under a
+      # registered, prefixed plugin's in-scope directories must carry that
+      # plugin's own `<prefix>-` basename) plus format/uniqueness
+      # validation of every registered prefix itself and a cross-check of
+      # marketplace-inventory.json's own `source` field against the
+      # authoritative marketplace.json entry -- run from the trusted-
+      # restored code above, so a same-repo PR can't weaken this evaluation
+      # in the same commit that violates it. Still reads the PR's own
+      # .claude-plugin/marketplace-inventory.json and plugin trees
+      # (untouched by the restore above, which only covers scripts/), so
+      # the PR's actual changes are what's evaluated, just never by the
+      # PR's own copy of the evaluation logic.
+      - name: Check plugin file prefixes (R33)
+        run: uv run python -m scripts.marketplace_ci check-prefixes
       # PR-review-time enforcement that a plugin's registered
       # component-file prefix (plugin-rulebook R33) is actually permanent:
       # reconcile.apply_update's own write-once guard only protects the
@@ -399,12 +423,7 @@ jobs:
       # delete-and-rebootstrap, committed directly in a PR. This compares
       # the file's own content across the PR's diff (base vs head), which
       # is the layer that actually catches either of those (security-
-      # reviewer finding, M2). The restore step above ensures this
-      # comparison itself runs from trusted code -- it still reads the
-      # PR's own .claude-plugin/marketplace-inventory.json (untouched by
-      # that restore, which only covers scripts/), so the PR's actual data
-      # change is what's evaluated, just never by the PR's own copy of the
-      # evaluation logic.
+      # reviewer finding, M2).
       - name: Check plugin prefix permanence (R33)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
