@@ -126,35 +126,74 @@ def find_prefix_permanence_violations(
                     ),
                 )
             )
+        base_name = base_plugin.get("name")
+        head_name = head_plugin.get("name")
+        if head_name != base_name:
+            # `name` is find_prefix_violations' own join key back to
+            # marketplace.json's authoritative source (via
+            # `_load_authoritative_sources`) -- an unchanged `id`/`prefix`
+            # with a renamed `name` un-joins a still-live, still-installed
+            # plugin from its manifest entry, so find_prefix_violations
+            # never scans it again under either the old or the new name
+            # (the manifest still lists the old name; no inventory record
+            # holds it anymore). Same permanence posture as `prefix` itself
+            # above: once registered, both stay fixed together. Found by a
+            # live security-reviewer pass, round 9.
+            violations.append(
+                PrefixPermanenceViolation(
+                    plugin_id=plugin_id,
+                    plugin_name=head_name if head_name is not None else base_name,
+                    reason=(
+                        f"name changed from {base_name!r} (base) to {head_name!r} (head) "
+                        f"while prefix {base_prefix!r} stayed registered -- renaming a "
+                        "prefixed record un-links it from marketplace.json's authoritative "
+                        "entry, hiding it from the prefix scan entirely"
+                    ),
+                )
+            )
     return violations
 
 
 def _load_authoritative_sources(
     repo: Path, marketplace_manifest_path: Path | None = None
-) -> dict[str, str]:
+) -> tuple[dict[str, str], set[str]]:
     """Read `.claude-plugin/marketplace.json` (the actual plugin registry
     `discover_plugins()` in marketplace-inventory.py derives every record's
-    `source` from) and return `{plugin_name: source}`. `marketplace-
-    inventory.json`'s own per-record `source` field is a curated, separately
-    human-update-able copy (it's in ALLOWED_UPDATE_FIELDS) -- not
-    necessarily kept live-in-sync with the manifest -- so trusting it alone
-    for the directory to scan lets a PR redirect a prefixed plugin's `source`
-    to an empty or nonexistent in-repo path while leaving unprefixed files
-    in the plugin's real, still-registered location untouched. Returns an
-    empty dict (never raises) if the manifest itself is missing -- callers
-    treat "not found in the authoritative manifest" as its own violation,
-    the same fail-visible discipline `find_prefix_violations` already uses
-    for every other malformed-input case."""
+    `source` from) and return `({plugin_name: source}, {duplicate_names})`.
+    `marketplace-inventory.json`'s own per-record `source` field is a
+    curated, separately human-update-able copy (it's in
+    ALLOWED_UPDATE_FIELDS) -- not necessarily kept live-in-sync with the
+    manifest -- so trusting it alone for the directory to scan lets a PR
+    redirect a prefixed plugin's `source` to an empty or nonexistent in-repo
+    path while leaving unprefixed files in the plugin's real, still-
+    registered location untouched. Returns an empty dict/set (never raises)
+    if the manifest itself is missing -- callers treat "not found in the
+    authoritative manifest" as its own violation, the same fail-visible
+    discipline `find_prefix_violations` already uses for every other
+    malformed-input case. A `name` appearing more than once in the manifest
+    is reported in the second return value rather than silently resolved by
+    last-entry-wins: a second, spoofed entry sharing a live prefixed
+    plugin's name could otherwise redirect its scan target to an
+    attacker-controlled directory while the dict comprehension's overwrite
+    hid the collision entirely. Found by a live security-reviewer pass,
+    round 9."""
     if marketplace_manifest_path is None:
         marketplace_manifest_path = repo / DEFAULT_MARKETPLACE_MANIFEST_PATH
     if not marketplace_manifest_path.is_file():
-        return {}
+        return {}, set()
     manifest = json.loads(marketplace_manifest_path.read_text(encoding="utf-8"))
-    return {
-        entry["name"]: entry["source"]
-        for entry in manifest.get("plugins", [])
-        if entry.get("name") and entry.get("source")
-    }
+    sources: dict[str, str] = {}
+    duplicate_names: set[str] = set()
+    for entry in manifest.get("plugins", []):
+        name = entry.get("name")
+        source = entry.get("source")
+        if not name or not source:
+            continue
+        if name in sources:
+            duplicate_names.add(name)
+            continue
+        sources[name] = source
+    return sources, duplicate_names
 
 
 def _iter_files(root: Path, repo_resolved: Path):
@@ -230,7 +269,12 @@ def find_prefix_violations(
         if prefix is None:
             continue
         plugin_name = plugin.get("name", "?")
-        if not isinstance(prefix, str) or not PREFIX_PATTERN.match(prefix):
+        # fullmatch, not match -- see the identical comment on
+        # inventory_common.models.validate_prefix (R20 sibling fix): with
+        # `match`, `$` matches just before a trailing newline, letting
+        # e.g. "abc\n" pass this format check despite not being a real
+        # 3-4-letter prefix.
+        if not isinstance(prefix, str) or not PREFIX_PATTERN.fullmatch(prefix):
             invalid_prefix_plugins.add(plugin_name)
             violations.append(
                 PrefixViolation(
@@ -257,17 +301,52 @@ def find_prefix_violations(
             continue
         assigned_prefixes[prefix] = plugin_name
 
-    authoritative_sources = _load_authoritative_sources(repo)
+    authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
 
     for plugin in inventory.get("plugins", []):
         prefix = plugin.get("prefix")
         if prefix is None:
             continue
-        if plugin.get("status") not in CHECKED_STATUSES:
+        plugin_name = plugin.get("name", "?")
+        # `status` is a curated, separately human-editable field -- the
+        # same risk the `source` comment below already documents for that
+        # field applies here too: a PR could set `status` to a
+        # skip-eligible value (e.g. 'retired'/'planned') while
+        # marketplace.json still lists the plugin as installed, exempting
+        # a still-live, still-installed plugin from both this check and the
+        # file scan below. A plugin present in the authoritative manifest
+        # (marketplace.json, via `authoritative_sources`) is always
+        # checked regardless of its curated status; only a plugin genuinely
+        # absent from the manifest is exempted via CHECKED_STATUSES. Found
+        # by a live Codex cross-model-review pass (P1), round 9.
+        if (
+            plugin.get("status") not in CHECKED_STATUSES
+            and plugin_name not in authoritative_sources
+        ):
             continue
-        if plugin.get("name", "?") in invalid_prefix_plugins:
+        if plugin_name in invalid_prefix_plugins:
             # Already flagged above; a malformed prefix has no well-formed
             # `<prefix>-` pattern to scan this plugin's files against.
+            continue
+        if plugin_name in duplicate_manifest_names:
+            # marketplace.json lists this name more than once -- a spoofed
+            # second entry sharing a live prefixed plugin's name could
+            # otherwise redirect the scan to an attacker-controlled
+            # directory while `authoritative_sources.get(plugin_name)`
+            # silently returned whichever entry happened to win. Refuse to
+            # trust any single source for a duplicate-named entry rather
+            # than guess which one is real. Found by a live security-
+            # reviewer pass (M1), round 9.
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"marketplace.json lists {plugin_name!r} more than once -- refusing to "
+                        "trust any single source for a duplicate-named manifest entry"
+                    ),
+                )
+            )
             continue
         # No `if not source: continue` short-circuit here -- a null/empty
         # inventory `source` on an active, prefixed plugin must be treated
@@ -280,7 +359,6 @@ def find_prefix_violations(
         # values only) stayed satisfied throughout. Found by a live Codex
         # cross-model-review pass, round 6.
         source = plugin.get("source")
-        plugin_name = plugin["name"]
         authoritative_source = authoritative_sources.get(plugin_name)
         if authoritative_source != source:
             # marketplace-inventory.json's own `source` is a curated,

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Report does not flag git-commit.md as an R27 violation", "passed": true, "evidence": "R27 does not flag `commands/git-commit.md` as a violation. ... This is a PASS under R27, not a flagged violation"},
+    {"text": "Report explicitly reasons about stripping the registered 'git-' prefix before checking verb-first form", "passed": true, "evidence": "Strip the registered prefix from the filename: the command file is `git-commit.md` (basename `git-commit`, ...). Stripping the plugin's registered `git-` prefix from `git-commit` leaves `commit` as `<rest>`."},
+    {"text": "Report correctly identifies 'commit' as the verb once the prefix is stripped", "passed": true, "evidence": "Check `<rest>` for verb-first form: `commit` is itself a verb (an instruction to perform a git commit) ... `<rest>` therefore satisfies the \"starts with a verb\" requirement."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": "3/3"}
+}

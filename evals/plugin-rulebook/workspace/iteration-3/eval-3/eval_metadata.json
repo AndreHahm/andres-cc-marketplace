@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report does not flag git-commit.md as an R27 violation",
+      "type": "presence",
+      "target": "R27 finding for git-commit.md"
+    },
+    {
+      "text": "Report explicitly reasons about stripping the registered 'git-' prefix before checking verb-first form",
+      "type": "quality",
+      "target": "R27 reasoning"
+    },
+    {
+      "text": "Report correctly identifies 'commit' as the verb once the prefix is stripped",
+      "type": "quality",
+      "target": "R27 reasoning"
+    }
+  ]
+}

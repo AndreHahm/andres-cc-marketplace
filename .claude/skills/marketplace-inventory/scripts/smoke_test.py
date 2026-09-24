@@ -1580,6 +1580,42 @@ def check_prefix_format_rejected():
         return True, "apply correctly rejected a malformed (non ^[a-z]{3,4}$) prefix"
 
 
+def check_prefix_trailing_newline_rejected():
+    """R33 scenario (CodeRabbit finding): a prefix with a trailing newline
+    (e.g. 'abc\\n') must be rejected, not accepted -- `PREFIX_PATTERN.match`
+    lets `$` match just before a trailing newline; `validate_prefix` now
+    uses `fullmatch` to actually reject it."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "newline_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "prefix",
+                        "new_value": "abc\n",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted a trailing-newline prefix -- should have been rejected"
+        return True, "apply correctly rejected a trailing-newline prefix"
+
+
 def check_prefix_duplicate_rejected():
     """R33 scenario: two plugins can never share the same registered prefix,
     marketplace-wide."""
@@ -1765,6 +1801,7 @@ CHECKS = [
     check_repair_history_succeeds_on_malformed_current_inventory,
     check_prefix_valid_accepted,
     check_prefix_format_rejected,
+    check_prefix_trailing_newline_rejected,
     check_prefix_duplicate_rejected,
     check_prefix_reassignment_via_update_rejected,
     check_prefix_mismatch_conflict,

@@ -217,7 +217,7 @@
     "R27_component_naming_grammatical_form": {
       "enabled": true,
       "severity": "ADVISORY",
-      "description": "Skills, agents, and commands should follow their documented grammatical form (skill: noun/gerund, agent: role noun, command: verb-first) per naming-conventions.md's Component-Type Conventions table -- interpretive, never blocking"
+      "description": "Skills, agents, and commands should follow their documented grammatical form (skill: noun/gerund, agent: role noun, command: verb-first) per naming-conventions.md's Component-Type Conventions table -- for a command in a plugin with an R33-registered prefix, verb-first is checked on the filename portion after the prefix, not the full basename -- interpretive, never blocking"
     },
     "R28_skill_testing_mandate": {
       "enabled": true,

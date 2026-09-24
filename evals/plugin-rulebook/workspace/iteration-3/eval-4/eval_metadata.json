@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags config-settings.md as an R27 ADVISORY violation",
+      "type": "presence",
+      "target": "R27 finding for config-settings.md"
+    },
+    {
+      "text": "Report correctly notes no prefix is registered, so the full basename is checked as-is",
+      "type": "quality",
+      "target": "R27 reasoning"
+    },
+    {
+      "text": "Report does not incorrectly treat 'config' as a verb",
+      "type": "quality",
+      "target": "R27 reasoning"
+    }
+  ]
+}
