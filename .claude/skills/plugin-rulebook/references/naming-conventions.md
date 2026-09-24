@@ -86,13 +86,7 @@ This file has no row for plugin-level naming. This marketplace's own hyphen-plac
 Item above is about a plugin's own *name* — whether `git-kit` should be suffixed `-kit` vs. `-devkit`.
 R33 is about *file naming inside an already-named plugin* — once a plugin is named `git-kit`, must its
 own `scripts/check-pr-title.py` be renamed `scripts/git-check-pr-title.py`. The two are independently
-decided, unrelated in scope, and this section exists specifically to prevent conflating them.
-
-R33 requires every file recursively under a registered plugin's root-level `scripts/`, `references/`,
-`assets/`, `hooks/` (including nested `hooks/scripts/`), and `commands/` directories to be named
-`<prefix>-<rest>`, where `<prefix>` is that plugin's own curated, permanent, marketplace-wide-unique
-value registered in `marketplace-inventory.json` (pattern `^[a-z]{3,4}$`, no separator — the hyphen is
-prepended when used as a filename prefix). Inert for any plugin with no `prefix` registered yet. See
-`${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the full scope, exclusions, and the
-`antigravity-kit`-only temporary `bin`/`docs` exception, and `SKILL.md`'s R33 entry for the rule's
-severity and gating summary.
+decided, unrelated in scope, and this section exists specifically to prevent conflating them. See
+`SKILL.md`'s R33 entry for severity and gating, and
+`${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the full mechanics, scope, and
+exclusions.

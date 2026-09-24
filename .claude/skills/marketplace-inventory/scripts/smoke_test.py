@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Persisted smoke test for marketplace-inventory: frontmatter validity, referenced-file
-existence, Bash-scope grant consistency, and 33 behavioral scenario checks against the
-shared CLI script's own subcommands."""
+existence, Bash-scope grant consistency, 32 behavioral scenario checks against the
+shared CLI script's own subcommands, and one static schema/script-conformance check
+(check_schema_conformance, which never invokes the CLI)."""
 
 import json
 import pathlib
@@ -1517,7 +1518,7 @@ def check_repair_history_succeeds_on_malformed_current_inventory():
         )
 
 
-def check_apply_valid_prefix_succeeds():
+def check_prefix_valid_accepted():
     """R33 scenario: a curated, valid prefix set via 'update' is persisted."""
     import tempfile
 
@@ -1711,7 +1712,7 @@ CHECKS = [
     check_repair_history_stale_replacement_hash_rejected,
     check_repair_history_evidence_item_type_rejected,
     check_repair_history_succeeds_on_malformed_current_inventory,
-    check_apply_valid_prefix_succeeds,
+    check_prefix_valid_accepted,
     check_prefix_format_rejected,
     check_prefix_duplicate_rejected,
     check_prefix_mismatch_conflict,

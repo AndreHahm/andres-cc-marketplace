@@ -18,9 +18,9 @@ from inventory_common import json_store  # noqa: E402  # ty: ignore[unresolved-i
 
 def _current_hash(inventory_path):
     """The same json_store.compute_hash the CLI itself uses for repair-history's
-    --expected-hash/--expected-replacement-hash and apply's expected_hash -- lets a
-    test build a valid hash for the "correct" case, and a deliberately wrong one
-    for the "stale" case."""
+    --expected-hash/--expected-replacement-hash, apply's expected_hash, and
+    set-prefix's --expected-hash -- lets a test build a valid hash for the
+    "correct" case, and a deliberately wrong one for the "stale" case."""
     return json_store.compute_hash(json.loads(inventory_path.read_text(encoding="utf-8")))
 
 
@@ -1397,6 +1397,7 @@ def check_set_prefix_stale_hash_rejected():
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
         result = _run(
             "set-prefix",
             plugin_dir,
@@ -1412,6 +1413,9 @@ def check_set_prefix_stale_hash_rejected():
                 False,
                 f"expected a 'stale set-prefix' rejection message, got: {result.stderr.strip()}",
             )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a stale --expected-hash"
         return True, "set-prefix correctly rejected a stale/wrong expected_hash"
 
 

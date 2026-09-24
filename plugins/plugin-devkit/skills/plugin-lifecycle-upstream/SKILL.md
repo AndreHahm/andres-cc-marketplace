@@ -124,9 +124,9 @@ proposed `prefix` together as one combined ask. Mechanically, though, this still
 (which is what actually generates the `plugin_id`), and only once that `add` has been applied does the
 plugin's record exist for an `update` operation (naming `prefix`) to target — `update` cannot be folded
 into the same apply call as the `add` that creates the id it would need to reference. After that second
-apply lands, register the identical value on the plugin's own inventory via
-`plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>` (see
-`plugin-inventory/SKILL.md`'s "Set Prefix" mode). Because Inventory Sync runs after Commit — by which
+apply lands, register the identical value on the plugin's own inventory via `Skill(plugin-inventory)`'s
+Set Prefix mode (`set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`). Because
+Inventory Sync runs after Commit — by which
 point Phase 5 (Build) has already written every in-scope file and Phase 7 (Test) has already run against
 them — this step does not register the prefix *before* those files exist; what it does secure is that
 R33 and `scripts/marketplace_ci/prefix_check.py` are both active starting from this plugin's very first
@@ -216,8 +216,8 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 scenarios 14 and 14a, Mirror Sync's brand-new-plugin and already-mirrored branches); the remaining
 scenarios below, including the newly-added 15/15a, are design-review-verified only.
 
-**Last dated run record:** 2026-09-16 — `scripts/smoke_test.py` re-run after the Marketplace-Root Doc
-Sync step was added (5/5 checks passing). The eval evidence above (11/11 assertions across scenarios
+**Last dated run record:** 2026-09-24 — `scripts/smoke_test.py` re-run after the R33 prefix-assignment
+procedure was mirrored into `workflows/design-a-plugin.md` (5/5 checks passing). The eval evidence above (11/11 assertions across scenarios
 1a/1b/14/14a, 100% with_skill pass rate, dated 2026-09-10) predates this addition and does not cover
 scenarios 15/15a/16 — treat those as design-review-verified only until eval coverage is extended. Mirror
 Sync's own detection logic dry-run against `example-plugin`:

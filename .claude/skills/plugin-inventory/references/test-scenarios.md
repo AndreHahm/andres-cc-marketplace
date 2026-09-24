@@ -24,7 +24,9 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
    open period (`valid_to: null`) whose value matches the record's current `status`/`name`
 8. **Status transition** — apply a `status-transition` operation (e.g. `active` -> `deprecated`);
    confirm the previously-open status period closes and the new one opens, both consistent with the
-   record's new current `status`
+   record's new current `status`. **Not yet covered by an automated check** — `scripts/smoke_test.py`'s
+   `check_status_transition_rename` (Scenario 16) exercises `status-transition`'s rename path but holds
+   `new_status` constant; no smoke-test check yet exercises a plain status-value change on its own
 9. **Repair history, structurally invalid replacement rejected** — call `repair-history` with a
    replacement array containing two open periods; confirm it's rejected before any write
 10. **Enum rejection** — set a component's `functional_role` to a value outside the controlled
