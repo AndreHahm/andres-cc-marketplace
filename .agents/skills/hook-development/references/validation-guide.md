@@ -471,7 +471,7 @@ Use when auditing existing hooks against best practices.
 - [ ] **Permissions correct** — Executable files have execute perms
 
 ### Phase 4: Error Handling
-- [ ] **Timeout exists** — Prevents hangs (command hooks especially)
+- [ ] **Timeout exists** — Prevents hangs (command hooks especially) — but not for a plain `async: true` hook without `asyncRewake: true`, where Claude Code doesn't enforce it; cap runtime in the script itself for that case
 - [ ] **onError behavior defined** — Hook knows what to do if it fails
 - [ ] **Validation exists** — Checks inputs/state before executing
 - [ ] **Error messages clear** — User can understand what went wrong
@@ -513,7 +513,7 @@ Use when auditing existing hooks against best practices.
 - [ ] **Inputs validated** — Checks args/env vars before using
 - [ ] **No `eval` or `exec`** — Especially with user input
 - [ ] **No credentials** — Doesn't hardcode secrets
-- [ ] **Timeout enforced** — Won't hang indefinitely
+- [ ] **Timeout enforced** — Won't hang indefinitely (not applicable to a plain `async: true` hook without `asyncRewake: true` — Claude Code doesn't enforce timeout there; cap runtime in the script itself)
 
 #### Reliability
 - [ ] **Exit codes correct** — Script uses exit codes properly (0/1/2)

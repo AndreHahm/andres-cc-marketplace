@@ -5,12 +5,12 @@
     {
       "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
       "passed": true,
-      "evidence": "\"timeout\": 10, explicitly reasoned as \"roughly 2x\" margin over the expected ~5s runtime."
+      "evidence": "\"timeout\": 10, explicitly reasoned as a \"buffer above the ~5s expected runtime\" without being \"so high that a genuinely hung script blocks the tool call for a long time.\""
     },
     {
       "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
       "passed": true,
-      "evidence": "Table lists command=600s, http=600s, mcp_tool=600s, prompt=30s, agent=60s — all five, all correct."
+      "evidence": "Table lists command=600s, http=600s, mcp_tool=600s, prompt=30s, agent=60s — all five, all correct, sourced from references/command-hook-input-parsing.md's authoritative defaults table."
     },
     {
       "text": "The response states the event-specific timeout overrides: 30s on UserPromptSubmit/PreModelSwitch/PostModelSwitch, 10s on MessageDisplay, and a 1.5-second shared budget for SessionEnd",
@@ -20,12 +20,12 @@
     {
       "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
       "passed": true,
-      "evidence": "\"timeout: 10 gives a script expected to finish in ~5 seconds a safety margin ... without leaving it able to hang for anywhere near the 600-second command default\" — timeout:10 is explicitly reconciled against the 600s PreToolUse baseline; no contradiction."
+      "evidence": "timeout:10 is explicitly reasoned as a buffer over the ~5s expected runtime, consistent with the 600s command-type baseline stated elsewhere; no contradiction."
     },
     {
-      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
+      "text": "Any claim that an explicit timeout field always overrides the default is qualified: a plain async command hook (async: true without asyncRewake: true) has its timeout unenforced, while an asyncRewake: true hook still keeps timeout enforcement",
       "passed": true,
-      "evidence": "Non-vacuous pass (PR #391 round-1 Codex review flagged the prior version of this assertion as vacuous — the eval-4 prompt was then broadened to organically ask whether any hook configuration leaves timeout unenforced, and this is the resulting re-run, graded directly against this eval's own response.md, not a separate probe). Quote: \"Yes — one specific case: an async command hook (`\\\"async\\\": true`). For those, `timeout` is not enforced at all — the background process is not killed if it runs long... For every other (non-async) hook configuration, the `timeout` field is enforced as a normal wall-clock limit.\""
+      "evidence": "Non-vacuous, correctly-distinguished pass (round-3 CodeRabbit finding on PR #391 flagged the prior wording for treating all async:true hooks as timeout-unenforced without carving out asyncRewake). Quote: \"a command hook with async: true set, and asyncRewake either omitted or false... Claude Code does not enforce the configured timeout at all... A hook with async: true and asyncRewake: true — it still runs in the background... but Claude Code does still enforce timeout on it and will kill it if it runs past that value. So the distinguishing factor isn't \\\"is it async\\\" by itself — it's specifically plain async: true without asyncRewake: true that drops timeout enforcement.\""
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",

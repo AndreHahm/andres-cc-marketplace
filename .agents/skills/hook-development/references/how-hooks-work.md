@@ -624,6 +624,8 @@ See event reference for what context is available for each event.
      "timeout": 5000  // Always set
    }
    ```
+   Note: Claude Code doesn't enforce `timeout` on a plain `async: true` hook (no `asyncRewake`) — set a
+   timeout in the script itself for that case.
 
 ## Performance Considerations
 
@@ -678,7 +680,8 @@ Solution: Be specific with matchers to reduce trigger frequency
 
 4. **Optimize scripts:**
    - Make scripts as fast as possible
-   - Use timeouts to kill slow operations
+   - Use timeouts to kill slow operations (sync or `asyncRewake` hooks only — a plain `async: true`
+     hook's timeout isn't enforced, so cap runtime in the script itself)
    - Avoid network calls without timeouts
 
 ## Debugging Hooks

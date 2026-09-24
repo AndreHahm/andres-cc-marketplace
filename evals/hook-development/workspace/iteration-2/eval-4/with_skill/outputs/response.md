@@ -1,7 +1,8 @@
-## hooks/hooks.json entry
+## hooks/hooks.json — PreToolUse command hook for Bash
 
 ```json
 {
+  "description": "Validate Bash commands before execution",
   "hooks": {
     "PreToolUse": [
       {
@@ -11,7 +12,7 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
             "timeout": 10,
-            "onError": "fail"
+            "onError": "warn"
           }
         ]
       }
@@ -20,39 +21,40 @@
 }
 ```
 
-Notes on this entry:
-- `matcher: "Bash"` is an exact tool-name match, so it fires before every `Bash` call.
-- `${CLAUDE_PLUGIN_ROOT}` is used for the script path so the reference stays portable across installs.
-- `timeout: 10` gives a script expected to finish in ~5 seconds a safety margin (roughly 2x) without leaving it able to hang for anywhere near the 600-second command default — if `validate.sh` should hard-block execution when it fails, `onError: "fail"` (or `exit 2` from the script itself) is the correct way to actually deny the `Bash` call; `onError: "warn"` would only log a non-blocking warning instead.
+The `matcher` is set to `Bash` (exact tool name, case-sensitive) so the hook only fires before `Bash` tool calls, and the handler is a `command` type pointing at `scripts/validate.sh` via `${CLAUDE_PLUGIN_ROOT}` (portable for a distributed plugin). `timeout` is set to `10` seconds: the script itself should complete in about 5 seconds, so 10 gives a reasonable buffer above the expected runtime without leaving it so high that a genuinely hung script blocks the tool call for a long time.
 
 ## What unit does `timeout` use?
 
 Seconds.
 
-## Default timeout value, per hook type
+## Default `timeout` value per hook type
 
 | Hook type | Default timeout |
 |---|---|
-| `command` | 600s |
-| `http` | 600s |
-| `mcp_tool` | 600s |
-| `prompt` | 30s |
-| `agent` | 60s |
+| `command` | 600 seconds |
+| `http` | 600 seconds |
+| `mcp_tool` | 600 seconds |
+| `prompt` | 30 seconds |
+| `agent` | 60 seconds |
 
-Values outside the 1–600s range should be treated as suspect/likely misconfigured.
+`command`, `http`, and `mcp_tool` share the same general default (600s); `prompt` defaults to 30s; `agent` defaults to 60s (with up to 50 tool-use turns).
 
 ## Does any specific hook event override those defaults?
 
-Yes. The 600s default for `command`/`http`/`mcp_tool` hooks is not uniform across every event — Claude Code lowers it in a few specific cases:
+Yes. The 600-second `command`/`http`/`mcp_tool` default is not universal — Claude Code lowers it for certain events:
 
-- On `UserPromptSubmit`, `PreModelSwitch`, and `PostModelSwitch`, the `command`/`http`/`mcp_tool` default is lowered from 600s to **30s**.
-- On `MessageDisplay`, it's lowered to **10s**.
-- `SessionEnd` hooks don't get an individual per-hook default at all — all `SessionEnd` hooks sharing that event instead share a single **1.5-second total budget**.
+- On `UserPromptSubmit`, `PreModelSwitch`, and `PostModelSwitch`, the `command`/`http`/`mcp_tool` default is lowered from 600s to **30 seconds**.
+- On `MessageDisplay`, it's lowered further, to **10 seconds**.
+- `SessionEnd` hooks don't get an individual per-hook default at all — they share a **1.5-second total budget** across the event.
 
-Outside of these named exceptions, the general per-type defaults in the table above apply.
+The `prompt` (30s) and `agent` (60s) defaults aren't documented as having per-event overrides of this kind.
 
-## Are there hook configurations where the timeout value is not actually enforced?
+## Are there hook configurations where the `timeout` value is not actually enforced?
 
-Yes — one specific case: an **async command hook** (`"async": true`). For those, `timeout` is not enforced at all — the background process is not killed if it runs long. Setting `async: true` removes both the blocking wait on the hook's completion *and* the timeout guarantee together; the two are tied to the same mechanism, so you can't keep timeout enforcement while also running the hook in the background. This only applies to command hooks, since `async` is a command-hook-only field. Because of this, async hooks can't be used for anything that needs to return a decision or reliably bound how long it runs — they're appropriate only for fire-and-forget side effects (logging, metrics, webhooks, notifications) where an unbounded run time is acceptable.
+Yes, one specific case: a **command hook running in plain background mode** — `async: true` set, and `asyncRewake` either omitted or `false`. In that configuration, Claude Code does not enforce the configured `timeout` at all; the hook can run indefinitely in the background without being killed, and it delivers its output on a later turn rather than blocking the current one. Because of this, a plain async hook must never be relied on for a safety gate, and if the script itself needs a runtime cap, that cap has to be implemented inside the script (e.g. a `timeout` shell wrapper), not via the hook's own `timeout` field.
 
-For every other (non-async) hook configuration, the `timeout` field is enforced as a normal wall-clock limit: the hook is canceled once it's exceeded, subject to the default (or event-override) values above.
+This exception is narrow and doesn't apply to:
+- A normal synchronous hook (no `async`) — `timeout` is enforced as usual; the process is killed if it exceeds the value.
+- A hook with `async: true` **and** `asyncRewake: true` — it still runs in the background (non-blocking, output delivered later, and it can wake Claude when it exits with code 2), but Claude Code *does* still enforce `timeout` on it and will kill it if it runs past that value.
+
+So the distinguishing factor isn't "is it async" by itself — it's specifically plain `async: true` without `asyncRewake: true` that drops timeout enforcement; adding `asyncRewake: true` restores it while keeping the background/non-blocking behavior.

@@ -187,7 +187,7 @@ All handlers:
 | Field | Required | Description |
 |---|---|---|
 | `type` | yes | `"command"`, `"http"`, `"mcp_tool"`, `"prompt"`, or `"agent"` |
-| `timeout` | no | Seconds before canceling — except an async command hook (`async: true`), where `timeout` is not enforced at all (see Pattern 9 in `references/advanced-hooks.md`). Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
+| `timeout` | no | Seconds before canceling — except an async command hook (`async: true`) without `asyncRewake: true`, where `timeout` is not enforced (see Pattern 9 in `references/advanced-hooks.md`). `asyncRewake: true` still runs in the background but keeps timeout enforcement. Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
 | `statusMessage` | no | Custom spinner text while hook runs |
 | `once` | no | Run once per session then auto-remove. **Only honored in skill frontmatter hooks** — ignored in settings files and agent frontmatter |
 | `if` | no | Exactly one permission rule — no `&&`, `\|\|`, or list syntax. Use separate handlers for multiple conditions |
@@ -422,9 +422,14 @@ the human-readable text output.
 loading) — see `evals.json`'s `testing_validation_coverage` field. **eval-4 re-checked 2026-09-24**
 (issue #388 fix — Pattern 9's async-timeout-enforcement claim in `advanced-hooks.md` corrected to match
 official docs, plus the primary Hook Handler Fields table's `timeout` row qualified with the same
-exception): 6/6 assertions now pass, up from 5/6. eval-4's own prompt was broadened to organically ask
-whether any hook configuration leaves `timeout` unenforced, so this is a direct, non-vacuous re-run
-against the graded response itself, not inferred from a separate probe (PR #391 round-1 review finding)
+exception): 6/6 assertions pass. eval-4's own prompt was broadened to organically ask whether any hook
+configuration leaves `timeout` unenforced, so this is a direct, non-vacuous re-run against the graded
+response itself, not inferred from a separate probe (PR #391 round-1 review finding). **Re-verified
+again same day** (PR #391 round-3 review finding): the async exception was further narrowed — a plain
+`async: true` hook (no `asyncRewake`) has `timeout` unenforced, but `asyncRewake: true` still runs in
+the background while keeping `timeout` enforced; this distinction was verified against the live official
+docs before applying it, and the same correction was swept into `validation-guide.md` and
+`how-hooks-work.md`, which made the same unqualified claim outside this PR's original diff
 (`evals/hook-development/workspace/iteration-2/eval-4/with_skill/grading.json`).
 
 ---
