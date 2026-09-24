@@ -121,7 +121,29 @@ fi
 #     a time: truncating a concatenated multi-span blob at the first
 #     standalone `--` would silently discard every later span's own content
 #     entirely, not just that one span's own tail past its terminator.
-COMMAND_FLAT="${COMMAND//$'\r'/}"
+COMMAND_FLAT="${COMMAND//$'\r\n'/$'\n'}"
+# Only a genuine CRLF pair is collapsed above, not every lone CR -- an unconditional blanket strip
+# of every CR byte (this file's own earlier form) can change what a command's own text looks like
+# relative to real bash whenever a lone CR (not part of CRLF) sits next to another character with
+# special meaning. Applied here for consistency with guard-raw-pr-review.sh's identical fix
+# (security-reviewer finding, PR #380 round 8) even though this file's own `[^;&|]` span matching
+# doesn't track quotes at all (a quoted separator is already a documented residual here) -- a lone
+# CR has no legitimate purpose in a real shell command outside a CRLF pair regardless, so rejecting
+# its mere presence outright is the same low-risk, fail-closed choice made throughout this file.
+case "$COMMAND_FLAT" in
+  *$'\r'*)
+    cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's destructive-cleanup guard detected a lone carriage-return byte (not part of a CRLF pair) in this command -- this guard's own command-flattening step can only safely collapse a full CRLF pair, so a bare CR is denied outright rather than risking a desynced parse."
+  }
+}
+EOF
+    exit 0
+    ;;
+esac
 if [ "$TOOL_NAME" = "Bash" ]; then
   COMMAND_FLAT="${COMMAND_FLAT//$'\\\n'/}"
 elif [ "$TOOL_NAME" = "PowerShell" ]; then
@@ -248,13 +270,18 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-# `[ -f "$DIAG_LOG" ]` (which dereferences a symlink and tests the final target's type) guards
-# every write below -- if the path exists but isn't a regular file (e.g. a FIFO planted by an
-# attacker), opening it for append could block indefinitely, and combined with this hook's
-# `onError: "warn"` timeout, that turns the guarded operation into a fail-open bypass (Codex
-# finding, PR #380). Live-verified: an `mkfifo`'d path skips the write instantly instead of
-# hanging; a regular/nonexistent path still logs normally.
-if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+# `[ ! -L "$DIAG_LOG" ]` rejects the path outright if it's a symlink -- `[ -f "$DIAG_LOG" ]` alone
+# dereferences a symlink and tests the FINAL target's type, so a symlink to a regular file passed
+# `-f` and a dangling symlink passed `! -e`, both following the link and appending to whatever
+# arbitrary file it points at instead of staying inside the repo (Codex finding, PR #380 round 8,
+# live-verified: a symlinked `$DIAG_LOG` pointing outside the repo received both diagnostic lines
+# from an unrelated benign command). Rejecting any FIFO or other non-regular-file target this path
+# might resolve to (not just a symlink) still matters too -- opening it for append could block
+# indefinitely, and combined with this hook's `onError: "warn"` timeout, that turns the guarded
+# operation into a fail-open bypass (Codex finding, PR #380 round 7). Live-verified: an `mkfifo`'d
+# path and a symlinked path both skip the write instantly instead of hanging/following; a regular/
+# nonexistent path still logs normally.
+if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
   { printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 fi
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
@@ -267,7 +294,7 @@ fi
 # same scope (Codacy, PR #380).
 guard_diag_log_finish() {
   local rc=$?
-  if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+  if [ ! -L "$DIAG_LOG" ] && { [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; }; then
     { printf '%s guard=%s event=finish exit=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null
   fi
 }
