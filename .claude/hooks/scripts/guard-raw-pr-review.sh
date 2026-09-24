@@ -584,7 +584,15 @@ else
           || { [ "$c" = '<' ] && [ "$((i + 1))" -lt "$len" ] && [ "${text:$((i + 1)):1}" = '<' ]; } \
           || [ "${text:$i:4}" = "case" ]; then
           force_deny="nested case/comment/heredoc construct, not fully modeled by this scanner"
-          printf '%s\x1e%s\x1e%s' "$out" "${text:$start:$((i - start + 1))}" "$force_deny"
+          # Over-approximate the raw span to the REST of the command (not just up to this point)
+          # -- the caller then denies only if a dangerous endpoint (REPLIES_RE/REVIEWS_RE/
+          # GRAPHQL_RE) actually appears anywhere in that extended raw text, rather than
+          # unconditionally denying every `gh api` call that merely contains one of these unmodeled
+          # constructs. A benign call (e.g. `gh api repos/o/r/issues/1/comments -f
+          # body="$(cat <<'EOF' ... EOF)"`, exactly what `handling-review-findings` posts routinely)
+          # was live-verified to be wrongly denied before this change (CodeRabbit, PR #380 round 7)
+          # -- still fail-closed: a dangerous endpoint anywhere after the construct is still caught.
+          printf '%s\x1e%s\x1e%s' "$out" "${text:$start}" "$force_deny"
           return 0
         fi
       fi
@@ -867,8 +875,14 @@ else
       api_span_raw="${api_span_rest%%$'\x1e'*}"
       api_span_force_deny="${api_span_rest#*$'\x1e'}"
       if [ -n "$api_span_force_deny" ]; then
-        GH_SUBCOMMAND="gh api ($api_span_force_deny)"
-        break 2
+        # Only deny if the (now end-of-string) raw span actually reaches a dangerous endpoint --
+        # an unmodeled construct with no dangerous endpoint after it is not itself a reason to
+        # deny (CodeRabbit, PR #380 round 7; see extract_api_span's own force_deny comment above).
+        if grep -qE "$REPLIES_RE|$REVIEWS_RE|$GRAPHQL_RE" <<< "$api_span_raw"; then
+          GH_SUBCOMMAND="gh api ($api_span_force_deny)"
+          break 2
+        fi
+        continue
       fi
       for api_span in "$api_span_collapsed" "$api_span_raw"; do
         if grep -qE "$REPLIES_RE" <<< "$api_span"; then
