@@ -23,6 +23,11 @@
       "target": "full response"
     },
     {
+      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
+      "type": "presence",
+      "target": "response prose"
+    },
+    {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
       "type": "structure",
       "target": "JSON example"

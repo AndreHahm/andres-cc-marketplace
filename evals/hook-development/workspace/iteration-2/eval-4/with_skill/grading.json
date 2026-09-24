@@ -5,32 +5,37 @@
     {
       "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
       "passed": true,
-      "evidence": "\"timeout\": 10 in the JSON example, explicitly reasoned as '2x margin over the ~5s expected runtime'."
+      "evidence": "\"timeout\": 10, explicitly reasoned as ~2x the expected ~5s runtime."
     },
     {
       "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
       "passed": true,
-      "evidence": "'command hooks: 600 seconds', 'http hooks: 600 seconds', 'mcp_tool hooks: 600 seconds', 'prompt hooks: 30 seconds', 'agent hooks: 60 seconds' — all five stated, all correct."
+      "evidence": "Table lists all five, all correct."
     },
     {
       "text": "The response states the event-specific timeout overrides: 30s on UserPromptSubmit/PreModelSwitch/PostModelSwitch, 10s on MessageDisplay, and a 1.5-second shared budget for SessionEnd",
       "passed": true,
-      "evidence": "'UserPromptSubmit, PreModelSwitch, and PostModelSwitch hooks: default lowered to 30 seconds', 'MessageDisplay hooks: default lowered to 10 seconds', 'SessionEnd hooks: ... combined 1.5-second total budget' — matches exactly, including the SessionEnd shared-budget distinction from a per-hook default."
+      "evidence": "All three overrides stated correctly, including the SessionEnd shared-budget (not per-hook) distinction."
     },
     {
       "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
       "passed": true,
-      "evidence": "Response explicitly reconciles the JSON's timeout:10 against the 600s PreToolUse baseline ('overrides the much larger 600-second command-hook default for PreToolUse, which has no lower event-specific override') — correctly notes PreToolUse itself isn't one of the lowered-default events, so no contradiction."
+      "evidence": "timeout:10 is consistently reconciled against the 600s PreToolUse baseline."
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
       "passed": true,
-      "evidence": "PreToolUse: [ { matcher: \"Bash\", hooks: [ { type: \"command\", ... } ] } ] — correct nested array structure."
+      "evidence": "PreToolUse: [ { matcher: \"Bash\", hooks: [ { type: \"command\", ... } ] } ] — correct."
+    },
+    {
+      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
+      "passed": false,
+      "evidence": "Response states the opposite: 'An explicit timeout is always enforced, including for async: true command hooks... the process is still killed if it exceeds the configured timeout' -- directly citing advanced-hooks.md's own pre-existing line 'Timeout still enforced but doesn't slow Claude Code' as its source. This is NOT an agent error -- the agent faithfully followed the skill's own current (pre-existing, untouched-by-this-PR) content, which itself contradicts the official Claude Code docs (verified live twice this session: 'Claude Code doesn't enforce it on a command hook you run with async: true'). A newly-discovered, out-of-scope defect in advanced-hooks.md:398, not introduced by and not fixed by this PR."
     }
   ],
   "summary": {
-    "assertions_total": 5,
+    "assertions_total": 6,
     "assertions_passed": 5,
-    "pass_rate": 1.0
+    "pass_rate": 0.833
   }
 }
