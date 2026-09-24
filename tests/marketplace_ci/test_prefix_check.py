@@ -30,7 +30,7 @@ requires_symlinks = pytest.mark.skipif(
 )
 
 
-def _write_inventory(repo: Path, plugins: list[dict]) -> Path:
+def _write_inventory(repo: Path, plugins: list[dict], write_manifest: bool = True) -> Path:
     path = repo / ".claude-plugin" / "marketplace-inventory.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -42,6 +42,25 @@ def _write_inventory(repo: Path, plugins: list[dict]) -> Path:
                 "plugins": plugins,
             }
         ),
+        encoding="utf-8",
+    )
+    if write_manifest:
+        # Every existing test's inventory `source` must match an
+        # authoritative marketplace.json entry (find_prefix_violations now
+        # cross-checks the two) -- derive one automatically from the same
+        # plugins list so tests that aren't specifically about the
+        # authoritative-source check don't each need to write their own.
+        _write_marketplace_manifest(
+            repo, [{"name": p["name"], "source": p["source"]} for p in plugins if p.get("source")]
+        )
+    return path
+
+
+def _write_marketplace_manifest(repo: Path, plugins: list[dict]) -> Path:
+    path = repo / ".claude-plugin" / "marketplace.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"name": "fixture", "plugins": plugins}),
         encoding="utf-8",
     )
     return path
@@ -314,3 +333,65 @@ def test_duplicate_prefix_flagged_even_when_second_plugin_retired(tmp_path):
     duplicate_violations = [v for v in violations if "unique marketplace-wide" in v.reason]
     assert len(duplicate_violations) == 1
     assert duplicate_violations[0].plugin == "old-kit"
+
+
+def test_source_mismatching_authoritative_manifest_rejected(tmp_path):
+    # Found by a live Codex cross-model-review pass (round 5): the
+    # inventory's own `source` field is a separately update-able copy, not
+    # necessarily synced with marketplace.json -- a PR could redirect a
+    # prefixed plugin's inventory `source` to an empty in-repo directory
+    # while leaving unprefixed files in the plugin's real, still-registered
+    # (per marketplace.json) location, untouched and unscanned.
+    real_plugin_dir = tmp_path / "git-kit"
+    (real_plugin_dir / "scripts").mkdir(parents=True)
+    (real_plugin_dir / "scripts" / "not-prefixed.py").write_text("", encoding="utf-8")
+    decoy_dir = tmp_path / "decoy-empty-dir"
+    decoy_dir.mkdir()
+    _write_inventory(
+        tmp_path, [_plugin("git-kit", "./decoy-empty-dir", prefix="git")], write_manifest=False
+    )
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "does not match the authoritative" in violations[0].reason
+
+
+def test_source_matching_authoritative_manifest_still_scanned_normally(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_plugin_absent_from_authoritative_manifest_rejected(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")], write_manifest=False
+    )
+    _write_marketplace_manifest(tmp_path, [])  # git-kit not listed at all
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "does not match the authoritative" in violations[0].reason
+
+
+def test_falsy_prefix_values_validated_not_silently_skipped(tmp_path):
+    # Found by a live Codex cross-model-review pass (round 5): `if not
+    # prefix` treated "", 0, and False the same as an absent prefix,
+    # silently skipping format validation instead of rejecting them.
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "does not match" in violations[0].reason
+
+
+def test_permanence_falsy_base_prefix_treated_as_no_prior_prefix():
+    # Sibling fix to the check-prefixes falsy-prefix gap, applied to
+    # find_prefix_permanence_violations' own base_by_id filter.
+    base = {"plugins": [{"id": "p1", "name": "a", "prefix": ""}]}
+    head = {"plugins": [{"id": "p1", "name": "a", "prefix": "abc"}]}
+    assert find_prefix_permanence_violations(base, head) == []
