@@ -271,6 +271,87 @@ def _handle_check_prefixes(args: argparse.Namespace) -> int:
     return 1
 
 
+def _handle_check_prefix_permanence(args: argparse.Namespace) -> int:
+    """PR-review-time enforcement that a plugin's registered component-file
+    prefix (plugin-rulebook R33) is actually permanent -- compares
+    marketplace-inventory.json's plugins[].prefix between --base-sha and
+    the current working tree, failing if any record that had a non-null
+    prefix at base is now missing, or has a different prefix, at head.
+    reconcile.apply_update's own write-once guard only protects the CLI
+    tool's own update path; this is the layer that also catches a
+    hand-edited inventory file or a delete-and-rebootstrap committed
+    directly in a PR (security-reviewer finding, M2). Not part of
+    check-all: unlike every other check-all constituent, this one needs a
+    base ref to compare against, which check-all's own callers (local dev,
+    the `commit` skill) don't have -- kept as its own subcommand, the same
+    pattern check-scope-bypass/run-codex-review already use for a
+    --base-sha-dependent check."""
+    from scripts.marketplace_ci.prefix_check import find_prefix_permanence_violations
+
+    repo = Path.cwd()
+    base_sha = args.base_sha
+
+    resolved = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"], cwd=repo, capture_output=True
+    )
+    if resolved.returncode != 0:
+        print(f"check-prefix-permanence: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
+        return 2
+
+    head_path = repo / ".claude-plugin" / "marketplace-inventory.json"
+    if not head_path.is_file():
+        print("check-prefix-permanence: OK (no marketplace-inventory.json at head)")
+        return 0
+
+    show = subprocess.run(
+        ["git", "show", f"{base_sha}:.claude-plugin/marketplace-inventory.json"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    if show.returncode != 0:
+        if "does not exist" in show.stderr or "exists on disk, but not in" in show.stderr:
+            # Genuinely absent at base (this PR introduces
+            # marketplace-inventory.json for the first time) -- nothing to
+            # compare against, not a failure.
+            print(
+                "check-prefix-permanence: OK (no marketplace-inventory.json at base "
+                f"{base_sha!r} -- nothing to compare)"
+            )
+            return 0
+        # Any other `git show` failure (corrupt object, unreadable repo,
+        # etc) is a real infrastructure problem -- same exit-2 distinction
+        # check-scope-bypass/run-codex-review's own git-command failure
+        # paths already use, never silently treated as a clean pass.
+        print(
+            f"check-prefix-permanence: git show {base_sha!r} failed: {show.stderr}", file=sys.stderr
+        )
+        return 2
+
+    try:
+        base_inventory = json.loads(show.stdout)
+    except json.JSONDecodeError as exc:
+        print(f"check-prefix-permanence: base inventory is not valid JSON: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        head_inventory = json.loads(head_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"check-prefix-permanence: head inventory is not valid JSON: {exc}", file=sys.stderr)
+        return 2
+
+    violations = find_prefix_permanence_violations(base_inventory, head_inventory)
+    if not violations:
+        print("check-prefix-permanence: OK")
+        return 0
+    for violation in violations:
+        print(
+            f"[prefix-permanence] {violation.plugin_id} "
+            f"({violation.plugin_name!r}): {violation.reason}"
+        )
+    return 1
+
+
 def _handle_check_all(args: argparse.Namespace) -> int:
     repo = Path.cwd()
 
@@ -927,6 +1008,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "check-prefixes", help="verify plugin-root files carry their registered prefix"
     ).set_defaults(handler=_handle_check_prefixes)
+
+    check_prefix_permanence = subparsers.add_parser(
+        "check-prefix-permanence",
+        help="verify no plugin's registered prefix was reassigned or dropped since --base-sha",
+    )
+    check_prefix_permanence.add_argument("--base-sha", required=True, metavar="SHA")
+    check_prefix_permanence.set_defaults(handler=_handle_check_prefix_permanence)
 
     check_all = subparsers.add_parser("check-all", help="run every deterministic check")
     check_all.add_argument("--json-output", metavar="PATH", help="also write a JSON report")

@@ -1445,3 +1445,89 @@ def test_check_trust_boundary_falls_back_to_head_without_pre_commit_to_ref(
     rc = main(["check-trust-boundary", "--target", base_sha])
     assert rc == 0
     assert capsys.readouterr().err == ""
+
+
+def _commit_all(git_repo, message):
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", message], cwd=git_repo.root, check=True)
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def _write_marketplace_inventory(git_repo, plugins):
+    git_repo.write(
+        ".claude-plugin/marketplace-inventory.json",
+        json.dumps({"schema_version": "1.0.0", "marketplace_name": "fixture", "plugins": plugins}),
+    )
+
+
+def test_check_prefix_permanence_unresolvable_base_sha_returns_2(monkeypatch, git_repo):
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", "0" * 40]) == 2
+
+
+def test_check_prefix_permanence_no_inventory_at_base_is_ok(monkeypatch, git_repo):
+    # The bootstrapping case: this PR introduces marketplace-inventory.json
+    # for the first time -- nothing to compare against yet.
+    base_sha = _commit_all(git_repo, "init, no inventory yet")
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-prefix-permanence", "--base-sha", base_sha])
+    assert rc == 0
+
+
+def test_check_prefix_permanence_unchanged_prefix_ok(monkeypatch, git_repo):
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    base_sha = _commit_all(git_repo, "base")
+    git_repo.write("README.md", "unrelated change")
+    _commit_all(git_repo, "unrelated")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 0
+
+
+def test_check_prefix_permanence_reassigned_prefix_rejected(monkeypatch, git_repo):
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    base_sha = _commit_all(git_repo, "base")
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "new", "status": "active"}]
+    )
+    _commit_all(git_repo, "reassign prefix")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 1
+
+
+def test_check_prefix_permanence_record_removed_rejected(monkeypatch, git_repo):
+    _write_marketplace_inventory(
+        git_repo,
+        [
+            {"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"},
+            {"id": "plugin_b", "name": "b", "prefix": "xyz", "status": "active"},
+        ],
+    )
+    base_sha = _commit_all(git_repo, "base")
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    _commit_all(git_repo, "drop plugin_b")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 1
+
+
+def test_check_prefix_permanence_new_plugin_with_first_prefix_ok(monkeypatch, git_repo):
+    # A plugin with no prefix at base gaining one for the first time is the
+    # normal, expected case -- never a violation.
+    _write_marketplace_inventory(git_repo, [{"id": "plugin_a", "name": "a", "status": "active"}])
+    base_sha = _commit_all(git_repo, "base, no prefix yet")
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    _commit_all(git_repo, "assign first prefix")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 0

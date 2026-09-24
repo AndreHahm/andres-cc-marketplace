@@ -115,6 +115,24 @@ def apply_update(inventory, operation, collection_key, allowed_fields):
         )
     for record in inventory[collection_key]:
         if record["id"] == operation["id"]:
+            if (
+                operation["field"] == "prefix"
+                and record.get("prefix") is not None
+                and record["prefix"] != operation["new_value"]
+            ):
+                # A component-file prefix (plugin-rulebook R33) is permanent
+                # once assigned, never reused -- mirrors the same guard
+                # plugin-inventory.py's dedicated cmd_set_prefix already
+                # enforces for the local copy; without this, the generic
+                # 'update' path (the canonical marketplace-inventory.json
+                # source of truth) could silently reassign it, which
+                # plugin-inventory.py's own guard alone can't prevent.
+                raise ValueError(
+                    f"apply_update: refusing to overwrite already-registered prefix "
+                    f"{record['prefix']!r} with {operation['new_value']!r} -- a prefix is "
+                    "permanent once assigned; correcting a wrong one is a deliberate human "
+                    "decision, not an ordinary update"
+                )
             record[operation["field"]] = operation["new_value"]
             return
     raise ValueError(f"apply_update: no record with id {operation['id']!r}")

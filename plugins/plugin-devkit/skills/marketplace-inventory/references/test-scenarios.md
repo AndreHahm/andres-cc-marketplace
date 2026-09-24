@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 36-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
+Full 37-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -121,3 +121,10 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
     `prefix` disagrees with its marketplace record's own `prefix`; confirm `plan` emits a `conflict`,
     mirroring the existing `plugin_id`-mismatch check (scenario 5) — never derive one side from the other
     to resolve it automatically
+37. **`apply` rejects reassigning an already-registered prefix via `update` (R33)** — set a plugin's
+    prefix once, then construct a second approved plan whose `update` operation names the same plugin's
+    `id` with `field: "prefix"` and a *different* new value; confirm `apply` rejects it before any write
+    and the inventory file is left byte-identical — a prefix is permanent once assigned, and the generic
+    `update` path must enforce this the same way `plugin-inventory`'s own `set-prefix` command already
+    does for the local mirror. Found by cross-model-review (Codex + Claude, independently corroborated):
+    the shared `reconcile.apply_update` had no such guard until this scenario's fix
