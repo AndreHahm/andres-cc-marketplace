@@ -93,11 +93,19 @@ MARKER="$GIT_DIR/git-kit-marker.txt"
 # security one, and can be cleared manually if it ever becomes large enough to matter.
 DIAG_LOG="$GIT_DIR/git-kit-guard-diagnostics.log"
 DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so this can't itself fail
-{ printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
+# `[ -f "$DIAG_LOG" ]` (which dereferences a symlink and tests the final target's type) guards
+# every write below -- if the path exists but isn't a regular file (e.g. a FIFO planted by an
+# attacker), opening it for append could block indefinitely, and combined with this hook's
+# `onError: "warn"` timeout, that turns the guarded operation into a fail-open bypass (Codex
+# finding, PR #380). Live-verified: an `mkfifo`'d path skips the write instantly instead of
+# hanging; a regular/nonexistent path still logs normally.
+if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+  { printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
+fi
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
 # printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
 # ever read, silently logging date's own exit status instead of this script's real one.
-trap 'rc=$?; { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null' EXIT
+trap 'rc=$?; if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null; fi' EXIT
 
 now=$(date +%s)
 allowed=false
