@@ -23,6 +23,13 @@
       "prompt": "I put my hooks.json at .claude-plugin/hooks.json inside my plugin, and wrote a PostToolUse hook that reads $FILE_PATH as an environment variable inside the script. It never fires / never gets the right data. What's wrong?",
       "expected_output": "Identifies both bugs: hooks.json belongs at <plugin-root>/hooks/hooks.json, not inside .claude-plugin/ (which only holds plugin.json); and command hooks must read event data from stdin as JSON, not from an environment variable substitution like $FILE_PATH.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Timeout field unit and defaults",
+      "prompt": "Using hook-development, write a hooks/hooks.json command-hook entry that runs scripts/validate.sh before every Bash call, with an appropriate timeout for a script that should complete within about 5 seconds. Also state what unit the timeout field uses and its default values.",
+      "expected_output": "The timeout value in the JSON example is expressed in seconds (a small number like 5, not a milliseconds-scale number like 5000), and any stated defaults match 600 for command/http/mcp_tool, 30 for prompt, and 60 for agent hooks -- with no internal contradiction between the JSON example and any prose statement of the unit/defaults.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

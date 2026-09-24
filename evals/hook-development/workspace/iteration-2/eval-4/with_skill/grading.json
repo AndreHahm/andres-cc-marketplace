@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
+      "passed": true,
+      "evidence": "\"timeout\": 10 in the JSON example, explicitly reasoned as '2x the ~5s expected runtime' in the notes below it."
+    },
+    {
+      "text": "If timeout defaults are stated, they match 600 (command/http/mcp_tool), 30 (prompt), 60 (agent)",
+      "passed": true,
+      "evidence": "'command hooks: 600 seconds', 'prompt hooks: 30 seconds', 'agent hooks: 60 seconds' — matches exactly."
+    },
+    {
+      "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
+      "passed": true,
+      "evidence": "Prose explicitly ties the JSON's timeout:10 back to the stated unit ('an explicit timeout of 10 is appropriate here') with no ms-based reasoning anywhere in the response."
+    },
+    {
+      "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
+      "passed": true,
+      "evidence": "PreToolUse: [ { matcher: \"Bash\", hooks: [ { type: \"command\", ... } ] } ] — correct nested array structure."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

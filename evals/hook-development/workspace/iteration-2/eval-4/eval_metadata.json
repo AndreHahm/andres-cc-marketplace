@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
+      "type": "quality",
+      "target": "JSON example"
+    },
+    {
+      "text": "If timeout defaults are stated, they match 600 (command/http/mcp_tool), 30 (prompt), 60 (agent)",
+      "type": "presence",
+      "target": "response prose"
+    },
+    {
+      "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
+      "type": "structure",
+      "target": "full response"
+    },
+    {
+      "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
+      "type": "structure",
+      "target": "JSON example"
+    }
+  ]
+}
