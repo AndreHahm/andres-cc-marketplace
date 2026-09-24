@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -18,6 +19,20 @@ from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 FIXTURES = Path(__file__).parent / "fixtures"
 FIXTURE_REPO_HOOKS = FIXTURES / "repo-hooks" / "hooks.json"
 FIXTURE_REPO_RULES = FIXTURES / "repo-rules"
+
+# Windows' filesystem/CPython stat layer doesn't support real POSIX permission
+# bits at all -- os.chmod on Windows only toggles the read-only attribute, so
+# `path.chmod(0o755)` never actually sets an execute bit to observe, and
+# `stat().st_mode & 0o111` is always 0 regardless of what's requested. This
+# isn't a gap in sync.py/sync_plan.py (both are correctly POSIX-semantics code
+# exercised for real on CI's ubuntu-latest runners) -- it's the same
+# platform-can't-do-this shape as test_prefix_check.py's own `requires_symlinks`
+# marker (symlink creation needing elevation on Windows), applied here to
+# executable-bit tests instead.
+requires_posix_permission_bits = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows' os.chmod/stat don't support real POSIX executable bits",
+)
 
 
 def test_registered_plugin_syncs_only_executable_surface(repo, registry_for):
@@ -231,6 +246,7 @@ def test_apply_sync_plan_writes_created_files(repo, registry_for):
     )
 
 
+@requires_posix_permission_bits
 def test_apply_sync_plan_preserves_executable_bit_on_create(repo, registry_for):
     # Regression guard (Codex PR #349 review): _atomic_write used to always create the
     # destination at write_bytes()'s own default mode, silently dropping an executable
@@ -245,6 +261,7 @@ def test_apply_sync_plan_preserves_executable_bit_on_create(repo, registry_for):
     assert dest.stat().st_mode & 0o777 == 0o755
 
 
+@requires_posix_permission_bits
 def test_plan_plugin_sync_detects_executable_bit_only_drift(repo, registry_for):
     # Codex review finding on PR #349: the content-only `dest.read_bytes() ==
     # source_bytes` comparison treated a byte-identical destination as fully synced
