@@ -354,7 +354,7 @@ def _handle_check_prefix_permanence(args: argparse.Namespace) -> int:
             )
             return 2
 
-    violations = find_prefix_permanence_violations(base_inventory, head_inventory)
+    violations = find_prefix_permanence_violations(base_inventory, head_inventory, repo=repo)
     if not violations:
         print("check-prefix-permanence: OK")
         return 0

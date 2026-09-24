@@ -226,10 +226,15 @@ generic JSON Schema validator against it (no such dependency is available in thi
   needs a human decision about which is correct, never silently trusted.
 - **`prefix` mismatch** (a `conflict` operation, same scope as the `plugin_id` check above — independent
   of it, both can fire together): a plugin's own `plugin-inventory.json` `prefix` disagrees with — or is
-  present on only one side of — this record's own `prefix`. Register the same curated value on both via
-  `plugin-inventory`'s own `set-prefix` mode; never derive one side from the other to resolve this
-  automatically. Both sides absent is not a conflict — that plugin simply hasn't been assigned a prefix
-  yet.
+  present on only one side of — this record's own `prefix`. Never derive one side from the other to
+  resolve this automatically; the remedy depends on which side is missing the value, since the two files
+  have no shared write path: if `plugin-inventory.json` already has it and this marketplace record
+  doesn't, propose an `update` operation setting `prefix` on this record (through the normal
+  `check`/`plan`/`apply` cycle — `prefix` is one of `apply`'s `ALLOWED_UPDATE_FIELDS`); if this record
+  already has it and `plugin-inventory.json` doesn't, register it there via `plugin-inventory`'s own
+  `set-prefix` mode. Running `set-prefix` when `plugin-inventory.json` already holds the value is a
+  no-op that doesn't touch this side's own missing/mismatched field. Both sides absent is not a conflict
+  — that plugin simply hasn't been assigned a prefix yet.
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (including a
   `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`, or a `graded_at`
   that isn't a non-empty string, doesn't end in `'Z'` (UTC), or doesn't parse as ISO-8601) — reject the

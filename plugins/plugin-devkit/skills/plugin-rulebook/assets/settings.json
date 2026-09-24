@@ -270,6 +270,7 @@
         "antigravity_kit_only_dirs": ["bin", "docs"],
         "excluded_dirs": ["agents", "rules"],
         "checked_statuses": ["active", "deprecated"],
+        "checked_statuses_note": "A plugin outside checked_statuses is exempt only if it is also absent from .claude-plugin/marketplace.json -- a superseded/retired plugin still listed there is checked regardless of status; see component-file-prefix.md's Gating section",
         "mechanical_counterpart": "scripts/marketplace_ci/prefix_check.py"
       }
     }

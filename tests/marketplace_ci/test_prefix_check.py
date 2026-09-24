@@ -136,6 +136,100 @@ def test_hooks_json_always_exempt(tmp_path):
     assert find_prefix_violations(tmp_path) == []
 
 
+@requires_symlinks
+def test_symlinked_hooks_json_not_exempt(tmp_path):
+    # Codex P1 finding (PR #387 round 2): the hooks.json manifest exemption
+    # matched on path equality before the symlink check ran, so a
+    # symlinked hooks/hooks.json skipped the symlink rejection and evaded
+    # the prefix scan via its real target. The symlink check must run
+    # first.
+    outside_dir = tmp_path.parent / f"{tmp_path.name}-hooks-target"
+    outside_dir.mkdir()
+    (outside_dir / "real.json").write_text("{}", encoding="utf-8")
+
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "hooks").mkdir(parents=True)
+    (plugin_dir / "hooks" / "hooks.json").symlink_to(outside_dir / "real.json")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path.name == "hooks.json"
+    assert "symlink" in violations[0].reason
+
+
+def test_duplicate_active_records_same_name_rejected_not_scanned(tmp_path):
+    # CodeRabbit Major finding (PR #387 round 2): two active/deprecated
+    # inventory records sharing the same `name` each carry their own
+    # permanent prefix -- scanning the one real, manifest-registered
+    # directory against both would require every file to satisfy two
+    # different prefixes at once. Refuse to guess which record's prefix
+    # governs the directory instead of silently scanning under one of
+    # them, or scanning it twice.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path,
+        [
+            {
+                "id": "plugin_git-kit-1",
+                "name": "git-kit",
+                "source": "./git-kit",
+                "status": "active",
+                "prefix": "git",
+            },
+            {
+                "id": "plugin_git-kit-2",
+                "name": "git-kit",
+                "source": "./git-kit",
+                "status": "deprecated",
+                "prefix": "old",
+            },
+        ],
+        write_manifest=False,
+    )
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "2 active/deprecated" in violations[0].reason
+    assert "git-kit" in violations[0].reason
+
+
+def test_active_record_prefix_wins_over_retired_same_name(tmp_path):
+    # A retired copy and its active successor can legitimately share a
+    # `name` in marketplace-inventory.json -- the single active/deprecated
+    # record must win; the retired record's own prefix is never applied to
+    # the manifest-registered directory.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "old-check.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path,
+        [
+            {
+                "id": "plugin_git-kit-old",
+                "name": "git-kit",
+                "source": "./git-kit",
+                "status": "retired",
+                "prefix": "old",
+            },
+            {
+                "id": "plugin_git-kit-new",
+                "name": "git-kit",
+                "source": "./git-kit",
+                "status": "active",
+                "prefix": "git",
+            },
+        ],
+        write_manifest=False,
+    )
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "'git-'" in violations[0].reason
+
+
 def test_antigravity_bin_and_docs_checked_only_for_that_plugin(tmp_path):
     plugin_dir = tmp_path / "antigravity-kit"
     (plugin_dir / "bin").mkdir(parents=True)
@@ -353,6 +447,35 @@ def test_permanence_unrenamed_prefixed_record_no_violation():
     assert find_prefix_permanence_violations(base, head) == []
 
 
+def test_permanence_coordinated_rename_with_matching_manifest_no_violation(tmp_path):
+    # Live CodeRabbit + Codex review (PR #387 round 2): a rename
+    # coordinated with a matching marketplace.json update in the same PR
+    # keeps the head record joined to its authoritative entry --
+    # find_prefix_violations still finds and scans it under the new name,
+    # so this isn't a real permanence violation. `reconcile.
+    # apply_status_transition`'s own `new_name` field is exactly this
+    # supported, `naming_history`-tracked rename.
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit-legacy", "source": "./git-kit"}])
+    base = {"plugins": [{"id": "p1", "name": "git-kit", "source": "./git-kit", "prefix": "git"}]}
+    head = {
+        "plugins": [{"id": "p1", "name": "git-kit-legacy", "source": "./git-kit", "prefix": "git"}]
+    }
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path) == []
+
+
+def test_permanence_uncoordinated_rename_with_repo_still_violation(tmp_path):
+    # The manifest wasn't updated to match the rename -- the join is
+    # broken, so this is still a violation even when `repo` is supplied.
+    _write_marketplace_manifest(tmp_path, [{"name": "git-kit", "source": "./git-kit"}])
+    base = {"plugins": [{"id": "p1", "name": "git-kit", "source": "./git-kit", "prefix": "git"}]}
+    head = {
+        "plugins": [{"id": "p1", "name": "git-kit-legacy", "source": "./git-kit", "prefix": "git"}]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert len(violations) == 1
+    assert "git-kit" in violations[0].reason and "git-kit-legacy" in violations[0].reason
+
+
 def test_malformed_prefix_rejected(tmp_path):
     # Found by a live Codex cross-model-review pass (round 4): a
     # hand-edited marketplace-inventory.json bypassing the CLI's own
@@ -532,6 +655,24 @@ def test_null_source_on_prefixed_plugin_rejected_not_silently_skipped(tmp_path):
     assert len(violations) == 1
     assert violations[0].plugin == "git-kit"
     assert "does not match the authoritative" in violations[0].reason
+
+
+def test_null_source_and_absent_from_manifest_rejected_not_crash(tmp_path):
+    # A checked-status (active/deprecated) prefixed plugin can reach the
+    # scan loop even when it's genuinely absent from marketplace.json
+    # (never installed, or removed) -- in that case `authoritative_source`
+    # is also None, so `None != None` alone would be False and let a null
+    # `source` fall through to `repo / source`, a TypeError at runtime.
+    # `source is None` must be checked explicitly rather than folded into
+    # that comparison. Surfaced by `ty check` after PR #387 round 2's
+    # per-name selection refactor made `source`'s type visible.
+    entry = _plugin("git-kit", "./git-kit", prefix="git")
+    entry["source"] = None
+    _write_inventory(tmp_path, [entry], write_manifest=False)
+    _write_marketplace_manifest(tmp_path, [])  # git-kit not listed at all
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
 
 
 def _prefix_schema_pattern(prefix_schema: dict) -> str:
