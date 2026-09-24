@@ -158,22 +158,30 @@ def _load_authoritative_sources(
 
 
 def _iter_files(root: Path, repo_resolved: Path):
-    """Yield every file under `root`, refusing to cross a symlink at any
-    level -- the scope directory itself (e.g. a committed `scripts -> /`
-    symlink), or a symlinked entry partway down the tree. `recurse_symlinks
+    """Yield every real file under `root`, plus every symlink encountered
+    -- including `root` itself -- so the caller can flag it as a violation
+    rather than have it silently vanish from the scan. `recurse_symlinks
     =False` (Python 3.13+) already stops `rglob` descending into a symlinked
-    subdirectory, but it still yields the symlink itself as a path, and does
-    nothing about the *starting* directory being a symlink -- both are
-    checked explicitly here rather than relied on implicitly. Found by a
-    live security-reviewer pass: a plugin tree is ordinary contributor-
-    controlled content, so a committed symlink pointing outside the repo is
-    a realistic PR-contributed input, not a hypothetical."""
-    if root.is_symlink() or not root.is_dir():
+    subdirectory; it still yields the symlink itself as a path, which this
+    function now surfaces instead of discarding. Never follows a symlink to
+    decide what it points to (file vs. directory) -- a symlink's mere
+    presence in a prefix-scoped directory is what gets flagged, regardless
+    of target. Found by a live security-reviewer pass (a committed symlink
+    pointing outside the repo is realistic contributor-controlled input,
+    not hypothetical) and a later cross-model-review round (round 7: the
+    prior 'continue'/'return' silently dropped the symlink from the scan
+    entirely instead of flagging it, letting an unprefixed file bypass R33
+    via a symlink)."""
+    if root.is_symlink():
+        yield root
+        return
+    if not root.is_dir():
         return
     if not root.resolve().is_relative_to(repo_resolved):
         return
     for path in sorted(root.rglob("*", recurse_symlinks=False)):
         if path.is_symlink():
+            yield path
             continue
         if path.is_file():
             yield path
@@ -331,6 +339,19 @@ def find_prefix_violations(
         for dirname in scope_dirs:
             for file_path in _iter_files(plugin_dir / dirname, repo_resolved):
                 if file_path == hooks_manifest:
+                    continue
+                if file_path.is_symlink():
+                    violations.append(
+                        PrefixViolation(
+                            plugin=plugin_name,
+                            path=file_path,
+                            reason=(
+                                "symlinked path found in a prefix-scoped directory -- "
+                                "symlinks are not permitted here, since a symlink's "
+                                "basename and target both evade the prefix scan"
+                            ),
+                        )
+                    )
                     continue
                 if not file_path.name.startswith(expected_prefix):
                     violations.append(
