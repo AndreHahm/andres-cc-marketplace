@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Persisted smoke test for marketplace-inventory: frontmatter validity, referenced-file
-existence, Bash-scope grant consistency, 32 behavioral scenario checks against the
+existence, Bash-scope grant consistency, 33 behavioral scenario checks against the
 shared CLI script's own subcommands, and one static schema/script-conformance check
 (check_schema_conformance, which never invokes the CLI)."""
 
@@ -1622,6 +1622,57 @@ def check_prefix_duplicate_rejected():
         return True, "apply correctly rejected a marketplace-wide duplicate prefix"
 
 
+def check_prefix_reassignment_via_update_rejected():
+    """R33 scenario: a prefix is permanent once assigned -- an ordinary
+    'update' operation must never be able to silently reassign an
+    already-registered plugin to a different prefix, matching the same
+    write-once guard plugin-inventory.py's own set-prefix command already
+    enforces for the local mirror. Found by cross-model-review: the generic
+    apply_update path had no such guard until this check was added."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "first_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": plugin_id, "field": "prefix", "new_value": "pla"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return (
+                False,
+                f"first apply (initial prefix) unexpectedly failed: {apply.stderr.strip()}",
+            )
+
+        before_text = inventory_path.read_text(encoding="utf-8")
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "reassign_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": plugin_id, "field": "prefix", "new_value": "new"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted reassigning an already-registered prefix -- should reject"
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a rejected prefix reassignment"
+        return True, "apply correctly rejected reassigning an already-registered prefix via update"
+
+
 def check_prefix_mismatch_conflict():
     """R33 scenario: a plugin-inventory.json whose prefix disagrees with the
     marketplace record's own prefix must surface as a conflict, mirroring
@@ -1715,6 +1766,7 @@ CHECKS = [
     check_prefix_valid_accepted,
     check_prefix_format_rejected,
     check_prefix_duplicate_rejected,
+    check_prefix_reassignment_via_update_rejected,
     check_prefix_mismatch_conflict,
 ]
 
