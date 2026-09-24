@@ -18,8 +18,18 @@ marketplace-inventory.json and the plugin trees it names.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
+
+# Mirrors inventory_common.models.PREFIX_PATTERN / the identical
+# `^[a-z]{3,4}$` pattern hand-duplicated in marketplace-inventory.schema.json
+# and plugin-inventory.schema.json -- keep all four in sync (R20). Not
+# imported directly: this module lives under the top-level scripts/ tree,
+# not inside any plugin, and importing a specific plugin's internal
+# inventory_common package from here would be backwards coupling (top-level
+# CI tooling depending on one plugin's own implementation detail).
+PREFIX_PATTERN = re.compile(r"^[a-z]{3,4}$")
 
 # Root-level directories this rule governs, checked recursively. Distinct
 # from sync_plan.py's COMPONENT_DIRS (skills/agents/commands/hooks/rules) --
@@ -140,9 +150,18 @@ def find_prefix_violations(
 ) -> list[PrefixViolation]:
     """Read marketplace-inventory.json and return every file, across every
     registered active/deprecated plugin's in-scope directories, whose
-    basename doesn't start with that plugin's own '<prefix>-'. Returns an
-    empty list when no marketplace-inventory.json exists at all (this
-    repo/target has never bootstrapped one) or when no plugin has a
+    basename doesn't start with that plugin's own '<prefix>-'. Also
+    validates every registered `prefix`'s own format and marketplace-wide
+    uniqueness (regardless of plugin status, since a prefix is permanent
+    and never reused even after retirement) -- `_validate_prefixes` in
+    marketplace-inventory.py's own CLI path already enforces both, but only
+    on the CLI's own apply/bootstrap path; a marketplace-inventory.json
+    hand-edited directly in a PR (bypassing the CLI entirely) previously
+    reached this checker with neither ever checked, letting a malformed or
+    duplicated prefix pass as long as the matching files were renamed to
+    match it. Found by a live Codex cross-model-review pass, round 4.
+    Returns an empty list when no marketplace-inventory.json exists at all
+    (this repo/target has never bootstrapped one) or when no plugin has a
     registered prefix yet; both are the same "inert until registered" gate
     plugin-rulebook's own R33 and this checker are required to agree on.
     Malformed input (invalid JSON, a plugin record missing a required
@@ -157,11 +176,53 @@ def find_prefix_violations(
     violations: list[PrefixViolation] = []
     repo_resolved = repo.resolve()
 
+    # Format + marketplace-wide uniqueness, across every plugin regardless
+    # of status -- checked in its own pass, before the file-basename scan
+    # below, since a plugin with a malformed prefix has no well-formed
+    # `expected_prefix` to scan files against in the first place.
+    invalid_prefix_plugins: set[str] = set()
+    assigned_prefixes: dict[str, str] = {}
+    for plugin in inventory.get("plugins", []):
+        prefix = plugin.get("prefix")
+        if not prefix:
+            continue
+        plugin_name = plugin.get("name", "?")
+        if not isinstance(prefix, str) or not PREFIX_PATTERN.match(prefix):
+            invalid_prefix_plugins.add(plugin_name)
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"registered prefix {prefix!r} does not match {PREFIX_PATTERN.pattern!r} "
+                        "(3-4 lowercase letters, no separator)"
+                    ),
+                )
+            )
+            continue
+        if prefix in assigned_prefixes:
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"registered prefix {prefix!r} is already used by "
+                        f"{assigned_prefixes[prefix]!r} -- a prefix is unique marketplace-wide"
+                    ),
+                )
+            )
+            continue
+        assigned_prefixes[prefix] = plugin_name
+
     for plugin in inventory.get("plugins", []):
         prefix = plugin.get("prefix")
         if not prefix:
             continue
         if plugin.get("status") not in CHECKED_STATUSES:
+            continue
+        if plugin.get("name", "?") in invalid_prefix_plugins:
+            # Already flagged above; a malformed prefix has no well-formed
+            # `<prefix>-` pattern to scan this plugin's files against.
             continue
         source = plugin.get("source")
         if not source:
