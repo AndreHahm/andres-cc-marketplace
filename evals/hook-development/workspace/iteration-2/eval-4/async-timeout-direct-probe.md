@@ -7,6 +7,11 @@ after the #388 fix — that directly forces engagement with that claim, giving a
 confirmation that the fixed skill content is what the model actually surfaces. Referenced from
 `with_skill/grading.json`'s assertion 5 evidence field instead of describing this only in prose.
 
+**Re-run 2026-09-24:** this probe was run twice. The first run (superseded, no longer quoted here)
+captured the async-timeout line's first corrected wording, which this branch's own
+`cross-model-review` pass then found self-contradictory and further corrected. This file now holds
+only the second run, against the final wording, so nothing here quotes stale text.
+
 ## Prompt given to the agent
 
 > I'm configuring a PostToolUse command hook with `async: true` and a `timeout: 5`. If my script
@@ -14,46 +19,37 @@ confirmation that the fixed skill content is what the model actually surfaces. R
 > apply to async hooks?
 >
 > (Agent instructed to read hook-development's SKILL.md and references first, then answer directly
-> as if a user asked it.)
+> as if a user asked it, quoting the current characteristic line verbatim.)
 
 ## Agent's full answer
 
-No — Claude Code will not kill your script at 5 seconds. With `async: true`, the `timeout` value is
-not enforced against the running process.
+No — Claude Code will not kill your script at 5 seconds. When `async: true` is set on a command
+hook, the `timeout` field is not enforced at all.
 
-Per the hook-development skill's own reference material (`references/advanced-hooks.md`, Pattern 9:
-"Async Hook for Slow Operations"), which documents exactly this combination:
+From the hook-development skill's own reference material:
 
-> **Timeout is not enforced — the process isn't killed if it runs long; `async: true` only removes
-> the blocking wait, not the timeout guarantee.**
+- `references/advanced-hooks.md`, Pattern 9 ("Async Hook for Slow Operations"), under
+  **Characteristics**:
+  > "Timeout is not enforced — the process isn't killed if it runs long; `async: true` removes both
+  > the blocking wait and the timeout guarantee"
 
-So concretely, for your case:
-- Claude Code will not wait for your hook to finish before continuing (that's what `async: true` buys
-  you — the blocking wait is removed).
-- Your 30-second script will keep running in the background to completion; it will not be killed at
-  the 5-second mark despite `timeout: 5`.
-- The `timeout` field's normal killing behavior only applies to synchronous (blocking) command hooks.
-  Once you set `async: true`, that guarantee goes away — the field stops being a hard cap on
-  wall-clock runtime.
+- SKILL.md's Hook Handler Fields table (Command-only fields) states the same thing more concisely:
+  > `async` — "`true` = background, non-blocking, command hooks only. Cannot block, cannot return
+  > decisions, and delivers output on a later turn — never use for safety gates"
 
-Practical implications also called out by the same pattern/skill:
-- Async hooks cannot block tool execution and cannot return a decision — use them only for side
-  effects (logging, metrics, webhooks, notifications, file I/O), never as a safety/validation gate.
-- Pair `async: true` with `onError: "warn"` since background failures don't affect Claude's execution
-  anyway.
-- If you actually need the 5-second cap enforced, don't use `async: true` — a synchronous command
-  hook is where `timeout` acts as a real kill switch.
+So with `async: true` and `timeout: 5`, your 30-second script will run to completion in the
+background — Claude Code won't wait for it, won't block on it, and won't kill it at 5 seconds. The
+`timeout` value becomes effectively meaningless for an async hook (you could remove it and behavior
+would be unchanged). This is also why the skill's own type-decision guidance says async hooks
+"cannot block, cannot return decisions" — they're for side effects only (logging, metrics,
+notifications, file I/O), never for anything that needs to actually enforce a time limit or gate an
+action.
 
-**Source verified:** read `plugins/plugin-devkit/skills/hook-development/SKILL.md` (Hook Handler
-Fields table, describing `async` as background/non-blocking) and
-`plugins/plugin-devkit/skills/hook-development/references/advanced-hooks.md` (Pattern 9, lines
-~370-401), which contains the explicit statement quoted above.
+If you need the 5-second timeout to actually be enforced (i.e., the process killed if it overruns),
+you need a synchronous (blocking) command hook instead — drop `async: true`, and the timeout will be
+enforced as documented in the Hook Handler Fields table.
 
-## Note on wording drift
-
-The quoted line above ("only removes the blocking wait, not the timeout guarantee") is the *first*
-corrected wording, which this session's own `cross-model-review` pass (Codex, high confidence)
-subsequently found self-contradictory and superseded with: "`async: true` removes both the blocking
-wait and the timeout guarantee." This probe's substance — that the timeout is not enforced for async
-hooks — is unaffected by that later wording refinement; the probe was not re-run against the final
-wording.
+**Source verified:** answered directly from
+`plugins/plugin-devkit/skills/hook-development/SKILL.md` and
+`plugins/plugin-devkit/skills/hook-development/references/advanced-hooks.md` (Pattern 9). No files
+were modified for this probe — a read-only lookup task.
