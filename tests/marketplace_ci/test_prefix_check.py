@@ -8,6 +8,7 @@ import pytest
 
 from scripts.marketplace_ci.prefix_check import (
     CHECKED_STATUSES,
+    PREFIX_PATTERN,
     find_prefix_permanence_violations,
     find_prefix_violations,
 )
@@ -531,3 +532,58 @@ def test_null_source_on_prefixed_plugin_rejected_not_silently_skipped(tmp_path):
     assert len(violations) == 1
     assert violations[0].plugin == "git-kit"
     assert "does not match the authoritative" in violations[0].reason
+
+
+def _prefix_schema_pattern(prefix_schema: dict) -> str:
+    """Extract the `pattern` from a schema's `prefix` property, whether
+    declared as a plain `{"type": "string", "pattern": ...}` or as
+    `{"anyOf": [{"type": "null"}, {"type": "string", "pattern": ...}]}`."""
+    if "pattern" in prefix_schema:
+        return prefix_schema["pattern"]
+    for option in prefix_schema.get("anyOf", []):
+        if "pattern" in option:
+            return option["pattern"]
+    raise AssertionError(f"no 'pattern' found in prefix schema: {prefix_schema!r}")
+
+
+def test_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
+    # R33's prefix format '^[a-z]{3,4}$' is intentionally hand-duplicated in
+    # 4 places -- prefix_check.py's own PREFIX_PATTERN comment explains it
+    # deliberately avoids importing plugin-devkit code to avoid backwards
+    # coupling, so it can't just reuse inventory_common.models.PREFIX_PATTERN
+    # directly. Nothing else asserted they stay identical (Qodo review
+    # finding, PR #387) -- this closes that gap.
+    import importlib.util
+
+    repo_root = Path(__file__).resolve().parents[2]
+    models_path = (
+        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "models.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "_inventory_common_models_for_sync_test", models_path
+    )
+    assert spec is not None and spec.loader is not None
+    models = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(models)
+
+    marketplace_schema = json.loads(
+        (
+            repo_root
+            / "plugins/plugin-devkit/skills/marketplace-inventory/assets"
+            / "marketplace-inventory.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    plugin_schema = json.loads(
+        (
+            repo_root
+            / "plugins/plugin-devkit/skills/plugin-inventory/assets"
+            / "plugin-inventory.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert models.PREFIX_PATTERN.pattern == PREFIX_PATTERN.pattern
+    assert (
+        _prefix_schema_pattern(marketplace_schema["definitions"]["plugin"]["properties"]["prefix"])
+        == PREFIX_PATTERN.pattern
+    )
+    assert _prefix_schema_pattern(plugin_schema["properties"]["prefix"]) == PREFIX_PATTERN.pattern
