@@ -260,16 +260,26 @@ DIAG_GUARD_NAME="${0##*/}"  # no external process (unlike `basename "$0"`), so t
 if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
   { printf '%s guard=%s event=start\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" >> "$DIAG_LOG" || true; } 2>/dev/null
 fi
-# `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
-# printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
-# ever read, silently logging date's own exit status instead of this script's real one.
-# The write is wrapped in a `{ ...; }` group before `2>/dev/null` (not appended directly to the
-# `printf`), since a failed `>> "$DIAG_LOG"` open reports its own error to stderr *before* an
-# inline `2>/dev/null` on the same simple command takes effect -- live-verified: an ungrouped
-# `printf ... >> file 2>/dev/null` still leaks "Permission denied" to real stderr on a failed
-# open, while `{ printf ... >> file || true; } 2>/dev/null` reliably suppresses it (CodeRabbit
-# finding, PR #380).
-trap 'rc=$?; if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null; fi' EXIT
+# A named function, not an inline `trap '...' EXIT` string -- ShellCheck's SC2154 ("rc is
+# referenced but not assigned") can't track an assignment made inside a trap's own single-quoted
+# argument, even though `rc=$?` genuinely runs before `"$rc"` is read there; a real function
+# resolves this cleanly since `local rc=$?` and its later use are both ordinary statements in the
+# same scope (Codacy, PR #380). `local rc=$?` is still captured FIRST, on its own statement -- a
+# command substitution later in the same printf argument list (the `$(date ...)` call) would
+# otherwise overwrite `$?` before it's read, silently logging date's own exit status instead of
+# this script's real one. The write is wrapped in a `{ ...; }` group before `2>/dev/null` (not
+# appended directly to the `printf`), since a failed `>> "$DIAG_LOG"` open reports its own error to
+# stderr *before* an inline `2>/dev/null` on the same simple command takes effect -- live-verified:
+# an ungrouped `printf ... >> file 2>/dev/null` still leaks "Permission denied" to real stderr on a
+# failed open, while `{ printf ... >> file || true; } 2>/dev/null` reliably suppresses it
+# (CodeRabbit finding, PR #380).
+guard_diag_log_finish() {
+  local rc=$?
+  if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+    { printf '%s guard=%s event=finish exit=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null
+  fi
+}
+trap guard_diag_log_finish EXIT
 
 now=$(date +%s)
 allowed=false
@@ -597,7 +607,7 @@ else
         fi
       fi
       if [ "${in_squote_stack[$depth]}" -eq 1 ]; then
-        if [ "${in_ansiq_stack[$depth]}" -eq 1 ] && [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+        if [ "${in_ansiq_stack[$depth]}" -eq 1 ] && [ "$c" = "\\" ] && [ "$((i + 1))" -lt "$len" ]; then
           if [ "$depth" -eq 0 ]; then out+="$c${text:$((i + 1)):1}"; fi
           i=$((i + 2))
           continue
@@ -616,10 +626,10 @@ else
         # at the first (escaped) backtick, absorbing the real closing backtick(s) and any separator
         # after them as ordinary scanned content instead of the genuinely separate command that
         # follows in real bash (Codex finding, round 5, live-verified).
-        if [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+        if [ "$c" = "\\" ] && [ "$((i + 1))" -lt "$len" ]; then
           nc="${text:$((i + 1)):1}"
           case "$nc" in
-            '`'|'\'|'$')
+            '`'|"\\"|'$')
               if [ "$depth" -eq 0 ]; then out+="$c$nc"; fi
               i=$((i + 2))
               continue
@@ -649,10 +659,10 @@ else
         continue
       fi
       if [ "${in_dquote_stack[$depth]}" -eq 1 ]; then
-        if [ "$tool_name" = "Bash" ] && [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+        if [ "$tool_name" = "Bash" ] && [ "$c" = "\\" ] && [ "$((i + 1))" -lt "$len" ]; then
           nc="${text:$((i + 1)):1}"
           case "$nc" in
-            '"'|'\'|'$'|'`')
+            '"'|"\\"|'$'|'`')
               if [ "$depth" -eq 0 ]; then out+="$c$nc"; fi
               i=$((i + 2))
               continue
@@ -698,7 +708,7 @@ else
         i=$((i + 1))
         continue
       fi
-      if [ "$tool_name" = "Bash" ] && [ "$c" = '\' ] && [ "$((i + 1))" -lt "$len" ]; then
+      if [ "$tool_name" = "Bash" ] && [ "$c" = "\\" ] && [ "$((i + 1))" -lt "$len" ]; then
         nc="${text:$((i + 1)):1}"
         if [ "$depth" -eq 0 ]; then out+="$c$nc"; fi
         i=$((i + 2))
