@@ -164,7 +164,7 @@ The hook's `onError` setting modifies how errors are handled:
 {
   "type": "command",
   "command": "script.sh",
-  "timeout": 5000,
+  "timeout": 5,
   "onError": "warn|fail|continue"
 }
 ```
@@ -243,7 +243,7 @@ If hook doesn't complete before timeout:
 ```json
 {
   "command": "long-running.sh",
-  "timeout": 5000  // 5 seconds
+  "timeout": 5  // 5 seconds
 }
 ```
 

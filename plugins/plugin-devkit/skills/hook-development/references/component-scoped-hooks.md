@@ -53,13 +53,13 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/validate.sh"
-          timeout: 2000
+          timeout: 2
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
-          timeout: 2000
+          timeout: 2
 ---
 ```
 
@@ -79,7 +79,7 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/prettier.sh"
-          timeout: 2000
+          timeout: 2
           onError: "warn"
 ---
 
@@ -103,7 +103,7 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-linter.sh"
-          timeout: 3000
+          timeout: 3
 ---
 ```
 
@@ -123,13 +123,13 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/security-check.sh"
-          timeout: 2000
+          timeout: 2
   PostToolUse:
     - matcher: "^Bash$"
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/log-exec.sh"
-          timeout: 1000
+          timeout: 1
 ---
 ```
 
@@ -169,7 +169,7 @@ hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/init-db.sh"
           once: true
-          timeout: 5000
+          timeout: 5
 ---
 ```
 
@@ -283,13 +283,13 @@ hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/check-formatters.sh"
           once: true
-          timeout: 2000
+          timeout: 2
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
-          timeout: 3000
+          timeout: 3
 ---
 
 This skill automatically formats code. The check-formatters hook runs once to verify Prettier/Black are installed.
@@ -307,13 +307,13 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-tests.sh"
-          timeout: 15000
+          timeout: 15
           onError: "warn"
   Stop:
     - hooks:
         - type: prompt
           prompt: "All tests passed? ${ARGUMENTS}\n\nRespond: {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}"
-          timeout: 10000
+          timeout: 10
 ---
 
 This agent runs tests after file changes and intelligently decides if work can stop.
@@ -331,7 +331,7 @@ hooks:
       hooks:
         - type: command
           command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/audit-bash.sh"
-          timeout: 2000
+          timeout: 2
 ---
 ```
 

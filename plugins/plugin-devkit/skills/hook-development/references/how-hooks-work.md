@@ -286,7 +286,7 @@ To gate a hook on multiple conditions, define separate handlers rather than tryi
 {
   "type": "command",
   "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-  "timeout": 2000,
+  "timeout": 2,
   "env": {
     "DEBUG": "true"
   }
@@ -320,7 +320,7 @@ To gate a hook on multiple conditions, define separate handlers rather than tryi
 {
   "type": "prompt",
   "prompt": "Is this code safe to deploy? Answer YES or NO. Context: ${ARGUMENTS}",
-  "timeout": 10000
+  "timeout": 10
 }
 ```
 
@@ -351,7 +351,7 @@ To gate a hook on multiple conditions, define separate handlers rather than tryi
 {
   "type": "agent",
   "agent": "security-verifier",
-  "timeout": 15000
+  "timeout": 15
 }
 ```
 
@@ -621,7 +621,7 @@ See event reference for what context is available for each event.
    ```json
    {
      "command": "...",
-     "timeout": 5000  // Always set
+     "timeout": 5  // Always set
    }
    ```
 

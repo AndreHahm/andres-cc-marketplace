@@ -107,7 +107,7 @@ See `references/command-hook-input-parsing.md` for correct field paths per event
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/script.sh",
-            "timeout": 5000,
+            "timeout": 5,
             "onError": "warn"
           }
         ]

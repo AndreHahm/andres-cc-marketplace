@@ -57,7 +57,7 @@ Copy-paste starting points and proven implementation patterns for Claude Code ho
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/my-script.sh",
-            "timeout": 2000
+            "timeout": 2
           }
         ]
       }
@@ -88,7 +88,7 @@ Copy-paste starting points and proven implementation patterns for Claude Code ho
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
-            "timeout": 3000,
+            "timeout": 3,
             "onError": "warn",
             "env": {
               "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
@@ -145,7 +145,7 @@ exit 0
           {
             "type": "prompt",
             "prompt": "Does this prompt contain code or a legitimate technical question? ${ARGUMENTS}\n\nRespond with: {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}",
-            "timeout": 10000
+            "timeout": 10
           }
         ]
       }
@@ -171,7 +171,7 @@ If LLM responds with `ok: false`, prompt is blocked with reason shown to user.
           {
             "type": "prompt",
             "prompt": "Evaluate if work can stop: ${ARGUMENTS}\n\nRespond with: {\"ok\": true, \"reason\": \"why stop\"} or {\"ok\": false, \"reason\": \"why continue\"}",
-            "timeout": 30000
+            "timeout": 30
           }
         ]
       }
@@ -198,7 +198,7 @@ If `ok: false`, stop is prevented and reason shown to Claude. Always add a `stop
           {
             "type": "prompt",
             "prompt": "Is this bash command safe? Command: ${ARGUMENTS}\n\nRespond: {\"ok\": true} or {\"ok\": false, \"reason\": \"why not\"}",
-            "timeout": 15000
+            "timeout": 15
           }
         ]
       }
@@ -229,19 +229,19 @@ If `ok: false`, stop is prevented and reason shown to Claude. Always add a `stop
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh",
-            "timeout": 3000,
+            "timeout": 3,
             "onError": "warn"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/test.sh",
-            "timeout": 10000,
+            "timeout": 10,
             "onError": "warn"
           }
         ]
@@ -271,7 +271,7 @@ If `ok: false`, stop is prevented and reason shown to Claude. Always add a `stop
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/prettier.sh",
-            "timeout": 2000
+            "timeout": 2
           }
         ]
       },
@@ -281,7 +281,7 @@ If `ok: false`, stop is prevented and reason shown to Claude. Always add a `stop
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/black.sh",
-            "timeout": 2000
+            "timeout": 2
           }
         ]
       }
@@ -308,7 +308,7 @@ If `ok: false`, stop is prevented and reason shown to Claude. Always add a `stop
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-code.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "warn"
           }
         ]
@@ -355,7 +355,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-commit.sh",
-            "timeout": 5000,
+            "timeout": 5,
             "onError": "fail"
           }
         ]
@@ -405,7 +405,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-to-service.sh",
-            "timeout": 5000,
+            "timeout": 5,
             "onError": "warn",
             "async": true
           }
@@ -469,7 +469,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup.sh",
-            "timeout": 3000,
+            "timeout": 3,
             "onError": "warn",
             "async": true
           }
@@ -951,7 +951,7 @@ cat > test-hook.json <<'EOF'
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-          "timeout": 2000
+          "timeout": 2
         }]
       }
     ]
