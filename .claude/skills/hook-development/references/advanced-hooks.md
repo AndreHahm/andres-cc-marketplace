@@ -49,7 +49,7 @@ Production-grade patterns for complex hook scenarios, advanced use cases, and so
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/conditional-format.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "env": {
               "ALLOWED_EXTENSIONS": ".js,.jsx,.ts,.tsx",
               "FORMAT_JS": "true"
@@ -97,13 +97,13 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-primary.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "continue"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-fallback.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "warn"
           }
         ]
@@ -240,7 +240,7 @@ Repeat the same `{ "matcher": ..., "hooks": [...] }` entry once per tool inside 
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-            "timeout": 2000
+            "timeout": 2
           }
         ]
       },
@@ -250,7 +250,7 @@ Repeat the same `{ "matcher": ..., "hooks": [...] }` entry once per tool inside 
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/collect-test-metrics.sh",
-            "timeout": 1000,
+            "timeout": 1,
             "onError": "warn"
           }
         ]
@@ -325,7 +325,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-before-write.sh",
-            "timeout": 1000,
+            "timeout": 1,
             "onError": "fail"
           }
         ]
@@ -381,7 +381,7 @@ exit 0  # All checks passed
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-and-analyze.sh",
-            "timeout": 5000,
+            "timeout": 5,
             "async": true,
             "onError": "warn"
           }
@@ -415,19 +415,19 @@ exit 0  # All checks passed
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/stage1-syntax-check.sh",
-            "timeout": 3000,
+            "timeout": 3,
             "onError": "fail"
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/stage2-tests.sh",
-            "timeout": 15000,
+            "timeout": 15,
             "onError": "fail"
           },
           {
             "type": "prompt",
             "prompt": "All tests passed. Approve deployment? Answer YES or NO.",
-            "timeout": 10000,
+            "timeout": 10,
             "onError": "fail"
           }
         ]
@@ -491,7 +491,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-with-logging.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "async": true,
             "onError": "warn",
             "env": {
@@ -554,7 +554,7 @@ exit $RESULT
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "env": {
               "ENVIRONMENT": "${CLAUDE_ENVIRONMENT:-dev}",
               "STRICT_MODE": "${STRICT_MODE:-false}"
@@ -641,7 +641,7 @@ exit 1
           {
             "type": "agent",
             "agent": "refactor-advisor",
-            "timeout": 30000,
+            "timeout": 30,
             "onError": "warn"
           }
         ]
@@ -679,12 +679,12 @@ Use available tools to check files and dependencies.
         {
           "type": "command",
           "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/quick-check.sh",
-          "timeout": 5000
+          "timeout": 5
         },
         {
           "type": "prompt",
           "prompt": "Deep analysis of bash command: $ARGUMENTS",
-          "timeout": 15000
+          "timeout": 15
         }
       ]
     }
@@ -766,7 +766,7 @@ exit 0
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/detect-secrets.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "fail"
           }
         ]
@@ -860,7 +860,7 @@ rm -f "/tmp/test-count-$$" "/tmp/write-count-$$"
         {
           "type": "prompt",
           "prompt": "Review the full transcript at $TRANSCRIPT_PATH. Check: 1) Were tests run after code changes? 2) Did the build succeed? 3) Were all user questions answered? Return 'approve' only if complete.",
-          "timeout": 30000
+          "timeout": 30
         }
       ]
     }

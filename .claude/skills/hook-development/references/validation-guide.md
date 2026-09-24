@@ -74,7 +74,7 @@ Use when creating a hook from scratch.
       {
         "matcher": "pattern",
         "hooks": [
-          { "type": "command", "command": "...", "timeout": 5000 }
+          { "type": "command", "command": "...", "timeout": 5 }
         ]
       }
     ]
@@ -89,7 +89,7 @@ Use when creating a hook from scratch.
 - [ ] **Script exists** — File path is correct and file exists
 - [ ] **Script executable** — Has execute permissions on Unix/Linux
 - [ ] **Uses ${CLAUDE_PLUGIN_ROOT}** — Relative path, not hardcoded absolute path
-- [ ] **Timeout specified** — Has reasonable timeout (e.g., 2000ms for formatting, 5000ms for validation)
+- [ ] **Timeout specified** — Has reasonable timeout in seconds (e.g., 2 for formatting, 5 for validation)
 - [ ] **No shell injection** — Arguments properly quoted/escaped
 - [ ] **Error output captured** — Script has clear error messages to stderr
 
@@ -241,7 +241,7 @@ Apply these phases when validating any existing hook.
 {
   "type": "command",
   "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-  "timeout": 5000,
+  "timeout": 5,
   "onError": "warn"
 }
 ```
@@ -287,7 +287,7 @@ Apply these phases when validating any existing hook.
   "hooks": [{
     "type": "command",
     "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-    "timeout": 2000
+    "timeout": 2
   }]
 }
 ```
@@ -455,7 +455,7 @@ Use when auditing existing hooks against best practices.
       {
         "matcher": "pattern",
         "hooks": [
-          { "type": "command", "command": "...", "timeout": 5000 }
+          { "type": "command", "command": "...", "timeout": 5 }
         ]
       }
     ]
@@ -633,7 +633,7 @@ Use when creating hooks for production or team use.
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-          "timeout": 2000
+          "timeout": 2
         }]
       }
     ]
@@ -651,7 +651,7 @@ Use when creating hooks for production or team use.
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-commit-check.sh",
-          "timeout": 5000
+          "timeout": 5
         }]
       }
     ]
@@ -669,7 +669,7 @@ Use when creating hooks for production or team use.
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup.sh",
-          "timeout": 3000
+          "timeout": 3
         }]
       }
     ]

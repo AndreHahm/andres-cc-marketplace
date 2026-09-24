@@ -93,7 +93,7 @@ MCP tools work with all hook events that support matchers (PreToolUse, PostToolU
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-mcp-memory.sh",
-          "timeout": 2000
+          "timeout": 2
         }]
       }
     ]
@@ -112,7 +112,7 @@ MCP tools work with all hook events that support matchers (PreToolUse, PostToolU
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-filesystem-ops.sh",
-          "timeout": 1000
+          "timeout": 1
         }]
       }
     ]
@@ -133,7 +133,7 @@ Matches: `mcp__filesystem__read_file`, `mcp__filesystem__write_file`, etc.
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-writes.sh",
-          "timeout": 3000
+          "timeout": 3
         }]
       }
     ]
@@ -193,7 +193,7 @@ fi
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/audit-memory.sh",
-          "timeout": 1000,
+          "timeout": 1,
           "onError": "warn"
         }]
       }
@@ -227,7 +227,7 @@ exit 0
         "hooks": [{
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-fs-write.sh",
-          "timeout": 2000
+          "timeout": 2
         }]
       }
     ]

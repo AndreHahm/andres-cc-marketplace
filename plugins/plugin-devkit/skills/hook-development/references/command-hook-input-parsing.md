@@ -270,7 +270,7 @@ Verify your `hooks.json` has:
 - ✓ Correct event name (PreToolUse, PostToolUse, etc.)
 - ✓ Correct matcher pattern (if needed)
 - ✓ Correct script path (use `${CLAUDE_PLUGIN_ROOT}` for plugins)
-- ✓ Reasonable timeout (in milliseconds, default unlimited)
+- ✓ Reasonable timeout (in seconds; defaults: 600 for command/http/mcp_tool, 30 for prompt, 60 for agent)
 - ✓ `onError` behavior specified
 
 Example:
@@ -284,7 +284,7 @@ Example:
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/my-hook.sh",
-            "timeout": 2000,
+            "timeout": 2,
             "onError": "warn"
           }
         ]
