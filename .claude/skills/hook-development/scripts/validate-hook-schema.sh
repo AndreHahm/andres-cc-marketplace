@@ -68,6 +68,7 @@ VALID_EVENTS=(
   "Notification" "MessageDisplay" "SubagentStart" "SubagentStop" "TaskCreated" "TaskCompleted"
   "Stop" "StopFailure" "TeammateIdle" "InstructionsLoaded" "ConfigChange" "CwdChanged" "FileChanged"
   "WorktreeCreate" "WorktreeRemove" "PreCompact" "PostCompact" "Elicitation" "ElicitationResult" "SessionEnd"
+  "PreModelSwitch" "PostModelSwitch"
 )
 
 if [ "$FORMAT" = "plugin" ]; then
