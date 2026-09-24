@@ -1531,3 +1531,22 @@ def test_check_prefix_permanence_new_plugin_with_first_prefix_ok(monkeypatch, gi
     _commit_all(git_repo, "assign first prefix")
     monkeypatch.chdir(git_repo.root)
     assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 0
+
+
+def test_check_prefix_permanence_whole_file_deletion_rejected(monkeypatch, git_repo):
+    # Found by a live Codex cross-model-review pass (F2): the original
+    # implementation short-circuited to OK when the head file was simply
+    # absent, without ever loading base first -- silently letting a PR
+    # delete marketplace-inventory.json entirely bypass this check, the
+    # exact "delete and re-bootstrap" (or just "delete") bypass this
+    # subcommand exists to catch.
+    _write_marketplace_inventory(
+        git_repo, [{"id": "plugin_a", "name": "a", "prefix": "abc", "status": "active"}]
+    )
+    base_sha = _commit_all(git_repo, "base")
+    import os
+
+    os.remove(git_repo.root / ".claude-plugin" / "marketplace-inventory.json")
+    _commit_all(git_repo, "delete the whole inventory file")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 1
