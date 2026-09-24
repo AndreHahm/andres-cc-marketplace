@@ -5,37 +5,37 @@
     {
       "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
       "passed": true,
-      "evidence": "\"timeout\": 10, explicitly reasoned as ~2x the expected ~5s runtime."
+      "evidence": "\"timeout\": 10, explicitly reasoned as roughly double the expected ~5s runtime."
     },
     {
       "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
       "passed": true,
-      "evidence": "Table lists all five, all correct."
+      "evidence": "Table lists command=600s, http=600s, mcp_tool=600s, prompt=30s, agent=60s — all five, all correct."
     },
     {
       "text": "The response states the event-specific timeout overrides: 30s on UserPromptSubmit/PreModelSwitch/PostModelSwitch, 10s on MessageDisplay, and a 1.5-second shared budget for SessionEnd",
       "passed": true,
-      "evidence": "All three overrides stated correctly, including the SessionEnd shared-budget (not per-hook) distinction."
+      "evidence": "All three overrides stated correctly, including the SessionEnd shared (not per-hook) 1.5s budget."
     },
     {
       "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
       "passed": true,
-      "evidence": "timeout:10 is consistently reconciled against the 600s PreToolUse baseline."
+      "evidence": "timeout:10 is consistently reconciled against the 600s PreToolUse baseline; no contradiction."
+    },
+    {
+      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
+      "passed": true,
+      "evidence": "The response makes no unqualified 'timeout always overrides/is always enforced' claim this time — it never asserts async hooks still get killed at their timeout. Vacuously satisfied by this response alone; see the separate direct-probe agent (dispatched specifically to force engagement with Pattern 9's async claim) for a non-vacuous confirmation that the corrected text is what the skill now surfaces."
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
       "passed": true,
-      "evidence": "PreToolUse: [ { matcher: \"Bash\", hooks: [ { type: \"command\", ... } ] } ] — correct."
-    },
-    {
-      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
-      "passed": false,
-      "evidence": "Response states the opposite: 'An explicit timeout is always enforced, including for async: true command hooks... the process is still killed if it exceeds the configured timeout' -- directly citing advanced-hooks.md's own pre-existing line 'Timeout still enforced but doesn't slow Claude Code' as its source. This is NOT an agent error -- the agent faithfully followed the skill's own current (pre-existing, untouched-by-this-PR) content, which itself contradicts the official Claude Code docs (verified live twice this session: 'Claude Code doesn't enforce it on a command hook you run with async: true'). A newly-discovered, out-of-scope defect in advanced-hooks.md:398, not introduced by and not fixed by this PR."
+      "evidence": "PreToolUse: [ { matcher: \"Bash\", hooks: [ { type: \"command\", ... } ] } ] — correct nested array structure."
     }
   ],
   "summary": {
     "assertions_total": 6,
-    "assertions_passed": 5,
-    "pass_rate": 0.833
+    "assertions_passed": 6,
+    "pass_rate": 1.0
   }
 }
