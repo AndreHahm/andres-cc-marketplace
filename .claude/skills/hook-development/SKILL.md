@@ -187,7 +187,7 @@ All handlers:
 | Field | Required | Description |
 |---|---|---|
 | `type` | yes | `"command"`, `"http"`, `"mcp_tool"`, `"prompt"`, or `"agent"` |
-| `timeout` | no | Seconds before canceling. Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
+| `timeout` | no | Seconds before canceling — except an async command hook (`async: true`), where `timeout` is not enforced at all (see Pattern 9 in `references/advanced-hooks.md`). Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
 | `statusMessage` | no | Custom spinner text while hook runs |
 | `once` | no | Run once per session then auto-remove. **Only honored in skill frontmatter hooks** — ignored in settings files and agent frontmatter |
 | `if` | no | Exactly one permission rule — no `&&`, `\|\|`, or list syntax. Use separate handlers for multiple conditions |
@@ -421,7 +421,10 @@ the human-readable text output.
 2 of 4 declared trigger scenarios aren't yet exercised by an eval (auto-format-on-write, session-context
 loading) — see `evals.json`'s `testing_validation_coverage` field. **eval-4 re-checked 2026-09-24**
 (issue #388 fix — Pattern 9's async-timeout-enforcement claim in `advanced-hooks.md` corrected to match
-official docs): 6/6 assertions now pass, up from 5/6
+official docs, plus the primary Hook Handler Fields table's `timeout` row qualified with the same
+exception): 6/6 assertions now pass, up from 5/6. eval-4's own prompt was broadened to organically ask
+whether any hook configuration leaves `timeout` unenforced, so this is a direct, non-vacuous re-run
+against the graded response itself, not inferred from a separate probe (PR #391 round-1 review finding)
 (`evals/hook-development/workspace/iteration-2/eval-4/with_skill/grading.json`).
 
 ---

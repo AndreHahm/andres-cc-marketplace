@@ -1,8 +1,7 @@
-# `hooks/hooks.json` — PreToolUse Bash validation hook
+## hooks/hooks.json entry
 
 ```json
 {
-  "description": "Validate Bash commands before execution",
   "hooks": {
     "PreToolUse": [
       {
@@ -12,7 +11,7 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
             "timeout": 10,
-            "onError": "warn"
+            "onError": "fail"
           }
         ]
       }
@@ -22,18 +21,15 @@
 ```
 
 Notes on this entry:
+- `matcher: "Bash"` is an exact tool-name match, so it fires before every `Bash` call.
+- `${CLAUDE_PLUGIN_ROOT}` is used for the script path so the reference stays portable across installs.
+- `timeout: 10` gives a script expected to finish in ~5 seconds a safety margin (roughly 2x) without leaving it able to hang for anywhere near the 600-second command default — if `validate.sh` should hard-block execution when it fails, `onError: "fail"` (or `exit 2` from the script itself) is the correct way to actually deny the `Bash` call; `onError: "warn"` would only log a non-blocking warning instead.
 
-- The event is `PreToolUse` so the hook runs **before** the `Bash` tool call executes and can block it (exit code `2`).
-- `matcher` is the exact tool name `"Bash"` (case-sensitive) — this runs the hook before every Bash call, not a regex subset of commands.
-- The script path uses `${CLAUDE_PLUGIN_ROOT}` for a portable, distributable reference rather than a hardcoded path.
-- `timeout: 10` — for a script that should normally complete in ~5 seconds, a value of roughly double the expected runtime (here, 10s) is the reasonable choice: it's comfortably above the expected 5s so normal runs never get killed by transient slowness, while still being far below the 600s default so a genuinely hung/broken script is caught quickly rather than stalling the tool call for ten minutes. Per the skill's own guidance, timeout values should be flagged as suspect outside the 1–600 second range, and a timeout that's needlessly far beyond what the script actually needs is itself a smell to avoid.
-- `onError: "warn"` is included so a validation failure is surfaced without crashing the whole plugin (adjust to `"block"`-style handling via exit code 2 if this hook should actually deny the Bash call on failure, per the hook's own logic).
+## What unit does `timeout` use?
 
-## `timeout` field: unit and defaults
+Seconds.
 
-**Unit:** the `timeout` field is expressed in **seconds** (not milliseconds).
-
-**Default value per hook type:**
+## Default timeout value, per hook type
 
 | Hook type | Default timeout |
 |---|---|
@@ -41,16 +37,22 @@ Notes on this entry:
 | `http` | 600s |
 | `mcp_tool` | 600s |
 | `prompt` | 30s |
-| `agent` | 60s (also caps at up to 50 tool-use turns) |
+| `agent` | 60s |
 
-Values well outside the 1–600 second range should be treated as suspect regardless of hook type.
+Values outside the 1–600s range should be treated as suspect/likely misconfigured.
 
-## Event-specific overrides
+## Does any specific hook event override those defaults?
 
-Yes — several specific hook events override the general `command`/`http`/`mcp_tool` default of 600s:
+Yes. The 600s default for `command`/`http`/`mcp_tool` hooks is not uniform across every event — Claude Code lowers it in a few specific cases:
 
-- **`UserPromptSubmit`, `PreModelSwitch`, and `PostModelSwitch`** — Claude Code lowers the `command`/`http`/`mcp_tool` default timeout to **30 seconds** for hooks on these events.
-- **`MessageDisplay`** — lowers the `command`/`http`/`mcp_tool` default timeout to **10 seconds**.
-- **`SessionEnd`** — hooks on this event don't get their own individual default; instead, all `SessionEnd` hooks collectively share a single **1.5-second total budget**.
+- On `UserPromptSubmit`, `PreModelSwitch`, and `PostModelSwitch`, the `command`/`http`/`mcp_tool` default is lowered from 600s to **30s**.
+- On `MessageDisplay`, it's lowered to **10s**.
+- `SessionEnd` hooks don't get an individual per-hook default at all — all `SessionEnd` hooks sharing that event instead share a single **1.5-second total budget**.
 
-So a hook's effective default timeout depends on both its `type` and the specific `event` it's attached to — the general per-type table above is the baseline, and these four events are the documented exceptions to it.
+Outside of these named exceptions, the general per-type defaults in the table above apply.
+
+## Are there hook configurations where the timeout value is not actually enforced?
+
+Yes — one specific case: an **async command hook** (`"async": true`). For those, `timeout` is not enforced at all — the background process is not killed if it runs long. Setting `async: true` removes both the blocking wait on the hook's completion *and* the timeout guarantee together; the two are tied to the same mechanism, so you can't keep timeout enforcement while also running the hook in the background. This only applies to command hooks, since `async` is a command-hook-only field. Because of this, async hooks can't be used for anything that needs to return a decision or reliably bound how long it runs — they're appropriate only for fire-and-forget side effects (logging, metrics, webhooks, notifications) where an unbounded run time is acceptable.
+
+For every other (non-async) hook configuration, the `timeout` field is enforced as a normal wall-clock limit: the hook is canceled once it's exceeded, subject to the default (or event-override) values above.
