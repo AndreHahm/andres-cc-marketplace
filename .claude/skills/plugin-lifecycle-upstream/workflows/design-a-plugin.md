@@ -158,8 +158,8 @@ Fold the approval into the same `AskUserQuestion` as the `plugin_id` mint. Mecha
 two separate `marketplace-inventory` Plan → Apply passes: the mint runs through `add`; only once that's
 applied does the record exist for a second `update` pass (naming `prefix`) to target — never fold
 `update` into the same apply call as the `add`. After that second apply lands, register the identical
-value via `plugin-inventory set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`
-(see `plugin-inventory/SKILL.md`'s "Set Prefix" mode).
+value on the plugin's own inventory via `Skill(plugin-inventory)`'s Set Prefix mode
+(`set-prefix <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>`).
 
 ## Mirror Sync
 
