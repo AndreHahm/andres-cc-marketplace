@@ -419,7 +419,10 @@ the human-readable text output.
 **Last dated run record:** 2026-08-30, `evals/hook-development/` — 3/3 scenarios,
 8/8 assertions passed (Quick Workflow, `with_skill` only — see `evals/hook-development/evals.json`).
 2 of 4 declared trigger scenarios aren't yet exercised by an eval (auto-format-on-write, session-context
-loading) — see `evals.json`'s `testing_validation_coverage` field.
+loading) — see `evals.json`'s `testing_validation_coverage` field. **eval-4 re-checked 2026-09-24**
+(issue #388 fix — Pattern 9's async-timeout-enforcement claim in `advanced-hooks.md` corrected to match
+official docs): 6/6 assertions now pass, up from 5/6 (`evals/hook-development/workspace/iteration-2/
+eval-4/with_skill/grading.json`).
 
 ---
 
