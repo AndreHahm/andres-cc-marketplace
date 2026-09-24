@@ -553,6 +553,37 @@ else
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
+# Round 7 (Codex): a diagnostics-log path that's a FIFO (or other non-regular-file special file --
+# e.g. planted by an attacker before the guard ever runs) must not block the write. Opening it for
+# append could hang indefinitely, and combined with this hook's own `onError: "warn"` timeout, that
+# turns every guarded operation into a timeout/fail-open bypass. The guard must detect a
+# non-regular-file `DIAG_LOG` and skip the write entirely, still completing (and denying) well
+# within the test's own bounding `timeout`, with no reader ever attached to the FIFO.
+e2e_diag_log_fifo_check() {
+  local tmp_git input out
+  tmp_git=$(mktemp -d)
+  trap 'rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    mkfifo .git/git-kit-guard-diagnostics.log
+    input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
+    out=$(printf '%s' "$input" | timeout 5 bash "$GUARD") || { echo "FAIL (e2e): diagnostics FIFO -- guard exited non-zero or timed out: $out"; exit 0; }
+    if jq -e '.hookSpecificOutput.permissionDecision == "deny"' <<< "$out" >/dev/null 2>&1; then
+      echo "PASS (e2e): diagnostics log FIFO does not block the guard (round 7, Codex)"
+    else
+      echo "FAIL (e2e): diagnostics FIFO -- stdout was not the expected pure deny JSON: [$out]"
+    fi
+  )
+}
+diag_fifo_result=$(e2e_diag_log_fifo_check)
+echo "$diag_fifo_result"
+if grep -q PASS <<< "$diag_fifo_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
 echo ""
 echo "=== $PASS_COUNT passed, $FAIL_COUNT failed ==="
 [ "$FAIL_COUNT" -eq 0 ]
