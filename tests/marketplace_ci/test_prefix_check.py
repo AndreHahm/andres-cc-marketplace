@@ -257,3 +257,60 @@ def test_permanence_record_removed_is_violation():
     violations = find_prefix_permanence_violations(base, head)
     assert len(violations) == 1
     assert "no longer exists" in violations[0].reason
+
+
+def test_malformed_prefix_rejected(tmp_path):
+    # Found by a live Codex cross-model-review pass (round 4): a
+    # hand-edited marketplace-inventory.json bypassing the CLI's own
+    # validate_prefix() call previously reached find_prefix_violations
+    # with no format check at all.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "TOOLONG-check-pr-title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="TOOLONG")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert "does not match" in violations[0].reason
+
+
+def test_duplicate_prefix_across_two_plugins_rejected(tmp_path):
+    plugin_a = tmp_path / "git-kit"
+    (plugin_a / "scripts").mkdir(parents=True)
+    (plugin_a / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    plugin_b = tmp_path / "go-kit"
+    (plugin_b / "scripts").mkdir(parents=True)
+    (plugin_b / "scripts" / "git-other.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path,
+        [
+            _plugin("git-kit", "./git-kit", prefix="git"),
+            _plugin("go-kit", "./go-kit", prefix="git"),
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    duplicate_violations = [v for v in violations if "unique marketplace-wide" in v.reason]
+    assert len(duplicate_violations) == 1
+    assert duplicate_violations[0].plugin == "go-kit"
+
+
+def test_duplicate_prefix_flagged_even_when_second_plugin_retired(tmp_path):
+    # _validate_prefixes' own CLI-path equivalent checks uniqueness across
+    # every status, not just active/deprecated -- a prefix is permanent
+    # and never reused even after a plugin is retired. This checker must
+    # agree, even though retired plugins are otherwise skipped for the
+    # file-basename scan.
+    plugin_a = tmp_path / "git-kit"
+    (plugin_a / "scripts").mkdir(parents=True)
+    (plugin_a / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path,
+        [
+            _plugin("git-kit", "./git-kit", prefix="git"),
+            _plugin("old-kit", "./old-kit", prefix="git", status="retired"),
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    duplicate_violations = [v for v in violations if "unique marketplace-wide" in v.reason]
+    assert len(duplicate_violations) == 1
+    assert duplicate_violations[0].plugin == "old-kit"
