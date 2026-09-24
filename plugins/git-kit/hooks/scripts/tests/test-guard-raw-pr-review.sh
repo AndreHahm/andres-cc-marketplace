@@ -353,7 +353,12 @@ e2e_run() {
   printf '%s' "$cmd" > "$cmd_file"
   input=$(jq -n --rawfile cmd "$cmd_file" --arg tool "$tool" '{tool_name: $tool, tool_input: {command: $cmd}}')
   rm -f "$cmd_file"
-  E2E_LAST_OUT=$(cd "$E2E_GIT_DIR" && printf '%s' "$input" | "${E2E_TIMEOUT_CMD[@]}" bash "$GUARD" 2>&1) || rc=$?
+  # `${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"}`, not a bare `"${E2E_TIMEOUT_CMD[@]}"` -- under
+  # this file's own `set -u`, Bash 3.2 (macOS's stock /bin/bash) reports "unbound variable" on an
+  # EMPTY array's `[@]` expansion even though the array itself is declared (a known Bash 3.2 bug,
+  # fixed in 4.4+); the `+`-guarded form only expands when the array is set/non-empty, on every
+  # Bash version (CodeRabbit, PR #380 round 7).
+  E2E_LAST_OUT=$(cd "$E2E_GIT_DIR" && printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD" 2>&1) || rc=$?
   E2E_LAST_RC="$rc"
 }
 
@@ -448,7 +453,25 @@ e2e_check "H2 control via real script -- \${...} with a ; but no dangerous endpo
   'gh api -H "X:${v:-a;b}" repos/o/r/issues/1/comments -f body=hi' \
   "ALLOW"
 e2e_check "H3 via real script -- case-pattern ) inside \$(...) (round 6) -- must deny (force-closed)" \
+  'gh api $(case hi in hi) echo unrelated;; esac) repos/o/r/pulls/5/reviews' \
+  "deny"
+# Round 7 (CodeRabbit): force_deny used to deny unconditionally, even when the raw span (now
+# extended to end-of-string) never reaches a dangerous endpoint -- this exact shape (a heredoc body
+# in an otherwise-benign `gh api` call) was live-verified to wrongly block a routine
+# `handling-review-findings` comment-posting call before this fix. force_deny alone must no longer
+# deny; only a dangerous endpoint actually present in the extended raw span still does (H3 above).
+e2e_check "H3 control (round 7, CodeRabbit) -- case-pattern ) inside \$(...) with NO dangerous endpoint -- must allow" \
   'gh api $(case hi in hi) echo unrelated;; esac) repos/o/r/issues/1/comments' \
+  "ALLOW"
+# The literal motivating example from CodeRabbit's finding: a routine, benign issue-comment post
+# whose heredoc body used to be wrongly force-denied outright, before this round-7 fix.
+e2e_check "H5 (round 7, CodeRabbit) -- benign heredoc-body gh api comment post -- must allow" \
+  $'gh api repos/o/r/issues/1/comments -f body="$(cat <<\'EOF\'\nhello\nEOF\n)"' \
+  "ALLOW"
+# The same shape, but the dangerous reviews endpoint follows after the heredoc-containing call --
+# must still deny (force_deny's fail-closed property is preserved, not weakened).
+e2e_check "H5 control (round 7) -- benign heredoc call followed by a dangerous endpoint -- must deny" \
+  $'gh api repos/o/r/issues/1/comments -f body="$(cat <<\'EOF\'\nhello\nEOF\n)" ; gh api repos/o/r/pulls/1/reviews' \
   "deny"
 
 # Marker-handshake allow path + consumption, and diagnostics logging, both run
@@ -535,8 +558,19 @@ e2e_diag_log_open_failure_check() {
     git init -q
     chmod 555 .git
     input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): diagnostics log-open failure -- guard exited non-zero: $out"; exit 0; }
-    if jq -e '.hookSpecificOutput.permissionDecision == "deny"' <<< "$out" >/dev/null 2>&1; then
+    # Stderr is captured to its own file and asserted empty, not just discarded -- a plain
+    # `out=$(... | bash "$GUARD")` (no `2>` capture at all) only ever checked stdout, so a
+    # regression to the old ungrouped `printf ... >> file 2>/dev/null` form (which leaks Bash's own
+    # "Permission denied" straight to the guard's real stderr, before the trailing `2>/dev/null`
+    # takes effect) would still report PASS here -- live-verified: reverting the write to that
+    # ungrouped form let this exact check pass while real stderr still leaked (CodeRabbit, PR #380
+    # round 7).
+    err_file=$(mktemp)
+    out=$(printf '%s' "$input" | bash "$GUARD" 2>"$err_file") || { echo "FAIL (e2e): diagnostics log-open failure -- guard exited non-zero: $out"; rm -f "$err_file"; exit 0; }
+    err=$(cat "$err_file"); rm -f "$err_file"
+    if [ -n "$err" ]; then
+      echo "FAIL (e2e): diagnostics log-open failure -- guard wrote to stderr: [$err]"
+    elif jq -e '.hookSpecificOutput.permissionDecision == "deny"' <<< "$out" >/dev/null 2>&1; then
       echo "PASS (e2e): diagnostics log-open failure stays silent, stdout stayed pure JSON"
     else
       echo "FAIL (e2e): diagnostics log-open failure -- stdout was not the expected pure deny JSON: [$out]"
