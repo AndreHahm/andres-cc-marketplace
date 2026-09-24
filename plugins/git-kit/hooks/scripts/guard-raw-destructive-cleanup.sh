@@ -260,7 +260,18 @@ fi
 # `rc=$?` is captured FIRST, on its own statement -- a command substitution later in the same
 # printf argument list (the `$(date ...)` call) would otherwise overwrite `$?` before `"$?"` is
 # ever read, silently logging date's own exit status instead of this script's real one.
-trap 'rc=$?; if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then { printf "%s guard=%s event=finish exit=%s\n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null; fi' EXIT
+# A named function, not an inline `trap '...' EXIT` string -- ShellCheck's SC2154 ("rc is
+# referenced but not assigned") can't track an assignment made inside a trap's own single-quoted
+# argument, even though `rc=$?` genuinely runs before `"$rc"` is read there; a real function
+# resolves this cleanly since `local rc=$?` and its later use are both ordinary statements in the
+# same scope (Codacy, PR #380).
+guard_diag_log_finish() {
+  local rc=$?
+  if [ ! -e "$DIAG_LOG" ] || [ -f "$DIAG_LOG" ]; then
+    { printf '%s guard=%s event=finish exit=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DIAG_GUARD_NAME" "$rc" >> "$DIAG_LOG" || true; } 2>/dev/null
+  fi
+}
+trap guard_diag_log_finish EXIT
 
 now=$(date +%s)
 allowed=false
