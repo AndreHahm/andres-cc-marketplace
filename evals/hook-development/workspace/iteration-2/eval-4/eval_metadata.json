@@ -8,7 +8,12 @@
       "target": "JSON example"
     },
     {
-      "text": "If timeout defaults are stated, they match 600 (command/http/mcp_tool), 30 (prompt), 60 (agent)",
+      "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
+      "type": "presence",
+      "target": "response prose"
+    },
+    {
+      "text": "The response states the event-specific timeout overrides: 30s on UserPromptSubmit/PreModelSwitch/PostModelSwitch, 10s on MessageDisplay, and a 1.5-second shared budget for SessionEnd",
       "type": "presence",
       "target": "response prose"
     },
