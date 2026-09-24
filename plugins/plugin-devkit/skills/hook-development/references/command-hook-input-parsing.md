@@ -270,7 +270,10 @@ Verify your `hooks.json` has:
 - ✓ Correct event name (PreToolUse, PostToolUse, etc.)
 - ✓ Correct matcher pattern (if needed)
 - ✓ Correct script path (use `${CLAUDE_PLUGIN_ROOT}` for plugins)
-- ✓ Reasonable timeout (in seconds; defaults: 600 for command/http/mcp_tool, 30 for prompt, 60 for agent)
+- ✓ Reasonable timeout (in seconds; general defaults: 600 for command/http/mcp_tool, 30 for prompt, 60
+  for agent -- but Claude Code lowers the command/http/mcp_tool default to 30 on `UserPromptSubmit`,
+  `PreModelSwitch`, and `PostModelSwitch`, to 10 on `MessageDisplay`, and `SessionEnd` hooks share a
+  1.5-second total budget)
 - ✓ `onError` behavior specified
 
 Example:
