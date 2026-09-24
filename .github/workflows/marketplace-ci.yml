@@ -355,6 +355,26 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install uv
+
+      # This job's own enforcement logic (scripts/marketplace_ci/__main__.py's
+      # check-prefix-permanence handler, prefix_check.py's comparison
+      # function) must never run from the PR's own untrusted checkout --
+      # same principle compute-scope/codex-review/publish already apply to
+      # their own decision code. Without this, a same-repo PR could edit
+      # _handle_check_prefix_permanence to always return 0 in the same
+      # commit that reassigns a prefix, defeating this whole gate with no
+      # label or attestation needed (Codex cross-model-review finding, F1).
+      - name: Restore the base SHA's copy of the permanence-check code and its dependency spec (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
+            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
+          else
+            echo "::error::could not restore permanence-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"
+            exit 1
+          fi
+
       - run: uv sync --group dev
       # PR-review-time enforcement that a plugin's registered
       # component-file prefix (plugin-rulebook R33) is actually permanent:
@@ -364,7 +384,12 @@ jobs:
       # delete-and-rebootstrap, committed directly in a PR. This compares
       # the file's own content across the PR's diff (base vs head), which
       # is the layer that actually catches either of those (security-
-      # reviewer finding, M2).
+      # reviewer finding, M2). The restore step above ensures this
+      # comparison itself runs from trusted code -- it still reads the
+      # PR's own .claude-plugin/marketplace-inventory.json (untouched by
+      # that restore, which only covers scripts/), so the PR's actual data
+      # change is what's evaluated, just never by the PR's own copy of the
+      # evaluation logic.
       - name: Check plugin prefix permanence (R33)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

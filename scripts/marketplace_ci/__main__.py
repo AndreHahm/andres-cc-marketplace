@@ -298,11 +298,14 @@ def _handle_check_prefix_permanence(args: argparse.Namespace) -> int:
         print(f"check-prefix-permanence: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
         return 2
 
-    head_path = repo / ".claude-plugin" / "marketplace-inventory.json"
-    if not head_path.is_file():
-        print("check-prefix-permanence: OK (no marketplace-inventory.json at head)")
-        return 0
-
+    # Load the BASE inventory first, before deciding anything about head --
+    # a PR that deletes marketplace-inventory.json entirely must still be
+    # compared against base, not treated as an early "nothing to check"
+    # pass. Found by a live Codex cross-model-review pass (F2): the
+    # original version short-circuited to OK on a missing head file before
+    # ever loading base, which let a whole-file deletion silently bypass
+    # this check -- exactly the "delete and re-bootstrap" bypass this
+    # subcommand exists to catch, just via outright deletion instead.
     show = subprocess.run(
         ["git", "show", f"{base_sha}:.claude-plugin/marketplace-inventory.json"],
         cwd=repo,
@@ -334,11 +337,22 @@ def _handle_check_prefix_permanence(args: argparse.Namespace) -> int:
         print(f"check-prefix-permanence: base inventory is not valid JSON: {exc}", file=sys.stderr)
         return 2
 
-    try:
-        head_inventory = json.loads(head_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        print(f"check-prefix-permanence: head inventory is not valid JSON: {exc}", file=sys.stderr)
-        return 2
+    head_path = repo / ".claude-plugin" / "marketplace-inventory.json"
+    if not head_path.is_file():
+        # Absent at head but present (and just successfully loaded) at
+        # base -- treat as an empty inventory rather than short-circuiting
+        # to OK. find_prefix_permanence_violations then correctly reports
+        # every base-registered prefix as "record no longer exists", the
+        # same violation a partial deletion would produce.
+        head_inventory: dict = {"plugins": []}
+    else:
+        try:
+            head_inventory = json.loads(head_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(
+                f"check-prefix-permanence: head inventory is not valid JSON: {exc}", file=sys.stderr
+            )
+            return 2
 
     violations = find_prefix_permanence_violations(base_inventory, head_inventory)
     if not violations:
