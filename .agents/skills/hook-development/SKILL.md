@@ -179,7 +179,7 @@ All handlers:
 | Field | Required | Description |
 |---|---|---|
 | `type` | yes | `"command"`, `"http"`, `"mcp_tool"`, `"prompt"`, or `"agent"` |
-| `timeout` | no | Seconds before canceling. Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
+| `timeout` | no | Seconds before canceling — except an async command hook (`async: true`), where `timeout` is not enforced at all (see Pattern 9 in `references/advanced-hooks.md`). Defaults: command=600, prompt=30, agent=60. Flag values outside 1-600s as suspect |
 | `statusMessage` | no | Custom spinner text while hook runs |
 | `once` | no | Run once per session then auto-remove. **Only honored in skill frontmatter hooks** — ignored in settings files and agent frontmatter |
 | `if` | no | Exactly one permission rule — no `&&`, `\|\|`, or list syntax. Use separate handlers for multiple conditions |

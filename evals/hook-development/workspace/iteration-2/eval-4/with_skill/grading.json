@@ -5,7 +5,7 @@
     {
       "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
       "passed": true,
-      "evidence": "\"timeout\": 10, explicitly reasoned as roughly double the expected ~5s runtime."
+      "evidence": "\"timeout\": 10, explicitly reasoned as \"roughly 2x\" margin over the expected ~5s runtime."
     },
     {
       "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
@@ -20,12 +20,12 @@
     {
       "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
       "passed": true,
-      "evidence": "timeout:10 is consistently reconciled against the 600s PreToolUse baseline; no contradiction."
+      "evidence": "\"timeout: 10 gives a script expected to finish in ~5 seconds a safety margin ... without leaving it able to hang for anywhere near the 600-second command default\" — timeout:10 is explicitly reconciled against the 600s PreToolUse baseline; no contradiction."
     },
     {
       "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
       "passed": true,
-      "evidence": "The response makes no unqualified 'timeout always overrides/is always enforced' claim this time — it never asserts async hooks still get killed at their timeout. This eval-4 prompt itself doesn't ask about async hooks, so this alone is a vacuous pass; the non-vacuous confirmation is a separate, persisted direct-probe transcript that explicitly forces engagement with Pattern 9's async claim — see ../async-timeout-direct-probe.md (cross-model-review finding, 2026-09-24: flagged as unpersisted/unverifiable, fixed by adding that file)."
+      "evidence": "Non-vacuous pass (PR #391 round-1 Codex review flagged the prior version of this assertion as vacuous — the eval-4 prompt was then broadened to organically ask whether any hook configuration leaves timeout unenforced, and this is the resulting re-run, graded directly against this eval's own response.md, not a separate probe). Quote: \"Yes — one specific case: an async command hook (`\\\"async\\\": true`). For those, `timeout` is not enforced at all — the background process is not killed if it runs long... For every other (non-async) hook configuration, the `timeout` field is enforced as a normal wall-clock limit.\""
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
