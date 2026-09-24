@@ -193,12 +193,16 @@ def test_source_resolving_to_repo_root_rejected(tmp_path):
 
 
 @requires_symlinks
-def test_symlinked_scope_dir_not_walked(tmp_path):
+def test_symlinked_scope_dir_flagged_not_silently_skipped(tmp_path):
     # Found by a live security-reviewer pass: the containment check on
     # plugin_dir doesn't protect a *scope directory* (scripts/references/
     # etc) that is itself a symlink pointing outside the repo -- a plugin
     # tree is ordinary contributor-controlled content, so a committed
-    # symlink is a realistic input, not hypothetical.
+    # symlink is a realistic input, not hypothetical. A later cross-model-
+    # review round (7) found the original fix merely stopped the walk from
+    # crossing the symlink -- it never flagged the symlink itself, so the
+    # whole directory's worth of unprefixed content silently vanished from
+    # the scan instead of failing CI loudly.
     outside_dir = tmp_path.parent / f"{tmp_path.name}-symlink-target"
     outside_dir.mkdir()
     (outside_dir / "secret.txt").write_text("", encoding="utf-8")
@@ -208,11 +212,18 @@ def test_symlinked_scope_dir_not_walked(tmp_path):
     (plugin_dir / "scripts").symlink_to(outside_dir, target_is_directory=True)
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
 
-    assert find_prefix_violations(tmp_path) == []
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path == plugin_dir / "scripts"
+    assert "symlink" in violations[0].reason
 
 
 @requires_symlinks
-def test_symlinked_file_inside_scope_dir_skipped(tmp_path):
+def test_symlinked_file_inside_scope_dir_flagged_not_silently_skipped(tmp_path):
+    # Round-7 cross-model-review companion to the scope-dir case above: a
+    # symlink nested *inside* an otherwise-real scope directory must also
+    # be flagged, not silently dropped from the scan -- its own basename
+    # and its target both evade the ordinary prefix check.
     outside_dir = tmp_path.parent / f"{tmp_path.name}-file-target"
     outside_dir.mkdir()
     outside_file = outside_dir / "secret.txt"
@@ -220,10 +231,14 @@ def test_symlinked_file_inside_scope_dir_skipped(tmp_path):
 
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
-    (plugin_dir / "scripts" / "linked.py").symlink_to(outside_file)
+    linked = plugin_dir / "scripts" / "linked.py"
+    linked.symlink_to(outside_file)
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
 
-    assert find_prefix_violations(tmp_path) == []
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path == linked
+    assert "symlink" in violations[0].reason
 
 
 def test_source_inside_repo_via_traversal_still_scanned_normally(tmp_path):
