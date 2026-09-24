@@ -5,17 +5,22 @@
     {
       "text": "The hooks.json example's timeout value is in seconds (a small number, not a ms-scale number like 5000)",
       "passed": true,
-      "evidence": "\"timeout\": 10 in the JSON example, explicitly reasoned as '2x the ~5s expected runtime' in the notes below it."
+      "evidence": "\"timeout\": 10 in the JSON example, explicitly reasoned as '2x margin over the ~5s expected runtime'."
     },
     {
-      "text": "If timeout defaults are stated, they match 600 (command/http/mcp_tool), 30 (prompt), 60 (agent)",
+      "text": "All five hook-type defaults are stated explicitly and correctly: 600 (command), 600 (http), 600 (mcp_tool), 30 (prompt), 60 (agent)",
       "passed": true,
-      "evidence": "'command hooks: 600 seconds', 'prompt hooks: 30 seconds', 'agent hooks: 60 seconds' — matches exactly."
+      "evidence": "'command hooks: 600 seconds', 'http hooks: 600 seconds', 'mcp_tool hooks: 600 seconds', 'prompt hooks: 30 seconds', 'agent hooks: 60 seconds' — all five stated, all correct."
+    },
+    {
+      "text": "The response states the event-specific timeout overrides: 30s on UserPromptSubmit/PreModelSwitch/PostModelSwitch, 10s on MessageDisplay, and a 1.5-second shared budget for SessionEnd",
+      "passed": true,
+      "evidence": "'UserPromptSubmit, PreModelSwitch, and PostModelSwitch hooks: default lowered to 30 seconds', 'MessageDisplay hooks: default lowered to 10 seconds', 'SessionEnd hooks: ... combined 1.5-second total budget' — matches exactly, including the SessionEnd shared-budget distinction from a per-hook default."
     },
     {
       "text": "No internal contradiction between the JSON example's timeout value and any prose statement of the unit/defaults",
       "passed": true,
-      "evidence": "Prose explicitly ties the JSON's timeout:10 back to the stated unit ('an explicit timeout of 10 is appropriate here') with no ms-based reasoning anywhere in the response."
+      "evidence": "Response explicitly reconciles the JSON's timeout:10 against the 600s PreToolUse baseline ('overrides the much larger 600-second command-hook default for PreToolUse, which has no lower event-specific override') — correctly notes PreToolUse itself isn't one of the lowered-default events, so no contradiction."
     },
     {
       "text": "hooks.json structure is correctly nested (EventName -> [{matcher, hooks: [...]}])",
@@ -24,8 +29,8 @@
     }
   ],
   "summary": {
-    "assertions_total": 4,
-    "assertions_passed": 4,
+    "assertions_total": 5,
+    "assertions_passed": 5,
     "pass_rate": 1.0
   }
 }
