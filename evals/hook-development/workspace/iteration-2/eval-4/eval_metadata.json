@@ -23,7 +23,7 @@
       "target": "full response"
     },
     {
-      "text": "Any claim that an explicit timeout field always overrides the default is qualified: an async command hook's timeout is not enforced at all",
+      "text": "Any claim that an explicit timeout field always overrides the default is qualified: a plain async command hook (async: true without asyncRewake: true) has its timeout unenforced, while an asyncRewake: true hook still keeps timeout enforcement",
       "type": "presence",
       "target": "response prose"
     },
