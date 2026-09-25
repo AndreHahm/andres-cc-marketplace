@@ -326,7 +326,7 @@ Full semantics and JSON schemas: `references/exit-code-behavior.md`, `references
 - Keep total hook execution time across all matching hooks under ~30 seconds with parallel processing
 - Filter by event type, tool name, file path, and extension before doing expensive work — never scan the whole project inside a hook
 - Cap displayed findings to 5-10 items; emit a summary line if more exist
-- Prefer Python for cross-platform hook scripts; use `pathlib.Path` for all paths — never hardcode `/tmp/` or OS-specific separators. Portable runner fallback: `uv` → `python3` → `python` (see `references/patterns-and-templates.md`)
+- Prefer Python for cross-platform hook scripts; use `pathlib.Path` for all paths — never hardcode `/tmp/` or OS-specific separators. Any hook invoked via a bare `hooks.json` command path MUST use the `uv` → `python3` → `python` runner fallback with graceful degradation if none is found — this is the required default, not an optional hardening step (see Pattern 11 in `references/patterns-and-templates.md`)
 - Never use `shell=True` with string commands — use list arguments. Parse stdin as structured JSON and never interpolate raw input into shell commands (see `references/patterns-and-templates.md` and `references/validation-guide.md`)
 - Command hooks run with the full permissions of the current system user — treat every hook script as privileged local code
 - Hooks must not open `/dev/tty` or send escape sequences directly to the interface; use the JSON `systemMessage` field instead

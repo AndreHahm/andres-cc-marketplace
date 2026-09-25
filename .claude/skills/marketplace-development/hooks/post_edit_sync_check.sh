@@ -4,9 +4,19 @@
 
 set -euo pipefail
 
+if command -v uv >/dev/null 2>&1; then
+    PY_RUN=(uv run --no-project python)
+elif command -v python3 >/dev/null 2>&1; then
+    PY_RUN=(python3)
+elif command -v python >/dev/null 2>&1; then
+    PY_RUN=(python)
+else
+    exit 0
+fi
+
 INPUT=$(cat)
 
-FILE_PATH=$(echo "$INPUT" | python3 -c "
+FILE_PATH=$(echo "$INPUT" | "${PY_RUN[@]}" -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -36,7 +46,7 @@ done
 [[ -z "$MARKETPLACE_JSON" ]] && exit 0
 
 # Check if this skill is registered and if version needs bumping
-python3 - "$MARKETPLACE_JSON" "$SKILL_NAME" <<'PY' 2>/dev/null
+"${PY_RUN[@]}" - "$MARKETPLACE_JSON" "$SKILL_NAME" <<'PY' 2>/dev/null
 import json, sys
 
 marketplace_json, skill_name = sys.argv[1], sys.argv[2]
