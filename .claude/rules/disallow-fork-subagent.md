@@ -44,10 +44,16 @@ of the token/context savings it would otherwise offer.
 
 ## Enforcement
 
-Policy gate, no backing hook. This falls outside
-`.claude/rules/require-security-review-before-new-gate.md`'s own scope — that rule targets a *new
-mechanism* with its own pass/fail check logic (an authentication/permission gate, a bypass-attestation
-protocol); this is a blanket prohibition with no conditional check to review, closer to a categorical
-tool restriction than a new gate. Nothing in this repo mechanically blocks a `subagent_type: "fork"` call
-at the tool-invocation layer; compliance depends on the acting session recognizing and honoring this rule
-before dispatching `Agent`.
+Backed by a `PreToolUse` hook (2026-09-25): `plugins/plugin-devkit/hooks/guard-fork-subagent.sh`,
+registered on the `Agent` matcher, hard-denies any call whose `subagent_type` resolves to `"fork"`
+(case/whitespace-normalized). Security-reviewed per
+`.claude/rules/require-security-review-before-new-gate.md` before shipping. Not airtight: under the
+hook's own `"onError": "warn"` registration, a fork call is let through with just a warning (never
+silently) if the hook process is killed by its timeout, its interpreter or script file is missing/
+non-executable, or a bash parse/expansion error occurs before its own fail-closed trap installs — the
+same class of residual `guard-raw-branch-create.sh` discloses for git-kit's guards. **Scope note:** the
+hook ships inside plugin-devkit's own `hooks/hooks.json`, so it is active in *any* project that installs
+plugin-devkit as a plugin, not only this repository — a deliberate choice (2026-09-25), wider than this
+rule's own "in this repository" framing above. This rule's policy text still describes and justifies the
+*decision* for this repo specifically; the hook is simply shipped more broadly than the policy's own
+stated scope, by the repo owner's explicit choice.
