@@ -296,6 +296,17 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "^Agent$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-fork-subagent.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
       }
     ],
     "PreCompact": [
