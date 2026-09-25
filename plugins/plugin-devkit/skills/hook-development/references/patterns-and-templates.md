@@ -865,7 +865,7 @@ degradation (never an uncaught crash) if none is found.
    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
    INPUT="$(cat)"
    if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then
-     echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
+     echo "$INPUT" | uv run --no-project "$SCRIPT_DIR/my-hook.py"
    elif command -v python3 >/dev/null 2>&1; then
      echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
    elif command -v python >/dev/null 2>&1; then
