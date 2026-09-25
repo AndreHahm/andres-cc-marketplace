@@ -9,7 +9,7 @@ future one — so the bar for "confirm first" is higher here than in `dev`.
 ## Behavioral Profile
 
 - **Primary tools**: `update-config`, `plugin-settings`, `apply-permissions`/`find-permissions`/
-  `trim-permissions`, `fewer-permission-prompts`, `create-git-kit-local-json`
+  `trim-permissions`, `fewer-permission-prompts`, `git-create-git-kit-local-json`
 - **Secondary tools**: Read/Edit on settings files, `plugin-lifecycle-maintenance`, Bash (to verify
   install/config state)
 - **Risk tolerance**: Low — prefer the narrowest, most reversible config change that satisfies the
