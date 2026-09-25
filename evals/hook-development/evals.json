@@ -30,6 +30,13 @@
       "prompt": "Using hook-development, write a hooks/hooks.json command-hook entry that runs scripts/validate.sh before every Bash call, with an appropriate timeout for a script that should complete within about 5 seconds. Also state what unit the timeout field uses, its default value for every hook type (command, http, mcp_tool, prompt, agent), whether any specific hook event overrides those defaults, and whether there are any hook configurations where the timeout value is not actually enforced.",
       "expected_output": "The timeout value in the JSON example is expressed in seconds (a small number like 5, not a milliseconds-scale number like 5000). Defaults stated explicitly cover all five hook types: 600 for command, http, and mcp_tool; 30 for prompt; 60 for agent. The response also states that Claude Code lowers the command/http/mcp_tool default to 30 seconds on UserPromptSubmit, PreModelSwitch, and PostModelSwitch, to 10 seconds on MessageDisplay, and that SessionEnd hooks share a 1.5-second total budget -- with no internal contradiction between the JSON example and any prose statement of the unit/defaults, and any 'an explicit timeout always overrides the default' claim is qualified with the confirmed exception: a plain async command hook (`async: true` without `asyncRewake: true`) has its timeout unenforced, while an `asyncRewake: true` hook still runs in the background but keeps timeout enforcement.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "Python interpreter fallback (required default, issue #358/#359)",
+      "prompt": "Using hook-development, write a hooks/hooks.json PostToolUse entry for my plugin that runs a Python script (scripts/my-hook.py) after every Write/Edit. The script needs to read JSON from stdin and exit 2 to block on a bad result.",
+      "expected_output": "Registers the hook via a wrapper that uses the full uv -> python3 -> python fallback cascade (not a bare python3/python invocation, and not a partial python3-only-or python fallback with no uv tier), includes a graceful-degradation branch for when none of the three is found (never an uncaught crash -- e.g. a systemMessage/exit 0, or a documented blocking alternative), and follows the two-file convention (a .sh wrapper needing the executable bit, invoked by hooks.json's bare command path, with the actual hook logic in a sibling .py file that does not need the executable bit since it's passed as an argument to the resolved interpreter, never exec'd via its own shebang).",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
