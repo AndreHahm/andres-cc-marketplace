@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-if command -v uv >/dev/null 2>&1; then
+if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then
     PY_RUN=(uv run --no-project python)
 elif command -v python3 >/dev/null 2>&1; then
     PY_RUN=(python3)

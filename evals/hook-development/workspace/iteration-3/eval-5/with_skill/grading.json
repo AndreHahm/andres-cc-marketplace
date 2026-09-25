@@ -3,29 +3,34 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {
+      "text": "The hook is registered as PreToolUse, not PostToolUse -- blocking the tool call before it runs is the stated need, and PostToolUse cannot block (per the skill's own Hook Events table)",
+      "passed": true,
+      "evidence": "hooks/hooks.json registers the entry under \"PreToolUse\"; response text explicitly states \"PreToolUse (blocks before the tool runs)\"."
+    },
+    {
       "text": "The hooks.json command uses the full uv -> python3 -> python cascade, not a bare python3/python call or a partial (python3-only-or-python) fallback",
       "passed": true,
-      "evidence": "scripts/my-hook.sh: `if command -v uv ...; then ... uv run ...; elif command -v python3 ...; then ... python3 ...; elif command -v python ...; then ... python ...; else ...; fi` -- all three tiers present in order."
+      "evidence": "`if command -v uv ...; then ... uv run ...; elif command -v python3 ...; then ... python3 ...; elif command -v python ...; then ... python ...; else exit 0; fi` -- all three tiers present in order."
     },
     {
       "text": "The fallback chain includes a graceful-degradation branch for when none of uv/python3/python is found (no uncaught crash)",
       "passed": true,
-      "evidence": "Final `else` branch: `echo '{\"systemMessage\":\"my-hook: no Python runner (uv/python3/python) found on PATH — skipped.\"}'` -- response text explicitly calls this out as replacing 'a bare exec python ... that would crash uncaught', and correctly notes a hook could instead choose to fail closed there if that's the safer default."
+      "evidence": "Final `else exit 0; fi` branch, explicitly called out in the response's notes as \"pass through, don't crash\"."
     },
     {
-      "text": "Follows the two-file convention: a .sh wrapper (registered by bare path, needs the executable bit) with the actual hook logic in a sibling .py file (never invoked via its own shebang)",
+      "text": "Uses either the inline hooks.json command-cascade shape or the two-file .sh-wrapper-plus-sibling-.py shape -- both are correct per Pattern 11; do not fail a response solely for picking one over the other. If two-file is used, the .sh's need for the executable bit and the .py's lack of one must both be stated correctly",
       "passed": true,
-      "evidence": "hooks.json command points at `${CLAUDE_PLUGIN_ROOT}/scripts/my-hook.sh` (not the .py file directly); response states my-hook.sh 'needs the executable bit' and my-hook.py 'No executable bit needed... never exec'd via its own shebang' -- matches the skill's documented convention exactly."
+      "evidence": "Response explicitly chose the inline cascade shape and stated why (\"single, straightforward script with no extra wrapper-level logic needed\") -- a deliberate, correctly-justified choice per the now-corrected Pattern 11 guidance; response also correctly notes the .py needs no executable bit in this shape."
     },
     {
-      "text": "The response reads stdin as JSON in the .py logic file (not environment-variable substitution), consistent with hook-development's baseline guidance",
+      "text": "The response reads stdin as JSON in the Python logic (not environment-variable substitution), consistent with hook-development's baseline guidance, and exits 2 with a stderr message to block",
       "passed": true,
-      "evidence": "my-hook.py: `data = json.load(sys.stdin)` followed by `tool_name = data.get(\"tool_name\", \"\")` / `tool_input.get(\"file_path\", \"\")` -- correct stdin-JSON parsing, no env-var reliance."
+      "evidence": "`data = json.load(sys.stdin)` with try/except; `sys.exit(2)` preceded by `print(..., file=sys.stderr)` on the blocking path, `sys.exit(0)` on pass -- matches the Exit Codes & Output Contract exactly."
     }
   ],
   "summary": {
-    "assertions_total": 4,
-    "assertions_passed": 4,
+    "assertions_total": 5,
+    "assertions_passed": 5,
     "pass_rate": 1.0
   }
 }
