@@ -51,9 +51,31 @@ registered on the `Agent` matcher, hard-denies any call whose `subagent_type` re
 hook's own `"onError": "warn"` registration, a fork call is let through with just a warning (never
 silently) if the hook process is killed by its timeout, its interpreter or script file is missing/
 non-executable, or a bash parse/expansion error occurs before its own fail-closed trap installs — the
-same class of residual `guard-raw-branch-create.sh` discloses for git-kit's guards. **Scope note:** the
-hook ships inside plugin-devkit's own `hooks/hooks.json`, so it is active in *any* project that installs
-plugin-devkit as a plugin, not only this repository — a deliberate choice (2026-09-25), wider than this
-rule's own "in this repository" framing above. This rule's policy text still describes and justifies the
-*decision* for this repo specifically; the hook is simply shipped more broadly than the policy's own
-stated scope, by the repo owner's explicit choice.
+same class of residual `guard-raw-branch-create.sh` discloses for git-kit's guards.
+
+**Launch mechanism (updated 2026-09-25, PR #396 review):** the hook's `command` field quotes the
+whole `${CLAUDE_PLUGIN_ROOT}`-prefixed path (`"\"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-fork-subagent.sh"`,
+`"shell": "bash"`), matching `context-kit`'s already-shipping `compact-instructions.sh` precedent for
+the identical problem, rather than switching to exec form (`"args": []`) as first attempted.
+CodeRabbit correctly flagged that an *unquoted* shell-form path word-splits on a space anywhere in
+`${CLAUDE_PLUGIN_ROOT}` (e.g. a Windows/Mac install path containing one), silently defeating the guard
+under `onError: "warn"` — empirically confirmed both ways: an unquoted `sh -c` invocation against a
+space-containing path failed with exit 127 ("not found"); the quoted form correctly launched and
+denied the fork call from the same path. Exec form was tried first, but dropped after a second
+security-reviewer pass raised two unresolved risks specific to it — whether `${CLAUDE_PLUGIN_ROOT}`
+substitution still applies with no shell involved, and whether direct exec of a `.sh` file (no shebang
+interpretation) works on Windows — neither of which this session could verify from this environment.
+Quoting closes the reported gap using the same shell-form mechanism every other hook in this file
+already relies on, without introducing either of those two unverified risks.
+
+**Residual not fixed here (informational, not blocking):** this file's sibling `PreToolUse`/
+`PostToolUse` hook entries still use unquoted shell-form paths — a deliberate scope decision (only the
+flagged security-relevant entry was fixed), since none of them is a hard-block gate whose silent
+failure has the same consequence (`security-precommit-check.sh` is log-only; the R25/R26 checks are
+best-effort and already `onError: "warn"` by design).
+
+**Scope note:** the hook ships inside plugin-devkit's own `hooks/hooks.json`, so it is active in *any*
+project that installs plugin-devkit as a plugin, not only this repository — a deliberate choice
+(2026-09-25), wider than this rule's own "in this repository" framing above. This rule's policy text
+still describes and justifies the *decision* for this repo specifically; the hook is simply shipped
+more broadly than the policy's own stated scope, by the repo owner's explicit choice.
