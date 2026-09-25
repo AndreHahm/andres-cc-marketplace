@@ -3,6 +3,11 @@
   "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
   "assertions": [
     {
+      "text": "The hook is registered as PreToolUse, not PostToolUse -- blocking the tool call before it runs is the stated need, and PostToolUse cannot block (per the skill's own Hook Events table)",
+      "type": "correctness",
+      "target": "outputs/ directory (the hooks.json entry produced)"
+    },
+    {
       "text": "The hooks.json command uses the full uv -> python3 -> python cascade, not a bare python3/python call or a partial (python3-only-or-python) fallback",
       "type": "functionality",
       "target": "outputs/ directory (the hooks.json command string or .sh wrapper produced)"
@@ -13,12 +18,12 @@
       "target": "outputs/ directory"
     },
     {
-      "text": "Follows the two-file convention: a .sh wrapper (registered by bare path, needs the executable bit) with the actual hook logic in a sibling .py file (never invoked via its own shebang)",
+      "text": "Uses either the inline hooks.json command-cascade shape or the two-file .sh-wrapper-plus-sibling-.py shape -- both are correct per Pattern 11; do not fail a response solely for picking one over the other. If two-file is used, the .sh's need for the executable bit and the .py's lack of one must both be stated correctly",
       "type": "structure",
       "target": "outputs/ directory"
     },
     {
-      "text": "The response reads stdin as JSON in the .py logic file (not environment-variable substitution), consistent with hook-development's baseline guidance",
+      "text": "The response reads stdin as JSON in the Python logic (not environment-variable substitution), consistent with hook-development's baseline guidance, and exits 2 with a stderr message to block",
       "type": "functionality",
       "target": "outputs/ directory"
     }

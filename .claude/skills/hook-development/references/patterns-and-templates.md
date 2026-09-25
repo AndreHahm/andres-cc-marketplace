@@ -843,10 +843,14 @@ degradation (never an uncaught crash) if none is found.
    the fallback directly and `exec`s the target `.py` file (`exec` replaces the shell process, so stdin
    passes through automatically — no need to buffer it):
    ```json
-   "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi"
+   "command": "if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi"
    ```
    Good default for a single straightforward script — this is what most of this repo's own hooks actually
-   use (e.g. `plugins/context-kit/hooks/hooks.json`).
+   use (e.g. `plugins/context-kit/hooks/hooks.json`). Note the `uv` tier's `&& uv --version >/dev/null 2>&1`:
+   `command -v uv` only confirms a `uv` binary exists on `PATH`, not that invoking it actually works (a
+   broken install, or a sandboxed/snap-confined `uv` that fails at runtime, would otherwise `exec` into a
+   dead end with no way to fall through, since `exec` irrevocably replaces the shell process). The cheap
+   `uv --version` probe catches that before committing via `exec`.
 
 2. **Two-file `.sh` wrapper + sibling `.py`**: worth the extra file when the wrapper itself needs its own
    logic beyond interpreter selection (shared across multiple hook entries, wants its own `shellcheck`
@@ -869,6 +873,9 @@ degradation (never an uncaught crash) if none is found.
      echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
    fi
    ```
+   This quotes `rulebook-check.sh`'s real, unmodified `uv` check (`command -v uv` alone, no functional
+   probe) — the same existence-only gap the inline shape's own `uv --version` probe above closes. Not
+   fixed here since it's a pre-existing file this change doesn't otherwise touch — tracked as issue #400.
 
 Both shapes end in the same graceful-degradation requirement — never let the fallback chain fall through
 to a bare `exec python ...`/`python ...` with nothing to catch a system that has none of the three. A

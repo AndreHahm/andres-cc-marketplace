@@ -1,35 +1,34 @@
-# PostToolUse Hook: `scripts/my-hook.py` on every Write/Edit
+# PreToolUse Hook: Python validation on Write/Edit
 
-Built using `hook-development`'s "Basic Command Hook" template (`references/patterns-and-templates.md`),
-the CRITICAL stdin/nested-array guidance in `SKILL.md`, and Pattern 11's required
-`uv` → `python3` → `python` runner-fallback convention (a Python script invoked via a bare `hooks.json`
-`command` path has no interpreter of its own, so the skill mandates this two-file shape as the default,
-not an optional hardening step).
-
-Three files are needed:
-
-1. `hooks/hooks.json` — the PostToolUse registration (plugin project layout: hooks live at
-   `hooks/hooks.json`, not `.claude-plugin/hooks.json`).
-2. `scripts/my-hook.sh` — the interpreter-selection wrapper. This is what `hooks.json`'s `command`
-   actually invokes, so it needs the executable bit.
-3. `scripts/my-hook.py` — the actual hook logic (JSON-in on stdin, exit 2 to block). Passed as an
-   argument to whichever interpreter the wrapper resolved, so it never needs the executable bit or its
-   own shebang to be invoked directly.
+Plan (per `hook-development`'s Quick Start / Implementation Workflow):
+1. Detect project type → has a plugin, so hooks go in `hooks/hooks.json` at the plugin root.
+2. Event: `PreToolUse` (blocks before the tool runs) → matcher `^(Write|Edit)$`.
+3. Hook type: `command` (deterministic Python script, not LLM reasoning).
+4. Use the nested `"hooks": [...]` array (required structure).
+5. Script reads all event data from stdin as JSON (never env vars).
+6. Per Pattern 11 (Cross-Platform Python Hook) in `references/patterns-and-templates.md`, any
+   hook invoked via a bare `hooks.json` command path must use the `uv` → `python3` → `python`
+   runner fallback with graceful degradation — this is required, not optional. Picked the
+   **inline `command` cascade** shape (not the two-file `.sh` wrapper) since this is a single,
+   straightforward script with no extra wrapper-level logic needed.
+7. File references use `${CLAUDE_PLUGIN_ROOT}`.
+8. Exit code contract: `0` = pass, `2` = block (stderr shown to Claude).
 
 ---
 
-## `hooks/hooks.json`
+## File: `hooks/hooks.json`
 
 ```json
 {
+  "description": "Validation hooks for this plugin",
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
         "matcher": "^(Write|Edit)$",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/my-hook.sh",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi",
             "timeout": 5,
             "onError": "warn"
           }
@@ -40,116 +39,104 @@ Three files are needed:
 }
 ```
 
-Notes on each field, per the skill:
-- Nested `"hooks": [...]` array inside the matcher object is required — a hook action placed directly
-  under the event array (skipping this nesting) is the "#1 JSON mistake" the skill calls out.
-- `matcher` uses `^(Write|Edit)$` (anchored exact-match alternation) from the skill's Common Matcher
-  Patterns table, rather than a bare `Write|Edit` substring match.
-- `command` uses `${CLAUDE_PLUGIN_ROOT}` for a portable, install-location-independent path, and points
-  at the `.sh` wrapper — never directly at the `.py` file, since `hooks.json` has no way to select an
-  interpreter itself.
-- `timeout: 5` — PostToolUse is a `command` hook (default timeout 600s if omitted); the skill's
-  Performance & Safety section says each hook should complete in under 5 seconds, so this caps it there.
-- `onError: "warn"` — logs a warning and continues if the hook process itself errors out unexpectedly,
-  without crashing the plugin. (This is independent of the hook's own exit-2 blocking behavior, which is
-  the script's normal, intentional signaling path, not an error.)
+Notes on this entry:
+- The nested `"hooks": [...]` array inside the matcher object is required — omitting it produces
+  `"Expected array, but received undefined"`.
+- The `command` string is the inline fallback cascade from Pattern 11: try `uv run --no-project`
+  first, then `python3`, then `python`, and `exit 0` (pass through, don't crash) if none of the
+  three interpreters exist on `PATH`. Using `exec` replaces the shell process so stdin passes
+  through to the Python script automatically — no manual buffering needed.
+- `timeout: 5` follows the Performance & Safety guidance ("each hook should complete in under 5
+  seconds").
+- `onError: "warn"` means an unexpected script crash (not an intentional `exit 2`) is logged as a
+  warning rather than treated as a hard hook failure — this does not affect the script's own
+  `exit 2` blocking path, which is handled by the Exit Codes contract regardless of `onError`.
+- Matcher `^(Write|Edit)$` matches exactly the `Write` or `Edit` tool names, per the Common
+  Matcher Patterns table.
 
 ---
 
-## `scripts/my-hook.sh`
-
-```bash
-#!/bin/bash
-set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INPUT="$(cat)"
-if command -v uv >/dev/null 2>&1; then
-  echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
-elif command -v python3 >/dev/null 2>&1; then
-  echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
-elif command -v python >/dev/null 2>&1; then
-  echo "$INPUT" | python "$SCRIPT_DIR/my-hook.py"
-else
-  echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
-fi
-```
-
-Needs the executable bit: `chmod +x scripts/my-hook.sh`.
-
-This is the skill's canonical Pattern 11 wrapper, adapted only in filename (`my-hook.py` instead of the
-template's placeholder). It reads the full event JSON once via `INPUT="$(cat)"` (per the SKILL.md CRITICAL
-section — command hooks receive event data on stdin, never via environment-variable substitution) and
-pipes it to whichever of `uv` / `python3` / `python` is found first on `PATH`. The final `else` branch is
-the required graceful-degradation path: if none of the three interpreters exist, the wrapper emits a
-`systemMessage` and exits 0 rather than falling through to a bare `exec python ...` that would crash
-uncaught. This particular hook is advisory-on-missing-interpreter (skip rather than block) — the skill
-notes a hook can instead choose to fail closed with a `"decision":"block"` JSON body in that branch if
-blocking-on-missing-interpreter is the safer default for a given hook; not applicable here since nothing
-in the task described that requirement.
-
----
-
-## `scripts/my-hook.py`
+## File: `scripts/my-hook.py`
 
 ```python
 #!/usr/bin/env python3
+"""PreToolUse hook: validates Write/Edit calls before they run.
+
+Reads the full event JSON from stdin (never from environment variables —
+hooks.json's env-var substitution does not work for tool_input fields).
+Exit 0 to allow the tool call; exit 2 to block it (stderr is shown to Claude).
+"""
 import json
 import sys
+from pathlib import Path
 
-
-def main():
+# Read all event data from stdin as JSON.
+try:
     data = json.load(sys.stdin)
-    tool_name = data.get("tool_name", "")
-    tool_input = data.get("tool_input", {})
-    file_path = tool_input.get("file_path", "")
+except (json.JSONDecodeError, ValueError) as exc:
+    # Malformed input — fail open (don't block on a parsing problem, per the
+    # graceful-degradation requirement for hook scripts).
+    print(f"my-hook: could not parse stdin as JSON ({exc}) — skipping", file=sys.stderr)
+    sys.exit(0)
 
-    # TODO: replace with the actual post-write/edit check.
-    # Set is_bad = True (with a reason) when the result should be blocked.
-    is_bad = False
-    reason = "validation failed"
+tool_name = data.get("tool_name", "")
+file_path_str = data.get("tool_input", {}).get("file_path", "")
+file_path = Path(file_path_str) if file_path_str else None
 
-    if is_bad:
-        print(f"{tool_name} on {file_path}: {reason}", file=sys.stderr)
-        sys.exit(2)  # exit 2 is the ONLY way to communicate a hook failure to Claude (stderr shown to it)
+# --- Validation logic goes here ---
+# Replace this placeholder with the actual check this hook needs to perform.
+# Example shape: reject writes outside the project, reject a forbidden
+# filename, reject content that fails a policy check, etc.
+bad_result = False
+reason = ""
 
-    sys.exit(0)  # pass/continue
+if file_path is not None and ".." in file_path.parts:
+    bad_result = True
+    reason = f"path traversal ('..') detected in file_path: {file_path}"
 
+# --- End validation logic ---
 
-if __name__ == "__main__":
-    main()
+if bad_result:
+    print(f"Blocked {tool_name}: {reason}", file=sys.stderr)
+    sys.exit(2)  # Block — stderr is fed to Claude so it can understand and fix it
+
+sys.exit(0)  # Pass — allow the tool call to proceed
 ```
 
-No executable bit needed (it's always passed as an argument to the resolved interpreter in
-`my-hook.sh`, never exec'd via its own shebang).
-
-Behavior, per the skill's Exit Codes & Output Contract:
-- `sys.exit(0)` — pass/continue, no message shown.
-- `sys.exit(2)` — blocking error; whatever is written to stderr is fed back to Claude so it can
-  understand and fix the problem. This is the mechanism the task asked for ("exit 2 to block on a bad
-  result").
-- Any other exit code would be a non-blocking warning (logged, execution continues) — not used here
-  since the task only asked for pass/block.
-
-The actual "bad result" check (the `is_bad` condition) is left as a `TODO` placeholder — the task didn't
-specify what makes a result bad, so filling in fabricated validation logic would be inventing scope beyond
-what was asked. Field paths used (`tool_name`, `tool_input.file_path`) follow the standard PostToolUse
-stdin JSON shape the skill's CRITICAL section documents (`echo "$INPUT" | jq -r '.tool_input.file_path'`
-in bash terms) — `tool_input` for `Write`/`Edit` carries the target file's path there.
+Notes on this script:
+- Reads stdin via `json.load(sys.stdin)` — the `#1 reason command hooks silently do nothing` per
+  the skill is expecting env vars instead of stdin; this avoids that mistake entirely.
+- Uses `pathlib.Path` for the file path per the skill's cross-platform guidance ("use
+  `pathlib.Path` for all paths — never hardcode `/tmp/` or OS-specific separators").
+- No `subprocess`/`shell=True` usage, so there's no shell-injection surface from the untrusted
+  `tool_input` content — consistent with "never interpolate raw input into shell commands."
+- The placeholder validation (path-traversal check) is a stand-in "bad result" condition —
+  swap in whatever the plugin's actual policy check should be. The exit-code contract around it
+  (`sys.exit(2)` on failure, `sys.exit(0)` on pass) is the part the task specifically asked for.
+- The `.py` file does **not** need the executable bit: in the inline-cascade shape, it's always
+  passed as an argument to whichever interpreter (`uv run`/`python3`/`python`) the shell cascade
+  resolved — it is never exec'd directly via its own shebang.
 
 ---
 
-## Testing (per the skill's Testing & Validation checklist)
+## Validation / testing steps (per the skill's Testing & Validation section)
 
-Before shipping, the skill's own workflow calls for:
+Not run in this response (no live repo/plugin to test against here), but this is what the skill
+directs before shipping the entry above:
+
 1. `jq empty hooks/hooks.json && echo "Valid"` — JSON structure check.
 2. `scripts/validate-hook-schema.sh hooks/hooks.json` — schema validation.
-3. `shellcheck scripts/my-hook.sh` — lint the wrapper script.
-4. Manual test, piping sample event JSON:
+3. `shellcheck` does not apply here since the `command` fallback cascade, while shell syntax, is
+   authored as a single-line hooks.json string rather than a standalone `.sh` file; if it were
+   extracted into a `.sh` wrapper (the "two-file" Pattern 11 shape) it would need a `shellcheck`
+   pass instead.
+4. Manual test:
    ```bash
-   echo '{"tool_name":"Write","tool_input":{"file_path":"/test.txt"}}' | bash scripts/my-hook.sh
-   echo "Exit: $?"
+   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | python3 scripts/my-hook.py
+   echo "Exit: $?"   # expect 0
+
+   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/../etc/passwd"}}' | python3 scripts/my-hook.py
+   echo "Exit: $?"   # expect 2, with a message on stderr
    ```
-   (happy path — expect exit 0) and a second run with `is_bad = True` temporarily set in `my-hook.py`
-   to confirm the sad path (expect exit 2 and a stderr message).
-5. Live test with `claude --debug` after restarting Claude Code, watching for hook registration/
-   execution log lines.
+5. Live test: restart Claude Code, trigger a `Write`/`Edit`, check `claude --debug` output for
+   hook registration and execution logs.

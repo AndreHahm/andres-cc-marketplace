@@ -26,9 +26,13 @@ No `uv` tier, and no branch for "neither `python3` nor `python` exists" — it j
 ## Correct
 
 ```json
-"command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi"
+"command": "if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi"
 ```
-All three tiers present, plus a final branch that degrades gracefully instead of crashing.
+All three tiers present, plus a final branch that degrades gracefully instead of crashing. The `uv`
+tier's `&& uv --version >/dev/null 2>&1` is a functional probe, not just an existence check — `command -v
+uv` alone only confirms a `uv` binary is on `PATH`, not that invoking it actually works; since `exec`
+irrevocably replaces the shell process, a present-but-broken `uv` would otherwise dead-end instead of
+falling through to `python3`/`python`.
 
 ## Why
 
