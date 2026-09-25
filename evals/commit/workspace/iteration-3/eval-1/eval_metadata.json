@@ -1,0 +1,7 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/commit/SKILL.md",
+  "assertions": [
+    {"text": "Invokes the create-pr skill using the bare form Skill(create-pr), never the scoped Skill(git-kit:create-pr) form", "type": "functionality", "target": "response"}
+  ]
+}

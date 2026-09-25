@@ -113,7 +113,7 @@ jq -n \
   --arg state "$STATE_DESC" \
   '{
     "decision": "block",
-    "reason": ("This session'\''s bound worktree at " + $path + " has " + $state + ". Tell the user plainly: exiting now could lose this work if the worktree gets removed. Suggest committing (Skill(git-kit:commit)) or pushing first. If they want to exit anyway, they can say \"exit anyway\" and try again."),
+    "reason": ("This session'\''s bound worktree at " + $path + " has " + $state + ". Tell the user plainly: exiting now could lose this work if the worktree gets removed. Suggest committing (Skill(commit)) or pushing first. If they want to exit anyway, they can say \"exit anyway\" and try again."),
     "systemMessage": ("Bound worktree has " + $state + " -- say \"exit anyway\" to override.")
   }'
 exit 0

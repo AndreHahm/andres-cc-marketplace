@@ -12,7 +12,7 @@ description: >-
   judgment attached, not `handling-review-findings`'s triage of findings already posted against an open
   PR review thread, and not `managing-review-learnings`'s mined-candidate routing (dispatches here once
   approved) — never PR-review findings, only freestanding issues.
-allowed-tools: Read, Write, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
+allowed-tools: Read, Write, Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
 # GitHub Issue Lifecycle
@@ -35,8 +35,8 @@ duplicating what they already do.
 
 ## When NOT to Use
 
-- Linking a PR to the issue it closes — that's `collaborating-on-a-pr`'s job (`Skill(git-kit:collaborating-on-a-pr)`); this skill delegates to it rather than re-implementing PR↔issue linking
-- Drafting a brand-new issue from raw notes/logs/screenshots — that's `github-issue-creator`'s job (`Skill(git-kit:github-issue-creator)`); this skill delegates to it for the drafting step, then files the result live itself (see Workflow 1)
+- Linking a PR to the issue it closes — that's `collaborating-on-a-pr`'s job (`Skill(collaborating-on-a-pr)`); this skill delegates to it rather than re-implementing PR↔issue linking
+- Drafting a brand-new issue from raw notes/logs/screenshots — that's `github-issue-creator`'s job (`Skill(github-issue-creator)`); this skill delegates to it for the drafting step, then files the result live itself (see Workflow 1)
 - Filing an issue derived from a mined, cross-PR systemic-pattern candidate that still needs a doc-update/rule-coverage judgment applied first — that's `analysis-kit`'s `managing-review-learnings` job; it applies a doc-diff to `THIRD_PARTY_REVIEW_LEARNINGS.md` and checks `.claude/rules/` coverage before ever dispatching here, then dispatches this skill's own Workflow 1 for the actual filing. A request already framed as filing one specific, already-analyzed issue (no PR-mining or rule-coverage check wanted) still belongs here directly.
 - A raw one-off `gh issue` lookup or edit with no judgment attached — see `gh-operations`' reference material instead; this skill owns the triage/relate/resolve judgment layer, not ad hoc `gh` calls
 - Triaging a finding already posted against an open PR's review thread — that's `handling-review-findings`'s job; this skill never touches PR-review findings, only freestanding issues
@@ -80,9 +80,9 @@ above already requires rather than assuming a short field is automatically safe.
 GET/POST operations the workflows perform — that prefix also reaches DELETE/PATCH on any issue comment,
 label, or sub-issue link under `repos/*/issues/*`, since `gh api`'s scoping syntax can't narrow further
 by HTTP method. The actual bound is the documented workflow steps, not the grant itself: only the
-GET/POST calls named in `references/sub-issues-api.md` are sanctioned. Invoking `Skill(git-kit:
-github-issue-creator)` also transitively reaches that skill's own `Write` access to `issues/` at the
-repo root.
+GET/POST calls named in `references/sub-issues-api.md` are sanctioned. Invoking
+`Skill(github-issue-creator)` also transitively reaches that skill's own `Write` access to `issues/` at
+the repo root.
 
 `allowed-tools` also grants `Bash(gh issue edit:*)` (added 2026-09-14, priority-label capability) —
 broader than the `--add-label`/`--remove-label` calls Workflow 1's Step 5.5 and Workflow 2's Step 7

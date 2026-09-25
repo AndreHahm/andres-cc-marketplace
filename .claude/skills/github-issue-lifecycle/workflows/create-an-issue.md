@@ -15,7 +15,7 @@ stop here and point at it instead of filing a new issue.
 
 ## Step 2: Delegate Drafting
 
-Required once Step 1 confirms no duplicate exists. Invoke `Skill(git-kit:github-issue-creator)` with
+Required once Step 1 confirms no duplicate exists. Invoke `Skill(github-issue-creator)` with
 the raw notes/logs/screenshots, **explicitly instructing it as part of this invocation to never write a
 literal bot-trigger mention (e.g. `@codex review`, `@coderabbitai review`) in the drafted title or
 body — an ordinary `@username`/`@team` mention notifying a human collaborator is fine** — see
@@ -98,7 +98,7 @@ indefinitely between filing and its first re-triage.
 issue whose PR is already open would dispatch `create-pr` and open a second, duplicate PR. So:
 
 - If the PR that will close this issue **hasn't been created yet**, invoke
-  `Skill(git-kit:collaborating-on-a-pr)` when that PR is created — never re-implement that linking here.
+  `Skill(collaborating-on-a-pr)` when that PR is created — never re-implement that linking here.
 - If a PR **already exists and is already open**, this skill has no `gh pr`/`Write`/`Edit` grant to
   perform that edit itself (see SKILL.md's own Boundaries section) and does not orchestrate it. Ask the
   user how they want it linked — never invoke `collaborating-on-a-pr` for this case, and never attempt

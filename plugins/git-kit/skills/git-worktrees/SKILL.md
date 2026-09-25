@@ -22,7 +22,7 @@ Neither supersedes the other; they're two different use cases (manual vs. sessio
 **Hand-offs to `starting-work`/`commit`/`resolving-merge-conflicts` are prose-only, deliberately** —
 unlike `git-cleanup` (excluded via `disable-model-invocation: true`), those three are ordinary,
 dispatchable skills, and this plugin's convention elsewhere pairs a real hand-off with a matching
-`Skill(git-kit:<name>)` grant. This skill stays prose-only instead: each hand-off happens mid-workflow at
+`Skill(<name>)` grant. This skill stays prose-only instead: each hand-off happens mid-workflow at
 a point this skill's own guided/manual flow doesn't always reach identically (a full merge, a partial
 patch application, an experiment the user may discard), so the calling agent — not this skill — is better
 placed to decide whether and when to actually dispatch the next skill, rather than this skill always

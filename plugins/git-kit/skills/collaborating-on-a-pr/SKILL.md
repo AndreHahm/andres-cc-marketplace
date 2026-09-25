@@ -10,7 +10,7 @@ description: >-
   material instead — this skill owns the orchestrated review flow, not ad hoc `gh` calls. Not
   `handling-review-findings`'s job of triaging findings already posted against an open PR.
 argument-hint: (optional) PR number or URL, and/or an issue number to link — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:create-pr)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(create-pr)
 ---
 
 # Collaborating on a PR
@@ -67,7 +67,7 @@ reference — see `create-pr`'s own "Issue-linking hand-off" step), start direct
 `create-pr` just created. Never re-invoke `create-pr` from within this mode — that instruction exists
 specifically to prevent `create-pr` ↔ `collaborating-on-a-pr` from calling each other in a loop.
 
-1. When `$ARGUMENTS` or the surrounding conversation names a related issue while creating a new PR, invoke `Skill(git-kit:create-pr)`,
+1. When `$ARGUMENTS` or the surrounding conversation names a related issue while creating a new PR, invoke `Skill(create-pr)`,
    explicitly instructing it — as part of this invocation — to (a) include `Closes #<N>` (or `Refs #<N>` if
    the relationship is "relates to" rather than "resolves") in the PR body it drafts, and (b) **skip its
    own "Issue-linking hand-off" step (step 5)** — this run already owns the issue-linking flow and will do
