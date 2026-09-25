@@ -3883,11 +3883,52 @@
         }
       ],
       "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6b3c985c",
+      "name": "PreToolUse-1",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PreToolUse-1",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-25",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-25",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_7e527600",
   "plugin_name": "plugin-devkit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-16"
+  "updated_on": "2026-09-25"
 }
