@@ -1,18 +1,29 @@
-# PreToolUse Hook: Python validation on Write/Edit
+# PreToolUse hook: validate before every Write/Edit (Python, `scripts/my-hook.py`)
 
-Plan (per `hook-development`'s Quick Start / Implementation Workflow):
-1. Detect project type → has a plugin, so hooks go in `hooks/hooks.json` at the plugin root.
-2. Event: `PreToolUse` (blocks before the tool runs) → matcher `^(Write|Edit)$`.
-3. Hook type: `command` (deterministic Python script, not LLM reasoning).
-4. Use the nested `"hooks": [...]` array (required structure).
-5. Script reads all event data from stdin as JSON (never env vars).
-6. Per Pattern 11 (Cross-Platform Python Hook) in `references/patterns-and-templates.md`, any
-   hook invoked via a bare `hooks.json` command path must use the `uv` → `python3` → `python`
-   runner fallback with graceful degradation — this is required, not optional. Picked the
-   **inline `command` cascade** shape (not the two-file `.sh` wrapper) since this is a single,
-   straightforward script with no extra wrapper-level logic needed.
-7. File references use `${CLAUDE_PLUGIN_ROOT}`.
-8. Exit code contract: `0` = pass, `2` = block (stderr shown to Claude).
+Following `hook-development`'s conventions:
+
+- **File location**: this is a plugin project, so the hook config goes in `hooks/hooks.json` at the
+  plugin root (never `.claude-plugin/hooks.json` — that directory is reserved for `plugin.json`).
+- **Structure**: every handler sits inside the nested `"hooks": [...]` array under the matcher, per the
+  CRITICAL "Nested hooks Array JSON Structure" section.
+- **Stdin, not env vars**: the script reads the full event JSON from stdin (`json.load(sys.stdin)`),
+  never `${arguments.file_path}`-style env substitution.
+- **Matcher**: `^(Write|Edit)$` — exact tool-name match for both tools, per the Common Matcher Patterns
+  table.
+- **Exit codes**: `0` = allow, `2` = block with the stderr message shown to Claude — "Exit 2 is the ONLY
+  way to communicate hook failures to Claude."
+- **Pattern 11 (Cross-Platform Python Hook) — required interpreter fallback**: `hooks.json` invokes
+  `command` by bare path with no interpreter of its own, and a plain `python` binary isn't guaranteed to
+  exist, so the hook uses the required `uv` → `python3` → `python` cascade with graceful degradation
+  (never an uncaught crash) if none is found. Per Pattern 11's own guidance, the `uv` tier includes the
+  functional probe (`uv --version`, not just `command -v uv`) — `command -v uv` only proves a `uv` binary
+  is on `PATH`, not that invoking it actually works, and since the cascade uses `exec`, a broken/sandboxed
+  `uv` would otherwise dead-end instead of falling through to `python3`/`python`.
+- **Shape choice**: this is a single, straightforward validation script with no logic beyond interpreter
+  selection, so it uses Pattern 11's **inline `command` cascade** shape (Shape 1) rather than a separate
+  `.sh` wrapper — "Good default for a single straightforward script... this is what most of this repo's
+  own hooks actually use." Because the cascade `exec`s the target `.py` file directly, stdin passes
+  through automatically with no need to buffer it in the JSON `command` string.
 
 ---
 
@@ -20,7 +31,6 @@ Plan (per `hook-development`'s Quick Start / Implementation Workflow):
 
 ```json
 {
-  "description": "Validation hooks for this plugin",
   "hooks": {
     "PreToolUse": [
       {
@@ -28,9 +38,8 @@ Plan (per `hook-development`'s Quick Start / Implementation Workflow):
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi",
-            "timeout": 5,
-            "onError": "warn"
+            "command": "if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi",
+            "timeout": 5
           }
         ]
       }
@@ -39,20 +48,22 @@ Plan (per `hook-development`'s Quick Start / Implementation Workflow):
 }
 ```
 
-Notes on this entry:
-- The nested `"hooks": [...]` array inside the matcher object is required — omitting it produces
-  `"Expected array, but received undefined"`.
-- The `command` string is the inline fallback cascade from Pattern 11: try `uv run --no-project`
-  first, then `python3`, then `python`, and `exit 0` (pass through, don't crash) if none of the
-  three interpreters exist on `PATH`. Using `exec` replaces the shell process so stdin passes
-  through to the Python script automatically — no manual buffering needed.
-- `timeout: 5` follows the Performance & Safety guidance ("each hook should complete in under 5
-  seconds").
-- `onError: "warn"` means an unexpected script crash (not an intentional `exit 2`) is logged as a
-  warning rather than treated as a hard hook failure — this does not affect the script's own
-  `exit 2` blocking path, which is handled by the Exit Codes contract regardless of `onError`.
-- Matcher `^(Write|Edit)$` matches exactly the `Write` or `Edit` tool names, per the Common
-  Matcher Patterns table.
+Notes on this entry, tied back to the skill:
+
+- `matcher` is `"^(Write|Edit)$"` — matches are case-sensitive, and this is the exact tool-name form the
+  skill's Common Matcher Patterns table shows for "Edit files."
+- `timeout: 5` — the skill's Performance & Safety section says "each hook should complete in under 5
+  seconds," and this is a fast deterministic check (command type is the documented choice for that,
+  per the Type Decision table), so a short timeout is appropriate. (Default for `command` type is 600s
+  if omitted — set explicitly here since this hook is meant to be fast.)
+- No `onError` is set — this hook's whole purpose is a blocking safety gate (exit 2 on bad input), so the
+  default (non-`"warn"`/`"continue"`) behavior is correct; `onError: "warn"`/`"continue"` are for hooks
+  whose failures shouldn't block execution (e.g. logging), which this is not.
+- The final `else exit 0;` branch is the required graceful-degradation path: if none of `uv`, `python3`,
+  or `python` is found, the hook exits 0 (allow) rather than crashing. (A blocking hook could instead
+  choose to fail closed there per Pattern 11's note — but silently missing an interpreter is not "a bad
+  result" the validation logic itself detected, so this template defaults to allow; swap to a
+  `sys.exit(2)`-equivalent shell branch if failing closed is the safer default for your specific check.)
 
 ---
 
@@ -60,83 +71,76 @@ Notes on this entry:
 
 ```python
 #!/usr/bin/env python3
-"""PreToolUse hook: validates Write/Edit calls before they run.
+"""PreToolUse hook for Write/Edit.
 
-Reads the full event JSON from stdin (never from environment variables —
-hooks.json's env-var substitution does not work for tool_input fields).
-Exit 0 to allow the tool call; exit 2 to block it (stderr is shown to Claude).
+Reads the tool-call event JSON from stdin (never environment variables —
+see hook-development's CRITICAL "Command Hooks Receive Data via Stdin"
+section) and exits 2 to block the tool call when validation fails, or 0
+to allow it. Exit 2 is the only way to surface a blocking message to
+Claude; the message must go to stderr.
 """
 import json
 import sys
 from pathlib import Path
 
-# Read all event data from stdin as JSON.
-try:
-    data = json.load(sys.stdin)
-except (json.JSONDecodeError, ValueError) as exc:
-    # Malformed input — fail open (don't block on a parsing problem, per the
-    # graceful-degradation requirement for hook scripts).
-    print(f"my-hook: could not parse stdin as JSON ({exc}) — skipping", file=sys.stderr)
-    sys.exit(0)
+data = json.load(sys.stdin)
+file_path = Path(data.get("tool_input", {}).get("file_path", ""))
 
-tool_name = data.get("tool_name", "")
-file_path_str = data.get("tool_input", {}).get("file_path", "")
-file_path = Path(file_path_str) if file_path_str else None
 
-# --- Validation logic goes here ---
-# Replace this placeholder with the actual check this hook needs to perform.
-# Example shape: reject writes outside the project, reject a forbidden
-# filename, reject content that fails a policy check, etc.
-bad_result = False
-reason = ""
+def is_bad_result(path: Path) -> bool:
+    """Replace with the real validation check for this hook."""
+    return False
 
-if file_path is not None and ".." in file_path.parts:
-    bad_result = True
-    reason = f"path traversal ('..') detected in file_path: {file_path}"
 
-# --- End validation logic ---
+if is_bad_result(file_path):
+    print(f"Blocked: {file_path} failed validation.", file=sys.stderr)
+    sys.exit(2)
 
-if bad_result:
-    print(f"Blocked {tool_name}: {reason}", file=sys.stderr)
-    sys.exit(2)  # Block — stderr is fed to Claude so it can understand and fix it
-
-sys.exit(0)  # Pass — allow the tool call to proceed
+sys.exit(0)
 ```
 
-Notes on this script:
-- Reads stdin via `json.load(sys.stdin)` — the `#1 reason command hooks silently do nothing` per
-  the skill is expecting env vars instead of stdin; this avoids that mistake entirely.
-- Uses `pathlib.Path` for the file path per the skill's cross-platform guidance ("use
-  `pathlib.Path` for all paths — never hardcode `/tmp/` or OS-specific separators").
-- No `subprocess`/`shell=True` usage, so there's no shell-injection surface from the untrusted
-  `tool_input` content — consistent with "never interpolate raw input into shell commands."
-- The placeholder validation (path-traversal check) is a stand-in "bad result" condition —
-  swap in whatever the plugin's actual policy check should be. The exit-code contract around it
-  (`sys.exit(2)` on failure, `sys.exit(0)` on pass) is the part the task specifically asked for.
-- The `.py` file does **not** need the executable bit: in the inline-cascade shape, it's always
-  passed as an argument to whichever interpreter (`uv run`/`python3`/`python`) the shell cascade
-  resolved — it is never exec'd directly via its own shebang.
+Notes on this script, tied back to the skill:
+
+- Uses `pathlib.Path` for the file path — never a hardcoded `/tmp/`-style string or OS-specific
+  separator — per the Performance & Safety section's "Prefer Python for cross-platform hook scripts"
+  guidance and Pattern 11's template.
+- No `subprocess` call is needed for this validation shape, but if one were added, it must use list
+  arguments and never `shell=True` with a string command (Performance & Safety section /
+  Pattern 11).
+- `json.load(sys.stdin)` is the required stdin-JSON parsing approach — reading `tool_input.file_path`
+  from the parsed event data, not from an env var.
+- The `is_bad_result()` function is an intentionally minimal placeholder — the task only specified "exit
+  2 on a bad result," not what the check itself should be; fill in the real validation logic there.
+- The `.py` file is passed as an argument to whichever interpreter the `hooks.json` cascade resolves
+  (`uv run --no-project .../my-hook.py`, `python3 .../my-hook.py`, or `python .../my-hook.py`) — it is
+  never `exec`'d via its own shebang, so it does **not** need the executable bit set (only the two-file
+  `.sh`-wrapper shape from Pattern 11 requires that, for the wrapper itself).
 
 ---
 
-## Validation / testing steps (per the skill's Testing & Validation section)
+## Testing & Validation (per the skill's own Testing & Validation section)
 
-Not run in this response (no live repo/plugin to test against here), but this is what the skill
-directs before shipping the entry above:
-
-1. `jq empty hooks/hooks.json && echo "Valid"` — JSON structure check.
-2. `scripts/validate-hook-schema.sh hooks/hooks.json` — schema validation.
-3. `shellcheck` does not apply here since the `command` fallback cascade, while shell syntax, is
-   authored as a single-line hooks.json string rather than a standalone `.sh` file; if it were
-   extracted into a `.sh` wrapper (the "two-file" Pattern 11 shape) it would need a `shellcheck`
-   pass instead.
-4. Manual test:
+1. **JSON structure**: `jq empty hooks/hooks.json && echo "Valid"`
+2. **Schema validation**: `scripts/validate-hook-schema.sh hooks/hooks.json`
+3. **Script lint**: no separate `.sh` script exists in this shape (the fallback lives inline in
+   `hooks.json`'s own `command` string), so there is nothing for `shellcheck` to check here — this is
+   the tradeoff of picking Shape 1 over the `.sh`-wrapper shape.
+4. **Manual test** (happy path and sad path):
    ```bash
-   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | python3 scripts/my-hook.py
-   echo "Exit: $?"   # expect 0
+   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/ok.txt"}}' \
+     | python3 scripts/my-hook.py; echo "Exit: $?"   # expect 0
 
-   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/../etc/passwd"}}' | python3 scripts/my-hook.py
-   echo "Exit: $?"   # expect 2, with a message on stderr
+   # Flip is_bad_result() to return True temporarily to confirm the blocking path:
+   echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/bad.txt"}}' \
+     | python3 scripts/my-hook.py; echo "Exit: $?"   # expect 2, stderr message printed
    ```
-5. Live test: restart Claude Code, trigger a `Write`/`Edit`, check `claude --debug` output for
-   hook registration and execution logs.
+5. **Live test**: restart Claude Code, trigger a Write/Edit, check `claude --debug` output for hook
+   registration and execution.
+
+**Quality gates:**
+- [ ] `jq empty` passes on `hooks/hooks.json`
+- [ ] Happy path: valid input → hook passes (exit 0)
+- [ ] Sad path: invalid/blocked input → hook fires correctly (exit 2 + stderr)
+- [ ] `scripts/validate-hook-schema.sh` reports no errors
+- [ ] Interpreter cascade verified: at minimum confirm `uv --version` succeeds (or falls through
+  correctly) on the target machine, since a present-but-broken `uv` would otherwise dead-end via `exec`

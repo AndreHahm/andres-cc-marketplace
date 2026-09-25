@@ -13,6 +13,11 @@
       "target": "outputs/ directory (the hooks.json command string or .sh wrapper produced)"
     },
     {
+      "text": "The uv tier uses a functional probe (e.g. `command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1`), not just an existence check -- a present-but-broken uv must fall through to python3/python rather than dead-ending via exec",
+      "type": "functionality",
+      "target": "outputs/ directory (the hooks.json command string or .sh wrapper produced)"
+    },
+    {
       "text": "The fallback chain includes a graceful-degradation branch for when none of uv/python3/python is found (no uncaught crash)",
       "type": "functionality",
       "target": "outputs/ directory"

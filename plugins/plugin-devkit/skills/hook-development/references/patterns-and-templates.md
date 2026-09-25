@@ -856,14 +856,15 @@ degradation (never an uncaught crash) if none is found.
    logic beyond interpreter selection (shared across multiple hook entries, wants its own `shellcheck`
    pass, or the command would otherwise become an unreadably long JSON one-liner). The `.sh` needs the
    executable bit (invoked by bare path); the `.py` never does (always passed as an argument to whichever
-   interpreter the wrapper resolved — never exec'd via its own shebang). See
-   `plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py` for the canonical worked example:
+   interpreter the wrapper resolved — never exec'd via its own shebang). This template is adapted from
+   `plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py`, with the same `uv --version`
+   functional probe as the inline shape above (see that shape's own note on why it's needed):
    ```bash
    #!/bin/bash
    set -uo pipefail
    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
    INPUT="$(cat)"
-   if command -v uv >/dev/null 2>&1; then
+   if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then
      echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
    elif command -v python3 >/dev/null 2>&1; then
      echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
@@ -873,9 +874,10 @@ degradation (never an uncaught crash) if none is found.
      echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
    fi
    ```
-   This quotes `rulebook-check.sh`'s real, unmodified `uv` check (`command -v uv` alone, no functional
-   probe) — the same existence-only gap the inline shape's own `uv --version` probe above closes. Not
-   fixed here since it's a pre-existing file this change doesn't otherwise touch — tracked as issue #400.
+   `rulebook-check.sh` itself still has the real, unmodified `command -v uv`-only check (no functional
+   probe) — not fixed there since it's a pre-existing file this change doesn't otherwise touch, tracked
+   as issue #400. This template teaches the corrected pattern regardless, so a new hook copied from here
+   doesn't inherit that same gap.
 
 Both shapes end in the same graceful-degradation requirement — never let the fallback chain fall through
 to a bare `exec python ...`/`python ...` with nothing to catch a system that has none of the three. A
