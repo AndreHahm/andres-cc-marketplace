@@ -1,5 +1,5 @@
 #!/bin/bash
-# Unstages every file scan-staged-files.sh flags as sensitive, without ever
+# Unstages every file git-scan-staged-files.sh flags as sensitive, without ever
 # interpolating a scanned filename into a shell string. A flagged filename
 # is untrusted staged-diff content (attacker-controlled on a fetched or
 # contributed branch) -- double-quoting it inside a shell command does not
@@ -10,12 +10,12 @@
 # each entry, avoids shell interpolation and cwd-relativity/glob-over-match
 # issues entirely.
 #
-# Called by the commit skill (step 7) after scan-staged-files.sh flags one
+# Called by the commit skill (step 7) after git-scan-staged-files.sh flags one
 # or more files. No output on success; exits non-zero if the restore fails.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-"$SCRIPT_DIR/scan-staged-files.sh" --null | while IFS= read -r -d '' file; do
+"$SCRIPT_DIR/git-scan-staged-files.sh" --null | while IFS= read -r -d '' file; do
   printf ':(top,literal)%s\0' "$file"
 done | git restore --staged --pathspec-from-file=- --pathspec-file-nul
