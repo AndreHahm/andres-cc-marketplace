@@ -832,13 +832,39 @@ if result.returncode != 0:
 sys.exit(0)
 ```
 
-**Portable runner fallback (optional):** since a plain `python` binary may not exist on every system, register the hook command with a three-way fallback so it works whether `uv`, `python3`, or only `python` is on `PATH`:
+**Portable runner fallback (required default, not optional):** a plain `python` binary may not exist on
+every system, and `hooks.json` invokes a hook's `command` by bare path with no interpreter of its own —
+so any hook registered this way MUST use a `uv` → `python3` → `python` fallback, with graceful
+degradation (never an uncaught crash) if none is found.
+
+**Two-file convention:** because `hooks.json` runs `command` directly, the interpreter-selection logic
+must live in a `.sh` wrapper (needs the executable bit, since it's invoked by bare path) with a sibling
+`.py` file holding the actual hook logic (never needs the executable bit, since it's always passed as an
+argument to whichever interpreter the wrapper resolved — never exec'd via its own shebang). See
+`plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py` in this repo for the canonical
+worked example. The wrapper:
 
 ```bash
-command -v uv >/dev/null 2>&1 && exec uv run "$0" "$@"
-command -v python3 >/dev/null 2>&1 && exec python3 "$0" "$@"
-exec python "$0" "$@"
+#!/bin/bash
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INPUT="$(cat)"
+if command -v uv >/dev/null 2>&1; then
+  echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
+elif command -v python3 >/dev/null 2>&1; then
+  echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
+elif command -v python >/dev/null 2>&1; then
+  echo "$INPUT" | python "$SCRIPT_DIR/my-hook.py"
+else
+  echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
+fi
 ```
+
+The final `else` branch is the graceful-degradation requirement — never let the fallback chain fall
+through to a bare `exec python ...` with nothing to catch a system that has none of the three. A
+blocking hook (like `rulebook-check.sh`) can instead emit a `"decision":"block"` JSON body there if
+failing closed is the safer default for that specific hook — the graceful-degradation requirement is
+about never crashing uncaught, not about which decision the degraded path makes.
 
 ---
 
