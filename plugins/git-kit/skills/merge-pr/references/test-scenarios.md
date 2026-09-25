@@ -69,7 +69,7 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - Branch is 0 commits behind base, `isCrossRepository` is `false` → `behind_by` resolves to `0`; the
   check passes silently, no interruption
 - Branch is N commits behind base (N > 0), `isCrossRepository` is `false` → step 2 computes the real
-  count via the compare endpoint, stops, reports the exact count, and points at `/sync-branch` — never
+  count via the compare endpoint, stops, reports the exact count, and points at `/git-sync-branch` — never
   proceeds to the rights check on a stale branch
 - The compare-endpoint call fails for any reason (`isCrossRepository` is `false`) → step 2 stops and
   reports the in-sync state could not be confirmed — never treated as passing
@@ -97,7 +97,7 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
   found still assuming bare `origin` was correct)
 - `isCrossRepository` is `true`, `mergeStateStatus` resolves to `BEHIND` → step 2's not-behind-base
   check stops and reports the fork branch is behind base per GitHub's own `mergeStateStatus`, asks the
-  contributor to update their branch (never points at `/sync-branch`, since this skill has no local git
+  contributor to update their branch (never points at `/git-sync-branch`, since this skill has no local git
   access to a fork's branch) — never silently treated as passing just because `isCrossRepository` is
   `true` (cross-model-review, 2026-08-31 — Codex's Phase 1 finding, confirmed by Claude's Phase 2 pass)
 - `isCrossRepository` is `true`, `mergeStateStatus` resolves to `UNKNOWN` → step 2 polls

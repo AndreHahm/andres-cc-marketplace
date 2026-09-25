@@ -438,7 +438,7 @@ When removing worktrees:
 
 **Verify it does NOT activate on:**
 - "start a new branch for the auth refactor" → `starting-work`
-- "sync my current branch with main" → `/sync-branch`
+- "sync my current branch with main" → `/git-sync-branch`
 - "I just merged, clean this up" → `finishing-work`
 - "resolve the conflicts from this worktree merge" → `resolving-merge-conflicts`
 

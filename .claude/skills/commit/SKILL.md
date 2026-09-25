@@ -51,7 +51,7 @@ Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the o
 
 Staging, commit confirmation, and message-length targets are read from a settings file, resolved in this order:
 
-1. `.claude/git-kit.local.json` in the project root, if it exists (gitignored, user-local — create it with `/create-git-kit-local-json`, which seeds it from the defaults below).
+1. `.claude/git-kit.local.json` in the project root, if it exists (gitignored, user-local — create it with `/git-create-git-kit-local-json`, which seeds it from the defaults below).
 2. For any field that file doesn't set (or if it doesn't exist at all), fall back to the git-tracked defaults at `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (shared across git-kit skills, not commit-specific).
 
 | Setting | Default | Meaning |
