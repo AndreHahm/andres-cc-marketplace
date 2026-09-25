@@ -54,7 +54,7 @@ Before switching to the first named branch, capture the starting checkout: `git 
 through this repository's own `git-kit` lifecycle skills.** `codex-audit-loop` is a standalone,
 general-purpose whole-project audit tool meant to run against any target repository, with or without
 `git-kit` installed there — coupling its Mode C fix loop to `git-kit`'s own skills would break it as a
-portable tool. If `git-kit` *is* installed in the target repo, its `guard-raw-branch-create.sh` hook
+portable tool. If `git-kit` *is* installed in the target repo, its `git-guard-raw-branch-create.sh` hook
 specifically blocks `git worktree add -b`/`-B` outside `starting-work`'s own marker handshake; step 3's
 exact command form above will trigger that guard in that case. This is a known, disclosed interaction,
 not a workaround to route around it — if the guard blocks the command, stop and tell the user this mode

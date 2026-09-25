@@ -133,7 +133,7 @@ Files: App files that consume the new types.
 4. **Commit the wave** — via the parent skill's own Staging Workflow step 6 (compose / confirm / commit):
    compose the message using conventional commit format, describing what this wave accomplishes (body can
    list specific changes); show it via `AskUserQuestion` for confirmation before committing; then write the
-   marker (`write-git-kit-marker.sh`) immediately before running `git commit`. Don't shortcut this into a
+   marker (`git-write-marker.sh`) immediately before running `git commit`. Don't shortcut this into a
    single "just commit it" step — each wave gets its own confirmation, not one covering the whole sequence.
 
 5. **Repeat for next wave**
@@ -211,7 +211,7 @@ For multi-wave work:
 # Wave 1
 git add <files>
 # ... commit via this skill's own Staging Workflow step 6a/6b/6c: compose the
-# message, confirm it via AskUserQuestion, then write-git-kit-marker.sh + git commit
+# message, confirm it via AskUserQuestion, then git-write-marker.sh + git commit
 
 # Wave 2
 git add <files>

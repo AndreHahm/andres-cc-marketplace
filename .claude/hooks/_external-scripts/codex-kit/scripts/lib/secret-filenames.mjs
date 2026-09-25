@@ -3,7 +3,7 @@ import path from "node:path";
 
 // Shared sensitive-filename pattern list. Extracted from
 // codex-windows-guardrails/scripts/guarded-dispatch.mjs (which matches
-// plugins/git-kit/scripts/scan-staged-files.sh's bash `case` statement,
+// plugins/git-kit/scripts/git-scan-staged-files.sh's bash `case` statement,
 // case-sensitively there since it handles git path strings that could
 // originate from any platform's checkout) so this module has exactly one
 // copy inside codex-kit instead of two independently hand-maintained ones.

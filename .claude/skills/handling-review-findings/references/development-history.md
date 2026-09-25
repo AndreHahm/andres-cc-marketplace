@@ -70,7 +70,7 @@ reason as Iteration 3.
 
 ## Security review passes
 
-The `guard-raw-pr-review.sh` hook extension this skill required historically (two new `gh api` guard
+The `git-guard-raw-pr-review.sh` hook extension this skill required historically (two new `gh api` guard
 branches) went through a live `security-reviewer` pass on 2026-08-21, per
 `.claude/rules/require-security-review-before-new-gate.md` — it found and fixed 2 Major bypass gaps (a
 positional-flag assumption, and a file-supplied GraphQL body that could pass through unguarded); both
@@ -88,7 +88,7 @@ reference file), and a plain substring match would still have accepted a lookali
 `@codex-evil` for a `codex` entry — both are fixed in Workflow step 8's current three-step validation
 order (tracked-ness gate, then anchored regex, then handle-token match) and
 `references/settings-and-round-budget.md`'s trust-boundary section. One pre-existing, shared residual
-the first pass surfaced (`guard-raw-pr-review.sh` allows unconditionally when its own
+the first pass surfaced (`git-guard-raw-pr-review.sh` allows unconditionally when its own
 `git rev-parse --git-dir` check finds no repository, before the subcommand match even runs) was left
 unfixed here — it predates this redesign, affects every skill that hook guards, and reordering it
 deserves its own dedicated review rather than a side effect of this narrower round-budget change; it's

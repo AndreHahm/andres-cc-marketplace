@@ -130,6 +130,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "git",
       "provenance": {
         "notes": "commit/create-pr/git-notes/git-worktrees from NeoLabHQ's context-engineering-kit (GPL-3.0); gh-operations from fernandezbaptiste's claude-code-skills (MIT); standalone-commits from EpicenterHQ's epicenter (AGPL-3.0-or-later). Created as 'gitkit' (commit 82d223f, 2026-07-26), renamed to 'git-kit' (commit 94713f5, 2026-07-28). Remaining skills are original content.",
         "origin": "Adapted from three external sources, documented in plugins/git-kit/THIRD_PARTY_NOTICES.md"
@@ -455,5 +456,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-18"
+  "updated_on": "2026-09-25"
 }

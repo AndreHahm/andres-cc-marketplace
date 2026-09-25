@@ -1,7 +1,7 @@
 #!/bin/bash
 # PreToolUse guard: hard-blocks a raw `gh pr create` or `gh pr merge`
 # invocation that wasn't immediately preceded by an allowlisted git-kit
-# skill's marker handshake. Same mechanism as guard-raw-commit.sh (see that
+# skill's marker handshake. Same mechanism as git-guard-raw-commit.sh (see that
 # script's header comment for the full marker-handshake rationale) -- kept
 # as a separate script/hook registration since it guards a different pair
 # of commands and has its own guard-type values.
@@ -60,7 +60,7 @@ fi
 
 # Consume our own marker on every Bash/PowerShell call, before the subcommand
 # match below determines which of this script's two guard types actually
-# applies. See guard-raw-destructive-cleanup.sh's header comment for the full
+# applies. See git-guard-raw-destructive-cleanup.sh's header comment for the full
 # rationale (consuming only inside the match branch let a marker survive its
 # full 60s TTL through any number of intervening non-matching commands).
 # Unlike the other guards, this script owns two guard types ("gh-pr-create"
@@ -149,11 +149,11 @@ if [ -f "$MARKER" ]; then
     # stay populated while the marker stayed on disk unconsumed, so a later
     # matching command within the remaining TTL could also be authorized by
     # the same once-intended marker -- found independently by both Devin and
-    # Codex on the sibling guard-raw-destructive-cleanup.sh (PR #177), same
+    # Codex on the sibling git-guard-raw-destructive-cleanup.sh (PR #177), same
     # pattern here. An `if` construct is itself exempt from `set -e`/the ERR
     # trap, so this closes the gap without reopening the session-wide-lockout
     # risk the original `|| true` existed to prevent. See
-    # guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
+    # git-guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
     # rationale and the one residual it explicitly leaves open.
     if ! rm -f "$MARKER"; then
       marker_ts=""
@@ -171,7 +171,7 @@ SKILL_HANDLES=""
 # match, and pipefail then reports that non-zero exit even though grep
 # matched -- an `if`/`elif` condition is exempt from `set -e` aborting on
 # that, so a real match would silently read as "no match" and fall through
-# to allow. See issue #87; guard-raw-pr-review.sh already uses this fix.
+# to allow. See issue #87; git-guard-raw-pr-review.sh already uses this fix.
 # Residual: if the herestring redirection itself fails (unwritable/full
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by the ERR trap (if-conditions are exempt) -- same class as the

@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, AskUserQuestion, Skill(commit)
 ---
 
 # Handling Review Findings
@@ -319,8 +319,8 @@ the marker-handshake requirement shared by all of them.
 Immediately before any reply call, resolve call, review-trigger post, or `gh api graphql` call of any
 kind (including the read-only `reviewThreads` lookup — the guard has no read-only carve-out, see
 `references/github-api-mechanics.md`'s "Resolving a review thread" section for why), run
-`"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review handling-review-findings` — this
-writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it allows
+`"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review handling-review-findings` — this
+writes the marker git-kit's reviewer-action guard (`git-guard-raw-pr-review.sh`) requires before it allows
 these specific `gh api`/`gh pr comment` calls through; it must be written right before each such
 command, not earlier, since the hook only accepts a marker up to 60 seconds old and consumes it on
 first use — if two of these calls happen as separate `Bash` calls, write the marker again immediately

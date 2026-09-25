@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deterministic regression suite for guard-raw-pr-review.sh, run directly
+# Deterministic regression suite for git-guard-raw-pr-review.sh, run directly
 # against fixtures/known-good output (require-tests-for-behavior-changes.md's
 # "Deterministic scripts/code" test category) -- not a blind-agent eval.
 #
@@ -23,11 +23,11 @@
 # catch) must be reported as a named FAIL, not silently abort the whole suite
 # before its own PASS/FAIL line prints and before its temp-dir cleanup runs.
 #
-# Usage: bash test-guard-raw-pr-review.sh
+# Usage: bash git-test-guard-raw-pr-review.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GUARD="$SCRIPT_DIR/guard-raw-pr-review.sh"
+GUARD="$SCRIPT_DIR/git-guard-raw-pr-review.sh"
 PASS_COUNT=0
 FAIL_COUNT=0
 # Safety net for M4 (round 5): if a future edit reintroduces the span-budget-cap regression this
@@ -521,7 +521,7 @@ e2e_diagnostics_check() {
       echo "FAIL (e2e): diagnostics -- stdout was not the expected pure deny JSON: [$out]"
       exit 0
     fi
-    log_lines=$(grep -c 'guard=guard-raw-pr-review.sh' .git/git-kit-guard-diagnostics.log 2>/dev/null || echo 0)
+    log_lines=$(grep -c 'guard=git-guard-raw-pr-review.sh' .git/git-kit-guard-diagnostics.log 2>/dev/null || echo 0)
     if grep -q 'event=start' .git/git-kit-guard-diagnostics.log 2>/dev/null \
       && grep -q 'event=finish exit=0' .git/git-kit-guard-diagnostics.log 2>/dev/null \
       && [ "$log_lines" -eq 2 ]; then

@@ -5,12 +5,12 @@ Full verification-run narratives for behavior changes to `commit`'s staging step
 narrative belongs in `references/`, not inline — only the short checklist items stay in `SKILL.md`
 itself).
 
-## Step 6 (interactive staging via `stage-selected-files.sh`) — verified live, 2026-08-28
+## Step 6 (interactive staging via `git-stage-selected-files.sh`) — verified live, 2026-08-28
 
 Built a throwaway repo with two files deliberately named `$(touch INJECTION_PROOF).py` and
 `other$(touch INJECTION_PROOF2).txt`, alongside two ordinary unstaged files. `--list` printed all four
 as a numbered list (each command-substitution filename shown literally, unexecuted). Staging all four by
-index (`stage-selected-files.sh 1 2 3 4`) correctly staged every file, including the two crafted names —
+index (`git-stage-selected-files.sh 1 2 3 4`) correctly staged every file, including the two crafted names —
 confirmed via `git status --porcelain` showing them as staged, quoted, literal paths — and confirmed no
 `INJECTION_PROOF*` file was ever created, i.e. the embedded `$(...)` never executed. Also verified: an
 out-of-range index (`99`) exits 1 with an error and stages nothing; a non-digit argument (`abc`) exits 2
@@ -33,7 +33,7 @@ this same script:**
   then staged index `1` — the snapshot's `file-b.txt` was staged, not `aaa-new.txt`, and the snapshot
   file is removed after a successful stage. Also closes GitHub issue #158 (filed for this exact race
   before this same review round independently reconfirmed it as CodeRabbit finding
-  `stage-selected-files.sh:13`).
+  `git-stage-selected-files.sh:13`).
 - **Control-byte-safe display**: the numbered `--list` output now prints each candidate through
   bash's `printf '%q'` (display only — the snapshot file and the actual `git add` pathspec still use
   the raw, unescaped bytes). Live-verified against the same command-substitution-crafted filename
@@ -42,7 +42,7 @@ this same script:**
 ## Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16
 
 Ran `uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
-(`remap-handoff-shas.py`, `check-pr-title.py`) in this repository. `ruff format` reformatted both files on
+(`git-remap-handoff-shas.py`, `git-check-pr-title.py`) in this repository. `ruff format` reformatted both files on
 the first pass; `ruff check` flagged 2 non-auto-fixable `E501` (line-too-long) violations, fixed manually
 and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't (an unused blanket
 `# type: ignore`, and `sys.stdout.reconfigure`/`sys.stderr.reconfigure` not resolving on the `TextIO`
@@ -52,7 +52,7 @@ three checks passed clean after fixes.
 ## Step 13.5 (real-commitlint check) — verified live, 2026-09-10
 
 Installed the isolated toolchain (`pnpm --dir .github/commitlint-tools install --frozen-lockfile`), then
-ran `lint-commit-message.sh` directly (not through a live `commit` invocation) against two drafted
+ran `git-lint-commit-message.sh` directly (not through a live `commit` invocation) against two drafted
 messages: one with a 190-character body line (correctly failed, exit 1, reporting
 `[body-max-line-length]` — the exact rule name the script's step-13.5 branching logic reads) and one with
 a short body (correctly passed, exit 0, no output). Also confirmed commitlint's own `extends` resolution
@@ -97,7 +97,7 @@ it, executing arbitrary code, not reading data — and the script was loading th
 working-tree copy rather than a trusted ref, contradicting the file's own now-inaccurate comment ("no
 trust-boundary step needed locally, since a local commit run only ever lints the developer's own drafted
 message") and breaking the exact "attacker-controlled on a fetched branch" threat model every sibling
-script in this same file (`scan-staged-files.sh`, `stage-selected-files.sh`, `lint-staged-python.sh`)
+script in this same file (`git-scan-staged-files.sh`, `git-stage-selected-files.sh`, `git-lint-staged-python.sh`)
 already treats as live. User chose the recommended fix: load `.commitlintrc.cjs` from a trusted ref
 (`origin/<default-branch>`, resolved the same way `starting-work`/`finishing-work` do) instead of the
 working tree, warning (not blocking) on divergence so a developer editing the config on their own branch
@@ -149,7 +149,7 @@ lockfile content itself was the real gap. Rather than restoring the trusted file
 working-tree copies (which would leave a developer's real `.github/commitlint-tools/package.json`/
 `pnpm-lock.yaml` locally modified as a side effect of running a local lint check whenever they differed
 from the trusted ref), redesigned the whole install to live under `.git/commitlint-local-check/` —
-outside the tracked tree entirely, matching `write-git-kit-marker.sh`'s own convention of using `$GIT_DIR`
+outside the tracked tree entirely, matching `git-write-marker.sh`'s own convention of using `$GIT_DIR`
 for local git-kit state. All three trusted files (`.commitlintrc.cjs`, `package.json`, `pnpm-lock.yaml`)
 are fetched from `origin/<default-branch>` into that location; a stale/matching local cache skips
 reinstall. Verified live: cold install (fresh `.git/.../commitlint-local-check`, real `pnpm install`);
@@ -250,7 +250,7 @@ for eval coverage or vice versa.
 Not yet exercised against a real PR/GitHub — first real opportunity is this change's own rollout PR, the
 same way the `--stage` flag's own entry below was still awaiting its first live run when it was added.
 
-**M4 extraction (shared `../../references/bypass-attestation-protocol.md`) and eval-4 regeneration,
+**M4 extraction (shared `../../references/git-bypass-attestation-protocol.md`) and eval-4 regeneration,
 2026-09-21.** After the fan-out above, the SHA-bound protocol (bot-trigger check, permission check,
 marker build, label toggle) was extracted into a plugin-root shared reference used by `create-pr`,
 `merge-pr`, and `commit` alike — closing the "hand-implemented three times, drifting independently"
@@ -267,9 +267,9 @@ scenario, now against accurate content.
 `jq -n --arg reason "<reason>"` pattern is a real shell-injection surface if an agent composes the Bash
 command with the reason text embedded inline — confirmed against `marketplace-ci.yml`'s own actual
 discipline, which transports its free-text field via `--slurpfile` from a file, never inline `--arg`. Also
-found the `.claude/` mirror's `../../references/bypass-attestation-protocol.md` reference resolved to a
+found the `.claude/` mirror's `../../references/git-bypass-attestation-protocol.md` reference resolved to a
 non-existent file — plugin-root `references/` dirs aren't covered by `sync-plugin-mirrors`'s automated
-scope, so `.claude/references/bypass-attestation-protocol.md` needed a manual copy, matching
+scope, so `.claude/references/git-bypass-attestation-protocol.md` needed a manual copy, matching
 `analysis-kit/references/`'s existing (tooling-unenforced) manual-mirror convention. Fixed by switching
 the reason's transport to `Write` (scratchpad file) + `jq -n --rawfile`, and adding eval-8 (a reason
 containing `$(...)`/semicolon shell metacharacters, confirming the marker's `reason` field ends up as the

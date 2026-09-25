@@ -5,7 +5,7 @@
 # call wasn't immediately preceded by collaborating-on-a-pr's,
 # explain-pr-changes's, codex-review-recovery's, or
 # handling-review-findings's marker handshake. Same mechanism as
-# guard-raw-pr-ops.sh (see that script's header comment for the full
+# git-guard-raw-pr-ops.sh (see that script's header comment for the full
 # marker-handshake rationale). merge-pr also writes this marker (issue #160),
 # but only ever for the read-only `reviewThreads` lookup its own step 2 uses
 # to count unresolved threads -- it never calls the reply endpoint or the
@@ -271,7 +271,7 @@ esac
 
 # Consume our own marker on every Bash/PowerShell call, before the subcommand
 # match below -- not just on the call that turns out to match. See
-# guard-raw-destructive-cleanup.sh's header comment for the full rationale
+# git-guard-raw-destructive-cleanup.sh's header comment for the full rationale
 # (consuming only inside the match branch let a marker survive its full 60s
 # TTL through any number of intervening non-matching commands). Only a marker
 # whose `guard` field is this guard's own type ("gh-pr-review") is touched --
@@ -357,11 +357,11 @@ if [ -f "$MARKER" ]; then
     # so a later matching command within the remaining TTL could also be
     # authorized by the same once-intended marker -- this exact file/line was
     # Devin's own cited example (SEC finding, PR #177), independently
-    # confirmed by Codex on the sibling guard-raw-destructive-cleanup.sh. An
+    # confirmed by Codex on the sibling git-guard-raw-destructive-cleanup.sh. An
     # `if` construct is itself exempt from `set -e`/the ERR trap, so this
     # closes the gap without reopening the session-wide-lockout risk the
     # original `|| true` existed to prevent. See
-    # guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
+    # git-guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
     # rationale and the one residual it explicitly leaves open.
     if ! rm -f "$MARKER"; then
       allowed=false
@@ -378,7 +378,7 @@ fi
 # `gh api \` + newline + `-X POST \` + newline + `repos/.../reviews \` +
 # newline + `-f event=APPROVE` call was allowed through entirely). Found by a
 # security-reviewer pass on this same span-scoping fix (PR #177) -- the fix
-# ports guard-raw-destructive-cleanup.sh's own COMMAND_FLAT normalization
+# ports git-guard-raw-destructive-cleanup.sh's own COMMAND_FLAT normalization
 # (issue #116), which that file needed for the identical reason. See that
 # file's own COMMAND_FLAT definition for its own two-part rationale
 # (CRLF-first stripping, per-shell continuation character). A third point is
@@ -434,7 +434,7 @@ COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
 # residual from #365's own (now-closed) one: any OTHER redirection form
 # containing one of these bytes that isn't one of the four operators below
 # would still be misread the same way -- same operator set and same
-# rationale as guard-raw-destructive-cleanup.sh's own copy of this fix
+# rationale as git-guard-raw-destructive-cleanup.sh's own copy of this fix
 # (issue #120); see that file's own comment for the full per-operator
 # coverage table.
 COMMAND_FLAT="${COMMAND_FLAT//&>/ >}"
@@ -529,7 +529,7 @@ else
   # repos/acme/project/pulls/12/reviews` (the reviews text sits in an `echo`
   # argument, not a `gh api` call at all) was denied by the old form. Found by
   # Devin's review of PR #177. Mirrors the same span-bounding fix
-  # guard-raw-destructive-cleanup.sh's own BRANCH_SPANS/WORKTREE_REMOVE_SPANS
+  # git-guard-raw-destructive-cleanup.sh's own BRANCH_SPANS/WORKTREE_REMOVE_SPANS
   # already use (issue #116) -- each span is checked independently, in a
   # loop, never against a concatenated multi-span blob.
   # Reads $COMMAND_FLAT, not raw $COMMAND -- a backslash/backtick-continued
@@ -595,7 +595,7 @@ else
   # own comment. The same change also keeps this scan close to linear cost (empirically measured:
   # ~2.7s for a 50KB quoted payload), which is what API_SPAN_MAX_LEN below is sized against.
   #
-  # Verified via the persisted regression suite at `tests/test-guard-raw-pr-review.sh` (58 cases as
+  # Verified via the persisted regression suite at `tests/git-test-guard-raw-pr-review.sh` (58 cases as
   # of round 4: unit-level function tests plus end-to-end tests against this script's own
   # PreToolUse JSON contract) before landing here, covering every prior round's cases plus each
   # round's own new ones (round 3: the per-depth quote-context bug, both a Bash- and a

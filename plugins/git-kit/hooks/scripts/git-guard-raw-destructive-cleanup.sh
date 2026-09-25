@@ -2,7 +2,7 @@
 # PreToolUse guard: hard-blocks a raw `git branch -D <protected-branch>` or
 # a raw `git worktree remove --force` invocation that wasn't immediately
 # preceded by git-cleanup's own marker handshake. Same mechanism as
-# guard-raw-branch-create.sh (see that script's header comment for the full
+# git-guard-raw-branch-create.sh (see that script's header comment for the full
 # marker-handshake rationale).
 #
 # Scoped narrower than a blanket `-D` guard: `git branch -D <name>` is only
@@ -10,7 +10,7 @@
 # patterns (main, master, develop, release/*) -- git-cleanup's normal
 # workflow force-deletes plenty of non-protected branches (its SQUASH_MERGED/
 # SUPERSEDED categories) and shouldn't need a marker write for every one of
-# those, the same way guard-raw-branch-create.sh deliberately leaves bare
+# those, the same way git-guard-raw-branch-create.sh deliberately leaves bare
 # `git branch <name>` unguarded to avoid blocking routine, harmless calls.
 # `git worktree remove` is scoped to only the `--force`/`-f` form -- a plain
 # `git worktree remove` already refuses on a dirty or locked worktree via
@@ -125,7 +125,7 @@ COMMAND_FLAT="${COMMAND//$'\r\n'/$'\n'}"
 # Only a genuine CRLF pair is collapsed above, not every lone CR -- an unconditional blanket strip
 # of every CR byte (this file's own earlier form) can change what a command's own text looks like
 # relative to real bash whenever a lone CR (not part of CRLF) sits next to another character with
-# special meaning. Applied here for consistency with guard-raw-pr-review.sh's identical fix
+# special meaning. Applied here for consistency with git-guard-raw-pr-review.sh's identical fix
 # (security-reviewer finding, PR #380 round 8) even though this file's own `[^;&|]` span matching
 # doesn't track quotes at all (a quoted separator is already a documented residual here) -- a lone
 # CR has no legitimate purpose in a real shell command outside a CRLF pair regardless, so rejecting
@@ -217,7 +217,7 @@ COMMAND_FLAT="${COMMAND_FLAT//>|/> }"
 # sometimes use. The repeating group catches zero or more interposed global
 # options -- `-C <dir>`/`-c <k>=<v>` (each a separate space-delimited value
 # token) or any other single-token `-`/`--` flag -- same prefix pattern
-# guard-raw-commit.sh and guard-raw-branch-create.sh already use.
+# git-guard-raw-commit.sh and git-guard-raw-branch-create.sh already use.
 # Negated-identifier prefix class, not an enumerated one -- the old
 # `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
 # path-qualified invocation's `/` (e.g. `/usr/bin/git branch -D main`),

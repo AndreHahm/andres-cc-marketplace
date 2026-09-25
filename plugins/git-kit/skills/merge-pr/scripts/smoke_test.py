@@ -810,7 +810,7 @@ def check_step2_unresolved_threads_disclosure():
         return (
             False,
             "step 2's unresolved-review-threads check no longer writes the gh-pr-review marker "
-            "before its gh api graphql call -- guard-raw-pr-review.sh hard-blocks graphql "
+            "before its gh api graphql call -- git-guard-raw-pr-review.sh hard-blocks graphql "
             "without it",
         )
     if "hasNextPage" not in step2:

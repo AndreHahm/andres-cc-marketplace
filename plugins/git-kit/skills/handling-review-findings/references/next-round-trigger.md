@@ -117,7 +117,7 @@ HEAD`. Three independent stop conditions:
 Only once all three pass does posting proceed. Generate this decision's `<batch-id>` once (`date -u
 +%Y%m%dT%H%M%SZ`) and reuse it verbatim across every comment this decision posts — never a fresh id
 per reviewer, or 8a's batch-grouping breaks. For each selected reviewer: write the marker
-(`"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review handling-review-findings`)
+(`"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review handling-review-findings`)
 immediately before posting — a fresh marker per `gh pr comment` call, since it's single-use and
 consumed by the very next `Bash`/`PowerShell` call regardless of match; selecting 3 reviewers means 3
 separate marker-write-then-post pairs. Write that reviewer's trigger string, a blank line, and

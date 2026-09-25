@@ -209,7 +209,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-dirty-worktree-exit.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-dirty-worktree-exit.sh",
             "timeout": 10,
             "onError": "warn"
           }
@@ -257,31 +257,31 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-commit.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-raw-commit.sh",
             "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-pr-ops.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-raw-pr-ops.sh",
             "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-branch-create.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-raw-branch-create.sh",
             "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-pr-review.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-raw-pr-review.sh",
             "timeout": 15,
             "onError": "warn"
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/guard-raw-destructive-cleanup.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/git-guard-raw-destructive-cleanup.sh",
             "timeout": 15,
             "onError": "warn"
           }

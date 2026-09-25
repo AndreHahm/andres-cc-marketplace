@@ -2,7 +2,7 @@
 
 Workflow to create a worktree for an **existing** branch (local or already-tracked remote), with automatic
 dependency detection and confirmed (not automatic) installation. Creating a worktree for a **new** branch
-is `starting-work`'s job, not this skill's — git-kit's `guard-raw-branch-create.sh` hook hard-blocks a raw
+is `starting-work`'s job, not this skill's — git-kit's `git-guard-raw-branch-create.sh` hook hard-blocks a raw
 `git worktree add -b`/`-B` from any skill not on its allowlist, this skill included. If the branch named
 below doesn't exist yet, stop this workflow and hand off to `starting-work` instead of continuing.
 

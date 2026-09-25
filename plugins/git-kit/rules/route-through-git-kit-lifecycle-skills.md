@@ -71,7 +71,7 @@ skips whatever safeguard the skill exists to enforce, with nothing here or in th
 able to tell the difference after the fact (issue #367).
 
 **The marker-handshake guard can be hand-satisfied without the guarded skill running at all** — writing
-`write-git-kit-marker.sh`'s marker file directly, then issuing the raw command it's meant to gate,
+`git-write-marker.sh`'s marker file directly, then issuing the raw command it's meant to gate,
 passes the guard exactly as if the skill itself had run (issue #165). This is the same class of gap as
 the paragraph above, one level lower: even a dispatch that *did* happen can still have been faked at the
 marker level. Both gaps share the same root cause — the guard only checks for a signal a real dispatch

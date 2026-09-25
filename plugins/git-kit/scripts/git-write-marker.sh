@@ -1,8 +1,8 @@
 #!/bin/bash
 # Writes the single-use marker file git-kit's PreToolUse hard-block hooks
-# (hooks/scripts/guard-raw-commit.sh, hooks/scripts/guard-raw-pr-ops.sh,
-# hooks/scripts/guard-raw-branch-create.sh, hooks/scripts/guard-raw-pr-review.sh,
-# hooks/scripts/guard-raw-destructive-cleanup.sh)
+# (hooks/scripts/git-guard-raw-commit.sh, hooks/scripts/git-guard-raw-pr-ops.sh,
+# hooks/scripts/git-guard-raw-branch-create.sh, hooks/scripts/git-guard-raw-pr-review.sh,
+# hooks/scripts/git-guard-raw-destructive-cleanup.sh)
 # check before allowing a raw `git commit` / `gh pr create` / `gh pr merge` /
 # `git checkout -b` / `git switch -c` / `gh pr review` / `gh pr comment` /
 # `gh api .../pulls/*/comments/*/replies` / any `gh api graphql` call /
@@ -27,8 +27,8 @@
 # this script as its own last step.
 set -euo pipefail
 
-GUARD_TYPE="${1:?usage: write-git-kit-marker.sh <guard-type> <skill-name>}"
-SKILL_NAME="${2:?usage: write-git-kit-marker.sh <guard-type> <skill-name>}"
+GUARD_TYPE="${1:?usage: git-write-marker.sh <guard-type> <skill-name>}"
+SKILL_NAME="${2:?usage: git-write-marker.sh <guard-type> <skill-name>}"
 
 case "$GUARD_TYPE" in
   git-commit|gh-pr-create|gh-pr-merge|git-branch-create|gh-pr-review|git-cleanup-destructive) ;;
