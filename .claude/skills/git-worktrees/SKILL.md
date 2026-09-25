@@ -103,7 +103,7 @@ git worktree add --detach ../experiment HEAD~5
 
 **Need a worktree for a branch that doesn't exist yet** (new feature, hotfix, tracking a remote branch
 for the first time)? That's `starting-work`'s job — it also syncs `main`, validates the branch name, and
-asks worktree-vs-plain-branch. git-kit's `guard-raw-branch-create.sh` hook hard-blocks a raw
+asks worktree-vs-plain-branch. git-kit's `git-guard-raw-branch-create.sh` hook hard-blocks a raw
 `git worktree add -b`/`-B` from any skill not on its allowlist, this skill included.
 
 ### List Worktrees
@@ -137,7 +137,7 @@ git worktree remove ../feature-x
 **Need to discard uncommitted changes to force a removal?** Not this skill's job — `git-cleanup` has
 `disable-model-invocation: true`, so it can't be invoked here even indirectly; tell the user to run
 `/git-cleanup` themselves. It gates `git worktree remove --force`/`-f` behind explicit user confirmation
-before running it. git-kit's `guard-raw-destructive-cleanup.sh` hook hard-blocks the raw forced form from
+before running it. git-kit's `git-guard-raw-destructive-cleanup.sh` hook hard-blocks the raw forced form from
 any skill not on its allowlist, this skill included.
 
 ### Move a Worktree

@@ -59,7 +59,7 @@ def check_referenced_files():
         if not path.exists():
             missing.append(match.group(1))
 
-    # A plugin-root-level shared reference (e.g. "../../references/bypass-attestation-protocol.md")
+    # A plugin-root-level shared reference (e.g. "../../references/git-bypass-...-protocol.md")
     # is resolved relative to the plugin root, not the skill's own directory.
     plugin_root = SKILL_DIR.parent.parent
     plugin_relative = r"`(\.\./\.\./references/[\w./-]+\.md)`"

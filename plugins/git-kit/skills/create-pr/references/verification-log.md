@@ -4,7 +4,7 @@ Dated "verified live" notes for specific steps in `SKILL.md`, extracted to keep 
 line budget (same reason `references/test-scenarios.md` and `references/bot-trigger-mention-incident.md`
 were already extracted — see `SKILL.md`'s Testing & Validation section for the pointer back here).
 
-**Step 3.5 (`check-pr-title.py`) — verified live, 2026-08-16:** confirmed `PASS` on a real compliant title
+**Step 3.5 (`git-check-pr-title.py`) — verified live, 2026-08-16:** confirmed `PASS` on a real compliant title
 (`docs(plugin-devkit): ...`, used for PR #42) and `FAIL` with the correct reason on three synthetic bad
 titles — a `style:`-typed title (rejected: not in this repo's allowed-type list, even though `style` is a
 valid `commit` type), a `ci:`-typed title (same reason), and an uppercase-scope title (rejected: fails the

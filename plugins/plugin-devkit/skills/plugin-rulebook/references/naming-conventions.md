@@ -90,7 +90,7 @@ This file has no row for plugin-level naming. This marketplace's own hyphen-plac
 **This is a different concept from the Open Item above, despite sharing the word "prefix."** The Open
 Item above is about a plugin's own *name* — whether `git-kit` should be suffixed `-kit` vs. `-devkit`.
 R33 is about *file naming inside an already-named plugin* — once a plugin is named `git-kit`, must its
-own `scripts/check-pr-title.py` be renamed `scripts/git-check-pr-title.py`. The two are independently
+own `scripts/git-check-pr-title.py` be renamed `scripts/git-git-check-pr-title.py`. The two are independently
 decided, unrelated in scope, and this section exists specifically to prevent conflating them. See
 `SKILL.md`'s R33 entry for severity and gating, and
 `${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the full mechanics, scope, and

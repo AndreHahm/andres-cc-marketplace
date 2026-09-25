@@ -88,8 +88,8 @@ operations via PowerShell: git, npm, docker, and PS cmdlets") — which `git-kit
 with matcher `^Bash$` never dispatches for a `tool_name: "PowerShell"` event, so `commit`/`test_pass`/
 `build`/`deploy` milestones went undetected with no error (silent, since `onError: "warn"` only
 surfaces a hook's own execution failure, not "the hook was never invoked"). `git-kit`'s own
-`guard-raw-commit.sh` already treats `Bash` and `PowerShell` as equally valid sources for a raw `git
-commit` invocation (`hooks/scripts/guard-raw-commit.sh` line 67) — the matcher here now matches that
+`git-guard-raw-commit.sh` already treats `Bash` and `PowerShell` as equally valid sources for a raw `git
+commit` invocation (`hooks/scripts/git-guard-raw-commit.sh` line 67) — the matcher here now matches that
 precedent: `^(Bash|PowerShell)$`. `compact-milestone-detector.sh`'s own command-extraction
 (`.tool_input.command` via `jq`) needed no change — the PowerShell tool's `tool_input` schema uses the
 same `command` field name Bash does, and the milestone-pattern regexes match on the literal

@@ -70,7 +70,7 @@ to exercise):**
       leaves it alone regardless of the tag's own age, and the extra `git merge-base` call is skipped
       entirely for this case since the outcome doesn't depend on it
 - [ ] `delete-rebase-backup-tags.sh`'s own internal `git update-ref -d` call runs with no marker-handshake
-      write beforehand — confirmed `guard-raw-destructive-cleanup.sh` only matches
+      write beforehand — confirmed `git-guard-raw-destructive-cleanup.sh` only matches
       `git branch -D`/`worktree remove --force`, never `git tag -d`/`git update-ref -d`
 - [ ] Gate 1/Gate 2 list stale rebase-backup tags as their own category, distinct from branch and
       stale-remote-branch categories, never silently merged into either
@@ -94,7 +94,7 @@ to exercise):**
 - [ ] Deleting by index removes exactly the intended tag and leaves the rest untouched — live-verified
       deleting index 1 twice in sequence (`feat/c++`'s tag, then the plain one) against the same 3-tag
       scratch repo, confirming only the active branch's tag survived
-- [ ] The script's error paths match `stage-selected-files.sh`'s own conventions: no `--list` run yet
+- [ ] The script's error paths match `git-stage-selected-files.sh`'s own conventions: no `--list` run yet
       (or the snapshot was already consumed) → "no candidate list found -- run --list first"; a
       non-digit index → "is not a positive integer"; an out-of-range index → "one or more requested
       indices are out of range" — all live-verified

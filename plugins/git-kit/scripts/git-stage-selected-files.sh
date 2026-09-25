@@ -18,7 +18,7 @@ set -euo pipefail
 
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Error: not inside a git repository" >&2; exit 1; }
 
-# See lint-staged-python.sh for why this cd is needed: paths below are repo-root-relative
+# See git-lint-staged-python.sh for why this cd is needed: paths below are repo-root-relative
 # (diff.relative=false), but git resolves a relative pathspec against the invoking cwd.
 cd "$(git rev-parse --show-toplevel)"
 

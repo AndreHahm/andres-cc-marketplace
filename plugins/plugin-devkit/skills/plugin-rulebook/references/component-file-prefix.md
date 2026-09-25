@@ -79,8 +79,8 @@ invocation paths (including Python `import` statements, not just shell invocatio
 links, and the `.claude/` mirror.
 
 **Worked example — avoid a stutter:** a file already containing the plugin name mid-name (e.g.
-git-kit's own `write-git-kit-marker.sh`) produces an awkward stutter under a blind prepend
-(`git-write-git-kit-marker.sh`). Prefer a cleaner rename that still satisfies the rule (e.g.
+git-kit's own `git-write-marker.sh`) produces an awkward stutter under a blind prepend
+(`git-git-write-marker.sh`). Prefer a cleaner rename that still satisfies the rule (e.g.
 `git-write-marker.sh`) over a mechanical, unreadable prepend — the requirement is the `<prefix>-`
 basename prefix, not a specific transformation of the rest of the name.
 
@@ -90,6 +90,6 @@ basename prefix, not a specific transformation of the rest of the name.
 Suffix/Prefix Taxonomy" section about the `-kit`/`-devkit` **plugin-name** suffix convention (e.g.
 `git-kit`, `plugin-devkit`) — a naming question about the plugin itself. R33 is about a different
 concept that happens to share the word "prefix": a **file-naming** convention applied to files *inside*
-an already-named plugin (`git-kit`'s own `scripts/git-check-pr-title.py`). The two are unrelated and
+an already-named plugin (`git-kit`'s own `scripts/git-git-check-pr-title.py`). The two are unrelated and
 independently decided; do not conflate them. See `naming-conventions.md`'s own R33 section for the
 explicit disambiguation.

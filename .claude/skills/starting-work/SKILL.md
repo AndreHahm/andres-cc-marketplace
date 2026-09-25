@@ -7,7 +7,7 @@ description: >-
   against git-kit's [type]/[description] convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Glob, Write, AskUserQuestion
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Glob, Write, AskUserQuestion
 ---
 
 # Starting Work
@@ -71,7 +71,7 @@ branch off", "set up a worktree for this feature".
    ask — a human always makes the actual choice. See `references/worktree-decision.md` for the tradeoffs
    to mention if the user wants guidance rather than a snap decision.
 4. **Create**: immediately before either branch-creating command below, run
-   `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-branch-create starting-work` — this writes
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-branch-create starting-work` — this writes
    the marker git-kit's branch-creation guard requires; it must be written right before the command runs,
    not earlier, since the hook only accepts a marker up to 60 seconds old.
    - Plain branch: `git checkout -b <type>/<description>`.
@@ -138,7 +138,7 @@ mistake. One worktree per topic keeps `git-cleanup`'s merged/unmerged/dirty anal
 worktree's branch merged" reliably means "this worktree is done."
 
 The session-level half — don't leave one topic's worktree open while starting a second, unrelated one —
-matters because the Stop exit-guard (`guard-dirty-worktree-exit.sh`) only checks the worktree the
+matters because the Stop exit-guard (`git-guard-dirty-worktree-exit.sh`) only checks the worktree the
 session's current working directory is actually in when the turn ends, not every worktree the session has
 ever locked. Moving into a second worktree before finishing the first leaves the first one's dirty/unmerged
 state unchecked at Stop time, even though it's still locked and still at risk.

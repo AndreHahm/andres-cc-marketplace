@@ -12,7 +12,7 @@
 ## Replying to an inline PR review comment
 
 **The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before this
-reply call, same as the `resolveReviewThread` mutation below** — `guard-raw-pr-review.sh` hard-blocks
+reply call, same as the `resolveReviewThread` mutation below** — `git-guard-raw-pr-review.sh` hard-blocks
 this endpoint without one. If a fresh marker isn't written right before it, the call is denied.
 
 ```
@@ -98,7 +98,7 @@ list and the REST reply endpoint above.
 ways to defeat a substring match against a raw shell command (indirection via `=@file`/`$(cmd)`/
 backtick/`--input`, a plain shell variable holding the query, and adjacent-quote string concatenation
 splitting the literal word "mutation" across a quote boundary so it never appears contiguously) — see
-`guard-raw-pr-review.sh`'s own header comment for the full history. The guard now denies every
+`git-guard-raw-pr-review.sh`'s own header comment for the full history. The guard now denies every
 `gh api graphql` call unconditionally absent a fresh marker, so the lookup needs one too. Since a marker
 is single-use and consumed on the very next `Bash`/`PowerShell` call regardless of whether that call
 matches, if the lookup and the mutation happen as two separate `Bash` calls, write the marker again
@@ -174,12 +174,12 @@ misparsing text meant for another.
 **The `gh-pr-review` marker goes immediately before this call too**, same as the reply/resolve calls
 above — one fresh marker per `gh pr comment` call, never one marker reused across several reviewers'
 posts, since the marker is consumed by the next `Bash`/`PowerShell` call regardless of match. Unlike
-those two, this call needed no *logic* change to `guard-raw-pr-review.sh` itself — that hook's `gh pr
+those two, this call needed no *logic* change to `git-guard-raw-pr-review.sh` itself — that hook's `gh pr
 comment` branch already matches any `gh pr comment` invocation unconditionally, regardless of the
 comment body, so the existing guard already covers this new call site for the shapes it can see. Only
 this skill's own `allowed-tools` frontmatter needed the addition (`Bash(gh pr comment:*)`), since the
 skill had never posted a top-level comment before this redesign — only inline replies via the
-`.../replies` endpoint above. This coverage isn't unconditional, though: `guard-raw-pr-review.sh`'s own
+`.../replies` endpoint above. This coverage isn't unconditional, though: `git-guard-raw-pr-review.sh`'s own
 header comment discloses residual bypass shapes (command-substitution/backtick/quote-prefix
 indirection, and invocation via a script file the hook never inspects) that apply to every branch in
 that file, including this one — nothing about this new call site closes or reopens those, they're a

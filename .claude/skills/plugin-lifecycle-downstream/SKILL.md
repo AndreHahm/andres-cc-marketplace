@@ -237,7 +237,7 @@ Before each fix batch:
 5. Commit via `Skill(git-kit:commit)` — never a raw `Bash(git commit:...)` call. This
    skill's own `allowed-tools` intentionally has no `Bash(git add:*)`/`Bash(git commit:*)`
    scope; committing any other way is not just against this pipeline's own design, it is
-   hard-blocked by `git-kit`'s own `guard-raw-commit.sh` PreToolUse hook wherever `git-kit`
+   hard-blocked by `git-kit`'s own `git-guard-raw-commit.sh` PreToolUse hook wherever `git-kit`
    is installed alongside this plugin (the expected case, since this pipeline's own preflight
    already depends on `git-kit:starting-work`/`git-kit:merge-pr`) — per
    `.claude/rules/route-through-git-kit-lifecycle-skills.md`.

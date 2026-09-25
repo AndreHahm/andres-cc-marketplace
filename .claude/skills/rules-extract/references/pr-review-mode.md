@@ -59,7 +59,7 @@ For each PR, fetch all review-related comments from 3 sources:
 3. **Review bodies** (top-level review summaries):
    `gh pr view {number} --repo {owner}/{repo} --json reviews --jq '.reviews'`
    -- not the raw REST `gh api repos/{owner}/{repo}/pulls/{number}/reviews`
-   endpoint: git-kit's `guard-raw-pr-review.sh` guards that endpoint (any
+   endpoint: git-kit's `git-guard-raw-pr-review.sh` guards that endpoint (any
    `gh api` reviews call, read or write) as of issue #86, and this skill
    carries no matching marker-handshake grant to satisfy it. `gh pr view
    --json reviews` reaches the same data through `gh`'s own read-only

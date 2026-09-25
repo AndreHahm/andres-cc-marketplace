@@ -10,7 +10,7 @@ description: >-
   stuck. Not `gh-operations`'s ungated `gh run rerun`, `merge-pr`'s bypass flow, or
   `handling-review-findings`'s review triage.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
-allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)
 ---
 
 # codex-review-recovery
@@ -166,8 +166,8 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    If both checks pass (head unchanged, still not `success`), continue to step 5.
 
 5. **Post the retry comment**: immediately before running the command below, run
-   `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery` — this
-   writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it will
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review codex-review-recovery` — this
+   writes the marker git-kit's reviewer-action guard (`git-guard-raw-pr-review.sh`) requires before it will
    allow a raw `gh pr comment`/`gh pr review` call through; it must be written right before the command,
    not earlier, since the hook only accepts a marker up to 60 seconds old. Then, immediately before
    posting, capture a time anchor for step 6's run lookup: `BEFORE_COMMENT="$(date -u

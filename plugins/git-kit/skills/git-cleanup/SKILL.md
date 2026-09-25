@@ -3,7 +3,7 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(*/git-kit/scripts/git-write-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
 ---
 
 # Git Cleanup
@@ -304,22 +304,22 @@ Confirm? (yes/no)
 
 ### Phase 5: Execute
 
-Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
+Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
 
 ```bash
 git branch -d fix/typo
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/login
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-v2
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-refactor
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-final
 git worktree unlock ../proj-auth
-"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
 "${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh" 1
@@ -340,7 +340,7 @@ call. Resolve `<owner>/<repo>` via `gh repo view --json nameWithOwner --jq .name
 not once per branch.
 
 **Stale rebase-backup tags (Phase 3.6):** no marker write needed — `delete-rebase-backup-tags.sh`'s own
-`git update-ref -d` call isn't guarded by `guard-raw-destructive-cleanup.sh` (that hook only matches
+`git update-ref -d` call isn't guarded by `git-guard-raw-destructive-cleanup.sh` (that hook only matches
 `git branch -D`/`worktree remove --force`), and deleting a tag never touches a protected branch name in
 the first place. **Never type a tag name into a `git update-ref -d` command directly, and never pass one
 as an argument to any script either** — a git tag name is legal with almost any shell metacharacter (e.g.
@@ -353,7 +353,7 @@ Instead, run `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-ba
 it independently re-derives the deletable set itself (never trusting Phase 3.6's earlier read) and
 snapshots the exact tag names to a file; pass back only the plain digit indices shown against Gate 2's
 confirmed selections — `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh"
-<index> [index...]` — the same index-only interface `stage-selected-files.sh` already uses for staged
+<index> [index...]` — the same index-only interface `git-stage-selected-files.sh` already uses for staged
 filenames, for the identical reason. The script resolves each tag's current object id via the always-safe
 fully-qualified `refs/tags/<name>` form (never the bare name, which could start with a dash) and deletes
 it with `git update-ref -d refs/tags/<name> <resolved-oid>` — an atomic compare-and-delete that only
@@ -409,7 +409,7 @@ memory — the reference has the full procedure and is the only place the decisi
 4. **Never touch protected branches** - main, master, develop, release/* are excluded from Phase 1's
    per-branch commit-analysis loop by `scripts/phase1-analysis.sh`'s own `grep -vE` filter (run directly,
    not just read), and any raw `git branch -D` that still targets one of these names is additionally
-   hard-blocked by git-kit's `guard-raw-destructive-cleanup.sh` PreToolUse hook
+   hard-blocked by git-kit's `git-guard-raw-destructive-cleanup.sh` PreToolUse hook
 5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment. "Dirty" covers
    gitignored content too, not just tracked/untracked-but-not-ignored changes — `git status --porcelain`
    alone misses gitignored files entirely, so Phase 4's `--ignored` check is what actually completes this

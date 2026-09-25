@@ -929,7 +929,7 @@
       "domain": "git-lifecycle",
       "functional_role": "infrastructure",
       "id": "component_c8742627",
-      "name": "create-git-kit-local-json",
+      "name": "git-create-git-kit-local-json",
       "naming_history": [
         {
           "evidence": [
@@ -938,10 +938,19 @@
           "name": "create-git-kit-local-json",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-create-git-kit-local-json.md"
+          ],
+          "name": "git-create-git-kit-local-json",
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
-      "path": "commands/create-git-kit-local-json.md",
+      "path": "commands/git-create-git-kit-local-json.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -956,6 +965,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-create-git-kit-local-json.md"
+          ],
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "status": "active",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
@@ -1011,7 +1029,7 @@
       "domain": "git-lifecycle",
       "functional_role": "workflow",
       "id": "component_4978e649",
-      "name": "sync-branch",
+      "name": "git-sync-branch",
       "naming_history": [
         {
           "evidence": [
@@ -1020,10 +1038,19 @@
           "name": "sync-branch",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-sync-branch.md"
+          ],
+          "name": "git-sync-branch",
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
-      "path": "commands/sync-branch.md",
+      "path": "commands/git-sync-branch.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -1038,6 +1065,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-sync-branch.md"
+          ],
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "status": "active",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
@@ -1052,7 +1088,7 @@
       "domain": "git-lifecycle",
       "functional_role": "infrastructure",
       "id": "component_50b04740",
-      "name": "update-branch-name",
+      "name": "git-update-branch-name",
       "naming_history": [
         {
           "evidence": [
@@ -1061,10 +1097,19 @@
           "name": "update-branch-name",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-update-branch-name.md"
+          ],
+          "name": "git-update-branch-name",
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
-      "path": "commands/update-branch-name.md",
+      "path": "commands/git-update-branch-name.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -1079,6 +1124,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-28",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/git-update-branch-name.md"
+          ],
+          "reason": "PR 1 of the plugin-file-prefixes migration: registered git-kit's component-file prefix \"git\" (R33) and renamed this command's file to match.",
+          "status": "active",
+          "valid_from": "2026-09-25",
           "valid_to": null
         }
       ],
@@ -1170,6 +1224,7 @@
   "extensions": {},
   "plugin_id": "plugin_8b374e26",
   "plugin_name": "git-kit",
+  "prefix": "git",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-29"
+  "updated_on": "2026-09-25"
 }

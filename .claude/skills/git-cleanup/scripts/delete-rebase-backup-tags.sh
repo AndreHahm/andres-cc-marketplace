@@ -11,7 +11,7 @@
 # delete mode reads that exact snapshot back rather than recomputing it --
 # closing a race where repo state changes between the two calls could
 # otherwise resolve the same index to a different tag the second time,
-# mirroring stage-selected-files.sh's own snapshot rationale. The model only
+# mirroring git-stage-selected-files.sh's own snapshot rationale. The model only
 # ever has to pass back plain digit indices, never a single character of
 # untrusted tag-name content.
 #

@@ -2,7 +2,7 @@
 name: standalone-commits
 description: >-
   Make commits reviewable and auditable as self-contained units, order multi-file changes into atomic dependency-ordered waves, and decide which of several pending changes to stage first. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, deciding whether a commit is too broad, too tiny, incomplete, or hard to revert, prioritizing which change to stage next, or filtering pending changes down to what's relevant to the current PR.
-allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read
+allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read
 ---
 
 # Standalone Commits
@@ -110,11 +110,11 @@ This matters most when several unrelated concerns accumulate before a single sta
 6. Commit the staged wave in three parts:
    - 6a. **Compose** the message per `commit` skill's "Best Practices for Commits" (conventional format) and "Commit Message Footer" sections — link to those sections rather than restating the type list or trailer table here, so the two skills can't drift apart on format. Make the subject name the outcome, not the implementation detail (see "Commit Message Shape" below).
    - 6b. **Confirm** with `AskUserQuestion` — show the exact composed message and ask "Commit this wave with this message?" — options "Commit as shown" / "Revise the message" / "Stop". "Revise the message" loops back to 6a; "Stop" leaves the wave's files staged but uncommitted.
-   - 6c. **Commit**: immediately before committing, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit standalone-commits` — this writes the marker git-kit's commit-guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier, and after 6b's confirmation — not before it, since a slow confirmation could otherwise let the marker go stale before `git commit` runs). Then run `git commit` with the confirmed message.
+   - 6c. **Commit**: immediately before committing, run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-commit standalone-commits` — this writes the marker git-kit's commit-guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier, and after 6b's confirmation — not before it, since a slow confirmation could otherwise let the marker go stale before `git commit` runs). Then run `git commit` with the confirmed message.
 
    This flow does **not** add `commit`'s step-9 behavior-change test gate — a commit made through this skill is not currently checked against `.claude/rules/require-tests-for-behavior-changes.md` the way a `commit`-skill invocation is. This is a stated gap, not an oversight: if the wave being committed changes skill/agent behavior, apply that rule's applicable testing mechanism yourself before reaching this step.
 
-   A commit made through this skill with no `attributionSkill` tag in its own session transcript is a transcript-metadata artifact of the surrounding harness — not evidence the marker-write step (6c) was skipped. The marker write is rewritten fresh before every wave's own commit by design, since this Staging Workflow is repeated once per wave (see "Wave Planning" above); `guard-raw-commit.sh`'s marker is single-use and consumed on every check regardless of outcome, so a stale or reused marker cannot silently let a later wave's commit through unconfirmed.
+   A commit made through this skill with no `attributionSkill` tag in its own session transcript is a transcript-metadata artifact of the surrounding harness — not evidence the marker-write step (6c) was skipped. The marker write is rewritten fresh before every wave's own commit by design, since this Staging Workflow is repeated once per wave (see "Wave Planning" above); `git-guard-raw-commit.sh`'s marker is single-use and consumed on every check regardless of outcome, so a stale or reused marker cannot silently let a later wave's commit through unconfirmed.
 
 Prefer file-level staging when files cleanly map to the commit claim. Use hunk staging when one file contains multiple concerns.
 

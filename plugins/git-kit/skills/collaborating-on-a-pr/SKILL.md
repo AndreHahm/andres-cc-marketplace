@@ -10,7 +10,7 @@ description: >-
   material instead — this skill owns the orchestrated review flow, not ad hoc `gh` calls. Not
   `handling-review-findings`'s job of triaging findings already posted against an open PR.
 argument-hint: (optional) PR number or URL, and/or an issue number to link — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(create-pr)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, Skill(create-pr)
 ---
 
 # Collaborating on a PR
@@ -119,7 +119,7 @@ specifically to prevent `create-pr` ↔ `collaborating-on-a-pr` from calling eac
    can review this" for a user who asked only that — don't force a write action on someone who didn't
    want one.
 4. **Execute**: immediately before whichever `gh pr review`/`gh pr comment` command below runs, run
-   `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review collaborating-on-a-pr` — this
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review collaborating-on-a-pr` — this
    writes the marker git-kit's reviewer-action guard requires; it must be written right before the
    command, not earlier, since the hook only accepts a marker up to 60 seconds old.
    - Comment (as part of a review): `gh pr review $ARGUMENTS --comment --body "<text>"`. For a quick

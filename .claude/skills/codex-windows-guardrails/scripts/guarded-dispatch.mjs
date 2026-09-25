@@ -26,9 +26,9 @@ const SKILL_DIR = path.resolve(SCRIPT_DIR, "..");
 
 // Shared pattern list, imported from scripts/lib/secret-filenames.mjs (see
 // that module's own header for why this is now the single copy). Matches
-// plugins/git-kit/scripts/scan-staged-files.sh's bash `case` statement,
+// plugins/git-kit/scripts/git-scan-staged-files.sh's bash `case` statement,
 // which is case-sensitive -- but this check runs only on Windows against
-// real NTFS filenames (not, like scan-staged-files.sh, git path strings that
+// real NTFS filenames (not, like git-scan-staged-files.sh, git path strings that
 // could originate from any platform's checkout), where a case-sensitive-only
 // match would miss ".ENV"/"ID_RSA"/etc. Matched case-insensitively when
 // running on win32, same platform gate isInsideRoot below already uses for
@@ -441,7 +441,7 @@ function checkSecretFiles(targetPaths, repoRoot) {
           // explicit, human-curated .secretlintignore entry for this exact
           // path (isExemptedBySecretlintignore -- see that function's own
           // header for why it deliberately does NOT also consult bare
-          // .gitignore membership here, unlike scan-staged-files.sh's bash
+          // .gitignore membership here, unlike git-scan-staged-files.sh's bash
           // counterpart, and why it's exact-full-path-only, not a directory
           // or glob match). Security review finding (C1, issue #295): the
           // .secretlintignore signal additionally requires no STRICT

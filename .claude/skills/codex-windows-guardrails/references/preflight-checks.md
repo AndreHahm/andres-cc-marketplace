@@ -46,10 +46,10 @@ of its own inputs was rejected).
 Walks the **actual filesystem** under the **whole repository root** — not just the caller's
 `target-paths` (`fs.readdirSync`, recursive, skipping `.git`) — and tests every resulting file's
 basename against the same 19-pattern list
-`git-kit`'s `plugins/git-kit/scripts/scan-staged-files.sh` uses:
+`git-kit`'s `plugins/git-kit/scripts/git-scan-staged-files.sh` uses:
 
 - **Matched case-sensitively on non-Windows, case-insensitively on Windows** (`process.platform ===
-  "win32"`) — the pattern *list* is identical to `scan-staged-files.sh`'s, but that script matches
+  "win32"`) — the pattern *list* is identical to `git-scan-staged-files.sh`'s, but that script matches
   git path strings from any platform's checkout, while this check runs only on Windows against real
   NTFS filenames, where `.ENV`/`ID_RSA`/etc. are everyday valid names a case-sensitive-only match
   would miss. Same platform-gating principle `isInsideRoot` already applies to path comparison,

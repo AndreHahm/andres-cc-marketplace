@@ -537,7 +537,7 @@ def _is_fully_staged(repo: Path, path: Path) -> bool:
     staged (some hunks staged, some not), the generated destination gets built from the fuller
     working-tree version and then staged as if it matched -- `check_staged_parity` then rejects
     the commit, since the staged destination no longer byte-matches the staged source. Same
-    Y-character check `lint-staged-python.sh` already uses for the identical reason.
+    Y-character check `git-lint-staged-python.sh` already uses for the identical reason.
 
     `:(top,literal)` anchors the match to the repo root regardless of `cwd` -- but that magic
     word only makes sense applied to a repo-relative pathspec; `path` itself may be absolute
