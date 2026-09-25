@@ -2,7 +2,7 @@
 # Scans currently staged files against git-kit's fixed sensitive-filename
 # patterns and prints the matches, one per line by default (no output = no
 # matches). Pass --null (or -z) to emit NUL-separated output instead -- the
-# form unstage-flagged-files.sh consumes, since a flagged filename is
+# form git-unstage-flagged-files.sh consumes, since a flagged filename is
 # untrusted staged-diff content and must never be interpolated into a shell
 # string even quoted (double quotes do not suppress $()/``/`$VAR` expansion).
 #
@@ -126,7 +126,7 @@ emit() {
 # new path from the index then silently turns the rename into "delete the
 # old path, don't add the new one" once committed, rather than actually
 # rejecting the rename. Emitting *both* paths for a flagged rename lets
-# unstage-flagged-files.sh restore the whole rename, not half of it.
+# git-unstage-flagged-files.sh restore the whole rename, not half of it.
 git -c diff.relative=false diff --cached --name-status -z -M | \
 while IFS= read -r -d '' status; do
   case "$status" in

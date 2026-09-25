@@ -22,8 +22,8 @@
 # never the checked-out working tree -- otherwise a fetched/contributed
 # branch's own copies would run with this developer's local privileges the
 # moment `commit` runs on it, the same "attacker-controlled on a fetched
-# branch" threat model this file's own scan-staged-files.sh/
-# stage-selected-files.sh/lint-staged-python.sh siblings already treat as
+# branch" threat model this file's own git-scan-staged-files.sh/
+# git-stage-selected-files.sh/git-lint-staged-python.sh siblings already treat as
 # live, and the exact scenario commit-branch-guard.yml's own CI workflow
 # already defends against for these same files (found by cross-model-
 # review across rounds 2-3). The install itself lives outside the tracked
@@ -39,13 +39,13 @@
 # a message-content violation. Every exit-2 path prints a line prefixed
 # "SKIP:" to stderr identifying why.
 #
-# Usage: lint-commit-message.sh <path-to-drafted-message-file>
+# Usage: git-lint-commit-message.sh <path-to-drafted-message-file>
 #
 # Called by the commit skill (step 13.5), immediately before step 14's
 # confirm-before-commit AskUserQuestion, unless --no-verify was given.
 set -euo pipefail
 
-MESSAGE_FILE="${1:?usage: lint-commit-message.sh <path-to-drafted-message-file>}"
+MESSAGE_FILE="${1:?usage: git-lint-commit-message.sh <path-to-drafted-message-file>}"
 
 [ -f "$MESSAGE_FILE" ] || { echo "Error: message file not found: $MESSAGE_FILE" >&2; exit 1; }
 
@@ -112,7 +112,7 @@ fi
 
 # Install/run entirely outside the tracked working tree, under .git/ -- a
 # location every git-kit script already treats as local, untracked scratch
-# space (write-git-kit-marker.sh's own marker file lives at
+# space (git-write-marker.sh's own marker file lives at
 # "$GIT_DIR/git-kit-marker.txt"). This is what lets every file below be
 # sourced from a trusted ref without ever mutating the developer's own
 # checked-out copies as a side effect of running this check.
