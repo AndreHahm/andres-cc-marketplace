@@ -12,7 +12,7 @@ The `commit`, `create-pr`, `git-notes`, and `git-worktrees` skills began as this
 
 Because the upstream project is GPL-3.0 licensed, this plugin's own `LICENSE` file carries forward the same GPL-3.0 terms rather than this repository's top-level Apache-2.0 license — required by GPL-3.0's copyleft terms for a work based on GPL-3.0 code. This differs from other plugins in this marketplace (e.g. `plugin-devkit`, which is Apache-2.0) and is intentional.
 
-The `git-bisect`, `git-cleanup` skills and the `git-status`, `sync-branch`, `update-branch-name` commands in this plugin are not derived from `context-engineering-kit` and are not covered by this notice.
+The `git-bisect`, `git-cleanup` skills and the `git-status`, `git-sync-branch`, `git-update-branch-name` commands in this plugin are not derived from `context-engineering-kit` and are not covered by this notice.
 
 ## fernandezbaptiste — `claude-code-skills` (`github-ops`)
 
