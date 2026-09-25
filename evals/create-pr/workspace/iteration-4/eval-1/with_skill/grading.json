@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes the commit skill using the bare form Skill(commit), never the scoped Skill(git-kit:commit) form", "passed": true, "evidence": "Response quotes Pre-flight Checks step 2's exact text: `Skill: commit`."},
+    {"text": "Invokes the cross-model-review skill using the bare form Skill(cross-model-review), never the scoped Skill(git-kit:cross-model-review) form", "passed": true, "evidence": "Response quotes Pre-flight Checks step 4's exact text: `Skill(cross-model-review)` run against the full current diff."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

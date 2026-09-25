@@ -21,7 +21,7 @@ A standalone commit is a commit a reviewer can audit on its own, at that point i
 ## When NOT to Use
 
 - **A single, already-coherent staged change with no splitting/ordering decision to make** — that's
-  `commit` (`Skill(git-kit:commit)`), which shapes and executes the message for whatever is already staged
+  `commit` (`Skill(commit)`), which shapes and executes the message for whatever is already staged
 - **Reviewing a PR's diff or resolving review comments** — that's `explain-pr-changes` /
   `collaborating-on-a-pr`
 

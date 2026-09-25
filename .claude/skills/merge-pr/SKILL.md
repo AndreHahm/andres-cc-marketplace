@@ -3,7 +3,7 @@ name: merge-pr
 description: >-
   Check whether the current branch's (or a given) pull request is ready to merge — not draft, all required status checks passing, no outstanding change-request reviews — report readiness clearly, and if ready, ask before merging. Verifies the current user actually has merge rights (repo owner, CODEOWNERS match, or collaborator permission) before executing. Use when checking if a PR is ready to merge, merging a PR, or asked "can I merge this" / "is this PR ready". Not `handling-review-findings`'s job of triaging which individual findings get fixed, filed, or declined; not `manage-codeowners`'s job of creating or editing CODEOWNERS; not `explain-pr-changes`'s job of resolving review comments or summarizing what changed.
 argument-hint: (optional) PR number or URL, and/or --bypass-codex-review "<reason>" — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh pr merge:*), Bash(gh api repos/*/branches/*/protection:*), Bash(gh api repos/*/pulls/*/commits:*), Bash(gh api repos/*/pulls/*/files:*), Bash(gh api repos/*/compare/*:*), Bash(gh api graphql:*), Bash(wc -l:*), Bash(gh api user --jq:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(gh repo view:*), Bash(git ls-remote --heads origin:*), Bash(git remote get-url origin:*), Bash(sed -E:*), Bash(git branch --show-current:*), Bash(git rev-parse HEAD:*), Bash(jq -n:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:manage-codeowners), Skill(git-kit:finishing-work), Skill(git-kit:commit), Skill(git-kit:github-issue-lifecycle)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh pr merge:*), Bash(gh api repos/*/branches/*/protection:*), Bash(gh api repos/*/pulls/*/commits:*), Bash(gh api repos/*/pulls/*/files:*), Bash(gh api repos/*/compare/*:*), Bash(gh api graphql:*), Bash(wc -l:*), Bash(gh api user --jq:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(gh repo view:*), Bash(git ls-remote --heads origin:*), Bash(git remote get-url origin:*), Bash(sed -E:*), Bash(git branch --show-current:*), Bash(git rev-parse HEAD:*), Bash(jq -n:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(manage-codeowners), Skill(finishing-work), Skill(commit), Skill(github-issue-lifecycle)
 ---
 
 # Merge PR
@@ -80,7 +80,7 @@ step 5).
      `handling-review-findings`'s own Workflow step 1 already applies to this identical risk. It also
      isn't limited to the fork case: an explicitly `$ARGUMENTS`-named PR in a *different, same-repo-shaped*
      repository with a coincidentally matching local branch name would otherwise pass a branch-name-only
-     check, and `Skill(git-kit:github-issue-lifecycle)`'s own `gh issue create` has no repository
+     check, and `Skill(github-issue-lifecycle)`'s own `gh issue create` has no repository
      override — it always files against whatever repository the current checkout happens to be, so a
      mismatched checkout would misdirect a filed issue just as easily as a pushed fix. **On any
      mismatch, skip this entire step** — scanning, fixing, and filing all require actually being on the
@@ -106,7 +106,7 @@ step 5).
    - **Fix every touched issue now, except a user-explicitly-deferred one**: apply the fix, verify it
      (the applicable
      `.claude/rules/require-tests-for-behavior-changes.md` mechanism, or a re-read against the issue),
-     then commit **and push** it via `Skill(git-kit:commit)` — explicitly requesting the push, the same
+     then commit **and push** it via `Skill(commit)` — explicitly requesting the push, the same
      way `handling-review-findings`'s own Fix path does, since this PR already exists and a local-only
      commit never reaches it. **Any fix-driven push here invalidates step 1's already-fetched readiness
      data** — step 2 below must treat this exactly like one of its existing rerun points and re-fetch
@@ -116,7 +116,7 @@ step 5).
      it) is never overridden without asking first: surface it via `AskUserQuestion` ("fix now" or "leave
      deferred") and only fix it on "fix now."
    - **File a live GitHub issue for every untouched issue, only once approved**: invoke
-     `Skill(git-kit:github-issue-lifecycle)`, explicitly instructing it to run its Workflow 1 through
+     `Skill(github-issue-lifecycle)`, explicitly instructing it to run its Workflow 1 through
      Step 2 (dedup check, then draft) and stop there — do not file yet. Show the resulting draft(s) to
      the user via `AskUserQuestion` and ask for explicit approval before continuing. On approval, resume
      Workflow 1 at Step 3 to file it, explicitly skipping that workflow's own Step 6 (PR-linking)
@@ -258,7 +258,7 @@ them.
      `CHANGES_REQUESTED`" means "no open findings." **If any page of this query fails**, state at step 5
      that the count could not be determined — never report it as `0`, which would read as "confirmed no
      open threads" rather than "unknown."
-3. **Merge-rights check** (only runs once the PR is confirmed ready, or provisionally ready via the step-2 bypass exception): follow the 3-tier procedure in `references/merge-rights-check.md` exactly — do not improvise a shortcut, and pass step 1's already-resolved `{owner}/{repo}` (from the PR's own `url` field) into every tier of that procedure; the reference file's own Tiers 1 and 3 rely on this instead of re-deriving it via a fresh `gh repo view`, for the same reason step 1 itself avoids that call. It ends in either `MERGE ALLOWED` or `MERGE NOT ALLOWED` (with the specific reason). If `MERGE NOT ALLOWED` because `.github/CODEOWNERS` is missing, ask via `AskUserQuestion` whether to invoke `Skill(git-kit:manage-codeowners)` now to bootstrap one; otherwise (any other `MERGE NOT ALLOWED` reason) tell the user which tier failed and stop. **This check always runs before any bypass attestation** — merge rights are never granted on the strength of a bypass; a bypass only ever substitutes for the Codex-review status check, never for merge-rights.
+3. **Merge-rights check** (only runs once the PR is confirmed ready, or provisionally ready via the step-2 bypass exception): follow the 3-tier procedure in `references/merge-rights-check.md` exactly — do not improvise a shortcut, and pass step 1's already-resolved `{owner}/{repo}` (from the PR's own `url` field) into every tier of that procedure; the reference file's own Tiers 1 and 3 rely on this instead of re-deriving it via a fresh `gh repo view`, for the same reason step 1 itself avoids that call. It ends in either `MERGE ALLOWED` or `MERGE NOT ALLOWED` (with the specific reason). If `MERGE NOT ALLOWED` because `.github/CODEOWNERS` is missing, ask via `AskUserQuestion` whether to invoke `Skill(manage-codeowners)` now to bootstrap one; otherwise (any other `MERGE NOT ALLOWED` reason) tell the user which tier failed and stop. **This check always runs before any bypass attestation** — merge rights are never granted on the strength of a bypass; a bypass only ever substitutes for the Codex-review status check, never for merge-rights.
 4. **Bypass attestation, wait, and re-verify** (only when step 2 flagged this PR as being on the bypass path — skip this step entirely otherwise, proceeding directly to step 5):
    a. **Screen the reason text per `../../references/bypass-attestation-protocol.md`'s step 1 in full** — not just its bot-trigger-mention check. Reject a literal bot-trigger mention (e.g. `@codex review`, `@codex full review`, `@coderabbitai review`; the same self-retrigger risk this skill's own "No literal bot-trigger mentions" Best Practice exists to prevent). Also reject a reason that looks like it carries internal ticket detail, personnel/customer names, internal hostnames, or a credential-shaped string — the reason is about to be posted verbatim, permanently, as a public PR comment, and step 1's sensitive-content screening applies here exactly as it does for `create-pr`/`commit`. If either check flags the reason, reject the flag and report why instead of posting it — do not proceed to (b).
    b. Resolve the head SHA (`gh pr view $ARGUMENTS --json headRefOid --jq '.headRefOid'`) and the current authenticated actor (`gh api user --jq '.login'`). Re-verify the actor's live merge-capable permission (`write`/`maintain`/`admin`) — step 3 already confirmed this actor has merge rights, so this is the same check, not a new one; if it somehow fails here, stop and report rather than attesting. Write the `reason` text verbatim to a scratchpad file via `Write` first, then build the versioned attestation marker as JSON via `jq -n --rawfile reason <path> --arg actor ... --arg head_sha ... --arg created_at ...`, per `../../references/bypass-attestation-protocol.md`'s step 3 — never by interpolating the reason text directly into a shell string, even as a quoted `jq --arg` value. Write the comment body (marker wrapped in `<!-- marketplace-ci-bypass-attestation {...} -->`) to a second scratchpad file, then post it: `gh pr comment $ARGUMENTS --body-file <scratchpad-path>`.
@@ -283,7 +283,7 @@ them.
       - **`state` is `MERGED`, `isCrossRepository` is `true`, `merge_auto_delete_branch` is `false`**: skip the manual-delete ask entirely — the branch is the contributor's fork's to manage.
 
       Report the result in every branch above: merge commit/method used, whether the merge strategy differed from the configured `pr_merge_type` (and why, if (a) or (d) changed it), and whether the branch was deleted (or, for a cross-repository PR, that branch deletion was skipped since it lives in the contributor's fork).
-8. **Offer post-merge sync**: after a successful merge, ask via `AskUserQuestion` — "Run `finishing-work` now to sync local `main` and check for cleanup?" — options "Yes — sync now" / "No — skip". If yes, invoke `Skill(git-kit:finishing-work)` with this PR's number/URL so it can bind its own merge-confirmation check to the exact PR just merged rather than re-resolving the current branch's PR. This exists specifically so a successful merge doesn't rely on the user remembering to separately invoke `finishing-work` afterward — a real gap that let branches from at least two earlier merges sit locally, undiscovered, for multiple days. Never skip this ask or auto-invoke `finishing-work` without it: `finishing-work` switches the current checkout to `main`, which can be disruptive if the user is about to start other work on the just-merged branch's follow-up.
+8. **Offer post-merge sync**: after a successful merge, ask via `AskUserQuestion` — "Run `finishing-work` now to sync local `main` and check for cleanup?" — options "Yes — sync now" / "No — skip". If yes, invoke `Skill(finishing-work)` with this PR's number/URL so it can bind its own merge-confirmation check to the exact PR just merged rather than re-resolving the current branch's PR. This exists specifically so a successful merge doesn't rely on the user remembering to separately invoke `finishing-work` afterward — a real gap that let branches from at least two earlier merges sit locally, undiscovered, for multiple days. Never skip this ask or auto-invoke `finishing-work` without it: `finishing-work` switches the current checkout to `main`, which can be disruptive if the user is about to start other work on the just-merged branch's follow-up.
 
 ## Boundaries
 
@@ -394,10 +394,10 @@ disclosures, step 7's rebase/squash logic, and step 1.5's session open-issues ch
       `gh pr view --json files`, whose connection caps at 100 entries with no pagination reachable from
       this skill
 - [ ] A touched-component issue's fix at step 1.5 is always committed **and pushed** via
-      `Skill(git-kit:commit)` before step 2 runs — never left as a local-only commit against a PR that
+      `Skill(commit)` before step 2 runs — never left as a local-only commit against a PR that
       already exists remotely
 - [ ] An untouched-component issue is never fixed in-session at step 1.5 — always filed via
-      `Skill(git-kit:github-issue-lifecycle)`'s Workflow 1 only, with its own Step 6 (PR-linking)
+      `Skill(github-issue-lifecycle)`'s Workflow 1 only, with its own Step 6 (PR-linking)
       explicitly skipped
 - [ ] An untouched issue's draft is always shown via `AskUserQuestion` and explicitly approved before
       Workflow 1's Step 3 files it live — never filed on Workflow 1's own internal "once approved"

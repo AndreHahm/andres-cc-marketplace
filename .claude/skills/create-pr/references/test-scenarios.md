@@ -5,7 +5,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 "Quality gates" sections for the required inline lists this extends.
 
 **Verify the Pre-flight Checks step 4 cross-model-review gate:**
-- No bypass flag given → `Skill(git-kit:cross-model-review)` is invoked against the full diff (default
+- No bypass flag given → `Skill(cross-model-review)` is invoked against the full diff (default
   `BASE=main`, no `SCOPE`) before step 1 (push) runs, on every PR regardless of what changed
 - `cross-model-review` was already run manually earlier in the same session → step 4 still re-invokes it
   fresh; the earlier run is never treated as satisfying this gate
@@ -38,7 +38,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Session has no open issues → step 3.5 states this plainly and proceeds directly to step 4, no fix or
   filed issue
 - An open issue's file is part of the current diff (`git diff --name-only -z main...HEAD | grep -zqxF
-  "<path>"` exits `0`) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs —
+  "<path>"` exits `0`) → fixed, verified, and committed via `Skill(commit)` before step 4 runs —
   never pushed directly by this step, since step 1 remains the only push
 - A touched file's path contains non-ASCII bytes (e.g. `café.md`) → still correctly classified as
   touched, since `-z` disables path quoting entirely (the bare `git diff --name-only` form would emit
@@ -55,7 +55,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   test; converting `-z`'s output to newlines first (e.g. via `tr '\0' '\n'`) would make the two cases
   indistinguishable and was itself a round-2 regression, fixed in round 3
 - An open issue's file is not part of the current diff → its draft is shown via `AskUserQuestion`;
-  only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at Workflow 1's Step 3 to file it
+  only on approval is `Skill(github-issue-lifecycle)` resumed at Workflow 1's Step 3 to file it
   live, with that workflow's own Step 6 (PR-linking) explicitly skipped, and reported with its issue
   number — never fixed in-session, and never filed on Workflow 1's own internal "once approved" wording
   alone
@@ -67,7 +67,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   the session → never auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first,
   and only fixed on "fix now"
 - An open issue's file is part of the diff, and it's an ordinary unaddressed reviewer finding (not a
-  user-deferred item) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs —
+  user-deferred item) → fixed, verified, and committed via `Skill(commit)` before step 4 runs —
   never pushed directly by this step, since step 1 remains the only push
 - An open issue has no single clearly-associated file path → falls to untouched (the same "otherwise"
   branch as any file not in the diff), never left undefined

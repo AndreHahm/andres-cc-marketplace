@@ -110,7 +110,7 @@ gh pr checkout 123
 **Not for here:** `gh pr comment` and `gh pr review` (comment/approve/request-changes) are git-kit's
 reviewer-action guard hooks' guarded commands — a raw invocation of either is hard-blocked outside
 `collaborating-on-a-pr`, which adds CODEOWNERS context and a structured action choice these bare commands
-skip. Use `Skill(git-kit:collaborating-on-a-pr)` for a real review; the commands are not reproduced here
+skip. Use `Skill(collaborating-on-a-pr)` for a real review; the commands are not reproduced here
 as runnable reference material to avoid documenting a sequence that fails at runtime without the skill's
 marker handshake.
 

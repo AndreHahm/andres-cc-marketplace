@@ -4,7 +4,7 @@ Detailed verification scenarios for `merge-pr`'s Testing & Validation section (R
 R29's own three required inline subsections, the trigger-phrase lists and `Quality gates:`, stay in
 `SKILL.md` itself; the scenario walkthroughs below live here).
 
-1. **Post-merge sync accepted** — after a successful merge, confirm step 8's `AskUserQuestion` fires and, on "Yes", `Skill(git-kit:finishing-work)` is invoked with the just-merged PR's number/URL, not a re-resolved current-branch PR
+1. **Post-merge sync accepted** — after a successful merge, confirm step 8's `AskUserQuestion` fires and, on "Yes", `Skill(finishing-work)` is invoked with the just-merged PR's number/URL, not a re-resolved current-branch PR
 2. **Post-merge sync declined** — confirm the skill still reports the merge result cleanly on "No — skip", without invoking `finishing-work`
 3. **Merge fails or is never reached** (readiness/rights check fails, user declines the step-5 confirmation) — confirm step 8 never fires; it's conditioned on a successful merge, not on the skill having run at all
 
@@ -185,13 +185,13 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   2026-09-08)
 - An open issue's file is part of that paginated changed-file list, the checkout-match check passed,
   and it's an ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then
-  committed and pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already
+  committed and pushed via `Skill(commit)` (push explicitly requested) — since this PR already
   exists, a local-only commit is never left unpushed
 - The same touched issue, but the user had explicitly deferred it earlier in the session → never
   auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first, and only fixed on
   "fix now"
 - An open issue's file is not part of that list (or has no single associated file path) → its draft is
-  shown via `AskUserQuestion`; only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at
+  shown via `AskUserQuestion`; only on approval is `Skill(github-issue-lifecycle)` resumed at
   Workflow 1's Step 3 to file it live, with that workflow's own Step 6 (PR-linking) explicitly skipped,
   and reported with its issue number — never fixed in-session, and never filed on Workflow 1's own
   internal "once approved" wording alone

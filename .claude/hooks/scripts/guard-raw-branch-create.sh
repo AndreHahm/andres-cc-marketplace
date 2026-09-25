@@ -215,7 +215,7 @@ cat <<'EOF'
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "Raw branch creation (`git checkout -b`/`git switch -c`/`git worktree add -b`) is blocked by git-kit's branch-creation guard. Use the `starting-work` skill (`Skill(git-kit:starting-work)`) instead -- it syncs main, validates the branch name, and asks worktree-vs-branch, all of which this raw invocation would skip. If this fired from inside starting-work itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use `Read`/`Grep` instead of a shell search."
+    "permissionDecisionReason": "Raw branch creation (`git checkout -b`/`git switch -c`/`git worktree add -b`) is blocked by git-kit's branch-creation guard. Use the `starting-work` skill (`Skill(starting-work)`) instead -- it syncs main, validates the branch name, and asks worktree-vs-branch, all of which this raw invocation would skip. If this fired from inside starting-work itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use `Read`/`Grep` instead of a shell search."
   }
 }
 EOF

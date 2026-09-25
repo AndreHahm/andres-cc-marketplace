@@ -15,6 +15,16 @@
 # the marker must be fresh (<=60s old, checked by the hook) and is consumed
 # on first use, so writing it any earlier than "right before the guarded
 # command" risks it going stale or being consumed by an unrelated call.
+#
+# WARNING (issue #165): this script only writes the marker -- it does not, and
+# cannot, verify that the calling skill's own documented procedure (staging
+# review, sensitive-file scan, round/dedup budgeting, etc.) actually ran.
+# Invoking this script by hand, outside a real Skill() dispatch of one of the
+# skills listed above, produces a marker indistinguishable from a genuine one
+# and lets the raw guarded command through with none of that skill's own
+# safeguards applied. Never invoke this script directly as a shortcut past a
+# skill's own procedure -- always dispatch the skill itself and let it call
+# this script as its own last step.
 set -euo pipefail
 
 GUARD_TYPE="${1:?usage: write-git-kit-marker.sh <guard-type> <skill-name>}"

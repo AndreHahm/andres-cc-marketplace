@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes the commit skill using the bare form Skill(commit), never the scoped Skill(git-kit:commit) form", "passed": true, "evidence": "Response uses `Skill(commit, args: \"--push\")` and explicitly cites the dispatch-name note explaining why the bare form is used over `git-kit:commit`."},
+    {"text": "If a Skill() dispatch failed or errored, the response says it would stop and report the failure to the user rather than manually reimplementing the skill's own procedure by hand", "passed": true, "evidence": "Response quotes the skill's own new opening-section paragraph verbatim and concludes: 'stop and report the failure to the user plainly - I do not proceed to run a raw git add/git commit/git push myself as a substitute.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes the create-pr skill using the bare form Skill(create-pr), never the scoped Skill(git-kit:create-pr) form", "passed": true, "evidence": "Response quotes step 17's own text: \"invoke `Skill(create-pr)` directly\", correctly noting the AskUserQuestion branch only fires when push_auto_pr is false."}
+  ],
+  "summary": {"assertions_total": 1, "assertions_passed": 1, "pass_rate": 1.0}
+}

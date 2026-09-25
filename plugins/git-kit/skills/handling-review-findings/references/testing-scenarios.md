@@ -127,7 +127,7 @@
 - [ ] Dedup correctly treats a same-file/same-or-overlapping-line finding as a repeat only after
       comparing actual content, never on location alone — and defaults to "new" whenever that
       comparison is uncertain.
-- [ ] Round 1/2 findings are fixed, committed via `Skill(git-kit:commit)`, pushed, verified, and only
+- [ ] Round 1/2 findings are fixed, committed via `Skill(commit)`, pushed, verified, and only
       then have their threads replied-to (citing the fixing commit SHA) and resolved — never resolved
       off an unverified push.
 - [ ] A finding matching one of the three named exceptions (direct instruction, out-of-scope component,

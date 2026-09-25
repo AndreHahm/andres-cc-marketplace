@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {"text": "Invokes the commit skill using the bare form Skill(commit), never the scoped Skill(git-kit:commit) form", "type": "functionality", "target": "response"},
+    {"text": "Invokes the cross-model-review skill using the bare form Skill(cross-model-review), never the scoped Skill(git-kit:cross-model-review) form", "type": "functionality", "target": "response"}
+  ]
+}

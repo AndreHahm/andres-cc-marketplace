@@ -205,7 +205,7 @@ Files that import nothing come first. Files that import everything come last.
 For multi-wave work:
 
 ```bash
-# Create the feature branch first via Skill(git-kit:starting-work) -- raw
+# Create the feature branch first via Skill(starting-work) -- raw
 # `git checkout -b` is hard-blocked by git-kit's branch-creation guard outside it.
 
 # Wave 1
