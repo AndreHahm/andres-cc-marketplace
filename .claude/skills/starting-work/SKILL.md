@@ -24,9 +24,9 @@ branch off", "set up a worktree for this feature".
 
 ## When NOT to Use
 
-- **Rebasing an already-existing feature branch onto a newer main** — that's `/sync-branch`, not this
+- **Rebasing an already-existing feature branch onto a newer main** — that's `/git-sync-branch`, not this
   skill. `starting-work` only runs before a branch exists.
-- **Renaming an existing branch based on what it now contains** — that's `/update-branch-name`.
+- **Renaming an existing branch based on what it now contains** — that's `/git-update-branch-name`.
 - **Anything after the first commit** — once work has started, this skill has nothing left to do.
 
 ## Instructions
@@ -151,8 +151,8 @@ state unchecked at Stop time, even though it's still locked and still at risk.
 - "set up a worktree for this feature"
 
 **Verify it does NOT activate on:**
-- "sync my current branch with main" → `/sync-branch`
-- "rename this branch to match what it does now" → `/update-branch-name`
+- "sync my current branch with main" → `/git-sync-branch`
+- "rename this branch to match what it does now" → `/git-update-branch-name`
 - "I just merged, clean this up" → `finishing-work`
 
 **Verify `use_worktree` behavior:**

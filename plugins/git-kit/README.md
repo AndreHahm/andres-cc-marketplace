@@ -79,7 +79,7 @@ cc --plugin-dir /path/to/git-kit
 }
 ```
 
-To override any of these per project, run `/create-git-kit-local-json` — it creates `.claude/git-kit.local.json` in the project root, seeded from those defaults, so you can edit it locally. This file is user-local: add `.claude/*.local.json` (or the broader `.claude/*.local.*`) to your project's `.gitignore` so it never gets committed — the command warns you if it detects the new file isn't actually ignored. If `.claude/git-kit.local.json` doesn't exist, or omits a field, the git-tracked defaults above apply for that field.
+To override any of these per project, run `/git-create-git-kit-local-json` — it creates `.claude/git-kit.local.json` in the project root, seeded from those defaults, so you can edit it locally. This file is user-local: add `.claude/*.local.json` (or the broader `.claude/*.local.*`) to your project's `.gitignore` so it never gets committed — the command warns you if it detects the new file isn't actually ignored. If `.claude/git-kit.local.json` doesn't exist, or omits a field, the git-tracked defaults above apply for that field.
 
 | Field | Default | Meaning |
 |---|---|---|
@@ -101,7 +101,7 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
 
-**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. The same tracked-vs-untracked check applies to five more fields in `handling-review-findings`: a `review_findings_reviewers` entry's `enabled: false`, `review_findings_max_rounds` set lower than the tracked default, `review_findings_generate_issues: true`, `review_findings_severity_gate: true` (converts every Minor/nit finding into a reply-only Decline with no tracking artifact at all), and a reviewer's `default_review_trigger`/`full_review_trigger` text (which ends up posted literally in a `gh pr comment`) are all only honored from an untracked local file, falling back to the tracked default otherwise. `pr_merge_type`, `merge_auto_delete_branch`, `use_worktree`, and `review_findings_min_rounds` are low-risk (a merge-strategy choice, a reversible single-branch deletion, which option a question recommends without ever skipping it, and a floor that only makes the trigger-ask's stop option available sooner — the user still has to actively choose it, never an automatic skip) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
+**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/git-create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. The same tracked-vs-untracked check applies to five more fields in `handling-review-findings`: a `review_findings_reviewers` entry's `enabled: false`, `review_findings_max_rounds` set lower than the tracked default, `review_findings_generate_issues: true`, `review_findings_severity_gate: true` (converts every Minor/nit finding into a reply-only Decline with no tracking artifact at all), and a reviewer's `default_review_trigger`/`full_review_trigger` text (which ends up posted literally in a `gh pr comment`) are all only honored from an untracked local file, falling back to the tracked default otherwise. `pr_merge_type`, `merge_auto_delete_branch`, `use_worktree`, and `review_findings_min_rounds` are low-risk (a merge-strategy choice, a reversible single-branch deletion, which option a question recommends without ever skipping it, and a floor that only makes the trigger-ask's stop option available sooner — the user still has to actively choose it, never an automatic skip) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
 
 ## Skills
 
@@ -163,9 +163,9 @@ report had stated the closure explicitly until now:
 ## Commands
 
 - `/git-status` - Show detailed git repository status
-- `/sync-branch` - Sync the current feature branch with the latest main branch
-- `/update-branch-name` - Update the current branch name to follow naming conventions
-- `/create-git-kit-local-json` - Create or update `.claude/git-kit.local.json`, seeded from the git-tracked default settings
+- `/git-sync-branch` - Sync the current feature branch with the latest main branch
+- `/git-update-branch-name` - Update the current branch name to follow naming conventions
+- `/git-create-git-kit-local-json` - Create or update `.claude/git-kit.local.json`, seeded from the git-tracked default settings
 
 ## Hooks
 
