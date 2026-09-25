@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; fi",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/context-monitor.py\"; else exit 0; fi",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -138,7 +138,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; fi",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/post-compact-restore.py\"; else exit 0; fi",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -323,7 +323,7 @@
           },
           {
             "type": "command",
-            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; else exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; fi",
+            "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/context-kit/scripts/pre-compact.py\"; else exit 0; fi",
             "shell": "bash",
             "timeout": 10,
             "onError": "warn"

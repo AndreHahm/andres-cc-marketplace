@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "The hooks.json command uses the full uv -> python3 -> python cascade, not a bare python3/python call or a partial (python3-only-or-python) fallback",
+      "type": "functionality",
+      "target": "outputs/ directory (the hooks.json command string or .sh wrapper produced)"
+    },
+    {
+      "text": "The fallback chain includes a graceful-degradation branch for when none of uv/python3/python is found (no uncaught crash)",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Follows the two-file convention: a .sh wrapper (registered by bare path, needs the executable bit) with the actual hook logic in a sibling .py file (never invoked via its own shebang)",
+      "type": "structure",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "The response reads stdin as JSON in the .py logic file (not environment-variable substitution), consistent with hook-development's baseline guidance",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The hooks.json command uses the full uv -> python3 -> python cascade, not a bare python3/python call or a partial (python3-only-or-python) fallback",
+      "passed": true,
+      "evidence": "scripts/my-hook.sh: `if command -v uv ...; then ... uv run ...; elif command -v python3 ...; then ... python3 ...; elif command -v python ...; then ... python ...; else ...; fi` -- all three tiers present in order."
+    },
+    {
+      "text": "The fallback chain includes a graceful-degradation branch for when none of uv/python3/python is found (no uncaught crash)",
+      "passed": true,
+      "evidence": "Final `else` branch: `echo '{\"systemMessage\":\"my-hook: no Python runner (uv/python3/python) found on PATH — skipped.\"}'` -- response text explicitly calls this out as replacing 'a bare exec python ... that would crash uncaught', and correctly notes a hook could instead choose to fail closed there if that's the safer default."
+    },
+    {
+      "text": "Follows the two-file convention: a .sh wrapper (registered by bare path, needs the executable bit) with the actual hook logic in a sibling .py file (never invoked via its own shebang)",
+      "passed": true,
+      "evidence": "hooks.json command points at `${CLAUDE_PLUGIN_ROOT}/scripts/my-hook.sh` (not the .py file directly); response states my-hook.sh 'needs the executable bit' and my-hook.py 'No executable bit needed... never exec'd via its own shebang' -- matches the skill's documented convention exactly."
+    },
+    {
+      "text": "The response reads stdin as JSON in the .py logic file (not environment-variable substitution), consistent with hook-development's baseline guidance",
+      "passed": true,
+      "evidence": "my-hook.py: `data = json.load(sys.stdin)` followed by `tool_name = data.get(\"tool_name\", \"\")` / `tool_input.get(\"file_path\", \"\")` -- correct stdin-JSON parsing, no env-var reliance."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

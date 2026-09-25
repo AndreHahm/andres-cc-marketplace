@@ -10,10 +10,11 @@ whose `command` invokes a Python script directly or indirectly — before the ho
 A hook's `command` must never call `python3`/`python` bare, or with only a partial fallback (e.g.
 `python3 || python` with no `uv` tier). It must use the full `uv` → `python3` → `python` cascade, with a
 graceful degradation branch (never an uncaught crash) if none of the three is found — see
-`hook-development`'s Pattern 11 (`references/patterns-and-templates.md`) for the canonical two-file
-(`.sh` wrapper + sibling `.py`) template. `hooks.json` invokes `command` by bare path with no interpreter
-of its own, so a hook that skips this either breaks outright on a system with only `python` (no
-`python3`), or hard-crashes when none of the three is on `PATH` at all.
+`hook-development`'s Pattern 11 (`references/patterns-and-templates.md`) for the two valid shapes (an
+inline `hooks.json` `command` cascade, or a `.sh` wrapper + sibling `.py` for a more complex hook) and
+when to pick each. `hooks.json` invokes `command` by bare path with no interpreter of its own, so a hook
+that skips this either breaks outright on a system with only `python` (no `python3`), or hard-crashes
+when none of the three is on `PATH` at all.
 
 ## Incorrect
 
@@ -37,3 +38,10 @@ only documented as "(optional)" in `hook-development`, and at least two hooks sh
 `context-kit`'s `detect_mode.py` `UserPromptSubmit` hook (partial fallback, no `uv` tier) and
 `plugin-devkit`'s own `marketplace-development/hooks/post_edit_validate.sh`/`post_edit_sync_check.sh`
 (no fallback at all — a bare inline `python3 -c "..."`). See issues #358/#359.
+
+## Enforcement
+
+Policy gate, no backing hook — same disclosed-limitation model most process rules in this repo use.
+Neither `plugin-devkit/hooks/rulebook-check.py` nor `hooks-schema-check.sh` currently checks a hook's
+`command` string against this convention; whether a new hook actually uses the full cascade depends on
+author/reviewer attention at "before finalizing" time, not a mechanical check.

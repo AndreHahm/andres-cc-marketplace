@@ -837,31 +837,41 @@ every system, and `hooks.json` invokes a hook's `command` by bare path with no i
 so any hook registered this way MUST use a `uv` → `python3` → `python` fallback, with graceful
 degradation (never an uncaught crash) if none is found.
 
-**Two-file convention:** because `hooks.json` runs `command` directly, the interpreter-selection logic
-must live in a `.sh` wrapper (needs the executable bit, since it's invoked by bare path) with a sibling
-`.py` file holding the actual hook logic (never needs the executable bit, since it's always passed as an
-argument to whichever interpreter the wrapper resolved — never exec'd via its own shebang). See
-`plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py` in this repo for the canonical
-worked example. The wrapper:
+**Two valid shapes — pick based on complexity, not by default:**
 
-```bash
-#!/bin/bash
-set -uo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INPUT="$(cat)"
-if command -v uv >/dev/null 2>&1; then
-  echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
-elif command -v python3 >/dev/null 2>&1; then
-  echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
-elif command -v python >/dev/null 2>&1; then
-  echo "$INPUT" | python "$SCRIPT_DIR/my-hook.py"
-else
-  echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
-fi
-```
+1. **Inline `command` cascade** (simplest — no extra file): `hooks.json`'s own `command` string carries
+   the fallback directly and `exec`s the target `.py` file (`exec` replaces the shell process, so stdin
+   passes through automatically — no need to buffer it):
+   ```json
+   "command": "if command -v uv >/dev/null 2>&1; then exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python3 >/dev/null 2>&1; then exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; elif command -v python >/dev/null 2>&1; then exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/my-hook.py; else exit 0; fi"
+   ```
+   Good default for a single straightforward script — this is what most of this repo's own hooks actually
+   use (e.g. `plugins/context-kit/hooks/hooks.json`).
 
-The final `else` branch is the graceful-degradation requirement — never let the fallback chain fall
-through to a bare `exec python ...` with nothing to catch a system that has none of the three. A
+2. **Two-file `.sh` wrapper + sibling `.py`**: worth the extra file when the wrapper itself needs its own
+   logic beyond interpreter selection (shared across multiple hook entries, wants its own `shellcheck`
+   pass, or the command would otherwise become an unreadably long JSON one-liner). The `.sh` needs the
+   executable bit (invoked by bare path); the `.py` never does (always passed as an argument to whichever
+   interpreter the wrapper resolved — never exec'd via its own shebang). See
+   `plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py` for the canonical worked example:
+   ```bash
+   #!/bin/bash
+   set -uo pipefail
+   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+   INPUT="$(cat)"
+   if command -v uv >/dev/null 2>&1; then
+     echo "$INPUT" | uv run "$SCRIPT_DIR/my-hook.py"
+   elif command -v python3 >/dev/null 2>&1; then
+     echo "$INPUT" | python3 "$SCRIPT_DIR/my-hook.py"
+   elif command -v python >/dev/null 2>&1; then
+     echo "$INPUT" | python "$SCRIPT_DIR/my-hook.py"
+   else
+     echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
+   fi
+   ```
+
+Both shapes end in the same graceful-degradation requirement — never let the fallback chain fall through
+to a bare `exec python ...`/`python ...` with nothing to catch a system that has none of the three. A
 blocking hook (like `rulebook-check.sh`) can instead emit a `"decision":"block"` JSON body there if
 failing closed is the safer default for that specific hook — the graceful-degradation requirement is
 about never crashing uncaught, not about which decision the degraded path makes.
