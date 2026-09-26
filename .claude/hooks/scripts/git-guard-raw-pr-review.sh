@@ -572,15 +572,19 @@ GH_SUBCOMMAND=""
 #   trailing `['"]?` this attempt added could consume an UNMATCHED quote (e.g. `gh api'' -H
 #   'x;y' ...`), starting the scanner in a false in-quote state and hiding a real endpoint the same
 #   way. Both live-verified as new bypasses of attempt 2.
-# Fixed instead by a COUNT-based fallback at this regex's own point of use, further below: rather
-# than trying to recognize every possible quoted spelling of "api" directly (unwinnable, per attempt
-# 2's own finding), compare how many times this SAME narrow, unwidened regex matches in
-# COMMAND_FLAT vs. COMMAND_DEQUOTED -- ANY quote-splitting pattern that hides a real invocation from
-# the flat text necessarily makes it visible after blunt dequoting (dequoting removes every `'`/`"`/
-# `\` byte regardless of where they sit), so a higher dequoted count is a reliable, unbounded-safe
-# signal that an invocation is being hidden by quoting, without needing to know its shape. See that
-# check's own comment for why this avoids attempt 1's span-corruption problem too (it never runs
-# extract_api_span on dequoted text at all).
+# A third attempt (compare how many times this SAME narrow, unwidened regex matches in COMMAND_FLAT
+# vs. COMMAND_DEQUOTED, denying only if the dequoted count was higher) was also reverted -- a
+# security-reviewer pass found "decoy cancellation" defeats a pure count comparison: dequoting can
+# REMOVE a match as well as add one (this regex's own leading boundary accepts a `'`/`"`/`\` byte as
+# valid, so a decoy match visible only in COMMAND_FLAT because of a stray quote/backslash elsewhere
+# in the command disappears after dequoting), and a decoy that exactly offsets a real hidden
+# invocation's gain leaves the counts equal with the check never firing. Live-verified bypass.
+# Fixed instead (fourth and final design) by dropping the count comparison for PRESENCE: deny
+# whenever the command contains any quote/backslash byte at all (COMMAND_FLAT != COMMAND_DEQUOTED)
+# AND COMMAND_DEQUOTED contains BOTH a bare `gh api` prefix AND a dangerous endpoint anywhere --
+# never depends on relative counts, so a decoy can no longer cancel anything out. See that check's
+# own comment, at this regex's own point of use further below, for the full detail and why this also
+# avoids attempt 1's span-corruption problem (it never runs extract_api_span on dequoted text at all).
 API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
 # Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
 # (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
