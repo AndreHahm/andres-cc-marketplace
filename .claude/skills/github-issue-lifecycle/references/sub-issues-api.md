@@ -40,6 +40,27 @@ this repo during Design; the third (`-F` vs `-f`) is a `gh api` typing rule conf
    the request — found via `cross-model-review` (2026-08-28), not part of the original Design-phase
    live probe, which tested the two gotchas above but never this specific typing distinction.
 
+## Checking an Existing Parent (REST) — Verified Live
+
+`gh api repos/<owner>/<repo>/issues/<number>/parent` — GET, **singular** `parent`. Returns the parent
+issue's full JSON (200) when one exists, or a `404 Not Found` (`"No parent issue found"`) when the issue
+has no parent — verified live against this repo (2026-09-26, issue #403): a real issue with a parent
+(#165, parent #367) returned the parent's JSON; a real issue with none (#1) returned the 404. **This
+endpoint is not one of `git-kit`'s `git-guard-raw-pr-review.sh` guarded shapes** (it matches none of that
+guard's `REPLIES_RE`/`REVIEWS_RE`/`GRAPHQL_RE` patterns) — no marker handshake is needed to call it,
+**unless the owner or repo path segment is itself literally `graphql`** (e.g. a real
+`repos/graphql/graphql-spec/issues/5/parent` call) — `GRAPHQL_RE` matches the bare word anywhere in the
+command, not just the endpoint suffix, so that specific repo name would still be denied (the same #403
+Gap 2 false positive, disclosed in that guard's own source comment; it fails closed, not a bypass, and
+affects every `gh api repos/...` call this skill makes, not just this one).
+
+**Always check this before attempting to add a sub-issue relationship** (Workflow 2 Step 4): GitHub
+allows only one parent per sub-issue, so adding a target that already has a different parent fails. This
+REST call is the correct, unguarded way to find that out ahead of time — never fall back to
+`gh api graphql` for this check, which both adds an unnecessary guard dependency this skill's own
+`allowed-tools` doesn't grant, and was the concrete gap issue #403 (Gap 1) reported before this REST
+endpoint was found.
+
 ## No Native `gh issue` Subcommand
 
 `gh issue --help` has no sub-issue-specific subcommand — every sub-issues operation in this skill goes

@@ -217,6 +217,23 @@ confirming it's genuinely repo-agnostic. **`skill-tester` blind-comparison eval 
 with_skill 100% (3/3 assertions), baseline 66.7% (2/3) — baseline correctly avoided inventing a label
 but had no awareness of Step 5.5's specific repository-detection gate, reasoning generically instead.
 
+**Verified live, 2026-09-26 (issue #403 Gap 1):** Workflow 2 Step 4 never checked whether a relate
+target already had a *different* parent before attempting to add it as a sub-issue — GitHub allows only
+one parent per sub-issue, so this could fail live with no advance warning (reproduced against real
+issues #165/#367/#401 this session). The live incident's own workaround improvised a raw `gh api
+graphql` query to check, which `git-guard-raw-pr-review.sh`'s marker handshake blocked (no allowlisted
+skill covers a freestanding-issue read) — filed as issue #403's Gap 1. Root-caused to a missing REST
+call, not a guard gap: `gh api repos/<owner>/<repo>/issues/<number>/parent` (singular `parent`) returns
+the parent issue's JSON (200) or a 404 when none exists, verified live against both a real parented
+issue (#165 → #367) and a real unparented one (#1) — and this endpoint isn't one of
+`git-guard-raw-pr-review.sh`'s guarded shapes at all (unless the owner/repo path segment is itself
+literally `graphql` — see `references/sub-issues-api.md`'s own qualification), so no marker handshake is
+ever needed for it in the normal case. Fixed by adding this check to Step 4 before
+any add attempt, with a documented prose-comment fallback for the one case it will genuinely find (this
+skill's own repro: #165 already had parent #367). No fresh `skill-tester` eval re-run — the fix is an
+additional, narrowly-scoped precondition check ahead of already-eval-covered Step 4 logic, verified
+directly against `gh`'s real API responses rather than end-to-end re-tested.
+
 **Verify this skill activates on:**
 - "work on issue #123"
 - "triage these issues"
@@ -234,7 +251,7 @@ but had no awareness of Step 5.5's specific repository-detection gate, reasoning
 
 **Quality gates:**
 - [ ] Workflow 1 never files an issue without a dedup check first
-- [ ] Workflow 2's relate step always uses the native sub-issues API (`references/sub-issues-api.md`), never the older prose-comment convention
+- [ ] Workflow 2's relate step always uses the native sub-issues API (`references/sub-issues-api.md`), never the older prose-comment convention — except the one documented exception: falling back to a prose comment when the target already has a *different* parent (GitHub allows only one), confirmed via the unguarded `.../parent` REST check before attempting the add, never via `gh api graphql`
 - [ ] Workflow 3's Step 1 always fetches comments itself (`gh issue view <number> --comments`) before checking the Open-Question Gate — never assumes Workflow 2 already ran
 - [ ] Workflow 3 never marks an issue Resolved while an open question logged in a prior comment remains unaddressed
 - [ ] Workflow 3's Step 2 `gh issue close` always passes `--reason` (`completed` for Resolved, `duplicate` + `--duplicate-of` for a Declined duplicate, `"not planned"` for every other Declined case) — never omitted, since GitHub defaults `state_reason` to `completed` otherwise

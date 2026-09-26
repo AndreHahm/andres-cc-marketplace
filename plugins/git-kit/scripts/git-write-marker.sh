@@ -25,6 +25,19 @@
 # safeguards applied. Never invoke this script directly as a shortcut past a
 # skill's own procedure -- always dispatch the skill itself and let it call
 # this script as its own last step.
+#
+# Verified (issue #401 Part 2 / #403 investigation, 2026-09-26): the guard scripts that consume this
+# marker (e.g. hooks/scripts/git-guard-raw-pr-review.sh) check only the marker's guard-type and freshness
+# (<=60s) -- the $SKILL_NAME argument below is written but never read back by any guard (each guard's own
+# `read -r guard ts _skill < "$MARKER"` discards it into `_skill` and never references that variable
+# again); it is at most informational to a human inspecting the marker file by hand, never validated
+# against an allowlist by any guard. This means binding the marker to a
+# process/session identifier (the direction #165's own "Additional Context" originally suggested) would
+# NOT close the hand-invocation gap above: an agent that hand-invokes this script does so from within the
+# same Claude Code session a real Skill() dispatch would also run in, so a session-bound marker would
+# still validate. No stronger enforcement mechanism is implemented here as of this comment -- see issue
+# #406 for that open investigation. This script's only real defense remains the warning above: never
+# invoke it directly.
 set -euo pipefail
 
 GUARD_TYPE="${1:?usage: git-write-marker.sh <guard-type> <skill-name>}"

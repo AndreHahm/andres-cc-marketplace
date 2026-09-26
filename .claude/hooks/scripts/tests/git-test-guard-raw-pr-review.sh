@@ -936,6 +936,18 @@ else
   FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
+# Issue #403 Gap 2 (disclosed, not fixed -- see GRAPHQL_RE's own comment): the word "graphql" inside
+# unrelated quoted data (not the actual endpoint being called) still denies, since GRAPHQL_RE matches
+# anywhere in the extracted `gh api` argument span. This regression guard protects the disclosed
+# tradeoff itself -- it must keep failing this way on purpose, not start passing silently if someone
+# narrows the regex later without updating the comment.
+e2e_check "403 Gap 2 -- 'graphql' inside an unrelated REST search-query value -- denies (disclosed false positive)" \
+  'gh api search/issues -f q="repo:o/r is:issue guard graphql allowlist" -X GET' \
+  "deny"
+e2e_check "403 Gap 2 control -- same REST search call with no 'graphql' substring -- allows" \
+  'gh api search/issues -f q="repo:o/r is:issue guard allowlist" -X GET' \
+  "ALLOW"
+
 echo ""
 echo "=== $PASS_COUNT passed, $FAIL_COUNT failed ==="
 [ "$FAIL_COUNT" -eq 0 ]
