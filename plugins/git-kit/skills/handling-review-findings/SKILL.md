@@ -441,7 +441,8 @@ version of this fix left the placeholder's own explanatory prose mentioning the 
 (the validation line plus 3 meta-commentary references describing the mechanism itself) — a real gap
 between the stated "exactly one occurrence" claim and the actual text, caught by an independent Codex
 pass. Fixed by rephrasing the explanatory sentences to describe the mechanism without repeating the
-literal token; `grep -c '\$ARGUMENTS'` against this file now returns exactly 1, matching the claim.
+literal token; a mechanical occurrence-count check against the raw placeholder in this file now
+confirms exactly 1 match, matching the claim.
 
 **Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
 severity definition had no fallback for a finding with no reviewer-stated severity label at all (the
