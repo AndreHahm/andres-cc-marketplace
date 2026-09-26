@@ -236,3 +236,19 @@ No fresh `skill-tester` eval re-run — the fix is a corrected comparison target
 check, not new decision logic, and its correctness was verified against `gh`'s own real `--help`/
 `--json` field output rather than end-to-end re-tested; `scripts/smoke_test.py` re-run clean
 (6/6 checks) after the edit.
+
+**Round 2 (CodeRabbit follow-up, same PR, same date):** after the base-repo comparison fix above was
+committed and replied with its SHA, CodeRabbit re-examined and confirmed that fix, but left the thread
+open with a distinct, still-valid point from its own original finding's suggested fix ("validate the
+push target separately in the fix path when changes are pushed") that the first round only partially
+addressed: the Fix path's `Skill(commit) --push` step always runs `git push origin HEAD`, and for a
+fork PR checked out from the base repository's own clone, `origin` still points at the *base*
+repository — pushing there would silently target the wrong destination rather than the PR's actual
+head. Fixed by adding a push-destination precondition check to step 4 (Fix path), immediately before
+invoking `Skill(commit) --push`: re-fetch `headRepositoryOwner`/`headRepository` (re-added to a
+Fix-path-only `gh pr view` call, since step 1's own call no longer needs them after round 1's fix) and
+compare against the base repository; on a fork-PR mismatch, check `git remote get-url origin` (the same
+normalization pattern `commit`'s own bypass-attestation step already uses) against the fork's identity,
+and stop before pushing if `origin` doesn't already point there. Added the two new `Bash` grants this
+check needs (`git remote get-url origin`, `sed -E`) to `allowed-tools` in the same edit;
+`scripts/smoke_test.py` re-run clean (6/6) confirming grant-usage consistency.
