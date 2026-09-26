@@ -640,7 +640,12 @@ e2e_marker_shortcircuit_check() {
     printf '%s' "$cmd" > "$cmd_file"
     input=$(jq -n --rawfile cmd "$cmd_file" '{tool_name: "Bash", tool_input: {command: $cmd}}')
     rm -f "$cmd_file"
-    out=$(printf '%s' "$input" | timeout 10 bash "$GUARD") || { echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- guard exited non-zero or timed out: $out"; exit 0; }
+    # Uses the same optional E2E_TIMEOUT_CMD wrapper the main e2e_run helper already relies on
+    # (defined near this file's own top) -- a bare `timeout 10` here would fail with "command not
+    # found" on a platform without GNU coreutils (e.g. a bare macOS host), reporting this case as a
+    # FAIL for a portability reason unrelated to the guard's own behavior (Codex fresh-eyes finding,
+    # cross-model-review). Degrades to no wrapper (best-effort only) when `timeout` is unavailable.
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- guard exited non-zero or timed out: $out"; exit 0; }
     if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
       echo "PASS (e2e): marker-authorized oversized call skips the scan (short-circuit)"
     else
