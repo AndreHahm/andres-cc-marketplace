@@ -22,7 +22,9 @@ batch is every comment posted for one Question 1/Question 2 decision (8b); sever
 one batch-id still count as one cycle, never one per reviewer.
 
 Below `review_findings_min_rounds`, another cycle is required — proceed without asking whether, only
-which (8b's Question 1 drops its stop option in this case). Between `min_rounds` and `max_rounds`,
+which. 8b's Question 1 drops its stop option below the floor, except when exactly one reviewer
+survives 8c (that exception keeps it, purely to satisfy `AskUserQuestion`'s 2-option minimum, and
+handles its selection differently — see 8b for the exact rule). Between `min_rounds` and `max_rounds`,
 ask (8b) whether to run another cycle at all; on "no," stop here — this run ends with step 7's report
 as the final word. At `max_rounds`, skip this step entirely — a further finding is handled per
 `review_findings_generate_issues` (Settings) the next time this skill is invoked. **`max_rounds` is
@@ -43,9 +45,9 @@ questions:
   Each option names the reviewer plainly, not yet the exact trigger text (that depends on Question
   2). If "No further round for now" is selected — alone or with any reviewer option — treat it as
   authoritative: ignore Question 2 and stop here, nothing gets posted. **This authoritative-stop rule
-  applies only when the option was offered per the floor rule above** (at/above `min_rounds`, or in the
-  two-or-more-reviewers case generally) — the one-survivor-below-`min_rounds` case below is the one
-  documented exception, where the same selection triggers the confirm/fix-configuration path instead.
+  applies only when the option was offered at or above `min_rounds`.** In the one-survivor-below-
+  `min_rounds` exception below, the option exists only to satisfy the two-option minimum, and
+  selecting it triggers the confirm/fix-configuration path instead, not this authoritative stop.
 - **Question 2 — review profile:** single-select, exactly 2 options, "Default review" / "Full
   review" — applied uniformly to every reviewer selected in Question 1. Asking the profile once, as
   its own question, is what keeps Question 1 within the 4-option cap even though every reviewer has
