@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(git remote get-url origin:*), Bash(sed -E:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, AskUserQuestion, Skill(commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(git remote get-url:*), Bash(sed -E:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, AskUserQuestion, Skill(commit)
 ---
 
 # Handling Review Findings
@@ -250,22 +250,26 @@ session.
    skill/agent/script behavior, otherwise a re-read of the fix against the finding it addresses.
    **Verification is a hard precondition on replying and resolving — a reply-and-resolve never happens
    on the strength of a pushed commit alone.** Once verification passes, **before invoking
-   `Skill(commit) --push`, verify the push destination matches the PR's actual head repository** —
-   `commit`'s own step 16 always runs `git push origin HEAD`, and for a fork PR checked out from the
-   base repository's own clone (the same legitimate case step 1's checkout-identity check now
-   correctly recognizes), `origin` still points at the *base* repository, not the fork, so pushing
-   there would target the wrong repository entirely rather than the PR's real head (PR #407,
-   CodeRabbit follow-up). Re-fetch `gh pr view <the resolved PR reference>
-   --json headRepositoryOwner,headRepository` and compare against the base `<owner>/<repo>` step 1
-   already resolved: matching means this is a same-repo PR and `origin` is already correct — proceed
-   normally. A mismatch means a fork PR — check `git remote get-url origin | sed -E
+   `Skill(commit) --push`, verify every one of `origin`'s actual push destinations matches the PR's
+   head repository** — `commit`'s own step 16 always runs `git push origin HEAD`, which pushes to
+   whatever `origin`'s configured *push* URL(s) are, not its fetch URL. `git remote get-url origin`
+   (no flags) returns only the **fetch** URL and only the **first** configured URL either way
+   (`git help remote`'s own `get-url` entry: "By default, only the first URL is listed... With
+   `--push`, push URLs are queried rather than fetch URLs"), so checking it alone misses a
+   `remote.origin.pushurl` override or an additional push URL added via `git remote set-url --add
+   --push` — either can silently send the push to a different repository than the one just verified
+   (PR #407, CodeRabbit round 2). Query `git remote get-url --push --all origin | sed -E
    's#^(https://github\.com/|git@github\.com:)##; s#\.git$##'` (the same normalization `commit`'s own
-   bypass-attestation step already uses) against `<headRepositoryOwner.login>/<headRepository.name>`;
-   if `origin` doesn't already match the fork, stop before pushing — report that this checkout can't
-   push the fix to the fork's PR branch as currently configured, and ask the user how to proceed
-   (confirm the contributor enabled "Allow edits from maintainers" and reconfigure the remote, or route
-   the fix a different way) rather than letting `commit`'s hardcoded `git push origin HEAD` silently
-   push to the wrong destination. Once the push destination is confirmed correct: commit via
+   bypass-attestation step already uses, applied to every returned line) and require **every** line to
+   equal `<headRepositoryOwner.login>/<headRepository.name>` — re-fetched via `gh pr view <the
+   resolved PR reference> --json headRepositoryOwner,headRepository` — the PR's actual head repository,
+   whether or not it differs from the base repository step 1 resolved (a same-repo PR's head
+   repository is simply the base repository, so this one check covers both cases uniformly; a
+   fork PR's differs). If any line doesn't match, stop before pushing — report that this checkout's
+   `origin` doesn't push to the PR's head repository as currently configured, and ask the user how to
+   proceed (confirm the contributor enabled "Allow edits from maintainers" and reconfigure the remote,
+   or route the fix a different way) rather than letting `commit`'s hardcoded `git push origin HEAD`
+   silently push to the wrong destination. Once every push destination is confirmed correct: commit via
    `Skill(commit)` with `--push` (never a raw `git commit` — see
    `.claude/rules/route-through-git-kit-lifecycle-skills.md`), explicitly requesting the push so it
    isn't left to `commit`'s own default `AskUserQuestion` (`commit_auto_push` defaults to `false`).
@@ -459,8 +463,11 @@ clone. Now parses `<owner>/<repo>` from the PR's own `url` field instead (always
 regardless of fork status) — full narrative in `references/development-history.md`'s "PR #407" entry.
 **Round 2 (same PR, CodeRabbit follow-up):** round 1 didn't yet validate the Fix path's own push
 destination for a fork PR — step 4 now checks `origin` against the fork's identity before invoking
-`Skill(commit) --push`, stopping rather than silently pushing to the wrong repository; same reference
-entry.
+`Skill(commit) --push`, stopping rather than silently pushing to the wrong repository. **Round 3 (same
+PR, CodeRabbit's own next pass):** round 2's check only queried `origin`'s fetch URL — a
+`remote.origin.pushurl` override or an additional push URL bypasses it entirely; now queries every
+actual push URL (`--push --all`) and requires each one to match the PR's head repository, uniformly
+for both same-repo and fork PRs; same reference entry.
 
 **Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
 severity definition had no fallback for a finding with no reviewer-stated severity label at all (the

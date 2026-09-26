@@ -252,3 +252,18 @@ normalization pattern `commit`'s own bypass-attestation step already uses) again
 and stop before pushing if `origin` doesn't already point there. Added the two new `Bash` grants this
 check needs (`git remote get-url origin`, `sed -E`) to `allowed-tools` in the same edit;
 `scripts/smoke_test.py` re-run clean (6/6) confirming grant-usage consistency.
+
+**Round 3 (CodeRabbit's own next pass, same PR, same date):** round 2's fix was confirmed and the
+thread resolved, then this skill's own step 8 triggered a fresh CodeRabbit pass, which found a real
+gap in round 2's own check: `git remote get-url origin` (no flags) queries only `origin`'s **fetch**
+URL, and only the first configured URL — verified against `git help remote`'s own `get-url` entry
+("By default, only the first URL is listed... With `--push`, push URLs are queried rather than fetch
+URLs"). A `remote.origin.pushurl` override, or an additional push URL added via `git remote set-url
+--add --push`, is invisible to a fetch-URL-only check and can silently send `git push origin HEAD` to
+a different repository than the one just verified — for *either* a same-repo or a fork PR, not only
+the fork case round 2's own branch singled out. Fixed by replacing the fork-only branch with one
+uniform check: `git remote get-url --push --all origin`, requiring every returned push URL (not just
+the first) to match the PR's actual head repository (which for a same-repo PR is simply the base
+repository, so the same check covers both cases without a conditional). No fresh `skill-tester` eval
+re-run — verified against `git`'s own real documented `get-url` behavior rather than end-to-end
+re-tested; `scripts/smoke_test.py` re-run clean (6/6) after the edit.
