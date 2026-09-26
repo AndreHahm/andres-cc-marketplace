@@ -165,13 +165,13 @@ session.
    Validate `$ARGUMENTS` against an allowlist before using it anywhere else — empty (defaults to the
    current branch's PR), a bare PR number (`^[0-9]+$`), or a PR URL
    (`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/[0-9]+$`) — never pass an unvalidated
-   value through to `gh`. **This is the only place in this Workflow that reads the raw `$ARGUMENTS`
-   token itself.** The dispatch mechanism substitutes `$ARGUMENTS`' literal value into every occurrence
-   of that token throughout this skill's own returned text before any of it is even read — a mismatched
-   invocation (e.g. a long free-text narrative instead of one of the three shapes above) gets spliced
-   into each occurrence, not just this one. Referring to the validated result as "the resolved PR
-   reference" in every step below, instead of repeating the literal `$ARGUMENTS` token, confines any
-   such corruption to this one line rather than scattering it through the rest of this skill's
+   value through to `gh`. **This is the only place in this Workflow that reads the raw invocation
+   argument itself.** The dispatch mechanism substitutes that argument's literal value into every
+   occurrence of this placeholder throughout this skill's own returned text before any of it is even
+   read — a mismatched invocation (e.g. a long free-text narrative instead of one of the three shapes
+   above) gets spliced into each occurrence, not just this one. Referring to the validated result as
+   "the resolved PR reference" in every step below, instead of repeating the raw placeholder, confines
+   any such corruption to this one line rather than scattering it through the rest of this skill's
    instructions (issue #401 Part 1). If validation fails, stop and report the mismatch rather than
    proceeding.
    `gh pr view <the resolved PR reference> --json url,headRepositoryOwner,headRepository,headRefOid`
@@ -436,7 +436,12 @@ text is corrupted (if at all) only at the single validation line, and every othe
 normally, so the mismatch is immediately visible as a validation failure rather than an unreadable wall
 of text. No fresh `skill-tester` eval re-run — the fix is a textual restructuring of an existing step,
 not new decision logic, and its correctness (occurrence count) was verified directly by grepping the
-file rather than a full end-to-end re-test.
+file rather than a full end-to-end re-test. **Round 2 (`cross-model-review`, same date):** the first
+version of this fix left the placeholder's own explanatory prose mentioning the literal token 4 times
+(the validation line plus 3 meta-commentary references describing the mechanism itself) — a real gap
+between the stated "exactly one occurrence" claim and the actual text, caught by an independent Codex
+pass. Fixed by rephrasing the explanatory sentences to describe the mechanism without repeating the
+literal token; `grep -c '\$ARGUMENTS'` against this file now returns exactly 1, matching the claim.
 
 **Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
 severity definition had no fallback for a finding with no reviewer-stated severity label at all (the
