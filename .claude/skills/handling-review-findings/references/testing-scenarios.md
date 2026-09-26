@@ -146,9 +146,11 @@
 - [ ] The trigger-ask is always one `AskUserQuestion` call carrying two questions (reviewer multi-select,
       then review-profile single-select) — never a single combined question offering a default-vs-full
       pair per reviewer, and never two separate `AskUserQuestion` calls.
-- [ ] Selecting "No further round for now" in Question 1 always overrides any other selection in that
-      same question and skips Question 2's answer entirely — no trigger comment is posted regardless of
-      what Question 2 says.
+- [ ] Selecting "No further round for now" in Question 1, when the option was offered at or above
+      `min_rounds`, always overrides any other selection in that same question and skips Question 2's
+      answer entirely — no trigger comment is posted regardless of what Question 2 says. Below the
+      floor, in the one-survivor exception, the same selection instead reports the unmet floor and
+      follows the confirm/fix-configuration path, not this authoritative-stop rule.
 - [ ] Before posting any trigger comment, the PR's `state`/`isDraft`/`headRefOid` are re-fetched fresh
       (never reused from an earlier check) and `headRefOid` is compared against `git rev-parse HEAD` —
       a mismatch (local commit not yet pushed), a draft PR, or a non-`OPEN` state each independently
@@ -171,7 +173,9 @@
       number of reviewers selected.
 - [ ] When the current triggered-cycle count is below `review_findings_min_rounds`, Question 1 never
       offers a "No further round for now" option — only when the count already meets or exceeds
-      `min_rounds` does that option appear.
+      `min_rounds` does that option appear — except when exactly one validated reviewer remains, where
+      the option is offered anyway solely to satisfy `AskUserQuestion`'s two-option minimum (see the
+      one-survivor scenario below).
 - [ ] Step 8 never fires at all once `review_findings_max_rounds` is reached.
 - [ ] Step 8 never polls for the newly-triggered review's response — it ends this skill's run for the
       current round once the trigger comment(s) are posted.
