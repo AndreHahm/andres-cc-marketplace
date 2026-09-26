@@ -7,11 +7,9 @@ description: >-
   already has via git-kit's own lifecycle skills. Use when asked to "work on issue #N", "triage these
   issues", "is this issue still valid", "resolve issue #N", "find issues related to X", "close this
   issue as a duplicate", "reopen issue #N", or similar freestanding-issue work. Not
-  `collaborating-on-a-pr`'s PR-to-issue linking (delegated to it here), not `github-issue-creator`'s
-  new-issue drafting (delegated to it here), not `gh-operations`' raw one-off `gh issue` lookup with no
-  judgment attached, not `handling-review-findings`'s triage of findings already posted against an open
-  PR review thread, and not `managing-review-learnings`'s mined-candidate routing (dispatches here once
-  approved) — never PR-review findings, only freestanding issues.
+  `collaborating-on-a-pr`, `github-issue-creator`, `gh-operations`, `handling-review-findings`, or
+  `managing-review-learnings`'s own jobs — see When NOT to Use below for the exact distinctions; never
+  PR-review findings, only freestanding issues.
 allowed-tools: Read, Write, Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 

@@ -180,3 +180,28 @@ verified by re-reading each against its own finding and cross-checking cited lin
 against the current file state, the lighter of the two mechanisms
 `.claude/rules/require-tests-for-behavior-changes.md` allows for a skill not flagged
 behavior-critical/frequently-relied-on, rather than a fresh `skill-tester` eval run.
+
+## Issue #401 Part 1 (2026-09-26): argument-substitution corruption, two-round fix
+
+Workflow step 1 repeated the literal argument-substitution placeholder 8 times (validation line,
+resolution/checkout-match example commands, the re-check list) — the dispatch mechanism substitutes
+that placeholder's actual value into every literal occurrence before this skill's own text is read at
+all, so a wrongly-shaped invocation (a long free-text narrative instead of the documented
+empty/PR-number/PR-URL shape) got spliced into all 8 places, producing a garbled, largely-unreadable
+Workflow (reproduced live, 2026-09-25/26). Fixed by keeping exactly one literal occurrence of that
+placeholder (the validation line itself) and referring to "the resolved PR reference" in every
+subsequent mention — confining any corruption from a malformed value to that one line instead of
+scattering it through the rest of the step. No fresh `skill-tester` eval re-run — the fix is a textual
+restructuring of an existing step, not new decision logic, and its correctness (occurrence count) was
+verified directly by grepping the file rather than a full end-to-end re-test.
+
+**Round 2 (`cross-model-review`, same date):** the first version of this fix left the placeholder's own
+explanatory prose mentioning the literal token 4 times (the validation line plus 3 meta-commentary
+references describing the mechanism itself) — a real gap between the stated "exactly one occurrence"
+claim and the actual text, caught by an independent Codex pass. Fixed by rephrasing the explanatory
+sentences to describe the mechanism without repeating the literal token; a mechanical occurrence-count
+check against the raw placeholder in this file now confirms exactly 1 match, matching the claim. A
+follow-up round of the same `cross-model-review` pass caught a third leak — the changelog entry
+documenting this very fix (this entry's own earlier draft) contained the literal placeholder a second
+time, inside a `grep` command example illustrating the verification — fixed by describing that
+check without reproducing the literal token either.

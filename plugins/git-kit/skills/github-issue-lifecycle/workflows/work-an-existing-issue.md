@@ -37,20 +37,23 @@ plural `sub_issues`) for this issue's own children.
 `gh api repos/<owner>/<repo>/issues/<target-number>/parent` (REST, singular `parent`) — branch on the
 result:
 - **404**: no parent yet, safe to add.
-- **200**: compare the returned JSON's `number` against *this* issue's own number (the one Step 4 is
-  relating the target to) — **only a different number blocks the add**; if the returned parent's
-  `number` already matches this issue, the relationship already exists and there is nothing to do (skip
-  the add, don't report it as blocked). When the numbers do differ, GitHub's one-parent-per-sub-issue
-  limit blocks the add: don't attempt the write (it will fail) — fall back to this repo's
-  prose-comment convention instead (a plain comment on each issue noting the relationship), posted via
-  Step 8's `--body-file` procedure below like every other comment this skill posts — never inline
-  `--body "<text>"`, since the relationship note may quote the other issue's title or number.
+- **200**: compare the returned JSON's `number` against the current issue's own number — **only a
+  different number blocks the add**; if it already matches, the relationship already exists and there
+  is nothing to do (skip the add, don't report it as blocked). When the numbers do differ, GitHub's
+  one-parent-per-sub-issue limit blocks the add: don't attempt the write (it will fail) — fall back to
+  this repo's prose-comment convention instead (a plain comment on each issue noting the relationship),
+  posted via Step 8's `--body-file` procedure below like every other comment this skill posts — never
+  inline `--body "<text>"`, since the relationship note may quote the other issue's title or number.
 - **Any other status** (403, 410, a 5xx, or any response neither 200 nor 404): treat as an unexpected
   error, not as either of the above — report it plainly and stop rather than guessing which branch
   applies.
 
-See `references/sub-issues-api.md`'s "Checking an Existing Parent" section — this REST call needs no
-marker handshake, unlike a `gh api graphql` fallback would.
+This `.../parent` REST call needs no marker handshake, unlike a `gh api graphql` fallback would —
+except when the owner or repo path segment is itself literally `graphql` (e.g. a real
+`repos/graphql/graphql-spec/issues/5/parent` call), where `git-kit`'s `gh-pr-review` guard's
+`GRAPHQL_RE` still denies it (a disclosed false positive, matching the bare word anywhere in the
+command, not just the endpoint — see `references/sub-issues-api.md`'s "Checking an Existing Parent"
+section for the full detail).
 
 To add one: get the target's internal numeric `id` first —
 `gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'` (this is **not** the same as the
