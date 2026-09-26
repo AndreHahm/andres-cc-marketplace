@@ -124,23 +124,31 @@
 # commands. Deliberately left unfixed here: this ordering is shared by the
 # sibling guard scripts too, and reordering it deserves its own dedicated
 # review rather than a side effect of one skill's narrower feature change.
-# A fourth and fifth residual, surfaced by a security-reviewer pass dispatched on this file's own
-# round-5 fixes (round 6, PR #380) and deliberately left unfixed here rather than expanding this
-# round's already-large scope further -- tracked for follow-up, not silently dropped:
-# - The `api`/`review`/`comment` subcommand word in each prefix regex below must appear as a bare,
-#   unquoted, unescaped word to match at all. A quoted (`"api"`/`'api'`), ANSI-C-quoted, or
-#   backslash-escaped subcommand word (e.g. `gh \api ...`) produces no prefix match, so
-#   `find_api_spans` never runs for that invocation and the whole span-scanning apparatus above is
-#   silently skipped -- this predates round 5 and is outside the scanner functions this round's own
-#   fixes touch, but is the same class of gap as the bypasses those fixes closed.
-# - The scan-time budget/cap sizing throughout this file (LC_ALL=C-scan rate, API_SPAN_MAX_LEN,
-#   api_span_budget_exceeded) rests on one measured rate (~2.7s/50KB) on one unspecified platform.
-#   Bash's own `${text:i:1}`/`${#text}` re-derive the string's length on each call, and `out+=`
-#   reallocates -- both plausibly super-linear in practice, and a slower interpreter (e.g. Git Bash
-#   on Windows, implied as a real target by this file's own PowerShell handling) could see
-#   materially different per-character cost than whatever this file's own comments were measured
-#   against. Re-measuring at the actual cap size on the slowest supported platform, rather than
-#   trusting the linear extrapolation as-is, is a follow-up item, not done in this round.
+# A fourth residual (formerly listed here as "fourth and fifth"), surfaced by a security-reviewer
+# pass dispatched on this file's own round-5 fixes (round 6, PR #380), is now FIXED (issue #386,
+# item 5/M1) after FOUR design attempts, three of which were each defeated by a live-verified bypass
+# found on review -- the `api`/`review`/`comment` subcommand word in each prefix regex below
+# previously had to appear as a bare, unquoted, unescaped word to match at all, so a quoted
+# (`"api"`/`'api'`) or backslash-escaped (`gh \api ...`) subcommand word produced no prefix match and
+# silently skipped the whole span-scanning apparatus below. The final design: `gh
+# api`/`review`/`comment` detection still requires a bare, unquoted word in the actual scanned text
+# (COMMAND_FLAT is never abandoned for a dequoted rendering during span extraction, since that
+# destroys the quote-tracking the scanner depends on); a SEPARATE, presence-based check denies
+# whenever the command contains any quote/backslash byte at all AND a blunt quote-stripped rendering
+# of it contains BOTH a bare `gh api` prefix AND a dangerous endpoint anywhere. See API_SPAN_PREFIX_RE
+# and COMMAND_DEQUOTED's own comments, further below, for the full history of why each of the three
+# earlier attempts (a scan-target switch; a widened literal-alternation regex; a raw match-count
+# comparison) was reverted, and why the final design can't be defeated the same way.
+#
+# The former fifth residual (scan-time budget/cap sizing) is also now FIXED (issue #386, item
+# 6/M2): the old ~2.7s/50KB "one unspecified platform" estimate is superseded by a real measurement
+# on Git Bash on Windows (this file's own comments elsewhere already name that as a real target
+# platform) showing super-linear, not linear, growth -- 40KB->5.7s, 80KB->16.5s (already past this
+# hook's own 15s timeout), 128KB->33.5s. `API_SPAN_MAX_LEN` below is lowered accordingly, and a new
+# `allowed=true` short-circuit (right after marker consumption, before this scan even starts) means
+# a legitimate marker-authorized call no longer pays this cost at all regardless of size -- see both
+# of those code comments for the full detail.
+#
 # Also disclosed here, not a new residual but a gap in an EXISTING one above: issue #85's own
 # residual (two paragraphs up) covers a `gh api graphql` call reached through a script file this
 # hook never inspects -- the same construction applies to a user-defined `gh alias set` alias that
@@ -153,18 +161,42 @@
 # or `gh api $(printf repos/o/r/pulls/5/revi; printf ews) ...`) is invisible to this guard the same
 # way a script-file or alias indirection already is -- no regex over the literal command text can
 # reconstruct what a shell variable or a command substitution's own output will evaluate to.
-# Tracked for follow-up, not silently dropped; also filed as issue #386 (already tracking this
-# same file's other deferred residuals from earlier rounds of this PR), alongside this file's
-# PowerShell typographic-quote gap (U+2018/2019/201A/201B/201C/201D/201E are
-# real quote characters to PowerShell's own tokenizer but ordinary multi-byte text to this scanner
-# under `LC_ALL=C`, deferred like the other PowerShell-specific gaps in this PR's history since no
-# live `pwsh` is available here to verify a fix against) and several lower-severity items (a
-# diagnostics-log hardlink isn't rejected the same way a symlink is; a TOCTOU window exists between
-# the diagnostics-log's `-L`/`-e`/`-f` checks and the actual write; the round-8 RS-byte and CR-byte
-# early-deny checks run before the marker-consumption logic below, so either deny leaves an
-# already-written marker unconsumed for the rest of its TTL; those same two early-deny paths also
-# produce no diagnostics start/finish log entry; and whether a NUL byte embedded in the JSON
-# command survives `jq -r` intact or gets silently truncated is unverified).
+# Accepted residual, not closable by regex -- tracked in issue #386, not silently dropped.
+#
+# issue #386 also tracked several other items, updated here to their current, real status (not all
+# fixed in the same round as the two above):
+# - PowerShell typographic quotes (U+2018/2019/201A/201B/201C/201D/201E are real quote characters to
+#   PowerShell's own tokenizer but ordinary multi-byte text to this scanner under `LC_ALL=C`), plus
+#   the separately-tracked PowerShell block-comment/`--%`/here-string/script-block gaps (see this
+#   scanner's own force_deny comment further below) -- still deferred. A live `pwsh` became available
+#   in the environment that fixed the two items above, unlike every prior session that deferred these
+#   for lack of one, but modeling and verifying four-plus new PowerShell-specific constructs properly
+#   is a large enough scope to warrant its own dedicated round rather than being bundled in here.
+# - Diagnostics-log hardlink gap (a symlink is rejected via `-L`, but a hardlink to another file the
+#   same user owns is not) -- still deferred. A correct, portable fix needs either a GNU-only
+#   `stat -c %h` (breaks on BSD/macOS `stat`, which this file's own test suite already treats as a
+#   real portability concern elsewhere) or a new script dependency this file doesn't otherwise
+#   require (only `jq` is a hard dependency today) -- judged disproportionate to this item's own
+#   documented low impact (the appended content isn't attacker-controlled, and anyone who could
+#   create a hardlink inside `.git` could already forge the marker file).
+# - Diagnostics-log TOCTOU race (between the `-L`/`-e`/`-f` checks and the actual `>>` open) --
+#   still deferred, same "already needs .git write access" precondition as the hardlink item above.
+# - The round-8 RS-byte (0x1E) early-deny check still runs before marker consumption and the
+#   diagnostics start-log write further below, so it still leaves a valid marker unconsumed and
+#   produces no diagnostics entry when it denies -- NOT fixed this round (an attempt to relocate it
+#   was reverted mid-session rather than risk a rushed edit to this specific check's position;
+#   tracked for a follow-up that can give it its own dedicated review). The round-8 CR-byte
+#   early-deny check, despite being grouped with RS-byte in the original report, turns out to
+#   already run AFTER marker consumption and the diagnostics start-log in the current script (this
+#   was a stale detail in the original report, corrected here, not a fix made in this round) -- it
+#   does, however, still deny even when a marker is present, which is intentional (see the new
+#   `allowed=true` short-circuit's own comment for why that's preserved on purpose).
+# - Whether a NUL byte embedded in the JSON command survives `jq -r` intact or gets silently
+#   truncated is now RESOLVED, verified benign: `jq -r` correctly decodes an escaped `\u0000`, but
+#   bash's own command substitution (`COMMAND=$(jq -r ...)`) silently drops the NUL byte (a
+#   well-documented bash behavior, confirmed live here) rather than truncating -- and since a real
+#   shell command can never contain an actual NUL byte in argv at the OS level regardless (NUL is
+#   the C-string terminator), this was never an exploitable bypass surface. No code change needed.
 set -euo pipefail
 # Force byte-consistent indexing for extract_api_span/find_api_spans below (issue #365 round-2
 # security review, finding C2): grep -boE reports a BYTE offset, but bash's own ${#var}/
@@ -369,6 +401,35 @@ if [ -f "$MARKER" ]; then
   fi
 fi
 
+# Short-circuit here, before the expensive per-character span scan further down, once a valid
+# marker has already authorized this exact call -- added alongside the #386 cost-model fix below.
+# Previously this file computed `allowed` here but only acted on it at the very end (the
+# `if [ "$allowed" = true ]; then exit 0; fi` a few hundred lines down), meaning a legitimate,
+# marker-authorized call still paid the full extract_api_span/find_api_spans scan cost even though
+# its outcome could never change the final decision. Live-measured on this environment (Git Bash on
+# Windows -- see API_SPAN_MAX_LEN's own comment below for the numbers): that scan already exceeds
+# this hook's own 15s timeout well under the old 131072-byte cap, so an authorized call with a large
+# `gh api` argument (a sizeable --input payload or GraphQL query from collaborating-on-a-pr/
+# handling-review-findings/codex-review-recovery) was just as much at risk of the timeout-then-
+# fail-open-under-onError:warn failure mode as an unauthorized one, despite already being safe to
+# allow. This is the identical `allowed` value the pre-existing end-of-file check already used --
+# same variable, same threshold, same effect -- just read earlier, so the semantics for every
+# already-covered case (allow, deny, marker absent/expired/wrong-guard) are unchanged; only the
+# marker-authorized case now skips work that could never have changed its own outcome. The RS-byte
+# (0x1E) check above this point still runs and still denies unconditionally, regardless of
+# `allowed` -- preserved as-is. The lone-CR check, however, sits BELOW this point (it inspects
+# COMMAND_FLAT, which isn't computed yet here), so exiting on `allowed` alone at this exact spot
+# would let a marker-authorized call skip that check entirely -- a real narrowing of its existing
+# "deny regardless of marker" defense-in-depth guarantee that a raw `$COMMAND` scan for any `\r`
+# byte here (not just a lone one) closes conservatively: a genuine CRLF pair also contains `\r`, so
+# this is broader than the real lone-CR check and skips the fast path in some legitimate
+# CRLF-terminated cases it doesn't strictly need to -- a missed optimization, never a missed deny,
+# consistent with this file's own fail-safe-over-efficient tradeoff elsewhere (e.g. force_deny's own
+# over-approximated span).
+if [ "$allowed" = true ] && [[ "$COMMAND" != *$'\r'* ]]; then
+  exit 0
+fi
+
 # Normalized copy of $COMMAND for every match below (pr review/pr comment, and
 # the API_SPANS extraction further down) -- a backslash-continued (Bash) or
 # backtick-continued (PowerShell) `gh api ...` invocation is one logical
@@ -442,6 +503,40 @@ COMMAND_FLAT="${COMMAND_FLAT//>&/> }"
 COMMAND_FLAT="${COMMAND_FLAT//<&/< }"
 COMMAND_FLAT="${COMMAND_FLAT//>|/> }"
 
+# (issue #386, M1) A blunt quote/backslash-stripped rendering of the WHOLE command, used below as a
+# fallback prefix check for the `gh pr review`/`gh pr comment` checks ONLY -- same blunt technique
+# this file already uses for api_span_dequoted further down (removing every `'`/`"`/`\` byte, not a
+# precise bash-quote-removal emulation). Closes a real, live-verified bypass: `gh "pr" "review"
+# ...`/`gh \pr \review ...` (quoted/escaped subcommand words) matched neither check, silently
+# allowing the call through. Checking this dequoted rendering as a fallback (only when the plain
+# rendering finds no match -- see PR_REVIEW_RE/PR_COMMENT_RE's own use below) is safe here because
+# these two checks only ever set GH_SUBCOMMAND directly on a match -- there's no further span
+# extraction of the dequoted text afterward that could be corrupted by the missing quote context.
+#
+# NOT used as a scan-target fallback for the `gh api` path below -- three earlier attempts at that
+# (switching the whole api-span scan to dequoted text; widening API_SPAN_PREFIX_RE itself with a
+# literal-forms alternation; a raw match-COUNT comparison between COMMAND_FLAT and COMMAND_DEQUOTED)
+# were each defeated by a security-reviewer pass finding a new bypass. The `gh api` path instead
+# checks for PRESENCE, not a count, at API_SPAN_PREFIX_RE's own point of use further below -- see
+# that check's own comment for the current design and the full history of why the three earlier
+# attempts were reverted.
+#
+# Strips a leading ANSI-C/locale quote marker (`$'`/`$"`) before stripping the bare quote characters
+# below, not just `'`/`"`/`\` -- found via this session's own direct testing (not by review): `gh
+# $'api' repos/o/r/pulls/5/reviews ...` still bypassed an earlier version of the fallback check
+# without this, since dequoting only removed the `'` but left the `$` immediately before "api",
+# which the boundary-based prefix regexes don't recognize as adjacent to "api" the way a bare word
+# is. Stripping the `$` together with its quote character (whichever bash quoting form it
+# introduces) closes this the same way the other quote-splitting forms are already closed -- this is
+# a blunt, unconditional textual substring removal (not scoped to only a real ANSI-C-quote context),
+# consistent with this file's existing dequoting technique elsewhere: over-broad is the safe
+# direction here, never under-broad.
+COMMAND_DEQUOTED="${COMMAND_FLAT//\$\'/}"
+COMMAND_DEQUOTED="${COMMAND_DEQUOTED//\$\"/}"
+COMMAND_DEQUOTED="${COMMAND_DEQUOTED//\'/}"
+COMMAND_DEQUOTED="${COMMAND_DEQUOTED//\"/}"
+COMMAND_DEQUOTED="${COMMAND_DEQUOTED//\\/}"
+
 GH_SUBCOMMAND=""
 # gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
 # The `gh api` branch below span-extracts each invocation (API_SPAN_PREFIX_RE
@@ -461,6 +556,31 @@ GH_SUBCOMMAND=""
 # widening was itself a regression (it dropped bare-whitespace/`env`-prefixed/indented `gh api ...`
 # as valid prefixes) fixing a bypass that didn't actually exist. Reverted to the original,
 # narrower form, which API_SPAN_PREFIX_RE below still uses as its own leading boundary.
+#
+# Deliberately NOT widened to recognize a quoted/escaped `api` word directly (issue #386, M1) --
+# two attempts at that were each defeated by a security-reviewer pass:
+# - Attempt 1: switch the whole scan to a blunt quote-stripped COMMAND_DEQUOTED whenever the plain
+#   rendering had no prefix match at all. Broke extract_api_span's own quote-tracking (a quoted `;`
+#   in the dequoted text reads as a real separator, ending the span before a real endpoint after it)
+#   and was all-or-nothing (one benign plain `gh api` call earlier in a chained command silently
+#   disabled detection of a quoted one later). Both live-verified bypasses.
+# - Attempt 2: widen THIS regex itself to a bare-or-quoted-or-escaped alternation
+#   (`['"]?api['"]?` plus optional leading `\`). A second review round found bash accepts
+#   effectively unbounded OTHER ways to spell the same word via adjacent empty-quote concatenation
+#   at arbitrary internal positions (`gh ''api ...`, `gh a''pi ...`, `gh a\pi ...`, `g''h api ...`,
+#   ...) that no finite enumeration of "quoted forms" can ever cover -- and separately, the
+#   trailing `['"]?` this attempt added could consume an UNMATCHED quote (e.g. `gh api'' -H
+#   'x;y' ...`), starting the scanner in a false in-quote state and hiding a real endpoint the same
+#   way. Both live-verified as new bypasses of attempt 2.
+# Fixed instead by a COUNT-based fallback at this regex's own point of use, further below: rather
+# than trying to recognize every possible quoted spelling of "api" directly (unwinnable, per attempt
+# 2's own finding), compare how many times this SAME narrow, unwidened regex matches in
+# COMMAND_FLAT vs. COMMAND_DEQUOTED -- ANY quote-splitting pattern that hides a real invocation from
+# the flat text necessarily makes it visible after blunt dequoting (dequoting removes every `'`/`"`/
+# `\` byte regardless of where they sit), so a higher dequoted count is a reliable, unbounded-safe
+# signal that an invocation is being hidden by quoting, without needing to know its shape. See that
+# check's own comment for why this avoids attempt 1's span-corruption problem too (it never runs
+# extract_api_span on dequoted text at all).
 API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
 # Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
 # (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
@@ -469,6 +589,31 @@ API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
 # the endpoint text, which the narrower classes didn't treat as a valid boundary, letting a quoted
 # invocation bypass both branches entirely despite being a completely ordinary way to write one of
 # these commands.
+# issue #93 (endpoint match not bound to its own gh api invocation -- a flag value like
+# `-f body=graphql` can trigger GRAPHQL_RE even though the real endpoint is benign) is DELIBERATELY
+# NOT fixed here, after two independent attempts each reopened a worse bug (a bypass, not a false
+# positive) rather than closing the gap cleanly:
+# - Attempt 1: exclude `=` from the leading boundary class outright. A security-reviewer pass found
+#   this blocked bash parameter-expansion-with-default syntax (`${x:=repos/.../reviews}`), which
+#   places the real, clean endpoint argument immediately after a literal `=` too -- live-verified
+#   bypass: `gh api ${x:=repos/o/r/pulls/5/reviews} -f event=APPROVE` was allowed through.
+# - Attempt 2: re-admit `=` specifically after the literal `${name:=`/`${name=` sequence. A second
+#   review round found this only covers that one shape -- `gh api $(x=repos/o/r/pulls/5/reviews;
+#   echo $x) -f event=APPROVE` and `gh api -f ${y:=k=repos/o/r/pulls/5/reviews} ${y#*=} -f
+#   event=APPROVE` both still place a real, clean endpoint argument right after a literal `=`,
+#   through different bash constructs the narrow re-admission didn't anticipate -- both live-verified
+#   as new bypasses of attempt 2.
+# The pattern across both attempts: bash has an effectively unbounded number of ways to place literal
+# text immediately after a literal `=` and have it still evaluate to a genuine positional argument at
+# execution time (parameter-expansion defaults, subshell variable assignment, nested expansions,
+# ...) -- enumerating "legitimate `=`-preceded shapes" one exception at a time is the same
+# unwinnable-by-construction problem this file's own established philosophy already rejects
+# elsewhere (see the force_deny comment further below: "rather than implement a real
+# case/heredoc/comment parser, deny outright"). Reverted to the ORIGINAL boundary (no `=` exclusion
+# at all) rather than continuing to chase this -- #93's false positive stays open, undefended,
+# because a false positive (over-denying a benign call) is the acceptable failure direction this file
+# has consistently chosen throughout its history; a bypass (under-denying a dangerous one) never is.
+# Tracked in issue #93, explicitly not closed by this PR.
 REPLIES_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([^[:alnum:]_-]|$)'
 GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 # Matches any `gh api ... repos/{owner}/{repo}/pulls/{n}/reviews` call
@@ -509,9 +654,14 @@ REVIEWS_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/reviews([^[
 # review` ``/`$(gh pr comment)` left a `` ` ``/`)` immediately after the
 # subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
 # didn't recognize as a boundary.
-if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)' <<< "$COMMAND_FLAT"; then
+PR_REVIEW_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)'
+PR_COMMENT_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)'
+# Checked against both COMMAND_FLAT and COMMAND_DEQUOTED (issue #386, M1 -- see that variable's own
+# comment above) so a quoted/escaped subcommand word (`gh "pr" "review"`, `gh \pr \review`) is caught
+# the same way the plain form already is.
+if grep -qE "$PR_REVIEW_RE" <<< "$COMMAND_FLAT" || grep -qE "$PR_REVIEW_RE" <<< "$COMMAND_DEQUOTED"; then
   GH_SUBCOMMAND="gh pr review"
-elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)' <<< "$COMMAND_FLAT"; then
+elif grep -qE "$PR_COMMENT_RE" <<< "$COMMAND_FLAT" || grep -qE "$PR_COMMENT_RE" <<< "$COMMAND_DEQUOTED"; then
   GH_SUBCOMMAND="gh pr comment"
 else
   # Span-bound REPLIES_RE/REVIEWS_RE/GRAPHQL_RE to each individual `gh api`
@@ -902,12 +1052,31 @@ else
   }
   # Fail closed on an oversized command containing a `gh api` prefix, rather than let the scan
   # itself risk running long enough to hit the hook's own timeout -- which fails OPEN under
-  # onError: warn (see this file's `fail_closed_deny`/ERR-trap comment near the top). Sized against
-  # the LC_ALL=C-scan's own measured cost (~2.7s/50KB): a ~250-300KB command would approach the
-  # 15s timeout on linear extrapolation, well above any realistic gh api argument size (GitHub
-  # itself caps comment/PR bodies around 65K characters) but not impossible to construct
-  # deliberately (e.g. a large heredoc or --input payload built inline).
-  API_SPAN_MAX_LEN=131072
+  # onError: warn (see this file's `fail_closed_deny`/ERR-trap comment near the top).
+  #
+  # RE-MEASURED (issue #386, item 6/M2), superseding the old ~2.7s/50KB "one unspecified platform"
+  # estimate this cap was previously sized against: live-measured on Git Bash on Windows -- this
+  # file's own comments elsewhere already name that as a real target platform -- the actual cost is
+  # super-linear, not the ~linear extrapolation previously assumed:
+  #   40,000 bytes ->  5.7s
+  #   80,000 bytes -> 16.5s  (already past this hook's own 15s timeout)
+  #  128,000 bytes -> 33.5s
+  # The OLD 131072-byte cap was therefore never actually safe on this platform -- a legitimate
+  # `gh api` call with an argument in roughly the 60-130KB range would silently exceed the timeout
+  # and fail OPEN under onError: warn, on ordinary, non-adversarial input. Lowered to 32768 bytes,
+  # extrapolating from the measured curve to ~4.2s worst case on this same (slowest-measured)
+  # platform -- roughly 3.5x margin under the 15s timeout, leaving room for slower machines,
+  # concurrent load, and the jq/process-startup overhead this measurement didn't isolate out.
+  #
+  # This cap now matters far less in practice than it used to: the new `allowed=true` short-circuit
+  # added above (see its own comment, right after marker consumption) means a legitimate,
+  # marker-authorized call -- collaborating-on-a-pr/handling-review-findings/codex-review-recovery's
+  # own large --input payloads or GraphQL queries included -- never reaches this cap at all,
+  # regardless of size. This cap now only bounds the cost of scanning an UNAUTHORIZED `gh api` call
+  # (no valid marker) before deciding deny-or-allow -- exactly the case where a slow-then-fail-open
+  # scan is most dangerous, and where denying fast on an oversized, unauthorized input is the
+  # correct, fail-safe outcome regardless of whether that specific input happened to be dangerous.
+  API_SPAN_MAX_LEN=32768
   # A command well under API_SPAN_MAX_LEN bytes can still pack in thousands of short `gh api $(`-
   # shaped prefix matches, each independently triggering its own extract_api_span scan below. In
   # the worst case (an unmatched `(` that never returns depth to 0), a single such scan runs all
@@ -937,9 +1106,65 @@ else
     done < <(grep -boE "$prefix_re" <<< "$text" || true)
     return 1
   }
-  if [ "${#COMMAND_FLAT}" -gt "$API_SPAN_MAX_LEN" ] && grep -qE "$API_SPAN_PREFIX_RE" <<< "$COMMAND_FLAT"; then
+  # (issue #386, M1 -- fourth and final design, after three prior attempts were each defeated by a
+  # security-reviewer pass; see API_SPAN_PREFIX_RE's own comment above for attempts 1 and 2's full
+  # history) find_api_spans/extract_api_span always scan COMMAND_FLAT -- the real, quote-intact
+  # command -- never a dequoted rendering, avoiding attempt 1's span-corruption bypass (a quoted
+  # separator in dequoted text reads as a real one). Detecting a QUOTED/ESCAPED invocation that
+  # COMMAND_FLAT's own (deliberately unwidened -- see attempt 2) prefix regex can't see is handled
+  # here instead, via presence rather than a precise count:
+  # - Attempt 3 compared how many times API_SPAN_PREFIX_RE matched in COMMAND_FLAT vs.
+  #   COMMAND_DEQUOTED, denying only if the dequoted count was HIGHER. A security-reviewer pass found
+  #   this defeatable by "decoy cancellation": dequoting doesn't only ADD matches (by revealing a
+  #   hidden invocation), it can also REMOVE one -- API_SPAN_PREFIX_RE's own leading boundary accepts
+  #   a `'`/`"`/`\` byte right before `gh` as valid, so a decoy match that only exists in COMMAND_FLAT
+  #   because of a stray quote/backslash in that position (e.g. inside an unrelated flag value
+  #   elsewhere in the same command) disappears after dequoting, and if its loss exactly offsets a
+  #   real hidden invocation's gain, the counts end up equal and the check never fires. Live-verified
+  #   bypass: `gh a''pi repos/o/r/pulls/5/reviews -f event=APPROVE -f body="x\gh api"` -- flat count 1
+  #   (the decoy `\gh api` inside the quoted body value), dequoted count 1 (the real `gh api` prefix,
+  #   revealed; the decoy's own boundary-providing backslash is gone) -- 1 is not greater than 1, and
+  #   the real invocation was allowed through.
+  # Fixed by dropping the count comparison entirely: deny whenever the command contains ANY quote or
+  # backslash byte at all (COMMAND_FLAT != COMMAND_DEQUOTED -- true for nearly every real `gh api`
+  # call, which almost always quotes at least one flag value, so this is a coarse, deliberately
+  # broad gate, not a precise detector on its own) AND COMMAND_DEQUOTED contains BOTH a `gh api`
+  # prefix AND a dangerous endpoint (REPLIES_RE/REVIEWS_RE/GRAPHQL_RE) ANYWHERE -- not a
+  # precisely-extracted span (checking the whole dequoted text this bluntly, rather than trying to
+  # find exactly where in it the hidden invocation's own span is, is what avoids attempt 1's
+  # span-corruption problem: there's no dequoted-text span extraction to corrupt, only two whole-text
+  # substring checks). This can no longer be defeated by a decoy, since it never depends on relative
+  # counts -- only on whether the fully-dequoted text, taken as a whole, contains both signals at
+  # once. Same "over-approximate, deny only if a dangerous endpoint is actually found" shape as
+  # force_deny's own already-established pattern further above in extract_api_span; same accepted
+  # false-deny-over-bypass tradeoff as issue #93 (a benign quoted `gh api` call chained with unrelated
+  # dangerous-looking text elsewhere in the same command can now be denied too). Live-verified against
+  # every repro from all three prior attempts' review rounds, via the persisted regression suite
+  # (search that file for "decoy" or "hidden invocation").
+  #
+  # Also strips $'/$"  (ANSI-C/locale quoting) via COMMAND_DEQUOTED's own definition above, closing a
+  # separate gap the same review round found: `gh $'api' ...`/`gh pr $'review' ...` hid the
+  # subcommand word from both the flat regex and a plain quote-strip, since dequoting originally left
+  # the `$` in place. NOT covered by any of this, disclosed as residuals rather than chased further:
+  # a subcommand word reconstructed via command/variable substitution (`gh a$()pi ...`,
+  # `gh a${_unset}pi ...`, `G=gh; $G api ...`) -- the same class of gap this file's own sixth residual
+  # already accepts for the endpoint position, just now also true of the subcommand-word position, no
+  # regex over literal text can resolve what a substitution will evaluate to; an ANSI-C hex/octal
+  # escape spelling out the letters themselves (`gh $'\x61pi' ...`) -- decoding this correctly needs
+  # real ANSI-C string-literal parsing, not a blunt substring strip; and PowerShell-specific
+  # subcommand-hiding constructs (a backtick-escaped letter, a `('a'+'pi')` expression) -- grouped
+  # with this file's other already-deferred PowerShell-specific gaps.
+  if [ "$COMMAND_FLAT" != "$COMMAND_DEQUOTED" ] \
+    && grep -qE "$API_SPAN_PREFIX_RE" <<< "$COMMAND_DEQUOTED" \
+    && grep -qE "$REPLIES_RE|$REVIEWS_RE|$GRAPHQL_RE" <<< "$COMMAND_DEQUOTED"; then
+    GH_SUBCOMMAND="gh api (quoted/escaped invocation revealed by dequoting, denied without a precise span)"
+  fi
+  API_SCAN_TEXT="$COMMAND_FLAT"
+  if [ -n "$GH_SUBCOMMAND" ]; then
+    : # already denied via the quoted/escaped-invocation fallback check above; skip the normal scan
+  elif [ "${#API_SCAN_TEXT}" -gt "$API_SPAN_MAX_LEN" ] && grep -qE "$API_SPAN_PREFIX_RE" <<< "$API_SCAN_TEXT"; then
     GH_SUBCOMMAND="gh api (oversized command, denied without scanning)"
-  elif api_span_budget_exceeded "$COMMAND_FLAT" "$API_SPAN_PREFIX_RE" "$API_SPAN_MAX_LEN"; then
+  elif api_span_budget_exceeded "$API_SCAN_TEXT" "$API_SPAN_PREFIX_RE" "$API_SPAN_MAX_LEN"; then
     GH_SUBCOMMAND="gh api (too many scan spans, denied without full scan)"
   else
     # One extracted span per `gh api` prefix match in $1, via `grep -boE`'s byte-offset output --
@@ -1006,7 +1231,7 @@ $api_span_dequoted"; then
           break 2
         fi
       done
-    done < <(find_api_spans "$COMMAND_FLAT" "$API_SPAN_PREFIX_RE" "$TOOL_NAME")
+    done < <(find_api_spans "$API_SCAN_TEXT" "$API_SPAN_PREFIX_RE" "$TOOL_NAME")
   fi
   if [ -z "$GH_SUBCOMMAND" ]; then
     exit 0

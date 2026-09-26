@@ -390,6 +390,97 @@ e2e_check "literal id via real script -- must deny" \
 e2e_check "benign gh api call via real script -- must allow" \
   'gh api repos/AndreHahm/andres-cc-marketplace/issues/5/comments -f body=hello' \
   "ALLOW"
+# issue #93 (a flag value like `-f body=graphql` triggers a false-positive deny) is DELIBERATELY NOT
+# fixed -- two independent attempts each reopened a worse bug (a bypass) when tried; see
+# REPLIES_RE/GRAPHQL_RE/REVIEWS_RE's own comment for the full history. No test asserts the false
+# positive itself (that would pin a known bug in place rather than document an accepted gap) -- the
+# two controls below just confirm real dangerous endpoints are still denied regardless.
+e2e_check "#93 control -- real graphql endpoint immediately after api -- must still deny" \
+  'gh api graphql -f query=hello' \
+  "deny"
+e2e_check "#93 control -- real reviews endpoint after a flag+value pair -- must still deny" \
+  'gh api -X POST repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "M1 (#386 item 5) -- double-quoted api subcommand, real dangerous endpoint -- must deny" \
+  'gh "api" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "M1 (#386 item 5) -- backslash-escaped api subcommand, real dangerous endpoint -- must deny" \
+  'gh \api repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "M1 -- single-quoted api subcommand, real dangerous endpoint -- must deny" \
+  "gh 'api' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "M1 -- double-quoted pr review subcommand words -- must deny" \
+  'gh "pr" "review" 372 --approve' \
+  "deny"
+e2e_check "M1 -- double-quoted pr comment subcommand words -- must deny" \
+  'gh "pr" "comment" 372 --body hi' \
+  "deny"
+e2e_check "M1 control -- double-quoted api subcommand, benign endpoint -- must allow" \
+  'gh "api" repos/o/r/issues/1/comments -f body=hi' \
+  "ALLOW"
+# Two review rounds on the #386/M1 fix, each live-verified as a real bypass of the version it found,
+# both now fixed by the count-based dequoted-fallback design (see API_SPAN_PREFIX_RE's own comment,
+# and the "count-based" check at its point of use, for the full history of attempts 1 and 2).
+# Round 1 findings (attempt 1 -- switching the whole scan to dequoted text -- was reverted):
+e2e_check "round 1 (security-reviewer) -- quoted api subcommand + quoted semicolon in a header value -- must deny" \
+  "gh \"api\" -H 'X-A: a;b' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "round 1 (security-reviewer) -- benign plain gh api chained before a quoted dangerous one -- must deny" \
+  'gh api user; gh "api" repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "round 1 variant -- benign plain gh api chained via && before a backslash-escaped dangerous one -- must deny" \
+  'gh api user && gh \api graphql -f query=hi' \
+  "deny"
+# Round 2 findings (attempt 2 -- widening API_SPAN_PREFIX_RE's own alternation -- was reverted):
+# unbounded other ways to spell "gh"/"api" via adjacent empty-quote concatenation at arbitrary
+# internal positions, none of which a finite enumeration of "quoted forms" could ever cover.
+e2e_check "round 2 (security-reviewer) -- empty-quote-prefixed api word -- must deny" \
+  "gh ''api repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "round 2 (security-reviewer) -- api word split by adjacent empty quotes -- must deny" \
+  "gh a''pi repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "round 2 (security-reviewer) -- api word split by a mid-word backslash escape -- must deny" \
+  'gh a\pi repos/o/r/pulls/5/reviews -f event=APPROVE' \
+  "deny"
+e2e_check "round 2 (security-reviewer) -- gh word split by adjacent empty quotes -- must deny" \
+  "g''h api repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+# Round 2 also found attempt 2's OWN trailing-quote widening could consume an unmatched quote and
+# desync the scanner (`gh api'' -H 'x;y' ...`) -- not a separate case to fix here, since reverting
+# API_SPAN_PREFIX_RE to its original, unwidened form (this design no longer touches that regex at
+# all) removes the bug's own root cause entirely; the existing I3-family cases already cover
+# adjacent-empty-quote handling in the unmodified scanner.
+e2e_check "round 2 control -- hidden-invocation check does not fire on a benign endpoint" \
+  'gh "api" repos/o/r/issues/1/comments -f body=hi' \
+  "ALLOW"
+# Round 3 (security-reviewer): attempt 3's raw match-COUNT comparison (dequoted count > flat count)
+# was defeated by "decoy cancellation" -- a decoy prefix match that only exists in COMMAND_FLAT
+# because of a stray quote/backslash providing a boundary character elsewhere in the command
+# disappears after dequoting, and if its loss exactly offsets a real hidden invocation's gain, the
+# counts end up equal and the check never fires. Fixed by dropping the count comparison for a
+# presence-based check instead (see API_SPAN_PREFIX_RE's own comment for the current design).
+e2e_check "round 3 (security-reviewer) -- decoy cancellation: a backslash-boundary decoy offsets a real hidden invocation -- must deny" \
+  'gh a'"'"''"'"'pi repos/o/r/pulls/5/reviews -f event=APPROVE -f body="x\gh api"' \
+  "deny"
+e2e_check "round 3 -- double decoy, still must deny" \
+  'gh a'"'"''"'"'pi repos/o/r/pulls/5/reviews -f event=APPROVE -f a="x\one" -f b="y\two"' \
+  "deny"
+# Same review round: ANSI-C/locale quoting ($'...'/$"...") hid the subcommand word from BOTH the
+# flat regex and a plain quote-strip, since dequoting originally left the `$` in place -- fixed by
+# also stripping a leading $'/$" pair in COMMAND_DEQUOTED's own definition (see that variable's
+# comment). Covers the `gh pr review`/`gh pr comment` fallback too, since both paths share the same
+# COMMAND_DEQUOTED variable.
+e2e_check "round 3 -- ANSI-C quoted api subcommand, real dangerous endpoint -- must deny" \
+  "gh \$'api' repos/o/r/pulls/5/reviews -f event=APPROVE" \
+  "deny"
+e2e_check "round 3 -- ANSI-C quoted pr review subcommand words -- must deny" \
+  "gh pr \$'review' 372 --approve" \
+  "deny"
+e2e_check "round 3 -- both gh and pr review ANSI-C quoted -- must deny" \
+  "gh \$'pr' \$'review' 372 --approve" \
+  "deny"
 e2e_check "gh pr review via real script -- must deny (sanity, unrelated to this fix)" \
   'gh pr review 372 --approve' \
   "deny"
@@ -427,18 +518,43 @@ e2e_check "M3 control: oversized command with NO gh api prefix at all -- must al
 e2e_check "G1 via real script -- Bash ANSI-C \$'...' escaped-quote bypass (CodeRabbit + Codex, round 5) -- must deny" \
   "gh api -H \$'x\\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE" \
   "deny"
-e2e_check "G2 via real script -- escaped-backtick nesting (Codex, round 5) -- must allow (benign, real ; genuinely separates commands)" \
+# G2's expectation flipped from ALLOW to deny (issue #386, M1's count-based-fallback fix, third
+# review round): this command contains a backslash (before the inner backtick), so
+# COMMAND_FLAT != COMMAND_DEQUOTED; the dequoted text still has a bare `gh api` prefix (it was never
+# hidden here) AND happens to also contain "repos/.../reviews" later, inside the textually-separate
+# `echo` command after the real `;`. The M1 fallback check (see API_SPAN_PREFIX_RE's own comment)
+# checks the whole dequoted text for a dangerous endpoint ANYWHERE, not attributed to the specific
+# `gh api` invocation's own span, so this now denies -- a new, deliberately-accepted false positive
+# (a benign call with unrelated dangerous-looking text elsewhere in the same command), the same
+# accepted-tradeoff direction this file already established for issue #93 (false-deny over bypass).
+# A security-reviewer pass explicitly weighed this cost against closing M1's real bypass and judged
+# it acceptable rather than a regression.
+e2e_check "G2 via real script -- escaped-backtick nesting (Codex, round 5) -- now denies (issue #386 M1's fallback check fires on the unrelated reviews text after the real ;, an accepted new false positive, not a bypass)" \
   'gh api user `echo \`printf x\`` ; echo repos/o/r/pulls/5/reviews' \
-  "ALLOW"
+  "deny"
 # M4 (round 5, CodeRabbit): a command well under API_SPAN_MAX_LEN bytes can still pack in
 # thousands of short `gh api $(`-shaped prefix matches, each independently triggering its own
 # worst-case full-remaining-length scan. Left unbounded this is a timeout/fail-open DoS, not just
 # a slow test -- live-measured before the api_span_budget_exceeded fix landed: this exact payload
-# (13,000 repeats, ~117KB, well under the 131072-byte length cap) took long enough to extrapolate
-# to tens of thousands of seconds; after the fix it denies in well under a second.
+# (13,000 repeats, ~117KB, well under the ORIGINAL 131072-byte length cap in place at the time) took
+# long enough to extrapolate to tens of thousands of seconds; after the fix it denies in well under
+# a second. Historical payload size preserved as-is below -- API_SPAN_MAX_LEN has since been lowered
+# to 32768 (issue #386, M2), so this specific payload (~117KB) is now ALSO caught by the plain
+# oversized-length check (line just above the budget-exceeded elif in the real script), not just the
+# budget-exceeded path this case was originally written to exercise.
 m4_many_prefix_payload=$(printf 'gh api $(%.0s' $(seq 1 13000))
-e2e_check "M4: many short gh-api-prefix matches under the byte cap -- must deny without hanging (span-budget cap)" \
+e2e_check "M4: many short gh-api-prefix matches, now also over the (lowered) length cap -- must deny without hanging" \
   "$m4_many_prefix_payload" \
+  "deny"
+# M4b: a smaller payload, sized to stay UNDER the current (lowered) 32768-byte length cap, so this
+# case exercises api_span_budget_exceeded's own cumulative-remaining-length logic specifically --
+# not just the simpler raw-length check above. 1,000 repeats of a 9-byte prefix (~9,000 bytes total,
+# comfortably under the cap) still drives the SUM of each match's own worst-case remaining-length
+# cost well past the 32768 budget (~4.5 * 1000^2 = 4.5M, by this function's own documented
+# quadratic-sum accounting), so this keeps the budget-specific path covered going forward.
+m4b_many_prefix_payload=$(printf 'gh api $(%.0s' $(seq 1 1000))
+e2e_check "M4b: many short gh-api-prefix matches, under the length cap -- must deny without hanging (span-budget cap)" \
+  "$m4b_many_prefix_payload" \
   "deny"
 e2e_check "H1a via real script -- escaped \\\$ before a plain quote (round 6, security-reviewer) -- must deny" \
   'gh api -H \$'"'"'a\'"'"' '"'"'pre;post-reviews-marker'"'"' repos/o/r/pulls/5/reviews -f event=APPROVE' \
@@ -499,6 +615,70 @@ e2e_marker_allow_check() {
 marker_result=$(e2e_marker_allow_check)
 echo "$marker_result"
 if grep -q PASS <<< "$marker_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# #386 cost-model fix: a marker-authorized call with a large `gh api` argument (well over the
+# lowered API_SPAN_MAX_LEN below) must still be ALLOWED, via the new early short-circuit -- not
+# denied-without-scanning the way an unauthorized oversized call is. Own isolated repo, same
+# pattern as e2e_marker_allow_check above, so this never touches the shared E2E_GIT_DIR's marker.
+e2e_marker_shortcircuit_check() {
+  local tmp_git payload cmd input out
+  tmp_git=$(mktemp -d)
+  trap 'rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
+    payload=$(head -c 50000 /dev/zero | tr '\0' 'a')
+    cmd="gh api repos/o/r/issues/1/comments -f body=${payload}"
+    cmd_file=$(mktemp)
+    printf '%s' "$cmd" > "$cmd_file"
+    input=$(jq -n --rawfile cmd "$cmd_file" '{tool_name: "Bash", tool_input: {command: $cmd}}')
+    rm -f "$cmd_file"
+    out=$(printf '%s' "$input" | timeout 10 bash "$GUARD") || { echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- guard exited non-zero or timed out: $out"; exit 0; }
+    if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
+      echo "PASS (e2e): marker-authorized oversized call skips the scan (short-circuit)"
+    else
+      echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- out=[$out]"
+    fi
+  )
+}
+shortcircuit_result=$(e2e_marker_shortcircuit_check)
+echo "$shortcircuit_result"
+if grep -q PASS <<< "$shortcircuit_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# #386: the lone-CR delimiter-injection check (I2 above) must still deny even when a valid marker
+# is present -- the short-circuit's own condition excludes any command containing a `\r` byte
+# specifically so this defense-in-depth guarantee survives the new early-exit (see that check's own
+# comment in the real script for why). Own isolated repo, same pattern as above.
+e2e_marker_cr_still_denies_check() {
+  local tmp_git cmd input out
+  tmp_git=$(mktemp -d)
+  trap 'rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
+    cmd="gh api -H \\$(printf '\r')'x;y' repos/o/r/pulls/5/reviews -f event=APPROVE"
+    input=$(jq -n --arg cmd "$cmd" '{tool_name: "Bash", tool_input: {command: $cmd}}')
+    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): lone-CR check still denies despite a valid marker -- guard exited non-zero: $out"; exit 0; }
+    if grep -q "carriage-return" <<< "$out"; then
+      echo "PASS (e2e): lone-CR check still denies despite a valid marker"
+    else
+      echo "FAIL (e2e): lone-CR check still denies despite a valid marker -- got: $out"
+    fi
+  )
+}
+cr_marker_result=$(e2e_marker_cr_still_denies_check)
+echo "$cr_marker_result"
+if grep -q PASS <<< "$cr_marker_result"; then
   PASS_COUNT=$((PASS_COUNT + 1))
 else
   FAIL_COUNT=$((FAIL_COUNT + 1))
@@ -685,18 +865,59 @@ e2e_check "I2 control 2 (round 8) -- benign CRLF-only multi-line command -- must
 # and `gr\aphql` both reconstruct to the literal string `graphql` in real bash (live-verified via a
 # stub `gh`), evading GRAPHQL_RE's unconditional deny-by-default even though neither the collapsed
 # nor raw span contains "graphql" as a contiguous substring for the regex to match.
+# Expected substring is now "deny" (generic), not "graphql" (the original span-scan's own specific
+# reason label) -- issue #386's own quoted/escaped-invocation fallback check (see API_SPAN_PREFIX_RE's
+# own comment) now fires FIRST for these two specific inputs, since both contain a quote/backslash
+# byte and dequote to a command containing both a bare `gh api` prefix and the word `graphql`,
+# producing its own, differently-worded deny reason -- still correctly denies, just via an earlier
+# code path than before. The behavior this test cares about (does the split-word trick still deny)
+# is unaffected.
 e2e_check "I3 (round 8, security-reviewer) -- graphql split via adjacent empty quotes -- must deny" \
   "gh api graph''ql -f query=hi" \
-  "graphql"
+  "deny"
 e2e_check "I3b (round 8) -- graphql split via a mid-word backslash escape -- must deny" \
   'gh api gr\aphql -f query=hi' \
-  "graphql"
+  "deny"
 e2e_check "I3c (round 8) -- reviews endpoint split via adjacent empty double-quotes -- must deny" \
   'gh api repos/o/r/pulls/5/re""views -f event=APPROVE' \
   "deny"
 e2e_check "I3 control (round 8) -- ordinary quoted/escaped text with no disguised endpoint -- must allow" \
   "gh api repos/o/r/issues/1/comments -f body='it'\\''s fine' -f other=\\x" \
   "ALLOW"
+
+# #386: a NUL byte embedded in the JSON command field, via a valid escaped \u0000 (a raw unescaped
+# NUL is not valid JSON in the first place, and is already covered by the existing malformed-JSON
+# deny path -- this case is specifically the escaped, well-formed-JSON form). Verified live: jq -r
+# decodes \u0000 to a real NUL byte, but bash's own `COMMAND=$(jq -r ...)` command substitution
+# silently drops it (a well-documented bash behavior) rather than truncating -- so a dangerous
+# endpoint positioned AFTER the NUL in the source text is still reached and matched once the NUL is
+# dropped and the surrounding text re-joins. Not a full regression guard against every possible NUL
+# placement, but confirms the specific, verified mechanism doesn't silently defeat detection. Own
+# isolated repo (bypasses e2e_run/e2e_check, which build the JSON from a plain command string and
+# can't express a raw \u0000 escape inside it), same pattern as the marker-focused checks above.
+e2e_nul_byte_check() {
+  local tmp_git input out
+  tmp_git=$(mktemp -d)
+  trap 'rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    input='{"tool_name":"Bash","tool_input":{"command":"gh api ab\u0000cd repos/o/r/pulls/5/reviews -f event=APPROVE"}}'
+    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- guard exited non-zero: $out"; exit 0; }
+    if grep -q "deny" <<< "$out"; then
+      echo "PASS (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- must deny"
+    else
+      echo "FAIL (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- got: $out"
+    fi
+  )
+}
+nul_result=$(e2e_nul_byte_check)
+echo "$nul_result"
+if grep -q PASS <<< "$nul_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
 
 echo ""
 echo "=== $PASS_COUNT passed, $FAIL_COUNT failed ==="
