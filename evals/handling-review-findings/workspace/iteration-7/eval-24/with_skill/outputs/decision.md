@@ -39,7 +39,9 @@ Because the triggered-cycle count already meets `min_rounds`, this option was of
 normal (not one-survivor-below-floor) rule, so selecting it — alone or in combination with any
 reviewer option — is **authoritative**:
 
-- Question 2 (review profile) is ignored entirely; it is never asked/resolved.
+- Question 2 (review profile) is still asked as part of the same single `AskUserQuestion` call (per
+  8b's opening line, both questions are submitted together in one call) — but its answer is ignored
+  once "No further round for now" wins, since there's no reviewer left to apply a profile to.
 - Nothing is posted — no trigger comment, no marker write, no batch-id generated.
 - Per 8a: "on 'no,' stop here — this run ends with step 7's report as the final word." The skill's
   run for this invocation ends at that point; step 7's fixed/filed/declined report is the final
