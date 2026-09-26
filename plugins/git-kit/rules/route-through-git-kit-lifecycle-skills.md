@@ -88,9 +88,9 @@ proposed (binding the marker to a process/session identifier): a hand-invocation
 happens from within the *same* session a real `Skill()` dispatch would also run in, so session/process
 identity can't distinguish the two cases either. Issue #406 tracks whether any real enforcement
 mechanism is feasible at all under Claude Code's current hook/tool-execution model; until it resolves
-that question, this section's "policy guardrail, not a security boundary" framing is the accurate,
-final word on what this mechanism actually provides — not an interim state pending a fix already in
-progress.
+that question, this section's "policy guardrail, not a security boundary" framing is the accurate
+characterization of what this mechanism currently provides — not an interim state pending a fix
+already in progress.
 
 ## Why
 
