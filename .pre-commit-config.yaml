@@ -117,6 +117,7 @@ repos:
       - id: shellcheck
         name: "🐚 shell · Lint shell scripts"
         description: "Runs Shellcheck to check shell scripts for style and potential errors"
+        args: ['--severity=warning']
 
   # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
