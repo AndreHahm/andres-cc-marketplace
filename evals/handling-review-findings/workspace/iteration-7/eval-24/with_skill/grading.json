@@ -10,7 +10,7 @@
     {
       "text": "States that selecting it is authoritative: ignore Question 2, stop here, nothing gets posted",
       "passed": true,
-      "evidence": "\"selecting it ... is authoritative: Question 2 (review profile) is ignored entirely ... Nothing is posted — no trigger comment, no marker write, no batch-id generated\""
+      "evidence": "\"selecting it ... is authoritative: Question 2 (review profile) is still asked as part of the same single AskUserQuestion call ... but its answer is ignored ... Nothing is posted — no trigger comment, no marker write, no batch-id generated\""
     },
     {
       "text": "Does not apply the one-survivor exception's report-and-confirm behavior to this three-reviewer, above-floor scenario",
@@ -22,5 +22,6 @@
     "assertions_total": 3,
     "assertions_passed": 3,
     "pass_rate": 1.0
-  }
+  },
+  "correction_note": "cross-model-review's Codex challenger pass (round 2 of this PR's Pre-flight gate) found the raw agent output originally said Question 2 'is never asked/resolved' -- inaccurate, since step 8b's opening line requires both questions to be submitted in one AskUserQuestion call; only Question 2's answer is ignored on this path. outputs/decision.md and this assertion's evidence were corrected to state that accurately."
 }
