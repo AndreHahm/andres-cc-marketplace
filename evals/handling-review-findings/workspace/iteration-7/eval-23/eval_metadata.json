@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-23",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {"text": "States Question 1 includes both the surviving reviewer (Codex) and the \"No further round for now\" option (2 options total), even though the triggered-cycle count is below min_rounds", "type": "functionality", "target": "response"},
+    {"text": "Identifies this as the documented one-survivor exception to the general below-floor omission rule, not a contradiction between the two rules", "type": "quality", "target": "response"},
+    {"text": "States that selecting \"No further round for now\" in this case does NOT simply stop with nothing posted — it reports the round-floor requirement and stops for the user to confirm triggering the one remaining reviewer or fix the reviewer configuration", "type": "functionality", "target": "response"},
+    {"text": "Does not describe the outcome as the general authoritative silent stop (\"ignore Question 2, stop, nothing gets posted\") for this specific below-floor one-survivor case", "type": "correctness", "target": "response"}
+  ]
+}
