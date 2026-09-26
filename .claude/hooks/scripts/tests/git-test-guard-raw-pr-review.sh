@@ -420,8 +420,10 @@ e2e_check "M1 control -- double-quoted api subcommand, benign endpoint -- must a
   'gh "api" repos/o/r/issues/1/comments -f body=hi' \
   "ALLOW"
 # Two review rounds on the #386/M1 fix, each live-verified as a real bypass of the version it found,
-# both now fixed by the count-based dequoted-fallback design (see API_SPAN_PREFIX_RE's own comment,
-# and the "count-based" check at its point of use, for the full history of attempts 1 and 2).
+# both now fixed by the final presence-based dequoted-fallback design (see API_SPAN_PREFIX_RE's own
+# comment, and the fallback check at its point of use, for the full history of attempts 1-3 -- an
+# intermediate count-based attempt was also tried and reverted after a third review round; see
+# round 3's own cases below).
 # Round 1 findings (attempt 1 -- switching the whole scan to dequoted text -- was reverted):
 e2e_check "round 1 (security-reviewer) -- quoted api subcommand + quoted semicolon in a header value -- must deny" \
   "gh \"api\" -H 'X-A: a;b' repos/o/r/pulls/5/reviews -f event=APPROVE" \
@@ -518,8 +520,8 @@ e2e_check "M3 control: oversized command with NO gh api prefix at all -- must al
 e2e_check "G1 via real script -- Bash ANSI-C \$'...' escaped-quote bypass (CodeRabbit + Codex, round 5) -- must deny" \
   "gh api -H \$'x\\'; ' repos/o/r/pulls/5/reviews -f event=APPROVE" \
   "deny"
-# G2's expectation flipped from ALLOW to deny (issue #386, M1's count-based-fallback fix, third
-# review round): this command contains a backslash (before the inner backtick), so
+# G2's expectation flipped from ALLOW to deny (issue #386, M1's final presence-based fallback fix):
+# this command contains a backslash (before the inner backtick), so
 # COMMAND_FLAT != COMMAND_DEQUOTED; the dequoted text still has a bare `gh api` prefix (it was never
 # hidden here) AND happens to also contain "repos/.../reviews" later, inside the textually-separate
 # `echo` command after the real `;`. The M1 fallback check (see API_SPAN_PREFIX_RE's own comment)
