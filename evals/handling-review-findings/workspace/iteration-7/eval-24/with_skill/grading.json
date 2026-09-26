@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-24",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States \"No further round for now\" is offered in Question 1 because the triggered-cycle count already meets min_rounds",
+      "passed": true,
+      "evidence": "\"The 'No further round for now' option is included specifically because the triggered-cycle count (2) already meets min_rounds (1)\""
+    },
+    {
+      "text": "States that selecting it is authoritative: ignore Question 2, stop here, nothing gets posted",
+      "passed": true,
+      "evidence": "\"selecting it ... is authoritative: Question 2 (review profile) is still asked as part of the same single AskUserQuestion call ... but its answer is ignored ... Nothing is posted — no trigger comment, no marker write, no batch-id generated\""
+    },
+    {
+      "text": "Does not apply the one-survivor exception's report-and-confirm behavior to this three-reviewer, above-floor scenario",
+      "passed": true,
+      "evidence": "\"This is distinct from the below-min_rounds, exactly-one-surviving-reviewer exception ... That exception does not apply here: 3 reviewers survived (≥2), and the count already meets the floor\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "correction_note": "cross-model-review's Codex challenger pass (round 2 of this PR's Pre-flight gate) found the raw agent output originally said Question 2 'is never asked/resolved' -- inaccurate, since step 8b's opening line requires both questions to be submitted in one AskUserQuestion call; only Question 2's answer is ignored on this path. outputs/decision.md and this assertion's evidence were corrected to state that accurately."
+}

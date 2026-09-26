@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-23",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States Question 1 includes both the surviving reviewer (Codex) and the \"No further round for now\" option (2 options total), even though the triggered-cycle count is below min_rounds",
+      "passed": true,
+      "evidence": "\"Exactly 2 options ... 1. 'Codex' ... 2. 'No further round for now' ... included solely to satisfy the 2-option floor\""
+    },
+    {
+      "text": "Identifies this as the documented one-survivor exception to the general below-floor omission rule, not a contradiction between the two rules",
+      "passed": true,
+      "evidence": "\"Two 8b rules interact here and must be applied in the right order ... the one-survivor rule overrides the normal below-floor omission specifically to reach the tool's 2-option minimum\""
+    },
+    {
+      "text": "States that selecting \"No further round for now\" in this case does NOT simply stop with nothing posted — it reports the round-floor requirement and stops for the user to confirm triggering the one remaining reviewer or fix the reviewer configuration",
+      "passed": true,
+      "evidence": "\"Reports plainly that review_findings_min_rounds (2) requires another triggered cycle ... Stops and asks the user to pick one of two paths forward: Confirm triggering ... or Fix the reviewer configuration first\""
+    },
+    {
+      "text": "Does not describe the outcome as the general authoritative silent stop (\"ignore Question 2, stop, nothing gets posted\") for this specific below-floor one-survivor case",
+      "passed": true,
+      "evidence": "\"this selection is not treated as authoritative the way it would be at/above the floor\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
