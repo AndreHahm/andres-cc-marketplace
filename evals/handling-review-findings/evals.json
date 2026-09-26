@@ -374,9 +374,9 @@
         ]
       },
       {
-        "gate": "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely",
+        "gate": "Selecting \"No further round for now\" in Question 1, when the option was offered at or above min_rounds, always overrides any other selection and skips Question 2's answer entirely; below the floor in the one-survivor exception, the same selection instead reports the unmet floor and follows the confirm/fix-configuration path",
         "covered_by": [],
-        "note": "NOT exercised -- eval 24 only tests selecting the stop option alone, never combined with a reviewer option in the same selection; a real gap, flagged by Codex's cross-model-review pass on PR #410 after this file's 2026-09-26 attribution was found overbroad"
+        "note": "NOT exercised -- eval 24 only tests selecting the stop option alone, never combined with a reviewer option in the same selection; a real gap, flagged by Codex's cross-model-review pass on PR #410 after this file's 2026-09-26 attribution was found overbroad. Gate text itself qualified 2026-09-26 (round 2 of PR #410's review) after Codex's fresh pass found the unqualified wording contradicted the one-survivor exception's own covered_by:[23] entry"
       },
       {
         "gate": "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD -- a mismatch, a draft PR, or a non-OPEN state each independently blocks posting",
@@ -408,10 +408,11 @@
         ]
       },
       {
-        "gate": "When the triggered-cycle count is below review_findings_min_rounds, Question 1 never offers a \"No further round for now\" option",
+        "gate": "When the triggered-cycle count is below review_findings_min_rounds, Question 1 never offers a \"No further round for now\" option, except when exactly one validated reviewer remains, where the option is offered anyway solely to satisfy AskUserQuestion's two-option minimum",
         "covered_by": [
           20
-        ]
+        ],
+        "note": "eval 20 covers the general (2+ reviewer) case only; the one-survivor exception carved out of this gate's own wording is covered separately by eval 23 -- qualified 2026-09-26 after Codex's cross-model-review pass on PR #410 found this gate and the one credited to eval 23 mutually contradictory as originally worded"
       },
       {
         "gate": "The trust boundary is resolved once at Settings-read time (never deferred into 8c, never re-derived per field) using a repo-root-anchored git ls-files pathspec, and applies as a group to all four protected fields (severity_gate, generate_issues, max_rounds-lower-than-default, and the entire review_findings_reviewers array) -- never a per-reviewer or per-field join. The run reports plainly, once, which field(s) were discarded.",
@@ -453,7 +454,7 @@
       "A finding produced by the review that the max_rounds-th triggered batch itself triggered is fixed normally, never routed to the Issue/generate-issues path merely because 8a's count already reads max_rounds when classified",
       "When 8c leaves zero validated reviewers, 8b's AskUserQuestion is never constructed with an empty or single-item options array",
       "A finding with no reviewer-stated severity label at all is never left unclassified -- it's judged from the described defect's actual content, and defaults to Major (never Minor) when that judgment is itself uncertain",
-      "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely"
+      "Selecting \"No further round for now\" in Question 1, when the option was offered at or above min_rounds, always overrides any other selection and skips Question 2's answer entirely; below the floor in the one-survivor exception, the same selection instead reports the unmet floor and follows the confirm/fix-configuration path"
     ]
   },
   "supplementary_pressure_test": {
