@@ -627,7 +627,7 @@ fi
 # denied-without-scanning the way an unauthorized oversized call is. Own isolated repo, same
 # pattern as e2e_marker_allow_check above, so this never touches the shared E2E_GIT_DIR's marker.
 e2e_marker_shortcircuit_check() {
-  local tmp_git payload cmd input out
+  local tmp_git payload cmd input out trace
   tmp_git=$(mktemp -d)
   trap 'rm -rf "$tmp_git"' RETURN
   (
@@ -645,11 +645,21 @@ e2e_marker_shortcircuit_check() {
     # found" on a platform without GNU coreutils (e.g. a bare macOS host), reporting this case as a
     # FAIL for a portability reason unrelated to the guard's own behavior (Codex fresh-eyes finding,
     # cross-model-review). Degrades to no wrapper (best-effort only) when `timeout` is unavailable.
-    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- guard exited non-zero or timed out: $out"; exit 0; }
-    if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
+    # Traced with `bash -x` and asserted against below: empty output + consumed marker alone would
+    # still pass even if the short-circuit itself were deleted, since a marker-authorized command
+    # that reaches the pre-existing end-of-file `if [ "$allowed" = true ]; then exit 0; fi` is
+    # allowed there too, just after paying the full scan cost this test exists to prove is skipped
+    # (CodeRabbit finding, PR #404 -- live-verified: reverting the short-circuit locally left this
+    # test's old empty-output/marker-consumed assertion passing, while the trace-based one below
+    # correctly failed). `COMMAND_FLAT` is only ever assigned once the scan actually starts, well
+    # after the short-circuit's own exit point, so its absence from the trace is direct evidence the
+    # scan itself was never entered.
+    trace="$tmp_git/trace"
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash -x "$GUARD" 2>"$trace") || { echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- guard exited non-zero or timed out: $out"; exit 0; }
+    if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ] && ! grep -q 'COMMAND_FLAT=' "$trace"; then
       echo "PASS (e2e): marker-authorized oversized call skips the scan (short-circuit)"
     else
-      echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- out=[$out]"
+      echo "FAIL (e2e): marker-authorized oversized call skips the scan (short-circuit) -- out=[$out] scan_entered=$(grep -q 'COMMAND_FLAT=' "$trace" && echo yes || echo no)"
     fi
   )
 }
