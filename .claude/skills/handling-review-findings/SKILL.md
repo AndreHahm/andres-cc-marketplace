@@ -469,16 +469,9 @@ PR, CodeRabbit's own next pass):** round 2's check only queried `origin`'s fetch
 actual push URL (`--push --all`) and requires each one to match the PR's head repository, uniformly
 for both same-repo and fork PRs; same reference entry.
 
-**Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
-severity definition had no fallback for a finding with no reviewer-stated severity label at all (the
-common case for an ordinary human review comment) — only examples that all assumed some explicit signal
-existed (a P1/Critical badge, or a human's explicit "this blocks merge"). Fixed by adding a fallback
-clause: classify from the described defect's actual content per Workflow step 2's existing "higher of
-stated label and actual defect" rule, defaulting to Major when that judgment is itself uncertain. A
-matching scenario and quality-gate item were added to `references/testing-scenarios.md`. No fresh
-`skill-tester` eval re-run for this edit — the fix is a documentation/guidance clarification of an
-already-established classification principle (Workflow step 2), not new decision logic, and its
-correctness was verified by re-reading it against the gap issue #95 described.
+**Fixed 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception severity
+definition had no fallback for a finding with no reviewer-stated severity label — full narrative in
+`references/development-history.md`'s "Issue #95" entry.
 
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md` — kept out of the main procedure a reader follows on every triage
@@ -493,5 +486,6 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
+| `references/development-history.md` | Build-time audit trail: eval run records, security-review passes, and dated fix narratives for issues found in live GitHub review (PR #101, #407) |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
 | `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 22 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate |
