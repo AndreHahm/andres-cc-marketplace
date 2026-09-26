@@ -619,6 +619,21 @@ API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
 # has consistently chosen throughout its history; a bypass (under-denying a dangerous one) never is.
 # Tracked in issue #93, explicitly not closed by this PR.
 REPLIES_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([^[:alnum:]_-]|$)'
+# Known residual (issue #403, Gap 2): GRAPHQL_RE matches the bare word "graphql" anywhere within the
+# extracted `gh api` argument span, including inside an unrelated flag's quoted value (e.g. a REST
+# `search/issues` call whose `-f q="... graphql ..."` search-query text merely contains the word), not
+# only when `graphql` is the actual endpoint being called. Deliberately not narrowed further: a
+# positional "is this actually the endpoint token, not buried in a flag value" check would need real
+# argument parsing, and this file's own history above (REPLIES_RE/REVIEWS_RE's `=`-boundary saga, the
+# `reviewThreads`/`mutation` carve-out removed after three independent bypasses) already establishes
+# that substring-based narrowing attempts on these span-scoped regexes get defeated by review, not
+# hardened by it. The same false positive also fires earlier, before span extraction even runs: the
+# quoted/escaped-invocation fallback check further below (see API_SPAN_PREFIX_RE's own comment) denies
+# any command containing a quote/backslash byte whose dequoted form has both a bare `gh api` prefix and
+# this word anywhere in it — so a quoted call with "graphql" in unrelated data is caught by either path.
+# This false-positive denies a benign call (fails closed), not a bypass — accepted as a disclosed
+# tradeoff, matching this file's own stated philosophy (line ~618 above: over-denying a benign call is
+# the acceptable failure direction, a bypass never is), not fixed.
 GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 # Matches any `gh api ... repos/{owner}/{repo}/pulls/{n}/reviews` call
 # regardless of HTTP verb (GET to list, POST to submit an approve/request-

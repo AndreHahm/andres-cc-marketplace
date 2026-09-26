@@ -80,6 +80,18 @@ this rule's own explicit disclosure, not a stronger mechanical check, since neit
 skill's own instructions can observe whether a `Skill()` call actually ran from inside the shell
 environment a marker script executes in.
 
+**Verified (2026-09-26, issues #401/#403/#406):** the guard scripts check only the marker's guard-type
+and freshness — the skill-name field `git-write-marker.sh` writes is never itself validated against an
+allowlist, so "the five/six allowlisted skills" named throughout this file is a documentary convention,
+not a code-enforced one. This also rules out the specific stronger-binding idea issue #165 originally
+proposed (binding the marker to a process/session identifier): a hand-invocation of the marker script
+happens from within the *same* session a real `Skill()` dispatch would also run in, so session/process
+identity can't distinguish the two cases either. Issue #406 tracks whether any real enforcement
+mechanism is feasible at all under Claude Code's current hook/tool-execution model; until it resolves
+that question, this section's "policy guardrail, not a security boundary" framing is the accurate,
+final word on what this mechanism actually provides — not an interim state pending a fix already in
+progress.
+
 ## Why
 
 Each of these six skills exists because the equivalent raw command is missing something the skill adds

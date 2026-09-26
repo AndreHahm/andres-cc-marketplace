@@ -31,7 +31,17 @@ as "related" without this validation step.
 ## Step 4: Relate via Native Sub-Issues API
 
 Read the current relationship first: `gh api repos/<owner>/<repo>/issues/<number>/sub_issues` (REST,
-plural `sub_issues`).
+plural `sub_issues`) for this issue's own children.
+
+**Before adding a target as a sub-issue, check whether it already has a different parent**:
+`gh api repos/<owner>/<repo>/issues/<target-number>/parent` (REST, singular `parent`) — a 404 means no
+parent yet (safe to add); a 200 with a different parent issue's JSON means GitHub's one-parent-per-
+sub-issue limit blocks the add. In that case, don't attempt the write (it will fail) — fall back to this
+repo's prose-comment convention instead (a plain comment on each issue noting the relationship), posted
+via Step 8's `--body-file` procedure below like every other comment this skill posts — never inline
+`--body "<text>"`, since the relationship note may quote the other issue's title or number. See
+`references/sub-issues-api.md`'s "Checking an Existing Parent" section — this REST call needs no marker
+handshake, unlike a `gh api graphql` fallback would.
 
 To add one: get the target's internal numeric `id` first —
 `gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'` (this is **not** the same as the

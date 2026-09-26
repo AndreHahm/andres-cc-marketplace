@@ -162,37 +162,48 @@ session.
 ## Workflow
 
 1. **Resolve the PR and fetch current review state — always re-fetch, never reuse an earlier check.**
-   Validate `$ARGUMENTS` against an allowlist before using it — empty (defaults to the current branch's
-   PR), a bare PR number (`^[0-9]+$`), or a PR URL
+   Validate `$ARGUMENTS` against an allowlist before using it anywhere else — empty (defaults to the
+   current branch's PR), a bare PR number (`^[0-9]+$`), or a PR URL
    (`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/[0-9]+$`) — never pass an unvalidated
-   value through to `gh`. `gh pr view $ARGUMENTS --json url,headRepositoryOwner,headRepository,headRefOid`
-   resolves `<owner>/<repo>`. **When `$ARGUMENTS` is non-empty, verify the resolved PR's head actually
-   matches this checkout before doing anything else in this workflow.** `isCrossRepository`/`headRefName`
-   alone are not sufficient — `isCrossRepository` only describes the PR head's relationship to its own
-   *base* repository, not whether *this checkout* belongs to that repository, and a same-repo PR whose
-   head branch name coincidentally matches the local branch name passes a name-only check even when the
-   checkout is a different repository entirely (verified: `gh pr view --help` lists `headRepositoryOwner`/
-   `headRepository`/`headRefOid` as the fields that actually identify the head unambiguously). Bind the
-   check to those three fields instead: resolve this checkout's own repository identity
-   (`gh repo view --json owner,name --jq '"\(.owner.login)/\(.name)"'`) and compare it against
-   `<headRepositoryOwner.login>/<headRepository.name>`, and compare `headRefOid` against this checkout's
-   current commit (`git rev-parse HEAD`). Both must match. The Fix path's `Skill(commit) --push`
-   step (step 4) would otherwise commit and push to whatever repository/branch this checkout happens to
-   be on, not the PR actually being triaged, silently telling the wrong thread its finding was fixed. On
-   any mismatch, stop and tell the user to `gh pr checkout $ARGUMENTS` first — never proceed on the wrong
-   checkout, and never silently substitute the current branch's own PR instead. Once confirmed (or when
-   `$ARGUMENTS` was empty, which is inherently the current checkout's own PR), pass
-   `-R "<owner>/<repo>"` on every `gh pr`/`gh issue` call below, since `$ARGUMENTS` may name a PR in a
-   different repository than the current checkout. **`gh api` has no `-R`/`--repo` flag at all**
-   (verified against `gh api --help`) — never pass `-R` to it. Its REST calls already carry the
-   resolved owner/repo directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
+   value through to `gh`. **This is the only place in this Workflow that reads the raw `$ARGUMENTS`
+   token itself.** The dispatch mechanism substitutes `$ARGUMENTS`' literal value into every occurrence
+   of that token throughout this skill's own returned text before any of it is even read — a mismatched
+   invocation (e.g. a long free-text narrative instead of one of the three shapes above) gets spliced
+   into each occurrence, not just this one. Referring to the validated result as "the resolved PR
+   reference" in every step below, instead of repeating the literal `$ARGUMENTS` token, confines any
+   such corruption to this one line rather than scattering it through the rest of this skill's
+   instructions (issue #401 Part 1). If validation fails, stop and report the mismatch rather than
+   proceeding.
+   `gh pr view <the resolved PR reference> --json url,headRepositoryOwner,headRepository,headRefOid`
+   resolves `<owner>/<repo>`. **When the resolved PR reference is non-empty, verify the resolved PR's
+   head actually matches this checkout before doing anything else in this workflow.**
+   `isCrossRepository`/`headRefName` alone are not sufficient — `isCrossRepository` only describes the
+   PR head's relationship to its own *base* repository, not whether *this checkout* belongs to that
+   repository, and a same-repo PR whose head branch name coincidentally matches the local branch name
+   passes a name-only check even when the checkout is a different repository entirely (verified:
+   `gh pr view --help` lists `headRepositoryOwner`/`headRepository`/`headRefOid` as the fields that
+   actually identify the head unambiguously). Bind the check to those three fields instead: resolve this
+   checkout's own repository identity (`gh repo view --json owner,name --jq
+   '"\(.owner.login)/\(.name)"'`) and compare it against `<headRepositoryOwner.login>/<headRepository.name>`,
+   and compare `headRefOid` against this checkout's current commit (`git rev-parse HEAD`). Both must
+   match. The Fix path's `Skill(commit) --push` step (step 4) would otherwise commit and push to
+   whatever repository/branch this checkout happens to be on, not the PR actually being triaged, silently
+   telling the wrong thread its finding was fixed. On any mismatch, stop and tell the user to
+   `gh pr checkout` the resolved PR reference first — never proceed on the wrong checkout, and never
+   silently substitute the current branch's own PR instead. Once confirmed (or when the resolved PR
+   reference was empty, which is inherently the current checkout's own PR), pass `-R "<owner>/<repo>"`
+   on every `gh pr`/`gh issue` call below, since the resolved PR reference may name a PR in a different
+   repository than the current checkout. **`gh api` has no `-R`/`--repo` flag at all** (verified against
+   `gh api --help`) — never pass `-R` to it. Its REST calls already carry the resolved owner/repo
+   directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
    `references/github-api-mechanics.md` mean the real resolved values, not `-R`); its `gh api graphql`
    calls target a single fixed global endpoint with no per-call repo argument, so scope those by
    passing `owner`/`name` as explicit GraphQL query variables (`-F owner=... -F name=...`, exactly as
    `references/github-api-mechanics.md`'s `reviewThreads` query already does) rather than an
    env-var-prefixed invocation whose interaction with this skill's own `Bash(gh api graphql:*)` grant
    has not been verified. Per `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
-   `gh pr checks $ARGUMENTS`, `gh pr view $ARGUMENTS --json reviews,comments`, and
+   `gh pr checks` against the resolved PR reference, `gh pr view --json reviews,comments` against the
+   resolved PR reference, and
    `gh api repos/{owner}/{repo}/pulls/{n}/comments --paginate` (the full inline-thread list — paginated,
    since a PR with enough inline comments to span multiple API pages would otherwise silently lose
    later pages from dedup and triage) immediately before acting, never from a state snapshot taken
@@ -262,7 +273,7 @@ session.
    exists, reply pointing at it instead of filing a duplicate. **Both `gh issue` commands below need the
    same `-R "<owner>/<repo>"` step 1 resolved** — unlike `gh api`, `gh issue list`/`gh issue create` do
    support `-R`, and omitting it means both commands silently default to the local checkout's own
-   repository, which is wrong whenever `$ARGUMENTS` named a PR in a different one: the dedup check would
+   repository, which is wrong whenever the resolved PR reference named a PR in a different one: the dedup check would
    compare against the wrong repository's issues, and a new issue would get filed there too. Otherwise
    draft the issue as a local
    file under `issues/`, named `YYYY-MM-DD-short-description.md` per `github-issue-creator`'s own naming
@@ -409,6 +420,23 @@ with_skill-only). Full run history, the security-review
 passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
+
+**Verified live, 2026-09-26 (issue #401 Part 1):** Workflow step 1 repeated the literal
+argument-substitution placeholder 8 times (validation line, resolution/checkout-match example commands,
+the re-check list) — the dispatch mechanism substitutes that placeholder's actual value into every
+literal occurrence before this skill's own text is read at all, so a wrongly-shaped invocation (a long
+free-text narrative instead of the documented empty/PR-number/PR-URL shape) got spliced into all 8
+places, producing a garbled, largely-unreadable Workflow (reproduced live, 2026-09-25/26). Fixed by
+keeping exactly one literal occurrence of that placeholder (the validation line itself) and referring
+to "the resolved PR reference" in
+every subsequent mention — confining any corruption from a malformed value to that one line instead of
+scattering it through the rest of the step. **Scenario**: invoke this skill with `args` set to a long
+free-text narrative instead of empty/a bare PR number/a PR URL — pass criterion: the returned Workflow
+text is corrupted (if at all) only at the single validation line, and every other step's text reads
+normally, so the mismatch is immediately visible as a validation failure rather than an unreadable wall
+of text. No fresh `skill-tester` eval re-run — the fix is a textual restructuring of an existing step,
+not new decision logic, and its correctness (occurrence count) was verified directly by grepping the
+file rather than a full end-to-end re-test.
 
 **Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
 severity definition had no fallback for a finding with no reviewer-stated severity label at all (the
