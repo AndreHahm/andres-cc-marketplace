@@ -181,6 +181,19 @@ against the current file state, the lighter of the two mechanisms
 `.claude/rules/require-tests-for-behavior-changes.md` allows for a skill not flagged
 behavior-critical/frequently-relied-on, rather than a fresh `skill-tester` eval run.
 
+## Issue #95 (2026-08-28): missing severity fallback for an unlabeled finding
+
+`references/round-and-dedup-rules.md`'s Hard Cap Exception severity definition had no fallback for a
+finding with no reviewer-stated severity label at all (the common case for an ordinary human review
+comment) — only examples that all assumed some explicit signal existed (a P1/Critical badge, or a
+human's explicit "this blocks merge"). Fixed by adding a fallback clause: classify from the described
+defect's actual content per Workflow step 2's existing "higher of stated label and actual defect"
+rule, defaulting to Major when that judgment is itself uncertain. A matching scenario and quality-gate
+item were added to `references/testing-scenarios.md`. No fresh `skill-tester` eval re-run for this
+edit — the fix is a documentation/guidance clarification of an already-established classification
+principle (Workflow step 2), not new decision logic, and its correctness was verified by re-reading it
+against the gap issue #95 described.
+
 ## Issue #401 Part 1 (2026-09-26): argument-substitution corruption, two-round fix
 
 Workflow step 1 repeated the literal argument-substitution placeholder 8 times (validation line,
