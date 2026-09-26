@@ -174,26 +174,32 @@ session.
    any such corruption to this one line rather than scattering it through the rest of this skill's
    instructions (issue #401 Part 1). If validation fails, stop and report the mismatch rather than
    proceeding.
-   `gh pr view <the resolved PR reference> --json url,headRepositoryOwner,headRepository,headRefOid`
-   resolves `<owner>/<repo>`. **When the resolved PR reference is non-empty, verify the resolved PR's
-   head actually matches this checkout before doing anything else in this workflow.**
-   `isCrossRepository`/`headRefName` alone are not sufficient — `isCrossRepository` only describes the
-   PR head's relationship to its own *base* repository, not whether *this checkout* belongs to that
-   repository, and a same-repo PR whose head branch name coincidentally matches the local branch name
-   passes a name-only check even when the checkout is a different repository entirely (verified:
-   `gh pr view --help` lists `headRepositoryOwner`/`headRepository`/`headRefOid` as the fields that
-   actually identify the head unambiguously). Bind the check to those three fields instead: resolve this
-   checkout's own repository identity (`gh repo view --json owner,name --jq
-   '"\(.owner.login)/\(.name)"'`) and compare it against `<headRepositoryOwner.login>/<headRepository.name>`,
-   and compare `headRefOid` against this checkout's current commit (`git rev-parse HEAD`). Both must
-   match. The Fix path's `Skill(commit) --push` step (step 4) would otherwise commit and push to
-   whatever repository/branch this checkout happens to be on, not the PR actually being triaged, silently
-   telling the wrong thread its finding was fixed. On any mismatch, stop and tell the user to
-   `gh pr checkout` the resolved PR reference first — never proceed on the wrong checkout, and never
-   silently substitute the current branch's own PR instead. Once confirmed (or when the resolved PR
-   reference was empty, which is inherently the current checkout's own PR), pass `-R "<owner>/<repo>"`
-   on every `gh pr`/`gh issue` call below, since the resolved PR reference may name a PR in a different
-   repository than the current checkout. **`gh api` has no `-R`/`--repo` flag at all** (verified against
+   `gh pr view <the resolved PR reference> --json url,headRefOid` resolves the PR's own `<owner>/<repo>`
+   by parsing it out of the `url` field with the same shape already validated above
+   (`^https://github\.com/([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)/pull/[0-9]+$`) — a PR's `url` always
+   names its *base* repository, regardless of whether its head branch lives in a fork, so this never
+   needs a `headRepositoryOwner`/`headRepository` field at all. **When the resolved PR reference is
+   non-empty, verify the resolved PR's head actually matches this checkout before doing anything else
+   in this workflow.** Compare this checkout's own repository identity (`gh repo view --json owner,name
+   --jq '"\(.owner.login)/\(.name)"'`) against the `url`-parsed `<owner>/<repo>`, and compare
+   `headRefOid` against this checkout's current commit (`git rev-parse HEAD`). Both must match.
+   **Deliberately compares against the PR's base repository, never `headRepositoryOwner`/
+   `headRepository`** (a prior version of this check did, and was wrong): `gh pr checkout` correctly
+   supports checking out a fork PR from the *base* repository's own clone, fetching the fork's head ref
+   without repointing `origin` — in that legitimate, common case, `gh repo view` reports the base repo
+   while `headRepositoryOwner`/`headRepository` report the fork, so comparing against head incorrectly
+   rejected a correct checkout (found live on this skill's own PR #407, CodeRabbit). A same-repo PR
+   whose head branch name coincidentally matches the local branch name still can't pass this check when
+   the checkout is a different repository entirely — the base-repo comparison and the `headRefOid`
+   check both still apply regardless of fork status. The Fix path's `Skill(commit) --push` step (step 4)
+   would otherwise commit and push to whatever repository/branch this checkout happens to be on, not the
+   PR actually being triaged, silently telling the wrong thread its finding was fixed. On any mismatch,
+   stop and tell the user to `gh pr checkout` the resolved PR reference first — never proceed on the
+   wrong checkout, and never silently substitute the current branch's own PR instead. Once confirmed (or
+   when the resolved PR reference was empty, which is inherently the current checkout's own PR), pass
+   `-R "<owner>/<repo>"` (the same `url`-parsed base repository) on every `gh pr`/`gh issue` call below,
+   since the resolved PR reference may name a PR in a different repository than the current checkout.
+   **`gh api` has no `-R`/`--repo` flag at all** (verified against
    `gh api --help`) — never pass `-R` to it. Its REST calls already carry the resolved owner/repo
    directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
    `references/github-api-mechanics.md` mean the real resolved values, not `-R`); its `gh api graphql`
@@ -429,6 +435,12 @@ skill with `args` set to a long free-text narrative instead of empty/a bare PR n
 criterion: the returned Workflow text is corrupted (if at all) only at the single validation line, and
 every other step's text reads normally, so the mismatch is immediately visible as a validation failure
 rather than an unreadable wall of text.
+
+**Fixed 2026-09-26 (PR #407, CodeRabbit round 1):** Workflow step 1's checkout-identity check compared
+against the PR's `headRepositoryOwner`/`headRepository` instead of its base repository, incorrectly
+rejecting the legitimate, common case of reviewing a fork PR checked out from the base repository's own
+clone. Now parses `<owner>/<repo>` from the PR's own `url` field instead (always the base repository,
+regardless of fork status) — full narrative in `references/development-history.md`'s "PR #407" entry.
 
 **Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
 severity definition had no fallback for a finding with no reviewer-stated severity label at all (the

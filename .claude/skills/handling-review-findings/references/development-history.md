@@ -205,3 +205,34 @@ follow-up round of the same `cross-model-review` pass caught a third leak — th
 documenting this very fix (this entry's own earlier draft) contained the literal placeholder a second
 time, inside a `grep` command example illustrating the verification — fixed by describing that
 check without reproducing the literal token either.
+
+## PR #407 (2026-09-26): checkout-identity check rejected legitimate fork-PR-from-base-clone reviews
+
+Round 1 automated review (CodeRabbit) on this skill's own #401/#403 fix PR found a pre-existing
+correctness bug in Workflow step 1's checkout-identity check, adjacent to lines the #401 Part 1 fix
+above had already touched. The check compared this checkout's own repository identity against the PR's
+`headRepositoryOwner`/`headRepository` fields — correct for a same-repo PR, but wrong for a fork PR:
+`gh pr checkout` correctly supports checking out a fork PR from the *base* repository's own clone
+(fetching the fork's head ref without repointing `origin`), and in that legitimate, common case
+`gh repo view` reports the base repo while `headRepositoryOwner`/`headRepository` report the fork —
+so the old comparison would reject a completely correct checkout.
+
+Verified live before fixing (per `.claude/rules/verify-tool-behavior-before-instructing.md`): `gh pr
+view --help`/`gh pr view --json bogusfield` confirm there is no `baseRepositoryOwner`/`baseRepository`
+field at all in `gh pr view`'s JSON output — only `headRepositoryOwner`/`headRepository`. But the same
+`gh pr view` call already requested the `url` field, and a PR's `url` is always
+`https://github.com/<base-owner>/<base-repo>/pull/<n>` — always the base repository's own namespace,
+regardless of where the head branch lives — confirmed against `gh repo view --help`'s documented
+"repository for the current directory" resolution and `gh pr checkout --help`'s documented fork
+support. Fixed by parsing `<owner>/<repo>` from the already-fetched `url` field (reusing the same
+regex shape already validated for the `$ARGUMENTS` PR-URL case) instead of ever reading
+`headRepositoryOwner`/`headRepository` — dropped both fields from the `gh pr view --json` call
+entirely, since nothing else in this skill used them. This also corrects the `-R "<owner>/<repo>"`
+value passed to every later `gh pr`/`gh issue` call in this Workflow: previously the resolved owner/repo
+could have been the fork's, not the base repo's, whenever a fork PR was named by URL — now it's always
+the base repository, where the PR and its issues actually live.
+
+No fresh `skill-tester` eval re-run — the fix is a corrected comparison target within an existing
+check, not new decision logic, and its correctness was verified against `gh`'s own real `--help`/
+`--json` field output rather than end-to-end re-tested; `scripts/smoke_test.py` re-run clean
+(6/6 checks) after the edit.
