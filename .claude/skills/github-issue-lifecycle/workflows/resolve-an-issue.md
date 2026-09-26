@@ -82,5 +82,12 @@ comment here too.
 
 **Why `filed` is missing:** this workflow reuses only two of `handling-review-findings`'s three
 statuses. That skill's third status, `filed`, means a PR-review finding became a tracked GitHub issue —
-a freestanding issue is already the tracked artifact, so `filed` has no analog here. See
-`references/status-vocabulary.md` for the full mapping.
+a freestanding issue is already the tracked artifact, so `filed` has no analog here:
+
+| This skill's status | `handling-review-findings` equivalent | Meaning |
+|---|---|---|
+| Resolved | fixed | Something was actually fixed |
+| Declined | declined | Closed with nothing fixed (won't-fix / duplicate / risk-accepted / stale / process-gap-not-defect) |
+
+`references/status-vocabulary.md` has the same mapping plus the round-based follow-up model Step 4 above
+reuses — optional deeper background, not needed to execute this step.

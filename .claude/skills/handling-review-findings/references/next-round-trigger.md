@@ -6,11 +6,11 @@ before it's ever offered (8c), and re-verify live state immediately before actua
 
 ## 8a. Resolve the triggered-cycle count
 
-This is a distinct number from the fix-driven-push "round" used elsewhere in this Workflow — see
-`references/round-and-dedup-rules.md`'s "Triggered-cycle count vs. round" for the full rationale
-(why counting by round would loop this step indefinitely, and why a raw trigger-string match can't
-distinguish this skill's own post from `codex-review-recovery`'s identical-looking retry comment).
-Compute it as **1 (round 1's automatic CI trigger) plus the number of distinct `<batch-id>` values**
+This is a distinct number from the fix-driven-push "round" used elsewhere in this Workflow — counting
+by round would loop this step indefinitely (a review cycle can come back clean with no fix-driven push
+to close the round), and a raw trigger-string match can't distinguish this skill's own post from
+`codex-review-recovery`'s identical-looking retry comment. `references/round-and-dedup-rules.md`'s
+"Triggered-cycle count vs. round" has the full rationale. Compute it as **1 (round 1's automatic CI trigger) plus the number of distinct `<batch-id>` values**
 found in `<!-- handling-review-findings-trigger:<batch-id> -->` markers **posted by the account
 actually running this skill** — resolve that account via `gh api user --jq '.login'` and count a
 marker only on a comment whose `author.login` matches it; a marker on any other author's comment is
@@ -47,16 +47,27 @@ questions:
   two real modes (3 reviewers × 2 modes would be 6 options in one question). A reviewer whose two
   trigger strings are identical (Devin) resolves to the same string either way.
 - **Fewer than 2 reviewers survive 8c** (`AskUserQuestion` needs 2-4 options, so 0 or 1 surviving
-  reviewer needs its own handling) — see `references/settings-and-round-budget.md`'s "The floor is 4
-  options, not 3" for the exact one-survivor and zero-survivor paths.
+  reviewer needs its own handling):
+  - **Exactly one reviewer survives.** Question 1 still includes the "No further round for now" option
+    alongside it (2 options total) even below `min_rounds` — but below the floor, selecting "No further
+    round for now" doesn't silently end the run the way it does at/above the floor: report that the
+    round floor requires another cycle, no second validated reviewer is available to offer a real choice
+    between, and stop for the user to either confirm triggering the one remaining reviewer or fix the
+    reviewer configuration (enable/repair another entry) before continuing.
+  - **Zero reviewers survive.** Skip this `AskUserQuestion` entirely — there is nothing valid to offer —
+    and report plainly that no reviewer is available to trigger, naming which entries were excluded and
+    why (8c's own per-entry reasons), rather than constructing an invalid question or guessing at an
+    unvalidated value.
+  This matches `references/settings-and-round-budget.md`'s "The floor is 4 options, not 3" section.
 
 Resolve each selected reviewer's posted string as its `default_review_trigger` or
 `full_review_trigger` per Question 2's answer. Remember the full decision — which reviewers, the
 profile, and the validated string(s) behind it — and reuse it for every later round this run
 triggers; don't re-read settings or re-validate from scratch before round 3 just because round 2
 already happened. If a later round needs a reviewer this run hasn't validated yet, run 8c for it
-first. A genuinely new session with no memory of an earlier answer asks fresh — see
-`references/round-and-dedup-rules.md`'s "No persisted round-counter file" section for why.
+first. A genuinely new session with no memory of an earlier answer asks fresh — this mirrors
+`references/round-and-dedup-rules.md`'s "No persisted round-counter file" discipline: state is always
+re-fetched, never reused, since this skill deliberately keeps no persistence mechanism.
 
 ## 8c. Validate every candidate before it's ever offered as an option
 
@@ -125,9 +136,12 @@ separate marker-write-then-post pairs. Write that reviewer's trigger string, a b
 `trigger-<name>.txt`, written immediately before that post — never a shared filename across
 reviewers) and post with `--body-file` — `gh pr comment <number> -R "<owner>/<repo>" --body-file
 <scratchpad-path>/trigger-<name>.txt` — never inlined into the command line, so a value that passed
-the regex but still contains shell-meaningful characters can never reach shell parsing; see
-`references/github-api-mechanics.md`'s "Posting a review-trigger comment" section for the exact
-shape. This skill's own run ends here for this round — it does not poll for the newly-triggered
-review to post back; see `references/round-and-dedup-rules.md` for why. Tell the user plainly which
+the regex but still contains shell-meaningful characters can never reach shell parsing. This matches
+`references/github-api-mechanics.md`'s "Posting a review-trigger comment" convention.
+This skill's own run ends here for this round — it does not poll for the newly-triggered review to
+post back: unlike `codex-review-recovery` (which polls one specific, already-known-fast GitHub check),
+this skill has no equivalent uniform signal across all three reviewers to poll, and review completion
+time is unbounded. `references/round-and-dedup-rules.md`'s "Why the next-round trigger doesn't poll"
+has the full comparison. Tell the user plainly which
 trigger comment(s) were posted and that re-invoking this skill once the review actually posts is how
 the next round gets triaged.
