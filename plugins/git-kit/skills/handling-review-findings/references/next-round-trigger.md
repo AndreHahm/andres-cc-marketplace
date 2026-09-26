@@ -36,11 +36,16 @@ questions:
 - **Question 1 — reviewer(s):** multi-select, one option per reviewer entry that survives 8c's
   validation, plus an explicit "No further round for now" option — **only when the triggered-cycle
   count already meets `min_rounds`** (8a); below the floor, this option is omitted entirely, since
-  stopping isn't a real choice yet. Never more than 4 options total either way, matching
+  stopping isn't a real choice yet — **except the one-survivor case below, which must include it
+  anyway just to reach `AskUserQuestion`'s 2-option minimum, and handles a below-floor selection of it
+  differently from the rule in this bullet.** Never more than 4 options total either way, matching
   `AskUserQuestion`'s own per-question cap (verified: its schema caps `options` at `maxItems: 4`).
   Each option names the reviewer plainly, not yet the exact trigger text (that depends on Question
   2). If "No further round for now" is selected — alone or with any reviewer option — treat it as
-  authoritative: ignore Question 2 and stop here, nothing gets posted.
+  authoritative: ignore Question 2 and stop here, nothing gets posted. **This authoritative-stop rule
+  applies only when the option was offered per the floor rule above** (at/above `min_rounds`, or in the
+  two-or-more-reviewers case generally) — the one-survivor-below-`min_rounds` case below is the one
+  documented exception, where the same selection triggers the confirm/fix-configuration path instead.
 - **Question 2 — review profile:** single-select, exactly 2 options, "Default review" / "Full
   review" — applied uniformly to every reviewer selected in Question 1. Asking the profile once, as
   its own question, is what keeps Question 1 within the 4-option cap even though every reviewer has

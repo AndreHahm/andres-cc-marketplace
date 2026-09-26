@@ -6,7 +6,7 @@
     {
       "id": 1,
       "name": "Round 1/2 fix path",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, this is round 1 (the first review after the PR's first push-for-review; `review_findings_severity_gate` is `false`, the default). Codex just posted exactly one finding:\n\n> **Major** — `parse_config()` at `config.py:47` doesn't handle a missing `timeout` key and raises `KeyError` instead of falling back to the documented default.\n\nTriage this finding and decide: which round does it belong to, does it get fixed/filed/declined, and what happens to its review thread. Write your full triage decision, the exact reply text you would post to the thread, and an explicit statement of whether (and when) you would resolve the thread, to `outputs/triage.md`.",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, this is round 1 (the first review after the PR's first push-for-review; `review_findings_severity_gate` is `false`, the default). Codex just posted exactly one finding:\n\n> **Major** \u2014 `parse_config()` at `config.py:47` doesn't handle a missing `timeout` key and raises `KeyError` instead of falling back to the documented default.\n\nTriage this finding and decide: which round does it belong to, does it get fixed/filed/declined, and what happens to its review thread. Write your full triage decision, the exact reply text you would post to the thread, and an explicit statement of whether (and when) you would resolve the thread, to `outputs/triage.md`.",
       "expected_output": "Classifies the finding as round 1 -> Fix path (not filed, not declined). States plainly that verification is a hard precondition before any reply/resolve action -- the reply is never sent and the thread is never resolved on the strength of a pushed commit alone. Describes committing via Skill(git-kit:commit), not a raw `git commit`. The drafted reply cites both a fixing commit SHA and a one-line summary of what verification confirmed. States the thread is resolved only after that reply, and only because verification actually passed.",
       "files": [
         "outputs/triage.md"
@@ -198,7 +198,27 @@
       "name": "Step 8 extraction: next-round-trigger.md read and followed, triggered-cycle count computed correctly",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #220. Round 1 (CI-triggered) was fully triaged. Since then, you (this skill) posted exactly one round-2 trigger decision selecting Codex, whose comment carried marker `<!-- handling-review-findings-trigger:20260825T100000Z -->` authored by the account actually running this skill. A different GitHub user, unrelated to this skill's own trigger, separately posted a comment reading `@codex review` with no marker at all, on the same PR, at some other time. `review_findings_min_rounds` is `1`, `review_findings_max_rounds` is `3`.\n\nPer your own Workflow step 8 (see `references/next-round-trigger.md` for the full procedure), compute the current triggered-cycle count and explain your reasoning. Write your answer to `outputs/count.md`.",
       "expected_output": "States the triggered-cycle count is 2 (1 for round 1's automatic CI trigger, plus 1 for the single distinct batch-id marker from this skill's own round-2 trigger). Explicitly excludes the other user's markerless `@codex review` comment from the count, since it carries no `<!-- handling-review-findings-trigger:<batch-id> -->` marker authored by the account running this skill. Demonstrates the answer was derived by actually following references/next-round-trigger.md's 8a procedure (cites the marker-authorship check), not just guessing from the condensed SKILL.md pointer.",
-      "files": ["outputs/count.md"]
+      "files": [
+        "outputs/count.md"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Step 8b reconciliation: one-survivor-below-min_rounds exception vs general omission rule",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #501. `review_findings_min_rounds` is `2`, `review_findings_max_rounds` is `3`. Round 1 (CI-triggered) was fully triaged. This skill has never triggered a further review cycle since (Workflow step 8a's triggered-cycle count is 1, from round 1's automatic CI trigger only \u2014 below `min_rounds`). At Workflow step 8c, only one reviewer entry (Codex) survives validation \u2014 CodeRabbit's `enabled` field is `false`, and Devin's trigger string fails the handle-token check.\n\nPer your own Workflow step 8b (see `references/next-round-trigger.md`'s '8b. Decide which reviewer(s)/mode' section for the full procedure), describe exactly what options Question 1 of the `AskUserQuestion` call presents in this scenario, and what happens if the user selects \"No further round for now\". Write your answer to `outputs/decision.md`.",
+      "expected_output": "States Question 1 offers exactly 2 options: Codex, and \"No further round for now\" \u2014 present even though the triggered-cycle count (1) is below min_rounds (2), because this is the documented one-survivor exception (AskUserQuestion needs a 2-option minimum, and there's no second reviewer option to pair Codex with). Explains this doesn't contradict the general rule that the option is omitted below the floor \u2014 that general rule applies to the 2-or-more-reviewers case. States that selecting \"No further round for now\" here does NOT simply stop with nothing posted (the general authoritative-stop outcome); instead it reports that the round floor requires another cycle, that no second validated reviewer is available for a real choice, and stops for the user to either confirm triggering the one remaining reviewer or fix the reviewer configuration.",
+      "files": [
+        "outputs/decision.md"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Step 8b reconciliation: general omission/authoritative-stop rule still applies when 2+ reviewers survive",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #502. `review_findings_min_rounds` is `1`, `review_findings_max_rounds` is `3`. Rounds 1 and 2 have already completed (Workflow step 8a's triggered-cycle count is 2, which already meets `min_rounds`). At Workflow step 8c, all three reviewer entries (Codex, CodeRabbit, Devin) survive validation.\n\nPer your own Workflow step 8b, describe what Question 1 offers and what happens if the user selects \"No further round for now\" in this scenario. Write your answer to `outputs/decision.md`.",
+      "expected_output": "States Question 1 offers one option per surviving reviewer (Codex, CodeRabbit, Devin) plus \"No further round for now\", since the triggered-cycle count (2) already meets min_rounds (1). States that selecting \"No further round for now\" is authoritative here: ignore Question 2, stop, nothing gets posted \u2014 the general rule. Does NOT apply the one-survivor exception's report-and-confirm behavior to this three-reviewer, above-floor scenario.",
+      "files": [
+        "outputs/decision.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -370,7 +390,9 @@
       },
       {
         "gate": "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
-        "covered_by": [22],
+        "covered_by": [
+          22
+        ],
         "note": "eval 22 exercises marker-history-based counting (round 1 + one distinct batch-id marker, excluding a markerless comment) after the step 8 extraction into references/next-round-trigger.md -- the no-fix-cycle variant specifically (a review that comes back clean, no fix-driven push) remains a separate, still-uncovered scenario, see testing_validation_coverage.uncovered"
       },
       {

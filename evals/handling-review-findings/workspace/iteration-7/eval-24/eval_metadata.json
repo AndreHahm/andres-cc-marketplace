@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-24",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {"text": "States \"No further round for now\" is offered in Question 1 because the triggered-cycle count already meets min_rounds", "type": "functionality", "target": "response"},
+    {"text": "States that selecting it is authoritative: ignore Question 2, stop here, nothing gets posted", "type": "functionality", "target": "response"},
+    {"text": "Does not apply the one-survivor exception's report-and-confirm behavior to this three-reviewer, above-floor scenario", "type": "correctness", "target": "response"}
+  ]
+}
