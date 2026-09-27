@@ -856,6 +856,21 @@ def test_python_kebab_case_prefix_passes(tmp_path):
     assert find_prefix_violations(tmp_path) == []
 
 
+def test_python_kebab_prefix_but_underscore_in_rest_fails(tmp_path):
+    # Found by a live round-2 Codex review pass: starts with the correct
+    # 'git-' kebab separator, but mixes in an underscore later in the
+    # basename -- mixing separators within one .py basename is never valid,
+    # the same rule the snake_case branch below already enforces in the
+    # other direction.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check_pr_title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "kebab-case" in violations[0].reason
+
+
 def test_python_underscore_prefix_but_hyphen_in_rest_fails(tmp_path):
     # Starts with the correct 'git_' underscore separator, but still has a
     # leftover hyphen later in the basename -- the whole basename must be
