@@ -72,6 +72,15 @@ ALLOWED_UPDATE_FIELDS = {
     # own dedicated cmd_set_prefix guard), in addition to the format
     # (_validate_prefixes) and marketplace-wide uniqueness checks below.
     "prefix",
+    # 'domain_prefix' (R33 addendum, 2026-09-27): a longer, human-readable
+    # alternative to 'prefix' a file's basename may start with instead.
+    # Curated and permanent the same way 'prefix' is -- see the 'prefix'
+    # comment above; the same guards apply symmetrically (cmd_set_domain_prefix,
+    # _validate_domain_prefixes, marketplace-wide uniqueness). Not the same field as
+    # the existing plural 'domains' (a free-form topic-tag list) -- singular
+    # 'domain_prefix' is this plugin's own filename-prefix identifier, unrelated in
+    # purpose despite the similar name.
+    "domain_prefix",
 }
 
 
@@ -234,6 +243,27 @@ def build_plan(inventory, discovered, repo_root):
                 }
             )
 
+        # Same cross-check as the 'prefix' block above, for 'domain_prefix' -- the
+        # longer, human-readable filename-prefix alternative (R33 addendum).
+        if (
+            plugin_inventory is not None
+            and existing
+            and plugin_inventory.get("domain_prefix") != existing.get("domain_prefix")
+        ):
+            plan.append(
+                {
+                    "operation": "conflict",
+                    "id": existing["id"],
+                    "name": candidate["name"],
+                    "reason": "plugin-inventory.json's domain_prefix "
+                    f"({plugin_inventory.get('domain_prefix')!r}) does not match this "
+                    f"marketplace record's domain_prefix ({existing.get('domain_prefix')!r}) -- "
+                    "register the same curated domain_prefix on both; never derive one side "
+                    "from the other to resolve this automatically",
+                    "requires_approval": True,
+                }
+            )
+
     for existing in inventory.get("plugins", []):
         if existing.get("status") == "active" and existing["name"] not in discovered_names:
             plan.append(
@@ -331,9 +361,11 @@ def validate_inventory(inventory):
     using this inventory's own bare-`name` active-record uniqueness key
     (unlike plugin-inventory's `(name, type)` pair -- a plugin has no
     `type` field). Also validates the optional per-plugin `prefix` field:
-    format, and marketplace-wide uniqueness."""
+    format, and marketplace-wide uniqueness. Also validates the optional
+    per-plugin `domain_prefix` field the same way (R33 addendum)."""
     reconcile.validate_records(inventory.get("plugins", []), uniqueness_key=lambda p: p["name"])
     _validate_prefixes(inventory.get("plugins", []))
+    _validate_domain_prefixes(inventory.get("plugins", []))
 
 
 def _validate_prefixes(plugins):
@@ -354,6 +386,27 @@ def _validate_prefixes(plugins):
                 f"also claimed by {plugin['name']!r} -- a prefix is unique marketplace-wide"
             )
         assigned[prefix] = plugin["name"]
+
+
+def _validate_domain_prefixes(plugins):
+    """Same optional-field format + marketplace-wide-uniqueness check as
+    `_validate_prefixes`, for the `domain_prefix` field (R33 addendum, 2026-09-27):
+    a longer, human-readable alternative to `prefix` a file's basename may
+    start with instead. Independent uniqueness namespace from `prefix` --
+    a plugin's `domain_prefix` is never checked against another plugin's `prefix`."""
+    assigned = {}
+    for plugin in plugins:
+        domain_prefix = plugin.get("domain_prefix")
+        if domain_prefix is None:
+            continue
+        models.validate_domain_prefix(domain_prefix)
+        if domain_prefix in assigned:
+            raise ValueError(
+                f"duplicate domain_prefix {domain_prefix!r}: "
+                f"already used by {assigned[domain_prefix]!r}, "
+                f"also claimed by {plugin['name']!r} -- a domain_prefix is unique marketplace-wide"
+            )
+        assigned[domain_prefix] = plugin["name"]
 
 
 def cmd_discover(args):

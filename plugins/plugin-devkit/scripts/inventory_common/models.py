@@ -12,6 +12,11 @@ import secrets
 
 STATUS_VALUES = {"planned", "active", "deprecated", "superseded", "retired"}
 PREFIX_PATTERN = re.compile(r"^[a-z]{3,4}$")
+# `domain_prefix` (R33 addendum, 2026-09-27): a longer, human-readable alternative to
+# `prefix` a file's basename may start with instead -- e.g. context-kit's
+# `context-audit.md` already reads naturally and doesn't need a `ctx-` rename.
+# 3-12 lowercase alphanumeric characters, starting with a letter.
+DOMAIN_PREFIX_PATTERN = re.compile(r"^[a-z][a-z0-9]{2,11}$")
 FUNCTIONAL_ROLE_VALUES = {
     "workflow",
     "reviewer",
@@ -75,6 +80,26 @@ def validate_prefix(prefix):
         raise ValueError(
             f"invalid prefix {prefix!r}; must match {PREFIX_PATTERN.pattern!r} "
             "(3-4 lowercase letters, no separator)"
+        )
+
+
+def validate_domain_prefix(domain_prefix):
+    """Validate a plugin component-file domain_prefix: 3-12 lowercase alphanumeric
+    characters starting with a letter, no separator (the hyphen/underscore is
+    prepended by the rule/tooling that uses this value as a filename prefix,
+    e.g. 'context' -> 'context-<rest>'). A longer, human-readable alternative
+    to `prefix` (R33 addendum, 2026-09-27) -- a file's basename may start with
+    either. Mirrors the `^[a-z][a-z0-9]{2,11}$` pattern in
+    marketplace-inventory.schema.json / plugin-inventory.schema.json -- keep
+    both in sync (R20)."""
+    # fullmatch, not match -- see the identical comment on validate_prefix:
+    # with `match`, `$` matches just before a trailing newline, so e.g.
+    # "context\n" would pass as a valid domain_prefix despite not actually being one.
+    if not isinstance(domain_prefix, str) or not DOMAIN_PREFIX_PATTERN.fullmatch(domain_prefix):
+        raise ValueError(
+            f"invalid domain_prefix {domain_prefix!r}; "
+            f"must match {DOMAIN_PREFIX_PATTERN.pattern!r} "
+            "(3-12 lowercase alphanumeric characters, starting with a letter, no separator)"
         )
 
 

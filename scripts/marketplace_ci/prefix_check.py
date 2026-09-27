@@ -1,6 +1,9 @@
 """Read-only checker for plugin-rulebook's component-file-prefix rule: every
 recursively-discovered file under a registered plugin's in-scope directories
-must have a basename starting with '<prefix>-'. See
+must have a basename starting with '<prefix>-' or '<domain_prefix>-' (R33
+addendum, 2026-09-27 -- `domain_prefix` is a longer, human-readable alternative to
+`prefix`), except a '.py' file, which must use snake_case for its entire
+basename instead ('<prefix>_'/'<domain_prefix>_', no hyphen anywhere else). See
 plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md's R33 rule and
 plugins/plugin-devkit/skills/plugin-rulebook/references/component-file-prefix.md
 for the full design this mirrors.
@@ -31,6 +34,19 @@ from typing import Any
 # inventory_common package from here would be backwards coupling (top-level
 # CI tooling depending on one plugin's own implementation detail).
 PREFIX_PATTERN = re.compile(r"^[a-z]{3,4}$")
+
+# Mirrors inventory_common.models.DOMAIN_PREFIX_PATTERN / the identical
+# `^[a-z][a-z0-9]{2,11}$` pattern hand-duplicated in marketplace-inventory.schema.json
+# and plugin-inventory.schema.json -- keep all four in sync (R20). `domain_prefix` is
+# a longer, human-readable alternative to `prefix` a file's basename may
+# start with instead (R33 addendum, 2026-09-27) -- e.g. context-kit's
+# `context-audit.md` already reads naturally and doesn't need a `ctx-` rename.
+DOMAIN_PREFIX_PATTERN = re.compile(r"^[a-z][a-z0-9]{2,11}$")
+
+# R33 addendum: every .py file in scope uses snake_case (underscores), not
+# kebab-case -- both for the prefix/domain_prefix separator and for the rest of the
+# basename. Every other extension keeps kebab-case (hyphen separator).
+PYTHON_SUFFIX = ".py"
 
 # Root-level directories this rule governs, checked recursively. Distinct
 # from sync_plan.py's COMPONENT_DIRS (skills/agents/commands/hooks/rules) --
@@ -96,14 +112,22 @@ def find_prefix_permanence_violations(
     marketplace.json's authoritative entry. Without `repo` (e.g. a caller
     with no working tree to read a manifest from), every rename is
     conservatively flagged, matching this module's existing fail-closed
-    posture."""
+    posture.
+
+    Covers both `prefix` and `domain_prefix` (R33 addendum, 2026-09-27) -- `domain_prefix`
+    is permanent once assigned the same way `prefix` is, for the same
+    reason: it's baked into shipped filenames the moment a plugin migrates."""
     # Deliberately a truthy check, not `is not None`: an empty-string or
     # other falsy base value is not a meaningful prior assignment to
     # protect -- find_prefix_violations' own format validation is what
     # flags a falsy/malformed value as a defect in whichever commit it
-    # exists in; once corrected to a real first-time prefix, that's a
+    # exists in; once corrected to a real first-time prefix/domain_prefix, that's a
     # legitimate first assignment here, not a permanence violation.
-    base_by_id = {p["id"]: p for p in base_inventory.get("plugins", []) if p.get("prefix")}
+    base_by_id = {
+        p["id"]: p
+        for p in base_inventory.get("plugins", [])
+        if p.get("prefix") or p.get("domain_prefix")
+    }
     head_by_id = {p["id"]: p for p in head_inventory.get("plugins", [])}
 
     authoritative_sources: dict[str, str] = {}
@@ -113,44 +137,48 @@ def find_prefix_permanence_violations(
 
     violations: list[PrefixPermanenceViolation] = []
     for plugin_id, base_plugin in base_by_id.items():
-        base_prefix = base_plugin["prefix"]
+        registered_fields = [f for f in ("prefix", "domain_prefix") if base_plugin.get(f)]
         head_plugin = head_by_id.get(plugin_id)
         if head_plugin is None:
+            registered = ", ".join(f"{f}={base_plugin[f]!r}" for f in registered_fields)
             violations.append(
                 PrefixPermanenceViolation(
                     plugin_id=plugin_id,
                     plugin_name=base_plugin.get("name", "?"),
                     reason=(
-                        f"had registered prefix {base_prefix!r} at the base commit, but the "
+                        f"had registered {registered} at the base commit, but the "
                         "record no longer exists at head"
                     ),
                 )
             )
             continue
-        head_prefix = head_plugin.get("prefix")
-        if head_prefix != base_prefix:
-            violations.append(
-                PrefixPermanenceViolation(
-                    plugin_id=plugin_id,
-                    plugin_name=head_plugin.get("name", base_plugin.get("name", "?")),
-                    reason=(
-                        f"prefix changed from {base_prefix!r} (base) to {head_prefix!r} (head) "
-                        "-- a prefix is permanent once assigned, never reused or reassigned"
-                    ),
+        for field in registered_fields:
+            base_value = base_plugin[field]
+            head_value = head_plugin.get(field)
+            if head_value != base_value:
+                violations.append(
+                    PrefixPermanenceViolation(
+                        plugin_id=plugin_id,
+                        plugin_name=head_plugin.get("name", base_plugin.get("name", "?")),
+                        reason=(
+                            f"{field} changed from {base_value!r} (base) to {head_value!r} "
+                            f"(head) -- a {field} is permanent once assigned, never reused or "
+                            "reassigned"
+                        ),
+                    )
                 )
-            )
         base_name = base_plugin.get("name")
         head_name = head_plugin.get("name")
         if head_name != base_name:
             # `name` is find_prefix_violations' own join key back to
             # marketplace.json's authoritative source (via
-            # `_load_authoritative_sources`) -- an unchanged `id`/`prefix`
-            # with a renamed `name` un-joins a still-live, still-installed
-            # plugin from its manifest entry unless the rename is
-            # coordinated with a matching marketplace.json update in the
-            # same PR, in which case find_prefix_violations still finds and
-            # scans it under the new name. Only a rename that breaks that
-            # join is a real permanence violation -- `reconcile.
+            # `_load_authoritative_sources`) -- an unchanged `id`/`prefix`/
+            # `domain_prefix` with a renamed `name` un-joins a still-live,
+            # still-installed plugin from its manifest entry unless the
+            # rename is coordinated with a matching marketplace.json update
+            # in the same PR, in which case find_prefix_violations still
+            # finds and scans it under the new name. Only a rename that
+            # breaks that join is a real permanence violation -- `reconcile.
             # apply_status_transition`'s own `new_name` field is a
             # supported, `naming_history`-tracked rename, not something
             # this check should make permanently impossible. Originally
@@ -166,13 +194,14 @@ def find_prefix_permanence_violations(
                 and authoritative_sources.get(head_name) == head_plugin.get("source")
             )
             if not still_joins:
+                registered = ", ".join(f"{f}={base_plugin[f]!r}" for f in registered_fields)
                 violations.append(
                     PrefixPermanenceViolation(
                         plugin_id=plugin_id,
                         plugin_name=head_name if head_name is not None else base_name,
                         reason=(
                             f"name changed from {base_name!r} (base) to {head_name!r} (head) "
-                            f"while prefix {base_prefix!r} stayed registered, and the head "
+                            f"while {registered} stayed registered, and the head "
                             "record does not join marketplace.json's authoritative entry for "
                             "the new name via a matching `source` -- renaming a prefixed "
                             "record must stay linked to its manifest entry, or it silently "
@@ -255,6 +284,44 @@ def _iter_files(root: Path, repo_resolved: Path):
             yield path
 
 
+def _basename_violation_reason(
+    plugin_name: str, basename: str, prefix: str | None, domain_prefix: str | None
+) -> str | None:
+    """Check one file's basename against its plugin's registered prefix
+    and/or domain_prefix (R33 addendum, 2026-09-27): the basename must start with
+    `<prefix>-` or `<domain_prefix>-` (kebab-case) -- except a `.py` file, which
+    must use snake_case for its ENTIRE basename instead (underscores
+    throughout, including the prefix/domain_prefix separator: `<prefix>_`/
+    `<domain_prefix>_`, and no leftover hyphen anywhere else in the name). Free
+    mix is allowed: either registered identifier satisfies the rule for any
+    file, new or existing -- the curator picks whichever reads better per
+    file. Returns None on a pass, or a human-readable violation reason."""
+    is_python = basename.endswith(PYTHON_SUFFIX)
+    sep = "_" if is_python else "-"
+    candidates = [f"{value}{sep}" for value in (prefix, domain_prefix) if value]
+    expected = " or ".join(repr(c) for c in candidates)
+    if is_python:
+        stem = basename[: -len(PYTHON_SUFFIX)]
+        if "-" in stem:
+            return (
+                f"Python basename contains a hyphen -- .py files must use snake_case "
+                f"(underscores) for their entire basename, not kebab-case (plugin "
+                f"{plugin_name!r})"
+            )
+        if any(stem.startswith(c) for c in candidates):
+            return None
+        return (
+            f"Python basename does not start with plugin {plugin_name!r}'s registered "
+            f"prefix/domain_prefix in snake_case form ({expected})"
+        )
+    if any(basename.startswith(c) for c in candidates):
+        return None
+    return (
+        f"basename does not start with plugin {plugin_name!r}'s registered prefix/domain_prefix "
+        f"({expected})"
+    )
+
+
 def find_prefix_violations(
     repo: Path,
     marketplace_inventory_path: Path | None = None,
@@ -290,45 +357,80 @@ def find_prefix_violations(
     # Format + marketplace-wide uniqueness, across every plugin regardless
     # of status -- checked in its own pass, before the file-basename scan
     # below, since a plugin with a malformed prefix has no well-formed
-    # `expected_prefix` to scan files against in the first place.
+    # `expected_prefix` to scan files against in the first place. Same pass
+    # also validates `domain_prefix` (R33 addendum) -- a longer, human-readable
+    # alternative to `prefix` a file's basename may start with instead, in
+    # its own independent uniqueness namespace.
     invalid_prefix_plugins: set[str] = set()
     assigned_prefixes: dict[str, str] = {}
+    invalid_domain_prefix_plugins: set[str] = set()
+    assigned_domain_prefixes: dict[str, str] = {}
     for plugin in inventory.get("plugins", []):
-        prefix = plugin.get("prefix")
-        if prefix is None:
-            continue
         plugin_name = plugin.get("name", "?")
-        # fullmatch, not match -- see the identical comment on
-        # inventory_common.models.validate_prefix (R20 sibling fix): with
-        # `match`, `$` matches just before a trailing newline, letting
-        # e.g. "abc\n" pass this format check despite not being a real
-        # 3-4-letter prefix.
-        if not isinstance(prefix, str) or not PREFIX_PATTERN.fullmatch(prefix):
-            invalid_prefix_plugins.add(plugin_name)
-            violations.append(
-                PrefixViolation(
-                    plugin=plugin_name,
-                    path=marketplace_inventory_path,
-                    reason=(
-                        f"registered prefix {prefix!r} does not match {PREFIX_PATTERN.pattern!r} "
-                        "(3-4 lowercase letters, no separator)"
-                    ),
+        prefix = plugin.get("prefix")
+        if prefix is not None:
+            # fullmatch, not match -- see the identical comment on
+            # inventory_common.models.validate_prefix (R20 sibling fix): with
+            # `match`, `$` matches just before a trailing newline, letting
+            # e.g. "abc\n" pass this format check despite not being a real
+            # 3-4-letter prefix.
+            if not isinstance(prefix, str) or not PREFIX_PATTERN.fullmatch(prefix):
+                invalid_prefix_plugins.add(plugin_name)
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered prefix {prefix!r} does not match "
+                            f"{PREFIX_PATTERN.pattern!r} (3-4 lowercase letters, no separator)"
+                        ),
+                    )
                 )
-            )
-            continue
-        if prefix in assigned_prefixes:
-            violations.append(
-                PrefixViolation(
-                    plugin=plugin_name,
-                    path=marketplace_inventory_path,
-                    reason=(
-                        f"registered prefix {prefix!r} is already used by "
-                        f"{assigned_prefixes[prefix]!r} -- a prefix is unique marketplace-wide"
-                    ),
+            elif prefix in assigned_prefixes:
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered prefix {prefix!r} is already used by "
+                            f"{assigned_prefixes[prefix]!r} -- a prefix is unique marketplace-wide"
+                        ),
+                    )
                 )
-            )
-            continue
-        assigned_prefixes[prefix] = plugin_name
+            else:
+                assigned_prefixes[prefix] = plugin_name
+
+        domain_prefix = plugin.get("domain_prefix")
+        if domain_prefix is not None:
+            if not isinstance(domain_prefix, str) or not DOMAIN_PREFIX_PATTERN.fullmatch(
+                domain_prefix
+            ):
+                invalid_domain_prefix_plugins.add(plugin_name)
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered domain_prefix {domain_prefix!r} does not match "
+                            f"{DOMAIN_PREFIX_PATTERN.pattern!r} (3-12 lowercase alphanumeric "
+                            "characters, starting with a letter, no separator)"
+                        ),
+                    )
+                )
+            elif domain_prefix in assigned_domain_prefixes:
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered domain_prefix {domain_prefix!r} is already used by "
+                            f"{assigned_domain_prefixes[domain_prefix]!r} -- a domain_prefix "
+                            "is unique marketplace-wide"
+                        ),
+                    )
+                )
+            else:
+                assigned_domain_prefixes[domain_prefix] = plugin_name
 
     authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
 
@@ -353,7 +455,7 @@ def find_prefix_violations(
     # CodeRabbit review (Major), PR #387 round 2.
     by_name: dict[str, list[dict[str, Any]]] = {}
     for plugin in inventory.get("plugins", []):
-        if plugin.get("prefix") is None:
+        if plugin.get("prefix") is None and plugin.get("domain_prefix") is None:
             continue
         by_name.setdefault(plugin.get("name", "?"), []).append(plugin)
 
@@ -398,10 +500,20 @@ def find_prefix_violations(
         scan_candidates[plugin_name] = records[0]
 
     for plugin_name, plugin in scan_candidates.items():
-        prefix = plugin["prefix"]
-        if plugin_name in invalid_prefix_plugins:
-            # Already flagged above; a malformed prefix has no well-formed
-            # `<prefix>-` pattern to scan this plugin's files against.
+        # A malformed field is excluded from the scan individually (already
+        # flagged above by the format pass), not treated as disqualifying
+        # the whole plugin -- a plugin with a valid `prefix` and an invalid
+        # `domain_prefix` (or vice versa) still gets scanned against whichever
+        # field is well-formed.
+        prefix = plugin.get("prefix") if plugin_name not in invalid_prefix_plugins else None
+        domain_prefix = (
+            plugin.get("domain_prefix")
+            if plugin_name not in invalid_domain_prefix_plugins
+            else None
+        )
+        if prefix is None and domain_prefix is None:
+            # No well-formed prefix or domain_prefix left to scan this plugin's
+            # files against.
             continue
         if plugin_name in duplicate_manifest_names:
             # marketplace.json lists this name more than once -- a spoofed
@@ -491,7 +603,6 @@ def find_prefix_violations(
                 )
             )
             continue
-        expected_prefix = f"{prefix}-"
         hooks_manifest = plugin_dir / "hooks" / HOOKS_MANIFEST_BASENAME
 
         scope_dirs = list(IN_SCOPE_DIRS)
@@ -522,15 +633,15 @@ def find_prefix_violations(
                     continue
                 if file_path == hooks_manifest:
                     continue
-                if not file_path.name.startswith(expected_prefix):
+                reason = _basename_violation_reason(
+                    plugin_name, file_path.name, prefix, domain_prefix
+                )
+                if reason is not None:
                     violations.append(
                         PrefixViolation(
                             plugin=plugin_name,
                             path=file_path,
-                            reason=(
-                                f"basename does not start with plugin {plugin_name!r}'s "
-                                f"registered prefix {expected_prefix!r}"
-                            ),
+                            reason=reason,
                         )
                     )
 

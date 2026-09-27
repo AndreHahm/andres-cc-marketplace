@@ -1766,6 +1766,282 @@ def check_prefix_mismatch_conflict():
         )
 
 
+def check_domain_prefix_valid_accepted():
+    """R33 addendum (2026-09-27) scenario: a curated, valid domain_prefix set via
+    'update' is persisted -- mirrors check_prefix_valid_accepted."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "plugina",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"apply rejected a valid domain_prefix: {apply.stderr.strip()}"
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0][
+            "domain_prefix"
+        ]
+        if stored != "plugina":
+            return False, f"expected stored domain_prefix 'plugina', got {stored!r}"
+        return True, "valid curated domain_prefix accepted and persisted via update"
+
+
+def check_domain_prefix_format_rejected():
+    """R33 addendum scenario: a malformed domain_prefix (wrong pattern) is rejected
+    before any write -- mirrors check_prefix_format_rejected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "bad_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "WayTooLongOfADomainNameHere",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted a malformed domain_prefix -- should have been rejected"
+        return (
+            True,
+            "apply correctly rejected a malformed (non ^[a-z][a-z0-9]{2,11}$) domain_prefix",
+        )
+
+
+def check_domain_prefix_duplicate_rejected():
+    """R33 addendum scenario: two plugins can never share the same
+    registered domain_prefix, marketplace-wide -- mirrors check_prefix_duplicate_rejected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a", "plugin-b"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugins = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"]
+        id_a = next(p["id"] for p in plugins if p["name"] == "plugin-a")
+        id_b = next(p["id"] for p in plugins if p["name"] == "plugin-b")
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "first_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": id_a,
+                        "field": "domain_prefix",
+                        "new_value": "dupdomain",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return (
+                False,
+                f"first apply (unique domain_prefix) unexpectedly failed: {apply.stderr.strip()}",
+            )
+
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "dup_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": id_b,
+                        "field": "domain_prefix",
+                        "new_value": "dupdomain",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return (
+                False,
+                "apply accepted a duplicate domain_prefix across two plugins -- should reject",
+            )
+        return True, "apply correctly rejected a marketplace-wide duplicate domain_prefix"
+
+
+def check_domain_prefix_reassignment_via_update_rejected():
+    """R33 addendum scenario: a domain_prefix is permanent once assigned -- mirrors
+    check_prefix_reassignment_via_update_rejected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "first_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "plugina",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return (
+                False,
+                f"first apply (initial domain_prefix) unexpectedly failed: {apply.stderr.strip()}",
+            )
+
+        before_text = inventory_path.read_text(encoding="utf-8")
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "reassign_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "newname",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return (
+                False,
+                "apply accepted reassigning an already-registered domain_prefix -- should reject",
+            )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return (
+                False,
+                "inventory file was modified despite a rejected domain_prefix reassignment",
+            )
+        return (
+            True,
+            "apply correctly rejected reassigning an already-registered domain_prefix via update",
+        )
+
+
+def check_domain_prefix_mismatch_conflict():
+    """R33 addendum scenario: a plugin-inventory.json whose domain_prefix disagrees
+    with the marketplace record's own domain_prefix must surface as a conflict --
+    mirrors check_prefix_mismatch_conflict."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
+        plugin_id, plugin_name = plugin["id"], plugin["name"]
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "set_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "plugina",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return (
+                False,
+                f"setting the marketplace-side domain_prefix failed: {apply.stderr.strip()}",
+            )
+
+        plugin_inventory_dir = repo_root / "plugin-a" / ".claude-plugin"
+        plugin_inventory_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_inventory_dir / "plugin-inventory.json").write_text(
+            json.dumps({"plugin_id": plugin_id, "domain_prefix": "other", "components": []}),
+            encoding="utf-8",
+        )
+
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op
+            for op in operations
+            if op["operation"] == "conflict"
+            and op["name"] == plugin_name
+            and "domain_prefix" in op["reason"]
+        ]
+        if not conflicts:
+            return (
+                False,
+                f"expected a domain_prefix-mismatch conflict for {plugin_name}, got: {operations}",
+            )
+        return (
+            True,
+            "plugin-inventory.json/marketplace domain_prefix mismatch correctly surfaced "
+            "as a conflict",
+        )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1805,6 +2081,11 @@ CHECKS = [
     check_prefix_duplicate_rejected,
     check_prefix_reassignment_via_update_rejected,
     check_prefix_mismatch_conflict,
+    check_domain_prefix_valid_accepted,
+    check_domain_prefix_format_rejected,
+    check_domain_prefix_duplicate_rejected,
+    check_domain_prefix_reassignment_via_update_rejected,
+    check_domain_prefix_mismatch_conflict,
 ]
 
 

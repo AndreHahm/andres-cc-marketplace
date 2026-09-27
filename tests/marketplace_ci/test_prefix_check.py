@@ -8,6 +8,7 @@ import pytest
 
 from scripts.marketplace_ci.prefix_check import (
     CHECKED_STATUSES,
+    DOMAIN_PREFIX_PATTERN,
     PREFIX_PATTERN,
     find_prefix_permanence_violations,
     find_prefix_violations,
@@ -80,10 +81,12 @@ def _write_marketplace_manifest(repo: Path, plugins: list[dict]) -> Path:
     return path
 
 
-def _plugin(name, source, prefix=None, status="active"):
+def _plugin(name, source, prefix=None, domain_prefix=None, status="active"):
     entry = {"id": f"plugin_{name}", "name": name, "source": source, "status": status}
     if prefix is not None:
         entry["prefix"] = prefix
+    if domain_prefix is not None:
+        entry["domain_prefix"] = domain_prefix
     return entry
 
 
@@ -102,7 +105,7 @@ def test_unregistered_plugin_no_findings(tmp_path):
 def test_registered_plugin_conformant_tree_passes(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
-    (plugin_dir / "scripts" / "git-check-pr-title.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "git_check_pr_title.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
     assert find_prefix_violations(tmp_path) == []
 
@@ -203,7 +206,7 @@ def test_active_record_prefix_wins_over_retired_same_name(tmp_path):
     # the manifest-registered directory.
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
-    (plugin_dir / "scripts" / "old-check.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "old-check.sh").write_text("", encoding="utf-8")
     _write_inventory(
         tmp_path,
         [
@@ -379,7 +382,7 @@ def test_source_inside_repo_via_traversal_still_scanned_normally(tmp_path):
     # source that actually escapes the repo root is a violation.
     plugin_dir = tmp_path / "nested" / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
-    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "git_check.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./nested/../nested/git-kit", prefix="git")])
     assert find_prefix_violations(tmp_path) == []
 
@@ -572,7 +575,7 @@ def test_source_mismatching_authoritative_manifest_rejected(tmp_path):
 def test_source_matching_authoritative_manifest_still_scanned_normally(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
-    (plugin_dir / "scripts" / "git-check.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "git_check.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
     assert find_prefix_violations(tmp_path) == []
 
@@ -728,3 +731,196 @@ def test_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
         == PREFIX_PATTERN.pattern
     )
     assert _prefix_schema_pattern(plugin_schema["properties"]["prefix"]) == PREFIX_PATTERN.pattern
+
+
+def test_domain_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
+    # Same duplicated-constant risk as test_prefix_pattern_stays_in_sync_...
+    # above, for `domain_prefix` (R33 addendum, 2026-09-27): '^[a-z][a-z0-9]{2,11}$'
+    # is hand-duplicated across inventory_common.models, both inventory
+    # schemas, and this module's own DOMAIN_PREFIX_PATTERN -- same reason
+    # prefix_check.py avoids importing plugin-devkit code directly.
+    import importlib.util
+
+    repo_root = Path(__file__).resolve().parents[2]
+    models_path = (
+        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "models.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "_inventory_common_models_for_domain_sync_test", models_path
+    )
+    assert spec is not None and spec.loader is not None
+    models = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(models)
+
+    marketplace_schema = json.loads(
+        (
+            repo_root
+            / "plugins/plugin-devkit/skills/marketplace-inventory/assets"
+            / "marketplace-inventory.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    plugin_schema = json.loads(
+        (
+            repo_root
+            / "plugins/plugin-devkit/skills/plugin-inventory/assets"
+            / "plugin-inventory.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert models.DOMAIN_PREFIX_PATTERN.pattern == DOMAIN_PREFIX_PATTERN.pattern
+    assert (
+        _prefix_schema_pattern(
+            marketplace_schema["definitions"]["plugin"]["properties"]["domain_prefix"]
+        )
+        == DOMAIN_PREFIX_PATTERN.pattern
+    )
+    assert (
+        _prefix_schema_pattern(plugin_schema["properties"]["domain_prefix"])
+        == DOMAIN_PREFIX_PATTERN.pattern
+    )
+
+
+# --- R33 addendum (2026-09-27): `domain_prefix` OR-match + Python snake_case ---
+
+
+def test_domain_prefix_only_match_passes_with_no_prefix_registered(tmp_path):
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "references").mkdir(parents=True)
+    (plugin_dir / "references" / "context-audit.md").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("context-kit", "./context-kit", domain_prefix="context")])
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_prefix_match_still_passes_when_domain_also_registered(tmp_path):
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "references").mkdir(parents=True)
+    (plugin_dir / "references" / "ctx-other.md").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path, [_plugin("context-kit", "./context-kit", prefix="ctx", domain_prefix="context")]
+    )
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_free_mix_of_prefix_and_domain_files_both_pass(tmp_path):
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "references").mkdir(parents=True)
+    (plugin_dir / "references" / "ctx-a.md").write_text("", encoding="utf-8")
+    (plugin_dir / "references" / "context-b.md").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path, [_plugin("context-kit", "./context-kit", prefix="ctx", domain_prefix="context")]
+    )
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_neither_prefix_nor_domain_match_fails(tmp_path):
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "references").mkdir(parents=True)
+    (plugin_dir / "references" / "other.md").write_text("", encoding="utf-8")
+    _write_inventory(
+        tmp_path, [_plugin("context-kit", "./context-kit", prefix="ctx", domain_prefix="context")]
+    )
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "'ctx-'" in violations[0].reason
+    assert "'context-'" in violations[0].reason
+
+
+def test_python_snake_case_prefix_passes(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git_check_pr_title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_python_snake_case_domain_prefix_passes(tmp_path):
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "context_check.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("context-kit", "./context-kit", domain_prefix="context")])
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_python_kebab_case_prefix_fails_even_though_prefix_matches(tmp_path):
+    # A .py basename starting with 'git-' (hyphen) must still fail -- Python
+    # files require snake_case for their ENTIRE basename, not just an
+    # underscore-vs-hyphen separator swap on an otherwise-conforming name.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check-pr-title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "snake_case" in violations[0].reason
+    assert "hyphen" in violations[0].reason
+
+
+def test_python_underscore_prefix_but_hyphen_in_rest_fails(tmp_path):
+    # Starts with the correct 'git_' underscore separator, but still has a
+    # leftover hyphen later in the basename -- the whole basename must be
+    # snake_case, not just the prefix/domain_prefix separator.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git_check-pr-title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "snake_case" in violations[0].reason
+
+
+def test_non_python_file_still_requires_kebab_case_hyphen(tmp_path):
+    # The snake_case carve-out is Python-only -- a non-.py file using an
+    # underscore separator instead of the registered prefix's hyphen form
+    # must still fail.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git_check.sh").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path.name == "git_check.sh"
+
+
+def test_invalid_domain_prefix_format_reported(tmp_path):
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", domain_prefix="GIT")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "registered domain_prefix 'GIT'" in violations[0].reason
+
+
+def test_duplicate_domain_prefix_reported(tmp_path):
+    _write_inventory(
+        tmp_path,
+        [
+            _plugin("git-kit", "./git-kit", domain_prefix="devtools"),
+            _plugin("context-kit", "./context-kit", domain_prefix="devtools"),
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "already used by 'git-kit'" in violations[0].reason
+
+
+def test_invalid_domain_prefix_does_not_block_scan_against_valid_prefix(tmp_path):
+    # A malformed `domain_prefix` is excluded from the scan individually (already
+    # reported by the format check) -- it must not disqualify a plugin whose
+    # `prefix` is otherwise valid from being scanned at all.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.sh").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git", domain_prefix="GIT")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "registered domain_prefix 'GIT'" in violations[0].reason
+
+
+def test_domain_prefix_permanence_violation_when_reassigned():
+    base = {
+        "plugins": [_plugin("context-kit", "./context-kit", domain_prefix="context")],
+    }
+    head = {
+        "plugins": [_plugin("context-kit", "./context-kit", domain_prefix="ctxt")],
+    }
+    violations = find_prefix_permanence_violations(base, head)
+    assert len(violations) == 1
+    assert "domain_prefix changed from 'context'" in violations[0].reason

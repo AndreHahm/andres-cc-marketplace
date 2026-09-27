@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git_check_pr_title.py":*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -242,7 +242,7 @@ Before creating a PR, check for uncommitted changes:
 3. **Ask draft vs. ready-to-merge**: use `AskUserQuestion` — "Create this PR as a draft, or ready-to-merge?" with options "Draft (default)" and "Ready-to-merge". Don't assume draft silently; the user may want to skip the draft step entirely (e.g. a small, already-reviewed change). Record the answer as the `--draft` decision for the next step.
 
 3.5. **Validate the title against this repository's actual CI policy** (this repository only — a no-op
-   elsewhere): run `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py" "<drafted title>"`.
+   elsewhere): run `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git_check_pr_title.py" "<drafted title>"`.
    This calls `scripts/marketplace_ci/pr_policy.py`'s real `check_pr_title()` directly, rather than
    restating its rules here — the two can never drift apart. On `FAIL`, don't create the PR with that
    title: revise it per the reported reason and re-run the check before proceeding to step 4. Two gaps

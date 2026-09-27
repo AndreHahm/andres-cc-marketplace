@@ -133,6 +133,22 @@ def apply_update(inventory, operation, collection_key, allowed_fields):
                     "permanent once assigned; correcting a wrong one is a deliberate human "
                     "decision, not an ordinary update"
                 )
+            if (
+                operation["field"] == "domain_prefix"
+                and record.get("domain_prefix") is not None
+                and record["domain_prefix"] != operation["new_value"]
+            ):
+                # Same permanence guard as 'prefix' above, for 'domain_prefix' (R33
+                # addendum, 2026-09-27) -- a longer, human-readable
+                # alternative to 'prefix' a file's basename may start with
+                # instead. Mirrors plugin-inventory.py's dedicated
+                # cmd_set_domain_prefix guard for the local copy.
+                raise ValueError(
+                    f"apply_update: refusing to overwrite already-registered domain_prefix "
+                    f"{record['domain_prefix']!r} with {operation['new_value']!r} -- "
+                    "a domain_prefix is permanent once assigned; correcting a wrong one is a "
+                    "deliberate human decision, not an ordinary update"
+                )
             record[operation["field"]] = operation["new_value"]
             return
     raise ValueError(f"apply_update: no record with id {operation['id']!r}")
