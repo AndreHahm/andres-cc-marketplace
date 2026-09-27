@@ -344,7 +344,7 @@ def find_prefix_violations(
     basename doesn't start with that plugin's own '<prefix>-'. Also
     validates every registered `prefix`'s own format and marketplace-wide
     uniqueness (regardless of plugin status, since a prefix is permanent
-    and never reused even after retirement) -- `_validate_prefixes` in
+    and never reused even after retirement) -- `_validate_prefix_fields` in
     marketplace-inventory.py's own CLI path already enforces both, but only
     on the CLI's own apply/bootstrap path; a marketplace-inventory.json
     hand-edited directly in a PR (bypassing the CLI entirely) previously
@@ -399,6 +399,33 @@ def find_prefix_violations(
                         ),
                     )
                 )
+            elif (
+                prefix in assigned_domain_prefixes
+                and assigned_domain_prefixes[prefix] != plugin_name
+            ):
+                # Cross-field collision: this plugin's `prefix` equals a
+                # *different* plugin's `domain_prefix`. `prefix` and
+                # `domain_prefix` are independent uniqueness namespaces by
+                # design (a plugin may register the same value for both --
+                # see the `!= plugin_name` guard), but a mirrored component
+                # (commands/, skills/, etc.) lands at a shared, flat
+                # `.claude/<dir>/<basename>` destination across every plugin
+                # (sync_plan.py's `_resolve_destination`, no per-plugin
+                # subdirectory) -- two different plugins could otherwise both
+                # legally produce e.g. `commands/foo-status.md` and collide
+                # at the same mirror destination. Found by a live CodeRabbit
+                # + Codex cross-model review pass, independently.
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered prefix {prefix!r} is already used as a domain_prefix "
+                            f"by {assigned_domain_prefixes[prefix]!r} -- prefix and "
+                            "domain_prefix share a namespace across different plugins"
+                        ),
+                    )
+                )
             elif prefix in assigned_prefixes:
                 violations.append(
                     PrefixViolation(
@@ -427,6 +454,24 @@ def find_prefix_violations(
                             f"registered domain_prefix {domain_prefix!r} does not match "
                             f"{DOMAIN_PREFIX_PATTERN.pattern!r} (3-12 lowercase alphanumeric "
                             "characters, starting with a letter, no separator)"
+                        ),
+                    )
+                )
+            elif (
+                domain_prefix in assigned_prefixes
+                and assigned_prefixes[domain_prefix] != plugin_name
+            ):
+                # Same cross-field collision as above, mirrored for the
+                # reverse direction (this plugin's domain_prefix equals a
+                # different plugin's prefix).
+                violations.append(
+                    PrefixViolation(
+                        plugin=plugin_name,
+                        path=marketplace_inventory_path,
+                        reason=(
+                            f"registered domain_prefix {domain_prefix!r} is already used as a "
+                            f"prefix by {assigned_prefixes[domain_prefix]!r} -- prefix and "
+                            "domain_prefix share a namespace across different plugins"
                         ),
                     )
                 )

@@ -1904,6 +1904,119 @@ def check_domain_prefix_duplicate_rejected():
         return True, "apply correctly rejected a marketplace-wide duplicate domain_prefix"
 
 
+def check_cross_plugin_prefix_domain_prefix_collision_rejected():
+    """R33 addendum scenario, found by a live CodeRabbit + Codex cross-model
+    review pass: a mirrored component (commands/, skills/, etc.) lands at a
+    shared, flat .claude/<dir>/<basename> destination across every plugin --
+    two different plugins registering the same value, one as `prefix` and the
+    other as `domain_prefix`, could otherwise both legally produce the same
+    basename and collide at the same mirror destination. Same value on the
+    SAME plugin (both fields) must still be allowed."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a", "plugin-b"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugins = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"]
+        id_a = next(p["id"] for p in plugins if p["name"] == "plugin-a")
+        id_b = next(p["id"] for p in plugins if p["name"] == "plugin-b")
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "cross_field_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": id_a, "field": "prefix", "new_value": "abc"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"setting plugin-a's prefix unexpectedly failed: {apply.stderr.strip()}"
+
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "cross_field_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": id_b,
+                        "field": "domain_prefix",
+                        "new_value": "abc",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return (
+                False,
+                "apply accepted plugin-b's domain_prefix colliding with plugin-a's prefix "
+                "-- should reject",
+            )
+        return (
+            True,
+            "apply correctly rejected a cross-plugin prefix/domain_prefix collision",
+        )
+
+
+def check_same_plugin_prefix_domain_prefix_reuse_allowed():
+    """The cross-field collision check must not fire when the SAME plugin
+    registers the same value for both prefix and domain_prefix (git-kit's
+    own real case: prefix="git", domain_prefix="git")."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "same_plugin_prefix_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [{"operation": "update", "id": plugin_id, "field": "prefix", "new_value": "abc"}]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"setting prefix unexpectedly failed: {apply.stderr.strip()}"
+
+        expected_hash = _current_hash(inventory_path)
+        plan_path = pathlib.Path(tmpdir) / "same_plugin_domain_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "domain_prefix",
+                        "new_value": "abc",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return (
+                False,
+                "apply rejected the same plugin reusing its own prefix value as "
+                f"domain_prefix: {apply.stderr.strip()}",
+            )
+        return True, "same plugin registering identical prefix and domain_prefix is allowed"
+
+
 def check_domain_prefix_reassignment_via_update_rejected():
     """R33 addendum scenario: a domain_prefix is permanent once assigned -- mirrors
     check_prefix_reassignment_via_update_rejected."""
@@ -2086,6 +2199,8 @@ CHECKS = [
     check_domain_prefix_duplicate_rejected,
     check_domain_prefix_reassignment_via_update_rejected,
     check_domain_prefix_mismatch_conflict,
+    check_cross_plugin_prefix_domain_prefix_collision_rejected,
+    check_same_plugin_prefix_domain_prefix_reuse_allowed,
 ]
 
 

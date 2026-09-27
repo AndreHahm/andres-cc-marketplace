@@ -12,7 +12,7 @@ description: >-
   file prefix" once marketplace-inventory has assigned one. Reads completed plugin-grader
   reports for scores and accepted plugin-planning output for planned
   components — it never grades, plans, or scores anything itself.
-argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|set-prefix|repair-history]"
+argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|set-prefix|set-domain-prefix|repair-history]"
 allowed-tools: Read AskUserQuestion Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/smoke_test.py:*)
 ---
 
@@ -60,7 +60,8 @@ inventory. See `../marketplace-inventory` for the root-scope sibling.
 /plugin-inventory <plugin path> [mode]
 ```
 
-`mode` is one of `build` / `check` / `plan` / `apply` / `import-grading` / `set-prefix` / `repair-history`. If omitted,
+`mode` is one of `build` / `check` / `plan` / `apply` / `import-grading` / `set-prefix` /
+`set-domain-prefix` / `repair-history`. If omitted,
 ask via `AskUserQuestion` rather than guessing — `build` only applies when no inventory exists yet, and
 running it against an existing one is a mistake worth catching before any file is touched.
 
@@ -193,6 +194,30 @@ plugins-and-components.md`'s "no silent writes" rule. `--expected-hash` is the s
 silently overwrite an already-registered *different* prefix — a prefix is permanent once assigned;
 correcting a wrong one is a deliberate human decision made explicitly, not this command's job.
 
+### Set Domain Prefix
+
+Sets this plugin's own `domain_prefix` field — the local mirrored copy of `marketplace-inventory.json`'s
+canonical per-plugin `domain_prefix` (plugin-rulebook's R33 addendum, 2026-09-27). Same shape and same
+"no silent writes" gate as Set Prefix above, since `domain_prefix` is the same kind of top-level scalar
+— a second, optional, curator-approved identifier a file's basename may start with instead of `prefix`
+(e.g. `context-audit.md` for a plugin whose `domain_prefix` is `context`, avoiding an unnecessary
+`ctx-` rename):
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py set-domain-prefix <plugin_dir> <inventory_path> <domain_prefix> --expected-hash <hash>
+```
+
+`<domain_prefix>` must already be the same curated value registered in `marketplace-inventory.json` for
+this plugin — `set-domain-prefix` never invents one, the same rule Set Prefix follows. **Checked for a
+cross-plugin collision against every other plugin's `prefix`, not just other plugins' own
+`domain_prefix` values** — `prefix` and `domain_prefix` share one namespace across *different* plugins
+(a mirrored component lands at a shared, flat `.claude/<dir>/<basename>` destination with no per-plugin
+subdirectory, so two different plugins could otherwise both legally produce the same basename), even
+though a *single* plugin may register the same value for both its own `prefix` and `domain_prefix` (see
+`marketplace-inventory`'s own `_validate_prefix_fields`). Optional independently of `prefix` — a plugin
+may register one, the other, or both, in either order; propose (and get approval for) whichever the
+curator actually wants, never both by default just because both commands exist.
+
 ### Repair History
 
 The only mode allowed to alter an existing history entry.
@@ -284,15 +309,16 @@ until a future mode gives it a writer.
   (see Plan mode above); history/scoring fields are append-only, editable only through Repair History's
   own `--confirm` gate.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
-- **`set-prefix` failures**: a malformed prefix (not `^[a-z]{3,4}$`) is rejected before any write; a
-  stale `--expected-hash` is rejected the same way `apply`/`repair-history` reject one; and an
-  already-registered, *different* prefix is refused with `SystemExit` rather than silently overwritten
-  — a prefix is permanent once assigned, so correcting one requires a deliberate, explicit decision, not
-  a routine `set-prefix` call.
+- **`set-prefix`/`set-domain-prefix` failures**: a malformed prefix (not `^[a-z]{3,4}$`) or domain_prefix
+  (not `^[a-z][a-z0-9]{2,11}$`) is rejected before any write; a stale `--expected-hash` is rejected the
+  same way `apply`/`repair-history` reject one; and an already-registered, *different* value is refused
+  with `SystemExit` rather than silently overwritten — both fields are permanent once assigned, so
+  correcting one requires a deliberate, explicit decision, not a routine `set-prefix`/`set-domain-prefix`
+  call.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
 - **Out-of-scope `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
-  `import-grading`/`repair-history`/`set-prefix`) takes `plugin_dir` and calls
+  `import-grading`/`repair-history`/`set-prefix`/`set-domain-prefix`) takes `plugin_dir` and calls
   `reconcile.require_inventory_path_under_scope_dir` before touching the file —
   `inventory_path` must resolve (after symlink resolution) to exactly
   `<plugin_dir>/.claude-plugin/plugin-inventory.json` or the command fails closed with `SystemExit`,
