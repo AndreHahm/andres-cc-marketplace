@@ -529,7 +529,7 @@ def test_duplicate_prefix_across_two_plugins_rejected(tmp_path):
 
 
 def test_duplicate_prefix_flagged_even_when_second_plugin_retired(tmp_path):
-    # _validate_prefixes' own CLI-path equivalent checks uniqueness across
+    # _validate_prefix_fields' own CLI-path equivalent checks uniqueness across
     # every status, not just active/deprecated -- a prefix is permanent
     # and never reused even after a plugin is retired. This checker must
     # agree, even though retired plugins are otherwise skipped for the
@@ -912,6 +912,50 @@ def test_duplicate_domain_prefix_reported(tmp_path):
     violations = find_prefix_violations(tmp_path)
     assert len(violations) == 1
     assert "already used by 'git-kit'" in violations[0].reason
+
+
+def test_cross_field_collision_prefix_vs_domain_prefix_rejected(tmp_path):
+    # Found by a live CodeRabbit + Codex cross-model-review pass, independently:
+    # a mirrored component lands at a shared, flat .claude/<dir>/<basename>
+    # destination across every plugin (no per-plugin subdirectory) -- two
+    # different plugins registering the same value, one as `prefix` and the
+    # other as `domain_prefix`, could both legally produce the same basename
+    # and collide at the same mirror destination.
+    _write_inventory(
+        tmp_path,
+        [
+            _plugin("git-kit", "./git-kit", prefix="abc"),
+            _plugin("context-kit", "./context-kit", domain_prefix="abc"),
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "share a namespace across different plugins" in violations[0].reason
+
+
+def test_cross_field_collision_domain_prefix_vs_prefix_rejected(tmp_path):
+    # Reverse direction of the above.
+    _write_inventory(
+        tmp_path,
+        [
+            _plugin("context-kit", "./context-kit", domain_prefix="abc"),
+            _plugin("git-kit", "./git-kit", prefix="abc"),
+        ],
+    )
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "share a namespace across different plugins" in violations[0].reason
+
+
+def test_same_plugin_may_register_identical_prefix_and_domain_prefix(tmp_path):
+    # The cross-field collision check must not fire when the SAME plugin
+    # registers the same value for both fields (git-kit's own real case:
+    # prefix="git", domain_prefix="git").
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git-check.sh").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git", domain_prefix="git")])
+    assert find_prefix_violations(tmp_path) == []
 
 
 def test_invalid_domain_prefix_does_not_block_scan_against_valid_prefix(tmp_path):

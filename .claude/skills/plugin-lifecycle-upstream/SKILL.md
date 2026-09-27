@@ -132,6 +132,19 @@ them — this step does not register the prefix *before* those files exist; what
 R33 and `scripts/marketplace_ci/prefix_check.py` are both active starting from this plugin's very first
 commit, rather than leaving it inert-by-omission the way an unmigrated pre-existing plugin currently is.
 
+**Domain-prefix assignment (plugin-rulebook's R33 addendum, 2026-09-27):** at the same combined-ask
+point, also offer `domain_prefix` — a second, optional, curator-approved identifier (pattern
+`^[a-z][a-z0-9]{2,11}$`) a file's basename may start with instead of `prefix`, useful when the plugin's
+own domain word already reads naturally as a basename (e.g. `context-audit.md` for a domain-prefix
+`context`, avoiding an unnecessary `ctx-` rename). Checked for uniqueness against every other plugin's
+*both* fields, not just other plugins' own `domain_prefix` values — `prefix` and `domain_prefix` share
+one namespace across *different* plugins, even though this same plugin may register the same value for
+both (see `marketplace-inventory`'s own `_validate_prefix_fields`). Optional independently of `prefix` —
+propose it only when it adds real value over the prefix alone, never as a default second ask just
+because the mechanism exists; if proposed and approved, apply it the same way (a second `update`
+operation, then `Skill(plugin-inventory)`'s Set Domain Prefix mode:
+`set-domain-prefix <plugin_dir> <inventory_path> <domain_prefix> --expected-hash <hash>`).
+
 ## Mirror Sync
 
 This repository's own dogfooding step only — a no-op if `scripts/marketplace_ci/` and
