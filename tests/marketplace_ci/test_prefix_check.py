@@ -852,7 +852,6 @@ def test_python_kebab_case_prefix_fails_even_though_prefix_matches(tmp_path):
     violations = find_prefix_violations(tmp_path)
     assert len(violations) == 1
     assert "snake_case" in violations[0].reason
-    assert "hyphen" in violations[0].reason
 
 
 def test_python_underscore_prefix_but_hyphen_in_rest_fails(tmp_path):
@@ -862,6 +861,20 @@ def test_python_underscore_prefix_but_hyphen_in_rest_fails(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "git_check-pr-title.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "snake_case" in violations[0].reason
+
+
+def test_python_non_hyphen_non_snake_case_stem_fails(tmp_path):
+    # Found by a live Codex cross-model-review pass: a hyphen-only check on
+    # the stem misses a non-snake-case basename that contains no hyphen at
+    # all (uppercase letters, dots) -- it still starts with the registered
+    # 'git_' prefix and has no '-', so a hyphen-only check would wrongly pass it.
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "git_Invalid.Name.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
     violations = find_prefix_violations(tmp_path)
     assert len(violations) == 1
