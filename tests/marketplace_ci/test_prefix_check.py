@@ -841,17 +841,19 @@ def test_python_snake_case_domain_prefix_passes(tmp_path):
     assert find_prefix_violations(tmp_path) == []
 
 
-def test_python_kebab_case_prefix_fails_even_though_prefix_matches(tmp_path):
-    # A .py basename starting with 'git-' (hyphen) must still fail -- Python
-    # files require snake_case for their ENTIRE basename, not just an
-    # underscore-vs-hyphen separator swap on an otherwise-conforming name.
+def test_python_kebab_case_prefix_passes(tmp_path):
+    # A .py basename starting with 'git-' (kebab-case) is still valid --
+    # snake_case is an optional alternative for .py files, not a
+    # replacement requirement (relaxed 2026-09-27; see
+    # _basename_violation_reason's own docstring for why: CI's trust
+    # boundary restores this checker from the base SHA, which can't know
+    # about a brand-new mandatory-only rule introduced in the same PR that
+    # also needs simultaneous file renames across every registered plugin).
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "git-check-pr-title.py").write_text("", encoding="utf-8")
     _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
-    violations = find_prefix_violations(tmp_path)
-    assert len(violations) == 1
-    assert "snake_case" in violations[0].reason
+    assert find_prefix_violations(tmp_path) == []
 
 
 def test_python_underscore_prefix_but_hyphen_in_rest_fails(tmp_path):

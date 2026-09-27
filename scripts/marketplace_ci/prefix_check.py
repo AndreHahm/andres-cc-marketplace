@@ -2,8 +2,10 @@
 recursively-discovered file under a registered plugin's in-scope directories
 must have a basename starting with '<prefix>-' or '<domain_prefix>-' (R33
 addendum, 2026-09-27 -- `domain_prefix` is a longer, human-readable alternative to
-`prefix`), except a '.py' file, which must use snake_case for its entire
-basename instead ('<prefix>_'/'<domain_prefix>_', no hyphen anywhere else). See
+`prefix`). A '.py' file may additionally use snake_case for its entire
+basename instead ('<prefix>_'/'<domain_prefix>_', no hyphen anywhere else) --
+an optional alternative, not a replacement for the kebab-case form every
+other extension uses. See
 plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md's R33 rule and
 plugins/plugin-devkit/skills/plugin-rulebook/references/component-file-prefix.md
 for the full design this mirrors.
@@ -295,43 +297,56 @@ def _basename_violation_reason(
     plugin_name: str, basename: str, prefix: str | None, domain_prefix: str | None
 ) -> str | None:
     """Check one file's basename against its plugin's registered prefix
-    and/or domain_prefix (R33 addendum, 2026-09-27): the basename must start with
-    `<prefix>-` or `<domain_prefix>-` (kebab-case) -- except a `.py` file, which
-    must use snake_case for its ENTIRE basename instead (underscores
-    throughout, including the prefix/domain_prefix separator: `<prefix>_`/
-    `<domain_prefix>_`, and no leftover hyphen anywhere else in the name). Free
-    mix is allowed: either registered identifier satisfies the rule for any
-    file, new or existing -- the curator picks whichever reads better per
-    file. Returns None on a pass, or a human-readable violation reason."""
-    is_python = basename.endswith(PYTHON_SUFFIX)
-    sep = "_" if is_python else "-"
-    candidates = [f"{value}{sep}" for value in (prefix, domain_prefix) if value]
-    expected = " or ".join(repr(c) for c in candidates)
-    if is_python:
-        stem = basename[: -len(PYTHON_SUFFIX)]
-        if not SNAKE_CASE_STEM_PATTERN.fullmatch(stem):
-            # Not just a hyphen check -- a stem can contain no hyphen at all
-            # and still not be snake_case (uppercase letters, dots, spaces,
-            # etc.), which a hyphen-only check would silently accept. Found
-            # by a live Codex cross-model-review pass: `git_Invalid.Name.py`
-            # and `git_foo bar.py` both start with the registered `git_`
-            # prefix and contain no hyphen, but aren't valid snake_case.
-            return (
-                f"Python basename is not valid snake_case -- .py files must use only "
-                f"lowercase letters, digits, and underscores for their entire basename, "
-                f"not kebab-case or any other form (plugin {plugin_name!r})"
-            )
-        if any(stem.startswith(c) for c in candidates):
-            return None
-        return (
-            f"Python basename does not start with plugin {plugin_name!r}'s registered "
-            f"prefix/domain_prefix in snake_case form ({expected})"
-        )
-    if any(basename.startswith(c) for c in candidates):
+    and/or domain_prefix (R33 addendum, 2026-09-27): the basename must start
+    with `<prefix>-` or `<domain_prefix>-` (kebab-case) -- the same rule
+    every other extension already follows. A `.py` file may *additionally*
+    use snake_case for its ENTIRE basename instead (underscores throughout,
+    including the prefix/domain_prefix separator: `<prefix>_`/
+    `<domain_prefix>_`, no leftover hyphen anywhere else in the name) --
+    snake_case is an optional alternative for Python files, not a
+    replacement requirement; kebab-case stays valid for `.py` too. (Relaxed
+    2026-09-27 from an earlier mandatory-snake_case-only design: CI's
+    trust boundary restores this checker from the *base* SHA, which can't
+    know about a brand-new rule introduced in the same PR, and
+    `find_prefix_violations` scans every registered plugin's whole tree
+    unconditionally -- a mandatory-only rule would force an immediate
+    simultaneous rename of every already-registered plugin's `.py` files or
+    break every future PR once merged.) Free mix is allowed: either
+    registered identifier, in either accepted form, satisfies the rule for
+    any file, new or existing -- the curator picks whichever reads better
+    per file. Returns None on a pass, or a human-readable violation
+    reason."""
+    kebab_candidates = [f"{value}-" for value in (prefix, domain_prefix) if value]
+    if any(basename.startswith(c) for c in kebab_candidates):
         return None
+    if not basename.endswith(PYTHON_SUFFIX):
+        expected = " or ".join(repr(c) for c in kebab_candidates)
+        return (
+            f"basename does not start with plugin {plugin_name!r}'s registered "
+            f"prefix/domain_prefix ({expected})"
+        )
+    stem = basename[: -len(PYTHON_SUFFIX)]
+    snake_candidates = [f"{value}_" for value in (prefix, domain_prefix) if value]
+    if any(stem.startswith(c) for c in snake_candidates):
+        if SNAKE_CASE_STEM_PATTERN.fullmatch(stem):
+            return None
+        # Starts with a valid snake_case prefix/domain_prefix but isn't
+        # fully snake_case (e.g. a leftover hyphen, or an uppercase/dot
+        # character elsewhere) -- not just a hyphen check, since a stem can
+        # contain no hyphen at all and still not be snake_case. Found by a
+        # live Codex cross-model-review pass: `git_Invalid.Name.py` starts
+        # with the registered `git_` prefix and contains no hyphen, but
+        # isn't valid snake_case.
+        return (
+            "Python basename starts with a snake_case prefix/domain_prefix but isn't "
+            "fully snake_case throughout -- either use kebab-case throughout "
+            f"({' or '.join(repr(c) for c in kebab_candidates)}) or full snake_case "
+            f"throughout (plugin {plugin_name!r})"
+        )
+    expected = " or ".join(repr(c) for c in kebab_candidates + snake_candidates)
     return (
-        f"basename does not start with plugin {plugin_name!r}'s registered prefix/domain_prefix "
-        f"({expected})"
+        f"basename does not start with plugin {plugin_name!r}'s registered "
+        f"prefix/domain_prefix, in kebab-case or (for .py files) snake_case ({expected})"
     )
 
 

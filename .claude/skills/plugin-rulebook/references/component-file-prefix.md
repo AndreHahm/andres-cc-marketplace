@@ -22,9 +22,10 @@ Every file discovered anywhere beneath a registered plugin's own:
 Each file's **basename** (not its full path) must start with `<prefix>-` or `<domain>-` (2026-09-27
 addendum — see "domain_prefix: a human-readable alternative to prefix" below), where `<prefix>` is that
 plugin's own registered `prefix` value and `<domain>` is its registered `domain_prefix` value, both from
-`marketplace-inventory.json`. A `.py` file uses snake_case for its **entire basename** instead
-(`<prefix>_`/`<domain>_`, underscores throughout, no leftover hyphen anywhere else in the name) — see
-"Python files use snake_case" below. Every other extension keeps kebab-case.
+`marketplace-inventory.json`. A `.py` file may **additionally** use snake_case for its **entire basename**
+instead (`<prefix>_`/`<domain>_`, underscores throughout, no leftover hyphen anywhere else in the name) —
+see "Python files may use snake_case" below. This is an optional alternative for `.py` files only, never
+a replacement for the kebab-case form every extension (including `.py`) already accepts.
 
 ## domain_prefix: a human-readable alternative to prefix
 
@@ -51,16 +52,31 @@ register one, the other, or both, in either order. R33 is inert for a given plug
 field is registered; once either is set, every in-scope file must match at least one of whichever
 field(s) are registered.
 
-## Python files use snake_case
+## Python files may use snake_case
 
 Every `.py` file anywhere in R33's in-scope directories (`scripts/`, `references/`, `assets/`, `hooks/`
-incl. `hooks/scripts/`, `commands/`) uses **snake_case for its entire basename** instead of kebab-case —
-both the prefix/domain separator (`_` instead of `-`) and every hyphen elsewhere in the name.
-`git-check-pr-title.py` is a violation on two counts under this addendum: it must become
-`git_check_pr_title.py`. A `.py` basename starting with the correct `<prefix>_`/`<domain>_` form but
-still containing a hyphen later in the name (e.g. `git_check-pr-title.py`) is still a violation — the
-whole basename must be snake_case, not just the separator. Every non-`.py` file is unaffected and keeps
-kebab-case as before.
+incl. `hooks/scripts/`, `commands/`) may **optionally** use **snake_case for its entire basename** instead
+of kebab-case — both the prefix/domain separator (`_` instead of `-`) and every hyphen elsewhere in the
+name — but the ordinary kebab-case form stays valid too, exactly like every other extension.
+`git-check-pr-title.py` already satisfies R33 as-is (kebab-case, starts with `git-`); a curator may
+instead rename it to `git_check_pr_title.py` (full snake_case) if that reads better, but neither form is
+required over the other. A `.py` basename that starts with the `<prefix>_`/`<domain>_` snake_case form
+but still contains a hyphen later in the name (e.g. `git_check-pr-title.py`) is a violation either way —
+mixing separators within one basename is never valid; pick kebab-case throughout or snake_case
+throughout. Every non-`.py` file is unaffected and only ever accepts kebab-case, as before.
+
+**Why optional, not mandatory (relaxed 2026-09-27, same day as the original addendum):** CI's
+`prefix-permanence` job restores `scripts/marketplace_ci/prefix_check.py` from the PR's **trusted base
+SHA**, not the PR's own copy — a deliberate security hardening from R33's original rollout that stops a
+PR from rewriting its own checker to pass. A mandatory-only Python rule introduced in the very PR that
+also needs to rename an already-registered plugin's existing `.py` files can never pass that trust
+boundary: the base-restored checker doesn't know the new rule exists yet, so it evaluates renamed files
+against the old kebab-case-only rule and fails them; reverting the rename instead fails the *PR's own*
+checker once merged, since `find_prefix_violations` scans every registered plugin's **whole** tree
+unconditionally, not just the current PR's diff — breaking every future PR touching this repo, not just
+this one. Making snake_case optional (not exclusive) removes the forced-simultaneous-migration
+requirement entirely: a plugin's existing kebab-case `.py` files stay valid indefinitely, and a curator
+opts into snake_case per-file, on their own schedule, with no trust-boundary conflict either way.
 
 ## Temporary, single-plugin exception
 
@@ -132,6 +148,6 @@ basename prefix, not a specific transformation of the rest of the name.
 Suffix/Prefix Taxonomy" section about the `-kit`/`-devkit` **plugin-name** suffix convention (e.g.
 `git-kit`, `plugin-devkit`) — a naming question about the plugin itself. R33 is about a different
 concept that happens to share the word "prefix": a **file-naming** convention applied to files *inside*
-an already-named plugin (`git-kit`'s own `scripts/git_check_pr_title.py`). The two are unrelated and
+an already-named plugin (`git-kit`'s own `scripts/git-check-pr-title.py`). The two are unrelated and
 independently decided; do not conflate them. See `naming-conventions.md`'s own R33 section for the
 explicit disambiguation.
