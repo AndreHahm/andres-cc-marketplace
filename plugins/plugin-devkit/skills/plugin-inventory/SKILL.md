@@ -208,13 +208,17 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py
 ```
 
 `<domain_prefix>` must already be the same curated value registered in `marketplace-inventory.json` for
-this plugin — `set-domain-prefix` never invents one, the same rule Set Prefix follows. **Checked for a
+this plugin — `set-domain-prefix` never invents one, the same rule Set Prefix follows. The marketplace
+registration path (`marketplace-inventory`'s own `_validate_prefix_fields`) checks the value for a
 cross-plugin collision against every other plugin's `prefix`, not just other plugins' own
-`domain_prefix` values** — `prefix` and `domain_prefix` share one namespace across *different* plugins
-(a mirrored component lands at a shared, flat `.claude/<dir>/<basename>` destination with no per-plugin
-subdirectory, so two different plugins could otherwise both legally produce the same basename), even
-though a *single* plugin may register the same value for both its own `prefix` and `domain_prefix` (see
-`marketplace-inventory`'s own `_validate_prefix_fields`). Optional independently of `prefix` — a plugin
+`domain_prefix` values, *before* this command ever runs — `prefix` and `domain_prefix` share one
+namespace across *different* plugins (a mirrored component lands at a shared, flat
+`.claude/<dir>/<basename>` destination with no per-plugin subdirectory, so two different plugins could
+otherwise both legally produce the same basename), even though a *single* plugin may register the same
+value for both its own `prefix` and `domain_prefix`. `scripts/marketplace_ci/prefix_check.py` also
+enforces this same rule as CI's own mechanical backstop. `set-domain-prefix` itself only validates and
+writes *this* plugin's own local inventory — it does not inspect other plugins or perform this
+cross-plugin check itself. Optional independently of `prefix` — a plugin
 may register one, the other, or both, in either order; propose (and get approval for) whichever the
 curator actually wants, never both by default just because both commands exist.
 

@@ -57,6 +57,15 @@ PYTHON_SUFFIX = ".py"
 # Found by a live Codex cross-model-review pass.
 SNAKE_CASE_STEM_PATTERN = re.compile(r"^[a-z0-9_]+$")
 
+# The .py kebab-case counterpart: a stem starting with a registered kebab
+# prefix/domain_prefix candidate must be kebab-case throughout too --
+# mixing separators (e.g. an underscore later in the name) is never valid
+# for a .py file. A startswith-only check isn't sufficient: e.g.
+# `git-check_pr_title.py` starts with the registered `git-` prefix but
+# mixes in underscores. Found by a live round-2 Codex review pass on the
+# same PR that introduced SNAKE_CASE_STEM_PATTERN above.
+KEBAB_CASE_STEM_PATTERN = re.compile(r"^[a-z0-9-]+$")
+
 # Root-level directories this rule governs, checked recursively. Distinct
 # from sync_plan.py's COMPONENT_DIRS (skills/agents/commands/hooks/rules) --
 # this set is a policy scope (what plugin-rulebook's R33 requires), not a
@@ -304,22 +313,26 @@ def _basename_violation_reason(
     including the prefix/domain_prefix separator: `<prefix>_`/
     `<domain_prefix>_`, no leftover hyphen anywhere else in the name) --
     snake_case is an optional alternative for Python files, not a
-    replacement requirement; kebab-case stays valid for `.py` too. (Relaxed
-    2026-09-27 from an earlier mandatory-snake_case-only design: CI's
-    trust boundary restores this checker from the *base* SHA, which can't
-    know about a brand-new rule introduced in the same PR, and
-    `find_prefix_violations` scans every registered plugin's whole tree
-    unconditionally -- a mandatory-only rule would force an immediate
-    simultaneous rename of every already-registered plugin's `.py` files or
-    break every future PR once merged.) Free mix is allowed: either
-    registered identifier, in either accepted form, satisfies the rule for
-    any file, new or existing -- the curator picks whichever reads better
-    per file. Returns None on a pass, or a human-readable violation
-    reason."""
+    replacement requirement; kebab-case stays valid for `.py` too, but must
+    also be kebab-case throughout for a `.py` file -- mixing separators
+    (e.g. a leftover underscore) is never valid there, same as the
+    snake_case branch below. Non-`.py` files keep the simpler
+    startswith-only check (no full-name kebab-case validation) -- unchanged
+    by this addendum. (Relaxed 2026-09-27 from an earlier
+    mandatory-snake_case-only design: CI's trust boundary restores this
+    checker from the *base* SHA, which can't know about a brand-new rule
+    introduced in the same PR, and `find_prefix_violations` scans every
+    registered plugin's whole tree unconditionally -- a mandatory-only rule
+    would force an immediate simultaneous rename of every
+    already-registered plugin's `.py` files or break every future PR once
+    merged.) Free mix is allowed: either registered identifier, in either
+    accepted form, satisfies the rule for any file, new or existing -- the
+    curator picks whichever reads better per file. Returns None on a pass,
+    or a human-readable violation reason."""
     kebab_candidates = [f"{value}-" for value in (prefix, domain_prefix) if value]
-    if any(basename.startswith(c) for c in kebab_candidates):
-        return None
     if not basename.endswith(PYTHON_SUFFIX):
+        if any(basename.startswith(c) for c in kebab_candidates):
+            return None
         expected = " or ".join(repr(c) for c in kebab_candidates)
         return (
             f"basename does not start with plugin {plugin_name!r}'s registered "
@@ -327,6 +340,22 @@ def _basename_violation_reason(
         )
     stem = basename[: -len(PYTHON_SUFFIX)]
     snake_candidates = [f"{value}_" for value in (prefix, domain_prefix) if value]
+    if any(stem.startswith(c) for c in kebab_candidates):
+        if KEBAB_CASE_STEM_PATTERN.fullmatch(stem):
+            return None
+        # Starts with a valid kebab-case prefix/domain_prefix but isn't
+        # fully kebab-case throughout (e.g. a leftover underscore
+        # elsewhere) -- mixing separators within one .py basename is never
+        # valid. Found by a live round-2 Codex review pass:
+        # `git-check_pr_title.py` starts with the registered `git-` prefix
+        # but mixes in underscores.
+        return (
+            "Python basename starts with a kebab-case prefix/domain_prefix but isn't "
+            "fully kebab-case throughout -- either use kebab-case throughout "
+            f"({' or '.join(repr(c) for c in kebab_candidates)}) or full snake_case "
+            f"throughout ({' or '.join(repr(c) for c in snake_candidates)}) "
+            f"(plugin {plugin_name!r})"
+        )
     if any(stem.startswith(c) for c in snake_candidates):
         if SNAKE_CASE_STEM_PATTERN.fullmatch(stem):
             return None
