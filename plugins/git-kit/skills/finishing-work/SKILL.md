@@ -7,7 +7,7 @@ description: >-
   or "get back to a clean main". Never deletes branches or worktrees itself — hands off to `/git-cleanup`
   for that.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh repo view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree list:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git ls-remote --heads origin:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git_remap_handoff_shas.py":*), Read
+allowed-tools: Bash(gh pr view:*), Bash(gh repo view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree list:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git ls-remote --heads origin:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-remap-handoff-shas.py":*), Read
 ---
 
 # Finishing Work
@@ -86,7 +86,7 @@ branch", "get back to a clean main".
    exist here): a PR merged via GitHub's rebase-merge or squash-merge rewrites every commit hash, which
    silently breaks any `.claude/output/**/*.md` report (chiefly `build-handoff-writer`'s own reports) that
    recorded the pre-merge SHAs — they end up pointing at commits unreachable from `main`. Run
-   `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git_remap_handoff_shas.py" --pr <PR number from step 1> --repo-root <repo root> --base <resolved default branch from step 2>`
+   `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-remap-handoff-shas.py" --pr <PR number from step 1> --repo-root <repo root> --base <resolved default branch from step 2>`
    and report its output as-is: which SHAs it remapped (and in which report files), and which it could not
    resolve (no unique commit-message or patch-id match — these are left untouched, never guessed). This
    only ever writes to gitignored `.claude/output/` content, never a tracked file, so it needs no commit
@@ -123,7 +123,7 @@ branch", "get back to a clean main".
 - [ ] A session sandboxed to a worktree checkout is told plainly, at both step 2 and step 6, that it
       cannot complete the sync/hand-off from there — never left to discover the `cd` failure on its own
 - [ ] A diverged local default branch at step 2 always stops rather than force-syncing
-- [ ] Step 4 always runs `git_remap_handoff_shas.py`, even when the merge preserved SHAs unchanged (a regular
+- [ ] Step 4 always runs `git-remap-handoff-shas.py`, even when the merge preserved SHAs unchanged (a regular
       merge commit) — the script itself detects the no-op case and exits cleanly; the skill never tries to
       pre-guess whether a remap is needed
 - [ ] Step 4's script never touches a tracked file — only `.claude/output/**/*.md`

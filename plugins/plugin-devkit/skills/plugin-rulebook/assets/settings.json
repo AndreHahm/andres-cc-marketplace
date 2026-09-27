@@ -262,7 +262,7 @@
     "R33_component_file_prefix": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "Every file recursively under a registered plugin's root-level scripts/, references/, assets/, hooks/ (incl. nested), and commands/ directories must be named <prefix>-<rest> or <domain>-<rest> (2026-09-27 addendum), where <prefix>/<domain> are that plugin's own registered prefix/domain_prefix marketplace-inventory.json values; a .py file uses snake_case for its entire basename instead -- inert until a plugin registers a prefix or domain_prefix; see references/component-file-prefix.md",
+      "description": "Every file recursively under a registered plugin's root-level scripts/, references/, assets/, hooks/ (incl. nested), and commands/ directories must be named <prefix>-<rest> or <domain>-<rest> (2026-09-27 addendum), where <prefix>/<domain> are that plugin's own registered prefix/domain_prefix marketplace-inventory.json values; a .py file may additionally use snake_case for its entire basename instead (optional, not a replacement for kebab-case) -- inert until a plugin registers a prefix or domain_prefix; see references/component-file-prefix.md",
       "config": {
         "canonical_reference": "references/component-file-prefix.md",
         "prefix_pattern": "^[a-z]{3,4}$",
