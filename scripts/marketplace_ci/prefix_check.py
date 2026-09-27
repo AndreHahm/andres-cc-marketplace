@@ -48,6 +48,13 @@ DOMAIN_PREFIX_PATTERN = re.compile(r"^[a-z][a-z0-9]{2,11}$")
 # basename. Every other extension keeps kebab-case (hyphen separator).
 PYTHON_SUFFIX = ".py"
 
+# The full basename (minus '.py') must be snake_case -- lowercase letters,
+# digits, and underscores only. A hyphen-only check isn't sufficient: a stem
+# with no hyphen can still be invalid snake_case (uppercase letters, dots,
+# spaces, etc.) while still starting with a registered prefix/domain_prefix.
+# Found by a live Codex cross-model-review pass.
+SNAKE_CASE_STEM_PATTERN = re.compile(r"^[a-z0-9_]+$")
+
 # Root-level directories this rule governs, checked recursively. Distinct
 # from sync_plan.py's COMPONENT_DIRS (skills/agents/commands/hooks/rules) --
 # this set is a policy scope (what plugin-rulebook's R33 requires), not a
@@ -302,11 +309,17 @@ def _basename_violation_reason(
     expected = " or ".join(repr(c) for c in candidates)
     if is_python:
         stem = basename[: -len(PYTHON_SUFFIX)]
-        if "-" in stem:
+        if not SNAKE_CASE_STEM_PATTERN.fullmatch(stem):
+            # Not just a hyphen check -- a stem can contain no hyphen at all
+            # and still not be snake_case (uppercase letters, dots, spaces,
+            # etc.), which a hyphen-only check would silently accept. Found
+            # by a live Codex cross-model-review pass: `git_Invalid.Name.py`
+            # and `git_foo bar.py` both start with the registered `git_`
+            # prefix and contain no hyphen, but aren't valid snake_case.
             return (
-                f"Python basename contains a hyphen -- .py files must use snake_case "
-                f"(underscores) for their entire basename, not kebab-case (plugin "
-                f"{plugin_name!r})"
+                f"Python basename is not valid snake_case -- .py files must use only "
+                f"lowercase letters, digits, and underscores for their entire basename, "
+                f"not kebab-case or any other form (plugin {plugin_name!r})"
             )
         if any(stem.startswith(c) for c in candidates):
             return None
