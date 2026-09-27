@@ -19,7 +19,7 @@ from pathlib import Path
 
 def main() -> int:
     if len(sys.argv) != 2:
-        print("usage: git-check-pr-title.py '<title>'", file=sys.stderr)
+        print("usage: git_check_pr_title.py '<title>'", file=sys.stderr)
         return 2
     title = sys.argv[1]
 

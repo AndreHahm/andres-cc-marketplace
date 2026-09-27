@@ -1221,10 +1221,11 @@
       "type": "hook"
     }
   ],
+  "domain_prefix": "git",
   "extensions": {},
   "plugin_id": "plugin_8b374e26",
   "plugin_name": "git-kit",
   "prefix": "git",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-25"
+  "updated_on": "2026-09-27"
 }

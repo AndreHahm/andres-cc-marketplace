@@ -1461,6 +1461,167 @@ def check_set_prefix_overwrite_refused():
         return True, "set-prefix correctly refused to overwrite an already-registered prefix"
 
 
+def check_set_domain_prefix_succeeds():
+    """R33 addendum (2026-09-27) scenario: set-domain-prefix persists a curated,
+    valid domain_prefix on a fresh (never-registered) plugin inventory -- mirrors
+    check_set_prefix_succeeds."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        result = _run(
+            "set-domain-prefix",
+            plugin_dir,
+            inventory_path,
+            "fixture",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if result.returncode != 0:
+            return (
+                False,
+                "set-domain-prefix rejected a valid, unregistered domain_prefix: "
+                f"{result.stderr.strip()}",
+            )
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["domain_prefix"]
+        if stored != "fixture":
+            return False, f"expected stored domain_prefix 'fixture', got {stored!r}"
+        return True, "set-domain-prefix correctly persisted a valid curated domain_prefix"
+
+
+def check_set_domain_prefix_format_rejected():
+    """R33 addendum scenario: set-domain-prefix rejects a malformed domain_prefix before
+    any write -- mirrors check_set_prefix_format_rejected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        result = _run(
+            "set-domain-prefix",
+            plugin_dir,
+            inventory_path,
+            "WayTooLongOfADomainNameHere",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if result.returncode == 0:
+            return (
+                False,
+                "set-domain-prefix accepted a malformed domain_prefix -- should have been rejected",
+            )
+        before = json.loads(inventory_path.read_text(encoding="utf-8")).get("domain_prefix")
+        if before is not None:
+            return False, "inventory was modified despite the malformed domain_prefix being refused"
+        return (
+            True,
+            "set-domain-prefix correctly rejected a malformed "
+            "(non ^[a-z][a-z0-9]{2,11}$) domain_prefix",
+        )
+
+
+def check_set_domain_prefix_stale_hash_rejected():
+    """R33 addendum scenario: set-domain-prefix with a deliberately wrong
+    expected_hash must be rejected outright -- mirrors
+    check_set_prefix_stale_hash_rejected."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        result = _run(
+            "set-domain-prefix",
+            plugin_dir,
+            inventory_path,
+            "fixture",
+            "--expected-hash",
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        if result.returncode == 0:
+            return (
+                False,
+                "set-domain-prefix with a wrong expected_hash succeeded -- should be rejected",
+            )
+        if "stale set-domain-prefix" not in result.stderr:
+            return (
+                False,
+                "expected a 'stale set-domain-prefix' rejection message, "
+                f"got: {result.stderr.strip()}",
+            )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a stale --expected-hash"
+        return True, "set-domain-prefix correctly rejected a stale/wrong expected_hash"
+
+
+def check_set_domain_prefix_overwrite_refused():
+    """R33 addendum scenario: a domain_prefix is permanent once assigned --
+    set-domain-prefix must refuse to silently overwrite an already-registered,
+    different value -- mirrors check_set_prefix_overwrite_refused."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        first = _run(
+            "set-domain-prefix",
+            plugin_dir,
+            inventory_path,
+            "fixture",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if first.returncode != 0:
+            return (
+                False,
+                "first set-domain-prefix (fresh, valid) unexpectedly failed: "
+                f"{first.stderr.strip()}",
+            )
+
+        second = _run(
+            "set-domain-prefix",
+            plugin_dir,
+            inventory_path,
+            "other",
+            "--expected-hash",
+            _current_hash(inventory_path),
+        )
+        if second.returncode == 0:
+            return (
+                False,
+                "set-domain-prefix overwrote an already-registered domain_prefix -- "
+                "should be refused",
+            )
+        stored = json.loads(inventory_path.read_text(encoding="utf-8"))["domain_prefix"]
+        if stored != "fixture":
+            return (
+                False,
+                f"stored domain_prefix changed despite refusal: expected 'fixture', got {stored!r}",
+            )
+        return (
+            True,
+            "set-domain-prefix correctly refused to overwrite an already-registered domain_prefix",
+        )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1495,6 +1656,10 @@ CHECKS = [
     check_set_prefix_format_rejected,
     check_set_prefix_stale_hash_rejected,
     check_set_prefix_overwrite_refused,
+    check_set_domain_prefix_succeeds,
+    check_set_domain_prefix_format_rejected,
+    check_set_domain_prefix_stale_hash_rejected,
+    check_set_domain_prefix_overwrite_refused,
 ]
 
 

@@ -10,6 +10,7 @@ Subcommands:
   import-grading  <plugin_dir> <inventory_path> <report_path> <target> <target_type>
   check           <inventory_path> <plugin_dir>
   set-prefix      <plugin_dir> <inventory_path> <prefix> --expected-hash <hash>
+  set-domain-prefix      <plugin_dir> <inventory_path> <domain_prefix> --expected-hash <hash>
   repair-history  <plugin_dir> <inventory_path> <component_id> <history_field> \
                   <replacement_history.json> --confirm <component_id> --expected-hash <hash> \
                   --expected-replacement-hash <hash>
@@ -327,6 +328,8 @@ def validate_inventory(inventory):
     )
     if inventory.get("prefix") is not None:
         models.validate_prefix(inventory["prefix"])
+    if inventory.get("domain_prefix") is not None:
+        models.validate_domain_prefix(inventory["domain_prefix"])
 
 
 def cmd_discover(args):
@@ -482,6 +485,55 @@ def cmd_set_prefix(args):
             context="set-prefix",
         )
     print(json.dumps({"prefix": args.prefix, "path": args.inventory_path}, indent=2))
+
+
+def cmd_set_domain_prefix(args):
+    """Set this plugin's own top-level `domain_prefix` field -- the mirrored copy of
+    marketplace-inventory.json's canonical per-plugin `domain_prefix`. Same shape as
+    `cmd_set_prefix` above (small dedicated hash-gated subcommand, not the
+    generic add/update vocabulary), for the same reason: `domain_prefix` is a
+    top-level scalar describing the single plugin this file is about, not a
+    per-component record field. `domain_prefix` is a longer, human-readable
+    alternative to `prefix` a file's basename may start with instead (R33
+    addendum, 2026-09-27) -- not the same field as the existing per-component
+    plural `domains` list on marketplace-inventory.json's own plugin record
+    (a free-form topic-tag list, unrelated in purpose). Refuses to silently
+    overwrite an already-registered, different domain_prefix -- a domain_prefix
+    is permanent once assigned, the same as `prefix`."""
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
+    reconcile.validate_or_exit(
+        models.validate_domain_prefix, args.domain_prefix, context="set-domain-prefix"
+    )
+    with json_store.InventoryLock(args.inventory_path):
+        inventory = reconcile.validate_or_exit(
+            json_store.read_json, args.inventory_path, context="set-domain-prefix"
+        )
+        current_hash = json_store.compute_hash(inventory)
+        if current_hash != args.expected_hash:
+            raise SystemExit(
+                f"stale set-domain-prefix: inventory hash is {current_hash} but "
+                f"--expected-hash was {args.expected_hash} -- re-read the inventory "
+                "before setting the domain_prefix"
+            )
+        existing_domain = inventory.get("domain_prefix")
+        if existing_domain is not None and existing_domain != args.domain_prefix:
+            raise SystemExit(
+                f"refusing to overwrite already-registered domain_prefix {existing_domain!r} "
+                f"with {args.domain_prefix!r} -- a domain_prefix is permanent once assigned; "
+                "this command only sets a domain_prefix that is not yet registered"
+            )
+        inventory["domain_prefix"] = args.domain_prefix
+        inventory["updated_on"] = reconcile.today()
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="set-domain-prefix",
+        )
+    print(json.dumps({"domain_prefix": args.domain_prefix, "path": args.inventory_path}, indent=2))
 
 
 def cmd_check(args):
@@ -660,6 +712,18 @@ def main():
         "approval -- rejected if the live inventory's hash no longer matches (stale snapshot)",
     )
     p.set_defaults(func=cmd_set_prefix)
+
+    p = sub.add_parser("set-domain-prefix")
+    p.add_argument("plugin_dir")
+    p.add_argument("inventory_path")
+    p.add_argument("domain_prefix")
+    p.add_argument(
+        "--expected-hash",
+        required=True,
+        help="json_store.compute_hash of the inventory exactly as shown to the user for "
+        "approval -- rejected if the live inventory's hash no longer matches (stale snapshot)",
+    )
+    p.set_defaults(func=cmd_set_domain_prefix)
 
     p = sub.add_parser("repair-history")
     p.add_argument("plugin_dir")
