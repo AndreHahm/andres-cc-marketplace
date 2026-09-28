@@ -7,7 +7,7 @@
 // confirms the underlying codex-companion.mjs subcommands still behave
 // correctly when invoked the way the new command instructions describe.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/commands-arg-handling.mjs
+// Run from plugins/codex-kit/: node scripts/smoke-tests/cdx-commands-arg-handling.mjs
 
 import { execFileSync } from "node:child_process";
 

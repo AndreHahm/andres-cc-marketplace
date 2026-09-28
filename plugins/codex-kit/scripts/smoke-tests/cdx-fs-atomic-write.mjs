@@ -8,7 +8,7 @@
 // a later reader's try/catch would silently treat as absent. Runs entirely
 // against a scratch temp directory -- never touches real plugin state.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/fs-atomic-write.mjs
+// Run from plugins/codex-kit/: node scripts/smoke-tests/cdx-fs-atomic-write.mjs
 
 import fs from "node:fs";
 import os from "node:os";

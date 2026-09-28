@@ -10,7 +10,7 @@
 // --others --exclude-standard removes the common gitignored .env case, but
 // not this one.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/git-untracked-secret-screen.mjs
+// Run from plugins/codex-kit/: node scripts/smoke-tests/cdx-git-untracked-secret-screen.mjs
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

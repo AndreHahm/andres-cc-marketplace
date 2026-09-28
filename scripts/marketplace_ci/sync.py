@@ -51,7 +51,7 @@ _HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
 # real source: the rest resolve to runtime state directories (session/broker
 # pid/sock/log files, plugin data dirs) or an optional user-repo file
 # (.secretlintignore), never another static plugin file to mirror.
-# scripts/lib/app-server-protocol.d.ts is deliberately excluded: every reference to it
+# scripts/lib/cdx-app-server-protocol.d.ts is deliberately excluded: every reference to it
 # is inside a JSDoc @typedef/@param comment, never a runtime `import`. prompts/
 # adversarial-review.md is deliberately excluded: only codex-companion.mjs's
 # `adversarial-review` subcommand reads it, and cdx-stop-review-gate-hook.mjs only ever

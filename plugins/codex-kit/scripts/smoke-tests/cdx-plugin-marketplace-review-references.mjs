@@ -14,7 +14,7 @@
 // coverage evidence actually exist -- the same reference-currency pattern
 // codex-prompt-protocol-references.mjs uses for its own skill.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/plugin-marketplace-review-references.mjs
+// Run from plugins/codex-kit/: node scripts/smoke-tests/cdx-plugin-marketplace-review-references.mjs
 
 import fs from "node:fs";
 import path from "node:path";

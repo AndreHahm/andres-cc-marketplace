@@ -60,21 +60,21 @@ etc.) has nothing to do with hooks and stays out of `.claude/` entirely:
   `import`s, `new URL(..., import.meta.url)` references, and two scripts spawned
   dynamically via `path.join(...)` + `spawn()` rather than a static import) turned up
   26 files across four different locations in the plugin, not just `scripts/`:
-  - `.claude-plugin/plugin.json` — read by `lib/app-server.mjs` for its own version string.
-  - `prompts/stop-review-gate.md` — the prompt template `stop-review-gate-hook.mjs` loads.
+  - `.claude-plugin/plugin.json` — read by `lib/cdx-app-server.mjs` for its own version string.
+  - `prompts/stop-review-gate.md` — the prompt template `cdx-stop-review-gate-hook.mjs` loads.
   - `schemas/review-output.schema.json` — read by `codex-companion.mjs`.
-  - `scripts/session-lifecycle-hook.mjs`, `scripts/stop-review-gate-hook.mjs` — the two
+  - `scripts/cdx-session-lifecycle-hook.mjs`, `scripts/cdx-stop-review-gate-hook.mjs` — the two
     entry points.
-  - `scripts/codex-companion.mjs`, `scripts/app-server-broker.mjs` — spawned as
+  - `scripts/codex-companion.mjs`, `scripts/cdx-app-server-broker.mjs` — spawned as
     subprocesses by the entry points/`lib/`, not statically imported.
-  - Every file under `scripts/lib/` except `app-server-protocol.d.ts` (a type-only
+  - Every file under `scripts/lib/` except `cdx-app-server-protocol.d.ts` (a type-only
     file, referenced only from JSDoc comments, never a runtime `import`).
 
   `prompts/adversarial-review.md` is deliberately excluded: it's read only by
   `codex-companion.mjs`'s `adversarial-review` subcommand, which
-  `stop-review-gate-hook.mjs` never invokes (it only ever calls the `task` subcommand).
+  `cdx-stop-review-gate-hook.mjs` never invokes (it only ever calls the `task` subcommand).
   Verified by actually executing all four entry points (both hooks,
-  `codex-companion.mjs`, `app-server-broker.mjs`) from their mirrored destination —
+  `codex-companion.mjs`, `cdx-app-server-broker.mjs`) from their mirrored destination —
   not just reading the source — after each newly-discovered dependency, until all four
   ran clean.
 
