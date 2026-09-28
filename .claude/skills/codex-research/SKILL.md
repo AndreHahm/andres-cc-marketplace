@@ -435,7 +435,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Structurally graded 2026-08-12 (PASS — the documented Topic-only mode and the repeated independent-synthesis-not-an-echo framing both match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-research-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/README.md` for the full check list); does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-research-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/cdx-README.md` for the full check list); does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] The context document (if any) is never `Read` before Phase 4

@@ -390,7 +390,7 @@ from HEAD~3                                             → base=HEAD~3
 --base develop --base main                              → AskUserQuestion (which base?)
 😤 quickly                                               → no flags (auto-detect scope)
 --uncommitted                                           → AskUserQuestion (not on whitelist — did you mean --scope working-tree?)
---commit abc123                                         → codex-kit:cdx-review natively supports --target commit --commit <ref> (see review.md's Target selection) — no longer an AskUserQuestion case
+--commit abc123                                         → codex-kit:cdx-review natively supports --target commit --commit <ref> (see cdx-review.md's Target selection) — no longer an AskUserQuestion case
 --foo bar implement login (on codex-rescue)             → FATAL (--foo not on rescue whitelist; treat as ANALYZE regression if it reaches companion)
 ```
 
