@@ -68,7 +68,7 @@ safety net.
 
 **Session-level first-send confirmation** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
 
-**Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly and confirm via `AskUserQuestion` before falling back to `danger-full-access` — never silently, and never on disclosure alone. This is the highest-privilege transition in the plugin (full read-write, on a run where Codex is already authorized to modify the tree); options: proceed under `danger-full-access` / abort.
+**Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:cdx-setup` already tested), state that explicitly and confirm via `AskUserQuestion` before falling back to `danger-full-access` — never silently, and never on disclosure alone. This is the highest-privilege transition in the plugin (full read-write, on a run where Codex is already authorized to modify the tree); options: proceed under `danger-full-access` / abort.
 
 ---
 
@@ -333,7 +333,7 @@ Inspect the returned JSON:
 - `status === "completed"` → proceed to fetch result
 - `status === "failed"` → categorize per §6, save failure report
 - `waitTimedOut === true` and `status` still `queued`/`running` → re-call (iteration budget permitting)
-- 6 iterations exhausted → `wait-timeout` (§6). Do NOT silently cancel; leave the job running. Show the user the JOB_ID and suggest `/codex-kit:status <JOB_ID>` for manual follow-up.
+- 6 iterations exhausted → `wait-timeout` (§6). Do NOT silently cancel; leave the job running. Show the user the JOB_ID and suggest `/codex-kit:cdx-status <JOB_ID>` for manual follow-up.
 
 Fetch the final result:
 
@@ -345,7 +345,7 @@ Full error table: `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references
 
 Notable cases:
 
-- `Task <id> is still running. Use /codex-kit:status before continuing it.` → a previous task is still in flight. Show the user the active jobId and stop. Never silently cancel.
+- `Task <id> is still running. Use /codex-kit:cdx-status before continuing it.` → a previous task is still in flight. Show the user the active jobId and stop. Never silently cancel.
 - `Stored job <id> is missing its task request payload.` → detached worker couldn't load the request. `recovery-impossible`. Save failure report.
 
 ---

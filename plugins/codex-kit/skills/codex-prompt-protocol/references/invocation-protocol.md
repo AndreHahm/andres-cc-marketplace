@@ -22,7 +22,7 @@ CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
 `codex-companion.mjs` path inside the user's plugin install. If the Codex CLI
 itself isn't installed or runnable, calls fail with `"Codex CLI is not
 installed or is missing required runtime support..."` (see §6) — this is the
-`setup` error category. Redirect the user to `/codex-kit:setup` and stop.
+`setup` error category. Redirect the user to `/codex-kit:cdx-setup` and stop.
 
 ---
 
@@ -182,9 +182,9 @@ codex-kit's task/review skills use exactly two patterns to run the companion.
 
 The companion's `--background` is a no-op here, so we use Claude's own Bash
 `run_in_background=true` to keep the wrapper alive past Bash's 300s
-per-call timeout. Poll primarily via `BashOutput`, not `/codex-kit:status` —
+per-call timeout. Poll primarily via `BashOutput`, not `/codex-kit:cdx-status` —
 the companion still tracks this run as a job internally (see §5), so
-`/codex-kit:status --all` remains a useful side channel if the primary
+`/codex-kit:cdx-status --all` remains a useful side channel if the primary
 `BashOutput`-based poll ever needs cross-checking.
 
 ```bash
@@ -293,7 +293,7 @@ cap, surface as `wait-timeout` (§6).
   `review` and `adversarial-review`. This does **not** mean the companion
   skips job tracking for these calls: `handleReviewCommand` still creates
   and persists a job record (`review-<id>`) exactly like `task` does, so
-  the run is visible via `/codex-kit:status --all` while it's running and
+  the run is visible via `/codex-kit:cdx-status --all` while it's running and
   after it completes. That companion-side job ID is simply never returned
   to the caller in the payload the way `task --background`'s `jobId` is —
   Claude has no need for it, since Pattern A polls via Claude's own
@@ -320,12 +320,12 @@ blame the user.
 |-------------------|----------|--------|--------|
 | `not authenticated` | auth | `lib/cdx-codex.mjs`'s `buildAuthStatus` default `detail` field | Suggest `codex login` |
 | `OPENAI_API_KEY` (stderr substring match) | auth | `lib/codex-exec.mjs`'s `runCodexExec` only — a primitive `codex-companion.mjs` never calls directly; used by `codex-review-bridge` and any other `runCodexExec` caller instead, which surface this as the `auth_unavailable` typed-failure category rather than a prose message | Suggest `codex login` |
-| `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/cdx-codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
+| `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/cdx-codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:cdx-setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
 | `This command must run inside a Git repository.` | environment | `lib/cdx-git.mjs`'s `ensureGitRepository` | Tell user, stop |
 | `unknown revision` / `bad revision` | bad-input | `git rev-parse` (git's own error, not this codebase's) | Show `git branch --list`, AskUserQuestion |
 | ``does not support custom focus text`` | wrong-skill | `validateNativeReviewRequest` | Should NOT fire from a codex-kit task/review skill: Phase 1 strips focus text and offers the adversarial redirect. If it fires, Phase 1 was skipped → SKILL.md regression. |
 | `Provide a prompt, a prompt file, piped stdin, or use --resume-last.` | prompt-empty | `requireTaskRequest` | Pattern B failed before consuming stdin. Common cause: `cat` failed and `set -o pipefail` was missing, OR a positional arg overrode stdin (§3). |
-| `Task <id> is still running. Use /codex-kit:status before continuing it.` | concurrency-conflict | thrown when an active task is found | Previous Codex task in flight. Show user the active jobId, stop. Do NOT silently cancel. |
+| `Task <id> is still running. Use /codex-kit:cdx-status before continuing it.` | concurrency-conflict | thrown when an active task is found | Previous Codex task in flight. Show user the active jobId, stop. Do NOT silently cancel. |
 | `Unsupported reasoning effort "<value>"` | bad-input | effort normalization against `VALID_REASONING_EFFORTS` | codex-rescue: effort must be `{none, minimal, low, medium, high, xhigh}`. Re-prompt via AskUserQuestion. |
 | `Choose either --resume/--resume-last or --fresh.` | bad-input | `handleTask` | codex-rescue: ANALYZE produced conflicting flags. Re-prompt. |
 | `Missing value for --<key>` | bad-input | `lib/cdx-args.mjs`'s `parseArgs` | Phase 1 should have caught this → ANALYZE regression. |
@@ -390,7 +390,7 @@ from HEAD~3                                             → base=HEAD~3
 --base develop --base main                              → AskUserQuestion (which base?)
 😤 quickly                                               → no flags (auto-detect scope)
 --uncommitted                                           → AskUserQuestion (not on whitelist — did you mean --scope working-tree?)
---commit abc123                                         → codex-kit:review natively supports --target commit --commit <ref> (see review.md's Target selection) — no longer an AskUserQuestion case
+--commit abc123                                         → codex-kit:cdx-review natively supports --target commit --commit <ref> (see review.md's Target selection) — no longer an AskUserQuestion case
 --foo bar implement login (on codex-rescue)             → FATAL (--foo not on rescue whitelist; treat as ANALYZE regression if it reaches companion)
 ```
 

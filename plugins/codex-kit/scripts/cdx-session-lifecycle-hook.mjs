@@ -71,7 +71,7 @@ export function cleanupSessionJobs(cwd, sessionId) {
 
     // Only drop jobs that were still queued/running at session end — a
     // completed job's result and log file must survive so a later
-    // /codex-kit:result in a fresh session can still find it.
+    // /codex-kit:cdx-result in a fresh session can still find it.
     state.jobs = state.jobs.filter(
       (job) => job.sessionId !== sessionId || !(job.status === "queued" || job.status === "running")
     );

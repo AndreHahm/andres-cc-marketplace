@@ -106,7 +106,7 @@ the machine to an external CLI) through a mechanism of its own:
   for its unattended-CI case, where no session exists to confirm in at all).
 - **The Stop review-gate hook** (`hooks/hooks.json`'s `Stop` entry, backed
   by `scripts/cdx-stop-review-gate-hook.mjs`): the one-time `AskUserQuestion`
-  confirmation `/codex-kit:setup --enable-review-gate` requires before
+  confirmation `/codex-kit:cdx-setup --enable-review-gate` requires before
   turning the gate on is this component's exception — once enabled, the
   gate dispatches to Codex automatically on every future turn's end, with
   no per-invocation confirmation possible from inside a hook.

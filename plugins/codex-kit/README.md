@@ -18,19 +18,19 @@ cc --plugin-dir /path/to/plugins/codex-kit
 
 ## Usage
 
-Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding using the canonical Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred taxonomy before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All 7 commands are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
+Run `/codex-kit:cdx-review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding using the canonical Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred taxonomy before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All 7 commands are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
 
 ## Commands
 
 | Name | Purpose |
 |---|---|
-| `/codex-kit:setup` | Check Codex CLI readiness, sandbox viability, and config; optionally toggle the stop-time review gate |
-| `/codex-kit:review` | Run a Codex code review against local git state, with independent double-check verification |
-| `/codex-kit:adversarial-review` | Run a Codex review that challenges the implementation approach and design choices, with independent double-check verification |
-| `/codex-kit:status` | Show active and recent Codex jobs for this repository |
-| `/codex-kit:result` | Show the stored final output for a finished Codex job in this repository |
-| `/codex-kit:cancel` | Cancel an active background Codex job in this repository |
-| `/codex-kit:transfer` | Transfer the current Claude Code session into a resumable Codex thread |
+| `/codex-kit:cdx-setup` | Check Codex CLI readiness, sandbox viability, and config; optionally toggle the stop-time review gate |
+| `/codex-kit:cdx-review` | Run a Codex code review against local git state, with independent double-check verification |
+| `/codex-kit:cdx-adversarial-review` | Run a Codex review that challenges the implementation approach and design choices, with independent double-check verification |
+| `/codex-kit:cdx-status` | Show active and recent Codex jobs for this repository |
+| `/codex-kit:cdx-result` | Show the stored final output for a finished Codex job in this repository |
+| `/codex-kit:cdx-cancel` | Cancel an active background Codex job in this repository |
+| `/codex-kit:cdx-transfer` | Transfer the current Claude Code session into a resumable Codex thread |
 
 ## Skills
 
@@ -50,14 +50,14 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 
 ## Hooks
 
-`SessionStart`/`SessionEnd` spawn and tear down the internal Codex broker process. An optional `Stop` hook (enable via `/codex-kit:setup --enable-review-gate`) runs a Codex-side check on the prior turn before the session is allowed to stop.
+`SessionStart`/`SessionEnd` spawn and tear down the internal Codex broker process. An optional `Stop` hook (enable via `/codex-kit:cdx-setup --enable-review-gate`) runs a Codex-side check on the prior turn before the session is allowed to stop.
 
 ## Known Limitations
 
 - **7 of codex-kit's 11 skills have no live, empirical `skill-tester` run** — graded structurally against their eval's `expected_output` instead (recorded in each skill's own "Testing & Validation" section). See [CONTRIBUTING.md](./CONTRIBUTING.md) for why (several of these skills shell out to the real Codex CLI, so a live run has real external side effects). Four skills have real live coverage: `codex-windows-guardrails` has all 3 of its `evals/codex-windows-guardrails/` evals run live, with `grading.json` on disk for each — plus its own persisted, executable smoke test (`scripts/smoke-tests/codex-windows-guardrails-preflight.mjs`, 20 scenarios); `codex-review-bridge` has 3 of its 4 evals (`eval-2`, `eval-3`, `eval-4`) run live, with its original `eval-1` still structural-only; `codex-audit-loop` and `codex-peer-review` each have their 1 eval run live via a full `skill-tester` baseline comparison (2026-08-24), with `grading.json` on disk for both configurations.
 - **`codex-review-bridge`'s `executionProfile` isn't threaded into the returned envelope** — `provenance.execution_profile` is Codex's own self-report, not an echo of the caller's validated request; a caller auditing which isolation profile actually ran can't yet trust this field. See `codex-review-bridge/SKILL.md`'s "Inputs" section.
 - **Six of `codex-review-bridge`'s semantic-validation checks are defined but not yet enforced** — `contract_version` support, full `target_paths` cross-checking, cited line-number validity, `axis`/`severity` allowlist-checking, `verdict` pass/fail-rule consistency, and undeclared-inspection-limit detection. See `codex-review-bridge/references/semantic-validation.md`'s "Not yet implemented" list.
-- **The `Stop` review-gate hook can block for up to 9 minutes** — an accepted, disclosed deviation from the platform's own "hooks should complete in under 5 seconds" performance guidance, since the gate's entire job is running a real Codex review before the session may stop. It's opt-in only (`config.stopReviewGate` defaults to `false`), the duration is disclosed to the user via `AskUserQuestion` at `/codex-kit:setup --enable-review-gate` time, and `hooks/hooks.json`'s own 600s timeout stays safely under the platform's hard-kill ceiling. If Claude Code begins throttling or auto-disabling a hook that "regularly" runs this long, this is the tradeoff to revisit.
+- **The `Stop` review-gate hook can block for up to 9 minutes** — an accepted, disclosed deviation from the platform's own "hooks should complete in under 5 seconds" performance guidance, since the gate's entire job is running a real Codex review before the session may stop. It's opt-in only (`config.stopReviewGate` defaults to `false`), the duration is disclosed to the user via `AskUserQuestion` at `/codex-kit:cdx-setup --enable-review-gate` time, and `hooks/hooks.json`'s own 600s timeout stays safely under the platform's hard-kill ceiling. If Claude Code begins throttling or auto-disabling a hook that "regularly" runs this long, this is the tradeoff to revisit.
 
 ## Contributing
 

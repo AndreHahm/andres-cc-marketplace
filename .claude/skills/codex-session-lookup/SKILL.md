@@ -28,7 +28,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-id.py" --limit 5
 ```
 
-Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text). **`--full` can surface a secret** — a past Codex prompt in this history routinely contains exactly what a credential/PII review cares about (pasted keys, `env` output, `.env` file contents); treat `--full` output the same way `/codex-kit:transfer`'s full-transcript egress is treated, and avoid pasting it somewhere else unreviewed.
+Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text). **`--full` can surface a secret** — a past Codex prompt in this history routinely contains exactly what a credential/PII review cares about (pasted keys, `env` output, `.env` file contents); treat `--full` output the same way `/codex-kit:cdx-transfer`'s full-transcript egress is treated, and avoid pasting it somewhere else unreviewed.
 
 ## Inspect a session file
 
@@ -38,7 +38,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/inspect-sessi
 
 Reads a `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` (or `.json`) file and prints its session metadata (id, timestamp, cwd), or just the session ID with `--id-only`.
 
-Useful alongside `codex-rescue`/`codex-verify`/`codex-research`'s session-resume paths and `/codex-kit:transfer`'s output when a `codex resume <session-id>` command needs manual recovery.
+Useful alongside `codex-rescue`/`codex-verify`/`codex-research`'s session-resume paths and `/codex-kit:cdx-transfer`'s output when a `codex resume <session-id>` command needs manual recovery.
 
 ---
 

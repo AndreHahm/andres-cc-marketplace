@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Smoke test: scripts/lib/cdx-secret-filenames.mjs and its use in
 // scripts/lib/cdx-git.mjs's formatUntrackedFile (via the exported
-// collectReviewContext), which /codex-kit:review and
-// /codex-kit:adversarial-review both build their Codex payload from.
+// collectReviewContext), which /codex-kit:cdx-review and
+// /codex-kit:cdx-adversarial-review both build their Codex payload from.
 //
 // Confirms the fix: an untracked, non-gitignored secret-named file (e.g.
 // id_rsa, secrets.json) is skipped by filename before its content is ever

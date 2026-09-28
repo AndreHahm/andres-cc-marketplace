@@ -1011,7 +1011,7 @@ export async function interruptAppServerTurn(cwd, { threadId, turnId }) {
 export async function runAppServerReview(cwd, options = {}) {
   const availability = getCodexAvailability(cwd);
   if (!availability.available) {
-    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:setup`.");
+    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:cdx-setup`.");
   }
 
   return withAppServer(cwd, async (client) => {
@@ -1068,7 +1068,7 @@ export async function runAppServerReview(cwd, options = {}) {
 export async function importExternalAgentSession(cwd, options = {}) {
   const availability = getCodexAvailability(cwd);
   if (!availability.available) {
-    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:setup`.");
+    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:cdx-setup`.");
   }
   if (!options.sourcePath) {
     throw new Error("A Claude session source path is required.");
@@ -1105,7 +1105,7 @@ export async function importExternalAgentSession(cwd, options = {}) {
 export async function runAppServerTurn(cwd, options = {}) {
   const availability = getCodexAvailability(cwd);
   if (!availability.available) {
-    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:setup`.");
+    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:cdx-setup`.");
   }
 
   return withAppServer(cwd, async (client) => {
@@ -1172,7 +1172,7 @@ export async function runAppServerTurn(cwd, options = {}) {
 export async function findLatestTaskThread(cwd) {
   const availability = getCodexAvailability(cwd);
   if (!availability.available) {
-    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:setup`.");
+    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:cdx-setup`.");
   }
 
   return withAppServer(cwd, async (client) => {

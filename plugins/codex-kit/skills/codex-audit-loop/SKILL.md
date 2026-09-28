@@ -4,7 +4,7 @@ description: >-
   Whole-project multi-lens Codex audit, optionally with
   independently-verified autonomous fixing. Explicitly opt-in only — do NOT
   invoke for a single small PR, commit, or uncommitted diff (use
-  /codex-kit:review instead). Use only when the user explicitly asks for a
+  /codex-kit:cdx-review instead). Use only when the user explicitly asks for a
   complete multi-lens whole-project review, review-until-convergence,
   multi-branch comparison, or verify-and-fix across isolated worktrees. This
   is expensive (3-20 parallel Codex calls per round, for up to 10 rounds
@@ -74,7 +74,7 @@ Never creates PRs, deploys, or posts comments without explicit authority. Mode A
 - An explicit request for review-until-convergence, multi-branch comparison, or verify-and-fix
 
 **Verify it does NOT activate on:**
-- A single small PR, commit, or uncommitted diff → `/codex-kit:review`
+- A single small PR, commit, or uncommitted diff → `/codex-kit:cdx-review`
 
 **Concrete scenarios to check:**
 1. Any mode launched → `AskUserQuestion` confirms scope and cost first; never launches silently.

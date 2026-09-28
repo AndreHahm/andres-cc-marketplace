@@ -4,7 +4,7 @@ description: >-
   Deep-dive research using Codex with Claude's cross-model synthesis. Use
   when asked "codex research", "deep dive with codex", "investigate this
   topic (codex)", or "resume" a prior research thread. Not for reviewing code
-  changes/diffs (use the /codex-kit:review command for that), for
+  changes/diffs (use the /codex-kit:cdx-review command for that), for
   verifying an existing written plan/document (use codex-verify for that),
   or for validating Claude's own already-formed analysis, design, or
   recommendation before presenting it (use codex-peer-review for that). For
@@ -22,7 +22,7 @@ document) to Codex **without loading the document into your own
 context**, then synthesize Codex's findings with your own independent
 analysis.
 
-For code review use `/codex-kit:review`. For plan verification, use the
+For code review use `/codex-kit:cdx-review`. For plan verification, use the
 `codex-verify` skill.
 
 ## Quick Start
@@ -289,7 +289,7 @@ node "$CODEX_COMPANION" status --wait "<literal JOB_ID>" \
 - `completed` → fetch result
 - `failed` → categorize per §6, save failure report
 - `waitTimedOut === true` + queued/running → re-call
-- Cap exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:status <JOB_ID>`.
+- Cap exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:cdx-status <JOB_ID>`.
 
 Fetch result:
 
@@ -418,7 +418,7 @@ For the full shared gotchas list, read
 - `resume [follow-up]` against a prior research thread already sent this session
 
 **Verify it does NOT activate on:**
-- Reviewing code changes/diffs → `/codex-kit:review`
+- Reviewing code changes/diffs → `/codex-kit:cdx-review`
 - Verifying an existing written plan/document → `codex-verify`
 - Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 - "deep research with antigravity/gemini/agy" → antigravity-kit's `antigravity` skill instead

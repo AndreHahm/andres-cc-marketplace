@@ -23,7 +23,7 @@ independent review of a plan or document. Your job is to hand the
 document to Codex **without ever loading it into your own context**, so
 your follow-up evaluation is genuinely independent.
 
-For code review use `/codex-kit:review`. For research, use the `codex-research` skill.
+For code review use `/codex-kit:cdx-review`. For research, use the `codex-research` skill.
 
 ## Quick Start
 
@@ -254,7 +254,7 @@ node "$CODEX_COMPANION" status --wait "<literal JOB_ID>" \
 - `status === "completed"` → fetch result
 - `status === "failed"` → categorize per §6, save failure report
 - `waitTimedOut === true` with `queued`/`running` → re-call
-- 6 iterations exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:status <JOB_ID>`.
+- 6 iterations exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:cdx-status <JOB_ID>`.
 
 Fetch result:
 

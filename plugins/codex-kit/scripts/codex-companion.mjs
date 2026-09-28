@@ -207,7 +207,7 @@ async function buildSetupReport(cwd, actionsTaken = []) {
     nextSteps.push("Python 3 is required by the codex-session-lookup skill (session/history file lookup). --persist-model/--persist-effort are pure Node and do not need it.");
   }
   if (!config.stopReviewGate) {
-    nextSteps.push("Optional: run `/codex-kit:setup --enable-review-gate` to require a fresh review before stop.");
+    nextSteps.push("Optional: run `/codex-kit:cdx-setup --enable-review-gate` to require a fresh review before stop.");
   }
   // scope-expansion gap #4: no silent fallback — surface this every time, not just once
   if (sandboxCheck.viable === false) {
@@ -318,7 +318,7 @@ function buildAdversarialReviewPrompt(context, focusText) {
 function ensureCodexAvailable(cwd) {
   const availability = getCodexAvailability(cwd);
   if (!availability.available) {
-    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:setup`.");
+    throw new Error("Codex CLI is not installed or is missing required runtime support. Install it with `npm install -g @openai/codex`, then rerun `/codex-kit:cdx-setup`.");
   }
 }
 
@@ -337,13 +337,13 @@ function buildNativeReviewTarget(target) {
 function validateNativeReviewRequest(target, focusText) {
   if (focusText.trim()) {
     throw new Error(
-      `\`/codex-kit:review\` now maps directly to the built-in reviewer and does not support custom focus text. Retry with \`/codex-kit:adversarial-review ${focusText.trim()}\` for focused review instructions.`
+      `\`/codex-kit:cdx-review\` now maps directly to the built-in reviewer and does not support custom focus text. Retry with \`/codex-kit:cdx-adversarial-review ${focusText.trim()}\` for focused review instructions.`
     );
   }
 
   const nativeTarget = buildNativeReviewTarget(target);
   if (!nativeTarget) {
-    throw new Error("This `/codex-kit:review` target is not supported by the built-in reviewer. Retry with `/codex-kit:adversarial-review` for custom targeting.");
+    throw new Error("This `/codex-kit:cdx-review` target is not supported by the built-in reviewer. Retry with `/codex-kit:cdx-adversarial-review` for custom targeting.");
   }
 
   return nativeTarget;
@@ -411,7 +411,7 @@ async function resolveLatestTrackedTaskThread(cwd, options = {}) {
   const visibleJobs = filterJobsForCurrentClaudeSession(jobs);
   const activeTask = visibleJobs.find((job) => job.jobClass === "task" && (job.status === "queued" || job.status === "running"));
   if (activeTask) {
-    throw new Error(`Task ${activeTask.id} is still running. Use /codex-kit:status before continuing it.`);
+    throw new Error(`Task ${activeTask.id} is still running. Use /codex-kit:cdx-status before continuing it.`);
   }
 
   const trackedTask = findLatestResumableTaskJob(visibleJobs);
@@ -626,7 +626,7 @@ function buildTaskRunMetadata({ prompt, resumeLast = false }) {
 }
 
 function renderQueuedTaskLaunch(payload) {
-  return `${payload.title} started in the background as ${payload.jobId}. Check /codex-kit:status ${payload.jobId} for progress.\n`;
+  return `${payload.title} started in the background as ${payload.jobId}. Check /codex-kit:cdx-status ${payload.jobId} for progress.\n`;
 }
 
 function getJobKindLabel(kind, jobClass) {

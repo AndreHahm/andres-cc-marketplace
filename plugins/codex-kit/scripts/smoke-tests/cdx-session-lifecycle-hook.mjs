@@ -112,7 +112,7 @@ console.log("\n=== cleanupSessionJobs: job filtering ===");
     remainingIds.join(",")
   );
   check(
-    "a completed job for the target session survives -- a later /codex-kit:result must still find it",
+    "a completed job for the target session survives -- a later /codex-kit:cdx-result must still find it",
     remainingIds.includes("job-completed-same-session"),
     remainingIds.join(",")
   );

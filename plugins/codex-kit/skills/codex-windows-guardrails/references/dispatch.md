@@ -28,7 +28,7 @@ runs the actual Codex call. This is where the bypass-not-modify decision from Se
 
 That entry point unconditionally rejects `--execution-profile danger-full-access`
 (`bridge-invoke.mjs`'s own quality gate: "always rejected, never silently substituted"). That
-refusal is correct and untouched for every other caller — marketplace CI, `/codex-kit:review`,
+refusal is correct and untouched for every other caller — marketplace CI, `/codex-kit:cdx-review`,
 `codex-rescue`'s own separate fallback path all still go through it unchanged. This script never
 calls that entry point; it imports the bridge's underlying reusable pieces directly and calls
 `runCodexExec` itself with `sandbox: "danger-full-access"`.
