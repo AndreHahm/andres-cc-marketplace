@@ -355,6 +355,50 @@ def test_stage_generated_destinations_stages_only_actions_with_staged_source(
     assert ".claude/skills/demo/SKILL.md" in result.stdout.splitlines()
 
 
+def test_stage_generated_destinations_sets_executable_bit_via_git_index(git_repo, registry_for):
+    # Regression guard (issue #413): on native Windows, `shutil.copymode`'s `os.chmod()` call
+    # (exercised by apply_sync_plan, above) is a no-op for the executable bit -- Windows only
+    # supports toggling the read-only DOS attribute -- and NTFS has no native execute permission
+    # for Git for Windows' own new-path mode heuristic to reliably detect either. Neither the
+    # filesystem write nor a bare `git add` can be trusted to record 100755 for a brand-new
+    # destination there. `stage_generated_destinations` must instead force the destination's
+    # git-INDEX mode directly from the source's own recorded index mode, a mechanism that's
+    # honored identically on every platform.
+    #
+    # Verified here via `git ls-files -s` (the index), never a filesystem `stat()` -- a stat is
+    # exactly the check that's unreliable on Windows, which is the whole point of this regression
+    # guard; unlike the `requires_posix_permission_bits`-marked tests above, this one must run on
+    # every platform, including Windows.
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit-two"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    source = "plugins/sample-kit-two/hooks/scripts/guard.sh"
+    # Real chmod (works on this POSIX test runner) keeps the working-tree file consistent with
+    # the index mode forced below -- without it, `git status` reports a spurious unstaged "AM"
+    # (index says 100755, working tree stat says 100644) that would make `_is_fully_staged`
+    # reject the source as not fully staged. `git update-index --chmod=+x` is what actually
+    # matters cross-platform: it's the same index-forcing mechanism the fix itself uses, and
+    # -- unlike the chmod -- it isn't a no-op on Windows.
+    (git_repo.root / source).chmod(0o755)
+    subprocess.run(["git", "add", "-f", "--", source], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "update-index", "--chmod=+x", "--", source], cwd=git_repo.root, check=True
+    )
+    executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
+
+    stage_generated_destinations(git_repo.root, executable)
+
+    result = subprocess.run(
+        ["git", "ls-files", "-s", "--", ".claude/hooks/scripts/guard.sh"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout.startswith("100755")
+
+
 def test_stage_generated_destinations_skips_actions_without_staged_source(git_repo, registry_for):
     plan = plan_plugin_sync(
         git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
