@@ -391,7 +391,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/README.md` for the full check list); does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/cdx-README.md` for the full check list); does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] The document is never `Read` before Phase 4

@@ -463,7 +463,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Structurally graded 2026-08-12 (PASS — Phase 0's governance/session gate, the explicit "do NOT explore the repo" instruction, and the "Do NOT auto-accept changes" rule all match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template, the bare-stdout `--print-job-id` capture (see `scripts/smoke-tests/README.md`), and the resume-flag omission logic; does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template, the bare-stdout `--print-job-id` capture (see `scripts/smoke-tests/cdx-README.md`), and the resume-flag omission logic; does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] Phase 1 never explores the repo before Codex runs
