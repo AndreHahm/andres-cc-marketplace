@@ -30,7 +30,7 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). See compact-session-init.sh's
+    # different hash algorithm (cksum). See ctx-compact-session-init.sh's
     # matching comment for the full rationale (found by cross-model-review,
     # 2026-09-21).
     exit 0
@@ -43,7 +43,7 @@ TRACK_LOCK="${TRACK_FILE}.lock"
 mkdir -p "$TRACK_DIR"
 
 # Acquire a lock before the read-modify-write below — this hook (PreToolUse)
-# and compact-milestone-detector.sh (PostToolUse) both read, modify, and
+# and ctx-compact-milestone-detector.sh (PostToolUse) both read, modify, and
 # write the same $TRACK_FILE, and Claude Code can dispatch multiple tool
 # calls in one turn, so an unlocked read-modify-write can race and silently
 # lose a counter update. `mkdir` is atomic on both POSIX and NTFS (via Git
@@ -126,7 +126,7 @@ fi
 # ever written into $TRACK_FILE, which is dot-sourced as shell code below —
 # an unvalidated value is both a numeric-comparison bug (bash treats a
 # leading-zero numeral as octal) and a shell-injection vector. See the
-# identical helper in compact-session-init.sh (the other writer of this
+# identical helper in ctx-compact-session-init.sh (the other writer of this
 # same initial-state block).
 _validate_int() {
     local value="$1" default="$2"
@@ -163,8 +163,8 @@ fi
 # Read key=value pairs without dot-sourcing the file as shell code -- a
 # tampered $TRACK_FILE would otherwise get arbitrary shell execution on every
 # tool call, since this hook runs on PreToolUse with matcher .*. Whitelists
-# the exact key set this plugin's own writers ever produce (compact-session-init.sh
-# / this script / compact-milestone-detector.sh); every other line is ignored.
+# the exact key set this plugin's own writers ever produce (ctx-compact-session-init.sh
+# / this script / ctx-compact-milestone-detector.sh); every other line is ignored.
 while IFS='=' read -r _key _val; do
     case "$_key" in
         TOTAL|EXPLORATION|IMPLEMENTATION|SUGGESTED_T1|SUGGESTED_T2|SUGGESTED_T3|SUGGESTED_TIME|PHASE_TRANSITION_SUGGESTED|MILESTONE_SUGGESTED|START_TIME|LAST_MILESTONE_TIME|T1|T2|T3|TIME_THRESHOLD)
@@ -308,7 +308,7 @@ if [ -n "$SUGGESTION" ]; then
     # (detect_mode.py) may also append to this same file before Stop drains
     # it, so this must never overwrite an already-queued, not-yet-delivered
     # suggestion (found by CodeRabbit's automated PR review, 2026-09-21,
-    # against PR #368; see compact-stop-check.sh for the queue-draining
+    # against PR #368; see ctx-compact-stop-check.sh for the queue-draining
     # side of this contract).
     echo "$SUGGESTION" >> "${TRACK_DIR}/pending-${SESSION_HASH}"
 

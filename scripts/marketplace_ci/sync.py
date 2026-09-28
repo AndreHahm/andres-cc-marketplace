@@ -89,8 +89,8 @@ EXTERNAL_HOOK_SCRIPT_MIRRORS: tuple[tuple[str, str], ...] = (
     ("codex-kit", "scripts/lib/tracked-jobs.mjs"),
     ("codex-kit", "scripts/lib/workspace.mjs"),
     ("context-kit", "scripts/context-monitor.py"),
-    ("context-kit", "scripts/post-compact-restore.py"),
-    ("context-kit", "scripts/pre-compact.py"),
+    ("context-kit", "scripts/ctx-post-compact-restore.py"),
+    ("context-kit", "scripts/ctx-pre-compact.py"),
 )
 
 EXTERNAL_HOOK_SCRIPTS_MIRROR_ROOT = Path(".claude/hooks/_external-scripts")

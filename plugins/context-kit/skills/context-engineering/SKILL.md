@@ -132,8 +132,8 @@ grows (as it already has once, 2026-09-21). In addition to those detected moment
 when context exceeds 80% (set `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80`).
 
 **Re-inject critical context after compaction:** this plugin already ships this mechanism —
-`strategic-compact`'s own `pre-compact.py` (`PreCompact`) captures the active plan's state, and
-`post-compact-restore.py` (`SessionStart`, matcher `compact|resume`) restores it via
+`strategic-compact`'s own `ctx-pre-compact.py` (`PreCompact`) captures the active plan's state, and
+`ctx-post-compact-restore.py` (`SessionStart`, matcher `compact|resume`) restores it via
 `additionalContext` (see `strategic-compact`'s own "Integration" section for the full wiring). Use
 that shipped mechanism rather than hand-rolling a separate `PostCompact` hook for the same job; a
 generic `PostCompact`-matcher hook is a real, documented Claude Code event if a project needs a

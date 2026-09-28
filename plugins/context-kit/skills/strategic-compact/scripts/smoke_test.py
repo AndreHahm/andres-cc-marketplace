@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Persisted smoke test for strategic-compact: exercises the hook scripts' real
-stdin/stdout contracts (compact-milestone-detector.sh, compact-stop-check.sh,
-compact-skill-category-detector.sh) against realistic and adversarial JSON
+stdin/stdout contracts (ctx-compact-milestone-detector.sh, ctx-compact-stop-check.sh,
+ctx-compact-skill-category-detector.sh) against realistic and adversarial JSON
 payloads, matching this skill's own documented Pass Criteria in SKILL.md.
 
 Unlike the other 6 context-kit skills, strategic-compact's actual behavior is
@@ -23,10 +23,10 @@ import time
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN_ROOT = SKILL_DIR.parent.parent
 HOOKS_DIR = PLUGIN_ROOT / "hooks" / "scripts"
-MILESTONE_SCRIPT = HOOKS_DIR / "compact-milestone-detector.sh"
-STOP_SCRIPT = HOOKS_DIR / "compact-stop-check.sh"
-TRACK_SCRIPT = HOOKS_DIR / "compact-track-and-suggest.sh"
-CATEGORY_SCRIPT = HOOKS_DIR / "compact-skill-category-detector.sh"
+MILESTONE_SCRIPT = HOOKS_DIR / "ctx-compact-milestone-detector.sh"
+STOP_SCRIPT = HOOKS_DIR / "ctx-compact-stop-check.sh"
+TRACK_SCRIPT = HOOKS_DIR / "ctx-compact-track-and-suggest.sh"
+CATEGORY_SCRIPT = HOOKS_DIR / "ctx-compact-skill-category-detector.sh"
 PLUGIN_SCRIPTS_DIR = PLUGIN_ROOT / "scripts"
 
 
@@ -44,7 +44,7 @@ def run(script, stdin_text, home):
 
 def run_category_detector(stdin_text: str, home, project_dir=None, unset_plugin_root=False):
     # PreToolUse-only as of 2026-09-21 (the finish/PostToolUse phase was
-    # dropped -- see compact-skill-category-detector.sh's own header
+    # dropped -- see ctx-compact-skill-category-detector.sh's own header
     # comment), so no phase argument is passed here anymore.
     env: dict[str, str] = {**os.environ, "HOME": str(home)}
     if unset_plugin_root:
@@ -66,8 +66,8 @@ def run_category_detector(stdin_text: str, home, project_dir=None, unset_plugin_
 
 
 def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
-    """compact-milestone-detector.sh exits early (0, no output) if no tracking file
-    exists for the session -- it's compact-session-init.sh's job to create one on
+    """ctx-compact-milestone-detector.sh exits early (0, no output) if no tracking file
+    exists for the session -- it's ctx-compact-session-init.sh's job to create one on
     SessionStart, so replicate its real on-disk shape here rather than skip the check."""
     import hashlib
 
@@ -96,11 +96,11 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
 
 def check_get_session_dir_implementations_agree(tmp_path):
     # Regression guard for consistency-reviewer's finding: get_session_dir() is
-    # hand-duplicated across context-monitor.py, pre-compact.py, and
-    # post-compact-restore.py, with the invariant "the three must agree"
+    # hand-duplicated across context-monitor.py, ctx-pre-compact.py, and
+    # ctx-post-compact-restore.py, with the invariant "the three must agree"
     # enforced only by comments, not any shared code. If either copy's hashing
-    # ever drifts, pre-compact.py would write state to one directory and
-    # post-compact-restore.py would read from another -- capture->restore
+    # ever drifts, ctx-pre-compact.py would write state to one directory and
+    # ctx-post-compact-restore.py would read from another -- capture->restore
     # silently becomes a no-op with no error at any layer. This test imports
     # all 3 modules directly and confirms they resolve to the identical path
     # for the same (CLAUDE_PROJECT_DIR, session_id) pair.
@@ -118,8 +118,8 @@ def check_get_session_dir_implementations_agree(tmp_path):
         dirs = {}
         for name, filename in [
             ("context-monitor", "context-monitor.py"),
-            ("pre-compact", "pre-compact.py"),
-            ("post-compact-restore", "post-compact-restore.py"),
+            ("pre-compact", "ctx-pre-compact.py"),
+            ("post-compact-restore", "ctx-post-compact-restore.py"),
         ]:
             spec = importlib.util.spec_from_file_location(
                 f"_smoketest_{name.replace('-', '_')}", PLUGIN_SCRIPTS_DIR / filename
@@ -271,8 +271,8 @@ def check_stop_hook_delivers_pending_suggestion(tmp_path):
 
     session_hash = hashlib.md5(b"pendingtest\n", usedforsecurity=False).hexdigest()[:8]
     pending_file = track_dir / f"pending-{session_hash}"
-    # Realistic fixture: real writers (compact-track-and-suggest.sh,
-    # compact-milestone-detector.sh) always prefix with "[StrategicCompact] " -- the
+    # Realistic fixture: real writers (ctx-compact-track-and-suggest.sh,
+    # ctx-compact-milestone-detector.sh) always prefix with "[StrategicCompact] " -- the
     # hook's own prefix-validation gate (added 2026-09-17) rejects anything else.
     pending_file.write_text("[StrategicCompact] Test suggestion text.", encoding="utf-8")
 
@@ -322,7 +322,7 @@ def check_pending_content_without_prefix_is_discarded(tmp_path):
 
 def check_prefixed_content_with_hostile_tail_is_discarded(tmp_path):
     # Regression guard for the 2026-09-17 security-reviewer finding, updated 2026-09-21
-    # for the per-line queue rewrite (see compact-stop-check.sh -- writers now append,
+    # for the per-line queue rewrite (see ctx-compact-stop-check.sh -- writers now append,
     # not overwrite, so a valid queued line and a hostile continuation line can
     # legitimately coexist in the same file). The original fix rejected the WHOLE
     # payload if anything after the prefix wasn't clean; the queue version validates
@@ -369,7 +369,7 @@ def check_prefixed_content_with_hostile_tail_is_discarded(tmp_path):
 
 
 def check_stop_hook_delivers_multiple_queued_suggestions(tmp_path):
-    # Two writers (compact-track-and-suggest.sh, detect_mode.py) can each append a
+    # Two writers (ctx-compact-track-and-suggest.sh, detect_mode.py) can each append a
     # suggestion to the same pending file before Stop drains it -- both must be
     # delivered in one decision:block, not just the first or the last.
     home = tmp_path / "home_multiqueue"
@@ -463,10 +463,10 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
     # unrelated 64-bit value (verified live: 30 nines wraps to 5076944270305263615, which
     # happens to start with "50" -- an earlier version of this test used a substring check
     # and false-passed against that exact wrapped value). Exercises the real _validate_int()
-    # helper via compact-session-init.sh (SessionStart), then reads the written TRACK_FILE
+    # helper via ctx-compact-session-init.sh (SessionStart), then reads the written TRACK_FILE
     # with an exact line match to confirm T1 actually fell back to the default (50), not a
     # silently-corrupted threshold.
-    session_init = HOOKS_DIR / "compact-session-init.sh"
+    session_init = HOOKS_DIR / "ctx-compact-session-init.sh"
     home = tmp_path / "home_overlong"
     home.mkdir()
     payload = json.dumps({"session_id": "overlongtest", "source": "startup"})
@@ -487,7 +487,7 @@ def check_overlong_digit_env_var_falls_back_to_default(tmp_path):
     session_hash = hashlib.md5(b"overlongtest\n", usedforsecurity=False).hexdigest()[:8]
     track_file = home / ".claude" / "strategic-compact" / f"session-{session_hash}"
     if not track_file.exists():
-        return False, "compact-session-init.sh did not write the expected tracking file"
+        return False, "ctx-compact-session-init.sh did not write the expected tracking file"
     content = track_file.read_text(encoding="utf-8")
     lines = content.splitlines()
     if "T1=50" not in lines:
@@ -503,7 +503,7 @@ def check_leading_zero_lock_created_does_not_crash(tmp_path):
     # fix missed: LOCK_CREATED is read from a *different* file (${TRACK_LOCK}/created, the
     # stale-lock-bust path) than the tracking-file whitelist loop the sibling regression test
     # (check_leading_zero_tracking_value_does_not_crash) covers -- this is a separate code
-    # path in all 3 hook scripts, and compact-milestone-detector.sh's own copy of it was
+    # path in all 3 hook scripts, and ctx-compact-milestone-detector.sh's own copy of it was
     # found still missing the 10# base-10 forcing by a rulebook re-check after the original
     # fix shipped. Simulates a pre-existing stale lock whose `created` file's timestamp has
     # a leading zero (invalid octal), which must not crash the lock-staleness check.
@@ -660,7 +660,7 @@ def check_hyphenated_prefix_command_not_misclassified(tmp_path):
 def check_skill_category_heavy_operation_start(tmp_path):
     # Renamed from check_skill_category_heavy_operation_start_and_finish
     # 2026-09-21: the finish/PostToolUse phase was dropped entirely (see
-    # compact-skill-category-detector.sh's own header comment) -- there is
+    # ctx-compact-skill-category-detector.sh's own header comment) -- there is
     # no longer a finish suggestion to test.
     home = make_home_with_tracking_file(tmp_path, "catheavy")
     payload = json.dumps({"session_id": "catheavy", "tool_input": {"skill": "plugin-auditor"}})
@@ -845,12 +845,12 @@ def check_no_hook_script_falls_back_to_cksum(tmp_path):
     import re
 
     hook_scripts = [
-        "compact-session-init.sh",
-        "compact-skill-category-detector.sh",
-        "compact-track-and-suggest.sh",
-        "compact-stop-check.sh",
-        "compact-milestone-detector.sh",
-        "compact-instructions.sh",
+        "ctx-compact-session-init.sh",
+        "ctx-compact-skill-category-detector.sh",
+        "ctx-compact-track-and-suggest.sh",
+        "ctx-compact-stop-check.sh",
+        "ctx-compact-milestone-detector.sh",
+        "ctx-compact-instructions.sh",
     ]
     offenders = []
     for name in hook_scripts:
@@ -864,12 +864,12 @@ def check_no_hook_script_falls_back_to_cksum(tmp_path):
 
 
 def check_session_init_resets_mode_file_on_startup(tmp_path):
-    # Regression guard (scripts-reviewer, 2026-09-21): compact-session-init.sh's
+    # Regression guard (scripts-reviewer, 2026-09-21): ctx-compact-session-init.sh's
     # startup/clear/compact reset must also delete the session's own mode-<hash>
     # file (detect_mode.py's state), kept symmetric with its existing $TRACK_FILE
     # counter reset -- otherwise a mode observed before the reset could still be
     # compared against as a "prior mode" after it.
-    session_init = HOOKS_DIR / "compact-session-init.sh"
+    session_init = HOOKS_DIR / "ctx-compact-session-init.sh"
     home = tmp_path / "home_mode_reset"
     home.mkdir()
     import hashlib
@@ -889,7 +889,7 @@ def check_session_init_resets_mode_file_on_startup(tmp_path):
         return False, "mode-<hash> file was not reset alongside TRACK_FILE on a startup source"
     return (
         True,
-        "compact-session-init.sh resets the session's mode-<hash> file alongside TRACK_FILE",
+        "ctx-compact-session-init.sh resets the session's mode-<hash> file alongside TRACK_FILE",
     )
 
 

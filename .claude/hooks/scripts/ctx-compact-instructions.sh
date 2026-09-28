@@ -28,7 +28,7 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). See compact-session-init.sh's
+    # different hash algorithm (cksum). See ctx-compact-session-init.sh's
     # matching comment for the full rationale (found by cross-model-review,
     # 2026-09-21).
     exit 0
@@ -43,8 +43,8 @@ if [ -f "$TRACK_FILE" ]; then
     # Read key=value pairs without dot-sourcing the file as shell code -- a
     # tampered $TRACK_FILE would otherwise get arbitrary shell execution on
     # every PreCompact event. Whitelists the exact key set this plugin's own
-    # writers ever produce (compact-session-init.sh / compact-track-and-suggest.sh
-    # / compact-milestone-detector.sh); every other line in the file is ignored.
+    # writers ever produce (ctx-compact-session-init.sh / ctx-compact-track-and-suggest.sh
+    # / ctx-compact-milestone-detector.sh); every other line in the file is ignored.
     while IFS='=' read -r _key _val; do
         case "$_key" in
             TOTAL|EXPLORATION|IMPLEMENTATION|SUGGESTED_T1|SUGGESTED_T2|SUGGESTED_T3|SUGGESTED_TIME|PHASE_TRANSITION_SUGGESTED|MILESTONE_SUGGESTED|START_TIME|LAST_MILESTONE_TIME|T1|T2|T3|TIME_THRESHOLD)
@@ -69,7 +69,7 @@ fi
 # (exit 0) hook is shown in verbose mode only, and systemMessage's exact
 # delivery for PreCompact specifically is not independently confirmed one way
 # or the other. This is deliberately a best-effort nudge, not this plugin's
-# actual state-preservation guarantee — that's pre-compact.py/post-compact-
+# actual state-preservation guarantee — that's ctx-pre-compact.py/post-compact-
 # restore.py's capture/restore mechanism (SessionStart's additionalContext,
 # which IS supported and is what this plugin's docs describe as the real
 # behavior).

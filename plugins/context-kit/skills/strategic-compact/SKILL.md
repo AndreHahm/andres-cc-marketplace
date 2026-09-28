@@ -77,7 +77,7 @@ Auto-compact triggers at context limits, often mid-task. Strategic compaction pr
 - May lose some nuance
 - `context-kit` automatically captures the active plan's status/current-task (if
   `CONTEXT_KIT_PLANS_DIR` is configured — see the plugin README) before compaction and re-injects it
-  after, via its own `pre-compact.py`/`post-compact-restore.py` hooks. This is a lightweight,
+  after, via its own `ctx-pre-compact.py`/`ctx-post-compact-restore.py` hooks. This is a lightweight,
   automatic capture, not a full handoff document.
 
 ### session-kit's session-handoff (Recommended for complex work, if session-kit is installed)
@@ -134,12 +134,12 @@ this skill's own "Relationship to context-mode" section above — deferred to th
 **every** confidently-detected switch, since even an ordinary posture change can leave stale context
 behind. See `context-mode`'s own SKILL.md ("Mid-session switching mechanics" and its "State and side
 effects" note) for the full detection/state-file detail — this skill only owns the delivery mechanism
-(the shared `pending-<hash>` file, relayed by `compact-stop-check.sh` below), not the detection logic
+(the shared `pending-<hash>` file, relayed by `ctx-compact-stop-check.sh` below), not the detection logic
 itself, which lives in `context-mode`'s own script.
 
 ## Skill-category events (added 2026-09-21)
 
-A new hook, `compact-skill-category-detector.sh`, fires on `PreToolUse` for a Skill() call about to
+A new hook, `ctx-compact-skill-category-detector.sh`, fires on `PreToolUse` for a Skill() call about to
 start, classifying the invoked skill's name against two category lists and suggesting `/compact` if
 it's been a while, with no cooldown (each Skill() invocation is a fresh, bounded event worth its own
 suggestion, not a potentially-noisy repeated command the way a Bash milestone pattern can be).
@@ -168,7 +168,7 @@ rather than claiming to precede or gate the specific Skill() call it fired on.
 
 **Overlap priority:** a skill matching both lists resolves to `heavy_operation` (the higher-priority,
 more resource-costly classification) — an analogous higher-priority-wins pattern to
-`compact-milestone-detector.sh`'s own deploy>build>commit>test_pass chained-command resolution, though not
+`ctx-compact-milestone-detector.sh`'s own deploy>build>commit>test_pass chained-command resolution, though not
 the identical mechanism: that script resolves multiple distinct events occurring together in one chained
 command (a temporal "later wins"), while this is a static membership tiebreak between two config lists
 for one skill name (no chaining involved). `analyzing-sessions` is a deliberate example of this: listed
@@ -258,12 +258,12 @@ See `references/hook-wiring.md` for this skill's own hook wiring by event (`Sess
 locking convention, and the Windows PowerShell milestone-matcher fix.
 
 **The `pending-<hash>` file is a queue, not a single slot (updated 2026-09-21).** Two writers
-(`compact-track-and-suggest.sh`, `context-mode`'s `detect_mode.py`) can each append a suggestion to
-this same file before `compact-stop-check.sh` drains it — a plain overwrite would let a later write
+(`ctx-compact-track-and-suggest.sh`, `context-mode`'s `detect_mode.py`) can each append a suggestion to
+this same file before `ctx-compact-stop-check.sh` drains it — a plain overwrite would let a later write
 silently clobber an earlier, not-yet-delivered one (found by CodeRabbit's automated PR review,
 2026-09-21, against PR #368: adding `detect_mode.py` as a second writer to a file only one hook
 previously wrote to made this a real, no-longer-rare collision risk). Both writers now append
-(`>>`/open-in-append-mode) rather than overwrite; `compact-stop-check.sh` reads every line, validates
+(`>>`/open-in-append-mode) rather than overwrite; `ctx-compact-stop-check.sh` reads every line, validates
 each independently against the same strict single-line shape the original single-suggestion check
 used, and delivers all still-valid lines in one `decision: block`, capped at 20 delivered suggestions
 as a defense-in-depth bound (not a realistic accumulation scenario in practice).
@@ -275,15 +275,15 @@ as a defense-in-depth bound (not a realistic accumulation scenario in practice).
 | `scripts/smoke_test.py` | This skill's own persisted hook-contract regression test |
 | `references/hook-wiring.md` | Full hook wiring by event, the shared-tracking-file lock, and the Windows PowerShell milestone-matcher fix |
 | `references/state-and-side-effects.md` | What every hook writes to disk, where, and the data-only boundary |
-| `hooks/scripts/compact-session-init.sh` | `SessionStart` — initializes per-session tool-call tracking |
-| `hooks/scripts/compact-track-and-suggest.sh` | `PreToolUse` — counts tool calls, detects phase transitions, generates suggestions |
-| `hooks/scripts/compact-milestone-detector.sh` | `PostToolUse` — detects test/build/commit/deploy milestones |
-| `hooks/scripts/compact-skill-category-detector.sh` | `PreToolUse` (matcher `^Skill$`) — detects a known `heavy_operation`/`session_analysis` skill about to start |
+| `hooks/scripts/ctx-compact-session-init.sh` | `SessionStart` — initializes per-session tool-call tracking |
+| `hooks/scripts/ctx-compact-track-and-suggest.sh` | `PreToolUse` — counts tool calls, detects phase transitions, generates suggestions |
+| `hooks/scripts/ctx-compact-milestone-detector.sh` | `PostToolUse` — detects test/build/commit/deploy milestones |
+| `hooks/scripts/ctx-compact-skill-category-detector.sh` | `PreToolUse` (matcher `^Skill$`) — detects a known `heavy_operation`/`session_analysis` skill about to start |
 | `hooks/context-kit.settings.json` | Git-tracked default `heavy_operation`/`session_analysis` skill-category lists |
-| `hooks/scripts/compact-instructions.sh` | `PreCompact` — emits compaction guidance |
-| `hooks/scripts/compact-stop-check.sh` | `Stop` — delivers a pending suggestion, if any |
-| `scripts/pre-compact.py` | `PreCompact` — captures plan state and appends a session-log note (if configured) |
-| `scripts/post-compact-restore.py` | `SessionStart` (matcher `compact\|resume`) — restores captured plan state |
+| `hooks/scripts/ctx-compact-instructions.sh` | `PreCompact` — emits compaction guidance |
+| `hooks/scripts/ctx-compact-stop-check.sh` | `Stop` — delivers a pending suggestion, if any |
+| `scripts/ctx-pre-compact.py` | `PreCompact` — captures plan state and appends a session-log note (if configured) |
+| `scripts/ctx-post-compact-restore.py` | `SessionStart` (matcher `compact\|resume`) — restores captured plan state |
 | `scripts/context-monitor.py` | `PostToolUse` — live context-window health, shared with `context-window-analysis` |
 | `context-mode`'s `scripts/detect_mode.py` | `UserPromptSubmit` (owned by `context-mode`) — as of 2026-09-21, also detects a confidently-detected mode switch and writes into this skill's own delivery mechanism |
 
@@ -306,13 +306,13 @@ scripts' own input/output contracts, verified directly
 (stdin → stdout/exit-code, against realistic and adversarial JSON payloads) rather than via an
 LLM-judged eval — see `hook-development/scripts/test-hook.sh`. The checklist below documents that
 direct-verification surface, and the persisted `scripts/smoke_test.py` exercises
-`compact-milestone-detector.sh`, `compact-skill-category-detector.sh`, `compact-stop-check.sh`, and
-`compact-session-init.sh` directly
+`ctx-compact-milestone-detector.sh`, `ctx-compact-skill-category-detector.sh`, `ctx-compact-stop-check.sh`, and
+`ctx-compact-session-init.sh` directly
 against this same stdin/stdout contract, plus imports and cross-checks `context-monitor.py`'s
 `get_session_dir()` implementation. `context-mode`'s own `scripts/smoke_test.py` separately covers
 `detect_mode.py`'s new mode-switch-suggestion side effect. **Known gap (hook-reviewer, 2026-09-18):** `compact-track-and-
-suggest.sh` (the most complex script — async, cross-process locking), `compact-instructions.sh`,
-`pre-compact.py`, and `post-compact-restore.py` have no direct stdin/stdout contract test of their
+suggest.sh` (the most complex script — async, cross-process locking), `ctx-compact-instructions.sh`,
+`ctx-pre-compact.py`, and `ctx-post-compact-restore.py` have no direct stdin/stdout contract test of their
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
@@ -340,10 +340,10 @@ queue rewrite respectively).
 - Any tool call — `PreToolUse` tracking fires on every call (matcher `.*`); `context-monitor.py`
   additionally fires on every successful tool call (`PostToolUse`, matcher `.*`).
 - A `Bash` **or `PowerShell`** command matching a known test/build/commit/deploy pattern (e.g.
-  `pytest`, `git commit`, `npm run build`) — `compact-milestone-detector.sh` fires on `PostToolUse`
+  `pytest`, `git commit`, `npm run build`) — `ctx-compact-milestone-detector.sh` fires on `PostToolUse`
   for either tool (matcher `^(Bash|PowerShell)$`; see "Windows PowerShell coverage" above).
 - A `Skill()` call to a known `heavy_operation`/`session_analysis` skill about to start —
-  `compact-skill-category-detector.sh` fires on `PreToolUse`, matcher `^Skill$` (see "Skill-category
+  `ctx-compact-skill-category-detector.sh` fires on `PreToolUse`, matcher `^Skill$` (see "Skill-category
   events" above).
 - A confidently-detected context-mode switch (exactly one candidate, differing from the last one) —
   `context-mode`'s `detect_mode.py` writes into this skill's own delivery mechanism, throttled to once
@@ -354,16 +354,16 @@ queue rewrite respectively).
 **Verify this skill's hooks do NOT fire a false positive on:**
 - A `Stop` event where `stop_hook_active` is already `true` — must exit cleanly, never re-block.
 - A Bash command containing an unrelated word that happens to substring-match a milestone-detection
-  pattern (e.g. `majestic`, `cmake build`) — `compact-milestone-detector.sh`'s test/build/deploy
+  pattern (e.g. `majestic`, `cmake build`) — `ctx-compact-milestone-detector.sh`'s test/build/deploy
   patterns use `grep -w` (whole-word matching), not `\b...\b`: BSD grep (macOS's default
   `/usr/bin/grep`) doesn't support the GNU-only `\b` escape at all, so `-w` is the portable choice
   that still stops these from producing a false milestone suggestion.
-- A `Skill()` call to a skill not in either category list — `compact-skill-category-detector.sh`
+- A `Skill()` call to a skill not in either category list — `ctx-compact-skill-category-detector.sh`
   produces no output at all.
 - A context-mode turn with zero or multiple candidates — never updates the tracked mode or emits a
   switch suggestion, since it's too ambiguous to treat as a confident mode reading.
 
-**Note on test/build milestone detection:** `compact-milestone-detector.sh` is wired to `PostToolUse`
+**Note on test/build milestone detection:** `ctx-compact-milestone-detector.sh` is wired to `PostToolUse`
 only (not `PostToolUseFailure`) — this event fires only after a tool call completes successfully, so a
 failing Bash test/build command never reaches this hook at all, and `test_pass`/`build` milestone
 detection needs no separate success check of its own. An earlier version gated these two milestone
@@ -396,7 +396,7 @@ removed rather than fixed to check a real field, since `PostToolUse` already gua
 - [ ] A confidently-detected context-mode switch produces exactly one suggestion per 5-minute window,
       not a repeated suggestion on every subsequent switch within that window — while the tracked
       "current mode" itself still updates every time, even while throttled.
-- [ ] Two suggestions queued in the same `pending-<hash>` file before `compact-stop-check.sh` drains it
+- [ ] Two suggestions queued in the same `pending-<hash>` file before `ctx-compact-stop-check.sh` drains it
       (e.g. a threshold suggestion and a context-mode-switch suggestion arriving close together) are
       both delivered in one `decision: block` — neither silently overwrites the other.
 - [ ] A malformed line appended to the pending file alongside an otherwise-valid one is dropped on its

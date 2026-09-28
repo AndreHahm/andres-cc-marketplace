@@ -43,13 +43,14 @@ treat as a mode reading, and leaves the tracked mode unchanged rather than risk 
 strategic-compact's own 5-minute milestone-suggestion cooldown), it writes a
 "[StrategicCompact] "-prefixed pending-suggestion file under
 ~/.claude/strategic-compact/pending-<session-hash> for strategic-compact's own Stop hook
-(compact-stop-check.sh) to deliver - the same delivery mechanism compact-track-and-suggest.sh
-already uses, extended to a second writer. This is best-effort, single-writer state (its own
+(ctx-compact-stop-check.sh) to deliver - the same delivery mechanism
+ctx-compact-track-and-suggest.sh already uses, extended to a second writer. This is best-effort,
+single-writer state (its own
 mode-<session-hash> file, never strategic-compact's own $TRACK_FILE counters, which stay
 lock-protected and untouched by this script) - see _maybe_suggest_mode_switch()'s own
 docstring for the full rationale, including why no cross-process lock is needed here. Gated
 on strategic-compact's own tracking file already existing for the session (i.e. context-kit's
-compact-session-init.sh has run), and entirely fail-open: any error here is swallowed and can
+ctx-compact-session-init.sh has run), and entirely fail-open: any error here is swallowed and can
 never prevent this hook's own primary mode-tag output above from still being produced.
 
 Hook Event: UserPromptSubmit
@@ -112,8 +113,8 @@ def _strategic_compact_track_dir() -> Path:
     # deliberately re-derived here rather than imported, matching this
     # plugin's own established convention of duplicating this exact
     # resolution logic per-script (see get_session_dir()'s identical
-    # hand-duplication across context-monitor.py/pre-compact.py/
-    # post-compact-restore.py) rather than adding a shared module.
+    # hand-duplication across context-monitor.py/ctx-pre-compact.py/
+    # ctx-post-compact-restore.py) rather than adding a shared module.
     home = os.environ.get("HOME") or os.environ.get("USERPROFILE") or "/tmp"
     return Path(home) / ".claude" / "strategic-compact"
 
@@ -131,7 +132,7 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
     lock), no lock is needed here for correctness - there is no second
     writer to race against. This mirrors the same no-lock, best-effort
     convention strategic-compact's own pending-<hash> delivery file already
-    uses for its sole existing writer (compact-track-and-suggest.sh); this
+    uses for its sole existing writer (ctx-compact-track-and-suggest.sh); this
     function becomes that file's second writer, accepting the same narrow,
     already-disclosed last-write-wins risk class, not a new one.
 
@@ -149,7 +150,7 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
         # Gate on strategic-compact's own tracking file already existing for
         # this session - the same "session already initialized" precondition
         # its own bash hooks use, so this never fires before
-        # compact-session-init.sh has run for the session. Path.exists() on a
+        # ctx-compact-session-init.sh has run for the session. Path.exists() on a
         # not-yet-created track_dir just returns False, so this check needs no
         # mkdir first -- deferred below, past this gate, so an install where
         # strategic-compact's SessionStart hook never ran doesn't get
@@ -205,11 +206,11 @@ def _maybe_suggest_mode_switch(session_id: str, candidates: list[str]) -> None:
             f"[StrategicCompact] Context-mode switched ({last_mode} -> {current_mode}). "
             "Consider /compact if the prior mode's context is no longer needed."
         )
-        # Append, never overwrite -- compact-track-and-suggest.sh may already
+        # Append, never overwrite -- ctx-compact-track-and-suggest.sh may already
         # have an unconsumed suggestion queued in this same file, and this
         # write must not silently clobber it (found by CodeRabbit's
         # automated PR review, 2026-09-21, against PR #368; see
-        # compact-stop-check.sh for the queue-draining side of this
+        # ctx-compact-stop-check.sh for the queue-draining side of this
         # contract).
         with pending_file.open("a", encoding="utf-8") as f:
             f.write(suggestion + "\n")

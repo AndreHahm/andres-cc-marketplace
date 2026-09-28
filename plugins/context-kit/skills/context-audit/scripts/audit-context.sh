@@ -78,7 +78,7 @@ fi
 # separate subprocess spawns -- halves the subprocess count across this script's
 # whole scan (one wc call per file instead of two), which is the actual cost
 # driver against a real repo with hundreds of scanned files (each spawn measured
-# at ~30ms on this platform per compact-track-and-suggest.sh's own comment).
+# at ~30ms on this platform per ctx-compact-track-and-suggest.sh's own comment).
 # `wc -w -c` always prints "<words> <bytes>" in that fixed order regardless of
 # flag order (GNU wc's own newline/word/byte canonical ordering) -- verified
 # directly, not assumed from flag order. Sets the caller's own w/s variables
