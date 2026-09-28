@@ -111,9 +111,9 @@ function appendActiveJobsTable(lines, jobs) {
   lines.push("| Job | Kind | Status | Phase | Elapsed | Codex Session ID | Summary | Actions |");
   lines.push("| --- | --- | --- | --- | --- | --- | --- | --- |");
   for (const job of jobs) {
-    const actions = [`/codex-kit:status ${job.id}`];
+    const actions = [`/codex-kit:cdx-status ${job.id}`];
     if (job.status === "queued" || job.status === "running") {
-      actions.push(`/codex-kit:cancel ${job.id}`);
+      actions.push(`/codex-kit:cdx-cancel ${job.id}`);
     }
     lines.push(
       `| ${escapeMarkdownCell(job.id)} | ${escapeMarkdownCell(job.kindLabel)} | ${escapeMarkdownCell(job.status)} | ${escapeMarkdownCell(job.phase ?? "")} | ${escapeMarkdownCell(job.elapsed ?? "")} | ${escapeMarkdownCell(job.threadId ?? "")} | ${escapeMarkdownCell(job.summary ?? "")} | ${actions.map((action) => `\`${action}\``).join("<br>")} |`
@@ -146,14 +146,14 @@ function pushJobDetails(lines, job, options = {}) {
     lines.push(`  Log: ${job.logFile}`);
   }
   if ((job.status === "queued" || job.status === "running") && options.showCancelHint) {
-    lines.push(`  Cancel: /codex-kit:cancel ${job.id}`);
+    lines.push(`  Cancel: /codex-kit:cdx-cancel ${job.id}`);
   }
   if (job.status !== "queued" && job.status !== "running" && options.showResultHint) {
-    lines.push(`  Result: /codex-kit:result ${job.id}`);
+    lines.push(`  Result: /codex-kit:cdx-result ${job.id}`);
   }
   if (job.status !== "queued" && job.status !== "running" && job.jobClass === "task" && job.write && options.showReviewHint) {
-    lines.push("  Review changes: /codex-kit:review --wait");
-    lines.push("  Stricter review: /codex-kit:adversarial-review --wait");
+    lines.push("  Review changes: /codex-kit:cdx-review --wait");
+    lines.push("  Stricter review: /codex-kit:cdx-adversarial-review --wait");
   }
   if (job.progressPreview?.length) {
     lines.push("  Progress:");
@@ -469,7 +469,7 @@ export function renderCancelReport(job) {
   if (job.summary) {
     lines.push(`- Summary: ${job.summary}`);
   }
-  lines.push("- Check `/codex-kit:status` for the updated queue.");
+  lines.push("- Check `/codex-kit:cdx-status` for the updated queue.");
 
   return `${lines.join("\n").trimEnd()}\n`;
 }
