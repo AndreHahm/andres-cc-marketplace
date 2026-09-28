@@ -347,6 +347,7 @@
     {
       "compatibility": {},
       "created_on": null,
+      "domain_prefix": "context",
       "domains": [],
       "functional_role": null,
       "id": "plugin_7237ea29",
@@ -362,6 +363,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "ctx",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -457,5 +459,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-27"
+  "updated_on": "2026-09-28"
 }

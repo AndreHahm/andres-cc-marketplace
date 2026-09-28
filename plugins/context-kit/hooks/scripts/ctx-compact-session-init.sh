@@ -56,7 +56,7 @@ START_TIME=$(date +%s)
 
 # Validate an env-var-sourced value is a plain decimal integer before it's
 # ever written into $TRACK_FILE (which every other hook in this plugin
-# dot-sources as shell code — see compact-track-and-suggest.sh). An
+# dot-sources as shell code — see ctx-compact-track-and-suggest.sh). An
 # unvalidated value here is both a numeric-comparison bug (bash treats a
 # leading-zero numeral as octal, e.g. "050" errors) and a shell-injection
 # vector (e.g. "50; rm -rf ~" would execute verbatim once sourced). Reject
@@ -77,10 +77,10 @@ T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-100}" 100)
 TIME_THRESHOLD=$(_validate_int "${STRATEGIC_COMPACT_TIME:-1800}" 1800)  # 30 minutes default
 
 # Initialize on fresh starts AND after compact (context is fresh after compact).
-# Guarded by the same mkdir-based lock as compact-track-and-suggest.sh /
-# compact-milestone-detector.sh (see that script's own comment for the full
+# Guarded by the same mkdir-based lock as ctx-compact-track-and-suggest.sh /
+# ctx-compact-milestone-detector.sh (see that script's own comment for the full
 # two-phase rationale and the live timing behind it) — a stray in-flight
-# async compact-track-and-suggest.sh invocation from just before a
+# async ctx-compact-track-and-suggest.sh invocation from just before a
 # /clear or compact event could otherwise race this reset.
 if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compact" ]; then
     _lock_acquired=0

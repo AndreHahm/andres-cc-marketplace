@@ -41,7 +41,7 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). See compact-session-init.sh's
+    # different hash algorithm (cksum). See ctx-compact-session-init.sh's
     # matching comment for the full rationale (found by cross-model-review,
     # 2026-09-21).
     exit 0
@@ -55,7 +55,7 @@ TRACK_LOCK="${TRACK_FILE}.lock"
 [ ! -f "$TRACK_FILE" ] && exit 0
 
 # Acquire a lock before reading/updating $TRACK_FILE — this hook
-# (PostToolUse) and compact-track-and-suggest.sh (PreToolUse) both
+# (PostToolUse) and ctx-compact-track-and-suggest.sh (PreToolUse) both
 # read-modify-write the same file, and Claude Code can dispatch multiple
 # tool calls in one turn. Same two-phase scheme as compact-track-and-
 # suggest.sh: many cheap `mkdir`-only retries (phase 1), then at most one
@@ -94,7 +94,7 @@ fi
 # Read key=value pairs without dot-sourcing the file as shell code -- a
 # tampered $TRACK_FILE would otherwise get arbitrary shell execution on every
 # Bash tool call. Whitelists the exact key set this plugin's own writers ever
-# produce (compact-session-init.sh / compact-track-and-suggest.sh / this
+# produce (ctx-compact-session-init.sh / ctx-compact-track-and-suggest.sh / this
 # script); every other line in the file is ignored.
 while IFS='=' read -r _key _val; do
     case "$_key" in
@@ -250,7 +250,7 @@ if [ -n "$MILESTONE_TYPE" ] && [ "$TIME_SINCE_MILESTONE" -ge 300 ]; then
 fi
 
 # Release the lock now that any read-modify-write is complete. Only if we
-# still own it — see compact-track-and-suggest.sh's matching comment for why.
+# still own it — see ctx-compact-track-and-suggest.sh's matching comment for why.
 _owner_pid=$(head -n1 "${TRACK_LOCK}/created" 2>/dev/null)
 if [ -z "$_owner_pid" ] || [ "$_owner_pid" = "$$" ]; then
     rm -rf "$TRACK_LOCK" 2>/dev/null

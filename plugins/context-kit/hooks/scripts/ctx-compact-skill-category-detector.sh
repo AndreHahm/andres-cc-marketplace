@@ -17,7 +17,7 @@
 # message that reads as factually wrong most of the time, the finish phase
 # was dropped entirely.
 #
-# Unlike compact-track-and-suggest.sh / compact-milestone-detector.sh, this
+# Unlike ctx-compact-track-and-suggest.sh / ctx-compact-milestone-detector.sh, this
 # script never reads or writes $TRACK_FILE's own counters, so it never
 # takes the mkdir-based lock those two scripts share -- it only checks
 # $TRACK_FILE's existence, the same "session already initialized"
@@ -61,7 +61,7 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). See compact-session-init.sh's
+    # different hash algorithm (cksum). See ctx-compact-session-init.sh's
     # matching comment for the full rationale (found by cross-model-review,
     # 2026-09-21).
     exit 0
@@ -70,8 +70,8 @@ fi
 TRACK_DIR="${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact"
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 
-# Exit if no tracking file -- compact-session-init.sh hasn't run for this
-# session yet (same precondition compact-milestone-detector.sh uses).
+# Exit if no tracking file -- ctx-compact-session-init.sh hasn't run for this
+# session yet (same precondition ctx-compact-milestone-detector.sh uses).
 [ ! -f "$TRACK_FILE" ] && exit 0
 
 # Guard against an unset CLAUDE_PLUGIN_ROOT the same way LOCAL_FILE below already
@@ -126,12 +126,12 @@ if [ -n "$CLAUDE_PROJECT_DIR" ] && [ -f "$LOCAL_FILE" ]; then
         }' 2>/dev/null)
         [ -n "$MERGED_CATEGORIES" ] && CATEGORIES="$MERGED_CATEGORIES"
     else
-        echo "compact-skill-category-detector.sh: local override file is malformed JSON; using shipped defaults only" >&2
+        echo "ctx-compact-skill-category-detector.sh: local override file is malformed JSON; using shipped defaults only" >&2
     fi
 fi
 
 # Priority on overlap: heavy_operation wins over session_analysis (the
-# more resource-costly classification, matching compact-milestone-detector.sh's
+# more resource-costly classification, matching ctx-compact-milestone-detector.sh's
 # own later-in-the-list-wins precedent for a chained command matching more
 # than one milestone pattern).
 CATEGORY=""
@@ -158,7 +158,7 @@ esac
 # Built via jq -n --arg, not heredoc string interpolation -- $SKILL_NAME is
 # embedded in $SUGGESTION and, while it should always be a real registered
 # skill name, this is the same safe-construction discipline
-# compact-stop-check.sh already uses for suggestion text that could contain
+# ctx-compact-stop-check.sh already uses for suggestion text that could contain
 # a character that would otherwise break the JSON shape.
 jq -n --arg msg "$SUGGESTION" \
     '{systemMessage: $msg, hookSpecificOutput: {hookEventName: "PreToolUse", additionalContext: $msg}}'

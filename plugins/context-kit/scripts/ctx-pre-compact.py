@@ -3,7 +3,7 @@
 Pre-Compact State Capture Hook
 
 Fires before context compaction to capture current state (active plan,
-current task) so post-compact-restore.py can surface it afterwards.
+current task) so ctx-post-compact-restore.py can surface it afterwards.
 
 PreCompact hooks cannot block or otherwise prevent compaction — Claude
 Code's own docs list PreCompact as one of the events "Exit code 2 isn't
@@ -160,7 +160,7 @@ def save_state(state: dict, session_id: str = "") -> None:
 
     Writes to a temp file then os.replace()s it into place -- matching this
     plugin's own Bash hooks' `> "$FILE.tmp" && mv "$FILE.tmp" "$FILE"`
-    convention -- so a crash/kill mid-write can never leave post-compact-restore.py
+    convention -- so a crash/kill mid-write can never leave ctx-post-compact-restore.py
     reading a truncated file and silently discarding real captured state
     (its own JSON-decode-error handling would otherwise mask the loss as
     "no state was ever captured")."""

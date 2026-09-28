@@ -293,7 +293,7 @@ def check_mode_switch_emits_on_real_change(tmp_path):
 def check_mode_switch_pending_write_is_additive(tmp_path):
     # Regression guard (CodeRabbit's automated PR review, 2026-09-21, PR #368):
     # detect_mode.py used to overwrite the pending file, so a not-yet-delivered
-    # suggestion another writer (compact-track-and-suggest.sh) already queued
+    # suggestion another writer (ctx-compact-track-and-suggest.sh) already queued
     # there would be silently clobbered. It must append instead.
     session_id = "additivewrite"
     home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
@@ -327,7 +327,7 @@ def check_mode_switch_throttled_within_cooldown(tmp_path):
         json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
     )
     pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    pending_file.unlink()  # consume the first suggestion, as compact-stop-check.sh would
+    pending_file.unlink()  # consume the first suggestion, as ctx-compact-stop-check.sh would
     result = run_hook(
         json.dumps({"session_id": session_id, "prompt": "fix this bug"}).encode("utf-8"), home
     )

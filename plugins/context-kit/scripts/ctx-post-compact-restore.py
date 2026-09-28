@@ -7,7 +7,7 @@ Reads saved state from the session directory and prints it so Claude knows
 where it left off.
 
 Plan/log directories are opt-in via CONTEXT_KIT_PLANS_DIR and
-CONTEXT_KIT_SESSION_LOGS_DIR (unset by default — see pre-compact.py, which
+CONTEXT_KIT_SESSION_LOGS_DIR (unset by default — see ctx-pre-compact.py, which
 shares the same env vars).
 
 Hook Event: SessionStart (matcher: "compact|resume")
@@ -31,7 +31,7 @@ from pathlib import Path
 def get_session_dir(session_id: str = "") -> Path:
     """Get the session directory for storing state files.
 
-    Scoped by BOTH project and session — must match pre-compact.py's own
+    Scoped by BOTH project and session — must match ctx-pre-compact.py's own
     get_session_dir() exactly (same hashing, same fallback), since this
     function's whole job is reading back what that script just captured
     for the SAME session, not a project-wide shared file two concurrent
@@ -67,7 +67,7 @@ def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
     """True only if `path` is a regular file (not a symlink) whose resolved
     location stays within `base_dir`'s own resolved boundary.
 
-    Mirrors pre-compact.py's own `_is_contained_regular_file()` exactly.
+    Mirrors ctx-pre-compact.py's own `_is_contained_regular_file()` exactly.
     CONTEXT_KIT_PLANS_DIR/CONTEXT_KIT_SESSION_LOGS_DIR are project-controlled
     directories a plan/log's *.md entry could be a symlink inside — reading
     through it would then follow the link anywhere on disk (CWE-59, found by
@@ -104,10 +104,10 @@ def read_pre_compact_state(session_id: str = "") -> dict | None:
 def find_active_plan(project_dir: str) -> dict | None:
     """Find the most recent non-completed plan.
 
-    Mirrors pre-compact.py's find_active_plan() exactly (same Status-field
+    Mirrors ctx-pre-compact.py's find_active_plan() exactly (same Status-field
     regex, same full-scan/skip-completed logic, same status vocabulary) — the
     two must agree, since this function's whole job is to report back the
-    same plan pre-compact.py captured before compaction happened.
+    same plan ctx-pre-compact.py captured before compaction happened.
     """
     plans_dir = _configured_dir("CONTEXT_KIT_PLANS_DIR", project_dir)
     if plans_dir is None or not plans_dir.exists():

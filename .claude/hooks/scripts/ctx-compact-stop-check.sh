@@ -28,7 +28,7 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). See compact-session-init.sh's
+    # different hash algorithm (cksum). See ctx-compact-session-init.sh's
     # matching comment for the full rationale (found by cross-model-review,
     # 2026-09-21).
     exit 0
@@ -54,7 +54,7 @@ if [ -f "$PENDING_FILE" ]; then
         [ "${#VALID_SUGGESTIONS[@]}" -ge 20 ] && break
         # Validate EACH line independently, same whole-payload check the
         # prior single-line version used (found by security-reviewer,
-        # 2026-09-17): compact-track-and-suggest.sh/detect_mode.py only ever
+        # 2026-09-17): ctx-compact-track-and-suggest.sh/detect_mode.py only ever
         # write a single-line, "[StrategicCompact] "-prefixed message under
         # ~200 chars per suggestion -- a prefix-only check would let a line
         # shaped "[StrategicCompact] ok" followed by an unprefixed
@@ -69,7 +69,7 @@ if [ -f "$PENDING_FILE" ]; then
             && [[ "$LINE" =~ ^[[:print:]]*$ ]]; then
             VALID_SUGGESTIONS+=("$LINE")
         else
-            echo "compact-stop-check.sh: a pending-file line does not match the expected [StrategicCompact]-prefixed shape; discarding it" >&2
+            echo "ctx-compact-stop-check.sh: a pending-file line does not match the expected [StrategicCompact]-prefixed shape; discarding it" >&2
         fi
     done < "$PENDING_FILE"
     rm -f "$PENDING_FILE"

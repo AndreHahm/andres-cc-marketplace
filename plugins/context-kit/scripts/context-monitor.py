@@ -178,7 +178,7 @@ def _acquire_cache_lock(session_dir: Path, max_attempts: int = 60) -> bool:
     """Acquire an exclusive lock on the session's cache directory via
     atomic `mkdir` (portable: works the same on POSIX and NTFS/Windows,
     unlike a plain file-existence check). Mirrors the Bash hook scripts'
-    own two-phase scheme (see compact-track-and-suggest.sh's comment for
+    own two-phase scheme (see ctx-compact-track-and-suggest.sh's comment for
     the full rationale) -- many cheap mkdir-only retries first, then at
     most one bounded stale-lock check-and-bust before giving up. Returns
     False (fail-open: caller skips the cache update for this invocation
@@ -314,7 +314,7 @@ def save_cache(data: dict, session_id: str = "") -> bool:
 
 
 def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
-    """If post-compact-restore.py signaled a compaction just completed (via a
+    """If ctx-post-compact-restore.py signaled a compaction just completed (via a
     marker file in the shared session dir), reset the byte baseline and every
     progressive-nudge flag.
 
@@ -330,7 +330,7 @@ def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
 
     The marker is set at SessionStart(source=compact) time (post-compact-
     restore.py) and consumed here, on the first PostToolUse call after it.
-    post-compact-restore.py writes the transcript's byte size *at SessionStart
+    ctx-post-compact-restore.py writes the transcript's byte size *at SessionStart
     time* into the marker's own content when `transcript_path` was present in
     its hook input (confirmed present on SessionStart's payload per Claude
     Code's own docs) -- read that pre-captured value here when present, so the
@@ -338,7 +338,7 @@ def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
     (found by CodeRabbit's automated review, 2026-09-11). Falls back to
     measuring `transcript_path` right now (this function's own long-standing
     behavior) when the marker is empty -- e.g. an older marker format, or
-    post-compact-restore.py couldn't read transcript_path either.
+    ctx-post-compact-restore.py couldn't read transcript_path either.
 
     The marker is deleted only after the reset is durably persisted via
     save_cache() -- if that write hits a transient OSError, the marker stays
