@@ -7,7 +7,7 @@
 // `initialize`, accepts the correct token, rejects any request on a socket
 // that never successfully authenticated, and shuts down cleanly.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/broker-rpc-auth.mjs
+// Run from plugins/codex-kit/: node scripts/smoke-tests/cdx-broker-rpc-auth.mjs
 
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
