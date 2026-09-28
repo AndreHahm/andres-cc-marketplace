@@ -170,7 +170,7 @@ function safeRealpath(candidate) {
   }
 }
 
-// Duplicate of scripts/lib/prompts.mjs's own (unexported) neutralizeClosingTags
+// Duplicate of scripts/lib/cdx-prompts.mjs's own (unexported) neutralizeClosingTags
 // -- see the comment where this is applied to instructionBody below for why
 // this is a duplicate rather than an import. Exported so a smoke test can
 // exercise it directly, matching the existing isValidToken/isWithin export
@@ -625,7 +625,7 @@ async function main() {
   // this bridge still guards its own prompt structure. Neutralize, never
   // refuse-and-exit (shared-skill-conventions.md §4, and matching
   // interpolateTemplate's own use of neutralizeClosingTags in
-  // scripts/lib/prompts.mjs) -- break every closing-tag-shaped substring in
+  // scripts/lib/cdx-prompts.mjs) -- break every closing-tag-shaped substring in
   // instructionBody generically, not scoped to just </reviewer_instructions>,
   // so a literal CLOSING delimiter for ANY of this prompt's five structural
   // tags (<content_trust_boundary>, <target_paths>, <reviewer_instructions>,
@@ -718,7 +718,7 @@ async function main() {
   console.log(JSON.stringify(result.data, null, 2));
 }
 
-// Entry-point guard (matches stop-review-gate-hook.mjs's own pattern): lets
+// Entry-point guard (matches cdx-stop-review-gate-hook.mjs's own pattern): lets
 // smoke tests `import` the pure validation functions above (isWithin,
 // locateInSemanticScope, semanticallyValidate) directly, without triggering
 // a real CLI run -- main() only fires when this file is executed directly,

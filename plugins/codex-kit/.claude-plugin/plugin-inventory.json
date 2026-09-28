@@ -460,7 +460,7 @@
       "domain": "codex-integration",
       "functional_role": "integration",
       "id": "component_722f4ae4",
-      "name": "adversarial-review",
+      "name": "cdx-adversarial-review",
       "naming_history": [
         {
           "evidence": [
@@ -469,10 +469,19 @@
           "name": "adversarial-review",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-adversarial-review.md"
+          ],
+          "name": "cdx-adversarial-review",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/adversarial-review.md",
+      "path": "commands/cdx-adversarial-review.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -487,6 +496,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-adversarial-review.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -501,7 +519,7 @@
       "domain": "codex-integration",
       "functional_role": "infrastructure",
       "id": "component_a8d285ee",
-      "name": "cancel",
+      "name": "cdx-cancel",
       "naming_history": [
         {
           "evidence": [
@@ -510,10 +528,19 @@
           "name": "cancel",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-cancel.md"
+          ],
+          "name": "cdx-cancel",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/cancel.md",
+      "path": "commands/cdx-cancel.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -528,6 +555,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-cancel.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -542,7 +578,7 @@
       "domain": "codex-integration",
       "functional_role": "infrastructure",
       "id": "component_0f827f59",
-      "name": "result",
+      "name": "cdx-result",
       "naming_history": [
         {
           "evidence": [
@@ -551,10 +587,19 @@
           "name": "result",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-result.md"
+          ],
+          "name": "cdx-result",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/result.md",
+      "path": "commands/cdx-result.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -569,6 +614,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-result.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -583,7 +637,7 @@
       "domain": "codex-integration",
       "functional_role": "integration",
       "id": "component_02090992",
-      "name": "review",
+      "name": "cdx-review",
       "naming_history": [
         {
           "evidence": [
@@ -592,10 +646,19 @@
           "name": "review",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-review.md"
+          ],
+          "name": "cdx-review",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/review.md",
+      "path": "commands/cdx-review.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -610,6 +673,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-review.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -624,7 +696,7 @@
       "domain": "codex-integration",
       "functional_role": "infrastructure",
       "id": "component_2e4f4a87",
-      "name": "setup",
+      "name": "cdx-setup",
       "naming_history": [
         {
           "evidence": [
@@ -633,10 +705,19 @@
           "name": "setup",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-setup.md"
+          ],
+          "name": "cdx-setup",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/setup.md",
+      "path": "commands/cdx-setup.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -651,6 +732,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-setup.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -665,7 +755,7 @@
       "domain": "codex-integration",
       "functional_role": "infrastructure",
       "id": "component_c0e6aedf",
-      "name": "status",
+      "name": "cdx-status",
       "naming_history": [
         {
           "evidence": [
@@ -674,10 +764,19 @@
           "name": "status",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-status.md"
+          ],
+          "name": "cdx-status",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/status.md",
+      "path": "commands/cdx-status.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -692,6 +791,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-status.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -706,7 +814,7 @@
       "domain": "codex-integration",
       "functional_role": "integration",
       "id": "component_7246a872",
-      "name": "transfer",
+      "name": "cdx-transfer",
       "naming_history": [
         {
           "evidence": [
@@ -715,10 +823,19 @@
           "name": "transfer",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-transfer.md"
+          ],
+          "name": "cdx-transfer",
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
-      "path": "commands/transfer.md",
+      "path": "commands/cdx-transfer.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -733,6 +850,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/cdx-transfer.md"
+          ],
+          "reason": "R33 component-file-prefix rename: cdx- prefix applied to codex-kit's commands (PR 3 of the plugin-file-prefixes marketplace migration)",
+          "status": "active",
+          "valid_from": "2026-09-28",
           "valid_to": null
         }
       ],
@@ -871,9 +997,11 @@
       "type": "hook"
     }
   ],
+  "domain_prefix": "codex",
   "extensions": {},
   "plugin_id": "plugin_29c58158",
   "plugin_name": "codex-kit",
+  "prefix": "cdx",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-29"
+  "updated_on": "2026-09-28"
 }

@@ -9,7 +9,7 @@ import {
   matchesAnyStrictSecretFilename,
   LOOSE_SECRET_FILENAME_PATTERNS,
   isExemptedBySecretlintignore
-} from "../../../scripts/lib/secret-filenames.mjs";
+} from "../../../scripts/lib/cdx-secret-filenames.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
@@ -24,7 +24,7 @@ import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingT
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_DIR = path.resolve(SCRIPT_DIR, "..");
 
-// Shared pattern list, imported from scripts/lib/secret-filenames.mjs (see
+// Shared pattern list, imported from scripts/lib/cdx-secret-filenames.mjs (see
 // that module's own header for why this is now the single copy). Matches
 // plugins/git-kit/scripts/git-scan-staged-files.sh's bash `case` statement,
 // which is case-sensitive -- but this check runs only on Windows against
@@ -372,14 +372,14 @@ function looksLikeCredentialAssignment(content) {
 
 function isDocumentationAboutSecrets(relativePath, matchedPattern) {
   // scripts-reviewer finding (M1, post-security-review): identify one of
-  // the four loose patterns by REFERENCE against secret-filenames.mjs's own
+  // the four loose patterns by REFERENCE against cdx-secret-filenames.mjs's own
   // exported LOOSE_SECRET_FILENAME_PATTERNS -- matchesSecretFilename's
   // `.find()` returns the exact array element from SECRET_FILENAME_PATTERNS,
   // so this is a real object-identity check, not a string reconstruction. An
   // earlier version compared `String(matchedPattern)` against a hand-typed
   // `"/secret/"`-shaped string Set defined only in this file -- nothing tied
   // the two files' representations together, so any future edit to one of
-  // those four patterns' literal form in secret-filenames.mjs (a flag, an
+  // those four patterns' literal form in cdx-secret-filenames.mjs (a flag, an
   // escape, a rewrap) would have silently broken this check with no error
   // anywhere, permanently un-exempting every documentation-about-secrets
   // file again (fail-closed, but silently -- the exact regression issue #78

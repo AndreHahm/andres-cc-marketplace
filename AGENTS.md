@@ -80,6 +80,19 @@ Never write temporary, test, or scratch files to the repository root. Always use
 
 **Why:** an untracked file at repo root is unnecessary clutter even when it can be deleted normally, and on machines where local permissions deny `rm` at the repo root (a personal/local setting, not a project-wide guarantee — check your own environment rather than assuming), such a file becomes permanent since it can't be cleaned up afterward at all. This has independently happened in at least two separate sessions under that exact local-permission constraint (a plugin-devkit session, and a scratch file left by an `analysis-kit` build's own smoke testing), confirming it's a recurring failure mode worth preventing outright, not one-off bad luck. Enforcement here is prose-only (no backing hook blocks a repo-root write) — a deliberate, disclosed tradeoff, not an oversight.
 
+## Marketplace-Specific: Keep `.secretlintignore` in Sync With Renames
+
+When renaming a file whose old or new basename matches `.secretlintignore`'s exempted sensitive-filename
+patterns (e.g. `*secret*`, `*credential*`), update `.secretlintignore` in the same change — but add the
+new path **alongside** the old one, never in its place. `git-scan-staged-files.sh` (the `commit` skill's
+sensitive-file scan) detects a staged rename and checks *both* the old and new path against the ignore
+file, flagging the whole rename if either side isn't covered. Dropping the old entry once the file no
+longer exists on disk still trips the scan, since the rename's staged diff still contains the old path.
+
+**Why:** hit live during the codex-kit R33 prefix migration (renaming `secret-filenames.mjs` to
+`cdx-secret-filenames.mjs`) — replacing the old `.secretlintignore` entry with the new one left the scan
+flagging the rename as a sensitive file, even though the new path was correctly exempted.
+
 ## Code Review Rules
 
 Read by the external `chatgpt-codex-connector[bot]` GitHub App reviewer (triggered by `@codex review` /

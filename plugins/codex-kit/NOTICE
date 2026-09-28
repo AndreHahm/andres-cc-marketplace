@@ -1,7 +1,7 @@
 codex-kit
 
-This plugin's engine (scripts/app-server-broker.mjs, scripts/codex-companion.mjs,
-scripts/session-lifecycle-hook.mjs, scripts/stop-review-gate-hook.mjs, and
+This plugin's engine (scripts/cdx-app-server-broker.mjs, scripts/codex-companion.mjs,
+scripts/cdx-session-lifecycle-hook.mjs, scripts/cdx-stop-review-gate-hook.mjs, and
 scripts/lib/*) is a derivative work based on OpenAI's official "codex" Claude
 Code plugin.
 

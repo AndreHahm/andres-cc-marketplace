@@ -31,7 +31,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../scripts/lib/secret-filenames.mjs";
+import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../scripts/lib/cdx-secret-filenames.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GUARDED_DISPATCH = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-windows-guardrails", "scripts", "guarded-dispatch.mjs");
@@ -814,10 +814,10 @@ console.log("\n=== scripts-reviewer fix (M1): the loose-pattern identity check i
   // earlier version of isDocumentationAboutSecrets compared
   // `String(matchedPattern)` against a hand-typed `"/secret/"`-shaped
   // string Set defined only in guarded-dispatch.mjs, with nothing tying it
-  // to secret-filenames.mjs's own SECRET_FILENAME_PATTERNS -- any future
+  // to cdx-secret-filenames.mjs's own SECRET_FILENAME_PATTERNS -- any future
   // edit to one of those four patterns' literal form there (a flag, an
   // escape, a rewrap) would have silently broken the match with no error.
-  // The fix: secret-filenames.mjs exports LOOSE_SECRET_FILENAME_PATTERNS
+  // The fix: cdx-secret-filenames.mjs exports LOOSE_SECRET_FILENAME_PATTERNS
   // referencing the SAME pattern objects used inside
   // SECRET_FILENAME_PATTERNS, and matchesSecretFilename's `.find()`
   // returns that exact object -- so `.includes(matchedPattern)` is real

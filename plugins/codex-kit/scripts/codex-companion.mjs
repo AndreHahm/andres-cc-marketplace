@@ -6,7 +6,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { parseArgs, splitRawArgumentString } from "./lib/args.mjs";
+import { parseArgs, splitRawArgumentString } from "./lib/cdx-args.mjs";
 import {
     buildPersistentTaskThreadName,
     DEFAULT_CONTINUE_PROMPT,
@@ -20,14 +20,14 @@ import {
     readOutputSchema,
     runAppServerReview,
     runAppServerTurn
-  } from "./lib/codex.mjs";
-import { resolveClaudeSessionPath } from "./lib/claude-session-transfer.mjs";
-import { readStdinIfPiped } from "./lib/fs.mjs";
-import { collectReviewContext, ensureGitRepository, resolveReviewTarget } from "./lib/git.mjs";
-import { binaryAvailable, terminateProcessTree } from "./lib/process.mjs";
-import { loadPromptTemplate, interpolateTemplate } from "./lib/prompts.mjs";
+  } from "./lib/cdx-codex.mjs";
+import { resolveClaudeSessionPath } from "./lib/cdx-claude-session-transfer.mjs";
+import { readStdinIfPiped } from "./lib/cdx-fs.mjs";
+import { collectReviewContext, ensureGitRepository, resolveReviewTarget } from "./lib/cdx-git.mjs";
+import { binaryAvailable, terminateProcessTree } from "./lib/cdx-process.mjs";
+import { loadPromptTemplate, interpolateTemplate } from "./lib/cdx-prompts.mjs";
 import { readCodexConfig, writeCodexConfig, resolveModelAlias } from "./lib/codex-config.mjs";
-import { checkSandboxViability } from "./lib/sandbox-check.mjs";
+import { checkSandboxViability } from "./lib/cdx-sandbox-check.mjs";
 import {
   generateJobId,
   getConfig,
@@ -35,7 +35,7 @@ import {
   setConfig,
   upsertJob,
   writeJobFile
-} from "./lib/state.mjs";
+} from "./lib/cdx-state.mjs";
 import {
   buildSingleJobSnapshot,
   buildStatusSnapshot,
@@ -43,7 +43,7 @@ import {
   resolveCancelableJob,
   resolveResultJob,
   sortJobsNewestFirst
-} from "./lib/job-control.mjs";
+} from "./lib/cdx-job-control.mjs";
 import {
   appendLogLine,
   createJobLogFile,
@@ -53,8 +53,8 @@ import {
   nowIso,
   runTrackedJob,
   SESSION_ID_ENV
-} from "./lib/tracked-jobs.mjs";
-import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
+} from "./lib/cdx-tracked-jobs.mjs";
+import { resolveWorkspaceRoot } from "./lib/cdx-workspace.mjs";
 import {
   renderNativeReviewResult,
   renderReviewResult,
@@ -64,7 +64,7 @@ import {
   renderSetupReport,
   renderStatusReport,
   renderTaskResult
-} from "./lib/render.mjs";
+} from "./lib/cdx-render.mjs";
 
 const ROOT_DIR = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "review-output.schema.json");
@@ -247,7 +247,7 @@ async function handleSetup(argv) {
   const workspaceRoot = resolveCommandWorkspace(options);
   const actionsTaken = [];
 
-  // decision #4: opt-in persistence only. The caller (commands/setup.md) is
+  // decision #4: opt-in persistence only. The caller (commands/cdx-setup.md) is
   // responsible for confirming with the user via AskUserQuestion before ever
   // passing --persist-model/--persist-effort — this script does not ask.
   //

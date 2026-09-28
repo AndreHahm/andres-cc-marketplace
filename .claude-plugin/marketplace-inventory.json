@@ -56,6 +56,7 @@
     {
       "compatibility": {},
       "created_on": "2026-08-08",
+      "domain_prefix": "codex",
       "domains": [
         "codex-integration",
         "marketplace-review-policy"
@@ -74,6 +75,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "cdx",
       "provenance": {
         "notes": "Apache-2.0 licensed upstream, per plugins/codex-kit/NOTICE. Windows shim-spawning logic in scripts/lib/codex-exec.mjs is a direct port of node-cross-spawn's argument-escaping algorithm (MIT). Substantial original additions not in the upstream plugin: independent double-check verification, research, and a generic reviewer-agnostic bridge.",
         "origin": "Engine (scripts/app-server-broker.mjs and related) is a derivative of OpenAI's official 'codex' Claude Code plugin"

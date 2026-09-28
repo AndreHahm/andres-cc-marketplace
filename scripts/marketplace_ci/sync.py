@@ -40,7 +40,7 @@ _HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
 # resolver (relative `import`/`new URL(..., import.meta.url)` references, followed
 # transitively) seeded from both entry points PLUS two scripts spawned dynamically via
 # `path.join(SCRIPT_DIR, "...")` + `spawn()`/`spawnSync()` rather than a static import
-# (codex-companion.mjs, app-server-broker.mjs) -- the resolver can't follow a dynamic
+# (codex-companion.mjs, cdx-app-server-broker.mjs) -- the resolver can't follow a dynamic
 # path.join, so each spawn target had to be added as its own seed and re-resolved.
 # Mirroring only the two entry-point files initially shipped with this broken
 # (ERR_MODULE_NOT_FOUND on load) -- found by Codex's cross-model review of this same
@@ -54,7 +54,7 @@ _HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
 # scripts/lib/app-server-protocol.d.ts is deliberately excluded: every reference to it
 # is inside a JSDoc @typedef/@param comment, never a runtime `import`. prompts/
 # adversarial-review.md is deliberately excluded: only codex-companion.mjs's
-# `adversarial-review` subcommand reads it, and stop-review-gate-hook.mjs only ever
+# `adversarial-review` subcommand reads it, and cdx-stop-review-gate-hook.mjs only ever
 # invokes the `task` subcommand.
 # This closure is NOT automatically re-verified -- a future codex-kit change adding a
 # new relative import, spawned script, or path.join-constructed static file read to
@@ -65,29 +65,29 @@ EXTERNAL_HOOK_SCRIPT_MIRRORS: tuple[tuple[str, str], ...] = (
     ("codex-kit", ".claude-plugin/plugin.json"),
     ("codex-kit", "prompts/stop-review-gate.md"),
     ("codex-kit", "schemas/review-output.schema.json"),
-    ("codex-kit", "scripts/session-lifecycle-hook.mjs"),
-    ("codex-kit", "scripts/stop-review-gate-hook.mjs"),
+    ("codex-kit", "scripts/cdx-session-lifecycle-hook.mjs"),
+    ("codex-kit", "scripts/cdx-stop-review-gate-hook.mjs"),
     ("codex-kit", "scripts/codex-companion.mjs"),
-    ("codex-kit", "scripts/app-server-broker.mjs"),
-    ("codex-kit", "scripts/lib/app-server.mjs"),
-    ("codex-kit", "scripts/lib/args.mjs"),
-    ("codex-kit", "scripts/lib/broker-endpoint.mjs"),
-    ("codex-kit", "scripts/lib/broker-lifecycle.mjs"),
-    ("codex-kit", "scripts/lib/claude-session-transfer.mjs"),
+    ("codex-kit", "scripts/cdx-app-server-broker.mjs"),
+    ("codex-kit", "scripts/lib/cdx-app-server.mjs"),
+    ("codex-kit", "scripts/lib/cdx-args.mjs"),
+    ("codex-kit", "scripts/lib/cdx-broker-endpoint.mjs"),
+    ("codex-kit", "scripts/lib/cdx-broker-lifecycle.mjs"),
+    ("codex-kit", "scripts/lib/cdx-claude-session-transfer.mjs"),
     ("codex-kit", "scripts/lib/codex-config.mjs"),
     ("codex-kit", "scripts/lib/codex-exec.mjs"),
-    ("codex-kit", "scripts/lib/codex.mjs"),
-    ("codex-kit", "scripts/lib/fs.mjs"),
-    ("codex-kit", "scripts/lib/git.mjs"),
-    ("codex-kit", "scripts/lib/job-control.mjs"),
-    ("codex-kit", "scripts/lib/process.mjs"),
-    ("codex-kit", "scripts/lib/prompts.mjs"),
-    ("codex-kit", "scripts/lib/render.mjs"),
-    ("codex-kit", "scripts/lib/sandbox-check.mjs"),
-    ("codex-kit", "scripts/lib/secret-filenames.mjs"),
-    ("codex-kit", "scripts/lib/state.mjs"),
-    ("codex-kit", "scripts/lib/tracked-jobs.mjs"),
-    ("codex-kit", "scripts/lib/workspace.mjs"),
+    ("codex-kit", "scripts/lib/cdx-codex.mjs"),
+    ("codex-kit", "scripts/lib/cdx-fs.mjs"),
+    ("codex-kit", "scripts/lib/cdx-git.mjs"),
+    ("codex-kit", "scripts/lib/cdx-job-control.mjs"),
+    ("codex-kit", "scripts/lib/cdx-process.mjs"),
+    ("codex-kit", "scripts/lib/cdx-prompts.mjs"),
+    ("codex-kit", "scripts/lib/cdx-render.mjs"),
+    ("codex-kit", "scripts/lib/cdx-sandbox-check.mjs"),
+    ("codex-kit", "scripts/lib/cdx-secret-filenames.mjs"),
+    ("codex-kit", "scripts/lib/cdx-state.mjs"),
+    ("codex-kit", "scripts/lib/cdx-tracked-jobs.mjs"),
+    ("codex-kit", "scripts/lib/cdx-workspace.mjs"),
     ("context-kit", "scripts/context-monitor.py"),
     ("context-kit", "scripts/ctx-post-compact-restore.py"),
     ("context-kit", "scripts/ctx-pre-compact.py"),

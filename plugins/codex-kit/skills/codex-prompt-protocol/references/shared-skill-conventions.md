@@ -24,7 +24,7 @@ invariants below are present; don't move an existing instance between the
 two forms without a reason. `codex-rescue`, `codex-verify`, and
 `codex-research` are this file's original three consumers, but the same
 requirement applies equally to
-`commands/review.md`/`commands/adversarial-review.md`, the Stop review-gate
+`commands/cdx-review.md`/`commands/cdx-adversarial-review.md`, the Stop review-gate
 prompt (`prompts/stop-review-gate.md`), `codex-review-bridge`, and
 `plugin-marketplace-review` (or any future component with the same shape).
 The wording differs per component because each protects a different
@@ -78,8 +78,8 @@ recorded in that component's own SKILL.md, when it already satisfies the
 same underlying intent (a human confirms before repo/session content leaves
 the machine to an external CLI) through a mechanism of its own:
 
-- **User-invoked slash commands** (`commands/review.md`,
-  `commands/adversarial-review.md`, `commands/transfer.md`): the explicit
+- **User-invoked slash commands** (`commands/cdx-review.md`,
+  `commands/cdx-adversarial-review.md`, `commands/cdx-transfer.md`): the explicit
   `/codex-kit:...` invocation itself is the confirmation — a user who just
   typed the command to run a Codex review or transfer already confirmed
   that action. `adversarial-review.md`'s own Phase 1.5 preview gate (unless
@@ -105,7 +105,7 @@ the machine to an external CLI) through a mechanism of its own:
   the bridge itself (see `plugin-marketplace-review`'s own governance note
   for its unattended-CI case, where no session exists to confirm in at all).
 - **The Stop review-gate hook** (`hooks/hooks.json`'s `Stop` entry, backed
-  by `scripts/stop-review-gate-hook.mjs`): the one-time `AskUserQuestion`
+  by `scripts/cdx-stop-review-gate-hook.mjs`): the one-time `AskUserQuestion`
   confirmation `/codex-kit:setup --enable-review-gate` requires before
   turning the gate on is this component's exception — once enabled, the
   gate dispatches to Codex automatically on every future turn's end, with
@@ -123,7 +123,7 @@ literal closing-tag-shaped substring (e.g. `</document>`, `</context_document>`)
 matching one of this prompt's own delimiters. Left unneutralized, that
 substring lets the content escape its declared boundary and be read as
 task-level text instead of evidence — the exact class of Critical finding
-closed in `scripts/lib/prompts.mjs`'s `interpolateTemplate` (2026-08-12).
+closed in `scripts/lib/cdx-prompts.mjs`'s `interpolateTemplate` (2026-08-12).
 **Neutralize, never refuse-and-exit**: a refuse-on-match check false-positives
 on any legitimate document that merely *mentions* the tag name in prose, and
 still needs the same whitespace-tolerant matching a neutralize step does — so

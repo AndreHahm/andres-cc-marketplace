@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/session-lifecycle-hook.mjs\" SessionStart",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/cdx-session-lifecycle-hook.mjs\" SessionStart",
             "timeout": 5,
             "onError": "warn"
           }
@@ -174,7 +174,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/session-lifecycle-hook.mjs\" SessionEnd",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/cdx-session-lifecycle-hook.mjs\" SessionEnd",
             "timeout": 12,
             "onError": "warn"
           }
@@ -186,7 +186,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/stop-review-gate-hook.mjs\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/_external-scripts/codex-kit/scripts/cdx-stop-review-gate-hook.mjs\"",
             "timeout": 600,
             "onError": "warn",
             "statusMessage": "Running Codex stop-time review gate (can take up to 9 minutes)..."

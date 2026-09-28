@@ -25,7 +25,7 @@ Codex CLI reads stdin whenever stdin is non-TTY. In a subprocess/script context,
 
 - `codex exec` calls should always carry an explicit, bounded timeout — `scripts/lib/codex-exec.mjs` takes `timeoutMs` as a required-in-spirit parameter (defaults to 240000ms) and kills the process with `SIGTERM` on expiry, returning a `timeout` typed failure rather than hanging the caller.
 - A **timeout** is not a **crash**: a timed-out call may have a resumable session; a crashed call (non-zero exit, no output) generally should not be blindly retried without understanding why it crashed first — surface the `detail` field to the user rather than silently re-running.
-- Session-ID capture for resume: Codex reports its session/thread ID in stderr chrome as a run starts, not in the final-message file. Components needing resume (e.g. `codex-rescue`'s `--resume-last`) rely on the companion script's own job-tracking (`scripts/lib/tracked-jobs.mjs`, `scripts/lib/state.mjs`) rather than re-deriving this from raw CLI output.
+- Session-ID capture for resume: Codex reports its session/thread ID in stderr chrome as a run starts, not in the final-message file. Components needing resume (e.g. `codex-rescue`'s `--resume-last`) rely on the companion script's own job-tracking (`scripts/lib/cdx-tracked-jobs.mjs`, `scripts/lib/cdx-state.mjs`) rather than re-deriving this from raw CLI output.
 
 ## `--output-schema` / `--output-last-message`
 
