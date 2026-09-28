@@ -310,7 +310,7 @@ direct-verification surface, and the persisted `scripts/smoke_test.py` exercises
 `ctx-compact-session-init.sh` directly
 against this same stdin/stdout contract, plus imports and cross-checks `context-monitor.py`'s
 `get_session_dir()` implementation. `context-mode`'s own `scripts/smoke_test.py` separately covers
-`detect_mode.py`'s new mode-switch-suggestion side effect. **Known gap (hook-reviewer, 2026-09-18):** `compact-track-and-
+`detect_mode.py`'s new mode-switch-suggestion side effect. **Known gap (hook-reviewer, 2026-09-18):** `ctx-compact-track-and-
 suggest.sh` (the most complex script — async, cross-process locking), `ctx-compact-instructions.sh`,
 `ctx-pre-compact.py`, and `ctx-post-compact-restore.py` have no direct stdin/stdout contract test of their
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
