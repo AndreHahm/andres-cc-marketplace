@@ -65,4 +65,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
-Apache-2.0. The engine (`scripts/app-server-broker.mjs`, `scripts/codex-companion.mjs`, `scripts/session-lifecycle-hook.mjs`, `scripts/stop-review-gate-hook.mjs`, `scripts/lib/*`) is a derivative work of OpenAI's official `codex` plugin — see [NOTICE](./NOTICE) for the full attribution and list of modifications.
+Apache-2.0. The engine (`scripts/cdx-app-server-broker.mjs`, `scripts/codex-companion.mjs`, `scripts/cdx-session-lifecycle-hook.mjs`, `scripts/cdx-stop-review-gate-hook.mjs`, `scripts/lib/*`) is a derivative work of OpenAI's official `codex` plugin — see [NOTICE](./NOTICE) for the full attribution and list of modifications.

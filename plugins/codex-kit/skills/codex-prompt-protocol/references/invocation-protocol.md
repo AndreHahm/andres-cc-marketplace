@@ -30,7 +30,7 @@ installed or is missing required runtime support..."` (see §6) — this is the
 
 Every flag below was verified against `codex-companion.mjs`. "Documented"
 means it appears in `printUsage`'s output; "parser-only" means it is accepted
-by `parseCommandInput` (which wraps `lib/args.mjs`'s `parseArgs`) but not
+by `parseCommandInput` (which wraps `lib/cdx-args.mjs`'s `parseArgs`) but not
 printed in usage.
 
 ### `review` (`handleReviewCommand`)
@@ -39,7 +39,7 @@ printed in usage.
 |------|------|--------|----------|
 | `--base <ref>` | value | documented | yes |
 | `--scope <auto\|working-tree\|branch>` | value | documented | yes |
-| `--model <m>` | value | parser-only | **yes** — threaded through `executeReviewRun` → `runAppServerReview` → `startThread({ model })` in `lib/codex.mjs`. Passed as a per-call companion flag directly; not written to `config.toml` unless the skill/command explicitly offers `--persist`. |
+| `--model <m>` | value | parser-only | **yes** — threaded through `executeReviewRun` → `runAppServerReview` → `startThread({ model })` in `lib/cdx-codex.mjs`. Passed as a per-call companion flag directly; not written to `config.toml` unless the skill/command explicitly offers `--persist`. |
 | `--cwd <path>` | value | parser-only | yes |
 | `--json` | bool | parser-only | yes |
 | `--effort <level>` | value | parser-only | **yes** — registered in `handleReviewCommand`'s `valueOptions` and threaded through the same `executeReviewRun` → `runAppServerReview` → `startThread({ effort })` path. |
@@ -103,7 +103,7 @@ review a specific commit, use `--base <sha>~1 --scope branch`.
 
 | Flag | Type | Notes |
 |------|------|-------|
-| `--source <path>` | value | Claude session `.jsonl` to import. Falls back to `CODEX_KIT_TRANSCRIPT_PATH` env (`resolveClaudeSessionPath` in `lib/claude-session-transfer.mjs`) when omitted. |
+| `--source <path>` | value | Claude session `.jsonl` to import. Falls back to `CODEX_KIT_TRANSCRIPT_PATH` env (`resolveClaudeSessionPath` in `lib/cdx-claude-session-transfer.mjs`) when omitted. |
 | `--json` | bool | |
 | `--cwd <path>` | value | Accepted by `handleTransfer`'s `valueOptions` but **not shown in `printUsage`'s transfer line** — don't copy the usage line as the full flag set. |
 
@@ -156,7 +156,7 @@ This is the single most important thing to understand about the companion.
 - `handleTask`'s `booleanOptions` is
   `["json", "write", "resume-last", "resume", "fresh", "background"]`.
   **No `wait`.**
-- `parseArgs` (`lib/args.mjs`) does NOT raise an unknown-flag error for a
+- `parseArgs` (`lib/cdx-args.mjs`) does NOT raise an unknown-flag error for a
   long-form flag outside `valueOptions`/`booleanOptions`. It silently pushes
   the token into `positionals`.
 - `readTaskPrompt` does `positionals.join(" ")` and uses that
@@ -318,25 +318,25 @@ blame the user.
 
 | Pattern in stderr (verbatim where quoted) | Category | Source | Action |
 |-------------------|----------|--------|--------|
-| `not authenticated` | auth | `lib/codex.mjs`'s `buildAuthStatus` default `detail` field | Suggest `codex login` |
+| `not authenticated` | auth | `lib/cdx-codex.mjs`'s `buildAuthStatus` default `detail` field | Suggest `codex login` |
 | `OPENAI_API_KEY` (stderr substring match) | auth | `lib/codex-exec.mjs`'s `runCodexExec` only — a primitive `codex-companion.mjs` never calls directly; used by `codex-review-bridge` and any other `runCodexExec` caller instead, which surface this as the `auth_unavailable` typed-failure category rather than a prose message | Suggest `codex login` |
-| `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
-| `This command must run inside a Git repository.` | environment | `lib/git.mjs`'s `ensureGitRepository` | Tell user, stop |
+| `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/cdx-codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
+| `This command must run inside a Git repository.` | environment | `lib/cdx-git.mjs`'s `ensureGitRepository` | Tell user, stop |
 | `unknown revision` / `bad revision` | bad-input | `git rev-parse` (git's own error, not this codebase's) | Show `git branch --list`, AskUserQuestion |
 | ``does not support custom focus text`` | wrong-skill | `validateNativeReviewRequest` | Should NOT fire from a codex-kit task/review skill: Phase 1 strips focus text and offers the adversarial redirect. If it fires, Phase 1 was skipped → SKILL.md regression. |
 | `Provide a prompt, a prompt file, piped stdin, or use --resume-last.` | prompt-empty | `requireTaskRequest` | Pattern B failed before consuming stdin. Common cause: `cat` failed and `set -o pipefail` was missing, OR a positional arg overrode stdin (§3). |
 | `Task <id> is still running. Use /codex-kit:status before continuing it.` | concurrency-conflict | thrown when an active task is found | Previous Codex task in flight. Show user the active jobId, stop. Do NOT silently cancel. |
 | `Unsupported reasoning effort "<value>"` | bad-input | effort normalization against `VALID_REASONING_EFFORTS` | codex-rescue: effort must be `{none, minimal, low, medium, high, xhigh}`. Re-prompt via AskUserQuestion. |
 | `Choose either --resume/--resume-last or --fresh.` | bad-input | `handleTask` | codex-rescue: ANALYZE produced conflicting flags. Re-prompt. |
-| `Missing value for --<key>` | bad-input | `lib/args.mjs`'s `parseArgs` | Phase 1 should have caught this → ANALYZE regression. |
+| `Missing value for --<key>` | bad-input | `lib/cdx-args.mjs`'s `parseArgs` | Phase 1 should have caught this → ANALYZE regression. |
 | `Stored job <id> is missing its task request payload.` | recovery-impossible | `handleTaskWorker` | Detached task-worker couldn't load the stored request. Surfaced via `result <jobId>` or the job log file, NOT from the original `task --background --print-job-id` stdout. Abort, save failure report. |
 | JSON parse error on companion stdout | unexpected-format | n/a | Companion output format changed. Show raw stdout/stderr, abort, ask user to report. |
 | Pattern A 30-min cap exceeded | wait-timeout | n/a (Claude-side) | `KillShell` the bash_id; if `$OUT_FILE` parses as JSON treat as partial, else `recovery-impossible`. |
-| (no stderr — silently corrupted prompt) | silent-flag-corruption | `lib/args.mjs`'s `parseArgs` + `readTaskPrompt` | **NOT detectable post-hoc.** Only Phase 1 ANALYZE whitelisting prevents it. If Codex echoes an unknown flag back as task content, treat as Phase 1 regression and AskUserQuestion. |
-| `Could not identify the current Claude transcript. Retry with --source <path-to-claude-jsonl>.` | setup/transcript-missing | `lib/claude-session-transfer.mjs`'s `resolveClaudeSessionPath` | No `CODEX_KIT_TRANSCRIPT_PATH` env and no `--source`. Ask the user to pass `--source` manually. |
-| `Codex can import Claude sessions only from <dir>: <path>` | bad-input | `lib/claude-session-transfer.mjs` | Source path resolved outside `~/.claude/projects/`. Show the offending path, do not retry with a modified path automatically. |
-| `Timed out waiting for Codex to finish importing the Claude session.` | wait-timeout | `lib/codex.mjs`'s `EXTERNAL_AGENT_IMPORT_TIMEOUT_MS = 2 * 60 * 1000` | Import RPC didn't complete in 2 min. Abort, don't retry silently — re-running may just return the same ledger-cached thread (see next row) or hit the same stall. |
-| (same file + same content re-imported → existing `threadId` returned) | **not an error** | ledger dedup against `external_agent_session_imports.json` in `lib/codex.mjs` | Normal behavior, not a failure to surface as one. Codex recognizes the identical `sourcePath` + `content_sha256` pair and returns the prior thread instead of creating a duplicate. |
+| (no stderr — silently corrupted prompt) | silent-flag-corruption | `lib/cdx-args.mjs`'s `parseArgs` + `readTaskPrompt` | **NOT detectable post-hoc.** Only Phase 1 ANALYZE whitelisting prevents it. If Codex echoes an unknown flag back as task content, treat as Phase 1 regression and AskUserQuestion. |
+| `Could not identify the current Claude transcript. Retry with --source <path-to-claude-jsonl>.` | setup/transcript-missing | `lib/cdx-claude-session-transfer.mjs`'s `resolveClaudeSessionPath` | No `CODEX_KIT_TRANSCRIPT_PATH` env and no `--source`. Ask the user to pass `--source` manually. |
+| `Codex can import Claude sessions only from <dir>: <path>` | bad-input | `lib/cdx-claude-session-transfer.mjs` | Source path resolved outside `~/.claude/projects/`. Show the offending path, do not retry with a modified path automatically. |
+| `Timed out waiting for Codex to finish importing the Claude session.` | wait-timeout | `lib/cdx-codex.mjs`'s `EXTERNAL_AGENT_IMPORT_TIMEOUT_MS = 2 * 60 * 1000` | Import RPC didn't complete in 2 min. Abort, don't retry silently — re-running may just return the same ledger-cached thread (see next row) or hit the same stall. |
+| (same file + same content re-imported → existing `threadId` returned) | **not an error** | ledger dedup against `external_agent_session_imports.json` in `lib/cdx-codex.mjs` | Normal behavior, not a failure to surface as one. Codex recognizes the identical `sourcePath` + `content_sha256` pair and returns the prior thread instead of creating a duplicate. |
 | (other) | unknown | n/a | Show raw stderr verbatim. Do NOT retry. |
 
 **Never:**
@@ -426,7 +426,7 @@ piping so the content never enters Bash's stdout.
   does `positionalPrompt || readStdinIfPiped()`; any positional short-circuits
   stdin and the entire blind payload is silently dropped.
 - **`--prompt-file` is parser-only** (accepted, not in `printUsage`). Stdin is the
-  first-class path (`readTaskPrompt` handles it via `lib/fs.mjs`'s
+  first-class path (`readTaskPrompt` handles it via `lib/cdx-fs.mjs`'s
   `readStdinIfPiped`). Use stdin.
 - **`set -o pipefail`** is mandatory. Without it, a cat-side failure
   sends 0 bytes and the companion's `prompt-empty` error masks the real

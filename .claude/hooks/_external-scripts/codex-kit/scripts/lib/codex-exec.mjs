@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { terminateProcessTree } from "./process.mjs";
+import { terminateProcessTree } from "./cdx-process.mjs";
 
 // Component #17 — the reusable codex-exec invocation primitive (promoted out
 // of internal-reference-only status per scope-expansion gap #1). Ported from
@@ -229,7 +229,7 @@ function resolveWindowsExecutable(command) {
 // means `command` wasn't found anywhere on PATH -- the caller should report
 // this the same way an ENOENT from a direct spawn attempt would. `platform`
 // defaults to `process.platform` but is injectable (same pattern as
-// `lib/process.mjs`'s `terminateProcessTree`) so a smoke test can exercise
+// `lib/cdx-process.mjs`'s `terminateProcessTree`) so a smoke test can exercise
 // the win32 branch on any CI runner, not just a real Windows machine.
 function buildSpawnInvocation(command, args, options, platform = process.platform) {
   if (platform !== "win32") {
@@ -469,7 +469,7 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
       // cmd.exe, leaving the grandchild `codex` process running under
       // whatever --sandbox mode it was given, orphaned the moment
       // finish()'s cleanup() below deletes the scratch dir out from under
-      // it. Same hazard lib/app-server.mjs already documents and solves
+      // it. Same hazard lib/cdx-app-server.mjs already documents and solves
       // for its own shell:true spawn (see its "Use terminateProcessTree
       // to kill the entire tree" comment) -- flagged by security review,
       // 2026-08-17. terminateProcessTree's taskkill /T /F blocks
