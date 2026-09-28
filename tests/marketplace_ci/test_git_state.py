@@ -88,3 +88,38 @@ def test_staged_mode_is_executable_false_for_100644(git_repo):
 def test_staged_mode_is_executable_none_for_untracked_path(git_repo):
     state = GitState(repo=git_repo.root)
     assert state.staged_mode_is_executable(PurePosixPath("does/not/exist.sh")) is None
+
+
+def test_staged_mode_is_executable_raises_on_git_failure(tmp_path):
+    # Regression guard (cross-model-review finding on this PR, CodeRabbit): a failed
+    # `git ls-files` also produces empty stdout, which is otherwise indistinguishable
+    # from a genuinely missing index entry. Without `check=True`, this silently returned
+    # None -- exactly the same as "not staged" -- letting a caller (stage_generated_
+    # destinations) skip correcting the destination's mode and still stage it as if it
+    # succeeded. `repo` here is a real directory but deliberately not a Git repository,
+    # so `git ls-files` fails with a non-zero exit and no stdout.
+    import subprocess
+
+    state = GitState(repo=tmp_path)
+    try:
+        state.staged_mode_is_executable(PurePosixPath("anything.sh"))
+    except subprocess.CalledProcessError:
+        pass
+    else:
+        raise AssertionError("expected staged_mode_is_executable to raise on git failure")
+
+
+def test_staged_mode_is_executable_uses_literal_pathspec_for_metacharacter_filename(git_repo):
+    # Regression guard (cross-model-review finding on this PR, CodeRabbit): a component
+    # filename containing a Git pathspec metacharacter (here, `[1]`) is a legal filename,
+    # but without `:(top,literal)`, `git ls-files -s -- <path>` treats it as a glob --
+    # `[1]` matches a single literal "1" character, not the two-character substring
+    # "[1]" -- so the real file is never matched and the lookup silently falls through to
+    # the "no index entry" (None) branch, even though the file genuinely is staged.
+    import subprocess
+
+    path = "plugins/sample-kit/hooks/scripts/guard[1].sh"
+    git_repo.stage(path, "#!/bin/sh\necho hi\n")
+    subprocess.run(["git", "update-index", "--chmod=+x", "--", path], cwd=git_repo.root, check=True)
+    state = GitState(repo=git_repo.root)
+    assert state.staged_mode_is_executable(PurePosixPath(path)) is True

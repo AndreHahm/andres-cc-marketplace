@@ -84,10 +84,17 @@ class GitState:
         os.chmod()/os.stat() can't represent a real POSIX execute bit at all (only the
         read-only DOS attribute), so a filesystem stat can never answer this question
         there -- the index entry is the only value that's reliably meaningful on every
-        platform (issue #413)."""
+        platform (issue #413). `check=True` matters here specifically: a failed `git
+        ls-files` also produces empty stdout, which is otherwise indistinguishable from
+        a genuinely missing index entry -- silently returning None either way would make
+        `stage_generated_destinations` skip forcing the destination's mode and still
+        stage it as if it succeeded (cross-model-review of this PR, CodeRabbit). `:(top,
+        literal)` guards against a component filename containing Git pathspec
+        metacharacters matching more than the one intended entry."""
         result = subprocess.run(
-            ["git", "ls-files", "-s", "--", path.as_posix()],
+            ["git", "ls-files", "-s", "--", f":(top,literal){path.as_posix()}"],
             cwd=self.repo,
+            check=True,
             capture_output=True,
             text=True,
         )
