@@ -76,3 +76,22 @@ class GitState:
         if result.returncode != 0:
             return None
         return result.stdout
+
+    def staged_mode_is_executable(self, path: PurePosixPath) -> bool | None:
+        """The index-recorded mode for `path` -- True for 100755, False for any other
+        mode, None if `path` has no index entry at all. Reads Git's own index-recorded
+        mode bit, not the working-tree file's OS-reported permissions: on Windows,
+        os.chmod()/os.stat() can't represent a real POSIX execute bit at all (only the
+        read-only DOS attribute), so a filesystem stat can never answer this question
+        there -- the index entry is the only value that's reliably meaningful on every
+        platform (issue #413)."""
+        result = subprocess.run(
+            ["git", "ls-files", "-s", "--", path.as_posix()],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+        )
+        line = result.stdout.strip()
+        if not line:
+            return None
+        return line.split()[0] == "100755"

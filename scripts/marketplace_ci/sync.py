@@ -13,7 +13,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from scripts.marketplace_ci.git_state import GitState
 from scripts.marketplace_ci.registry import Registry
@@ -477,6 +477,13 @@ def _atomic_write(destination: Path, data: bytes, *, source: Path | None = None)
         # source's own mode), so an executable hook/bin script loses its executable bit on every
         # create/update unless explicitly restored here. shutil.copymode copies permission bits
         # only (not owner/group), which is exactly the git-tracked distinction (100644 vs 100755).
+        # This is a real fix on POSIX (Linux/macOS), but it's a no-op for the executable bit on
+        # native Windows -- os.chmod() there only supports toggling the read-only DOS attribute,
+        # never a POSIX execute bit -- and NTFS has no native execute permission for Git for
+        # Windows' own new-path mode heuristic to reliably read either. On Windows, the only
+        # reliable fix is `stage_generated_destinations`' explicit `git update-index --chmod`,
+        # which sets the git-INDEX mode directly instead of relying on filesystem permissions
+        # (issue #413).
         shutil.copymode(source, tmp_path)
     os.replace(tmp_path, destination)
 
@@ -586,14 +593,41 @@ def _git_add_forced(repo: Path, destination: Path) -> None:
         raise SyncError(f"git add failed for {destination}: {exc}") from exc
 
 
+def _force_index_executable(repo: Path, destination: Path) -> None:
+    # Forces the destination's git-INDEX-recorded mode to 100755 directly, rather than
+    # relying on the destination's on-disk permissions (what `git add` would otherwise
+    # derive its mode from). Needed because two independent things can go wrong on
+    # native Windows and neither is fixable at the filesystem layer: `shutil.copymode`'s
+    # `os.chmod()` call (_atomic_write, above) only supports toggling the read-only DOS
+    # attribute there, never a POSIX execute bit; and NTFS has no native execute
+    # permission for Git for Windows' own new-path mode heuristic to reliably read
+    # either, since `core.fileMode` is forced off on NTFS checkouts. `git update-index
+    # --chmod` sets the index entry directly and is honored identically on every
+    # platform, since it doesn't go through OS chmod/stat semantics at all (issue #413).
+    try:
+        subprocess.run(
+            ["git", "update-index", "--chmod=+x", "--", str(destination)],
+            cwd=repo,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise SyncError(f"git update-index --chmod=+x failed for {destination}: {exc}") from exc
+
+
 def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) -> tuple[Path, ...]:
     """Stage each applied create/update action's destination, but only when its own canonical
     `source` is already staged in this commit *and* that source has no unstaged changes on top
     (see `_is_fully_staged`) -- leaving an unrelated repair (drift the sync happened to also fix)
     or a partially-staged source's mismatched destination untouched on disk, unstaged.
+
+    Also forces the destination's index-recorded mode to match its canonical source's own
+    index-recorded mode whenever the source is executable (see `_force_index_executable`) --
+    `git add`'s own mode-detection for a brand-new path can't be trusted on Windows, so this is
+    the one step in the whole sync pipeline that's actually reliable there (issue #413).
     """
     staged = _staged_path_set(repo)
     repo_resolved = repo.resolve()
+    git_state = GitState(repo=repo)
     staged_destinations: list[Path] = []
     for action in actions:
         if action.operation not in ("create", "update") or action.source is None:
@@ -602,6 +636,8 @@ def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) ->
         if rel_source not in staged or not _is_fully_staged(repo, action.source):
             continue
         _git_add_forced(repo, action.destination)
+        if git_state.staged_mode_is_executable(PurePosixPath(rel_source)):
+            _force_index_executable(repo, action.destination)
         staged_destinations.append(action.destination)
     return tuple(staged_destinations)
 

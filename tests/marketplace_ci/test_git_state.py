@@ -65,3 +65,26 @@ def test_read_index_returns_staged_blob(git_repo):
 def test_read_index_returns_none_for_missing_path(git_repo):
     state = GitState(repo=git_repo.root)
     assert state.read_index(PurePosixPath("does/not/exist.txt")) is None
+
+
+def test_staged_mode_is_executable_true_for_100755(git_repo):
+    import subprocess
+
+    path = "plugins/sample-kit/hooks/scripts/guard.sh"
+    git_repo.stage(path, "#!/bin/sh\necho hi\n")
+    # Force the index mode without relying on a real filesystem chmod -- portable across
+    # platforms (issue #413: this is exactly what a Windows checkout can't do via os.chmod).
+    subprocess.run(["git", "update-index", "--chmod=+x", "--", path], cwd=git_repo.root, check=True)
+    state = GitState(repo=git_repo.root)
+    assert state.staged_mode_is_executable(PurePosixPath(path)) is True
+
+
+def test_staged_mode_is_executable_false_for_100644(git_repo):
+    git_repo.stage("README.md", "hello")
+    state = GitState(repo=git_repo.root)
+    assert state.staged_mode_is_executable(PurePosixPath("README.md")) is False
+
+
+def test_staged_mode_is_executable_none_for_untracked_path(git_repo):
+    state = GitState(repo=git_repo.root)
+    assert state.staged_mode_is_executable(PurePosixPath("does/not/exist.sh")) is None
