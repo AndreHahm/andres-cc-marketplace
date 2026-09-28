@@ -399,6 +399,59 @@ def test_stage_generated_destinations_sets_executable_bit_via_git_index(git_repo
     assert result.stdout.startswith("100755")
 
 
+def test_stage_generated_destinations_clears_executable_bit_via_git_index(git_repo, registry_for):
+    # Regression guard (cross-model-review finding on the issue #413 fix): the fix must be
+    # symmetric. `stage_generated_destinations` forcing the destination's index mode to 100755
+    # when the source is executable is only half the fix -- on Windows, a source that is later
+    # demoted from executable to non-executable can't signal that change at the filesystem layer
+    # either, so the destination's index entry must be explicitly forced back to 100644 too, not
+    # just left at a stale 100755. Verified here via `git ls-files -s` (the index), the same
+    # discipline as the sibling +x test above, for the same reason: a filesystem `stat()` is
+    # exactly the check that's unreliable on Windows.
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit-two"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    source = "plugins/sample-kit-two/hooks/scripts/guard.sh"
+    executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
+
+    # First, get the destination into a stale-executable state (100755), the same way the
+    # sibling +x test establishes it.
+    (git_repo.root / source).chmod(0o755)
+    subprocess.run(["git", "add", "-f", "--", source], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "update-index", "--chmod=+x", "--", source], cwd=git_repo.root, check=True
+    )
+    stage_generated_destinations(git_repo.root, executable)
+    precondition = subprocess.run(
+        ["git", "ls-files", "-s", "--", ".claude/hooks/scripts/guard.sh"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert precondition.stdout.startswith("100755")
+
+    # Now demote the source back to non-executable and re-stage -- the destination's index
+    # entry must follow, not stay stuck at 100755.
+    (git_repo.root / source).chmod(0o644)
+    subprocess.run(["git", "add", "-f", "--", source], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "update-index", "--chmod=-x", "--", source], cwd=git_repo.root, check=True
+    )
+
+    stage_generated_destinations(git_repo.root, executable)
+
+    result = subprocess.run(
+        ["git", "ls-files", "-s", "--", ".claude/hooks/scripts/guard.sh"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout.startswith("100644")
+
+
 def test_stage_generated_destinations_skips_actions_without_staged_source(git_repo, registry_for):
     plan = plan_plugin_sync(
         git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
