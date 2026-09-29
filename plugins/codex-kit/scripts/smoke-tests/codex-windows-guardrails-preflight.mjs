@@ -248,9 +248,9 @@ console.log("\n=== .secretlintignore consultation (issue #295): a listed, non-do
   // convention) -- otherwise walkFiles would block on .secretlintignore's
   // OWN basename (it contains "secret") before ever reaching the file this
   // scenario is actually testing.
-  writeFixtureFile(repoRoot, ".secretlintignore", ".secretlintignore\nscripts/redact_secrets.py\n");
+  writeFixtureFile(repoRoot, ".secretlintignore", ".secretlintignore\nscripts/anls_redact_secrets.py\n");
   const scriptsDir = path.join(repoRoot, "scripts");
-  writeFixtureFile(scriptsDir, "redact_secrets.py", "# redaction helper, no real secret here\n");
+  writeFixtureFile(scriptsDir, "anls_redact_secrets.py", "# redaction helper, no real secret here\n");
   const result = runDispatch(repoRoot, repoRoot, path.join(repoRoot, "target.md"));
   check(
     "not blocked by secret_file_in_scope -- a .py script listed in .secretlintignore (not doc-shaped, so isDocumentationAboutSecrets alone would not exempt it) advances past the secret scan",
@@ -262,7 +262,7 @@ console.log("\n=== .secretlintignore consultation (issue #295): a listed, non-do
 console.log("\n=== .secretlintignore consultation: an UNLISTED sibling script with the same loose keyword is still blocked (no overreach) ===");
 {
   // .secretlintignore from the previous scenario is still in place, listing
-  // only scripts/redact_secrets.py (and itself) -- a different, unlisted
+  // only scripts/anls_redact_secrets.py (and itself) -- a different, unlisted
   // secret-named file in the same directory must still block.
   const scriptsDir = path.join(repoRoot, "scripts");
   writeFixtureFile(scriptsDir, "other-secret-helper.py", "# unrelated, unlisted\n");
@@ -279,14 +279,14 @@ console.log("\n=== .secretlintignore consultation (Codex PR review finding, issu
 {
   // An earlier version of isExemptedBySecretlintignore returned on the
   // FIRST matching pattern, so a .secretlintignore listing
-  // scripts/redact_secrets.py and then LATER negating it with
-  // !scripts/redact_secrets.py never reached the negation -- the file
+  // scripts/anls_redact_secrets.py and then LATER negating it with
+  // !scripts/anls_redact_secrets.py never reached the negation -- the file
   // stayed wrongly exempt. Real gitignore semantics are "last matching
   // rule wins"; the negation here is the last word and must be honored.
   writeFixtureFile(
     repoRoot,
     ".secretlintignore",
-    ".secretlintignore\nscripts/redact_secrets.py\n!scripts/redact_secrets.py\n"
+    ".secretlintignore\nscripts/anls_redact_secrets.py\n!scripts/anls_redact_secrets.py\n"
   );
   const result = runDispatch(repoRoot, repoRoot, instructionFile);
   check(
@@ -295,7 +295,7 @@ console.log("\n=== .secretlintignore consultation (Codex PR review finding, issu
     JSON.stringify(result)
   );
   // Restore the non-negated .secretlintignore for the next scenario.
-  writeFixtureFile(repoRoot, ".secretlintignore", ".secretlintignore\nscripts/redact_secrets.py\n");
+  writeFixtureFile(repoRoot, ".secretlintignore", ".secretlintignore\nscripts/anls_redact_secrets.py\n");
 }
 
 console.log("\n=== .secretlintignore consultation: a listed file whose CONTENT is an actual credential is still blocked ===");
@@ -308,7 +308,7 @@ console.log("\n=== .secretlintignore consultation: a listed file whose CONTENT i
   // The runtime string written to disk, and therefore what
   // guarded-dispatch.mjs's own content-scan actually sees, is unchanged.
   const vendorDocExampleLine = "AKIA" + "IOSFODNN7EXAMPLE";
-  writeFixtureFile(scriptsDir, "redact_secrets.py", `${vendorDocExampleLine}\n`);
+  writeFixtureFile(scriptsDir, "anls_redact_secrets.py", `${vendorDocExampleLine}\n`);
   const result = runDispatch(repoRoot, repoRoot, instructionFile);
   check(
     "still rejected with secret_file_in_scope -- .secretlintignore membership is a filename signal, not a license to skip the content re-scan",
@@ -316,7 +316,7 @@ console.log("\n=== .secretlintignore consultation: a listed file whose CONTENT i
     JSON.stringify(result)
   );
   // Restore innocuous content before the next scenario.
-  writeFixtureFile(scriptsDir, "redact_secrets.py", "# redaction helper, no real secret here\n");
+  writeFixtureFile(scriptsDir, "anls_redact_secrets.py", "# redaction helper, no real secret here\n");
 }
 
 console.log("\n=== .secretlintignore consultation: .env is never exempted even when .secretlintignore is present (preserves walkFiles' full-disk-visibility design) ===");

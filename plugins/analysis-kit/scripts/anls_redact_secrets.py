@@ -45,7 +45,7 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     # "C:/Users/andre", "/home/andre", "/Users/andre") -- the character class excludes
     # both path separators, so it stops at the username and never consumes the trailing
     # repo-relative segment, which stays intact as citable evidence (per
-    # report-evidence-convention.md's "never a bare absolute path that reveals the OS
+    # anls-report-evidence-convention.md's "never a bare absolute path that reveals the OS
     # username" rule -- this is the mechanical backstop that rule already claimed to have).
     ("home_directory_path", re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/]+|/home/[^/]+|/Users/[^/]+)")),
 ]
@@ -100,9 +100,9 @@ def main() -> int:
 
     if counts:
         summary = ", ".join(f"{name}={n}" for name, n in sorted(counts.items()))
-        print(f"redact_secrets: {summary}", file=sys.stderr)
+        print(f"anls_redact_secrets: {summary}", file=sys.stderr)
     else:
-        print("redact_secrets: no matches", file=sys.stderr)
+        print("anls_redact_secrets: no matches", file=sys.stderr)
 
     return 0
 

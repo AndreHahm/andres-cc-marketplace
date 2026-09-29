@@ -1,10 +1,10 @@
-"""Tests for scripts/persist_report.py -- redaction, LF normalization,
+"""Tests for scripts/anls_persist_report.py -- redaction, LF normalization,
 atomic replacement, path containment, and the standard confirmation line.
 
 CRLF handling is two-layered, not one: `Path.read_text()`'s default
 universal-newline translation silently converts a CRLF-containing *input*
 file to LF before the script's own code ever sees it (verified live -- this
-is Python's own behavior, not something persist_report.py does explicitly);
+is Python's own behavior, not something anls_persist_report.py does explicitly);
 the script's own explicit `\\r\\n` check is defense-in-depth against CRLF
 introduced *after* that read (e.g. by a future change to redact()'s own
 substitution logic), which it refuses to persist rather than silently
@@ -15,7 +15,7 @@ convention) and calls main() directly with a monkeypatched sys.argv, so
 os.replace can be monkeypatched too for the failure-injection test.
 
 Every test chdirs into tmp_path and places its --final destination under
-`.claude/output/...` there, matching the containment check persist_report.py
+`.claude/output/...` there, matching the containment check anls_persist_report.py
 enforces (--final must resolve under `<cwd>/.claude/output/`) and the
 cwd-relative path shape every real calling skill's own Persist step uses.
 """
@@ -27,14 +27,22 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import persist_report  # noqa: E402
+import anls_persist_report as persist_report  # noqa: E402
 
 
 def _run_main(monkeypatch, scratch: Path, final: Path, label: str = "Test Report") -> int:
     monkeypatch.setattr(
         sys,
         "argv",
-        ["persist_report.py", "--scratch", str(scratch), "--final", str(final), "--label", label],
+        [
+            "anls_persist_report.py",
+            "--scratch",
+            str(scratch),
+            "--final",
+            str(final),
+            "--label",
+            label,
+        ],
     )
     return persist_report.main()
 
@@ -62,7 +70,7 @@ def test_persist_report_normalizes_real_crlf_input_to_lf(tmp_path, monkeypatch):
     # in output," which passed trivially regardless of whether CRLF handling
     # worked at all (CodeRabbit finding). This feeds genuine CRLF bytes and
     # confirms the actual end-to-end outcome: read_text()'s own universal-
-    # newline translation normalizes CRLF to LF before persist_report.py's
+    # newline translation normalizes CRLF to LF before anls_persist_report.py's
     # code runs, so this succeeds (exit 0) with an LF-only result -- it does
     # not fail the way a naive "detects and refuses CRLF" assumption would
     # predict; see the module docstring for why both are true depending on
@@ -133,7 +141,15 @@ def test_persist_report_preserves_existing_destination_on_failure(tmp_path, monk
     monkeypatch.setattr(
         sys,
         "argv",
-        ["persist_report.py", "--scratch", str(scratch), "--final", str(final), "--label", "x"],
+        [
+            "anls_persist_report.py",
+            "--scratch",
+            str(scratch),
+            "--final",
+            str(final),
+            "--label",
+            "x",
+        ],
     )
 
     raised = False

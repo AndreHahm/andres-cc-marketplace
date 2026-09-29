@@ -30,7 +30,7 @@ analysis-kit has 20 skills total — this one is the entry point for the 13 *ana
 `analyzing-verification-effectiveness`, `analyzing-session-operations`, `analyzing-workflow-usability`,
 `analyzing-security-and-privacy`, `identifying-feature-opportunities`, `comparing-sessions`,
 `comparing-session-to-specification`) — a narrower set than "report-producing skill," which means 18 here;
-see `../../references/report-contracts.json`'s `terminology_note` for the canonical statement of that
+see `../../references/anls-report-contracts.json`'s `terminology_note` for the canonical statement of that
 distinction — and the gateway to 2 of those 18 report-producing skills that consume a finding rather than
 starting from a bare scope (`generating-analysis-recommendations`, `reviewing-analysis-findings`).
 `running-a-full-retrospective`
@@ -105,7 +105,7 @@ Ask for the argument the chosen skill actually needs — never assume one shape 
 
 If the chosen skill is `analyzing-session-outcomes`, also ask (or accept a second `$ARGUMENTS` value) for
 an optional path to a specification/acceptance-criteria document — that skill's own Phase 1 addendum,
-which runs after this shared scope question, per `../../references/date-range-scope-convention.md`'s site
+which runs after this shared scope question, per `../../references/anls-date-range-scope-convention.md`'s site
 list.
 
 If `$ARGUMENTS` already supplies this (e.g. a date was included in the original request), confirm it rather than asking again.
@@ -120,7 +120,7 @@ If `$ARGUMENTS` already supplies this (e.g. a date was included in the original 
 
 Invoke the chosen skill via `Skill` with the confirmed scope. Let it run to completion — it persists its own report and prints its own `📄 ... written:` line followed by its own Next-step suggestion line (every one of analysis-kit's 13 analysis-type skills prints this).
 
-**Capture what Phase 5 needs from the dispatched skill's printed `📄 ... written:` path** — the exact shape differs by which skill ran, since (per `../../references/report-discovery-convention.md`) not every skill's own persisted-filename slug is a value a sibling report could ever share:
+**Capture what Phase 5 needs from the dispatched skill's printed `📄 ... written:` path** — the exact shape differs by which skill ran, since (per `../../references/anls-report-discovery-convention.md`) not every skill's own persisted-filename slug is a value a sibling report could ever share:
 
 - **The 11 date-range skills:** the printed path's filename slug (everything before `-<timestamp>.md`) *is* the shared scope identifier — capture it as-is (e.g. `.claude/output/analyzing-actor-behavior/this-conversation-2026-08-12T14-00-00Z.md` → `this-conversation`).
 - **`comparing-sessions`:** its printed slug is the compound `<current-scope>-vs-<prior-report-slug>` — capture only the `<current-scope>` portion (everything before the first `-vs-`), since that's the shared identifier; the full compound slug is unique to that one comparison and won't match a sibling report.
@@ -128,7 +128,7 @@ Invoke the chosen skill via `Skill` with the confirmed scope. Let it run to comp
 
 **Validate the captured value before Phase 5 interpolates it into a `Glob`.** A value parsed out of another
 skill's printed path is not the same trust level as a value this skill asked the user for directly —
-validate it against `../../references/report-discovery-convention.md`'s documented kebab-case format
+validate it against `../../references/anls-report-discovery-convention.md`'s documented kebab-case format
 (`^[a-z0-9]+(-[a-z0-9]+)*$`) before it ever reaches Phase 5's glob. If the captured value doesn't match —
 in particular if it contains `/`, `..`, or a glob metacharacter (`*`, `?`, `[`, `]`, `{`, `}`) — treat
 Phase 5's discovery check as unavailable for this run (skip straight to the `generating-analysis-recommendations`
@@ -198,4 +198,4 @@ sequencing to check); eval suite above.
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 13 analysis-type skills, reused from their own SKILL.md descriptions | Phase 1 |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 4 (capture) and Phase 5 (glob) restate inline | Read before Phase 4 |
+| `../../references/anls-report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 4 (capture) and Phase 5 (glob) restate inline | Read before Phase 4 |

@@ -22,12 +22,12 @@ When a session's change touches one restatement of a fact that's duplicated in N
 finding is **one** entry naming the canonical source and listing all N consumers with their current
 state -- not N separate findings, one per site. A worked example from this plugin's own history: this
 plugin's own scope-resolution and discovery-glob conventions are each restated inline across a growing
-set of sibling skills -- read `date-range-scope-convention.md`'s or `report-discovery-convention.md`'s
+set of sibling skills -- read `anls-date-range-scope-convention.md`'s or `anls-report-discovery-convention.md`'s
 own "Sites That Restate This"/"Sites That Restate These Facts" section directly for the current count
 rather than citing a number here, since the count has already changed more than once as new skills were
 added and would go stale again. The pattern is one root cause (the convention lacks single-source
 enforcement), reported once, with every restating skill named as a consumer -- exactly the shape
-`report-discovery-convention.md`'s own "Sites That Restate
+`anls-report-discovery-convention.md`'s own "Sites That Restate
 These Facts" section already uses to track this same class of fact in this plugin.
 
 **Verify the consolidation, don't assume it.** Before finalizing a Phase 5 finding, re-read it and confirm

@@ -1,9 +1,9 @@
-"""Tests for scripts/redact_secrets.py's home_directory_path pattern.
+"""Tests for scripts/anls_redact_secrets.py's home_directory_path pattern.
 
 Other patterns in this module are already exercised indirectly via
 test_persist_report.py (sk-ant-api03 key) and test_recommendation_registry.py
 (AWS access key) -- this file covers the home-directory-path pattern added to
-close plugin-auditor finding security-reviewer:M2 (report-evidence-convention.md
+close plugin-auditor finding security-reviewer:M2 (anls-report-evidence-convention.md
 claims a mechanical OS-username redaction backstop that didn't actually exist).
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import redact_secrets  # noqa: E402
+import anls_redact_secrets as redact_secrets  # noqa: E402
 
 
 def test_redacts_windows_home_path_but_preserves_trailing_segment():

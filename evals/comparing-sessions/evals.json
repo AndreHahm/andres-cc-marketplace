@@ -8,7 +8,7 @@
     },
     {
       "eval_id": "eval-2",
-      "scenario_summary": "Phase 4 realized-impact comparison against a real recommendation registry built via the actual recommendation_registry.py CLI -- stable-ID matching with a near-miss decoy (a proposed-only recommendation whose rationale text closely resembles a recurring finding), and the four-field Before/Expected/After/Verdict extraction"
+      "scenario_summary": "Phase 4 realized-impact comparison against a real recommendation registry built via the actual anls_recommendation_registry.py CLI -- stable-ID matching with a near-miss decoy (a proposed-only recommendation whose rationale text closely resembles a recurring finding), and the four-field Before/Expected/After/Verdict extraction"
     },
     {
       "eval_id": "eval-3",

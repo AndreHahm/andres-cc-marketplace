@@ -1,6 +1,6 @@
 # Failure Taxonomy
 
-The seven categories `failure_aggregator.py`'s `--events` input classifies failures into, with detection
+The seven categories `anls_failure_aggregator.py`'s `--events` input classifies failures into, with detection
 patterns for each. A failure with no determinable category is still recorded (`category: null` in the
 input; the script buckets it as `"uncategorized"` in its own output) -- never guessed into one of the
 seven just to avoid an empty bucket.

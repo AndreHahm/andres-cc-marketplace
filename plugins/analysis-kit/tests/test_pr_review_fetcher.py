@@ -1,4 +1,4 @@
-"""Tests for scripts/pr_review_fetcher.py -- normalize/load_fixture behavior,
+"""Tests for scripts/anls_pr_review_fetcher.py -- normalize/load_fixture behavior,
 the CLI's fixture and live-argument-validation paths, and _run_gh_api's
 --paginate/--slurp flattening."""
 
@@ -15,7 +15,7 @@ import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import pr_review_fetcher  # noqa: E402
+import anls_pr_review_fetcher as pr_review_fetcher  # noqa: E402
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "pr_reviews"
 
@@ -227,7 +227,7 @@ def test_cli_fixture_mode_expands_tilde_in_path(tmp_path, monkeypatch):
     result = subprocess.run(
         [
             sys.executable,
-            str(SCRIPTS_DIR / "pr_review_fetcher.py"),
+            str(SCRIPTS_DIR / "anls_pr_review_fetcher.py"),
             "--fixture-file",
             "~/empty.json",
         ],
@@ -244,7 +244,7 @@ def test_cli_fixture_mode_prints_json_and_exits_zero():
     result = subprocess.run(
         [
             sys.executable,
-            str(SCRIPTS_DIR / "pr_review_fetcher.py"),
+            str(SCRIPTS_DIR / "anls_pr_review_fetcher.py"),
             "--fixture-file",
             str(FIXTURES_DIR / "pr47.json"),
         ],
@@ -260,7 +260,7 @@ def test_cli_fixture_mode_prints_json_and_exits_zero():
 
 def test_cli_pr_without_repo_errors():
     result = subprocess.run(
-        [sys.executable, str(SCRIPTS_DIR / "pr_review_fetcher.py"), "--pr", "1"],
+        [sys.executable, str(SCRIPTS_DIR / "anls_pr_review_fetcher.py"), "--pr", "1"],
         capture_output=True,
         text=True,
         encoding="utf-8",

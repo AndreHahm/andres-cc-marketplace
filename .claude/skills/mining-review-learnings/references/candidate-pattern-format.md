@@ -13,14 +13,14 @@ The header fields (name through "What happened"):
 ### Candidate: <short pattern name>
 
 **Source PR:** #<number> — <PR title>
-**Reviewer(s):** <one or more `reviewer` logins from the cited `pr_review_fetcher.py` record(s), each
+**Reviewer(s):** <one or more `reviewer` logins from the cited `anls_pr_review_fetcher.py` record(s), each
 paired with its own `submitted_at` date (UTC, `YYYY-MM-DD`) — e.g. `coderabbitai[bot] (2026-08-17),
 chatgpt-codex-connector[bot] (2026-08-19)`. When the same finding was raised more than once (a repeat
 across separate review rounds, not just separate reviewers), list each occurrence's own date rather than
 collapsing to one — the distinct dates are what shows it recurred across rounds. Both fields already
-live on every record `pr_review_fetcher.py` returns — never a new fetch or tool grant to populate this.>
+live on every record `anls_pr_review_fetcher.py` returns — never a new fetch or tool grant to populate this.>
 **Review round(s):** <the source PR's own total review-round count — the number of distinct
-review-level records (`kind: "review"`, deduped by `review_id`) `pr_review_fetcher.py` returned for
+review-level records (`kind: "review"`, deduped by `review_id`) `anls_pr_review_fetcher.py` returned for
 *this PR as a whole*, one round per formal review submission (Codex/CodeRabbit/Devin/a human each
 submitting one review is one round). This is a PR-wide count, not scoped to just the record(s) that
 raised this specific candidate — `managing-review-learnings`' own document header
@@ -45,7 +45,7 @@ mismatch):
 **Rule:** <the generalizable rule this finding implies, in the document's own imperative style>
 **Evidence:** <comment URL(s) from the fetched review history, and the transcript locator when
 `session-transcript: available` — the raw source, not a metadata block; no formal evidence-metadata
-schema exists yet for this. Use `pr_review_fetcher.py`'s own `source_url` field directly for each cited
+schema exists yet for this. Use `anls_pr_review_fetcher.py`'s own `source_url` field directly for each cited
 record — it's GitHub's real `html_url` for that review/comment/issue-comment, so this URL never needs
 hand-reconstructing from a bare `review_id`/`comment_id`.>
 **Cross-check:** <only when session-transcript is available — does the transcript's own account agree

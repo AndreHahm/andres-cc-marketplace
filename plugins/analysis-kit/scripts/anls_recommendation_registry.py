@@ -33,14 +33,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from redact_secrets import redact  # noqa: E402
+from anls_redact_secrets import redact  # noqa: E402
 
 # Free-text fields a caller could plausibly paste a credential/token into (e.g. "the actual
 # verification command/evidence" tracking-recommendation-lifecycle's own Phase 2 asks for) --
-# redacted before every write, the same secret-shaped-pattern gate persist_report.py already
+# redacted before every write, the same secret-shaped-pattern gate anls_persist_report.py already
 # applies to every other persisted analysis-kit artifact. source_report is included because it
 # is a caller-supplied path (comparing-sessions' own Phase 4 populates it from --source-report),
-# exactly the field redact_secrets.py's home_directory_path pattern exists to strip an absolute
+# exactly the field anls_redact_secrets.py's home_directory_path pattern exists to strip an absolute
 # path's username segment from, while leaving the repo-relative tail citable. actor is included
 # too -- the CLI accepts it as unconstrained free text with no format check, and
 # tracking-recommendation-lifecycle/SKILL.md already documents it as redacted alongside
@@ -395,7 +395,7 @@ def main() -> int:
 
     # Each subparser also accepts --registry (default=SUPPRESS, so a subparser-level omission
     # never clobbers a value already supplied before the subcommand) -- this lets a caller whose
-    # own Bash grant can only be scoped per-subcommand (e.g. "recommendation_registry.py list
+    # own Bash grant can only be scoped per-subcommand (e.g. "anls_recommendation_registry.py list
     # --registry <path>") narrow that grant to read-only subcommands, since --registry attached
     # only to the top-level parser (its original position) can never appear in a
     # subcommand-scoped grant pattern at all.
@@ -436,7 +436,7 @@ def main() -> int:
     if args.command == "init":
         registry_path.parent.mkdir(parents=True, exist_ok=True)
         registry_path.touch(exist_ok=True)
-        print(f"recommendation_registry: initialized {registry_path}", file=sys.stderr)
+        print(f"anls_recommendation_registry: initialized {registry_path}", file=sys.stderr)
         return 0
 
     if args.command == "append":
@@ -495,7 +495,7 @@ def main() -> int:
             for v in violations:
                 print(v, file=sys.stderr)
             return 1
-        print("recommendation_registry: valid, no transition violations", file=sys.stderr)
+        print("anls_recommendation_registry: valid, no transition violations", file=sys.stderr)
         return 0
 
     return 1  # unreachable -- argparse enforces `required=True` on the subparser choice

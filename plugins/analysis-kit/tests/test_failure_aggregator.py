@@ -1,4 +1,4 @@
-"""Tests for scripts/failure_aggregator.py -- written before the implementation (TDD),
+"""Tests for scripts/anls_failure_aggregator.py -- written before the implementation (TDD),
 per Wave 2 Task 3+4 Step 1. Covers: known denominator, unknown denominator (uncategorized
 failure), recovered failure, repeated identical failure, missing timestamp."""
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import failure_aggregator  # noqa: E402
+import anls_failure_aggregator as failure_aggregator  # noqa: E402
 
 aggregate = failure_aggregator.aggregate
 

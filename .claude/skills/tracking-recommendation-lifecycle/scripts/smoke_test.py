@@ -5,7 +5,7 @@ Reference-Guide file existence, and Phase-header sequencing (this order
 matches CHECKS' actual execution order below) -- structural checks only,
 since this is a conversational, AskUserQuestion-driven skill with no
 executable logic of its own to simulate (it shells out to
-scripts/recommendation_registry.py, which owns its own correctness and has
+scripts/anls_recommendation_registry.py, which owns its own correctness and has
 its own separate pytest suite)."""
 
 import pathlib
@@ -35,7 +35,7 @@ REPO_ROOT = _find_repo_root(SKILL_DIR)
 # Reference Guide path is always authored relative to the skill's own
 # canonical directory, so resolving against it (not the possibly-mirrored
 # SKILL_DIR) is what makes a plugin-root-escaping path like
-# ../../scripts/redact_secrets.py land on the real file in both locations.
+# ../../scripts/anls_redact_secrets.py land on the real file in both locations.
 CANONICAL_SKILL_DIR = PLUGIN_ROOT / "skills" / SKILL_DIR.name
 
 

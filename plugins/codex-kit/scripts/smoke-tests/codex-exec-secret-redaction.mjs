@@ -6,7 +6,7 @@
 // field is persisted verbatim into CI reports (scripts/marketplace_ci/
 // review.py), and a real auth-failure stderr has been confirmed to reach
 // this path (commit 91a6478). Pattern set is ported from analysis-kit's
-// scripts/redact_secrets.py (see that file's own docstring for the
+// scripts/anls_redact_secrets.py (see that file's own docstring for the
 // rationale behind each pattern and why a generic high-entropy catch-all
 // was deliberately left out).
 //

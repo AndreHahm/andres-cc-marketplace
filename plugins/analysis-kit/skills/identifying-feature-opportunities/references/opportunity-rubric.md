@@ -22,7 +22,7 @@ why it wasn't met, rather than a bare "not enough evidence."
 
 **Qualifies (repeated evidence):** every time `mining-recurring-patterns` runs, its own Phase 2
 action-token abstraction step has to be rebuilt by hand from conversation context, because no shared
-script exists to do it deterministically -- `sequence_miner.py` mines the token list once it exists, but
+script exists to do it deterministically -- `anls_sequence_miner.py` mines the token list once it exists, but
 producing that list is still, by that skill's own documented admission (see its Gotchas: "Action-sequence
 extraction is still an LLM judgment call"), unautomated. Each invocation is an independent instance of
 the same underlying gap; enough of them meet the repeated-evidence bar and this proceeds to scoring.

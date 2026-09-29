@@ -1,6 +1,6 @@
 # Recommendation Lifecycle Schema
 
-The event shape, status vocabulary, and transition rules `scripts/recommendation_registry.py`
+The event shape, status vocabulary, and transition rules `scripts/anls_recommendation_registry.py`
 enforces, and the reference `tracking-recommendation-lifecycle` and `comparing-sessions`' realized-impact
 section both consult.
 
@@ -85,7 +85,7 @@ the skill asks for that evidence first rather than accepting the status change o
 
 ## CLI Operations
 
-`scripts/recommendation_registry.py --registry <path> <command>`:
+`scripts/anls_recommendation_registry.py --registry <path> <command>`:
 
 | Command | Purpose |
 |---|---|

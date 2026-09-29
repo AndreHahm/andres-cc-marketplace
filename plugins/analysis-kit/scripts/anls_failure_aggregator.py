@@ -4,7 +4,7 @@ analyzing-session-operations skill.
 
 Scope note: this script aggregates events the calling skill has already
 compiled from a session transcript (tool-use/tool-result inspection --
-session_parser.py's own current output has no per-attempt success/failure
+anls_session_parser.py's own current output has no per-attempt success/failure
 signal, so the calling skill builds this script's --events input directly
 from transcript content). It never estimates a denominator or a
 time-to-recovery it wasn't given timestamps to compute -- both come back
@@ -43,7 +43,7 @@ def _parse_ts(ts: str | None) -> datetime | None:
     # ("can't compare offset-naive and offset-aware datetimes") instead of the
     # intended "skip this pair, time_to_recovery stays None" behavior. Assume UTC for
     # a naive value so every comparison in this module is always between two aware
-    # datetimes. Same fix as critical_path_analyzer.py's own _parse_ts.
+    # datetimes. Same fix as anls_critical_path_analyzer.py's own _parse_ts.
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
     return parsed
@@ -141,7 +141,8 @@ def main() -> int:
         "--json",
         action="store_true",
         help="Emit structured JSON (default output is already JSON; this flag is accepted "
-        "for CLI-shape consistency with critical_path_analyzer.py and has no additional effect)",
+        "for CLI-shape consistency with anls_critical_path_analyzer.py and has no additional "
+        "effect)",
     )
     args = parser.parse_args()
 

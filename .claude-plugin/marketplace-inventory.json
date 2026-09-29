@@ -4,6 +4,7 @@
     {
       "compatibility": {},
       "created_on": "2026-08-03",
+      "domain_prefix": "analysis",
       "domains": [
         "review-learnings",
         "session-analysis"
@@ -31,6 +32,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "anls",
       "provenance": {
         "notes": "Created as 'analyzing-kit' (commit b92bdb7, 2026-08-03) with cross-plugin dependencies (enhancement-suggestor, skill-reviewer) removed for independence; renamed to 'analysis-kit' the same day (commit 50ba1ef).",
         "origin": "Ported from plugin-devkit's analyzing-sessions skill into a standalone plugin"

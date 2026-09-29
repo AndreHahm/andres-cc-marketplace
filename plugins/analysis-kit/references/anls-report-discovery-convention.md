@@ -7,7 +7,7 @@ mirror under `.claude/references/` — copy any edit there too.** `scripts/marke
 `sync-plugin-mirrors` only auto-mirrors `skills/`, `agents/`, `commands/`, `hooks/`, and `rules/`
 (`COMPONENT_DIRS` in `scripts/marketplace_ci/sync.py`) — a plugin-root `references/` directory is
 structurally outside its scope and is never auto-synced. This bit twice in the same PR
-(`report-evidence-convention.md` shipped with no `.claude/` counterpart at all on the first pass, then
+(`anls-report-evidence-convention.md` shipped with no `.claude/` counterpart at all on the first pass, then
 drifted out of sync again on a follow-up edit) before being caught by cross-model review both times —
 don't rely on a reviewer to catch a third recurrence; copy the file yourself in the same edit.
 

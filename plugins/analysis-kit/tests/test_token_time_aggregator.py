@@ -1,4 +1,4 @@
-"""Tests for scripts/token_time_aggregator.py's level-aware aggregation, added for
+"""Tests for scripts/anls_token_time_aggregator.py's level-aware aggregation, added for
 Wave 2 Task 3+4 (analyzing-session-operations' Performance & Cost section)."""
 
 import sys
@@ -6,7 +6,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import token_time_aggregator  # noqa: E402
+import anls_token_time_aggregator as token_time_aggregator  # noqa: E402
 
 aggregate = token_time_aggregator.aggregate
 

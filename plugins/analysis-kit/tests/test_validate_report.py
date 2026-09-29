@@ -1,4 +1,4 @@
-"""Tests for scripts/validate_report.py -- common contract checks (coverage
+"""Tests for scripts/anls_validate_report.py -- common contract checks (coverage
 preamble, next-step line, evidence metadata) and component/actor disposition
 completeness via inventory/disposition HTML-comment markers.
 """
@@ -10,7 +10,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import validate_report  # noqa: E402
+import anls_validate_report as validate_report  # noqa: E402
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures" / "reports"
 CONTRACTS = validate_report.load_contracts()
@@ -495,7 +495,7 @@ def test_cli_json_output(tmp_path, capsys):
     import json
 
     sys.argv = [
-        "validate_report.py",
+        "anls_validate_report.py",
         "--skill",
         "analyzing-plugin-components",
         "--report",
@@ -515,7 +515,7 @@ def test_cli_exits_nonzero_and_lists_errors_for_invalid_report(tmp_path, capsys)
     report.write_text(_fixture("common-missing-next-step.md"), encoding="utf-8")
 
     sys.argv = [
-        "validate_report.py",
+        "anls_validate_report.py",
         "--skill",
         "analyzing-plugin-components",
         "--report",
@@ -531,7 +531,7 @@ def test_cli_exits_nonzero_and_lists_errors_for_invalid_report(tmp_path, capsys)
 def test_cli_exits_nonzero_for_unreadable_report(tmp_path, capsys):
     missing = tmp_path / "does-not-exist.md"
     sys.argv = [
-        "validate_report.py",
+        "anls_validate_report.py",
         "--skill",
         "analyzing-plugin-components",
         "--report",

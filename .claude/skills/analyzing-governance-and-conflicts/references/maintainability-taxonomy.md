@@ -4,7 +4,7 @@ The eight dimensions Phase 5's maintainability/change-impact analysis inventorie
 
 1. **Duplication** -- the same fact, procedure, or value is stated in more than one place, so a future
    change to one copy risks leaving the others stale. This plugin's own `references/date-range-scope-
-   convention.md` and `references/report-discovery-convention.md` are worked examples of the pattern
+   convention.md` and `references/anls-report-discovery-convention.md` are worked examples of the pattern
    itself: each maintains its own "Sites That Restate This"/"Sites That Restate These Facts" section
    precisely because the fact it defines is duplicated inline across sibling skills -- read either file's
    own site list directly for the current count rather than restating a number here, which would go stale

@@ -33,11 +33,11 @@ function typedFailure(category, detail) {
 
 // Ported pattern set (not the file itself -- codex-kit stays JS per
 // require-declared-plugin-language.md) from analysis-kit's
-// scripts/redact_secrets.py, applied to the raw Codex stderr tail before it
+// scripts/anls_redact_secrets.py, applied to the raw Codex stderr tail before it
 // is placed in a typed-failure `detail` -- that detail is persisted verbatim
 // into CI reports (scripts/marketplace_ci/review.py), and an auth failure's
 // stderr has been confirmed to genuinely reach this path (commit 91a6478).
-// See redact_secrets.py's own comment for why a generic high-entropy
+// See anls_redact_secrets.py's own comment for why a generic high-entropy
 // catch-all was deliberately left out (over-redacts legitimate path-shaped
 // text): this pattern set is intentionally conservative, matching only
 // known header/prefix/env-var shapes.
