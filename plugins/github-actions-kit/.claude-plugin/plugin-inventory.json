@@ -206,9 +206,11 @@
       "type": "skill"
     }
   ],
+  "domain_prefix": "github",
   "extensions": {},
   "plugin_id": "plugin_33891dd6",
   "plugin_name": "github-actions-kit",
+  "prefix": "gha",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-18"
+  "updated_on": "2026-09-29"
 }
