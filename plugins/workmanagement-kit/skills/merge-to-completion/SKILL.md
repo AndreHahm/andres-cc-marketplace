@@ -8,7 +8,7 @@ description: >-
   merge-pr's own job (its step 8 asks and, on yes, invokes git-kit:finishing-work itself) — this
   skill never re-invokes it. Use when asked to merge a PR and disposition its Linear issue, or
   record delivery after a merge. A merge never automatically closes Linear work.
-allowed-tools: Read, Write, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:merge-pr), Skill(open-item-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*), AskUserQuestion
+allowed-tools: Read, Write, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:merge-pr), Skill(open-item-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), AskUserQuestion
 ---
 
 # Merge to Completion

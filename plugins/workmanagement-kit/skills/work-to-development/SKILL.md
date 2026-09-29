@@ -7,7 +7,7 @@ description: >-
   Started transition only after Git identity is read back and verified. Use when asked to start
   work on a Linear issue, begin development for an accepted issue, or prepare an accepted issue for
   implementation. Never creates a branch directly — always delegates to git-kit.
-allowed-tools: Read, Write, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:starting-work), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*), AskUserQuestion
+allowed-tools: Read, Write, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:starting-work), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), AskUserQuestion
 ---
 
 # Work to Development
