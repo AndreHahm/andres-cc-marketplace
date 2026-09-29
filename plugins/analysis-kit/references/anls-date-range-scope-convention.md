@@ -31,10 +31,10 @@ questions: [
 ```
 
 If "From a start date" → ask for the date. If sessions from prior conversations are in scope, first try
-`python "${CLAUDE_PLUGIN_ROOT}/scripts/session_parser.py" --project-root . --since <start-date>` to load
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_session_parser.py" --project-root . --since <start-date>` to load
 real session data for the range. If it reports `no_session_files_found` or a parse error, and the user
 names a specific Codex session file, try
-`python "${CLAUDE_PLUGIN_ROOT}/scripts/codex_session_parser.py" --session-file <path>` instead. If
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_codex_session_parser.py" --session-file <path>` instead. If
 neither produces usable events, fall back to asking the user to paste in relevant transcript excerpts
 or summaries — Claude cannot read past conversation history directly, and not every machine retains
 session files for the requested range.
@@ -49,8 +49,8 @@ shared procedure itself lives here.
 - `skills/analyzing-tool-and-framework-use/SKILL.md` Phase 1 — no addendum, procedure only
 - `skills/analyzing-governance-and-conflicts/SKILL.md` Phase 1 — no addendum, procedure only
 - `skills/analyzing-actor-behavior/SKILL.md` Phase 1 — addendum: actor identity (role, `is_subagent`)
-  and rough turn-taking are derivable from `session_parser.py`'s normalized event list
-- `skills/mining-recurring-patterns/SKILL.md` Phase 1 — addendum: `session_parser.py`'s output also
+  and rough turn-taking are derivable from `anls_session_parser.py`'s normalized event list
+- `skills/mining-recurring-patterns/SKILL.md` Phase 1 — addendum: `anls_session_parser.py`'s output also
   feeds Phase 4's skill-level usage ranking
 - `skills/analyzing-plugin-components/SKILL.md` Phase 1 — procedure only; this skill's own Phase 1 adds
   further *sequential* steps after it (a timezone pitfall note, the narrow-scope gap-awareness check,
@@ -64,7 +64,7 @@ shared procedure itself lives here.
   acceptance-criteria document exists; this addendum runs after the shared procedure, not inline within
   it
 - `skills/analyzing-verification-effectiveness/SKILL.md` Phase 1 — no addendum, procedure only (its
-  Phase 1 explicitly names `session_parser.py`/`codex_session_parser.py` since the shared procedure may
+  Phase 1 explicitly names `anls_session_parser.py`/`anls_codex_session_parser.py` since the shared procedure may
   invoke them, even though this skill's own Phase 2 doesn't call them separately)
 - `skills/analyzing-session-operations/SKILL.md` Phase 1 — no addendum, procedure only
 - `skills/analyzing-workflow-usability/SKILL.md` Phase 1 — no addendum, procedure only

@@ -1,4 +1,4 @@
-"""Tests for scripts/critical_path_analyzer.py -- written before the implementation
+"""Tests for scripts/anls_critical_path_analyzer.py -- written before the implementation
 (TDD), per Wave 2 Task 3+4 Step 1. Covers: sequential work, overlapping spans,
 missing end timestamps, unrelated session IDs."""
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import critical_path_analyzer  # noqa: E402
+import anls_critical_path_analyzer as critical_path_analyzer  # noqa: E402
 
 analyze = critical_path_analyzer.analyze
 

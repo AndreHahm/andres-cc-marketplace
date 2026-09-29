@@ -265,8 +265,8 @@ that schema's four shapes, so the findings must be wrapped in a Report Revision,
    timestamp, `baseline_commit`, `current_commit`, `coverage`: the same file list as the manifest's
    `included`, `findings`: the list built above).
 4. Write both to a scratch location first, then run each draft through
-   `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (the same
-   redaction logic `persist_report.py` wraps for a normal report write — used directly here since this
+   `python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_redact_secrets.py" --input-file <scratch-path>` (the same
+   redaction logic `anls_persist_report.py` wraps for a normal report write — used directly here since this
    step builds fresh YAML rather than a `.md` report; `evidence_before` in particular carries quoted
    report text that could still contain a secret-shaped pattern this pass hasn't already stripped) before
    the *redacted* output is what actually lands at

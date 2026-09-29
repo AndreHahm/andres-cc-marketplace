@@ -71,7 +71,7 @@ def _extract_allowed_tools_value(frontmatter: str) -> str | None:
 # Reference Guide path is always authored relative to the skill's own
 # canonical directory, so resolving against it (not the possibly-mirrored
 # SKILL_DIR) is what makes a plugin-root-escaping path like
-# ../../scripts/pr_review_fetcher.py land on the real file in both locations.
+# ../../scripts/anls_pr_review_fetcher.py land on the real file in both locations.
 CANONICAL_SKILL_DIR = PLUGIN_ROOT / "skills" / SKILL_DIR.name
 
 

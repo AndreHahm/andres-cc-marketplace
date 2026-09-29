@@ -1,6 +1,6 @@
 # Recovery Metrics
 
-How to interpret `failure_aggregator.py`'s `recoveries`/`recovery_details`/`unresolved_failures`/
+How to interpret `anls_failure_aggregator.py`'s `recoveries`/`recovery_details`/`unresolved_failures`/
 `repeated_failures` output fields for the Reliability & Stability report section.
 
 ## Recovery Matching

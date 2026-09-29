@@ -26,7 +26,7 @@ Round budget and next-round triggering are owned by `handling-review-findings` (
 
 ## Severity and verdict
 
-Use this repository's shared four-tier scale ([`plugins/analysis-kit/references/severity-vocabulary.md`](plugins/analysis-kit/references/severity-vocabulary.md)):
+Use this repository's shared four-tier scale ([`plugins/analysis-kit/references/anls-severity-vocabulary.md`](plugins/analysis-kit/references/anls-severity-vocabulary.md)):
 
 | Tier | Meaning | Blocks merge? |
 |---|---|---|

@@ -1,7 +1,7 @@
 # Performance Metrics
 
-How to interpret `critical_path_analyzer.py`'s `elapsed`/`active`/`overlapping`/`waiting` output and
-`token_time_aggregator.py`'s level-aware `by_level`/`levels_present`/`scope_note` for the Performance &
+How to interpret `anls_critical_path_analyzer.py`'s `elapsed`/`active`/`overlapping`/`waiting` output and
+`anls_token_time_aggregator.py`'s level-aware `by_level`/`levels_present`/`scope_note` for the Performance &
 Cost report section.
 
 ## Critical-Path Fields, Per Session
@@ -33,7 +33,7 @@ Cost report section.
 - **Instrumentation gap**: `unknown_spans` is a meaningful fraction of the total -- report this as a
   recommendation to add timestamps, not as a performance finding about the work itself.
 
-## Level Availability (`token_time_aggregator.py`)
+## Level Availability (`anls_token_time_aggregator.py`)
 
 `levels_present` lists exactly which of `whole_session`/`skill`/`subagent`/`tool` this run actually has
 usage data for. Before writing any cost claim in the report:

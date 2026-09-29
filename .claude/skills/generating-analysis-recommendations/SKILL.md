@@ -9,7 +9,7 @@ description: >-
   dependency on any other plugin. Use when turning a finding or suggestion
   into a concrete action plan, asking "what should I do about this," or
   prioritizing a list of findings before acting on them.
-allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
 argument-hint: [path to a persisted analysis-kit report, or paste findings directly]
 ---
 
@@ -34,7 +34,7 @@ Turn one or more findings from any analysis-kit report into a classified, action
 
 ## When NOT to Use
 
-- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first to produce one. Phase 1's auto-discovery glob covers the 15 report directories in the shared discovery glob (`starting-an-analysis/references/analysis-type-guide.md` is the canonical, current list of the 13 analysis-type skills it routes to — a narrower set than "report-producing skill" generally means elsewhere in this plugin; `references/report-contracts.json`'s own `terminology_note` is the canonical statement of that distinction, not restated here), or `mining-review-learnings` — its report isn't in Phase 1's auto-discovery glob (see that skill's own `<scope-slug>` exclusion), so supply its path explicitly rather than expecting it to appear among the offered candidates. `managing-review-learnings`' own report is deliberately **not** valid input here, unlike `mining-review-learnings`' — it's a disposition/run summary (which candidates got a doc-diff, which were dropped, filing outcomes), not itself a findings report; there's no unexpanded finding left in it to turn into a WHAT/WHY/HOW plan. (`reviewing-analysis-findings` accepts it for a different reason — cross-checking its stated dispositions against other reports for contradictions, not expanding a finding.)
+- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first to produce one. Phase 1's auto-discovery glob covers the 15 report directories in the shared discovery glob (`starting-an-analysis/references/analysis-type-guide.md` is the canonical, current list of the 13 analysis-type skills it routes to — a narrower set than "report-producing skill" generally means elsewhere in this plugin; `references/anls-report-contracts.json`'s own `terminology_note` is the canonical statement of that distinction, not restated here), or `mining-review-learnings` — its report isn't in Phase 1's auto-discovery glob (see that skill's own `<scope-slug>` exclusion), so supply its path explicitly rather than expecting it to appear among the offered candidates. `managing-review-learnings`' own report is deliberately **not** valid input here, unlike `mining-review-learnings`' — it's a disposition/run summary (which candidates got a doc-diff, which were dropped, filing outcomes), not itself a findings report; there's no unexpanded finding left in it to turn into a WHAT/WHY/HOW plan. (`reviewing-analysis-findings` accepts it for a different reason — cross-checking its stated dispositions against other reports for contradictions, not expanding a finding.)
 - **Applying the plan** — this skill stops at a written plan; it never edits code or commits changes itself
 - **Tracking a recommendation's status over time (accepted, implemented, verified, measured, ...)** — use
   `tracking-recommendation-lifecycle` instead. This skill assigns each plan entry's stable
@@ -86,7 +86,7 @@ as A). Derive `<slug>` as follows, in priority order:
 
 **Collision resistance (mandatory, not optional):** a 6-word truncated slug is not by itself guaranteed
 unique — two distinct findings can open with the same words (Codex PR-review finding on PR #323:
-`recommendation_registry.py` keys all transition history solely by `recommendation_id`, so two findings
+`anls_recommendation_registry.py` keys all transition history solely by `recommendation_id`, so two findings
 silently sharing one ID merges their lifecycles). Before finalizing any entry's ID in this run, compare
 its `<slug>` against every other `<slug>` already assigned in the same run (not against the registry —
 this is a same-batch check). On a collision, disambiguate using content the colliding findings do NOT
@@ -133,11 +133,11 @@ Group by priority bucket, Quick Wins first. Within each bucket, order by estimat
 **Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each recommendation, per
-`../../references/report-evidence-convention.md` — most recommendations here carry `Evidence origin:
+`../../references/anls-report-evidence-convention.md` — most recommendations here carry `Evidence origin:
 inherited` (from the source report's own finding), unless this skill independently re-verified the
 underlying evidence.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to the session scratchpad directory as a scratch file (never a bare relative filename, which resolves to the current working directory — usually the repo root — instead), then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to the session scratchpad directory as a scratch file (never a bare relative filename, which resolves to the current working directory — usually the repo root — instead), then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 
@@ -174,11 +174,11 @@ After Phase 4, verify before presenting output as final:
       a collision is resolved via the finding's own cited file/line or more of its own distinguishing
       text -- never a write-order/array-index suffix (`-2`, `-3`, ...), which reintroduces the same
       instability the content-derived scheme replaces
-- [ ] This skill never calls `recommendation_registry.py` itself -- IDs are assigned here only; actually
+- [ ] This skill never calls `anls_recommendation_registry.py` itself -- IDs are assigned here only; actually
       registering one is `tracking-recommendation-lifecycle`'s job, gated on user approval
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
-- [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
-- [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
+- [ ] The drafted report was redacted and verified LF-only via `anls_persist_report.py` before the final write — never written directly from the scratch draft
+- [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `anls-report-evidence-convention.md`
 
 **Eval evidence:** `evals/generating-analysis-recommendations/evals.json` -- 3 scenarios, 15/17 assertions
 passing (eval-1 5/7, eval-2 5/5, eval-3 5/5; all 4 priority buckets including a Reconsider verdict,
@@ -200,7 +200,7 @@ document real historical output, not a claim that the current skill still assign
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/classification-rubric.md` | Complexity/risk/benefit bands, priority bucket definitions, WHAT/WHY/HOW format | Phase 2, Phase 3 |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
-| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
+| `../../references/anls-report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
+| `../../references/anls-report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `.claude/output/generating-analysis-recommendations/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |
 | `tracking-recommendation-lifecycle` skill | Registers and tracks a plan entry's stable `recommendation_id` over time, after user approval | Downstream consumer, not called from here |

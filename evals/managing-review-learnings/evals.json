@@ -7,7 +7,7 @@
       "id": 1,
       "name": "Doc-diff proposal, structure and approval gate",
       "prompt": "Working in the repo at C:/Dev/Repos/andres-cc-marketplace/.claude/worktrees/analysis-kit-wave3-pr-review-fetcher, you have this mined candidate: 'PR #199 review found that a script silently swallowed a subprocess non-zero exit code by not checking returncode before parsing stdout as JSON, producing a confusing downstream JSONDecodeError instead of the real subprocess failure.' Propose a doc-diff to add this as a new Pattern entry in .claude/THIRD_PARTY_REVIEW_LEARNINGS.md, following its existing structure. Do NOT actually run any Edit tool call — instead, describe exactly what diff you would apply, what section/heading convention you'd follow, and confirm explicitly whether you would ask for approval (and redact) before making the real edit.",
-      "expected_output": "Proposes a diff matching the doc's existing '## PR #N — ...' / '### Pattern:' structure, explicitly states it would run the proposed text through redact_secrets.py and ask via AskUserQuestion for approval before any real Edit, and does not actually call Edit on the real file.",
+      "expected_output": "Proposes a diff matching the doc's existing '## PR #N — ...' / '### Pattern:' structure, explicitly states it would run the proposed text through anls_redact_secrets.py and ask via AskUserQuestion for approval before any real Edit, and does not actually call Edit on the real file.",
       "files": []
     },
     {

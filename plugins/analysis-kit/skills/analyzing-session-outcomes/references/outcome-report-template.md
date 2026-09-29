@@ -29,7 +29,7 @@ Plain numbered list, one entry per distinct goal, each tagged with its evidence 
 ## Acceptance Criteria
 
 **Every verdict row gets its own `<!-- finding:start -->`/`<!-- finding:end -->` block -- never one
-shared block covering multiple rows**, per `report-evidence-convention.md`'s "no report-wide one-block"
+shared block covering multiple rows**, per `anls-report-evidence-convention.md`'s "no report-wide one-block"
 rule. Two verdicts with different evidential weight (a directly-observed passing test vs. no evidence at
 all) are two separate substantive findings, each with its own metadata:
 

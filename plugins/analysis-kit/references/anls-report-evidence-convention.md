@@ -1,7 +1,7 @@
 # Report Evidence & Coverage Convention
 
 Shared across every `analysis-kit` skill that persists a report — same cross-skill-reference shape as
-`severity-vocabulary.md` and `report-discovery-convention.md`. This file exists so a reader (human or
+`anls-severity-vocabulary.md` and `anls-report-discovery-convention.md`. This file exists so a reader (human or
 `reviewing-analysis-findings`) can tell, for any single finding or any whole report, exactly how much of
 the requested scope was actually inspected and how much weight a finding's own evidence can bear —
 without each skill having to invent its own wording for "how sure am I" and "how much did I actually
@@ -53,7 +53,7 @@ Evidence source: <report path, session identifier, timestamp/event locator, or r
 ```
 
 **Why explicit boundary markers, not just "somewhere near the finding":** a mechanical validator
-(`validate_report.py`) needs an unambiguous span to check "does *this specific finding* carry its own
+(`anls_validate_report.py`) needs an unambiguous span to check "does *this specific finding* carry its own
 complete metadata block," not just "does the word 'Evidence origin:' appear somewhere in the document." A
 per-document presence check can't tell one annotated finding from ten unannotated ones — the boundary
 markers are what let the check be per-finding instead of per-document.
@@ -96,14 +96,14 @@ finding.** If the finding text says evidence was sampled, `Coverage` must say `s
 before persisting.
 
 **Evidence origin, Coverage, and Confidence must be exactly one of their listed values — no invented
-terms, no blank value.** `validate_report.py` checks this mechanically (case-insensitively, on the first
+terms, no blank value.** `anls_validate_report.py` checks this mechanically (case-insensitively, on the first
 word of the field's value, so trailing explanatory text after the value is fine). `Evidence source` has
 no fixed vocabulary — any non-empty, re-checkable value is accepted.
 
 **Every substantive finding needs its own block — no report-wide "one metadata block covers everything."**
 A report with five findings needs five `<!-- finding:start -->`/`<!-- finding:end -->` pairs, each with
-its own complete four-field metadata — not one block anywhere in the document. `validate_report.py`
-enforces this mechanically per skill (see that script and `report-contracts.json`'s
+its own complete four-field metadata — not one block anywhere in the document. `anls_validate_report.py`
+enforces this mechanically per skill (see that script and `anls-report-contracts.json`'s
 `requires_evidence_metadata` flag).
 
 ## What Counts as "Substantive"
@@ -118,7 +118,7 @@ to a skill's own process narration ("Phase 2 ran the inventory script").
 one.** A clean run (nothing wrong found) shouldn't be forced to invent a placeholder finding just to
 satisfy the per-finding metadata check. When a report genuinely has no substantive findings, add
 `<!-- no-findings -->` anywhere in the report instead of any `<!-- finding:start -->` block —
-`validate_report.py` treats this as satisfying the requirement on its own.
+`anls_validate_report.py` treats this as satisfying the requirement on its own.
 
 ## Backward Compatibility
 
@@ -137,7 +137,7 @@ own interpretation from scratch.
 
 | Skill | Requested scope | Inspected scope |
 |---|---|---|
-| `analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which components/sessions/artifacts in that range were actually read (conversation context only reaches the current session; a wider date range depends on `session_parser.py`/`codex_session_parser.py` actually finding transcripts) |
+| `analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which components/sessions/artifacts in that range were actually read (conversation context only reaches the current session; a wider date range depends on `anls_session_parser.py`/`anls_codex_session_parser.py` actually finding transcripts) |
 | `comparing-sessions` | The two sessions/reports named for comparison | Which of the two was read in full vs. read only through a prior report's own findings |
 | `comparing-session-to-specification` | The named specification document and session | Which specification sections were actually checked against session evidence — a large spec partially sampled must say so |
 | `generating-analysis-recommendations` | The source report (or pasted findings) named as input | Same as requested in the common case — this skill expands existing findings rather than gathering new evidence, so Inspected scope narrows only when the source report itself was only partially read |

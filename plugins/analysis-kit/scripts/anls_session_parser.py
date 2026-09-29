@@ -11,7 +11,7 @@ Emits a light normalized event list plus light provenance (source file,
 session id, timestamp range, parse counts) -- deliberately no per-event
 byte-offset/ID provenance system. Malformed lines are skipped and counted,
 never fabricated into a result. Fields the source line doesn't carry stay
-null/omitted, matching this plugin's existing token_time_aggregator.py
+null/omitted, matching this plugin's existing anls_token_time_aggregator.py
 honesty convention.
 
 Session JSONL line shapes actually observed (subset relevant to this parser):

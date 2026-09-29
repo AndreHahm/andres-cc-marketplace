@@ -2,7 +2,7 @@
 """Defensive parser for a Codex CLI session/transcript file.
 
 Codex's on-disk session format is not independently confirmed the way
-Claude Code's own session JSONL format is (see session_parser.py's
+Claude Code's own session JSONL format is (see anls_session_parser.py's
 docstring, which was grounded against a real file). This script does not
 guess at an unconfirmed schema -- it attempts a small number of plausible
 parses (JSON array/object, then line-delimited JSON) and only emits a
@@ -12,7 +12,7 @@ or a role-and-text shape). Anything else is reported as an explicit
 unparseable/unknown-format error rather than a fabricated best guess.
 
 On success, emits the same normalized event-list shape as
-session_parser.py's per-session result, so a calling skill can treat
+anls_session_parser.py's per-session result, so a calling skill can treat
 either script's output identically.
 """
 

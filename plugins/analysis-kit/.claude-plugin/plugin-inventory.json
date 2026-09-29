@@ -107,14 +107,14 @@
             "commit 6b9b35f"
           ],
           "name": "analyzing-plugin-components",
-          "reason": "Renamed the same day when Phase 2's shared scripts/component_inventory.py replaced its inline Globs.",
+          "reason": "Renamed the same day when Phase 2's shared scripts/anls_component_inventory.py replaced its inline Globs.",
           "valid_from": "2026-08-03",
           "valid_to": null
         }
       ],
       "path": "skills/analyzing-plugin-components",
       "provenance": {
-        "notes": "Entered as analyzing-sessions-by-project-and-time (commit b92bdb7, 2026-08-03); renamed to analyzing-plugin-components the same day (commit 6b9b35f) when Phase 2's shared scripts/component_inventory.py replaced its inline Globs.",
+        "notes": "Entered as analyzing-sessions-by-project-and-time (commit b92bdb7, 2026-08-03); renamed to analyzing-plugin-components the same day (commit 6b9b35f) when Phase 2's shared scripts/anls_component_inventory.py replaced its inline Globs.",
         "origin": "Ported from plugin-devkit's analyzing-sessions skill as part of analysis-kit's initial creation"
       },
       "score": null,
@@ -833,9 +833,11 @@
       "type": "skill"
     }
   ],
+  "domain_prefix": "analysis",
   "extensions": {},
   "plugin_id": "plugin_97cc39b8",
   "plugin_name": "analysis-kit",
+  "prefix": "anls",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-11"
+  "updated_on": "2026-09-29"
 }

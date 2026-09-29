@@ -13,13 +13,13 @@ After Phase 5, verify before presenting output as final:
 - [ ] The existing-report reuse check (Phase 1) ran before any fresh dispatch
 - [ ] Every P1/P2/P3 finding names its target plugin/component explicitly on the finding itself, not only
       via a source-report citation
-- [ ] Every finding's severity tier traces to `severity-vocabulary.md`'s mapping table for its source
+- [ ] Every finding's severity tier traces to `anls-severity-vocabulary.md`'s mapping table for its source
       skill's own native term
 - [ ] The report was persisted to `.claude/output/running-a-full-retrospective/` and its path confirmed
       with the standard `📄 ... written:` line
-- [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write
-- [ ] The report carries the Coverage Preamble, and consolidated findings inherit the narrower of this run's own coverage and each source report's stated coverage, per `report-evidence-convention.md`
-- [ ] The Phase 4 addendum (if the cross-check ran) was redacted via a direct `redact_secrets.py` pass
+- [ ] The drafted report was redacted and verified LF-only via `anls_persist_report.py` before the final write
+- [ ] The report carries the Coverage Preamble, and consolidated findings inherit the narrower of this run's own coverage and each source report's stated coverage, per `anls-report-evidence-convention.md`
+- [ ] The Phase 4 addendum (if the cross-check ran) was redacted via a direct `anls_redact_secrets.py` pass
       before being folded into the persisted report via `Edit`
 - [ ] The Phase 4 cross-check offer and Phase 5's queue-start offer (5b) both used `AskUserQuestion` —
       neither ran automatically, and 5b's queue print named every derived target plugin and its

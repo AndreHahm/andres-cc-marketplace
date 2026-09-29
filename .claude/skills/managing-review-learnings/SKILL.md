@@ -11,7 +11,7 @@ description: >-
   not mining-review-learnings' job of producing candidates in the first place, and not
   github-issue-lifecycle's own dedup/draft/file/verify mechanics, which this skill delegates to rather
   than re-implementing.
-allowed-tools: Read Grep Glob Write Edit AskUserQuestion Skill(git-kit:github-issue-lifecycle) Bash(date:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*)
+allowed-tools: Read Grep Glob Write Edit AskUserQuestion Skill(git-kit:github-issue-lifecycle) Bash(date:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(python */analysis-kit/scripts/anls_redact_secrets.py:*)
 argument-hint: [mining-review-learnings report path | a finding to propose directly]
 ---
 
@@ -108,10 +108,10 @@ Per `references/doc-update-conventions.md`. For each candidate:
    review), not a bug. Never apply any part of a candidate's diff without this ask having fired for that
    specific candidate.
 4. **Redact, apply, and verify** — for an approved diff: run the drafted diff text through
-   `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>)` first —
+   `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_redact_secrets.py" --input-file <scratch-path>)` first —
    the same direct-pass pattern `running-a-full-retrospective` already uses for editing an
    already-persisted file (its own Phase 4 addendum step), since this `Edit` isn't a fresh
-   `persist_report.py` write and would otherwise get none of that script's redaction. Re-read the target
+   `anls_persist_report.py` write and would otherwise get none of that script's redaction. Re-read the target
    section immediately before applying (not relying on content read earlier in this phase, which may be
    stale by the time the approval ask returns — per
    `.claude/rules/recheck-state-before-side-effecting-action.md`). Then `Edit` only the approved,
@@ -249,11 +249,11 @@ outcome.
 **Coverage preamble and evidence metadata:** before writing the summary, prepend the Coverage Preamble
 (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each disposition entry, per
-`../../references/report-evidence-convention.md`.
+`../../references/anls-report-evidence-convention.md`.
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the summary to the
 session scratchpad directory — never a bare relative filename, which resolves to the current working
-directory (usually the repo root) instead — then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
+directory (usually the repo root) instead — then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/anls_persist_report.py" --scratch
 <scratch-path> --final ".claude/output/managing-review-learnings/<source-slug>-<timestamp>.md" --label
 "Review Learnings Management Report")`, where `<source-slug>` derives from the input
 `mining-review-learnings` report's own PR-set slug, or `direct-finding-<date>` for a directly-named
@@ -271,7 +271,7 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
 
 ## Gotchas
 
-- **This skill's report is also deliberately excluded from `report-discovery-convention.md`'s
+- **This skill's report is also deliberately excluded from `anls-report-discovery-convention.md`'s
   15-directory glob**, the same as its sibling `mining-review-learnings`: its `<source-slug>` is
   inherited from a PR-set slug (or `direct-finding-<date>`), which has no session/date-range identity a
   sibling report could plausibly share.
@@ -290,11 +290,11 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
   `issues/<date>-<desc>.md` file `github-issue-lifecycle`'s own Step 2 just wrote, when "Edit before
   filing" is chosen at Phase 4's approval gate — never any other path. `Write` is used in exactly one
   place — the Phase 5 scratch draft, to the session scratchpad directory — never a repo-tracked path; the
-  `.claude/output/managing-review-learnings/` final report path is written by `persist_report.py`, not
+  `.claude/output/managing-review-learnings/` final report path is written by `anls_persist_report.py`, not
   by a direct `Write` call. `Write`'s own scope isn't mechanically enforced (no path-scoping syntax
   exists) — the relevant approval ask (Phase 2's, or Phase 4's) naming the resolved absolute path is the
   actual, human-verified enforcement for `Edit`, whichever phase is doing the editing.
-- **`persist_report.py`'s own `--final` argument IS mechanically bounded**, not merely a documented
+- **`anls_persist_report.py`'s own `--final` argument IS mechanically bounded**, not merely a documented
   convention — the script's own containment check rejects any `--final` that doesn't resolve under
   `<cwd>/.claude/output/`. Only the choice of `.claude/output/managing-review-learnings/` as this skill's
   specific subdirectory beneath that is a behavioral, unenforced commitment (Phase 5 only ever supplies
@@ -353,7 +353,7 @@ After Phase 5, verify before presenting output as final:
       (Phase 2) or a drafted `issues/<date>-<desc>.md` file from Phase 4's "Edit before filing" path —
       never any other path. Phase 2 never applied a diff via a full-file `Write`, only scoped `Edit`
       calls, each preceded by an approval ask naming the resolved absolute path
-- [ ] Phase 2's drafted diff text ran through `redact_secrets.py` before the `Edit`, and was re-read
+- [ ] Phase 2's drafted diff text ran through `anls_redact_secrets.py` before the `Edit`, and was re-read
       immediately before applying rather than relying on content read earlier in the phase
 - [ ] A corrupted or unexpected post-Edit re-read stopped the run for that candidate immediately and
       reported the corruption, rather than continuing to the next candidate
@@ -367,7 +367,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] `github-issue-lifecycle`'s current SKILL.md/workflow file was actually read before the dispatch,
       not assumed from this file's own description of it
 - [ ] The persisted summary carries the Coverage Preamble and each disposition entry carries its Evidence
-      origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
+      origin/Coverage/Confidence/Evidence source metadata, per `anls-report-evidence-convention.md`
 - [ ] Every dispatch's real reported outcome (filed/found-as-duplicate/filing-failed) was captured and
       reported accurately in Phase 5 — never defaulted to "filed", and never reported as "not filed" for
       a post-filing verification concern (report that as "filed, but flagged as unverified" instead)
@@ -390,12 +390,12 @@ check against `.claude/rules/*.md`, and the filing-outcome vocabulary) — see
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/doc-update-conventions.md` | Append/reorganize shape for `THIRD_PARTY_REVIEW_LEARNINGS.md`, grounded in its own live structure | Phase 2 |
-| `../../scripts/redact_secrets.py` | Direct redaction pass for the drafted diff text before `Edit` — this write isn't a fresh `persist_report.py` file, so it needs its own redaction call | Phase 2 |
+| `../../scripts/anls_redact_secrets.py` | Direct redaction pass for the drafted diff text before `Edit` — this write isn't a fresh `anls_persist_report.py` file, so it needs its own redaction call | Phase 2 |
 | `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` | The document this skill proposes updates to; never edited without a per-candidate approval | Phase 2 |
 | `<repo-root>/.claude/rules/` | Where Phase 3's coverage check looks for an already-governing rule | Phase 3 |
 | `<git-kit-root>/skills/github-issue-lifecycle/SKILL.md` | Delegation target for Phase 4's actual issue filing — read its current content before every dispatch | Phase 4 |
 | `<git-kit-root>/skills/github-issue-lifecycle/workflows/create-an-issue.md` | Workflow 1 detail (dedup, drafting delegation, live filing, verify, impact analysis) — read before every dispatch | Phase 4 |
 | `.claude/output/mining-review-learnings/` | Where this skill's own input reports come from | Phase 1 |
 | `.claude/output/managing-review-learnings/` | Where this skill's own run summary is persisted | Phase 5 (write) |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention this skill deliberately does not participate in — see Gotchas | Background |
-| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the summary |
+| `../../references/anls-report-discovery-convention.md` | Canonical `<scope-slug>` convention this skill deliberately does not participate in — see Gotchas | Background |
+| `../../references/anls-report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the summary |

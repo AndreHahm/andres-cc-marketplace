@@ -1,4 +1,4 @@
-"""Tests for scripts/recommendation_registry.py -- written before the implementation (TDD),
+"""Tests for scripts/anls_recommendation_registry.py -- written before the implementation (TDD),
 per Wave 2 Task 9 Step 1. Covers: valid transitions, invalid transition rejection, append-only
 history, reopened items, supersession, historical records with missing optional fields, the
 lock's fail-loud-on-timeout guarantee, stale-lock auto-recovery, the append-before-
@@ -14,7 +14,7 @@ import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
-import recommendation_registry as rr  # noqa: E402
+import anls_recommendation_registry as rr  # noqa: E402
 
 
 def _event(recommendation_id, status, **extra):
@@ -242,8 +242,8 @@ def test_append_event_redacts_secret_shaped_patterns_in_free_text_fields(tmp_pat
     # Regression test: a caller-supplied rationale/evidence/expected_effect/observed_effect
     # field containing a secret-shaped pattern (e.g. an AWS access key literal pasted into
     # "the actual verification command/evidence") must never reach the persisted registry
-    # file unredacted -- this is the plugin's own redact_secrets.py gate, applied here the
-    # same way persist_report.py already applies it to every other persisted artifact.
+    # file unredacted -- this is the plugin's own anls_redact_secrets.py gate, applied here the
+    # same way anls_persist_report.py already applies it to every other persisted artifact.
     registry_path = tmp_path / "events.jsonl"
     rr.append_event(
         registry_path,
@@ -318,7 +318,7 @@ def test_cli_append_prints_redacted_event_not_original(tmp_path, capsys, monkeyp
         sys,
         "argv",
         [
-            "recommendation_registry.py",
+            "anls_recommendation_registry.py",
             "--registry",
             str(registry_path),
             "append",
@@ -414,7 +414,7 @@ def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch)
         sys,
         "argv",
         [
-            "recommendation_registry.py",
+            "anls_recommendation_registry.py",
             "--registry",
             str(registry_path),
             "append",
@@ -430,7 +430,7 @@ def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch)
     capsys.readouterr()
 
     monkeypatch.setattr(
-        sys, "argv", ["recommendation_registry.py", "--registry", str(registry_path), "list"]
+        sys, "argv", ["anls_recommendation_registry.py", "--registry", str(registry_path), "list"]
     )
     assert rr.main() == 0
     out = capsys.readouterr().out
@@ -441,7 +441,7 @@ def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch)
         sys,
         "argv",
         [
-            "recommendation_registry.py",
+            "anls_recommendation_registry.py",
             "--registry",
             str(registry_path),
             "append",
@@ -458,7 +458,7 @@ def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(
     tmp_path, capsys, monkeypatch
 ):
     # Regression test: --registry attached only to the top-level parser can never appear in a
-    # subcommand-scoped Bash grant pattern (e.g. "recommendation_registry.py list:*") at all,
+    # subcommand-scoped Bash grant pattern (e.g. "anls_recommendation_registry.py list:*") at all,
     # since --registry --registry <path> would have to precede "list" in that shape. comparing-
     # sessions needs exactly this ("list --registry <path>", "show --registry <path>") to narrow
     # its own grant to read-only subcommands -- confirm both subcommands accept --registry in
@@ -468,7 +468,7 @@ def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(
         sys,
         "argv",
         [
-            "recommendation_registry.py",
+            "anls_recommendation_registry.py",
             "append",
             "--registry",
             str(registry_path),
@@ -484,7 +484,7 @@ def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(
     capsys.readouterr()
 
     monkeypatch.setattr(
-        sys, "argv", ["recommendation_registry.py", "list", "--registry", str(registry_path)]
+        sys, "argv", ["anls_recommendation_registry.py", "list", "--registry", str(registry_path)]
     )
     assert rr.main() == 0
     out = capsys.readouterr().out
@@ -495,7 +495,7 @@ def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(
         sys,
         "argv",
         [
-            "recommendation_registry.py",
+            "anls_recommendation_registry.py",
             "show",
             "--registry",
             str(registry_path),

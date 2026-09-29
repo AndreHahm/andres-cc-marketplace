@@ -3,10 +3,10 @@
 
 Wraps the redact-then-write sequence every report-producing skill's own
 Persist step independently re-describes in prose: read a scratch draft,
-redact it via redact_secrets.redact(), verify the result is byte-level
+redact it via anls_redact_secrets.redact(), verify the result is byte-level
 LF-only, write the final file, re-verify the written file is still
 LF-only, and print the standard confirmation line. Centralizes the exact
-bug class this plugin already found and fixed once (redact_secrets.py's
+bug class this plugin already found and fixed once (anls_redact_secrets.py's
 missing newline="\\n" on stdout, which corrupted every report written on
 Windows before that fix) behind one call site instead of eighteen
 independently-trusting ones.
@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from redact_secrets import redact  # noqa: E402
+from anls_redact_secrets import redact  # noqa: E402
 
 
 def main() -> int:
@@ -45,7 +45,7 @@ def main() -> int:
     final_path = Path(args.final)
 
     # Containment check: --final must resolve under <cwd>/.claude/output/ -- the
-    # Bash(python */analysis-kit/scripts/persist_report.py:*) grant this script runs under is
+    # Bash(python */analysis-kit/scripts/anls_persist_report.py:*) grant this script runs under is
     # held by 18 of analysis-kit's 20 skills with no path restriction of its own, so this is the
     # one place that actually bounds where a redacted write can land. Resolved against cwd
     # (not a fixed repo root) since every calling skill's own persist-step examples pass a
@@ -103,9 +103,9 @@ def main() -> int:
 
     if counts:
         summary = ", ".join(f"{name}={n}" for name, n in sorted(counts.items()))
-        print(f"persist_report: redacted ({summary})", file=sys.stderr)
+        print(f"anls_persist_report: redacted ({summary})", file=sys.stderr)
     else:
-        print("persist_report: no redaction matches", file=sys.stderr)
+        print("anls_persist_report: no redaction matches", file=sys.stderr)
 
     print(f"\U0001f4c4 {args.label} written: `{final_path}`")
 

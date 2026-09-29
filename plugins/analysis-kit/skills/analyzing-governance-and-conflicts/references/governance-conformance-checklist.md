@@ -1,6 +1,6 @@
 # Governance Conformance Checklist
 
-For each rule found by `component_inventory.py`'s `rule` category entries:
+For each rule found by `anls_component_inventory.py`'s `rule` category entries:
 
 - [ ] Was the rule's guidance actually followed in situations where it applied?
 - [ ] Was there a situation where the rule should have applied but was never cited or considered?

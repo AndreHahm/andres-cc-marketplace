@@ -3,7 +3,7 @@
 referenced-script existence, Reference-Guide file existence, Bash-scope grant
 usage, and Phase-header sequencing -- structural checks only, since this is a
 conversational, AskUserQuestion-driven skill with no executable logic of its
-own to simulate (it shells out to persist_report.py and dispatches
+own to simulate (it shells out to anls_persist_report.py and dispatches
 github-issue-lifecycle, both of which own their own correctness)."""
 
 import pathlib
@@ -71,7 +71,7 @@ def _extract_allowed_tools_value(frontmatter: str) -> str | None:
 # Reference Guide path is always authored relative to the skill's own
 # canonical directory, so resolving against it (not the possibly-mirrored
 # SKILL_DIR) is what makes a plugin-root-escaping path like
-# ../../scripts/redact_secrets.py land on the real file in both locations.
+# ../../scripts/anls_redact_secrets.py land on the real file in both locations.
 CANONICAL_SKILL_DIR = PLUGIN_ROOT / "skills" / SKILL_DIR.name
 
 

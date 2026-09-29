@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic report-contract validator for analysis-kit's report-producing skills.
 
-Checks a drafted or persisted report against references/report-contracts.json's
+Checks a drafted or persisted report against references/anls-report-contracts.json's
 declared per-skill requirements: the shared Coverage Preamble fields, the
 standard "Next: ..." handoff line (only for the skills that carry it),
 component/actor disposition completeness (via inventory/disposition
@@ -18,7 +18,9 @@ import re
 import sys
 from pathlib import Path
 
-CONTRACTS_PATH = Path(__file__).resolve().parent.parent / "references" / "report-contracts.json"
+CONTRACTS_PATH = (
+    Path(__file__).resolve().parent.parent / "references" / "anls-report-contracts.json"
+)
 
 INVENTORY_RE = re.compile(r"<!--\s*inventory:\s*(\S+?):(\S+?)\s*-->")
 DISPOSITION_RE = re.compile(r"<!--\s*disposition:\s*(\S+?):(\S+?)\s+.+?-->")
@@ -34,7 +36,7 @@ PREAMBLE_BOUNDARY_RE = re.compile(r"^#{2,6}[ \t]", re.MULTILINE)
 def _preamble_region(text: str) -> str:
     """Text from the start of the document up to the first `##`-or-deeper heading.
 
-    Per report-evidence-convention.md, the Coverage Preamble sits between a
+    Per anls-report-evidence-convention.md, the Coverage Preamble sits between a
     report's own title and its first analysis section. Restricting the
     coverage-field search to this region prevents a later section that
     merely quotes or excerpts another report's own preamble lines (e.g. a
@@ -487,7 +489,7 @@ def validate(skill: str, text: str, contracts: dict) -> dict:
             "errors": [
                 {
                     "code": "unknown_skill",
-                    "message": f"'{skill}' is not declared in report-contracts.json",
+                    "message": f"'{skill}' is not declared in anls-report-contracts.json",
                     "subject": skill,
                 }
             ],
@@ -506,7 +508,7 @@ def validate(skill: str, text: str, contracts: dict) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--skill", required=True, help="Skill name as declared in report-contracts.json"
+        "--skill", required=True, help="Skill name as declared in anls-report-contracts.json"
     )
     parser.add_argument(
         "--report", required=True, help="Path to the drafted or persisted report text"
