@@ -698,9 +698,11 @@
       "type": "skill"
     }
   ],
+  "domain_prefix": "session",
   "extensions": {},
   "plugin_id": "plugin_aeaa6571",
   "plugin_name": "session-kit",
+  "prefix": "sess",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-02"
+  "updated_on": "2026-09-29"
 }

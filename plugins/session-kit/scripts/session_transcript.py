@@ -25,7 +25,7 @@ from typing import Any, NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from formatters import parse_timestamp, to_json, truncate  # noqa: E402
+from sess_formatters import parse_timestamp, to_json, truncate  # noqa: E402
 
 # Correction phrases indicating the user is pushing back on prior assistant work.
 CORRECTION_PHRASES = ["wrong", "stop", "undo", "revert", "no,", "that's not"]

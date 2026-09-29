@@ -24,25 +24,25 @@ another language.
 
 14 read/query skills sit on top of a shared `scripts/` core:
 
-- `scripts/formatters.py` — output helpers (JSON/NDJSON serialization, table rendering, duration/size
+- `scripts/sess_formatters.py` — output helpers (JSON/NDJSON serialization, table rendering, duration/size
   formatting, timestamp and date-boundary parsing)
 - `scripts/session_transcript.py` — parses a single session JSONL file (stats, tasks, messages, export,
   resume data, diff data)
 - `scripts/session_store.py` — discovers and operates across sessions under `~/.claude/projects/` and
   tasks under `~/.claude/tasks/` (list, search, timeline, cleanup, task aggregation, deletion, single-session
   detail, current live-session resolution)
-- `scripts/memory_scanner.py` — scans `~/.claude/projects/*/memory/` (scan, health audit, search,
+- `scripts/sess_memory_scanner.py` — scans `~/.claude/projects/*/memory/` (scan, health audit, search,
   memory-file deletion)
 
-Each of those 14 skills invokes `session_store.py`/`session_transcript.py`/`memory_scanner.py` as CLI
-scripts (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`); `formatters.py` is an
+Each of those 14 skills invokes `session_store.py`/`session_transcript.py`/`sess_memory_scanner.py` as CLI
+scripts (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`); `sess_formatters.py` is an
 import-only helper the other three use internally, never invoked directly. Output format varies by command, not
 uniformly across either script: `session_store.py`'s `list`/`search`/`timeline`/`tasks` default to a
 human-readable table and need an explicit `--format json` (every skill invocation that needs structured
 output passes it); every other `session_store.py` command (`cleanup`, `delete-session`, `delete-task`,
 `delete-task-list`, `orphan-task-lists`, `task-lists`, `session-detail`, `current`) always prints JSON,
 no flag needed.
-`memory_scanner.py`'s `scan` defaults to JSON but also accepts `--format table`; `audit` and
+`sess_memory_scanner.py`'s `scan` defaults to JSON but also accepts `--format table`; `audit` and
 `delete-memory` always print JSON; `search` emits NDJSON (one JSON object per line) when there are
 matches, or a plain JSON `[]` when there are none.
 
