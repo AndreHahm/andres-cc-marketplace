@@ -388,6 +388,7 @@
     {
       "compatibility": {},
       "created_on": null,
+      "domain_prefix": "antigravity",
       "domains": [],
       "functional_role": null,
       "id": "plugin_37945ea3",
@@ -403,6 +404,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "agy",
       "provenance": {},
       "score": null,
       "scoring_history": [],

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# test-migrate.sh — non-destructive tests for scripts/agy-migrate.py.
+# agy-test-migrate.sh — non-destructive tests for scripts/agy-migrate.py.
 #
 # Every test runs against a synthetic HOME built in $TMP, so the suite never reads
 # or writes the real ~/.claude or ~/.gemini. `agy` is stubbed on PATH: the plugins
 # unit shells out to the native importer, and we assert our post-processing of its
 # output, not Google's binary.
 #
-#   bash scripts/tests/test-migrate.sh
+#   bash scripts/tests/agy-test-migrate.sh
 #
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -299,9 +299,11 @@ PY2
 # --include-repos so the claudemd unit lists paths instead of only a count.
 OUT="$(run --roots "$H" --include-repos)"
 if has "sibling-prefix-server" "$OUT"; then
+  # shellcheck disable=SC2088  # literal "~" in the message text, not a path
   ok "~/.claude-pro is not pruned by the ~/.claude exclusion"
 else bad "a sibling sharing a prefix with an excluded root was pruned"; fi
 if has "Library-notes" "$OUT"; then
+  # shellcheck disable=SC2088  # literal "~" in the message text, not a path
   ok "~/Library-notes is not pruned by the ~/Library exclusion"
 else bad "Library-notes was pruned"; fi
 rm -rf "$H/.claude-pro" "$H/Library-notes"

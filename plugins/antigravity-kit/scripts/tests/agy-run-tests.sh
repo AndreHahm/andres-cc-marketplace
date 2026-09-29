@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# run-tests.sh — dependency-free tests (no bats). Stubs `agy` on PATH and asserts
-# agy-delegate.sh behavior + measure-session.py accounting.
+# agy-run-tests.sh — dependency-free tests (no bats). Stubs `agy` on PATH and asserts
+# agy-delegate.sh behavior + agy-measure-session.py accounting.
 #
-#   bash scripts/tests/run-tests.sh
+#   bash scripts/tests/agy-run-tests.sh
 #
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 DELEGATE="$ROOT/scripts/agy-delegate.sh"
 
-MEASURE="$ROOT/scripts/measure-session.py"
+MEASURE="$ROOT/scripts/agy-measure-session.py"
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
@@ -40,7 +40,7 @@ export STUB_MODELS
 # model is missing while delegation happily uses a different one. Pin them together.
 for _t in FLASH FLASH_LO PRO; do
   _w="$(tier_default "$_t")"
-  _d="$(sed -n "s/.*CLAUDE_PLUGIN_OPTION_TIER_$_t:-\\(.*\\)}\".*/\\1/p" "$ROOT/scripts/doctor.sh" | head -1)"
+  _d="$(sed -n "s/.*CLAUDE_PLUGIN_OPTION_TIER_$_t:-\\(.*\\)}\".*/\\1/p" "$ROOT/scripts/agy-doctor.sh" | head -1)"
   if [ -n "$_w" ] && [ "$_w" = "$_d" ]; then
     echo "ok: doctor and the wrapper agree on the $_t tier default"; PASS=$((PASS+1));
   else echo "FAIL: tier $_t default drift — wrapper '$_w' vs doctor '$_d'"; FAIL=$((FAIL+1)); fi
@@ -56,7 +56,7 @@ done
 # tried and removed: macOS ships bash 3.2, where DEFINING it is a silent no-op — a guard
 # that reads as protection and provides none, which is the exact class of defect this
 # release is about. So the check is static, runs first, and works on any shell.
-if ! python3 "$HERE/check-helper-order.py" "$0"; then
+if ! python3 "$HERE/agy-check-helper-order.py" "$0"; then
   echo "FAIL: a helper is used above its definition (bash does not hoist)"; FAIL=$((FAIL+1));
 else echo "ok: every helper is defined before its first use"; PASS=$((PASS+1)); fi
 
@@ -67,7 +67,7 @@ order_case() { # $1 = label, $2 = expected rc, $3 = script body ('\n' for newlin
   # `has() { :; }` inside it is indistinguishable from a definition to a checker that
   # reads the file as shell — and it was: the checker flagged its own test data.
   local f="$TMP/order-$1.sh"; printf '%b\n' "$3" > "$f"
-  python3 "$HERE/check-helper-order.py" "$f" >/dev/null 2>&1; local rc=$?
+  python3 "$HERE/agy-check-helper-order.py" "$f" >/dev/null 2>&1; local rc=$?
   if [ "$rc" -eq "$2" ]; then echo "ok: helper-order checker — $1"; PASS=$((PASS+1));
   else echo "FAIL: helper-order checker — $1 (rc=$rc, want $2)"; FAIL=$((FAIL+1)); fi
 }
@@ -254,8 +254,8 @@ else echo "FAIL: TO_CMD resolved after the --help probe — the guard is a no-op
 if grep -qE '=[[:space:]]*"?\$\((\$?[A-Za-z_"]*TO_CMD"?[^)]*)?[[:space:]]*agy[[:space:]]' <(sed 's/#.*//' "$DELEGATE"); then
   echo "FAIL: agy captured through a command substitution (issue #37 pipe hang)"; FAIL=$((FAIL+1));
 else echo "ok: agy output is never captured through a pipe (issue #37)"; PASS=$((PASS+1)); fi
-if grep -qE '^[[:space:]]*(agy|"\$TO_CMD")[^>|]*$' <(sed 's/#.*//' "$ROOT/scripts/doctor.sh") \
-   && ! grep -q 'cat "\$f"' "$ROOT/scripts/doctor.sh"; then
+if grep -qE '^[[:space:]]*(agy|"\$TO_CMD")[^>|]*$' <(sed 's/#.*//' "$ROOT/scripts/agy-doctor.sh") \
+   && ! grep -q 'cat "\$f"' "$ROOT/scripts/agy-doctor.sh"; then
   echo "FAIL: doctor's agy_guard writes to the caller's pipe (issue #37)"; FAIL=$((FAIL+1));
 else echo "ok: doctor's agy_guard redirects to a file, cat is the only pipe writer"; PASS=$((PASS+1)); fi
 # The mechanism itself, against a stub that behaves like agy+MCP: spawn a child
@@ -518,8 +518,8 @@ out=$(WSL_DISTRO_NAME=Ubuntu "$DELEGATE" --dir /home/u/proj --print-command "hi"
 if grep -q "9p bridge" <<<"$out"; then echo "FAIL: slow-mount note fired for a Linux-FS --dir"; FAIL=$((FAIL+1));
 else echo "ok: no slow-mount note for a Linux-FS --dir"; PASS=$((PASS+1)); fi
 
-echo "== cloud-debug.sh (Cloud Run log digest engine) =="
-CLOUD="$ROOT/scripts/cloud-debug.sh"
+echo "== agy-cloud-debug.sh (Cloud Run log digest engine) =="
+CLOUD="$ROOT/scripts/agy-cloud-debug.sh"
 
 # (a) logs fetched -> handed to agy -> digest printed (exit 0). agy stub -> STUB_OK.
 out=$(GCLOUD_MODE=logs "$CLOUD" --service svc 2>/dev/null); rc=$?
@@ -595,8 +595,8 @@ else echo "ok: no clip NOTE when under the cap"; PASS=$((PASS+1)); fi
 echo "== hooks =="
 HOOKS="$ROOT/hooks"
 
-python3 -c "import json; json.load(open('$HOOKS/policy-context.json'))" 2>/dev/null; rc=$?
-check "policy-context.json is valid JSON" 0 "$rc"
+python3 -c "import json; json.load(open('$HOOKS/agy-policy-context.json'))" 2>/dev/null; rc=$?
+check "agy-policy-context.json is valid JSON" 0 "$rc"
 
 out=$("$HOOKS/agy-inject-policy.sh" 2>/dev/null); rc=$?
 check "inject-policy default on -> emits additionalContext" 0 "$rc" "additionalContext" "$out"
@@ -756,6 +756,7 @@ check "gate blocks \$1 positional-parameter expansion in dquotes -> exit 2" 2 "$
 # from a real refusal and retried the same shape. Two changes: surrounding whitespace
 # is stripped before scanning, and the reason is printed.
 gate_rc()  { printf '%s' "{\"tool_input\":{\"command\":$1}}" | "$GATE" >/dev/null 2>&1; echo $?; }
+# shellcheck disable=SC2069  # deliberate: capture stderr only, discard stdout
 gate_why() { printf '%s' "{\"tool_input\":{\"command\":$1}}" | "$GATE" 2>&1 >/dev/null; }
 
 # Trailing / leading whitespace is normalisation: bash ignores it, and a newline with
@@ -837,18 +838,18 @@ done
 out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-delegate" --tier pro --print-command "hi" 2>/dev/null); rc=$?
 check "bin/agy-delegate forwards to the wrapper (no CLAUDE_PLUGIN_ROOT)" 0 "$rc" "--print-timeout" "$out"
 out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-doctor" 2>/dev/null | head -1); rc=$?
-case "$out" in *doctor*) echo "ok: bin/agy-doctor forwards to doctor.sh"; PASS=$((PASS+1));;
+case "$out" in *doctor*) echo "ok: bin/agy-doctor forwards to agy-doctor.sh"; PASS=$((PASS+1));;
   *) echo "FAIL: bin/agy-doctor did not forward (got: '$out')"; FAIL=$((FAIL+1));; esac
 out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-cloud-debug" --service svc --print-command 2>/dev/null); rc=$?
-check "bin/agy-cloud-debug forwards to cloud-debug.sh (no CLAUDE_PLUGIN_ROOT)" 0 "$rc" "logging read" "$out"
+check "bin/agy-cloud-debug forwards to agy-cloud-debug.sh (no CLAUDE_PLUGIN_ROOT)" 0 "$rc" "logging read" "$out"
 out=$(env -u CLAUDE_PLUGIN_ROOT "$BIN/agy-measure-session" 2>&1 | head -1)
 case "$out" in *measure-session*) echo "ok: bin/agy-measure-session forwards to the .py"; PASS=$((PASS+1));;
   *) echo "FAIL: bin/agy-measure-session did not forward (got: '$out')"; FAIL=$((FAIL+1));; esac
 
-echo "== doctor.sh tier-model check (agy 1.1.5 slug format) =="
+echo "== agy-doctor.sh tier-model check (agy 1.1.5 slug format) =="
 # The stub's `agy models` emits slugs (gemini-3.5-flash); doctor's default tier models are
 # display names (Gemini 3.5 Flash (High)). Regression guard: doctor must still recognize them.
-out=$(bash "$ROOT/scripts/doctor.sh" 2>&1)
+out=$(bash "$ROOT/scripts/agy-doctor.sh" 2>&1)
 if grep -q "tier model not in" <<<"$out"; then
   echo "FAIL: doctor falsely warns tier model missing against slug-format agy models"; FAIL=$((FAIL+1));
 else echo "ok: doctor recognizes tier models across display-name/slug formats"; PASS=$((PASS+1)); fi
@@ -856,7 +857,7 @@ if grep -q "tier model present: $DEF_FLASH" <<<"$out"; then
   echo "ok: doctor matches default flash tier in slug format"; PASS=$((PASS+1));
 else echo "FAIL: doctor did not confirm the default flash tier present"; FAIL=$((FAIL+1)); fi
 
-echo "== doctor.sh agy-version gate (--tier is inert below 1.1.10) =="
+echo "== agy-doctor.sh agy-version gate (--tier is inert below 1.1.10) =="
 # agy ignored --model/--effort in headless `-p` until 1.1.10: the flag was applied after
 # model configuration had initialised, so the run silently fell back to the persisted
 # default. The wrapper resolves every --tier to --model and always runs -p, so on an
@@ -869,7 +870,7 @@ ver_doctor() { # $1 = version the stub reports; echoes doctor's output
     echo "[ \"\$1\" = models ] && { printf '%s\\n' '$DEF_FLASH' '$DEF_FLASH_LO' '$DEF_PRO'; exit 0; }"
     echo 'exit 0'; } > "$d/agy"
   chmod +x "$d/agy"
-  PATH="$d:$PATH" bash "$ROOT/scripts/doctor.sh" 2>&1
+  PATH="$d:$PATH" bash "$ROOT/scripts/agy-doctor.sh" 2>&1
 }
 if has 'ignores --model' "$(ver_doctor 1.1.9)"; then
   echo "ok: doctor warns that --tier is inert on agy 1.1.9"; PASS=$((PASS+1));
@@ -892,7 +893,7 @@ else echo "ok: unparseable version is left alone"; PASS=$((PASS+1)); fi
 # flagged the dependency; this pins the property rather than the implementation.
 # Strip comments first: the replacement explains WHY it avoids `sort -V`, and an
 # unstripped grep matches that sentence and reports the dependency it removed.
-if grep -q 'sort -V' <(sed 's/#.*//' "$ROOT/scripts/doctor.sh"); then
+if grep -q 'sort -V' <(sed 's/#.*//' "$ROOT/scripts/agy-doctor.sh"); then
   echo "FAIL: doctor's version gate depends on sort -V (absent on some shells)"; FAIL=$((FAIL+1));
 else echo "ok: version gate does not depend on sort -V"; PASS=$((PASS+1)); fi
 brk="$TMP/nosort"; mkdir -p "$brk"; printf '#!/bin/sh\nexit 127\n' > "$brk/sort"; chmod +x "$brk/sort"
@@ -906,7 +907,7 @@ chmod +x "$d/agy"
 # upstream dies of SIGPIPE (141), and `set -o pipefail` (line 8) marks the whole pipeline
 # failed — so the assertion reads as "no warning" while the warning is right there. This
 # is the 0.21.1 bug, in the file whose tests guard against it.
-nosort_out="$(PATH="$brk:$d:$PATH" bash "$ROOT/scripts/doctor.sh" 2>&1)"
+nosort_out="$(PATH="$brk:$d:$PATH" bash "$ROOT/scripts/agy-doctor.sh" 2>&1)"
 if has 'ignores --model' "$nosort_out"; then
   echo "ok: the warning still fires with sort unusable"; PASS=$((PASS+1));
 else echo "FAIL: a broken sort silences the version gate"; FAIL=$((FAIL+1)); fi
@@ -925,7 +926,7 @@ echo "== embedded python is not cut short by a quote =="
 # ends on a comment line, and one cut off elsewhere stops compiling. Looking for the
 # closer at the start of a line instead, as the first attempt did, false-positives on
 # hooks/nudge-delegation.sh, where it is at the end of one.
-if python3 "$HERE/check-embedded-python.py" "$ROOT"/scripts/*.sh "$ROOT"/hooks/*.sh; then
+if python3 "$HERE/agy-check-embedded-python.py" "$ROOT"/scripts/*.sh "$ROOT"/hooks/*.sh; then
   echo "ok: no embedded python is truncated by a stray quote"; PASS=$((PASS+1));
 else echo "FAIL: an embedded python block is cut short (it runs a partial program)"; FAIL=$((FAIL+1)); fi
 
@@ -951,12 +952,13 @@ e15_bad=""
 # named the enumeration itself. A new surface is covered by existing now, not by being
 # remembered.
 #
-# doctor.sh is the one exclusion, on purpose: it references the code from a permissions
+# agy-doctor.sh is the one exclusion, on purpose: it references the code from a permissions
 # diagnostic without describing what produces it, and demanding the taxonomy there is
 # noise in a line someone reads while fixing a rule.
+# shellcheck disable=SC2010  # names are fixed repo-relative globs; only existing ones are wanted
 E15_SURFACES="$(cd "$ROOT" && ls -1 README.md docs/*.md skills/*/SKILL.md agents/*.md \
                   commands/*.md scripts/*.sh hooks/*.sh 2>/dev/null \
-                | grep -vE '^scripts/doctor\.sh$')"
+                | grep -vE '^scripts/agy-doctor\.sh$')"
 for f in $E15_SURFACES; do
   [ -f "$ROOT/$f" ] || continue
   # Trigger on the CODE as well as the phrase: agy-job.sh renders it as a bare `15)` case
@@ -999,7 +1001,7 @@ if [ -z "$e15_lines" ]; then
   echo "ok: no line pairs the permission exit code with the old version alone"; PASS=$((PASS+1));
 else echo "FAIL: permission code described as 1.1.3-only at:$e15_lines"; FAIL=$((FAIL+1)); fi
 
-echo "== doctor.sh --model probe (ask agy instead of inferring from a version) =="
+echo "== agy-doctor.sh --model probe (ask agy instead of inferring from a version) =="
 # The version gate above can only INFER that --model works. agy 1.1.11 answers the
 # read-only slash commands in print mode without starting an agent turn, so doctor asks
 # outright: request a tier model, see which one comes back. The stub logs whether the
@@ -1013,7 +1015,7 @@ probe_doctor() { # $1 = version the stub reports, $2 = what `-p /model` answers 
     echo "for a in \"\$@\"; do [ \"\$a\" = /model ] && { echo \"\$*\" >> '$d/probed'; printf '%s\n' '$2'; exit 0; }; done"
     echo 'exit 0'; } > "$d/agy"
   chmod +x "$d/agy"
-  HOME="$TMP/probehome" PATH="$d:$PATH" bash "$ROOT/scripts/doctor.sh" 2>&1
+  HOME="$TMP/probehome" PATH="$d:$PATH" bash "$ROOT/scripts/agy-doctor.sh" 2>&1
 }
 # Below 1.1.11 the probe must not run AT ALL. There `-p /model` is not a command, it
 # falls through as literal prompt text and the model answers as though it had run — so
@@ -1047,7 +1049,7 @@ if has 'effect' "$probe_out"; then
   echo "FAIL: doctor draws a conclusion from an empty probe answer"; FAIL=$((FAIL+1));
 else echo "ok: an empty probe answer produces no verdict either way"; PASS=$((PASS+1)); fi
 
-echo "== doctor.sh permissions.allow validation (agy 1.1.11 zero-word rules) =="
+echo "== agy-doctor.sh permissions.allow validation (agy 1.1.11 zero-word rules) =="
 # The plugin recommends a permissions.allow rule in eight places as the NARROW
 # alternative to --yolo, and the recommendation ships a placeholder. A rule agy cannot
 # parse is silent in both directions: before 1.1.11 it matched EVERY command and
@@ -1066,7 +1068,7 @@ allow_doctor() { # $1 = agy version, $2 = the "allow" array, $3 = optional /perm
     echo "for a in \"\$@\"; do [ \"\$a\" = /permissions ] && { printf '%s' '${3:-}'; exit 0; }; done"
     echo 'exit 0'; } > "$d/agy"
   chmod +x "$d/agy"
-  HOME="$h" PATH="$d:$PATH" bash "$ROOT/scripts/doctor.sh" 2>&1
+  HOME="$h" PATH="$d:$PATH" bash "$ROOT/scripts/agy-doctor.sh" 2>&1
 }
 # upstream's own example of a rule that tokenizes to zero command words: `time` is a
 # shell reserved word that prefixes a command without being one.
@@ -1173,7 +1175,7 @@ noset_d="$TMP/agynoset"; rm -rf "$noset_d"; mkdir -p "$noset_d"
   echo "for a in \"\$@\"; do [ \"\$a\" = /permissions ] && { printf 'shared\\tallow\\tcommand(time)\\n'; exit 0; }; done"
   echo 'exit 0'; } > "$noset_d/agy"
 chmod +x "$noset_d/agy"
-noset_out="$(HOME="$noset_h" PATH="$noset_d:$PATH" bash "$ROOT/scripts/doctor.sh" 2>&1)"
+noset_out="$(HOME="$noset_h" PATH="$noset_d:$PATH" bash "$ROOT/scripts/agy-doctor.sh" 2>&1)"
 if has 'command(time)' "$noset_out"; then
   echo "ok: the allow-rule check runs with no settings.json present"; PASS=$((PASS+1));
 else echo "FAIL: no settings.json means no allow-rule check at all"; FAIL=$((FAIL+1)); fi
@@ -1222,7 +1224,7 @@ if has 'matches EVERY command' "$allow_out"; then
   echo "FAIL: write_file() was given the command-rule history"; FAIL=$((FAIL+1));
 else echo "ok: write_file() is unusable without the match-everything claim"; PASS=$((PASS+1)); fi
 
-echo "== doctor.sh stdio-MCP detection (issue #37 diagnostic) =="
+echo "== agy-doctor.sh stdio-MCP detection (issue #37 diagnostic) =="
 # The hint is diagnostic-only, so getting it wrong fails SILENTLY — it just never
 # helps the person it exists for. Pin the two things measured against agy 1.1.9:
 # stdio servers carry "command", remote ones carry "serverUrl" (not the
@@ -1232,7 +1234,7 @@ mcp_count() { # $1 = config root; echoes "<rc> <count>"
   local n rc
   n="$(AGY_CONFIG_DIR="$1" bash -c '
     source_fn() { sed -n "/^has_stdio_mcp() {/,/^}/p" "$1"; }
-    eval "$(source_fn "'"$ROOT"'/scripts/doctor.sh")"
+    eval "$(source_fn "'"$ROOT"'/scripts/agy-doctor.sh")"
     has_stdio_mcp' 2>/dev/null)"; rc=$?
   printf '%s %s' "$rc" "${n:-0}"
 }
@@ -1403,7 +1405,7 @@ if [ "$out" = "OK" ]; then
   echo "ok: prices.json gemini_flash matches the shipped flash tier"; PASS=$((PASS+1));
 else echo "FAIL: $out"; FAIL=$((FAIL+1)); fi
 
-echo "== measure-session.py =="
+echo "== agy-measure-session.py =="
 SESS="$TMP/sess.jsonl"
 cat > "$SESS" <<'JSONL'
 {"message":{"role":"user","content":"hi"}}
@@ -1556,7 +1558,7 @@ check "plugin contract (manifests, hook/agent refs, frontmatter, exec bits)" 0 "
 
 # The migration tool has its own suite: it needs a synthetic HOME rather than the
 # `agy` stub this file installs, so it runs as a child and reports one line here.
-if bash "$HERE/test-migrate.sh" > "$TMP/migrate.log" 2>&1; then
+if bash "$HERE/agy-test-migrate.sh" > "$TMP/migrate.log" 2>&1; then
   echo "ok: agy-migrate suite ($(grep -c '^ok:' "$TMP/migrate.log") checks)"; PASS=$((PASS+1))
 else
   echo "FAIL: agy-migrate suite"; sed 's/^/    /' "$TMP/migrate.log" | tail -20; FAIL=$((FAIL+1))

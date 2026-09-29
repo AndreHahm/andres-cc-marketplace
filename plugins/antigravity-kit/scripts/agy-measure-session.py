@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""measure-session.py — token + tool accounting for one Claude Code session.
+"""agy-measure-session.py — token + tool accounting for one Claude Code session.
 
 Usage:
-    python3 measure-session.py <session.jsonl> [label]
+    python3 agy-measure-session.py <session.jsonl> [label]
 
 Finds the session transcript under ~/.claude/projects/**/<id>.jsonl if you pass a
 bare session id instead of a path. Prints the Claude-side token breakdown (exact)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# doctor.sh — read-only health check for the "Antigravity for Claude Code" plugin.
+# agy-doctor.sh — read-only health check for the "Antigravity for Claude Code" plugin.
 # Verifies the agy CLI is installed + authenticated and the plugin is wired up.
 #
 set -uo pipefail
@@ -429,7 +429,7 @@ EOF
 fi
 
 # 4. plugin scripts executable
-for s in agy-delegate.sh agy-cost-compare.sh cloud-debug.sh agy-trace.sh agy-media.sh; do
+for s in agy-delegate.sh agy-cost-compare.sh agy-cloud-debug.sh agy-trace.sh agy-media.sh; do
   if [ -x "$HERE/$s" ]; then ok "$s executable"; else
     bad "$s not executable"; info "fix: chmod +x \"$HERE/$s\""
   fi

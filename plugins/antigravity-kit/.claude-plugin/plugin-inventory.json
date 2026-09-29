@@ -878,9 +878,11 @@
       "type": "hook"
     }
   ],
+  "domain_prefix": "antigravity",
   "extensions": {},
   "plugin_id": "plugin_37945ea3",
   "plugin_name": "antigravity-kit",
+  "prefix": "agy",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-17"
+  "updated_on": "2026-09-29"
 }

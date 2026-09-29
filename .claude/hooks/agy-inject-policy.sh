@@ -16,5 +16,5 @@ case "$raw" in
   off|false|0|no|disabled) exit 0 ;;
 esac
 
-cat "$HERE/policy-context.json"
+cat "$HERE/agy-policy-context.json"
 exit 0
