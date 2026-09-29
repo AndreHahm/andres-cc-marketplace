@@ -44,7 +44,7 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
 - **`work-transition-reviewer`** and **`work-intake-classifier`** — read-only Codex reviewer
   personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
   Codex CLI use) is built and live; the live in-session path (via this plugin's own
-  `scripts/bridge_caller.py`, dispatching through `codex-kit`'s `codex-review-bridge`) is built and
+  `scripts/wmgt_bridge_caller.py`, dispatching through `codex-kit`'s `codex-review-bridge`) is built and
   confirmed working in this monorepo's own checkout, but currently only in that layout — see Status
   for the open marketplace-install limitation.
 
@@ -83,11 +83,11 @@ governed Git/GitHub operation Wave 2's skills delegate to.
 
 Install from this marketplace the same way as any other plugin in this repository (see the
 repository's own installation instructions). `codex-kit` must also be installed for the live
-Codex review path to function; without it (or on a Codex dispatch failure), `scripts/bridge_caller.py`
+Codex review path to function; without it (or on a Codex dispatch failure), `scripts/wmgt_bridge_caller.py`
 returns the bridge's own typed failure rather than silently skipping the review — see Status for
 the script's current known reliability caveat on Windows. **The live Codex review path currently
 only works when both plugins are installed as part of this monorepo's own checkout** —
-`scripts/bridge_caller.py` resolves its own repo root and its `codex-kit` dependency by assuming a
+`scripts/wmgt_bridge_caller.py` resolves its own repo root and its `codex-kit` dependency by assuming a
 shared monorepo layout, and returns a typed failure rather than dispatching when installed as two
 independent marketplace plugins outside that layout (see Status). `git-kit` must be installed for any Wave 2
 skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
@@ -105,7 +105,7 @@ governed operations will resolve (see `repository-gates`'s own Failure and Resum
 repository has not yet activated a local override for that field.
 
 Items still open before Wave 2 is fully live:
-- **The live Codex review path (`scripts/bridge_caller.py`) only works inside this monorepo's own
+- **The live Codex review path (`scripts/wmgt_bridge_caller.py`) only works inside this monorepo's own
   checkout layout** — it cannot locate its own repo root or its `codex-kit` dependency when
   `workmanagement-kit` is installed standalone via the plugin marketplace mechanism into a
   consumer project. Tracked at
@@ -158,7 +158,7 @@ Items still open from Wave 1:
   `plugin-integration-intake`'s own step 2 procedure (the model reasoning through the schema's
   rules directly) or an ad-hoc check like `jsonschema` run by hand; see `intake-payload-schema.md`
   for what the schema defines and deliberately does not validate.
-- **The Codex bridge-caller script (`scripts/bridge_caller.py`) that dispatches
+- **The Codex bridge-caller script (`scripts/wmgt_bridge_caller.py`) that dispatches
   `work-transition-reviewer`/`work-intake-classifier` live is built and has run live, for real,
   against both agents** — see each agent's own body for its exact invocation. Known reliability
   caveat: on Windows, `codex exec --sandbox read-only` (what `codex-review-bridge` always uses) is

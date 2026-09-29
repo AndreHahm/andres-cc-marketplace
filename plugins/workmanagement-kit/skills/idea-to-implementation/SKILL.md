@@ -6,7 +6,7 @@ description: >-
   covering the whole hierarchy. Use when asked to promote an idea to Linear, turn a decision into
   tracked work, accept a proposed Goal into execution, or create a Linear issue explicitly based on
   a named Notion source. Never runs automatically — Notion never creates Linear work on its own.
-allowed-tools: Read, Write, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*), AskUserQuestion
+allowed-tools: Read, Write, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), AskUserQuestion
 ---
 
 # Idea to Implementation

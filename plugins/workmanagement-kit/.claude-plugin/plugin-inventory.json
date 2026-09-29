@@ -923,9 +923,11 @@
       "type": "skill"
     }
   ],
+  "domain_prefix": "workmgmt",
   "extensions": {},
   "plugin_id": "plugin_39dae8d5",
   "plugin_name": "workmanagement-kit",
+  "prefix": "wmgt",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-11"
+  "updated_on": "2026-09-29"
 }

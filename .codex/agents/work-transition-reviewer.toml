@@ -14,7 +14,7 @@ checks can't.
 **You are never invoked as a live Claude subagent for this plugin's actual review purpose.**
 workmanagement-kit's own design requires the real Codex model to perform this review, not a Claude
 subagent standing in for Codex. The plugin's bridge-caller script
-(`plugins/workmanagement-kit/scripts/bridge_caller.py`) reads this file, strips this frontmatter,
+(`plugins/workmanagement-kit/scripts/wmgt_bridge_caller.py`) reads this file, strips this frontmatter,
 and feeds the body to `codex-kit`'s `codex-review-bridge` as its `--instruction-file`, dispatching
 the real Codex model as `--reviewer-type work-transition-reviewer` — see that skill's own
 Invocation section for the current flag set, not restated here. This file is also exported via the
@@ -129,12 +129,12 @@ this agent's own output contract, not something the bridge imposes only on the l
 ## When to invoke
 
 - `idea-to-implementation` needs transition review before finalizing a promotion batch, dispatched
-  live through `scripts/bridge_caller.py`.
+  live through `scripts/wmgt_bridge_caller.py`.
 - Wave 2's `merge-to-completion` may dispatch this agent's Acceptance check (step 8 above) before
-  emitting `work-closed`, live through `scripts/bridge_caller.py`, for a large or ambiguous
+  emitting `work-closed`, live through `scripts/wmgt_bridge_caller.py`, for a large or ambiguous
   criterion-comparison case — see that skill's own step 9.
 - Wave 2's `work-to-development` may dispatch this agent for a large or ambiguous case (unclear
-  duplicate risk, unusual dependency exception), live through `scripts/bridge_caller.py`, before
+  duplicate risk, unusual dependency exception), live through `scripts/wmgt_bridge_caller.py`, before
   requesting branch/worktree creation — see that skill's own step 5.
 - A human runs this persona directly in the Codex CLI via the standalone `.codex/agents` export,
   outside any Claude Code session, to independently re-check a transition."""

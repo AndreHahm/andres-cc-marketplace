@@ -250,6 +250,7 @@
     {
       "compatibility": {},
       "created_on": null,
+      "domain_prefix": "workmgmt",
       "domains": [],
       "functional_role": null,
       "id": "plugin_39dae8d5",
@@ -265,6 +266,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "wmgt",
       "provenance": {},
       "score": 9.9,
       "scoring_history": [

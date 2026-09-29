@@ -83,7 +83,7 @@ def check_referenced_files():
             continue
         # A "scripts/..."/"references/..." path with no leading "../" can still be this
         # plugin's own shared, plugin-root scripts/references dir rather than this specific
-        # skill's own -- e.g. `scripts/bridge_caller.py` lives at the plugin root and is
+        # skill's own -- e.g. `scripts/wmgt_bridge_caller.py` lives at the plugin root and is
         # shared across several skills, not duplicated per-skill.
         if any((cand.parent.parent / match.group(1)).resolve().exists() for cand in skill_dirs):
             continue
@@ -150,7 +150,7 @@ def _collect_search_text(body: str) -> str:
                 # Exclude this smoke test's own source (and any compiled bytecode next to it,
                 # e.g. __pycache__/*.pyc from a local run) from the scripts/ scan below -- the
                 # smoke test lives in scripts/ itself, and its own comments/docstrings mention
-                # example grant strings like "gh pr view"/"bridge_caller.py" that would
+                # example grant strings like "gh pr view"/"wmgt_bridge_caller.py" that would
                 # otherwise leak into search_text and make check_bash_grants match against its
                 # own commentary instead of the skill's real body/references.
                 if f.resolve() == self_path:
@@ -180,7 +180,7 @@ def _collect_search_text(body: str) -> str:
 
 def _collect_plugin_contract_text(body: str) -> str:
     # A plugin-root shared contract file (e.g. `../../FOUNDATION_CONTRACTS.md`) can document a
-    # *script-path* Bash grant's real usage (a named shared procedure, e.g. bridge_caller.py's
+    # *script-path* Bash grant's real usage (a named shared procedure, e.g. wmgt_bridge_caller.py's
     # Codex Bridge-Caller Dispatch procedure) without the skill's own body repeating the script
     # name -- kept separate from _collect_search_text deliberately: FOUNDATION_CONTRACTS.md is
     # large enough (tens of KB) that folding it into the general search text would make the

@@ -9,7 +9,7 @@ description: >-
   the content. Reads, classification, and previews need no approval; all material record creation,
   Decision state changes, and Goal proposals require the plugin's live approval gate, with no
   exception for a record that looks low-risk or purely archival.
-allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database
+allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database
 ---
 
 # Notion Knowledge Management
@@ -215,7 +215,7 @@ might have partially succeeded.
 **Last dated run record:** evals/notion-knowledge-management/workspace/iteration-3/ (2026-09-12) —
 closed the 2 uncovered trigger phrases ("propose a goal for Q3", "log this as a research note"); prior
 runs: evals/notion-knowledge-management/workspace/iteration-2/ (2026-09-11) — Phase 7 Deep Test re-run
-verifying the Write/`Bash(bridge_caller.py:*)` grants and the restructured classification-help approval
+verifying the Write/`Bash(wmgt_bridge_caller.py:*)` grants and the restructured classification-help approval
 gate; evals/notion-knowledge-management/workspace/iteration-1/ (2026-08-30)
 
 **Quality gates:**

@@ -9,7 +9,7 @@ dependencies via PEP 723 `# /// script` blocks, matching this repository's conve
 
 ## Development Setup
 
-Scripts (`scripts/bridge_caller.py`, `scripts/gh_api_readonly.py`, `scripts/test_bridge_caller.py`)
+Scripts (`scripts/wmgt_bridge_caller.py`, `scripts/wmgt_gh_api_readonly.py`, `scripts/wmgt_test_bridge_caller.py`)
 run directly via `uv run` (or `python3`) with PEP 723 inline dependency blocks — no separate package
 manager config is bundled with this plugin.
 

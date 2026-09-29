@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Fixture-based regression test for bridge_caller.py. Run:
-    python scripts/test_bridge_caller.py
+"""Fixture-based regression test for wmgt_bridge_caller.py. Run:
+    python scripts/wmgt_test_bridge_caller.py
 
 Builds a temporary fake repo root (a .git marker, optionally a stub
-bridge-invoke.mjs), runs bridge_caller.py as a subprocess against it via
+bridge-invoke.mjs), runs wmgt_bridge_caller.py as a subprocess against it via
 --repo-root, and asserts on exit code + JSON output shape. Real agent files
 (work-transition-reviewer.md/work-intake-classifier.md) are always read from
-this plugin's own real agents/ directory -- bridge_caller.py resolves them
+this plugin's own real agents/ directory -- wmgt_bridge_caller.py resolves them
 via its own __file__ location, not --repo-root, so no fake copy is needed.
 
 Scratch-file leak detection points the subprocess's own tempfile.mkdtemp()
 at a per-case, test-controlled directory via the TMP/TEMP/TMPDIR environment
 variables (Python's tempfile module reads these to pick its default temp
-base) -- bridge_caller.py's scratch directory otherwise lives in the real OS
+base) -- wmgt_bridge_caller.py's scratch directory otherwise lives in the real OS
 temp location, which a test can't predict or glob safely.
 
 Added per Devin's PR #278 round-2 review ("Bridge caller lacks regression
@@ -34,7 +34,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-SCRIPT = Path(__file__).parent / "bridge_caller.py"
+SCRIPT = Path(__file__).parent / "wmgt_bridge_caller.py"
 
 STUB_BRIDGE_SUCCESS = """#!/usr/bin/env node
 console.log(JSON.stringify({

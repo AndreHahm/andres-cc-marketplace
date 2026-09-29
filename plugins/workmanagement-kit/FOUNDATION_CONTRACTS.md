@@ -29,7 +29,7 @@ prevent.
 
 How a skill actually executes its optional "dispatch `work-transition-reviewer`/
 `work-intake-classifier` for a live Codex review" step, once its own `AskUserQuestion` gate is
-answered yes. Every citing skill grants `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*)`
+answered yes. Every citing skill grants `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*)`
 and follows this exact procedure rather than restating it:
 
 1. **Write the evidence to review** (the transition record, proposed hierarchy, or intake payload
@@ -42,7 +42,7 @@ and follows this exact procedure rather than restating it:
    no citing skill's own `allowed-tools` grants a git command for this, and this contract does not
    add one — resolving from already-known context avoids needing it at all. Never relative to the
    invoking skill's own current working directory when that differs from the repository root.
-   `bridge_caller.py` resolves the same `--target-paths` value (step 3) against the repository root
+   `wmgt_bridge_caller.py` resolves the same `--target-paths` value (step 3) against the repository root
    unconditionally, regardless of its own invoking cwd (see its `repo_root_from()`); writing the
    evidence file anywhere else means the dispatch looks for it at the wrong location and degrades to
    its unavailable-review fallback, even though the evidence was written successfully. `.temp/` is
@@ -50,12 +50,12 @@ and follows this exact procedure rather than restating it:
    the one dispatch that reads it
    and does not need to be independently deleted afterward (no citing skill holds a file-deletion
    grant for this purpose).
-2. **Choose `<dispatch-id>`** matching `^[A-Za-z0-9._-]{1,64}$` (`bridge_caller.py`'s own
+2. **Choose `<dispatch-id>`** matching `^[A-Za-z0-9._-]{1,64}$` (`wmgt_bridge_caller.py`'s own
    validation) — `<calling-skill-name>-<short-unique-suffix>`, e.g. the Linear issue ID the
    transition concerns, or a timestamp if none applies.
 3. **Invoke:**
    ```
-   ${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py --agent <work-transition-reviewer|work-intake-classifier> \
+   ${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py --agent <work-transition-reviewer|work-intake-classifier> \
      --target-paths .temp/workmanagement-kit-bridge/<dispatch-id>.md \
      --dispatch-id <dispatch-id> --execution-profile read-only
    ```

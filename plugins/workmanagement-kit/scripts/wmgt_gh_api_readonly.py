@@ -17,11 +17,11 @@ ever issues read calls" disclosure in the skill's own prose is not something
 the tool-permission system can verify or enforce.
 
 This wrapper closes that gap for the three workmanagement-kit skills that only
-ever need a read: they grant `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/gh_api_readonly.py:*)`
+ever need a read: they grant `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_gh_api_readonly.py:*)`
 instead of `Bash(gh api:*)`, so the permission grant itself is exactly as wide
 as what they use, not wider.
 
-Usage: gh_api_readonly.py <endpoint> [--jq <expr>] [--paginate]
+Usage: wmgt_gh_api_readonly.py <endpoint> [--jq <expr>] [--paginate]
 
 Only `--jq` (read-side filtering) and `--paginate` (read-side pagination) are
 permitted past the endpoint -- an explicit allowlist, not a denylist of known
@@ -46,7 +46,7 @@ _JQ_ENV_LEAK_RE = re.compile(r"\benv\b|\$ENV\b|\$__loc__\b")
 
 def main(argv: list[str]) -> int:
     if not argv:
-        print("gh_api_readonly.py: missing endpoint argument", file=sys.stderr)
+        print("wmgt_gh_api_readonly.py: missing endpoint argument", file=sys.stderr)
         return 2
 
     endpoint = argv[0]
@@ -54,7 +54,7 @@ def main(argv: list[str]) -> int:
 
     if endpoint.startswith("-"):
         print(
-            f"gh_api_readonly.py: rejected endpoint {endpoint!r} -- endpoint must "
+            f"wmgt_gh_api_readonly.py: rejected endpoint {endpoint!r} -- endpoint must "
             "not look like a flag",
             file=sys.stderr,
         )
@@ -65,7 +65,7 @@ def main(argv: list[str]) -> int:
         token = rest[i]
         if token not in _ALLOWED_FLAGS:
             print(
-                f"gh_api_readonly.py: rejected argument {token!r} -- only "
+                f"wmgt_gh_api_readonly.py: rejected argument {token!r} -- only "
                 f"{sorted(_ALLOWED_FLAGS)} are permitted through this read-only "
                 "wrapper; --method/-f/-F/-X/--input and any other flag are refused",
                 file=sys.stderr,
@@ -73,12 +73,12 @@ def main(argv: list[str]) -> int:
             return 1
         if token == "--jq":
             if i + 1 >= len(rest):
-                print("gh_api_readonly.py: --jq requires a value", file=sys.stderr)
+                print("wmgt_gh_api_readonly.py: --jq requires a value", file=sys.stderr)
                 return 2
             jq_expr = rest[i + 1]
             if _JQ_ENV_LEAK_RE.search(jq_expr):
                 print(
-                    f"gh_api_readonly.py: rejected --jq value {jq_expr!r} -- "
+                    f"wmgt_gh_api_readonly.py: rejected --jq value {jq_expr!r} -- "
                     "env/$ENV/$__loc__ access is refused to prevent this "
                     "read-only wrapper from being used to dump the process "
                     "environment",
