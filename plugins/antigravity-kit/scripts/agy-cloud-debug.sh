@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# cloud-debug.sh — fetch a GCP resource's recent ERROR logs and hand them to
+# agy-cloud-debug.sh — fetch a GCP resource's recent ERROR logs and hand them to
 # Antigravity (`agy` / Gemini) for a compact, structured digest.
 # Part of the "Antigravity for Claude Code" plugin.
 #
@@ -19,7 +19,7 @@
 # delegation wrapper) — no new delegation logic here.
 #
 # Usage:
-#   cloud-debug.sh --service <name> [options]
+#   agy-cloud-debug.sh --service <name> [options]
 #
 # Options:
 #   -s, --service <name>           Cloud Run service name (required)

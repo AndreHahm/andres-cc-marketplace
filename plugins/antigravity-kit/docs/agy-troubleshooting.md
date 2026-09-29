@@ -148,7 +148,7 @@ On classifiable failures the wrapper prints a machine-readable line to stderr:
 `AGY_SIGNAL {"status":"...","reason":"...","model":"...","retry":"..."}`
 
 **These codes are per-engine — the same number means something different in
-`cloud-debug.sh` or `agy-media.sh` than it does in `agy-delegate.sh`.** Look up the
+`agy-cloud-debug.sh` or `agy-media.sh` than it does in `agy-delegate.sh`.** Look up the
 script that actually failed, not just the number.
 
 ### `agy-delegate` / `agy-job` (and anything that calls through them)
@@ -174,7 +174,7 @@ script that actually failed, not just the number.
 | 17 | one or more migration steps failed | read the named steps; the run is still revertible with `agy-migrate --uninstall --apply` |
 | 18 | prerequisite missing | no Claude Code config dir, or agy has never been run |
 
-### `cloud-debug.sh` only
+### `agy-cloud-debug.sh` only
 
 | exit | meaning | what to do |
 |---|---|---|

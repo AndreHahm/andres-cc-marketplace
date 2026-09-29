@@ -207,7 +207,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 3. **Batch** — one big delegation beats many round-trips.
 4. **Review the diff, not the whole tree.**
 
-`scripts/measure-session.py <session-id>` prints the COST-WEIGHTED + est. USD breakdown for a session (Claude side; Gemini side priced separately). `scripts/agy-cost-compare.sh` shows the per-token gap for a task — **estimates from char-count, so verify `prices.json` first.**
+`scripts/agy-measure-session.py <session-id>` prints the COST-WEIGHTED + est. USD breakdown for a session (Claude side; Gemini side priced separately). `scripts/agy-cost-compare.sh` shows the per-token gap for a task — **estimates from char-count, so verify `prices.json` first.**
 
 </details>
 
@@ -272,7 +272,7 @@ agents/           antigravity-delegate subagent (file work runs on Gemini, not C
 commands/         slash commands (agy-delegate, agy-review, agy-research, agy-media, agy-cloud-run-debug, agy-setup, agy-status, agy-result, agy-cancel, agy-migrate)
 hooks/            SessionStart: agy health check + auto-inject the cost-aware policy; UserPromptSubmit: delegation nudge
 bin/              PATH shims (bare names): agy-delegate · agy-job · agy-cost-compare · agy-doctor · agy-cloud-debug · agy-trace · agy-media · agy-measure-session · agy-migrate
-scripts/          agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · agy-media · measure-session · doctor · agy-migrate · tests/
+scripts/          agy-delegate · agy-job · agy-cost-compare · agy-cloud-debug · agy-trace · agy-media · agy-measure-session · agy-doctor · agy-migrate · tests/
 KNOWN_ISSUES.md   tracked, unresolved gaps: the Mirror Sync registration block, unverified issue links
 skills/antigravity/assets/prices.json   Vertex rate config (verify before quoting)
 ```
@@ -285,7 +285,7 @@ claude --plugin-dir ~/andres-cc-marketplace/plugins/antigravity-kit
 
 **Tests** (no dependencies; stubs `agy`):
 ```bash
-bash scripts/tests/run-tests.sh
+bash scripts/tests/agy-run-tests.sh
 ```
 
 </details>

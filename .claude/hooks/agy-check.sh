@@ -2,7 +2,7 @@
 #
 # SessionStart hook: lightweight check that the Antigravity CLI (`agy`) is usable.
 # Warns on stderr but NEVER fails the session (always exits 0). The full health
-# check lives in scripts/doctor.sh — this one stays fast (no `agy models` network
+# check lives in scripts/agy-doctor.sh — this one stays fast (no `agy models` network
 # call) so it doesn't slow every session start.
 #
 set -uo pipefail

@@ -135,7 +135,7 @@ permission_denied() {   # $1 = "shown" when the caller already echoed $ERR
   # the AGY_SIGNAL below never run. Only the callers keep that from happening today.
   #
   # The first version of this comment said the file uses `set -uo pipefail` and called the
-  # risk theoretical. That was copied from doctor.sh, which really has no `-e`. A reviewer
+  # risk theoretical. That was copied from agy-doctor.sh, which really has no `-e`. A reviewer
   # checked the line instead of believing the sentence.
   if [ "${1:-}" != shown ] && [ -s "$ERR" ]; then
     cat "$ERR" >&2
