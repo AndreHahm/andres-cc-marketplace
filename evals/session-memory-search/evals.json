@@ -7,7 +7,7 @@
       "id": 1,
       "name": "Keyword search across memory files",
       "prompt": "Search my memories for anything about the login bug.",
-      "expected_output": "Runs memory_scanner.py search with the keyword, presents results grouped by project in a table with file/type/line/match columns."
+      "expected_output": "Runs sess_memory_scanner.py search with the keyword, presents results grouped by project in a table with file/type/line/match columns."
     },
     {
       "id": 2,

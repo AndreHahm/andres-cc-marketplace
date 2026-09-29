@@ -312,6 +312,7 @@
     {
       "compatibility": {},
       "created_on": null,
+      "domain_prefix": "session",
       "domains": [],
       "functional_role": null,
       "id": "plugin_aeaa6571",
@@ -327,6 +328,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "sess",
       "provenance": {},
       "score": null,
       "scoring_history": [],

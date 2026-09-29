@@ -4,11 +4,11 @@
 Scans ~/.claude/projects/{project}/memory/ to discover, health-check, and search memory files.
 
 Usage as CLI:
-  python3 memory_scanner.py scan [--type TYPE] [--project FILTER] [--format table|json]
-  python3 memory_scanner.py audit [--age-threshold N] [--projects-base PATH]
-  python3 memory_scanner.py search "<query>" [--type TYPE] [--project FILTER] [--context N]
+  python3 sess_memory_scanner.py scan [--type TYPE] [--project FILTER] [--format table|json]
+  python3 sess_memory_scanner.py audit [--age-threshold N] [--projects-base PATH]
+  python3 sess_memory_scanner.py search "<query>" [--type TYPE] [--project FILTER] [--context N]
                                     [--limit N]
-  python3 memory_scanner.py delete-memory <path>
+  python3 sess_memory_scanner.py delete-memory <path>
     (--projects-base is intentionally NOT honored here -- see delete_memory()'s docstring)
 """
 
@@ -23,7 +23,7 @@ from typing import NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from formatters import render_table, to_json, to_ndjson, truncate  # noqa: E402
+from sess_formatters import render_table, to_json, to_ndjson, truncate  # noqa: E402
 
 DEFAULT_PROJECTS_BASE = str(Path.home() / ".claude" / "projects")
 
@@ -766,7 +766,9 @@ def main() -> None:
     command = args[0] if args and not args[0].startswith("-") else None
 
     if not command:
-        sys.stderr.write("Usage: python3 memory_scanner.py <scan|audit|search|delete-memory> ...\n")
+        sys.stderr.write(
+            "Usage: python3 sess_memory_scanner.py <scan|audit|search|delete-memory> ...\n"
+        )
         sys.exit(1)
 
     try:

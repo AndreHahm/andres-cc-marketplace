@@ -7,7 +7,7 @@ description: >-
   files. Also triggered by: "list memories", "show memories", "what's in my
   memory". For finding memories by keyword/content, use session-memory-search
   instead.
-allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py":*)
+allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py":*)
 ---
 
 # Session Memory
@@ -29,7 +29,7 @@ List and summarize all memory files across projects.
 Run the memory scanner to discover all memory files across projects:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py" scan
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" scan
 ```
 
 This defaults to JSON (also accepts `--format table` for a human-readable table instead) — no

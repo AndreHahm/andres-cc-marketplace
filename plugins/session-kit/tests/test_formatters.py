@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 
-from formatters import (
+from sess_formatters import (
     format_duration,
     format_size,
     parse_date_boundary,

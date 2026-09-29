@@ -38,7 +38,7 @@ from typing import Any, NoReturn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from formatters import (  # noqa: E402
+from sess_formatters import (  # noqa: E402
     format_duration,
     format_size,
     parse_date_boundary,
@@ -540,7 +540,7 @@ def find_cleanup_candidates(
 
     max_age_days: int | None = None
     if older_than:
-        # Same "Nd/Nw/Nm" shorthand parse_date_boundary (formatters.py) already supports
+        # Same "Nd/Nw/Nm" shorthand parse_date_boundary (sess_formatters.py) already supports
         # elsewhere in this file's own --since/--until handling -- kept consistent rather
         # than accepting only "d" here. "m" uses a flat 30-day approximation (not
         # parse_date_boundary's calendar-month subtraction), which is fine for a coarse
@@ -1452,7 +1452,7 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
                 # flags, so honoring a caller-supplied base here would let those flags
                 # trivially satisfy delete_session's own containment check against a base
                 # of the caller's choosing (e.g. --tasks-base /chosen/root then deleting
-                # /chosen/root/<id>). Same fixed-base pattern memory_scanner.py's own
+                # /chosen/root/<id>). Same fixed-base pattern sess_memory_scanner.py's own
                 # delete-memory command already uses for the same reason.
                 result = delete_session(
                     session_id,

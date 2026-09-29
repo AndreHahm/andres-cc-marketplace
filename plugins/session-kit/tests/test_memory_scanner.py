@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from memory_scanner import (
+from sess_memory_scanner import (
     audit_memories,
     delete_memory,
     parse_frontmatter,
@@ -12,7 +12,7 @@ from memory_scanner import (
     search_memories,
 )
 
-SCRIPT_PATH = str(Path(__file__).resolve().parent.parent / "scripts" / "memory_scanner.py")
+SCRIPT_PATH = str(Path(__file__).resolve().parent.parent / "scripts" / "sess_memory_scanner.py")
 FIXTURES_BASE = str(Path(__file__).resolve().parent / "fixtures" / "memory")
 
 

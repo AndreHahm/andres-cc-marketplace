@@ -7,7 +7,7 @@ description: >-
   Also triggered by: "search memories for", "find in memories", "which memory
   mentions". For a full listing/overview of all memories rather than a keyword
   search, use session-memory instead.
-allowed-tools: Read Edit Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py":*)
+allowed-tools: Read Edit Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py":*)
 ---
 
 # Session Memory Search
@@ -34,7 +34,7 @@ act on it directly.
 ## Step 1: Run the search
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py" search "<query>" --limit 20 --context 1
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sess_memory_scanner.py" search "<query>" --limit 20 --context 1
 ```
 
 Replace `<query>` with the user's search term. The match is a literal, case-insensitive substring search.
