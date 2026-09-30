@@ -220,14 +220,28 @@ def build_plan(inventory, discovered, repo_root):
 
         # Independent of the plugin_id check above (not an elif) -- both can
         # legitimately fire together, and each is its own separate conflict to
-        # resolve. Missing-on-one-side (None != "git") and mismatched values
-        # ("git" != "ctx") are both caught by a plain !=; both sides absent
-        # (None != None is False) is not a conflict -- this plugin just hasn't
-        # been assigned a prefix yet.
-        if (
+        # resolve. `prefix` is a required key on both sides, so a plugin
+        # inventory with the key absent is its own conflict (an explicit null
+        # on the marketplace side must not mask it); past that, a null on one
+        # side only (None != "git") and mismatched values ("git" != "ctx") are
+        # both caught by a plain !=, while both sides null is not a conflict --
+        # no prefix is registered (an opt-out, or awaiting registration).
+        if plugin_inventory is not None and existing and "prefix" not in plugin_inventory:
+            plan.append(
+                {
+                    "operation": "conflict",
+                    "id": existing["id"],
+                    "name": candidate["name"],
+                    "reason": "plugin-inventory.json has no 'prefix' key -- the key is required; "
+                    'add "prefix": null by hand to record that none is registered, or register '
+                    "a curated prefix with plugin-inventory's set-prefix",
+                    "requires_approval": True,
+                }
+            )
+        elif (
             plugin_inventory is not None
             and existing
-            and plugin_inventory.get("prefix") != existing.get("prefix")
+            and plugin_inventory["prefix"] != existing.get("prefix")
         ):
             plan.append(
                 {
