@@ -1,6 +1,6 @@
 # Refinement Workflow
 
-Complete, unified workflow for improving Claude Code skills while preserving functionality and following established patterns. This is the authoritative reference for all refinement operations.
+Complete, unified workflow for improving Claude Code skills while preserving functionality and following established patterns. It covers the preservation gates, validation phases, consolidation and extraction; the pre-analysis, goal and plan-only steps live in SKILL.md and the references it names.
 
 ## Table of Contents
 1. [Content Distribution (80% Rule)](#content-distribution-80-rule)
@@ -10,10 +10,12 @@ Complete, unified workflow for improving Claude Code skills while preserving fun
 5. [Consolidation Strategy](#consolidation-strategy)
 6. [Content Extraction](#content-extraction)
 7. [Quality Decision Trees](#quality-decision-trees)
+8. [Evidence-Gated Editing (Optional Rigor)](#evidence-gated-editing-optional-rigor)
+9. [Rollback](#rollback)
 
 ## Content Distribution (80% Rule)
 
-See `80-percent-rule.md` for the full decision framework, core-vs-supplementary examples, and worked consolidation example — not restated here to avoid drift.
+Content used in 80%+ of activations stays in SKILL.md (core). Content used in under 20% (supplementary) can move to `references/`. When unsure, keep it inline — preserving functionality outranks saving lines.
 
 ## Preservation Gates
 
@@ -45,9 +47,9 @@ Four mandatory gates that protect skill functionality. Apply **in order**. Do no
 
 **Example Assessment:**
 ```
-Proposed: Delete "Reference Files" section (80 lines of descriptive text)
+Proposed: Delete "Historical Notes" section (80 lines of descriptive text)
 Question: Will losing this hurt execution?
-Answer: NO—it's descriptive. Core reference guide (Gate 3) lists what files exist.
+Answer: NO—nothing in the execution path uses it.
 Decision: SAFE to delete OR move to appendix
 
 Proposed: Consolidate 3 production-related files into 1
@@ -83,7 +85,7 @@ Destination: references/production-patterns.md (new section: "Error Handling")
 Checks:
 ✓ File exists: references/production-patterns.md
 ✓ Content complete: All error scenarios present in new location
-✓ Links correct: SKILL.md updated to "See references/production-patterns.md"
+✓ Links correct: SKILL.md pointer now targets references/production-patterns.md
 ✓ No orphans: All related content (examples, tables) moved together
 
 APPROVED: Safe to remove from SKILL.md
@@ -102,30 +104,26 @@ APPROVED: Safe to remove from SKILL.md
    - Wait for the answer before removing anything
 2. **For MIGRATIONS** → Auto-approved (content preserved, just moved):
    - No separate approval needed
-   - Just verify with operator: "I've moved X to references/. Working as expected?"
-3. **For CONSOLIDATIONS** → Auto-approved (improves efficiency):
-   - No separate approval needed
-   - Just report: "Consolidated N files into M. Clearer organization."
+   - Report what moved and where (informational, no question)
+3. **For CONSOLIDATIONS** → Approved once, at the consolidation question (SKILL.md step 3):
+   - That approval covers merging the content; the source files it leaves empty still need the explicit "Delete" / "Keep" answer from point 1 before they are removed
+   - If the operator declines deleting the source files, do not perform the consolidation: merging without deleting only duplicates content. Report it as declined
+   - Afterwards report: "Consolidated N files into M. Clearer organization."
 
 **Example Gate 4 Exchange:**
+
 ```
-Claude: "I found 3 related files on error handling (298 lines total).
-         Can consolidate into 1 file, save 78 lines, improve clarity.
-         Approve consolidation?"
-Operator: "Yes, consolidate them."
-→ APPROVED: Proceed to consolidation
-
-Claude: "The 'Reference Files Guide' section (80 lines) is supplementary.
-         Should I delete it or move it to an appendix?"
-Operator: "Delete it—we don't need that reference list anymore."
-→ APPROVED: Proceed to deletion
-
-Claude: "Moving 'Advanced Patterns' to references/ now."
-(Later) "Done. All links updated. Can you verify it still works?"
-→ Auto-approved migration
+AskUserQuestion (step 3): "Consolidate these 3 related files on error handling
+  (298 lines, saves 78)?"  options: Consolidate / Leave as-is   → Consolidate
+AskUserQuestion (Gate 4): "Okay to delete the 3 originals once their content is in
+  the new file?"  options: Delete / Keep                        → Delete (approved)
+AskUserQuestion (Gate 4): "Delete the 'Historical Notes' section (80 lines,
+  supplementary)?"  options: Delete / Keep                      → Delete (approved)
+Migration (no question): "Moved 'Advanced Patterns' to references/edge-cases.md;
+  links updated."
 ```
 
-**Gate 4 Check:** All deletions must have explicit approval. Migrations and consolidations are auto-approved.
+**Gate 4 Check:** All deletions, including the source files of a consolidation, must have explicit approval. Migrations are auto-approved.
 
 ## Validation Phases
 
@@ -157,8 +155,8 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** Verify required metadata present and correct.
 
 **Check:**
-- [ ] `name` field present (lowercase, hyphen-separated, ≤64 chars)
-- [ ] `description` field present (80–1024 chars; `when_to_use` if present ≤512 chars; combined ≤1536; includes trigger phrases, uses `>-` multiline)
+- [ ] `name` field present (lowercase, hyphen-separated, within R4's length limit, no "anthropic" or "claude")
+- [ ] `description` field present and within plugin-rulebook's R21 limits (also `when_to_use` if present, and the combined length); includes trigger phrases, uses `>-` multiline
 - [ ] `allowed-tools` field correct (space-separated preferred; comma-separated and YAML list are also valid; principle of least privilege)
 - [ ] YAML syntax valid (triple dashes, proper indentation)
 
@@ -171,7 +169,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** Verify SKILL.md body follows quality standards.
 
 **Checks:**
-- [ ] **Line count:** <500 lines (non-negotiable for token efficiency)
+- [ ] **Line count:** total SKILL.md lines (including frontmatter) within the resolved R13 tiers; above the Critical threshold (500) blocks
 - [ ] **80% rule applied:** Essential content in body, supplementary in references
 - [ ] **Quick Start section:** Present and actionable (not theory)
 - [ ] **Clarity:** Procedural instructions, not abstract explanations
@@ -181,7 +179,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 - [ ] **Workflow pattern:** Load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
 - [ ] **Spawn anti-patterns:** No Cartesian product spawning (O(N×M) subagent spawns across independent lists), no unbounded agent spawning (loop spawn with no explicit count cap on a user-controlled list), no vague subagent prompts (dispatch with no file paths, goal, or output spec)
 
-**Pass Condition:** <500 lines, 80% rule applied, clear procedural content.
+**Pass Condition:** within the R13 tiers with no Critical, 80% rule applied, clear procedural content.
 
 ### Phase 5: References
 
@@ -191,7 +189,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 - [ ] All files referenced in SKILL.md exist
 - [ ] No orphaned files (all reference files are linked)
 - [ ] One level deep only (no nested chains: `references/` → files, not `references/subdir/file`)
-- [ ] **No reference→reference chains:** scan each `references/*.md` for imperative directives to read another `references/` file (e.g., `Read references/bar.md`, `see references/bar.md`) — flag each as Major
+- [ ] **No reference→reference chains:** scan each `references/*.md` for imperative directives to read another `references/` file — flag each as Major
 - [ ] File naming consistent (lowercase, hyphens: `refinement-workflow.md`)
 - [ ] Each file has clear purpose (title, table of contents if >100 lines)
 - [ ] Links from SKILL.md are accurate (correct filenames)
@@ -203,10 +201,10 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** Verify `allowed-tools` field matches actual tool usage and applies principle of least privilege.
 
 **Check:**
-- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — absence causes runtime block (Major)
+- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — an undeclared tool is not pre-approved, so each use needs a permission prompt (R6 tool-completeness; Major)
 - [ ] **Unused declared tools:** No tools in `allowed-tools` that are never referenced in SKILL.md or any reference file — principle of least privilege (Minor)
 - [ ] **Bash-for-dedicated-tool misuse:** No `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)` where Grep, Glob, Read would serve the same purpose (Minor)
-- [ ] Wildcards used appropriately (`Bash(git:*)` for git-only, `Task(*)` for all agents)
+- [ ] Wildcards used appropriately (`Bash(git:*)` for git-only; bare `Agent` pre-approves any agent type, so narrow it to `Agent(<type>)` only where the current Claude Code docs confirm that form for `allowed-tools`)
 - [ ] Tool scoping is explicit and documented
 
 **Pass Condition:** Tool scoping is explicit, principle of least privilege applied.
@@ -217,9 +215,9 @@ Seven systematic phases to validate skills after refinement. Run in order.
 
 **Checks:**
 - [ ] **Activation:** Describe skill. Does it include trigger phrases users will recognize?
-  - Test: "Refine my skill" → Should trigger skill-refiner? ✓
-  - Test: "Validate this for production" → Should trigger? ✓
-  - Test: "Make this clearer" → Should trigger? ✓
+  - Test: "Refine my skill" → Should trigger skill-refiner-interactive?
+  - Test: "Validate this for production" → Should trigger?
+  - Test: "Make this clearer" → Should trigger?
 - [ ] **Execution:** Run through Quick Start mentally. Are procedures clear?
 - [ ] **Links:** Follow a reference link. Does it work? Is content complete?
 - [ ] **Workflows:** Trace main workflow. Are steps in correct order?
@@ -229,7 +227,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 
 ## Movement Pattern
 
-See `movement-pattern.md` for the full CREATE→LINK→DELETE sequence, why the order matters, and a worked step-by-step example — not restated here to avoid drift.
+Every content move follows CREATE → LINK → DELETE: create or update the destination first, update the SKILL.md pointers second, and delete the source only after the links are verified. Never delete first.
 
 ## Consolidation Strategy
 
@@ -237,7 +235,7 @@ Consolidate related reference files to improve organization and reduce complexit
 
 ### When to Consolidate
 
-- **2-4 files** on same topic (e.g., error-handling.md + team-patterns.md + advanced-patterns.md)
+- **2-4 files** on same topic (e.g., error-handling.md + team-patterns.md + edge-cases.md)
 - **Related content** (all addressing one domain: production patterns, validation, preservation)
 - **Cross-references** between files (file A links to file B, they should merge)
 - **Reducing noise** (3 separate files vs. 1 organized file with sections)
@@ -256,32 +254,36 @@ Apply movement pattern in this order:
    ```markdown
    # Production Patterns
 
+   ## Table of Contents
+   Links to each section
+
    ## Error Handling
    [Content from error-handling.md]
 
    ## Team Patterns
    [Content from team-patterns.md]
 
-   ## Advanced Patterns
-   [Content from advanced-patterns.md]
-
-   ## Table of Contents (at top)
-   Links to each section
+   ## Edge Cases
+   [Content from edge-cases.md]
    ```
 
 2. **Link from SKILL.md** (point to sections of consolidated file)
    ```markdown
-   For error handling: see references/production-patterns.md#error-handling
-   For team patterns: see references/production-patterns.md#team-patterns
+   Error handling: references/production-patterns.md#error-handling
+   Team patterns: references/production-patterns.md#team-patterns
    ```
 
-3. **Delete old files** (error-handling.md, team-patterns.md, advanced-patterns.md)
+3. **Delete old files** (error-handling.md, team-patterns.md, edge-cases.md)
    - Only after (1) and (2) verified
    - Test links before deleting
 
 ### Consolidation Report
 
-See `production-patterns.md`'s "Changes Made Summary" for a worked example of this exact 3-file consolidation report format — not restated here to avoid drift.
+```
+Consolidated: error-handling.md + team-patterns.md + edge-cases.md (469 lines)
+Into: production-patterns.md (380 lines, saves 89)
+Links updated: SKILL.md (3 pointers → 1); old files deleted after link check
+```
 
 ## Content Extraction
 
@@ -289,14 +291,14 @@ Extract large low-frequency SKILL.md sections into new reference files to reduce
 
 ### When to Extract
 
-- Section is ≥80 lines with estimated usage <20% of activations (apply 80% rule)
-- SKILL.md is over 500 lines and the section is identifiably supplementary
+- Section is ≥50 lines with estimated usage <20% of activations (apply 80% rule)
+- SKILL.md is in an R13 Warning or Critical tier and the section is identifiably supplementary
 - A natural "read more" boundary exists: the section is self-contained
 
 ### When NOT to Extract
 
 - Section is used in 80%+ of activations → keep inline
-- Section is already brief (<80 lines) → indirection is not worth it
+- Section is already brief (<50 lines) → indirection is not worth it
 - Content is genuinely core to the skill's primary workflow → must stay inline
 
 ### Extraction Procedure (always CREATE → LINK → DELETE)
@@ -305,36 +307,22 @@ Extract large low-frequency SKILL.md sections into new reference files to reduce
 2. **LINK**: Replace the inline section in SKILL.md with a concise pointer:
    ```markdown
    ## Section Name
-   See `references/<topic>.md` for [description of what's there].
+   Details: `references/<topic>.md` ([description of what's there]).
    ```
 3. **DELETE** the inline body content (the pointer is now the only thing inline)
 
 ### Extraction Report
 
 ```
-Extracted: "Compaction Mode" section (147 lines, <20% usage)
-From: SKILL.md (694 lines → 547 lines after extraction)
-To: references/compaction-orchestration.md (new file, 147 lines)
-Pointer: "See references/compaction-orchestration.md for CP1–CP5 orchestration steps"
+Extracted: "Troubleshooting" section (60 lines, <20% usage)
+From: SKILL.md (307 lines → 249 lines after extraction and a 2-line pointer)
+To: references/troubleshooting.md (new file, 60 lines)
+Pointer: "When a run fails, details are in references/troubleshooting.md"
 ```
 
 ## Quality Decision Trees
 
-Quick reference for common refinement decisions.
-
-### Should This Content Move to References?
-
-```
-Is this content executed in 80%+ of skill activations?
-├─ YES → Keep in SKILL.md (core procedural)
-├─ NO → Can move to references/ (supplementary)
-└─ UNCERTAIN → Keep in SKILL.md by default (preserve functionality)
-
-Example: "Error handling for missing files"
-├─ Happens in <20% of activations? → Move to references/
-├─ Happens in 80%+ of activations? → Keep in SKILL.md
-└─ Unsure? → Ask operator, keep in SKILL.md by default
-```
+Quick reference for common refinement decisions. The core-versus-supplementary test is stated once, under Content Distribution above.
 
 ### Should These Files Consolidate?
 
@@ -363,7 +351,7 @@ Are you deleting content from SKILL.md?
 │  └─ Get Gate 4 operator confirmation
 └─ NO → Just updating, no deletion needed
 
-Example: Deleting "Reference Files Guide" (80 lines, supplementary)
+Example: Deleting "Historical Notes" (80 lines, supplementary)
 ├─ Will losing it impair execution? NO
 ├─ Operator approved? YES
 └─ Safe to delete
@@ -376,10 +364,24 @@ For ANY proposed change (edit, move, delete, consolidate):
 1. Run Gate 2: Will it impair execution?
    ├─ YES → Modify approach (migrate instead of delete, etc.)
    └─ NO → Proceed
-2. If deletion: Run Gate 4 (get operator approval)
-3. If migration: Run Gate 3 (verify destination complete)
-4. Make change using Movement Pattern (CREATE → LINK → DELETE)
-5. Run validation Phase 5 (References) and Phase 7 (Testing)
+2. Make the change using the Movement Pattern (CREATE → LINK → DELETE):
+   - Run Gate 3 once the destination exists (verify it is complete)
+   - Run Gate 4 before any deletion (get operator approval)
+3. Run validation Phase 5 (References) and Phase 7 (Testing)
 
 Only if all gates/phases pass: Change is safe
 ```
+
+## Evidence-Gated Editing (Optional Rigor)
+
+Apply when optimizing a skill with observed failures or measured drift. An edit ships only when it demonstrably beats the version already in use.
+
+Score the current and proposed versions on a fixed held-out check set (3–8 tasks, including the triggering failure). Accept only if the candidate strictly beats the current on the triggering criterion with no regression on others. Cap at ~4 changes per revision; rank by systematic impact.
+
+## Rollback
+
+Refinement edits, deletes and (for a mirror pair) overwrites files, and it can stop part-way: a declined Gate 4, a failed goal the operator abandons, or the 3-round cap. Settle how to undo it before the first edit in SKILL.md step 6:
+
+- **Project skill under version control:** the pre-edit state is the last commit. Note in the plan whether the target's files already have uncommitted changes, since a restore would discard them too. To undo, restore the listed files from version control, and restore both copies of a mirror pair.
+- **User-space skill (`~/.claude/skills/`):** no version control is assumed. Before the first edit, ask the operator to copy the skill directory somewhere safe, or accept that there is no undo.
+- **After a stop:** the change summary's "Files created" and "Files deleted" lists are the restore list. A consolidation whose source deletion was declined was not performed, so leave the destination file out of that list.

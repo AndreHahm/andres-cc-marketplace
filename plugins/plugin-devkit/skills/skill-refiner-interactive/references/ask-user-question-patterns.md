@@ -1,480 +1,266 @@
 # AskUserQuestion Patterns & Best Practices
 
-Use this guide when creating skills that interact with users. AskUserQuestion is the primary tool for gathering input; patterns here ensure good UX and compliance with framework constraints.
+Use this guide when creating skills that interact with users. AskUserQuestion is the primary tool for gathering input; the patterns here keep questions valid against the tool's schema and pleasant to answer.
 
-## Core Constraint: Maximum 4 Options Per Question
+## Table of Contents
+1. [Core Constraints](#core-constraints)
+2. [Pattern 1: Single Question with Predefined Options](#pattern-1-single-question-with-predefined-options)
+3. [Pattern 2: Multiple Selection](#pattern-2-multiple-selection)
+4. [Pattern 3: Progressive Disclosure (Wizard Pattern)](#pattern-3-progressive-disclosure-wizard-pattern)
+5. [Pattern 4: Free-Text Answers](#pattern-4-free-text-answers)
+6. [Pattern 5: Conditional Questions](#pattern-5-conditional-questions-based-on-previous-answer)
+7. [Pattern 6: Multi-Question Batch](#pattern-6-multi-question-batch-all-asked-together)
+8. [Pattern 7: Uncertainty Option](#pattern-7-uncertainty-option)
+9. [Decision Tree: Which Pattern to Use?](#decision-tree-which-pattern-to-use)
+10. [Common Mistakes to Avoid](#common-mistakes-to-avoid)
+11. [Best Practices Checklist](#best-practices-checklist)
+12. [Verification Patterns](#verification-patterns-for-skill-refinement)
 
-**Non-negotiable:** AskUserQuestion schema enforces `maxItems: 4` per question's options array.
+## Core Constraints
+
+The tool schema enforces all of these; a violation is rejected, so the question never reaches the user.
+
+| Constraint | Limit |
+|------------|-------|
+| Options per question | 2 to 4 (at least 2, at most 4) |
+| Questions per call | 1 to 4 |
+| `header` | short chip label (12 characters at most) |
+| Option `label` | concise, 1-5 words |
+| Free-text answer | always available: the tool adds an "Other" choice automatically, so never list one yourself |
+
+These limits come from the tool's current schema; if the tool's own definition in your environment states different limits, follow that definition.
 
 ```json
-{
-  "questions": [{
-    "question": "...",
-    "header": "...",
-    "options": [
-      // MAX 4 ITEMS
-    ]
-  }]
-}
+{ "questions": [{
+  "question": "...", "header": "...",
+  "options": [ /* 2 to 4 items */ ],
+  "multiSelect": false
+}]}
 ```
 
-**Violation impact:**
-- Tool validation error (schema rejection)
-- User never sees the question
-- Skill execution fails silently
-- **Solution:** Split into multiple questions or reduce options
+**Violation impact:** a schema rejection, so the user never sees the question and the workflow step fails. **Fix:** split into several questions or calls, or cut options.
 
 ---
 
 ## Pattern 1: Single Question with Predefined Options
 
-**Use when:** User must choose ONE thing from a fixed set (≤4 options)
+**Use when:** the user must choose ONE thing from a fixed set (2-4 options).
 
-**Structure:**
 ```json
-{
-  "questions": [{
-    "question": "What would you like to do?",
-    "header": "Action",
-    "options": [
-      { "label": "Option A", "description": "Use when..." },
-      { "label": "Option B", "description": "Use when..." },
-      { "label": "Option C", "description": "Use when..." }
-    ],
-    "multiSelect": false
-  }]
-}
-```
-
-**Examples from toolkit:**
-
-✅ **skill-creator** (lines 21-38):
-```json
-{
-  "question": "What do you want to do?",
-  "header": "Action",
+{ "question": "What would you like to do with this skill?", "header": "Action",
   "options": [
-    { "label": "Create a new skill", "description": "..." },
-    { "label": "Convert a slash command", "description": "..." }
+    { "label": "Refine", "description": "Improve clarity, structure, or token usage" },
+    { "label": "Validate", "description": "Check production readiness" }
   ],
-  "multiSelect": false
-}
-```
-
-✅ **skill-refiner** (lines 30-46):
-```json
-{
-  "question": "What would you like to do with this skill?",
-  "header": "Action",
-  "options": [
-    { "label": "Refine", "description": "Improve clarity, structure, efficiency, token usage, or organization" },
-    { "label": "Validate", "description": "Check if it's production-ready (tool scoping, completeness, error handling)" }
-  ],
-  "multiSelect": false  // Single action per session (user picks one path)
-}
+  "multiSelect": false }
 ```
 
 ---
 
-## Pattern 2: Multiple Selection (≤4 options)
+## Pattern 2: Multiple Selection
 
-**Use when:** User selects MULTIPLE things from a set (≤4 options total)
+**Use when:** the user selects MULTIPLE things from a set (2-4 options total).
 
-**Structure:**
 ```json
-{
-  "questions": [{
-    "question": "Which of these apply?",
-    "header": "Selection",
-    "options": [
-      { "label": "Option A", "description": "..." },
-      { "label": "Option B", "description": "..." },
-      { "label": "Option C", "description": "..." }
-    ],
-    "multiSelect": true
-  }]
-}
-```
-
-**Example from toolkit:**
-
-✅ **plugin-creator (CORRECTED)** - BATCH 1 (lines 149-162):
-```json
-{
-  "question": "Which core components will the plugin include?",
-  "header": "Core Components",
+{ "question": "Which core components will the plugin include?", "header": "Components",
   "options": [
-    { "label": "Skills", "description": "..." },
-    { "label": "Agents", "description": "..." },
-    { "label": "Hooks", "description": "..." },
-    { "label": "MCP servers", "description": "..." }
+    { "label": "Skills", "description": "Reusable instructions" },
+    { "label": "Agents", "description": "Specialized subagents" },
+    { "label": "Hooks", "description": "Event-driven scripts" }
   ],
-  "multiSelect": true
-}
+  "multiSelect": true }
 ```
 
 ---
 
 ## Pattern 3: Progressive Disclosure (Wizard Pattern)
 
-**Use when:** You need >4 options OR multiple related questions
+**Use when:** you need more than 4 options OR several related questions.
 
-**Key rule:** Ask ONE batch, wait for response, THEN ask next batch. Never combine into a single AskUserQuestion.
+**Key rule:** ask ONE batch, wait for the response, THEN ask the next batch.
 
-**Structure:**
 ```
-Batch 1: Ask first set of questions (up to 4 options each)
-         ↓
+Batch 1: ask the first set of questions (up to 4 options each)
+   ↓
 [WAIT for response]
-         ↓
-Batch 2: Ask follow-up questions (conditional or next step)
-         ↓
+   ↓
+Batch 2: ask follow-ups (conditional or the next step)
+   ↓
 [WAIT for response]
-         ↓
-Batch 3: Continue as needed
+   ↓
+Batch 3: continue as needed
 ```
 
 **Why this matters:**
 - Avoids cognitive overload (users see one question at a time)
 - Allows conditional routing (skip questions based on previous answers)
-- Respects the 4-option maximum (split across multiple questions)
-- Feels conversational (not a form)
+- Respects the 4-option maximum (split across questions)
+- Feels conversational, not like a form
 
-**Example: Handling >4 options**
+**Example: six candidate components need two batches.**
 
-❌ **WRONG - Violates max 4 options:**
+Batch 1 offers the four most likely components with `multiSelect: true`. After the answer, batch 2 offers the remaining two:
+
 ```json
-{
-  "question": "Which components?",
+{ "question": "Also include either of these components?", "header": "More",
   "options": [
-    { "label": "Skills" },
-    { "label": "Agents" },
-    { "label": "Hooks" },
-    { "label": "MCP servers" },
-    { "label": "LSP servers" },
-    { "label": "Commands" }
-  ]
-}
-```
-
-✅ **RIGHT - Split into 2 batches:**
-
-**Batch 1:**
-```json
-{
-  "question": "Which core components will the plugin include?",
-  "header": "Core Components",
-  "options": [
-    { "label": "Skills" },
-    { "label": "Agents" },
-    { "label": "Hooks" },
-    { "label": "MCP servers" }
+    { "label": "LSP servers", "description": "Language Server Protocol support" },
+    { "label": "Commands", "description": "Slash-command components" }
   ],
-  "multiSelect": true
-}
+  "multiSelect": true }
 ```
-
-[WAIT for response]
-
-**Batch 2:**
-```json
-{
-  "question": "Include Language Server Protocol (LSP) support?",
-  "header": "LSP Servers",
-  "options": [
-    { "label": "Yes" },
-    { "label": "No" }
-  ],
-  "multiSelect": false
-}
-```
-
-**Real toolkit example:**
-
-✅ **plugin-creator** (lines 146-180):
-- BATCH 1 (lines 149-162): "Which core components?" (4 options, multiSelect)
-- BATCH 2 (lines 167-177): "Include LSP support?" (2 options, yes/no)
-
-✅ **skill-refiner** (lines 69-132):
-- BATCH 1 (lines 72-100): "What aspects need improvement?" (4 options: Clarity, Efficiency, Structure, User Interaction UX) + 3 open-form questions
-- BATCH 2 (lines 107-132): "Should we consolidate references?" (yes/no) + "Validate for production?" (yes/no) + "Add testing patterns?" (yes/no)
 
 ---
 
-## Pattern 4: Open-Form Questions (No Options)
+## Pattern 4: Free-Text Answers
 
-**Use when:** User provides free-text input (not a choice)
+**Use when:** the user provides free text, not a choice.
 
-**Structure:**
+The schema does not allow an empty `options` array, so there is no "open-form" question. Instead, offer 2-4 likely answers and let the user type anything else through the automatic "Other" choice:
+
 ```json
-{
-  "questions": [{
-    "question": "What is the skill's purpose?",
-    "header": "Skill Purpose",
-    "options": []  // ← Empty = open-form
-  }]
-}
+{ "question": "What specific problems are you seeing?", "header": "Key Issues",
+  "options": [
+    { "label": "Hard-to-follow instructions", "description": "Instructions are unclear or out of order" },
+    { "label": "Scattered references", "description": "Reference files are spread out and redundant" },
+    { "label": "Nested sections", "description": "Too many levels of nested sections" }
+  ],
+  "multiSelect": true }
 ```
 
-**Examples from toolkit:**
-
-✅ **skill-creator** (lines 147-169):
-```json
-{
-  "question": "What domain-specific task should Claude execute?",
-  "header": "Skill Purpose",
-  "options": []  // Open-form
-},
-{
-  "question": "What phrases will Claude see in user requests?",
-  "header": "Trigger Phrases",
-  "options": []  // Open-form
-}
-```
-
-✅ **skill-refiner** (lines 84-98):
-```json
-{
-  "question": "What specific problems are you seeing?",
-  "header": "Key Issues",
-  "options": []  // Open-form
-},
-{
-  "question": "What would success look like?",
-  "header": "Success Metric",
-  "options": []  // Open-form
-}
-```
+Derive the options from what the operator has already said or from what pre-analysis found. When nothing can be predicted, ask the question in plain text, since a reply then needs no structured choice. Reserve this for genuinely unbounded input.
 
 ---
 
 ## Pattern 5: Conditional Questions (Based on Previous Answer)
 
-**Use when:** Next question depends on previous answer
+**Use when:** the next question depends on the previous answer.
 
-**Structure:**
 ```
-Ask Question 1 (with predefined options)
+Ask Question 1 (predefined options)
   ↓
 [WAIT for response]
   ↓
-IF response == "Option A" → Ask follow-up for Option A
-IF response == "Option B" → Ask follow-up for Option B
-IF response == "Option C" → Skip to step X
+IF "Option A" → ask the follow-up for Option A
+IF "Option B" → ask the follow-up for Option B
+IF "Option C" → skip to step X
 ```
 
-**Example: skill-creator routing**
+**Example: an action router.**
 
 ```
 Q1: "What do you want to do?"
-  - Option A: "Create a new skill" → Route to Requirements Interview
-  - Option B: "Convert a slash command" → Route to Conversion Workflow
+  - "Create a new skill"         → route to the requirements interview
+  - "Convert a slash command"   → route to the conversion workflow
 
-Q2: [Depends on Q1 answer]
-  IF "Create": Ask "What's the skill's purpose?"
-  IF "Convert": Ask "Where is the slash command?"
-```
-
-**Real toolkit example:**
-
-✅ **skill-creator** (lines 71-102):
-```
-1. Ask: "What do you want to do?" (create / convert slash command)
-2. Wait for response
-3. IF "create" → proceed to "Requirements Interview" section
-   IF "convert" → proceed to "Conversion Workflow" section
+Q2 (depends on Q1):
+  IF "Create":  ask "What's the skill's purpose?"
+  IF "Convert": ask "Where is the slash command?"
 ```
 
 ---
 
 ## Pattern 6: Multi-Question Batch (All Asked Together)
 
-**Use when:** Multiple related questions, all can be answered together (NOT conditional)
+**Use when:** several related questions can all be answered together (NOT conditional).
 
-**Key rule:** Each question in the batch must be independent. Combine only if they don't depend on each other's answers.
+**Key rules:**
+- Each question must be independent of the others' answers
+- A call carries at most 4 questions
+- Every question needs 2-4 options
 
-**Structure:**
 ```json
-{
-  "questions": [
-    {
-      "question": "Question 1?",
-      "header": "Header 1",
-      "options": [...]  // or []
-    },
-    {
-      "question": "Question 2?",
-      "header": "Header 2",
-      "options": [...]  // or []
-    },
-    {
-      "question": "Question 3?",
-      "header": "Header 3",
-      "options": [...]  // or []
-    }
-  ]
-}
+{ "questions": [
+  { "question": "Which tone fits?", "header": "Tone", "options": [ /* 2-4 */ ], "multiSelect": false },
+  { "question": "Which length?", "header": "Length", "options": [ /* 2-4 */ ], "multiSelect": false }
+]}
 ```
-
-**When to use:**
-- Questions are unrelated (no conditional logic needed)
-- User can answer all of them in one go
-- They're all required (no skip scenarios)
 
 **When NOT to use:**
-- ❌ If next question depends on previous answer (use conditional routing instead)
-- ❌ If some questions should be skipped (use conditional routing)
-- ❌ If you have >4 options per question (reduce or split)
-
-**Example from toolkit:**
-
-✅ **skill-creator - BATCH 1** (lines 144-169):
-```json
-{
-  "questions": [
-    { "question": "What domain-specific task?", "options": [] },
-    { "question": "What trigger phrases?", "options": [] },
-    { "question": "What's in/out of scope?", "options": [] },
-    { "question": "Which tools needed?", "options": [] }
-  ]
-}
-```
-
-All 4 questions are independent; user answers all together, then waits for next batch.
+- If the next question depends on a previous answer (use conditional routing)
+- If some questions should be skipped (use conditional routing)
+- If you have more than 4 questions (split across calls)
 
 ---
 
 ## Pattern 7: Uncertainty Option
 
-**Use when:** A question requires domain judgment the user may not confidently have — category selection, architecture tradeoffs, tool choices — not every choice question needs this. Routine yes/no or preference questions don't, since adding it everywhere dilutes the 4-option budget without adding value.
+**Use when:** a question requires domain judgment the user may not confidently have — category selection, architecture tradeoffs, tool choices. Routine yes/no or preference questions don't need it, since adding it everywhere dilutes the 4-option budget.
 
-**Structure:**
 ```json
-{
-  "questions": [{
-    "question": "Which category best fits this skill?",
-    "header": "Category",
-    "options": [
-      { "label": "Option A", "description": "..." },
-      { "label": "Option B", "description": "..." },
-      { "label": "I'm not sure — help me decide", "description": "Infer from earlier answers, or run a short clarifying/research step" }
-    ],
-    "multiSelect": false
-  }]
-}
+{ "question": "Which category best fits this skill?", "header": "Category",
+  "options": [
+    { "label": "Option A", "description": "..." },
+    { "label": "Option B", "description": "..." },
+    { "label": "I'm not sure", "description": "Infer from earlier answers, or run a short clarifying step" }
+  ],
+  "multiSelect": false }
 ```
 
-**Why this matters:** without an explicit "I'm not sure" option, a user facing a genuine judgment call is forced to guess — and a wrong guess here propagates into every downstream decision (scaffold, triggers, structure) built on top of it.
+**Why this matters:** without an explicit "I'm not sure" option, a user facing a genuine judgment call is forced to guess, and a wrong guess propagates into every downstream decision built on it.
 
-**Handling the answer:** when selected, either infer the answer from context already gathered in prior questions, or run a short clarifying/research step before re-asking — don't leave the field blank and proceed.
+**Handling the answer:** when selected, either infer the answer from context already gathered, or run a short clarifying step before re-asking. Don't leave the field blank and proceed.
 
 ---
 
 ## Decision Tree: Which Pattern to Use?
 
 ```
-Does user select from a fixed set?
-  ├─ YES, ≤4 options, single answer
-  │  └─ Pattern 1: Single question with predefined options
-  │
-  ├─ YES, ≤4 options, multiple answers
-  │  └─ Pattern 2: Multiple selection (multiSelect: true)
-  │
-  ├─ YES, >4 options
-  │  └─ Pattern 3: Split into multiple AskUserQuestion batches
-  │
-  └─ NO, free-text input
-     └─ Pattern 4: Open-form question (options: [])
+Does the user select from a fixed set?
+  ├─ YES, 2-4 options, single answer   → Pattern 1
+  ├─ YES, 2-4 options, multiple answers → Pattern 2
+  ├─ YES, more than 4 options          → Pattern 3 (split into batches)
+  └─ NO, free-text input               → Pattern 4 (2-4 likely answers + automatic Other)
 
 Are next questions conditional on previous answers?
-  ├─ YES
-  │  └─ Pattern 5: Conditional routing between batches
-  │
-  └─ NO, all independent
-     └─ Pattern 6: Multi-question batch
+  ├─ YES → Pattern 5 (conditional routing between calls)
+  └─ NO, all independent → Pattern 6 (one batch, at most 4 questions)
 ```
 
 ---
 
 ## Common Mistakes to Avoid
 
-### ❌ Mistake 1: >4 Options in Single Question
+### Mistake 1: More than 4 options in one question
 
 ```json
-// WRONG - Will fail validation
-{
-  "question": "Pick one:",
-  "options": [
-    { "label": "A" },
-    { "label": "B" },
-    { "label": "C" },
-    { "label": "D" },
-    { "label": "E" },  // ← Exceeds maximum
-    { "label": "F" }   // ← Will cause validation error
-  ]
-}
+// WRONG - rejected by the schema
+{ "question": "Pick one:",
+  "options": [ {"label":"A"}, {"label":"B"}, {"label":"C"}, {"label":"D"}, {"label":"E"} ] }
 ```
 
-**Fix:** Split into 2+ AskUserQuestion calls OR reduce to ≤4 options
+**Fix:** split into 2+ questions, or reduce to 4 or fewer options.
 
-### ❌ Mistake 2: Asking All Questions as a Form
+### Mistake 2: More than 4 questions in one call
 
 ```json
-// WRONG - Looks like a form, overwhelming
-{
-  "questions": [
-    { question: "Name?", ... },
-    { question: "Email?", ... },
-    { question: "Phone?", ... },
-    { question: "Company?", ... },
-    { question: "Role?", ... }
-  ]
-}
+// WRONG - rejected: a call allows at most 4 questions
+{ "questions": [ {"question":"Name?"}, {"question":"Email?"}, {"question":"Phone?"},
+                 {"question":"Company?"}, {"question":"Role?"} ] }
 ```
 
-**Fix:** Ask progressively: Name → wait → Email → wait → (conditional) Phone → etc.
+**Fix:** ask progressively, at most 4 questions per call: a batch of independent ones, wait, then the next batch (conditional ones only after the answers they depend on).
 
-### ❌ Mistake 3: Predefined Options When Free-Text Needed
+### Mistake 3: An empty or one-option `options` array
 
 ```json
-// WRONG - Tries to force choice when user should type freely
-{
-  "question": "What's the skill's purpose?",
-  "options": [
-    { "label": "A general skill" },
-    { "label": "A specific skill" }
-  ]
-}
+// WRONG - the schema requires 2 to 4 options
+{ "question": "What's the skill's purpose?", "options": [] }
 ```
 
-**Fix:** Use open-form (options: []) for free-text:
-```json
-{
-  "question": "What's the skill's purpose?",
-  "options": []  // User types response
-}
-```
+**Fix:** follow Pattern 4: offer 2-4 likely answers and rely on the automatic "Other" for typed input.
 
-### ❌ Mistake 4: Conditional Logic in Single AskUserQuestion
+### Mistake 4: Conditional logic in a single call
 
 ```json
-// WRONG - Can't handle conditional logic
-{
-  "questions": [
-    { "question": "Create or refine?", "options": [...] },
-    { "question": "[conditional follow-up]", "options": [...] }  // ← Doesn't work!
-  ]
-}
+// WRONG - a call cannot branch on its own answers
+{ "questions": [ { "question": "Create or refine?" },
+                 { "question": "[conditional follow-up]" } ] }
 ```
 
-**Fix:** Use separate AskUserQuestion calls:
-```
-Call 1: "Create or refine?" → wait
-Call 2 (conditional): IF "Create" → ask follow-up
-        (or IF "Refine" → ask different follow-up)
-```
+**Fix:** use separate calls: ask "Create or refine?", wait, then ask the follow-up that matches the answer.
 
-### ❌ Mistake 5: Recommending a Follow-Up Action in Prose Instead of Gating It
+### Mistake 5: Recommending a follow-up action in prose instead of gating it
 
 ```
 // WRONG - states a suggestion and waits for the user to notice and reply
@@ -482,62 +268,44 @@ Call 2 (conditional): IF "Create" → ask follow-up
 for a prioritized action plan."
 ```
 
-This looks harmless but produces real friction: the user has to notice the suggestion buried in prose, decide, and type a follow-up message in a new turn — versus getting an immediate yes/no decision point in the same turn. A real instance of this mistake shipped in this toolkit's own `plugin-comparison` skill: its first design ended every comparison with a prose "offer" to run `enhancement-suggestor`, and the pattern was copy-pasted into 19 other reviewer/skill components before a user explicitly asked for it to be replaced with an interactive prompt — meaning the fix required a second full sweep across every file that had already copied the wrong default.
+The user has to notice the suggestion, decide, and type a reply in a new turn, versus getting an immediate yes/no decision in the same turn. The mistake shipped once in this toolkit and was copied across many components before it was replaced with an interactive prompt.
 
-**Fix:** any "here's a recommended follow-up, but don't auto-invoke it" design should default to `AskUserQuestion` with a Yes/No (or named-options) choice from the first draft, not prose:
+**Fix:** any "here's a recommended follow-up, but don't auto-invoke it" design should use `AskUserQuestion` with a Yes/No choice from the first draft:
 
 ```json
-{
-  "question": "Run enhancement-suggestor against these findings for a classified action plan?",
-  "header": "Next step",
+{ "question": "Run enhancement-suggestor against these findings?", "header": "Next step",
   "options": [
-    { "label": "Yes — run enhancement-suggestor", "description": "..." },
-    { "label": "No — skip for now", "description": "..." }
+    { "label": "Yes", "description": "Get a classified action plan" },
+    { "label": "No", "description": "Skip for now" }
   ],
-  "multiSelect": false
-}
+  "multiSelect": false }
 ```
 
-**Rule of thumb:** if the next sentence after a finding/report is "you could..." or "consider running...", that's a signal that the design should be an `AskUserQuestion` gate instead — reserve pure prose recommendations for cases where no concrete follow-up action actually exists to invoke.
+**Rule of thumb:** if the next sentence after a finding or report is "you could..." or "consider running...", the design should be an `AskUserQuestion` gate. Reserve prose recommendations for cases where no concrete follow-up action exists.
 
-### ❌ Mistake 6: Vague Option Descriptions
+### Mistake 6: Vague option descriptions
 
 ```json
-// WRONG - User doesn't understand what each option does
-{
-  "options": [
-    { "label": "Option A", "description": "Yes" },
-    { "label": "Option B", "description": "No" }
-  ]
-}
+// WRONG - the user can't tell what each option does
+{ "options": [ { "label": "Option A", "description": "Yes" },
+               { "label": "Option B", "description": "No" } ] }
 ```
 
-**Fix:** Clear, actionable descriptions:
-```json
-{
-  "options": [
-    { "label": "Create a skill", "description": "Build from scratch with proper structure" },
-    { "label": "Refine existing", "description": "Improve clarity, efficiency, or organization" }
-  ]
-}
-```
+**Fix:** write clear, actionable descriptions, such as "Build from scratch with proper structure" versus "Improve clarity, efficiency, or organization".
 
-### ❌ Mistake 7: No Escape Hatch for Genuine Uncertainty
+### Mistake 7: No escape hatch for genuine uncertainty
 
 ```json
 // WRONG - forces a guess when the user may not know
-{
-  "question": "Which of these 9 categories fits this skill?",
-  "options": [
-    { "label": "Category A" },
-    { "label": "Category B" },
-    { "label": "Category C" }
-    // no path for "I don't know"
-  ]
-}
+{ "question": "Which of these categories fits this skill?",
+  "options": [ {"label":"Category A"}, {"label":"Category B"}, {"label":"Category C"} ] }
 ```
 
-**Fix:** add an "I'm not sure — help me decide" option (Pattern 7) to any judgment-call question where a wrong guess would propagate into downstream decisions.
+**Fix:** add an "I'm not sure" option (Pattern 7) to any judgment-call question where a wrong guess would propagate downstream.
+
+### Mistake 8: Listing "Other" yourself
+
+The tool adds "Other" automatically. Spending one of your 4 option slots on it wastes the slot and shows the user two "Other" choices.
 
 ---
 
@@ -545,59 +313,33 @@ This looks harmless but produces real friction: the user has to notice the sugge
 
 When creating a skill that uses AskUserQuestion, verify:
 
-- ✅ **Max 4 options** per question (no exceptions)
-- ✅ **Progressive disclosure** - Ask one batch, wait, ask next (no forms)
-- ✅ **Clear descriptions** - User understands what each option does
-- ✅ **Predefined vs open-form** - Use options: [] for free-text, [options] for choices
-- ✅ **Conditional routing** - Next question logic is clear (if/then paths documented)
-- ✅ **Batching** - Related questions grouped; unrelated questions separated
-- ✅ **Uncertainty option** - Judgment-call questions include an "I'm not sure" path (Pattern 7)
-- ✅ **No violations** - Use fact-check or linting to verify compliance
+- [ ] **2 to 4 options** per question, and **at most 4 questions** per call
+- [ ] **Progressive disclosure:** ask one batch, wait, ask the next (no forms)
+- [ ] **Clear descriptions:** the user understands what each option does
+- [ ] **Free text through "Other":** no empty `options`, and no manual "Other" option
+- [ ] **Conditional routing:** the next-question logic is clear (if/then paths documented)
+- [ ] **Batching:** related independent questions grouped; dependent ones separated
+- [ ] **Uncertainty option:** judgment-call questions include an "I'm not sure" path (Pattern 7)
+- [ ] **Verified against the schema** (see below)
 
 ---
 
 ## Verification Patterns (For Skill Refinement)
 
-When refining skills that use AskUserQuestion, check:
+When refining skills that use AskUserQuestion, check with the `Grep` tool, not shell commands:
 
-```bash
-# Count options per question
-grep -A 15 "options: \[" SKILL.md | grep "{ label:" | wc -l
+1. Grep SKILL.md and `references/` for `options:` and inspect each AskUserQuestion definition. Expected: each shows 2-4 options, and none is `options: []`.
+2. Grep for `questions:` and confirm no single call lists more than 4 questions.
+3. When in doubt, compare against the limits stated in the tool's own definition.
 
-# Verify no single question has >4 options
-# Expected: Each AskUserQuestion definition shows ≤4 options
-```
-
-**Rule:** If any question has >4 options, split it into multiple AskUserQuestion calls.
-
----
-
-## Examples from the Toolkit
-
-All toolkit skills now follow these patterns:
-
-| Skill | Pattern | Location |
-|-------|---------|----------|
-| **skill-creator** | Pattern 1 + Pattern 4 (routing + interviews) | Lines 21-38, 147-169, 176-196 |
-| **skill-refiner** | Pattern 1 + Pattern 4 (action choice + interview batches) | Lines 30-46, 72-127 |
-| **plugin-creator** | Pattern 1 + Pattern 3 (action choice + split components) | Lines 18-43, 149-177 |
-| **hook-creator** | Pattern 1 (simple action choice) | Lines 22-43 |
-| **subagent-creator** | Pattern 1 + Pattern 4 (action + scope + interviews) | Lines 18-42, 104-165 |
-
-All comply with:
-- ✅ Maximum 4 options per question
-- ✅ Progressive disclosure (ask → wait → ask)
-- ✅ Clear descriptions
-- ✅ Appropriate use of open-form vs predefined
+**Rule:** if any question has more than 4 options, fewer than 2, or a call carries more than 4 questions, fix it before finishing.
 
 ---
 
 ## Token Impact
 
-Using AskUserQuestion efficiently:
-
 - **Single question with 2-4 options:** ~150-300 tokens
-- **Multi-batch question (3+ AskUserQuestion calls):** Spread across multiple interactions (efficient)
-- **Large form (10+ questions at once):** ~500+ tokens, worse UX
+- **Multi-batch interview (3+ calls):** spread across interactions, efficient
+- **Large form (10+ questions at once):** ~500+ tokens, worse UX, and rejected by the per-call cap
 
-**Recommendation:** Always prefer progressive disclosure. Better UX, better token efficiency, more responsive feel.
+**Recommendation:** prefer progressive disclosure. Better UX, better token efficiency, more responsive feel.

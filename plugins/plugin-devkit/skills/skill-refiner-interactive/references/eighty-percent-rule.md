@@ -2,6 +2,17 @@
 
 The **80% Rule** is the core decision-making framework for determining what content stays in SKILL.md versus what moves to references/.
 
+## Table of Contents
+1. [The Core Question](#the-core-question)
+2. [What STAYS in SKILL.md (Core Procedural)](#what-stays-in-skillmd-core-procedural)
+3. [What MOVES to references/ (Supplementary)](#what-moves-to-references-supplementary)
+4. [Content Distribution Decision Tree](#content-distribution-decision-tree)
+5. [Proxy Heuristics (When You Can't Measure Frequency)](#proxy-heuristics-when-you-cant-measure-frequency)
+6. [Anti-Patterns](#anti-patterns)
+7. [Size Constraints](#size-constraints)
+8. [Practical Refinement Example](#practical-refinement-example)
+9. [When the 80% Rule Applies](#when-the-80-rule-applies)
+
 ## The Core Question
 
 Before moving, removing, or reorganizing ANY content, ask:
@@ -31,7 +42,7 @@ Content Claude needs for the common case (80%+ of activations):
 - Release-process skill: All 4 pattern examples (patch, feature, breaking, scope-creep) → STAYS (used in 80%+ of releases)
 - PDF processor skill: Basic extraction workflow → STAYS
 - Test runner skill: Standard test execution (Jest, PHPUnit) → STAYS
-- Skill-refiner: Refinement workflow with preservation gates → STAYS
+- skill-refiner-interactive: Refinement workflow with preservation gates → STAYS
 
 ## What MOVES to references/ (Supplementary)
 
@@ -44,13 +55,13 @@ Content for edge cases, advanced users, or background context (<20% of activatio
 - Troubleshooting uncommon failure modes
 - Historical or architectural context
 - Advanced configuration options
-- Production patterns (error handling, versioning, etc.)
+- Production patterns (error handling, logging, etc.)
 
 **Examples:**
 - Release-process skill: Monorepo multi-component coordination → MOVES (beyond single-component pattern)
 - PDF processor skill: OCR configuration for specific document types → MOVES
 - Test runner skill: Complex parallel configuration → MOVES
-- Skill-refiner: Production patterns, advanced skill patterns → MOVES
+- skill-refiner-interactive: Production patterns, the detailed AskUserQuestion patterns → MOVES
 
 ## Content Distribution Decision Tree
 
@@ -97,56 +108,56 @@ When proxies conflict, apply in order:
 2. **Removal test** — "Would removing this inline require a reference load in most activations?" → Yes = keep inline
 3. **Default** — If still uncertain, keep inline (safe; extraction is always available later)
 
+## Anti-Patterns
 
-
-❌ **Don't move content just because it's long**
+**Don't move content just because it's long**
 - If that content is core procedural, Claude needs it immediately
 - Moving core content doesn't save tokens; SKILL.md body loads anyway on trigger
 
-❌ **Don't assume "examples = reference material"**
+**Don't assume "examples = reference material"**
 - Examples are how Claude understands the task
 - If examples are patterns for common cases, they're core procedural
 
-❌ **Don't optimize token count at the cost of execution quality**
+**Don't optimize token count at the cost of execution quality**
 - SKILL.md body loads on trigger regardless
 - Moving core content doesn't save tokens, just adds a file load
 - Moving supplementary content DOES save tokens (zero penalty until loaded)
 
-✅ **Do ask "Will Claude execute this in 80%+ of cases?"**
+**Do ask "Will Claude execute this in 80%+ of cases?"**
 - If yes: Keep in SKILL.md
 - If no: Move to references/
 
 ## Size Constraints
 
-- SKILL.md body must stay <500 lines (non-negotiable)
-- If core procedural content exceeds 500 lines, that's the skill's true size
+- SKILL.md must stay within the resolved R13 tiers (plugin-rulebook's thresholds; above the Critical line, 500 lines, is a blocking finding)
+- If core procedural content alone exceeds that, it is the skill's true size
 - In rare cases, split into two skills (e.g., "basic-skill" and "advanced-skill")
 - References are one-level-deep only: `references/file.md`, never `references/subdir/file.md`
 
 ## Practical Refinement Example
 
-**Scenario:** Skill-refiner has 5 reference files on related topics. Can we consolidate?
+**Scenario:** A skill has five reference files on related topics. Can we consolidate?
 
-**Analysis using 80% rule:**
-- **Consolidation opportunity:** "These 5 files cover refinement aspects. Would Claude need all of them in 80%+ of refinements?"
-- **Assessment:** No. Most refinements need ONLY the workflow (refinement-workflow.md). Advanced patterns, preservation rules, and production patterns are supplementary (edge cases).
-- **Decision:** Keep files separate. Claude loads refinement-workflow.md immediately on trigger; others load on-demand only.
+**Analysis using the 80% rule:**
+- **Consolidation opportunity:** "These five files cover aspects of one workflow. Would Claude need all of them in 80%+ of activations?"
+- **Assessment:** No. Most activations need ONLY the workflow file. Preservation rules, production patterns, and content guidelines are supplementary (edge cases).
+- **Decision:** Keep files separate. Claude loads the workflow file immediately on trigger; the others load on demand only.
 
 **Better consolidation scenario:**
-- Two reference files on "movement patterns" (part of refinement-guardrails.md and separate movement-pattern.md)
-- **Assessment:** Both cover the same critical topic. Movement Pattern is core procedural (used in 80%+ of refinements).
-- **Decision:** Consolidate both into one clear "movement-pattern.md". Reduces file count while keeping critical content accessible.
+- Two reference files that both describe the same critical procedure (for example two files that each spell out the full CREATE → LINK → DELETE sequence)
+- **Assessment:** Both cover the same topic, and it is core procedural (used in 80%+ of refinements).
+- **Decision:** Consolidate both into one clear file. This reduces file count while keeping critical content accessible.
 
 ## When the 80% Rule Applies
 
-✅ **Applies to:**
+**Applies to:**
 - Moving content SKILL.md → references/
 - Moving content references/ → SKILL.md (consolidation)
 - Deciding what examples to keep in SKILL.md
 - Evaluating whether to split large skills
 - Consolidating multiple reference files
 
-❌ **Doesn't apply to:**
+**Doesn't apply to:**
 - Frontmatter (always loaded)
 - Quick Start sections (always stays in SKILL.md)
 - Deletion decisions (separate gates apply)

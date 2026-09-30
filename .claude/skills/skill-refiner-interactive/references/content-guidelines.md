@@ -11,14 +11,15 @@
 
 ## Writing Effective Descriptions
 
-The description is **the triggering mechanism**. Claude uses it to select from 100+ skills. It must be specific and include trigger phrases.
+The description is **the triggering mechanism**. Claude uses it to select among all the available skills. It must be specific and include trigger phrases.
 
 ### Rules
 
 1. **Third person always** — "Processes Excel files" not "I can help you" or "You can use this"
 2. **Specific + trigger phrases** — Include what it does AND when to invoke
 3. **Key terms for discovery** — Use synonyms user might say
-4. **80–1024 characters** — `when_to_use` (if present) ≤512; combined with `description` ≤1536; keep concise yet comprehensive
+4. **Within plugin-rulebook's R21 limits** — for `description`, for `when_to_use` if present, and for the two combined; keep concise yet comprehensive
+5. **Activation-focused, not step-summarizing** — Write for the model selecting the skill, not for a human reader. Be specific about trigger conditions. An action-phrase-first opening is fine, but the phrasing must be written to activate the skill, not to summarize its internal workflow — describing internal steps in the description causes Claude to treat that detail as already known and skip reading the body.
 
 ### Formula
 
@@ -30,17 +31,15 @@ Use when [trigger phrases, contexts, file types, user intents].
 
 ### Examples of Good Descriptions
 
-✅ "Analyze Excel spreadsheets, create pivot tables, generate charts. Use when analyzing Excel files, spreadsheets, tabular data, or .xlsx files."
-
-✅ "Generate descriptive commit messages by analyzing git diffs. Use when user asks for help writing commit messages or reviewing staged changes."
-
-✅ "Create Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving skill quality."
+- "Analyze Excel spreadsheets, create pivot tables, generate charts. Use when analyzing Excel files, spreadsheets, tabular data, or .xlsx files."
+- "Generate descriptive commit messages by analyzing git diffs. Use when user asks for help writing commit messages or reviewing staged changes."
+- "Create Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving skill quality."
 
 ### Examples of Poor Descriptions
 
-❌ "Helps with documents" — too vague, no triggers
-❌ "Processes data" — generic, no action clarity
-❌ "Does stuff with files" — no actionable content
+- "Helps with documents" — too vague, no triggers
+- "Processes data" — generic, no action clarity
+- "Does stuff with files" — no actionable content
 
 ### Testing Your Description
 
@@ -48,35 +47,30 @@ Before deploying, test your description mentally:
 
 **Expected triggers (should activate):**
 - List 3-5 queries your skill solves
-- Would Claude match these to your description? ✓
+- Would Claude match these to your description?
 
 **Unrelated queries (should NOT activate):**
 - List 3-5 unrelated queries
-- Would Claude wrongly match these? ✗
+- Would Claude wrongly match these?
 
-### "When to use this skill" Section
+### "When to Use" / "When NOT to Use" Sections
 
-Beyond the frontmatter description, include an explicit **"When to use this skill"** section early in the SKILL.md body.
+Beyond the frontmatter, include explicit **`## When to Use`** and **`## When NOT to Use`** sections early in the SKILL.md body. Trigger conditions can also move out of `description` into the separate `when_to_use` frontmatter field, leaving `description` to say what the skill does.
 
 ```markdown
-## When to use this skill
+## When to Use
 
-**Use this skill when:**
 - [Primary use case 1]
 - [Primary use case 2]
 - [Specific scenario]
 
-**Key areas covered:**
-- **Category A** (CRITICAL): [What it does]
-- **Category B** (HIGH): [What it does]
-- **Category C** (MEDIUM): [What it does]
+## When NOT to Use
 
-**Not recommended for:**
-- [Edge case where skill doesn't apply]
-- [Scenario where manual approach is better]
+- [Edge case where the skill doesn't apply] → use `other-skill` instead
+- [Scenario where a manual approach is better]
 ```
 
-This section bridges the gap between the metadata description and the skill's detailed content, serving as a "second filter" for relevance.
+These sections bridge the gap between the metadata description and the skill's detailed content, serving as a "second filter" for relevance. Name the alternative component in every "When NOT to Use" bullet.
 
 ---
 
@@ -103,9 +97,9 @@ This ensures Claude references the correct tool from the correct MCP server, avo
 Pick one term, use it everywhere:
 
 ```
-✓ Always "API endpoint" (not "URL", "route", "path")
-✓ Always "field" (not "box", "element", "control")
-✓ Always "extract" (not "pull", "get", "retrieve")
+Always "API endpoint" (not "URL", "route", "path")
+Always "field" (not "box", "element", "control")
+Always "extract" (not "pull", "get", "retrieve")
 ```
 
 **Why this matters:** Inconsistent terminology confuses Claude. Using multiple words for the same concept makes instructions harder to follow.

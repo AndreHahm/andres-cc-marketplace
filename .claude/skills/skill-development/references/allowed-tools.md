@@ -1,6 +1,6 @@
 # Tool Scoping with allowed-tools
 
-The `allowed-tools` field restricts which tools Claude can use when your Skill is active. Implement principle of least privilege: only grant tools your skill actually needs.
+The `allowed-tools` field pre-approves the listed tools so Claude can use them without a permission prompt while your Skill is active — it does not restrict which tools are available (unlisted tools still fall through to normal permission prompting). Implement principle of least privilege anyway: only grant tools your skill actually needs.
 
 ## Syntax Formats
 
@@ -115,7 +115,6 @@ Example skill with tool restrictions:
 ```yaml
 ---
 name: pdf-processor
-version: 1.0.0
 allowed-tools: Read,Write,Bash(python:*)
 description: >-
   Process PDF files with robust error handling. Requires Python 3.8+.
