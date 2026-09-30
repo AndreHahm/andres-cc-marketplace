@@ -1,0 +1,48 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "iteration": 10,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the skill skipping the interview (no BATCH 1 or BATCH 2 question) and going straight to the Validation workflow",
+      "passed": true,
+      "evidence": "Quick Start D: 'Route: Validate -> skip the interview, go directly to Core Workflow: Validation'; no BATCH 1/2 question appears."
+    },
+    {
+      "text": "transcript.md shows delegation to the skill-reviewer agent in Structured output mode and to Skill(plugin-rulebook), with no self-made scoring",
+      "passed": true,
+      "evidence": "Step 2a: skill-reviewer (full mode, Structured output mode) with simulated YAML; step 2b: Skill(plugin-rulebook) returning the R8 FAIL; the score 82 is only the supplied simulated return."
+    },
+    {
+      "text": "report.md contains the verdict, findings grouped by severity, and the top priority fixes",
+      "passed": true,
+      "evidence": "report.md has Status, Critical/Major/Minor subsections (M1; m1, m2) and an Actionable summary whose item 1 is the skill-reviewer top priority fix."
+    },
+    {
+      "text": "report.md lists the plugin-rulebook FAIL under its own heading and shows the verdict downgraded from Pass to Reject",
+      "passed": true,
+      "evidence": "report.md has a separate 'plugin-rulebook FAIL findings' heading listing R8; Status says skill-reviewer returned Pass (82/100) but the verdict is displayed as Reject."
+    },
+    {
+      "text": "transcript.md shows the enhancement-suggestor Yes/No question asked and the agent NOT invoked after the answer No",
+      "passed": true,
+      "evidence": "Step 3 gives the Yes/No question, simulated answer 'No', and 'enhancement-suggestor is NOT invoked'; report.md Follow-up agrees."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r outputs/target fixtures/demo-skill produced no differences; final-tree.txt lists the same three files."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The transcript says the interview is skipped and Refinement-only steps do not apply, without stating outright that BATCH 1/2 were not asked; enough for a literal pass but implicit.",
+    "report.md has no heading named 'top priority fixes'; the fix is item 1 of the Actionable summary, merged with the plugin-rulebook FAIL, per SKILL.md step 3.",
+    "Dry-run simulation with stubbed reviewer and rulebook results: assertions test routing and presentation logic, not real review quality.",
+    "Regression guard for the Validation step 1 edit: single-copy target, so the new Validation Mirror form was correctly not triggered."
+  ]
+}

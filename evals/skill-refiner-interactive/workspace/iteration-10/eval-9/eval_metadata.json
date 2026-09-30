@@ -1,0 +1,31 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows both copies located and compared file by file",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "transcript.md shows the Mirror Divergence question with the four options (show diff, path A correct, path B correct, stop)",
+      "type": "structure",
+      "target": "transcript.md"
+    },
+    {
+      "text": "no pre-analysis report, interview question or edit appears before the Mirror Divergence answer",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after the answer Stop the session ends with no completion marker",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "both copies are byte-identical to the fixture afterwards",
+      "type": "functionality",
+      "target": "OUTDIR/target vs fixtures/mirror-pair"
+    }
+  ]
+}
