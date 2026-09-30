@@ -139,58 +139,58 @@ Twenty-five specialized agents, eighteen of which are quality-gate reviewers cro
 
 | Command | Purpose |
 |---|---|
-| `/create-plugin` | Guided end-to-end workflow: design, build, and validate a new plugin |
-| `/create-command` | Scaffold a new slash command with full feature support |
-| `/skill-improver` | Iteratively review and fix a skill until it passes quality standards |
-| `/cancel-skill-improver` | Stop an in-progress skill-improvement loop, keeping changes made so far |
-| `/implemented` | Check whether one or more stated requirements are implemented, partial, or open in the current plugin, verified fresh against actual files and official docs |
+| `/pdk-create-plugin` | Guided end-to-end workflow: design, build, and validate a new plugin |
+| `/pdk-create-command` | Scaffold a new slash command with full feature support |
+| `/pdk-skill-improver` | Iteratively review and fix a skill until it passes quality standards |
+| `/pdk-cancel-skill-improver` | Stop an in-progress skill-improvement loop, keeping changes made so far |
+| `/pdk-implemented` | Check whether one or more stated requirements are implemented, partial, or open in the current plugin, verified fresh against actual files and official docs |
 
 **Rules pipeline:**
 
 | Command | Purpose |
 |---|---|
-| `/extract-rules` | Extract project rules from a codebase, PRs, or conversation |
-| `/merge-rules` | Merge multiple projects' extracted rules into one portable set |
-| `/apply-rules` | Apply merged org-wide rules to the current project |
-| `/review-rules` | Check a diff's changed files against applicable rules |
+| `/pdk-extract-rules` | Extract project rules from a codebase, PRs, or conversation |
+| `/pdk-merge-rules` | Merge multiple projects' extracted rules into one portable set |
+| `/pdk-apply-rules` | Apply merged org-wide rules to the current project |
+| `/pdk-review-rules` | Check a diff's changed files against applicable rules |
 
 **Dev-rules reporting** (plugin-devkit's own internal rule tracking):
 
 | Command | Purpose |
 |---|---|
-| `/find-dev-rule` | Locate a plugin-devkit rule everywhere it's defined; check against official docs (read-only) |
-| `/report-dev-rules` | Generate a rules report at marketplace, plugin, or component level |
-| `/verify-dev-rules` | Cross-check a rules report against official docs to produce a verified gap report |
-| `/plan-dev-rules` | Turn a verified gap report into a file-by-file implementation plan |
-| `/implement-dev-rules` | Execute a verified plan file-by-file, verifying each change |
-| `/update-dev-rule` | Update a stale rule and everything it affects, then report the changes |
+| `/pdk-find-dev-rule` | Locate a plugin-devkit rule everywhere it's defined; check against official docs (read-only) |
+| `/pdk-report-dev-rules` | Generate a rules report at marketplace, plugin, or component level |
+| `/pdk-verify-dev-rules` | Cross-check a rules report against official docs to produce a verified gap report |
+| `/pdk-plan-dev-rules` | Turn a verified gap report into a file-by-file implementation plan |
+| `/pdk-implement-dev-rules` | Execute a verified plan file-by-file, verifying each change |
+| `/pdk-update-dev-rule` | Update a stale rule and everything it affects, then report the changes |
 
 **Permissions:**
 
 | Command | Purpose |
 |---|---|
-| `/apply-permissions` | Write confirmed permission entries from `/verify-permissions` into `settings.local.json` (default) or `settings.json` (explicit promotion), gated by tiered confirmation |
-| `/find-permissions` | Scan past session transcripts for Bash commands with no matching permission rule and produce a candidate report |
-| `/verify-permissions` | Classify candidate permissions from `/find-permissions`, and audit every existing settings entry, for risky or destructive commands that belong in `ask`/`deny` instead of `allow` |
-| `/trim-permissions` | Consolidate `.claude/settings.local.json`'s permission allowlist -- exact duplicates, wildcard-subsumed entries, and one-off literal commands, tiered by confidence |
+| `/pdk-apply-permissions` | Write confirmed permission entries from `/pdk-verify-permissions` into `settings.local.json` (default) or `settings.json` (explicit promotion), gated by tiered confirmation |
+| `/pdk-find-permissions` | Scan past session transcripts for Bash commands with no matching permission rule and produce a candidate report |
+| `/pdk-verify-permissions` | Classify candidate permissions from `/pdk-find-permissions`, and audit every existing settings entry, for risky or destructive commands that belong in `ask`/`deny` instead of `allow` |
+| `/pdk-trim-permissions` | Consolidate `.claude/settings.local.json`'s permission allowlist -- exact duplicates, wildcard-subsumed entries, and one-off literal commands, tiered by confidence |
 
 ## Hooks
 
 `hooks/hooks.json` registers:
 
-- **`PreToolUse`** (matcher `Bash`) → `security-precommit-check.sh` — log-only, deterministic security pre-commit check run before `git commit` executes
-- **`Stop`** → `stop-hook.sh` — drives the iterative skill-improvement loop's stop-cycle logic
-- **`PostToolUse`** (matcher `Write|Edit`) → `rulebook-check.sh` — enforces `plugin-rulebook` compliance on edited components; `hooks-schema-check.sh` — validates any edited `hooks.json` against its schema
-- **`PostToolUse`** (matcher `^(Agent|Skill|Bash)$`) → `r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches and scoped Bash calls
-- **`PostToolUse`** (matcher `^(Agent|Bash)$`) → `r25-overhead-disclosure-check.sh` — log-only, best-effort reminder for R25 (Unplanned-Overhead Disclosure) on Agent/Bash retries
-- **`PostToolUseFailure`** (matcher `^(Agent|Bash)$`) → `r25-overhead-disclosure-check.sh` — feeds the same R25 reminder's failure-tracking state when an Agent/Bash call itself fails
+- **`PreToolUse`** (matcher `Bash`) → `pdk-security-precommit-check.sh` — log-only, deterministic security pre-commit check run before `git commit` executes
+- **`Stop`** → `pdk-stop-hook.sh` — drives the iterative skill-improvement loop's stop-cycle logic
+- **`PostToolUse`** (matcher `Write|Edit`) → `pdk-rulebook-check.sh` — enforces `plugin-rulebook` compliance on edited components; `pdk-hooks-schema-check.sh` — validates any edited `hooks.json` against its schema
+- **`PostToolUse`** (matcher `^(Agent|Skill|Bash)$`) → `pdk-r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches and scoped Bash calls
+- **`PostToolUse`** (matcher `^(Agent|Bash)$`) → `pdk-r25-overhead-disclosure-check.sh` — log-only, best-effort reminder for R25 (Unplanned-Overhead Disclosure) on Agent/Bash retries
+- **`PostToolUseFailure`** (matcher `^(Agent|Bash)$`) → `pdk-r25-overhead-disclosure-check.sh` — feeds the same R25 reminder's failure-tracking state when an Agent/Bash call itself fails
 
 ## Quick Start
 
 1. **Not sure where to start?** Run `using-plugin-devkit` — it asks what you're trying to do, then routes to `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance`, or a lighter single-skill alternative.
 2. **Building a component?** Ask directly — "create a hook that validates file writes," "add an MCP server for Postgres," "write a rule about early returns" — the matching skill activates automatically.
 3. **Reviewing what you built?** Invoke the matching reviewer agent, or run `plugin-validator` for a full structural pass.
-4. **Iterating on a skill?** Use `/skill-improver` for an automated fix-review loop, or `skill-refiner-interactive` for operator-guided refinement.
+4. **Iterating on a skill?** Use `/pdk-skill-improver` for an automated fix-review loop, or `skill-refiner-interactive` for operator-guided refinement.
 5. **Rolling out org-wide conventions?** `rules-extract` → `rules-merge` → `rules-apply`.
 
 ## Contributing

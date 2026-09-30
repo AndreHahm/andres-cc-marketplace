@@ -46,11 +46,11 @@ The old table was read by a human-driven "Rulebook Audit" procedure (six numbere
 upstream change). That procedure is retired. Its replacement:
 
 - **Source tracking/classification/freshness** — this skill (`upstream-sources-registry`).
-- **Gap comparison against a local rule, and resolution** — `find-dev-rule`/`verify-dev-rules`/
-  `update-dev-rule`, which now consult this registry instead of doing blind `WebSearch`.
+- **Gap comparison against a local rule, and resolution** — `pdk-find-dev-rule`/`pdk-verify-dev-rules`/
+  `pdk-update-dev-rule`, which now consult this registry instead of doing blind `WebSearch`.
 - **Intentional divergence (the old "Keep plugin-rulebook" choice)** — recorded via
-  `verify-dev-rules`'s widened Exclusion mechanism, not a separate decision log.
+  `pdk-verify-dev-rules`'s widened Exclusion mechanism, not a separate decision log.
 - **Historical decisions made under the old mechanism** — retained as-is in
   `.claude/plugin-rulebook-audit-decisions.md`; still-relevant ones should be re-recorded as an
-  Excluded Candidate the next time `verify-dev-rules` runs against `plugin-rulebook`, so they
+  Excluded Candidate the next time `pdk-verify-dev-rules` runs against `plugin-rulebook`, so they
   aren't silently re-flagged as fresh gaps now that the old procedure no longer runs.

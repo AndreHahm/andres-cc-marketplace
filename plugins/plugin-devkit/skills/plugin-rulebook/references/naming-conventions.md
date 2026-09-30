@@ -12,7 +12,7 @@ All component identifiers in a plugin must use **lowercase kebab-case**. This ap
 |---|---|---|
 | Skill | Noun or gerund phrase describing capability | `skill-development`, `plugin-rulebook`, `rules-extract` |
 | Agent | Role-based noun phrase | `skill-reviewer`, `plugin-validator`, `agent-creator` |
-| Command | Verb-first action phrase | `create-plugin`, `review-rules`, `extract-rules` |
+| Command | Verb-first action phrase | `create-plugin`, `review-rules`, `pdk-extract-rules` |
 | Hook | Event + optional scope | (no user-visible name; identified by file path) |
 | Rule | Behavior description | `no-hardcoded-secrets`, `require-kebab-case` |
 | Reference file | Topic noun phrase | `naming-conventions`, `allowed-tools`, `movement-pattern` |
@@ -76,7 +76,7 @@ These names are not allowed because they provide no information about content:
 ## Command Naming Advice
 
 - Start with a **verb**: `create-`, `review-`, `apply-`, `extract-`, `merge-`
-- Commands are user-facing — names appear as `/create-plugin`, `/review-rules`
+- Commands are user-facing — names appear as `/pdk-create-plugin`, `/pdk-review-rules`
 - Verb should match the primary action, not the component type
 
 ## Open Item: Plugin Suffix/Prefix Taxonomy

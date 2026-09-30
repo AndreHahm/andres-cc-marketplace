@@ -18,7 +18,7 @@
     {
       "id": "plugin-devkit.hooks-schema-check",
       "plugin": "plugin-devkit",
-      "path": "plugins/plugin-devkit/hooks/hooks-schema-check.sh",
+      "path": "plugins/plugin-devkit/hooks/pdk-hooks-schema-check.sh",
       "interpreter": "bash",
       "platforms": ["linux", "macos"],
       "kind": "black-box"
@@ -26,7 +26,7 @@
     {
       "id": "plugin-devkit.r25-overhead-disclosure-check",
       "plugin": "plugin-devkit",
-      "path": "plugins/plugin-devkit/hooks/r25-overhead-disclosure-check.py",
+      "path": "plugins/plugin-devkit/hooks/pdk-r25-overhead-disclosure-check.py",
       "interpreter": "python",
       "platforms": ["linux", "macos", "windows"],
       "kind": "black-box"
@@ -34,7 +34,7 @@
     {
       "id": "plugin-devkit.r26-expensive-action-check",
       "plugin": "plugin-devkit",
-      "path": "plugins/plugin-devkit/hooks/r26-expensive-action-check.py",
+      "path": "plugins/plugin-devkit/hooks/pdk-r26-expensive-action-check.py",
       "interpreter": "python",
       "platforms": ["linux", "macos", "windows"],
       "kind": "black-box"
@@ -42,7 +42,7 @@
     {
       "id": "plugin-devkit.rulebook-check",
       "plugin": "plugin-devkit",
-      "path": "plugins/plugin-devkit/hooks/rulebook-check.py",
+      "path": "plugins/plugin-devkit/hooks/pdk-rulebook-check.py",
       "interpreter": "python",
       "platforms": ["linux", "macos", "windows"],
       "kind": "black-box"
@@ -50,7 +50,7 @@
     {
       "id": "plugin-devkit.security-precommit-check",
       "plugin": "plugin-devkit",
-      "path": "plugins/plugin-devkit/hooks/security-precommit-check.py",
+      "path": "plugins/plugin-devkit/hooks/pdk-security-precommit-check.py",
       "interpreter": "python",
       "platforms": ["linux", "macos", "windows"],
       "kind": "black-box"

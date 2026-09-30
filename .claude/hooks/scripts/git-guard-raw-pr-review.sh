@@ -72,7 +72,7 @@
 # plugin's actual documented commands (not just its `allowed-tools` grant
 # list) found `rules-extract` as the only Claude-Code-executed component
 # that actually issued this call -- a broad grant alone doesn't mean a
-# conflict, since several other components (`extract-rules`/`apply-rules`
+# conflict, since several other components (`pdk-extract-rules`/`pdk-apply-rules`
 # commands, `rules-apply`, git-kit's own `codex-review-recovery`) hold a
 # blanket `Bash(gh:*)`/`Bash(gh api *)`/`Bash(gh api:*)` grant reaching this
 # endpoint but never instruct a call to it. gh-operations' own quality gate

@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-security-precommit-check.sh",
             "timeout": 10
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-fork-subagent.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/pdk-guard-fork-subagent.sh",
             "shell": "bash",
             "timeout": 10,
             "onError": "warn"
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-stop-hook.sh",
             "timeout": 30
           }
         ]
@@ -43,12 +43,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/rulebook-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-rulebook-check.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks-schema-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-hooks-schema-check.sh",
             "timeout": 15
           }
         ]
@@ -58,7 +58,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r26-expensive-action-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-r26-expensive-action-check.sh",
             "timeout": 10,
             "onError": "warn"
           }
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-r25-overhead-disclosure-check.sh",
             "timeout": 10,
             "onError": "warn"
           }
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pdk-r25-overhead-disclosure-check.sh",
             "timeout": 10,
             "onError": "warn"
           }

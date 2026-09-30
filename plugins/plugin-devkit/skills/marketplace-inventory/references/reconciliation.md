@@ -56,7 +56,7 @@ detects and reports the mismatch.
 `plugin_security_score`) — never derived from that plugin's own component-level scores. Deriving a
 plugin-level score from its components would duplicate `plugin-grader`'s own whole-plugin rollup
 math (a violation of "plugin-grader is the sole quality- and security-scoring authority" — see
-`inventory_common/grading.py`'s own module docstring). If a whole-plugin report simply hasn't been imported yet, `score`/
+`inventory_common/pdk_grading.py`'s own module docstring). If a whole-plugin report simply hasn't been imported yet, `score`/
 `security_score` stay `null`; this script never fabricates a substitute. `import-grading` itself
 rejects any `target_type` other than `plugin` outright — a component-level report never reaches this
 inventory's `score`/`security_score` fields even by mistake.
@@ -90,7 +90,7 @@ This keeps `plugin-inventory`'s exclusive per-plugin ownership intact — this s
 ## Concurrency
 
 `bootstrap`, `apply`, `import-grading`, and `repair-history` all hold
-`inventory_common.json_store.InventoryLock` for their full read-modify-write span, in addition to the
+`inventory_common.pdk_json_store.InventoryLock` for their full read-modify-write span, in addition to the
 hash-based staleness check `apply` and `repair-history` both perform — the lock prevents two concurrent
 invocations from interleaving between the hash check and the atomic write; the hash check alone prevents
 a *stale* write, not a *simultaneous* one. `repair-history`'s own `--expected-hash` (added after a live

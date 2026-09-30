@@ -12,7 +12,7 @@ These four types are detected directly from the filesystem, no manifest declarat
 |---|---|---|
 | `skill` | `skills/<name>/SKILL.md` exists | `skills/plugin-grader/SKILL.md` -> `plugin-grader` |
 | `agent` | Any `.md` file directly under `agents/` | `agents/skill-reviewer.md` -> `skill-reviewer` |
-| `command` | Any `.md` file directly under `commands/` | `commands/create-plugin.md` -> `create-plugin` |
+| `command` | Any `.md` file directly under `commands/` | `commands/pdk-create-plugin.md` -> `create-plugin` |
 | `hook` | Each matcher entry inside `hooks/hooks.json`, per event | `hooks.json`'s `PreToolUse[1]` -> `PreToolUse-1` |
 
 A hook's logical name is synthesized as `<event>-<index>` (its position in that event's own matcher

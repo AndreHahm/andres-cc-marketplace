@@ -16,7 +16,7 @@ Subcommands:
 Every write-capable subcommand takes `repo_root` so it can enforce that
 `inventory_path` resolves to exactly `<repo_root>/.claude-plugin/
 marketplace-inventory.json` -- mechanically, not just by prose convention
-(see `inventory_common.reconcile.require_inventory_path_under_scope_dir`).
+(see `inventory_common.pdk_reconcile.require_inventory_path_under_scope_dir`).
 This constrains `inventory_path` relative to whatever `repo_root` the
 caller names on that invocation -- it is not a pin to any one specific
 repo; a caller passing a different `repo_root` writes that directory's
@@ -349,7 +349,7 @@ def apply_add(inventory, operation, existing_ids):
 
 def apply_plan(inventory, approved_operations):
     """Delegates the per-operation-type logic to the shared
-    `inventory_common.reconcile` module -- only `apply_add` (the
+    `inventory_common.pdk_reconcile` module -- only `apply_add` (the
     plugin-record shape) is this script's own."""
     return reconcile.apply_plan(
         inventory, approved_operations, apply_add, "plugins", ALLOWED_UPDATE_FIELDS
@@ -357,7 +357,7 @@ def apply_plan(inventory, approved_operations):
 
 
 def validate_inventory(inventory):
-    """Delegates to the shared `inventory_common.reconcile.validate_records`,
+    """Delegates to the shared `inventory_common.pdk_reconcile.validate_records`,
     using this inventory's own bare-`name` active-record uniqueness key
     (unlike plugin-inventory's `(name, type)` pair -- a plugin has no
     `type` field). Also validates the optional per-plugin `prefix` and

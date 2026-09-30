@@ -724,14 +724,14 @@ def test_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
     # R33's prefix format '^[a-z]{3,4}$' is intentionally hand-duplicated in
     # 4 places -- prefix_check.py's own PREFIX_PATTERN comment explains it
     # deliberately avoids importing plugin-devkit code to avoid backwards
-    # coupling, so it can't just reuse inventory_common.models.PREFIX_PATTERN
+    # coupling, so it can't just reuse inventory_common.pdk_models.PREFIX_PATTERN
     # directly. Nothing else asserted they stay identical (Qodo review
     # finding, PR #387) -- this closes that gap.
     import importlib.util
 
     repo_root = Path(__file__).resolve().parents[2]
     models_path = (
-        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "models.py"
+        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "pdk_models.py"
     )
     spec = importlib.util.spec_from_file_location(
         "_inventory_common_models_for_sync_test", models_path
@@ -766,14 +766,14 @@ def test_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
 def test_domain_prefix_pattern_stays_in_sync_across_all_duplicated_locations():
     # Same duplicated-constant risk as test_prefix_pattern_stays_in_sync_...
     # above, for `domain_prefix` (R33 addendum, 2026-09-27): '^[a-z][a-z0-9]{2,11}$'
-    # is hand-duplicated across inventory_common.models, both inventory
+    # is hand-duplicated across inventory_common.pdk_models, both inventory
     # schemas, and this module's own DOMAIN_PREFIX_PATTERN -- same reason
     # prefix_check.py avoids importing plugin-devkit code directly.
     import importlib.util
 
     repo_root = Path(__file__).resolve().parents[2]
     models_path = (
-        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "models.py"
+        repo_root / "plugins" / "plugin-devkit" / "scripts" / "inventory_common" / "pdk_models.py"
     )
     spec = importlib.util.spec_from_file_location(
         "_inventory_common_models_for_domain_sync_test", models_path

@@ -288,7 +288,7 @@ Run the 7-phase validation workflow (configuration → delegation signal → pro
 
 If delegation doesn't fire, the description needs clearer trigger phrases — see `references/delegation.md` for the trigger phrase library and debugging guide.
 
-**Data-dependency timing check:** when a new step reads data another step is supposed to have produced (a prior-run marker, a lookup result from an earlier phase), confirm that data actually exists at the point in execution order it's read — not just that the reference is written correctly. Two sibling command files in this plugin (`verify-dev-rules.md`, `update-dev-rule.md`) each shipped a new "intentional divergence carry-forward" step that referenced prior-run data a *later* step actually loaded, making the new step dead code on a first pass through the document. The bug shape recurring in two independently-written files is the signal to check for this generically, not just fix it once.
+**Data-dependency timing check:** when a new step reads data another step is supposed to have produced (a prior-run marker, a lookup result from an earlier phase), confirm that data actually exists at the point in execution order it's read — not just that the reference is written correctly. Two sibling command files in this plugin (`pdk-verify-dev-rules.md`, `pdk-update-dev-rule.md`) each shipped a new "intentional divergence carry-forward" step that referenced prior-run data a *later* step actually loaded, making the new step dead code on a first pass through the document. The bug shape recurring in two independently-written files is the signal to check for this generically, not just fix it once.
 
 Before finalizing, invoke `plugin-rulebook` to verify naming, tool-scoping, and formatting compliance.
 

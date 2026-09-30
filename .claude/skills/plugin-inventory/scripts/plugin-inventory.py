@@ -19,7 +19,7 @@ Every write-capable subcommand takes `plugin_dir` so it can enforce that
 `inventory_path` resolves to exactly `<plugin_dir>/.claude-plugin/
 plugin-inventory.json` -- this script never writes a different plugin's own
 inventory file, mechanically, not just by prose convention (see
-`inventory_common.reconcile.require_inventory_path_under_scope_dir`).
+`inventory_common.pdk_reconcile.require_inventory_path_under_scope_dir`).
 
 This script owns discovery, reconciliation-plan construction, and atomic
 apply -- it never decides lifecycle status, functional_role, domain, or
@@ -304,7 +304,7 @@ def apply_plan(inventory, approved_operations):
     itself is never applied directly -- an approved plan instead contains
     the human's actual resolution as a `status-transition` operation (or an
     `update`/`add`/`no-op`), never the bare `conflict` shape. Delegates the
-    per-operation-type logic to the shared `inventory_common.reconcile`
+    per-operation-type logic to the shared `inventory_common.pdk_reconcile`
     module -- only `apply_add` (the component-record shape) is this script's
     own."""
     return reconcile.apply_plan(
@@ -314,7 +314,7 @@ def apply_plan(inventory, approved_operations):
 
 def validate_inventory(inventory):
     """Cross-record invariants JSON Schema alone can't express. Delegates to
-    the shared `inventory_common.reconcile.validate_records`, using this
+    the shared `inventory_common.pdk_reconcile.validate_records`, using this
     inventory's own `(name, type)` active-record uniqueness key. Also
     validates the optional top-level `prefix` field's format when present
     -- marketplace-wide uniqueness is marketplace-inventory.json's own
