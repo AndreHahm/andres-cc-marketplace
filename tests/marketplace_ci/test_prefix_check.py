@@ -536,6 +536,32 @@ def test_permanence_base_prefixed_record_without_joinable_id_is_violation(bad_id
     assert "no non-empty string `id`" in violations[0].reason
 
 
+def test_permanence_base_record_repaired_by_adding_id_is_not_blocked():
+    # The PR that adds the missing id must not be rejected by the violation
+    # it fixes.
+    broken = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    del broken["id"]
+    repaired = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    assert find_prefix_permanence_violations({"plugins": [broken]}, {"plugins": [repaired]}) == []
+
+
+@pytest.mark.parametrize("field, value", [("prefix", "bar"), ("domain_prefix", "foobar")])
+def test_permanence_id_repair_that_also_changes_a_prefix_field_still_violates(field, value):
+    broken = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    del broken["id"]
+    repaired = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    repaired[field] = value
+    violations = find_prefix_permanence_violations({"plugins": [broken]}, {"plugins": [repaired]})
+    assert any("no non-empty string `id`" in v.reason for v in violations)
+
+
+def test_missing_plugins_key_flagged(tmp_path):
+    path = _write_inventory(tmp_path, [])
+    path.write_text(json.dumps({"schema_version": "1.0.0"}), encoding="utf-8")
+    violations = find_prefix_violations(tmp_path)
+    assert [v.reason for v in violations] == ["`plugins` key is missing"]
+
+
 @pytest.mark.parametrize("bad_id", [None, "", 123])
 def test_missing_or_non_string_id_flagged(tmp_path, bad_id):
     entry = _plugin("foo-kit", "./foo-kit")

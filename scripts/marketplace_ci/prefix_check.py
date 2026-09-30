@@ -124,8 +124,12 @@ def _object_records(
     """Return `inventory["plugins"]`'s JSON-object entries, reporting (not
     crashing on) a `plugins` value that isn't a list or an entry that isn't
     an object -- either used to surface as an uncaught AttributeError
-    traceback instead of a readable CI finding."""
-    plugins = inventory.get("plugins", [])
+    traceback instead of a readable CI finding. A missing `plugins` key is
+    reported too, rather than read as an empty inventory."""
+    if "plugins" not in inventory:
+        violations.append(PrefixViolation(plugin="?", path=path, reason="`plugins` key is missing"))
+        return []
+    plugins = inventory["plugins"]
     if not isinstance(plugins, list):
         violations.append(
             PrefixViolation(plugin="?", path=path, reason="`plugins` is not a JSON array")
@@ -216,11 +220,23 @@ def find_prefix_permanence_violations(
     violations: list[PrefixPermanenceViolation] = []
     # A base record registering a prefix/domain_prefix but lacking a joinable
     # `id` can't be matched to its head counterpart at all, so it would get no
-    # permanence protection -- report it rather than skip it.
+    # permanence protection -- report it rather than skip it. Exception: a
+    # head record that now has a joinable `id` and keeps the same name,
+    # prefix and domain_prefix is the repair of exactly this defect, so it
+    # must not be blocked by the very violation it fixes (a PR that also
+    # changes either value still is).
+    head_identified = [p for p in _joinable_records(head_inventory) if _has_joinable_id(p)]
     for base_plugin in _joinable_records(base_inventory):
         if (base_plugin.get("prefix") or base_plugin.get("domain_prefix")) and not (
             _has_joinable_id(base_plugin)
         ):
+            if any(
+                h.get("name") == base_plugin.get("name")
+                and h.get("prefix") == base_plugin.get("prefix")
+                and h.get("domain_prefix") == base_plugin.get("domain_prefix")
+                for h in head_identified
+            ):
+                continue
             violations.append(
                 PrefixPermanenceViolation(
                     plugin_id="?",
