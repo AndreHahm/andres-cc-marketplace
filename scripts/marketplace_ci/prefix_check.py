@@ -160,7 +160,20 @@ def _joinable_records(inventory: dict) -> list[dict[str, Any]]:
 
 
 def _has_joinable_id(record: dict[str, Any]) -> bool:
-    return isinstance(record.get("id"), str) and bool(record["id"])
+    return isinstance(record.get("id"), str) and bool(record["id"].strip())
+
+
+def _inventory_structure_problem(inventory: Any) -> str | None:
+    """Why `inventory` can't be compared for permanence at all, or None.
+    Reading a malformed one as an empty inventory would silently drop every
+    registered prefix's protection (fail-open), so the caller reports it."""
+    if not isinstance(inventory, dict):
+        return "is not a JSON object"
+    if "plugins" not in inventory:
+        return "has no `plugins` key"
+    if not isinstance(inventory["plugins"], list):
+        return "has a `plugins` value that is not a JSON array"
+    return None
 
 
 def _records_by_id(inventory: dict) -> dict[str, Any]:
@@ -199,6 +212,16 @@ def find_prefix_permanence_violations(
     Covers both `prefix` and `domain_prefix` (R33 addendum, 2026-09-27) -- `domain_prefix`
     is permanent once assigned the same way `prefix` is, for the same
     reason: it's baked into shipped filenames the moment a plugin migrates."""
+    for side, inventory in (("base", base_inventory), ("head", head_inventory)):
+        problem = _inventory_structure_problem(inventory)
+        if problem is not None:
+            return [
+                PrefixPermanenceViolation(
+                    plugin_id="?",
+                    plugin_name="?",
+                    reason=f"{side} inventory {problem}, so prefix permanence cannot be checked",
+                )
+            ]
     # Deliberately a truthy check, not `is not None`: an empty-string or
     # other falsy base value is not a meaningful prior assignment to
     # protect -- find_prefix_violations' own format validation is what
@@ -533,7 +556,7 @@ def find_prefix_violations(
         # duplicate `id` a decoy record can stand in for the real one (last
         # duplicate wins). Reject both here so neither can reach the base.
         record_id = plugin.get("id")
-        if not isinstance(record_id, str) or not record_id:
+        if not isinstance(record_id, str) or not record_id.strip():
             violations.append(
                 PrefixViolation(
                     plugin=plugin_name,
