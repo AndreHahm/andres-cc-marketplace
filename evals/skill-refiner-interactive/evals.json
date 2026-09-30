@@ -145,6 +145,16 @@
         "transcript.md",
         "final-tree.txt"
       ]
+    },
+    {
+      "id": 15,
+      "name": "validation-mirror-divergence",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/mirror-pair/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-15/with_skill/outputs. Treat OUTDIR/target/skills/demo-mirror as the `skills/demo-mirror/` copy and OUTDIR/target/claude-mirror/skills/demo-mirror as its `.claude/skills/demo-mirror/` mirror. The operator says: 'Validate the skill demo-mirror.' Simulated operator answers: at the Mirror Divergence question choose 'Show me the diff first'. If the skill would go on to delegate to skill-reviewer or plugin-rulebook, or to present a validation report, write 'DELEGATION REACHED' in transcript.md at that point and stop (you cannot dispatch anything). Make no edits. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "A Validation request against diverged mirror copies halts with the two-option Validation form of the Mirror question (no overwrite option), displays the diff, and ends without delegating to skill-reviewer or plugin-rulebook and without editing either copy.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
     }
   ],
   "testing_validation_coverage": {

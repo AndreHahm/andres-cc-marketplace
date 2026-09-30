@@ -1,0 +1,31 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the Mirror Divergence question in its Validation form with exactly two options, 'Show me the diff first' and 'Stop'",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "no overwrite option ('[path] is correct') appears in the question the transcript asks",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after the simulated answer 'Show me the diff first' the transcript displays the difference between the two copies and then ends the session, with no report",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "transcript.md contains no 'DELEGATION REACHED' marker and no skill-reviewer or plugin-rulebook delegation, and no pre-analysis, goal or interview question",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "both mirror copies are byte-identical to the fixture afterwards",
+      "type": "structure",
+      "target": "final-tree.txt and target/"
+    }
+  ]
+}

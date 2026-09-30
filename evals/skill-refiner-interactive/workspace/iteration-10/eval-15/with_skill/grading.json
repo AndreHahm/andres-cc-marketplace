@@ -1,0 +1,44 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "iteration": 10,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the Mirror Divergence question in its Validation form with exactly two options, 'Show me the diff first' and 'Stop'",
+      "passed": true,
+      "evidence": "'Question asked (simulated AskUserQuestion, Validation form)' has header 'Mirror' and exactly two options, 'Show me the diff first' and 'Stop'."
+    },
+    {
+      "text": "no overwrite option ('[path] is correct') appears in the question the transcript asks",
+      "passed": true,
+      "evidence": "The question block lists only the two options; the phrase 'X is correct / overwrite' appears only in a note saying such options are not offered."
+    },
+    {
+      "text": "after the simulated answer 'Show me the diff first' the transcript displays the difference between the two copies and then ends the session, with no report",
+      "passed": true,
+      "evidence": "After the simulated answer the transcript shows a unified diff of the two SKILL.md copies (', grouped by marker type' added in the claude-mirror copy), then 'Session ends here' and step 3 (report) NOT REACHED."
+    },
+    {
+      "text": "transcript.md contains no 'DELEGATION REACHED' marker and no skill-reviewer or plugin-rulebook delegation, and no pre-analysis, goal or interview question",
+      "passed": true,
+      "evidence": "No delegation, pre-analysis, goal or interview question; Quick Start A-D records them as skipped. The literal string 'DELEGATION REACHED' appears once, only in a sentence saying the marker is deliberately not written."
+    },
+    {
+      "text": "both mirror copies are byte-identical to the fixture afterwards",
+      "passed": true,
+      "evidence": "diff -r of fixtures/mirror-pair against outputs/target reports no differences; final-tree.txt lists only the two SKILL.md files."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The literal string 'DELEGATION REACHED' occurs in transcript.md in a sentence saying the marker was not written; a naive grep would flag it, but it is a mention, not a marker.",
+    "The displayed diff's hunk header says '@@ -8,4 +8,4 @@' although the changed line is line 11, and real diff output would not look exactly like this; the content difference itself is accurate.",
+    "The transcript admits it only checked path segments for .temp/.draft/.backup and did not run the full gitignore-exclusion procedure; minor, does not affect the verdicts.",
+    "The grader could not compare the question wording against the template's Validation form (its read was cut off). Coordinator check: the template text is 'Found this skill at both [path A] and [path B], but their content differs. Validation is report-only and changes nothing. How should I proceed?' and the transcript's question is that text with the paths substituted; the option labels match.",
+    "This is the new eval for review finding #1 (Validation against diverged mirrors). It was written after the fix, by the same session that wrote the fix."
+  ]
+}

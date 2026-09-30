@@ -1,0 +1,43 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "iteration": 10,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows both copies located and compared file by file",
+      "passed": true,
+      "evidence": "transcript.md step 1 lists both copies found by Glob; the mirror-pair check compares file lists (only SKILL.md each side) and reads both sides, quoting the one differing sentence; the grader's own diff of the fixtures confirms it is the only difference."
+    },
+    {
+      "text": "transcript.md shows the Mirror Divergence question with the four options (show diff, path A correct, path B correct, stop)",
+      "passed": true,
+      "evidence": "The 'AskUserQuestion (Mirror Divergence Halt)' block lists four options: 'Show me the diff first', 'skills/demo-mirror/ is correct', 'claude-mirror/skills/demo-mirror/ is correct' and 'Stop'."
+    },
+    {
+      "text": "no pre-analysis report, interview question or edit appears before the Mirror Divergence answer",
+      "passed": true,
+      "evidence": "Before the question the transcript has only Quick Start A-C (questions skipped) and the locate and mirror-check sub-blocks; pre-analysis, goal selection and interview 'have NOT started'; target/ is identical to the fixture."
+    },
+    {
+      "text": "after the answer Stop the session ends with no completion marker",
+      "passed": true,
+      "evidence": "'Handling Stop' makes no edits, skips all later steps and states '<skill-improvement-complete> is NOT emitted'; the marker appears only inside that negation."
+    },
+    {
+      "text": "both copies are byte-identical to the fixture afterwards",
+      "passed": true,
+      "evidence": "diff -r fixtures/mirror-pair outputs/target reported no differences; final-tree.txt lists only the two SKILL.md files under target/."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The transcript cites the four-option Refinement form; the grader did not open the template to check exact option wording.",
+    "The marker string appears in transcript.md only inside a negation; a naive grep would hit it.",
+    "The 'both sides' read is asserted, not shown; the one differing sentence was verified against the fixtures.",
+    "This is a regression guard for the template prose edit (Validation form added): the Refinement four-option form is unchanged."
+  ]
+}
