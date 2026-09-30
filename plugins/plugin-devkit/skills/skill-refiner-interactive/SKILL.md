@@ -2,14 +2,15 @@
 name: skill-refiner-interactive
 description: >-
   Improves, validates, and optimizes existing Claude Code skills for clarity, efficiency, and
-  production readiness. Use when refining skills, improving skill structure, validating against
-  best practices, reducing token usage, consolidating references, checking production readiness,
-  applying the 80% rule, or running interactive fix-review workflows on existing skills.
-  Not for creating new skills — use skill-development instead. For a one-shot structured
-  quality report with no interactive back-and-forth, use the skill-reviewer agent instead —
-  this skill wraps skill-reviewer in Validation mode and then interactively applies fixes.
-  For fully automated, non-interactive fix-review loops with no user checkpoints, use
-  skill-improver-loop instead.
+  production readiness. Not for creating new skills — use skill-development instead. For a
+  one-shot structured quality report with no interactive back-and-forth, use the skill-reviewer
+  agent instead — this skill wraps skill-reviewer in Validation mode and then interactively
+  applies fixes. For fully automated, non-interactive fix-review loops with no user checkpoints,
+  use skill-improver-loop instead.
+when_to_use: >-
+  Use when refining skills, improving skill structure, validating against best practices,
+  reducing token usage, consolidating references, checking production readiness, applying the
+  80% rule, or running interactive fix-review workflows on existing skills.
 allowed-tools: Read Edit Write Glob Grep Skill Agent
 ---
 
@@ -88,7 +89,7 @@ questions: [
 **When user requests refinement:**
 
 1. **Locate the skill (MANDATORY first step)**
-   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `.temp/`, `.draft/`, or `.backup/` is not the real target
+   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `${CLAUDE_PLUGIN_ROOT}/skills/plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `.temp/`, `.draft/`, or `.backup/` is not the real target
    - **Mirror-pair check (R19):** if both `skills/skill-name/` and `.claude/skills/skill-name/` exist under the same plugin, this is an in-development staging mirror, not two independent skills. Diff `SKILL.md` and every `references/`/`scripts/` file between the two copies:
      - Identical → treat as one logical skill; every edit made during this workflow applies to BOTH copies; re-verify byte-identical before finalizing
      - Differ → HALT per R19 and ask which copy is authoritative before proceeding:
@@ -110,7 +111,7 @@ questions: [
    - If not found anywhere → use `AskUserQuestion` — question: "Where should I find this skill?", options: "Project skill" / "User-space skill" / "Other" (lets the operator type a path)
 
    **Immediately after locating — pre-analyze before any interview:**
-   - Check for `plugin-rulebook` skill (Glob `**/plugin-rulebook/SKILL.md`); if found, read its `assets/settings.json` and load BOTH R13 (SKILL.md line-count) and R18 (inline code-block size) tiered thresholds — these supersede the flat limits below for the rest of pre-analysis. If not found, fall back to `skill-development/references/size-limits.md`'s flat 500-line / 10-line limits.
+   - Check for `plugin-rulebook` skill (Glob `**/plugin-rulebook/SKILL.md`); if found, read its `assets/settings.json` and load BOTH R13 (SKILL.md line-count) and R18 (inline code-block size) tiered thresholds — these supersede the flat limits below for the rest of pre-analysis. If not found, fall back to `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/size-limits.md`'s flat 500-line / 10-line limits.
    - Read SKILL.md; count body lines (exclude frontmatter); classify against the resolved R13 tiers (OK / Weak Warning / Soft Warning / Warning / Critical) — don't treat 500 as the only threshold worth reporting; a Soft Warning at, say, 350 lines is worth surfacing even though it's non-blocking
    - Scan frontmatter: flag non-standard fields per `plugin-rulebook`'s R5 (if found in the check above — currently just `version`; treat R5's own text as authoritative rather than restating its list here, since it's the source of truth this file would otherwise drift from), single-line `description` (needs `>-`) — `allowed-tools` may be space-separated, comma-separated, or a YAML list (space-separated is preferred style, not a requirement), and `argument-hint` is an allowed skill field, not a violation. If `plugin-rulebook` wasn't found, fall back to: `version` is the only forbidden field; `AskUserQuestion` in `allowed-tools` is a harmless no-op, not a violation.
    - Identify sections ≥50 lines; classify core (80%+ usage) vs. low-frequency (<20%)
@@ -118,7 +119,7 @@ questions: [
    - Check all `workflows/*.md`; flag any ≥300 lines; scan each for links to `references/` files used as action steps (workflow→reference chain violation); also scan each `references/*.md` for imperative directives to read another `references/` file (reference→reference chain violation)
    - Scan SKILL.md and all `references/*.md` for spawn anti-patterns: Cartesian product spawning (subagents spawned for every combination of two or more independent lists), unbounded agent spawning (spawn inside a loop with no explicit count cap where the list is user-controlled), vague subagent prompts (dispatch instructions with no file paths, no goal statement, no output spec)
    - Scan SKILL.md for sections that handle user intake: grep for `ask the user`, `prompt the user`, free-form `questions:` blocks (i.e., `questions:` key present but no `options:` key in the same block). Flag each as a behavioral intake violation — sections that collect input without `AskUserQuestion` should be converted to use it
-   - Check R22 argument-hint/arguments consistency: if `plugin-rulebook` was found above, read its `references/argument-consistency.md` for the detection procedure; otherwise scan the body directly for `$ARGUMENTS`, `$ARGUMENTS[N]`, a bare unescaped `$0`/`$1`/`$2`/..., or `$name` for a name declared in `arguments`. Compare against frontmatter `argument-hint`/`arguments`: flag a missing declaration (body accepts arguments but frontmatter is empty), an orphaned declaration (frontmatter declares a slot never referenced in the body), or a wrong-position mismatch (declared order doesn't match consumption order). Catching this in pre-analysis lets the operator fix it as part of BATCH 2 instead of only via the mandatory `plugin-rulebook` gate at the end of the workflow.
+   - Check R22 argument-hint/arguments consistency: if `plugin-rulebook` was found above, read `${CLAUDE_PLUGIN_ROOT}/skills/plugin-rulebook/references/argument-consistency.md` for the detection procedure; otherwise scan the body directly for `$ARGUMENTS`, `$ARGUMENTS[N]`, a bare unescaped `$0`/`$1`/`$2`/..., or `$name` for a name declared in `arguments`. Compare against frontmatter `argument-hint`/`arguments`: flag a missing declaration (body accepts arguments but frontmatter is empty), an orphaned declaration (frontmatter declares a slot never referenced in the body), or a wrong-position mismatch (declared order doesn't match consumption order). Catching this in pre-analysis lets the operator fix it as part of BATCH 2 instead of only via the mandatory `plugin-rulebook` gate at the end of the workflow.
    - Check for a `when_to_use`-split candidate: if no `when_to_use` field is present, scan `description` for an embedded trigger-condition clause (e.g., a `Use when` / `use when` phrase mid-description). If found and `description` alone exceeds roughly 400 characters, flag it — the trigger conditions could move to `when_to_use`, tightening `description` to the "what" per `skill-development`'s What+When formula (see `skill-development/references/content-guidelines.md`).
 
    **Emit pre-analysis report before proceeding:**
@@ -167,12 +168,18 @@ questions: [
 questions: [
   {
     question: "What specific problems are you seeing?",
-    header: "Key Issues"
+    header: "Key Issues",
+    options: [
+      { label: "Hard-to-follow instructions", description: "Instructions are hard to follow" },
+      { label: "Scattered references", description: "References scattered and redundant" },
+      { label: "Nested sections", description: "Too many nested sections" }
+    ],
+    multiSelect: true
   }
 ]
 ```
 
-(Examples: "Instructions are hard to follow", "References scattered and redundant", "Too many nested sections")
+(The operator describes anything else via "Other" free text.)
 
 #### Question 3: What would success look like?
 
@@ -180,12 +187,18 @@ questions: [
 questions: [
   {
     question: "What would success look like?",
-    header: "Success Metric"
+    header: "Success Metric",
+    options: [
+      { label: "Clearer workflow", description: "Instructions are easier to follow end to end" },
+      { label: "Lower token cost", description: "Fewer tokens loaded per activation" },
+      { label: "Production-ready", description: "Production-ready with error handling" }
+    ],
+    multiSelect: false
   }
 ]
 ```
 
-(Examples: "Clearer workflow", "Fewer token costs", "Production-ready with error handling")
+(The operator describes anything else via "Other" free text.)
 
 #### Question 4: Any areas to exclude or preserve as-is?
 
@@ -193,12 +206,18 @@ questions: [
 questions: [
   {
     question: "Any areas to exclude or preserve as-is?",
-    header: "Scope Limits"
+    header: "Scope Limits",
+    options: [
+      { label: "Keep validation gates", description: "Leave the validation gates unchanged" },
+      { label: "Keep tool scoping", description: "Don't change allowed-tools" },
+      { label: "Nothing to exclude", description: "Everything is in scope" }
+    ],
+    multiSelect: true
   }
 ]
 ```
 
-(Examples: "Keep the validation gates", "Don't change tool scoping")
+(The operator names anything else via "Other" free text.)
 
 After gathering ALL responses, document approved scope and proceed to BATCH 2.
 
@@ -324,7 +343,7 @@ After gathering responses (if any), document approved scope and proceed.
    - Phase 1: File Inventory - list structure before/after
    - Phase 2: Read All - load complete content, verify no gaps
    - Phase 3: Frontmatter - check required metadata (name, description)
-   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern (load `design-patterns.md`) and spawn anti-patterns
+   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern (load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`) and spawn anti-patterns
    - Phase 5: References - confirm all linked files exist, complete, one level deep, no reference→reference chains
    - Phase 6: Tools - three-step reconciliation: undeclared tools, unused declared tools, Bash-for-dedicated-tool misuse
    - Phase 7: Testing - verify activation with real-world trigger phrases
@@ -392,7 +411,7 @@ Score the current and proposed versions on a fixed held-out check set (3–8 tas
 
 ## Key Rules (Non-Negotiable)
 
-Four invariants govern every content change: the 80% Rule (core vs. supplementary content), the CREATE → LINK → DELETE movement pattern, four ordered Preservation Gates, and Scope Rules (which paths are preferred/conditional/forbidden to edit). Full detail — including the movement-pattern visual, the complete gate list, and the scope table — is in `references/non-negotiable-rules.md`; the workflow steps above already apply these, this is the reference version for the exact wording.
+Four invariants govern every content change: the 80% Rule (core vs. supplementary content), the CREATE → LINK → DELETE movement pattern, four ordered Preservation Gates, and Scope Rules (which paths are preferred/conditional/forbidden to edit). The workflow steps above already apply these; for full detail on each, see the dedicated reference files linked in the Reference Guide below.
 
 ## Reference Guide
 
@@ -414,10 +433,8 @@ Reorganize sections, improve grouping, better information flow
 
 ### Preserving Functionality (Safety Gates)
 Never break existing behavior, never delete without knowing where content goes
-→ `references/preservation-rules.md` for what NEVER gets cut
-→ `references/refinement-guardrails.md` for safe patterns
+→ `references/preservation-rules.md` for what NEVER gets cut and safe refinement patterns
 → `references/movement-pattern.md` for CREATE → LINK → DELETE sequence
-→ `references/non-negotiable-rules.md` for the full Key Rules reference (80% Rule, movement pattern, preservation gates, scope rules in one place)
 
 ### Validating Quality
 Check production readiness, tool scoping, completeness

@@ -30,28 +30,6 @@ Four mandatory gates that protect skill functionality. Apply **in order**. Do no
    - **Core (80%+):** Essential to execution, Claude needs it always
    - **Supplementary (<20%):** Nice-to-have, edge cases, theory
 
-**Example Audit:**
-```
-SKILL.md:
-  - Quick Start (35 lines) → Core
-  - Core Workflow: Refinement (220 lines) → Core
-  - Core Workflow: Validation (180 lines) → Core
-  - Key Rules (120 lines) → Core
-  - Reference Files Guide (80 lines) → Supplementary
-  - Pro Tips (45 lines) → Supplementary
-  - Common Scenarios (130 lines) → Core
-  - Notes (30 lines) → Supplementary
-
-references/refinement-workflow.md (298 lines) → Core
-references/validation-checklist.md (156 lines) → Supplementary
-references/production-patterns.md (214 lines) → Supplementary (advanced only)
-references/preservation-rules.md (89 lines) → Core (protects refinement)
-
-Total: ~1,751 lines
-Core content: ~1,065 lines
-Supplementary: ~686 lines
-```
-
 **Gate 1 Check:** Proceed to Gate 2 only after completing full audit.
 
 ### Gate 2: Capability Assessment
@@ -157,33 +135,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 
 **Action:** List complete skill structure before and after refinement.
 
-**Report:**
-
-**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a single coherent before/after comparison; splitting it would break the comparison it's illustrating.
-
-```
-BEFORE REFINEMENT:
-├── SKILL.md (1,200 lines)
-├── references/
-│   ├── workflow.md (298 lines)
-│   ├── checklist.md (156 lines)
-│   └── patterns.md (214 lines)
-├── scripts/
-│   └── validate.py (87 lines)
-└── assets/ (empty)
-
-AFTER REFINEMENT:
-├── SKILL.md (950 lines) ← 250 lines removed
-├── references/
-│   ├── workflow.md (298 lines)
-│   ├── checklist.md (156 lines)
-│   └── production-patterns.md (285 lines) ← Consolidated
-├── scripts/
-│   └── validate.py (87 lines)
-└── assets/ (empty)
-
-Changes: 1 file merged, SKILL.md reduced, references consolidated
-```
+**Report:** a before/after file tree (SKILL.md line count, each `references/` file, `scripts/`, `assets/`) with a one-line summary of what changed.
 
 **Pass Condition:** File structure is complete and accounts for all changes.
 
@@ -212,16 +164,6 @@ Changes: 1 file merged, SKILL.md reduced, references consolidated
 
 **Non-standard fields — remove if present:** per `plugin-rulebook`'s R5 (the source of truth for this check — trace back to its current text rather than restating the list here). As of R5's current text, the only forbidden field is `version` (command-only field); `AskUserQuestion` in `allowed-tools` is explicitly *not* a violation — a harmless no-op, since every tool remains callable regardless of `allowed-tools`.
 
-**Example:**
-```yaml
----
-name: skill-refiner                        ✓ Correct
-description: >-
-  Improve and validate Claude Code skills... ✓ Multiline >-; includes trigger phrases
-allowed-tools: Read Edit Write Glob        ✓ Space-separated, principle of least privilege
----
-```
-
 **Pass Condition:** Required fields present and correctly formatted; no non-standard fields; syntax valid.
 
 ### Phase 4: Body Content
@@ -236,23 +178,8 @@ allowed-tools: Read Edit Write Glob        ✓ Space-separated, principle of lea
 - [ ] **Examples:** Code-first examples before abstract explanations
 - [ ] **Structure:** Clear sections (Quick Start → Workflows → Key Rules → References)
 - [ ] **Activation:** Trigger phrases present and clear (will Claude recognize requests?)
-- [ ] **Workflow pattern:** Load `skill-development/references/design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
+- [ ] **Workflow pattern:** Load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
 - [ ] **Spawn anti-patterns:** No Cartesian product spawning (O(N×M) subagent spawns across independent lists), no unbounded agent spawning (loop spawn with no explicit count cap on a user-controlled list), no vague subagent prompts (dispatch with no file paths, goal, or output spec)
-
-**Example Check:**
-```
-Before refinement:
-- SKILL.md: 1,200 lines (too long)
-- "Reference Files" section (80 lines of descriptive text about what files exist)
-- "Theory of Refinement" section (120 lines of abstract concepts)
-→ Issues: Too long, contains supplementary content
-
-After refinement:
-- SKILL.md: 950 lines (✓ under 500 range, acceptable)
-- Removed descriptive text → files are self-evident
-- Moved theory to references/80-percent-rule.md
-→ Pass: Better token efficiency, core content preserved
-```
 
 **Pass Condition:** <500 lines, 80% rule applied, clear procedural content.
 
@@ -269,24 +196,6 @@ After refinement:
 - [ ] Each file has clear purpose (title, table of contents if >100 lines)
 - [ ] Links from SKILL.md are accurate (correct filenames)
 
-**Example Check:**
-```
-SKILL.md references:
-  - "See references/refinement-workflow.md" → ✓ File exists
-  - "See references/validation-checklist.md" → ✓ File exists
-  - "See references/production-patterns.md" → ✓ File exists (merged)
-
-Orphaned files (referenced nowhere):
-  - None ✓
-
-Directory structure:
-  references/
-  ├── refinement-workflow.md      ✓ One level deep
-  ├── validation-checklist.md     ✓ One level deep
-  └── production-patterns.md      ✓ One level deep
-  (No nested directories) ✓
-```
-
 **Pass Condition:** All referenced files exist, no orphans, one level deep only.
 
 ### Phase 6: Tool Scoping
@@ -299,17 +208,6 @@ Directory structure:
 - [ ] **Bash-for-dedicated-tool misuse:** No `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)` where Grep, Glob, Read would serve the same purpose (Minor)
 - [ ] Wildcards used appropriately (`Bash(git:*)` for git-only, `Task(*)` for all agents)
 - [ ] Tool scoping is explicit and documented
-
-**Example:**
-```
-Skill uses: Read, Edit, Write, Bash (git operations), Glob, Task (explore agent)
-Current allowed-tools: Read,Edit,Write,Bash(*),Glob,Task(*)
-Issues: (1) Bash(*) too broad; (2) Task(*) too broad — comma-separated format itself is valid, not an issue
-
-Fix: scope Bash and Task to the specific operations used
-
-Updated: allowed-tools: Read,Edit,Write,Bash(git:*),Glob,Task(Explore)
-```
 
 **Pass Condition:** Tool scoping is explicit, principle of least privilege applied.
 
@@ -326,21 +224,6 @@ Updated: allowed-tools: Read,Edit,Write,Bash(git:*),Glob,Task(Explore)
 - [ ] **Links:** Follow a reference link. Does it work? Is content complete?
 - [ ] **Workflows:** Trace main workflow. Are steps in correct order?
 - [ ] **Examples:** Run through an example. Does it work end-to-end?
-
-**Example Testing:**
-```
-Test 1: "Refine the plugin-creator skill"
-→ Skill description includes "refine existing skills"? ✓ Should trigger
-→ Quick Start covers this? ✓ Procedure clear
-→ Can find plugin-creator? ✓ Locate workflow works
-
-Test 2: "Validate that my skill is production-ready"
-→ Description includes "validate"? ✓ Should trigger
-→ Core Workflow: Validation delegates to skill-reviewer + Skill(plugin-rulebook)? ✓ Correctly routes instead of reimplementing checks
-→ Report renders skill-reviewer's verdict + plugin-rulebook FAILs? ✓ Presentation works
-
-Pass: Activation and execution verified
-```
 
 **Pass Condition:** Skill activates correctly, procedures are clear, examples work end-to-end.
 
