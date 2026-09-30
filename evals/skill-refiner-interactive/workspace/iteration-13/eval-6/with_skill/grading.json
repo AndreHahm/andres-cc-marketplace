@@ -1,0 +1,43 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "after the first run of both compliance checks (rulebook FAIL + reviewer Major) transcript.md says NO MARKER EMITTED",
+      "passed": true,
+      "evidence": "Run 1 records the simulated R8 FAIL and the reviewer Major, then 'NO MARKER EMITTED'."
+    },
+    {
+      "text": "the transcript shows the FAIL and the Major being fixed and both checks re-run before any marker",
+      "passed": true,
+      "evidence": "The fixes are shown, target/SKILL.md confirms the `>-` description and the added Quick Start example, and Run 2 re-runs both checks clean before the marker."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears after the clean re-run of both checks",
+      "passed": true,
+      "evidence": "The marker is at transcript.md line 165, after the Run 2 clean results."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the clean re-run of both checks",
+      "passed": true,
+      "evidence": "grep -c returns 1; a single block labelled 'Marker emitted (once)'."
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "passed": true,
+      "evidence": "The R8 fix is format-only (same words) and step 9 does not re-run; the text-changed branch is not exercised in this run."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The text-changed-description branch of the last assertion was not exercised; only the format-only case is shown.",
+    "The step-10 checks were simulated, as the eval allows.",
+    "Testing & Validation was left out on the run's own reading of the first-option Q4 default ('Keep validation gates').",
+    "Regression guard for the step-10 edit (scope-exclusion clause): the marker gate is unchanged when no exclusion is involved."
+  ]
+}

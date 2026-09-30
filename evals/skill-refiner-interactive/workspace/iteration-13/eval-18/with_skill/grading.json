@@ -1,0 +1,47 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "the pre-analysis report lists exactly one finding for the target",
+      "passed": true,
+      "evidence": "Only one non-clean line: the single-line 138-character description (R8); every other field reads none, OK or within tiers."
+    },
+    {
+      "text": "the goal-selection question is single-select and offers exactly two options labelled 'Select this goal' and 'No goals' (plus the automatic Other)",
+      "passed": true,
+      "evidence": "multiSelect: false, exactly two options 'Select this goal' and 'No goals', plus a note on the automatic Other."
+    },
+    {
+      "text": "the 'Select this goal' option's description shows the goal's verification check",
+      "passed": true,
+      "evidence": "The description carries 'Verification: Skill(plugin-rulebook) R5 and R8 -> OK' and the source finding."
+    },
+    {
+      "text": "after the simulated 'Select this goal' answer, exactly one goal is recorded",
+      "passed": true,
+      "evidence": "'Recorded goal G1: Frontmatter passes R5 and R8'; only G1 appears in the approved scope."
+    },
+    {
+      "text": "BATCH 1 Question 1 is skipped because a goal was selected",
+      "passed": true,
+      "evidence": "'(goals selected, so Question 1 is skipped)'; only Questions 2-4 follow."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r against fixtures/one-finding-skill: no differences; final-tree.txt lists only target/SKILL.md; step-5 answer 'Stop'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The run did not use the brief's 'Define explicitly' escape-hatch answer, because a bare 'Refine the skill in OUTDIR/target.' is not predating context (SKILL.md Quick Start A). Consistent with the skill; no verdict changed.",
+    "The transcript says 'nothing skips BATCH 1' and also that Question 1 is skipped; confusing wording, consistent content.",
+    "Option lists for Questions 2-4 and Prod checks were written out by the run, not checked against the templates by the grader."
+  ]
+}

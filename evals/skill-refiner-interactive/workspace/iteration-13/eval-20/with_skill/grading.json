@@ -1,0 +1,44 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "the Refinement four-option Mirror question is asked before any analysis or edit, and its two 'is correct' options select an authoritative copy for analysis without saying the other copy is overwritten at that point",
+      "passed": true,
+      "evidence": "The four-option question is written in step 1 before pre-analysis; each 'is correct' option says 'analyze X; Y is overwritten with it in step 6, only if changes are applied', deferring any overwrite to step 6."
+    },
+    {
+      "text": "the simulated answer is recorded as the skills/demo-mirror copy being authoritative for this session, with no overwrite performed at that point",
+      "passed": true,
+      "evidence": "'skills/demo-mirror copy ... is authoritative for this session. Nothing is overwritten at this point.' Both target files are unchanged from the fixture."
+    },
+    {
+      "text": "the plan-only exit is taken: the transcript shows step 6 (Make changes) is not run",
+      "passed": true,
+      "evidence": "Step 5 says 'step 6 is NOT run'; the 'Steps 6-10: not run' section lists it with the reason."
+    },
+    {
+      "text": "a changes.md is written at OUTDIR/changes.md containing the approved findings",
+      "passed": true,
+      "evidence": "changes.md holds goal G1 and findings F1 (mirror divergence), F2 (description below R21) and M1 (missing sections), each with files affected and exact edits."
+    },
+    {
+      "text": "both copies under target/ are byte-identical to the pristine mirror-pair fixture (neither was edited or overwritten)",
+      "passed": true,
+      "evidence": "diff -r fixtures/mirror-pair outputs/target: identical; final-tree.txt lists exactly the two SKILL.md files."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The transcript promises a post-run diff 'in the final report' that does not exist in the outputs; the grader ran the diff itself and it was clean.",
+    "The Apply/Plan only/Stop question was skipped because the operator's wording already said plan only: a reasonable reading of the skill, stated openly.",
+    "The Mirror question's 'is correct' option text contains the word 'overwritten' (as step-6-conditional template text). A very strict reading of assertion 1 could object; the grader judged it compliant because the overwrite is explicitly deferred and conditional.",
+    "A global target/ gitignore pattern matches the OUTDIR paths; the run treated the copies as real targets (disclosed).",
+    "New eval for finding 4 (plan-only run on diverged mirrors must not overwrite a copy)."
+  ]
+}

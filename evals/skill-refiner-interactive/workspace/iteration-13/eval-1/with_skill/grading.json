@@ -1,0 +1,48 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the pre-analysis report was emitted before any goal question or interview question",
+      "passed": true,
+      "evidence": "The full report precedes the first goal question and the interview; the only earlier item is the escape-hatch check, stated as not asked."
+    },
+    {
+      "text": "transcript.md shows up to 3 goals derived from pre-analysis findings, each with a verification check",
+      "passed": true,
+      "evidence": "Exactly 3 goals, each with a 'verify:' clause and a source finding; the other candidates deferred."
+    },
+    {
+      "text": "the step-5 plan-only branch was taken (by wording or by an approval option) and step 6 (make changes) was not run",
+      "passed": true,
+      "evidence": "Plan-only wording skipped the ask; 'step 6 is NOT run'; the target diff is empty."
+    },
+    {
+      "text": "changes.md exists at the confirmed draft path and contains a Selected Goals section, an Implementation Order section and at least one F/O/M-numbered finding",
+      "passed": true,
+      "evidence": "outputs/changes.md has Selected Goals, Implementation Order, and findings F1, F2, F3 and O1."
+    },
+    {
+      "text": "the target copy's files are byte-identical to the original fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r fixtures/demo-skill outputs/target: no differences."
+    },
+    {
+      "text": "no goal measurement was run in this session",
+      "passed": true,
+      "evidence": "No measurement results appear anywhere; verifications are future Post-Implementation items."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The target path matches the user's global target/ ignore rule; the run proceeded on the operator's word (disclosed).",
+    "Q2-Q4 took first-option defaults; 'Keep validation gates' shaped the plan (Testing & Validation left out); disclosed.",
+    "The description-size goal's priority tier is the run's own judgment (goal-derivation.md does not name it).",
+    "Regression guard for the plan-only path: unchanged by the mirror and goal-selection edits."
+  ]
+}

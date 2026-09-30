@@ -1,0 +1,36 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "goal measurement 1 (step 8), after step 6's edit, records the description goal as PASS with a character count between 80 and 1024",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "at step 9 the trigger-eval check is run and the description in target/SKILL.md is rewritten to more than 1024 characters",
+      "type": "functionality",
+      "target": "transcript.md and target/SKILL.md"
+    },
+    {
+      "text": "after the step-9 rewrite and before step 10's compliance checks, the selected goals are measured again (a second goal measurement)",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the second goal measurement records the description goal as FAIL and reports a character count above 1024",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "on that FAIL the skill asks Accept with reason / Continue refining, and no completion marker is emitted before that answer",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after 'Accept with reason' the accepted goal failure and its reason are recorded, and the completion marker is emitted exactly once, at the end",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}

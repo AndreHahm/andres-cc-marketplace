@@ -1,0 +1,36 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the escape-hatch question answered 'Infer from context' and BATCH 1 skipped",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the goal-selection question offers a candidate goal for the operator's stated need (the Quick Start being unclear to a first-time reader) alongside goals derived from pre-analysis",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "that candidate goal states a concrete proposed verification check",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "no more than 3 goals are offered in total, and any derived goal displaced by the candidate is listed as a deferred candidate",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the recorded goals, after the simulated 'select all', include the context-derived goal",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "type": "structure",
+      "target": "final-tree.txt and target/"
+    }
+  ]
+}
