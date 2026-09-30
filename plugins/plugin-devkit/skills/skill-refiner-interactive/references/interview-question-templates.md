@@ -123,7 +123,7 @@ Standard sections (Quick Start, When to Use, When NOT to Use, Testing & Validati
 
 ## Mirror Divergence Halt
 
-Used when a skill exists at both `plugins/<plugin>/skills/<name>/` and `<repo root>/.claude/skills/<name>/` and the two copies differ (R19). In Validation mode, which is report-only, offer only "Show me the diff first" and "Stop"; an overwrite edits files, so it belongs to the Refinement workflow:
+Used when a skill exists at both `plugins/<plugin>/skills/<name>/` and `<repo root>/.claude/skills/<name>/` and the two copies differ (R19). The Refinement workflow uses the four-option form below. Validation is report-only and never overwrites a copy, so it uses the two-option Validation form that follows it instead:
 
 ```
 question: "Found this skill at both [path A] and [path B], but their content differs. Which is authoritative?"
@@ -132,6 +132,16 @@ options:
   - "Show me the diff first": display what differs before deciding
   - "[path A] is correct": overwrite [path B] with [path A], then proceed
   - "[path B] is correct": overwrite [path A] with [path B], then proceed
+  - "Stop": don't touch either copy; end the session so the operator can reconcile
+```
+
+Validation form (report-only; no overwrite option):
+
+```
+question: "Found this skill at both [path A] and [path B], but their content differs. Validation is report-only and changes nothing. How should I proceed?"
+header: "Mirror"
+options:
+  - "Show me the diff first": display what differs, then end the session so the operator can reconcile and re-run
   - "Stop": don't touch either copy; end the session so the operator can reconcile
 ```
 
