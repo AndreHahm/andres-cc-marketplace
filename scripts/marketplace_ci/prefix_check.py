@@ -118,6 +118,57 @@ class PrefixPermanenceViolation:
     reason: str
 
 
+def _object_records(
+    inventory: dict, path: Path, violations: list[PrefixViolation]
+) -> list[dict[str, Any]]:
+    """Return `inventory["plugins"]`'s JSON-object entries, reporting (not
+    crashing on) a `plugins` value that isn't a list or an entry that isn't
+    an object -- either used to surface as an uncaught AttributeError
+    traceback instead of a readable CI finding."""
+    plugins = inventory.get("plugins", [])
+    if not isinstance(plugins, list):
+        violations.append(
+            PrefixViolation(plugin="?", path=path, reason="`plugins` is not a JSON array")
+        )
+        return []
+    records: list[dict[str, Any]] = []
+    for index, entry in enumerate(plugins):
+        if isinstance(entry, dict):
+            records.append(entry)
+        else:
+            violations.append(
+                PrefixViolation(
+                    plugin=f"plugins[{index}]",
+                    path=path,
+                    reason="record is not a JSON object",
+                )
+            )
+    return records
+
+
+def _joinable_records(inventory: dict) -> list[dict[str, Any]]:
+    """`inventory["plugins"]`'s object entries, or [] if `plugins` isn't a
+    list (or the top level isn't an object)."""
+    plugins = inventory.get("plugins", []) if isinstance(inventory, dict) else None
+    if not isinstance(plugins, list):
+        return []
+    return [p for p in plugins if isinstance(p, dict)]
+
+
+def _has_joinable_id(record: dict[str, Any]) -> bool:
+    return isinstance(record.get("id"), str) and bool(record["id"])
+
+
+def _records_by_id(inventory: dict) -> dict[str, Any]:
+    """Index `inventory["plugins"]` by `id`, skipping records without a
+    joinable one. Skipping is fail-closed on the head side (a head record
+    that lost its `id` leaves its base counterpart unmatched, reported as
+    "the record no longer exists at head"), but NOT on the base side -- the
+    caller reports a base record that registers a prefix without a joinable
+    `id` separately, since it would otherwise get no protection at all."""
+    return {p["id"]: p for p in _joinable_records(inventory) if _has_joinable_id(p)}
+
+
 def find_prefix_permanence_violations(
     base_inventory: dict, head_inventory: dict, repo: Path | None = None
 ) -> list[PrefixPermanenceViolation]:
@@ -151,11 +202,11 @@ def find_prefix_permanence_violations(
     # exists in; once corrected to a real first-time prefix/domain_prefix, that's a
     # legitimate first assignment here, not a permanence violation.
     base_by_id = {
-        p["id"]: p
-        for p in base_inventory.get("plugins", [])
+        plugin_id: p
+        for plugin_id, p in _records_by_id(base_inventory).items()
         if p.get("prefix") or p.get("domain_prefix")
     }
-    head_by_id = {p["id"]: p for p in head_inventory.get("plugins", [])}
+    head_by_id = _records_by_id(head_inventory)
 
     authoritative_sources: dict[str, str] = {}
     duplicate_manifest_names: set[str] = set()
@@ -163,6 +214,23 @@ def find_prefix_permanence_violations(
         authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
 
     violations: list[PrefixPermanenceViolation] = []
+    # A base record registering a prefix/domain_prefix but lacking a joinable
+    # `id` can't be matched to its head counterpart at all, so it would get no
+    # permanence protection -- report it rather than skip it.
+    for base_plugin in _joinable_records(base_inventory):
+        if (base_plugin.get("prefix") or base_plugin.get("domain_prefix")) and not (
+            _has_joinable_id(base_plugin)
+        ):
+            violations.append(
+                PrefixPermanenceViolation(
+                    plugin_id="?",
+                    plugin_name=str(base_plugin.get("name", "?")),
+                    reason=(
+                        "registers a prefix/domain_prefix at the base commit but has no "
+                        "non-empty string `id`, so its permanence cannot be checked"
+                    ),
+                )
+            )
     for plugin_id, base_plugin in base_by_id.items():
         registered_fields = [f for f in ("prefix", "domain_prefix") if base_plugin.get(f)]
         head_plugin = head_by_id.get(plugin_id)
@@ -417,7 +485,16 @@ def find_prefix_violations(
         return []
 
     inventory = json.loads(marketplace_inventory_path.read_text(encoding="utf-8"))
+    if not isinstance(inventory, dict):
+        return [
+            PrefixViolation(
+                plugin="?",
+                path=marketplace_inventory_path,
+                reason="marketplace-inventory.json's top level is not a JSON object",
+            )
+        ]
     violations: list[PrefixViolation] = []
+    plugins = _object_records(inventory, marketplace_inventory_path, violations)
     repo_resolved = repo.resolve()
 
     # Format + marketplace-wide uniqueness, across every plugin regardless
@@ -431,10 +508,38 @@ def find_prefix_violations(
     assigned_prefixes: dict[str, str] = {}
     invalid_domain_prefix_plugins: set[str] = set()
     assigned_domain_prefixes: dict[str, str] = {}
-    for plugin in inventory.get("plugins", []):
+    seen_ids: dict[str, str] = {}
+    for plugin in plugins:
         plugin_name = plugin.get("name", "?")
+        # `id` is what find_prefix_permanence_violations joins base to head on,
+        # so a record without a usable, unique one escapes that check: a
+        # missing/non-string/empty `id` is skipped from the join, and with a
+        # duplicate `id` a decoy record can stand in for the real one (last
+        # duplicate wins). Reject both here so neither can reach the base.
+        record_id = plugin.get("id")
+        if not isinstance(record_id, str) or not record_id:
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=f"record `id` {record_id!r} is missing or not a non-empty string",
+                )
+            )
+        elif record_id in seen_ids:
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        f"record `id` {record_id!r} is already used by {seen_ids[record_id]!r} "
+                        "-- an id is unique, since prefix permanence joins base to head on it"
+                    ),
+                )
+            )
+        else:
+            seen_ids[record_id] = plugin_name
         if "prefix" not in plugin:
-            # `prefix` is a required key (PR 11): an explicit `null` is the
+            # `prefix` became a required key in #433: an explicit `null` is the
             # "none registered" opt-out and stays inert below, but an
             # omitted key is malformed. Both read as None via `.get()`, so
             # presence has to be checked here, before that collapse.
@@ -580,7 +685,7 @@ def find_prefix_violations(
     # (P1), round 9; the multi-record-per-name gap found by a live
     # CodeRabbit review (Major), PR #387 round 2.
     by_name: dict[str, list[dict[str, Any]]] = {}
-    for plugin in inventory.get("plugins", []):
+    for plugin in plugins:
         if plugin.get("prefix") is None and plugin.get("domain_prefix") is None:
             continue
         by_name.setdefault(plugin.get("name", "?"), []).append(plugin)
