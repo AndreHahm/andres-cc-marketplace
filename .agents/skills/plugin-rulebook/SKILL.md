@@ -467,7 +467,7 @@ correctness (encodings, shell logic, mojibake). Run `scripts-reviewer` separatel
 
 ## Upstream Source Verification
 
-Whether a rule traces back to an official Codex doc, and whether that doc has changed, is tracked by the `upstream-sources-registry` skill — not by this skill. `find-dev-rule`/`verify-dev-rules`/`update-dev-rule` consult that registry and surface any gap through their own classification. See `.Codex/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section for the full procedure and how intentional divergences are recorded.
+Whether a rule traces back to an official Codex doc, and whether that doc has changed, is tracked by the `upstream-sources-registry` skill — not by this skill. `pdk-find-dev-rule`/`pdk-verify-dev-rules`/`pdk-update-dev-rule` consult that registry and surface any gap through their own classification. See `.Codex/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section for the full procedure and how intentional divergences are recorded.
 
 ---
 
