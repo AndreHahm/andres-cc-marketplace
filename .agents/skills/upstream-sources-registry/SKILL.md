@@ -24,15 +24,15 @@ scratch on every single command run.
 This skill owns the registry only: the source list, its classification, and the mechanics of
 checking whether a source has changed. It does not own rule-vs-source gap comparison, priority
 ranking of *findings*, or duplicate-fact grep-sweeps — those already exist, more maturely than
-anything this skill would add, in the `report-dev-rules` → `verify-dev-rules` → `plan-dev-rules` →
-`implement-dev-rules` pipeline and in `find-dev-rule`/`update-dev-rule`. This skill is the registry
+anything this skill would add, in the `pdk-report-dev-rules` → `pdk-verify-dev-rules` → `pdk-plan-dev-rules` →
+`pdk-implement-dev-rules` pipeline and in `pdk-find-dev-rule`/`pdk-update-dev-rule`. This skill is the registry
 those six commands consult; it is not a seventh parallel pipeline.
 
 ## When to Use
 
 Two distinct consumers:
 
-- **Automated** — `find-dev-rule`, `verify-dev-rules`, and `update-dev-rule` consult this registry
+- **Automated** — `pdk-find-dev-rule`, `pdk-verify-dev-rules`, and `pdk-update-dev-rule` consult this registry
   before doing any live doc lookup, to learn which source(s) cover a topic and whether the last
   check is still fresh enough to trust, rather than issuing a blind `WebSearch` every run.
 - **Ad hoc / human** — a maintainer or skill author asks "is there already an official source for
@@ -43,8 +43,8 @@ Two distinct consumers:
 
 - **Comparing a local rule's actual value against a source's current content, classifying the gap,
   ranking it, tracking exclusions, or sweeping the tree for stale duplicate copies** — this is
-  `report-dev-rules`/`verify-dev-rules`/`plan-dev-rules`/`implement-dev-rules`/`find-dev-rule`/
-  `update-dev-rule`'s job. This skill tells those commands *which source to check and whether it's
+  `pdk-report-dev-rules`/`pdk-verify-dev-rules`/`pdk-plan-dev-rules`/`pdk-implement-dev-rules`/`pdk-find-dev-rule`/
+  `pdk-update-dev-rule`'s job. This skill tells those commands *which source to check and whether it's
   stale*; it does not itself decide `CONFIRMED`/`OUTDATED`/`MISSING`/`CONFLICT`/`NOT-OFFICIAL`.
 - **R1–R27 structural/naming/formatting rules** — that's `plugin-rulebook`. This skill replaces
   `plugin-rulebook`'s old scattered "Upstream Audit" bookkeeping (the source-tracking table and
@@ -112,7 +112,7 @@ Re-check priority uses three words — **`critical`** / **`standard`** / **`oppo
 deliberately not the dev-rules pipeline's `P1`–`P4` scale, even though both are "priority": that
 scale ranks how urgent a *found gap* is to fix, this one ranks how often a *source* needs
 re-checking. Reusing `P1`–`P4` for a different axis would make a maintainer reading both a
-`verify-dev-rules` gap report and this registry side by side misread one for the other.
+`pdk-verify-dev-rules` gap report and this registry side by side misread one for the other.
 
 Computed by `scripts/compute_priority.py` from `authority` × `volatility` × live-grepped blast
 radius — never hand-picked per source, and never trusted from a stale cached value:
@@ -130,11 +130,11 @@ formula to catch up.
 
 ## Query Interface: Automated Consumers
 
-For `find-dev-rule`/`verify-dev-rules`/`update-dev-rule`, given a topic (a field name, rule ID, or
+For `pdk-find-dev-rule`/`pdk-verify-dev-rules`/`pdk-update-dev-rule`, given a topic (a field name, rule ID, or
 behavior description):
 
 1. Search `sources.json` for entries whose `name`/`url` match the topic (same name/value/behavior
-   matching approach `find-dev-rule` already uses for local rules — reuse it here, don't invent a
+   matching approach `pdk-find-dev-rule` already uses for local rules — reuse it here, don't invent a
    second matching heuristic).
 2. For each `enabled` match, compare `last_verified` against its priority tier's re-check window
    (above). If still fresh, return the stored `last_verified_snapshot` directly — no fetch needed.
@@ -174,7 +174,7 @@ also fetched from a live external location this skill doesn't control.
    content) in `assets/sources.json`.
 4. Return the comparison result to the caller **together with the source's `authority` tier** —
    `spec`/`guide` vs. `changelog`/`informal` — not just the content itself. A changed `spec`/`guide`
-   source is the signal `verify-dev-rules`/`update-dev-rule` need to flag a rule as `OUTDATED`; a
+   source is the signal `pdk-verify-dev-rules`/`pdk-update-dev-rule` need to flag a rule as `OUTDATED`; a
    changed `changelog`/`informal` source is corroborating evidence only. **The calling command must
    not treat a `changelog`/`informal`-tier result as sufficient grounds to classify a gap or apply an
    edit on its own** — see those commands' own gating logic. This skill reports the change and its
@@ -206,7 +206,7 @@ also fetched from a live external location this skill doesn't control.
 - "check registry freshness"
 
 **Non-triggers** — phrases that should NOT activate this skill:
-- "does my local rule still match the docs?" → the calling command (`find-dev-rule`/`verify-dev-rules`) owns that gap-comparison verdict; this skill only answers "which source, how stale"
+- "does my local rule still match the docs?" → the calling command (`pdk-find-dev-rule`/`pdk-verify-dev-rules`) owns that gap-comparison verdict; this skill only answers "which source, how stale"
 - "check naming/formatting compliance" → use `plugin-rulebook` instead
 - "what does the current Codex doc say about X" (one-off, no intent to track) → just `WebSearch`/`WebFetch` directly
 
@@ -226,4 +226,4 @@ also fetched from a live external location this skill doesn't control.
 | `references/classification-criteria.md` | Worked examples for assigning authority tier and volatility to a new source |
 | `references/migration-notes.md` | Where each entry in the old `plugin-rulebook` "Tracked Upstream Sources" table and `_meta.review_triggers` moved to in this registry |
 | `plugin-rulebook` skill | R1–R27 structural rules — separate concern, see "When NOT to Use" |
-| `find-dev-rule` / `verify-dev-rules` / `update-dev-rule` commands | The three automated consumers of this registry's Query Interface |
+| `pdk-find-dev-rule` / `pdk-verify-dev-rules` / `pdk-update-dev-rule` commands | The three automated consumers of this registry's Query Interface |
