@@ -329,8 +329,10 @@ def validate_inventory(inventory):
     )
     if "prefix" not in inventory:
         raise ValueError(
-            "inventory has no 'prefix' key -- the key is required; "
-            "use an explicit null when no prefix is registered"
+            "inventory has no 'prefix' key -- the key is required; add "
+            '"prefix": null by hand to record that none is registered '
+            "(set-prefix only writes a string prefix, never null), or register "
+            "a curated prefix"
         )
     if inventory["prefix"] is not None:
         models.validate_prefix(inventory["prefix"])
