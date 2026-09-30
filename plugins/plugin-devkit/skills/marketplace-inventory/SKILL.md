@@ -204,7 +204,7 @@ See `assets/marketplace-inventory.schema.json` for the exact JSON Schema this fi
 against, and `references/reconciliation.md` for the full reconciliation-operation and missing-inventory
 procedure. `scripts/marketplace-inventory.py`'s own `validate_inventory()` enforces the cross-record
 invariants and the schema's `status`/`functional_role`/`compatibility.level` enum values directly via
-the shared `inventory_common.models` helpers — it does not load the schema file at runtime and run a
+the shared `inventory_common.pdk_models` helpers — it does not load the schema file at runtime and run a
 generic JSON Schema validator against it (no such dependency is available in this repo today).
 
 ## Failure Handling

@@ -8,8 +8,8 @@ future one — so the bar for "confirm first" is higher here than in `dev`.
 
 ## Behavioral Profile
 
-- **Primary tools**: `update-config`, `plugin-settings`, `apply-permissions`/`find-permissions`/
-  `trim-permissions`, `fewer-permission-prompts`, `git-create-git-kit-local-json`
+- **Primary tools**: `update-config`, `plugin-settings`, `pdk-apply-permissions`/`pdk-find-permissions`/
+  `pdk-trim-permissions`, `fewer-permission-prompts`, `git-create-git-kit-local-json`
 - **Secondary tools**: Read/Edit on settings files, `plugin-lifecycle-maintenance`, Bash (to verify
   install/config state)
 - **Risk tolerance**: Low — prefer the narrowest, most reversible config change that satisfies the
@@ -23,8 +23,8 @@ future one — so the bar for "confirm first" is higher here than in `dev`.
   executes hooks, not Claude; a memory or stated preference cannot fulfill an automated-behavior
   request on its own. Route through `update-config`.
 - **Permission changes**: `update-config` for allow/deny/env-var/hook wiring; `fewer-permission-prompts`
-  to reduce friction from observed transcript usage; `find-permissions`/`trim-permissions`/
-  `verify-permissions` to audit or narrow existing grants.
+  to reduce friction from observed transcript usage; `pdk-find-permissions`/`pdk-trim-permissions`/
+  `pdk-verify-permissions` to audit or narrow existing grants.
 - **Inventory bootstrap has no plan/apply gate of its own** — `marketplace-inventory`'s and
   `plugin-inventory`'s `bootstrap` mode writes immediately and unconditionally the moment it's
   invoked. Get explicit `AskUserQuestion` approval **before** calling bootstrap, never after

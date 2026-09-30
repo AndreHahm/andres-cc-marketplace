@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# Mirrors inventory_common.models.PREFIX_PATTERN / the identical
+# Mirrors inventory_common.pdk_models.PREFIX_PATTERN / the identical
 # `^[a-z]{3,4}$` pattern hand-duplicated in marketplace-inventory.schema.json
 # and plugin-inventory.schema.json -- keep all four in sync (R20). Not
 # imported directly: this module lives under the top-level scripts/ tree,
@@ -37,7 +37,7 @@ from typing import Any
 # CI tooling depending on one plugin's own implementation detail).
 PREFIX_PATTERN = re.compile(r"^[a-z]{3,4}$")
 
-# Mirrors inventory_common.models.DOMAIN_PREFIX_PATTERN / the identical
+# Mirrors inventory_common.pdk_models.DOMAIN_PREFIX_PATTERN / the identical
 # `^[a-z][a-z0-9]{2,11}$` pattern hand-duplicated in marketplace-inventory.schema.json
 # and plugin-inventory.schema.json -- keep all four in sync (R20). `domain_prefix` is
 # a longer, human-readable alternative to `prefix` a file's basename may
@@ -436,7 +436,7 @@ def find_prefix_violations(
         prefix = plugin.get("prefix")
         if prefix is not None:
             # fullmatch, not match -- see the identical comment on
-            # inventory_common.models.validate_prefix (R20 sibling fix): with
+            # inventory_common.pdk_models.validate_prefix (R20 sibling fix): with
             # `match`, `$` matches just before a trailing newline, letting
             # e.g. "abc\n" pass this format check despite not being a real
             # 3-4-letter prefix.

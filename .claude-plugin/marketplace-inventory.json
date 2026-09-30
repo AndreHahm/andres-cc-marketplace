@@ -161,6 +161,7 @@
     {
       "compatibility": {},
       "created_on": "2026-07-08",
+      "domain_prefix": "plugindevkit",
       "domains": [
         "component-authoring",
         "concept-planning",
@@ -190,6 +191,7 @@
           "valid_to": null
         }
       ],
+      "prefix": "pdk",
       "provenance": {
         "notes": "Renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25); by then ~150 commits ahead of the upstream example, with most of its 33 skills/23 agents/16 commands newly built or substantially rewritten.",
         "origin": "Forked from Anthropic's official plugin-dev example plugin"

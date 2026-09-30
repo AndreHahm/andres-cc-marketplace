@@ -111,7 +111,7 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 }
 ```
 
-**`tool_name` for sub-dispatch tools:** a matcher targeting an `Agent()` or `Skill()` dispatch (not just the built-in file/shell tools shown above) should match on the literal strings `"Agent"` and `"Skill"` — confirmed directly against a real session transcript (`grep -o '"name":"[A-Za-z_]*"' <session>.jsonl` showed both appearing exactly this way, alongside `AskUserQuestion` serializing as `"name":"AskUserQuestion"`), not inferred from documentation alone. See `plugins/plugin-devkit/hooks/r26-expensive-action-check.py`'s header comment for the verification note this was first confirmed in.
+**`tool_name` for sub-dispatch tools:** a matcher targeting an `Agent()` or `Skill()` dispatch (not just the built-in file/shell tools shown above) should match on the literal strings `"Agent"` and `"Skill"` — confirmed directly against a real session transcript (`grep -o '"name":"[A-Za-z_]*"' <session>.jsonl` showed both appearing exactly this way, alongside `AskUserQuestion` serializing as `"name":"AskUserQuestion"`), not inferred from documentation alone. See `plugins/plugin-devkit/hooks/pdk-r26-expensive-action-check.py`'s header comment for the verification note this was first confirmed in.
 
 **Common use cases:**
 - Format code after write (prettier, black)

@@ -857,7 +857,7 @@ degradation (never an uncaught crash) if none is found.
    pass, or the command would otherwise become an unreadably long JSON one-liner). The `.sh` needs the
    executable bit (invoked by bare path); the `.py` never does (always passed as an argument to whichever
    interpreter the wrapper resolved — never exec'd via its own shebang). This template is adapted from
-   `plugins/plugin-devkit/hooks/rulebook-check.sh` + `rulebook-check.py`, with the same `uv --version`
+   `plugins/plugin-devkit/hooks/pdk-rulebook-check.sh` + `pdk-rulebook-check.py`, with the same `uv --version`
    functional probe as the inline shape above (see that shape's own note on why it's needed):
    ```bash
    #!/bin/bash
@@ -874,14 +874,14 @@ degradation (never an uncaught crash) if none is found.
      echo '{"systemMessage":"my-hook: no Python runner (uv/python3/python) found on PATH — skipped."}'
    fi
    ```
-   `rulebook-check.sh` itself still has the real, unmodified `command -v uv`-only check (no functional
+   `pdk-rulebook-check.sh` itself still has the real, unmodified `command -v uv`-only check (no functional
    probe) — not fixed there since it's a pre-existing file this change doesn't otherwise touch, tracked
    as issue #400. This template teaches the corrected pattern regardless, so a new hook copied from here
    doesn't inherit that same gap.
 
 Both shapes end in the same graceful-degradation requirement — never let the fallback chain fall through
 to a bare `exec python ...`/`python ...` with nothing to catch a system that has none of the three. A
-blocking hook (like `rulebook-check.sh`) can instead emit a `"decision":"block"` JSON body there if
+blocking hook (like `pdk-rulebook-check.sh`) can instead emit a `"decision":"block"` JSON body there if
 failing closed is the safer default for that specific hook — the graceful-degradation requirement is
 about never crashing uncaught, not about which decision the degraded path makes.
 

@@ -31,7 +31,7 @@
       "id": 5,
       "name": "self-upstream-plugin-devkit single-rule mode gate sequencing (scenario 4)",
       "prompt": "I know the R13 line-count threshold might be outdated -- check it and fix it if so",
-      "expected_output": "Given the full SKILL.md + self-upstream-plugin-devkit.md content, identifies Single-Rule mode (not Bulk mode -- this is one already-known rule, not a whole-plugin sweep), and correctly sequences find-dev-rule (read-only findings first) before update-dev-rule, naming both the workflow's own coarser confirmation gate AND update-dev-rule's own built-in second pre-flight confirmation as two distinct, non-duplicated gates."
+      "expected_output": "Given the full SKILL.md + self-upstream-plugin-devkit.md content, identifies Single-Rule mode (not Bulk mode -- this is one already-known rule, not a whole-plugin sweep), and correctly sequences pdk-find-dev-rule (read-only findings first) before pdk-update-dev-rule, naming both the workflow's own coarser confirmation gate AND pdk-update-dev-rule's own built-in second pre-flight confirmation as two distinct, non-duplicated gates."
     },
     {
       "id": 6,

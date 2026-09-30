@@ -381,7 +381,7 @@ if [[ -f "$SETTINGS_FILE" || -f "$PROJECT_SETTINGS_FILE" || -f "$LOCAL_SETTINGS_
     # tool name is namespaced (mcp__plugin_<name>_<server>__<tool>) and
     # can't collide with a user/project-configured server sharing the same
     # short name. Checks the same install-path patterns this repo's own
-    # setup-skill-improver.sh already uses: a direct (non-cached) install,
+    # pdk-setup-skill-improver.sh already uses: a direct (non-cached) install,
     # and a marketplace-cache install, which nests one more level than a
     # direct install -- cache/<marketplace>/<plugin>/<version>, not
     # cache/<marketplace>/<plugin> -- at both a single- and double-level

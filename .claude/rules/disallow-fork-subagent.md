@@ -44,7 +44,7 @@ of the token/context savings it would otherwise offer.
 
 ## Enforcement
 
-Backed by a `PreToolUse` hook (2026-09-25): `plugins/plugin-devkit/hooks/guard-fork-subagent.sh`,
+Backed by a `PreToolUse` hook (2026-09-25): `plugins/plugin-devkit/hooks/pdk-guard-fork-subagent.sh`,
 registered on the `Agent` matcher, hard-denies any call whose `subagent_type` resolves to `"fork"`
 (case/whitespace-normalized). Security-reviewed per
 `.claude/rules/require-security-review-before-new-gate.md` before shipping. Not airtight: under the
@@ -54,7 +54,7 @@ non-executable, or a bash parse/expansion error occurs before its own fail-close
 same class of residual `guard-raw-branch-create.sh` discloses for git-kit's guards.
 
 **Launch mechanism (updated 2026-09-25, PR #396 review):** the hook's `command` field quotes the
-whole `${CLAUDE_PLUGIN_ROOT}`-prefixed path (`"\"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-fork-subagent.sh"`,
+whole `${CLAUDE_PLUGIN_ROOT}`-prefixed path (`"\"${CLAUDE_PLUGIN_ROOT}\"/hooks/pdk-guard-fork-subagent.sh"`,
 `"shell": "bash"`), matching `context-kit`'s already-shipping `compact-instructions.sh` precedent for
 the identical problem, rather than switching to exec form (`"args": []`) as first attempted.
 CodeRabbit correctly flagged that an *unquoted* shell-form path word-splits on a space anywhere in
@@ -71,7 +71,7 @@ already relies on, without introducing either of those two unverified risks.
 **Residual not fixed here (informational, not blocking):** this file's sibling `PreToolUse`/
 `PostToolUse` hook entries still use unquoted shell-form paths — a deliberate scope decision (only the
 flagged security-relevant entry was fixed), since none of them is a hard-block gate whose silent
-failure has the same consequence (`security-precommit-check.sh` is log-only; the R25/R26 checks are
+failure has the same consequence (`pdk-security-precommit-check.sh` is log-only; the R25/R26 checks are
 best-effort and already `onError: "warn"` by design).
 
 **Scope note:** the hook ships inside plugin-devkit's own `hooks/hooks.json`, so it is active in *any*

@@ -272,7 +272,7 @@ against, and `references/component-detectors.md` for what each logical component
 actually is. `scripts/plugin-inventory.py`'s own `validate_inventory()` enforces the cross-record
 invariants the schema alone can't express (history continuity, current-value-matches-open-period) plus
 the schema's own `status`/`functional_role`/`compatibility.level` enum values directly, via the shared
-`inventory_common.models` helpers — it does not load `assets/plugin-inventory.schema.json` at runtime
+`inventory_common.pdk_models` helpers — it does not load `assets/plugin-inventory.schema.json` at runtime
 and run a generic JSON Schema validator against it (no such dependency is available in this repo today),
 so a structural mismatch the schema documents but this function doesn't separately check (e.g.
 `additionalProperties: false`) would not be caught by `apply`/`bootstrap` alone.

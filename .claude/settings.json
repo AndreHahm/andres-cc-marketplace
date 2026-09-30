@@ -44,12 +44,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/rulebook-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-rulebook-check.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/hooks-schema-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-hooks-schema-check.sh",
             "timeout": 15
           }
         ]
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r26-expensive-action-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-r26-expensive-action-check.sh",
             "timeout": 10,
             "onError": "warn"
           }
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r25-overhead-disclosure-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-r25-overhead-disclosure-check.sh",
             "timeout": 10,
             "onError": "warn"
           }
@@ -220,7 +220,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-hook.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-stop-hook.sh",
             "timeout": 30
           }
         ]
@@ -292,7 +292,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/security-precommit-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-security-precommit-check.sh",
             "timeout": 10
           }
         ]
@@ -302,7 +302,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-fork-subagent.sh\"",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-guard-fork-subagent.sh\"",
             "shell": "bash",
             "timeout": 10,
             "onError": "warn"
@@ -337,7 +337,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/r25-overhead-disclosure-check.sh",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pdk-r25-overhead-disclosure-check.sh",
             "timeout": 10,
             "onError": "warn"
           }

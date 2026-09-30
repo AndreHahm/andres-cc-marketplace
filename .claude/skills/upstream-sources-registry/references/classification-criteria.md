@@ -9,7 +9,7 @@ Ask: **if this source and a local rule disagree, which one should change?**
 - If the answer is "the local rule, always" → `spec`. Example: a docs.claude.com page defining the
   exact set of valid `permissionMode` enum values. There is no legitimate local reason to diverge
   from a `spec`-tier source without recording it as an intentional exclusion (see
-  `verify-dev-rules`'s Exclusion mechanism).
+  `pdk-verify-dev-rules`'s Exclusion mechanism).
 - If the answer is "usually the local rule, but a maintainer could reasonably choose not to" →
   `guide`. Example: a docs.claude.com best-practices page recommending a description length range.
   Recommended, not enforced by the platform itself.

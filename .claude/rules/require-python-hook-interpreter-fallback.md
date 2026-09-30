@@ -36,7 +36,7 @@ falling through to `python3`/`python`.
 
 ## Why
 
-`plugin-devkit`'s own hooks (`rulebook-check.sh` and siblings) already implement this pattern correctly,
+`plugin-devkit`'s own hooks (`pdk-rulebook-check.sh` and siblings) already implement this pattern correctly,
 proven necessary while fixing a real executable-bit bug (commit `e30bdbfa`). Before this rule, it was
 only documented as "(optional)" in `hook-development`, and at least two hooks shipped without it:
 `context-kit`'s `detect_mode.py` `UserPromptSubmit` hook (partial fallback, no `uv` tier) and
@@ -46,6 +46,6 @@ only documented as "(optional)" in `hook-development`, and at least two hooks sh
 ## Enforcement
 
 Policy gate, no backing hook — same disclosed-limitation model most process rules in this repo use.
-Neither `plugin-devkit/hooks/rulebook-check.py` nor `hooks-schema-check.sh` currently checks a hook's
+Neither `plugin-devkit/hooks/pdk-rulebook-check.py` nor `pdk-hooks-schema-check.sh` currently checks a hook's
 `command` string against this convention; whether a new hook actually uses the full cascade depends on
 author/reviewer attention at "before finalizing" time, not a mechanical check.

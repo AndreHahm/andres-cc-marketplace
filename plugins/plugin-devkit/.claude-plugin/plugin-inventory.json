@@ -2738,7 +2738,7 @@
       "domain": "permissions",
       "functional_role": "infrastructure",
       "id": "component_322ce515",
-      "name": "apply-permissions",
+      "name": "pdk-apply-permissions",
       "naming_history": [
         {
           "evidence": [
@@ -2747,10 +2747,19 @@
           "name": "apply-permissions",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-apply-permissions.md"
+          ],
+          "name": "pdk-apply-permissions",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/apply-permissions.md",
+      "path": "commands/pdk-apply-permissions.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -2765,6 +2774,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-apply-permissions.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2779,7 +2797,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_d15a9796",
-      "name": "apply-rules",
+      "name": "pdk-apply-rules",
       "naming_history": [
         {
           "evidence": [
@@ -2788,10 +2806,19 @@
           "name": "apply-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-apply-rules.md"
+          ],
+          "name": "pdk-apply-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/apply-rules.md",
+      "path": "commands/pdk-apply-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -2809,6 +2836,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-apply-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2823,7 +2859,7 @@
       "domain": "skill-improvement",
       "functional_role": "infrastructure",
       "id": "component_8f7b1609",
-      "name": "cancel-skill-improver",
+      "name": "pdk-cancel-skill-improver",
       "naming_history": [
         {
           "evidence": [
@@ -2832,10 +2868,19 @@
           "name": "cancel-skill-improver",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-cancel-skill-improver.md"
+          ],
+          "name": "pdk-cancel-skill-improver",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/cancel-skill-improver.md",
+      "path": "commands/pdk-cancel-skill-improver.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -2853,6 +2898,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-cancel-skill-improver.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2867,7 +2921,7 @@
       "domain": "component-authoring",
       "functional_role": "infrastructure",
       "id": "component_305887c2",
-      "name": "create-command",
+      "name": "pdk-create-command",
       "naming_history": [
         {
           "evidence": [
@@ -2876,10 +2930,19 @@
           "name": "create-command",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-create-command.md"
+          ],
+          "name": "pdk-create-command",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/create-command.md",
+      "path": "commands/pdk-create-command.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -2897,6 +2960,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-create-command.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2911,7 +2983,7 @@
       "domain": "lifecycle-orchestration",
       "functional_role": "workflow",
       "id": "component_30826825",
-      "name": "create-plugin",
+      "name": "pdk-create-plugin",
       "naming_history": [
         {
           "evidence": [
@@ -2920,10 +2992,19 @@
           "name": "create-plugin",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-create-plugin.md"
+          ],
+          "name": "pdk-create-plugin",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/create-plugin.md",
+      "path": "commands/pdk-create-plugin.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -2941,6 +3022,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-create-plugin.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2955,7 +3045,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_0eeb248f",
-      "name": "extract-rules",
+      "name": "pdk-extract-rules",
       "naming_history": [
         {
           "evidence": [
@@ -2964,10 +3054,19 @@
           "name": "extract-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-extract-rules.md"
+          ],
+          "name": "pdk-extract-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/extract-rules.md",
+      "path": "commands/pdk-extract-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -2985,6 +3084,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-extract-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -2999,7 +3107,7 @@
       "domain": "rules-management",
       "functional_role": "reference",
       "id": "component_f6cf2699",
-      "name": "find-dev-rule",
+      "name": "pdk-find-dev-rule",
       "naming_history": [
         {
           "evidence": [
@@ -3008,10 +3116,19 @@
           "name": "find-dev-rule",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-find-dev-rule.md"
+          ],
+          "name": "pdk-find-dev-rule",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/find-dev-rule.md",
+      "path": "commands/pdk-find-dev-rule.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3029,6 +3146,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-find-dev-rule.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3043,7 +3169,7 @@
       "domain": "permissions",
       "functional_role": "validator",
       "id": "component_6e5e2f51",
-      "name": "find-permissions",
+      "name": "pdk-find-permissions",
       "naming_history": [
         {
           "evidence": [
@@ -3052,10 +3178,19 @@
           "name": "find-permissions",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-find-permissions.md"
+          ],
+          "name": "pdk-find-permissions",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/find-permissions.md",
+      "path": "commands/pdk-find-permissions.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -3070,6 +3205,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-find-permissions.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3084,7 +3228,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_9fec533d",
-      "name": "implement-dev-rules",
+      "name": "pdk-implement-dev-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3093,10 +3237,19 @@
           "name": "implement-dev-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-implement-dev-rules.md"
+          ],
+          "name": "pdk-implement-dev-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/implement-dev-rules.md",
+      "path": "commands/pdk-implement-dev-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3114,6 +3267,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-implement-dev-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3128,7 +3290,7 @@
       "domain": "plugin-review-qa",
       "functional_role": "validator",
       "id": "component_1f81079d",
-      "name": "implemented",
+      "name": "pdk-implemented",
       "naming_history": [
         {
           "evidence": [
@@ -3137,10 +3299,19 @@
           "name": "implemented",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-implemented.md"
+          ],
+          "name": "pdk-implemented",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/implemented.md",
+      "path": "commands/pdk-implemented.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -3155,6 +3326,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-implemented.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3169,7 +3349,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_73e165c9",
-      "name": "merge-rules",
+      "name": "pdk-merge-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3178,10 +3358,19 @@
           "name": "merge-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-merge-rules.md"
+          ],
+          "name": "pdk-merge-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/merge-rules.md",
+      "path": "commands/pdk-merge-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3199,6 +3388,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-merge-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3213,7 +3411,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_ddb2b78d",
-      "name": "plan-dev-rules",
+      "name": "pdk-plan-dev-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3222,10 +3420,19 @@
           "name": "plan-dev-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-plan-dev-rules.md"
+          ],
+          "name": "pdk-plan-dev-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/plan-dev-rules.md",
+      "path": "commands/pdk-plan-dev-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3243,6 +3450,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-plan-dev-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3257,7 +3473,7 @@
       "domain": "rules-management",
       "functional_role": "reference",
       "id": "component_e22335bd",
-      "name": "report-dev-rules",
+      "name": "pdk-report-dev-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3266,10 +3482,19 @@
           "name": "report-dev-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-report-dev-rules.md"
+          ],
+          "name": "pdk-report-dev-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/report-dev-rules.md",
+      "path": "commands/pdk-report-dev-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3287,6 +3512,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-report-dev-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3301,7 +3535,7 @@
       "domain": "rules-management",
       "functional_role": "validator",
       "id": "component_1445393b",
-      "name": "review-rules",
+      "name": "pdk-review-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3310,10 +3544,19 @@
           "name": "review-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-review-rules.md"
+          ],
+          "name": "pdk-review-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/review-rules.md",
+      "path": "commands/pdk-review-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3331,6 +3574,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-review-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3345,7 +3597,7 @@
       "domain": "skill-improvement",
       "functional_role": "workflow",
       "id": "component_03b3cbce",
-      "name": "skill-improver",
+      "name": "pdk-skill-improver",
       "naming_history": [
         {
           "evidence": [
@@ -3354,10 +3606,19 @@
           "name": "skill-improver",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-skill-improver.md"
+          ],
+          "name": "pdk-skill-improver",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/skill-improver.md",
+      "path": "commands/pdk-skill-improver.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3375,6 +3636,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-skill-improver.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3389,7 +3659,7 @@
       "domain": "permissions",
       "functional_role": "infrastructure",
       "id": "component_d95b82d9",
-      "name": "trim-permissions",
+      "name": "pdk-trim-permissions",
       "naming_history": [
         {
           "evidence": [
@@ -3398,10 +3668,19 @@
           "name": "trim-permissions",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-trim-permissions.md"
+          ],
+          "name": "pdk-trim-permissions",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/trim-permissions.md",
+      "path": "commands/pdk-trim-permissions.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -3416,6 +3695,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-trim-permissions.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3430,7 +3718,7 @@
       "domain": "rules-management",
       "functional_role": "workflow",
       "id": "component_9319432a",
-      "name": "update-dev-rule",
+      "name": "pdk-update-dev-rule",
       "naming_history": [
         {
           "evidence": [
@@ -3439,10 +3727,19 @@
           "name": "update-dev-rule",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-update-dev-rule.md"
+          ],
+          "name": "pdk-update-dev-rule",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/update-dev-rule.md",
+      "path": "commands/pdk-update-dev-rule.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3460,6 +3757,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-update-dev-rule.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3474,7 +3780,7 @@
       "domain": "rules-management",
       "functional_role": "validator",
       "id": "component_c8116af2",
-      "name": "verify-dev-rules",
+      "name": "pdk-verify-dev-rules",
       "naming_history": [
         {
           "evidence": [
@@ -3483,10 +3789,19 @@
           "name": "verify-dev-rules",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-verify-dev-rules.md"
+          ],
+          "name": "pdk-verify-dev-rules",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/verify-dev-rules.md",
+      "path": "commands/pdk-verify-dev-rules.md",
       "provenance": {
         "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
         "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
@@ -3504,6 +3819,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-verify-dev-rules.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3518,7 +3842,7 @@
       "domain": "permissions",
       "functional_role": "validator",
       "id": "component_5bfc2d6b",
-      "name": "verify-permissions",
+      "name": "pdk-verify-permissions",
       "naming_history": [
         {
           "evidence": [
@@ -3527,10 +3851,19 @@
           "name": "verify-permissions",
           "reason": "Current name at inventory bootstrap.",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-verify-permissions.md"
+          ],
+          "name": "pdk-verify-permissions",
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
-      "path": "commands/verify-permissions.md",
+      "path": "commands/pdk-verify-permissions.md",
       "provenance": {},
       "score": null,
       "scoring_history": [],
@@ -3545,6 +3878,15 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "commands/pdk-verify-permissions.md"
+          ],
+          "reason": "R33 prefix migration: command file renamed with plugin prefix pdk-.",
+          "status": "active",
+          "valid_from": "2026-09-30",
           "valid_to": null
         }
       ],
@@ -3926,9 +4268,11 @@
       "type": "hook"
     }
   ],
+  "domain_prefix": "plugindevkit",
   "extensions": {},
   "plugin_id": "plugin_7e527600",
   "plugin_name": "plugin-devkit",
+  "prefix": "pdk",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-25"
+  "updated_on": "2026-09-30"
 }

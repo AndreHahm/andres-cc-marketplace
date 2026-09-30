@@ -428,7 +428,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 ## Compliance Check Procedure
 
 1. Resolve the canonical absolute path of the target component (R19). If the component name resolves to more than one directory (project, plugin, or user skill locations), compare contents — if they differ, halt and report a FAIL before continuing
-2. Trust this rulebook's own cached rules/thresholds for this pass — they are freshness-checked against the official Claude Code specification separately, via the `upstream-sources-registry` skill (`find-dev-rule`/`verify-dev-rules`/`update-dev-rule`), not by a live doc fetch on every single component check. If a tracked source is known to have drifted, that shows up as a recorded gap there, not as an ad-hoc verification step here
+2. Trust this rulebook's own cached rules/thresholds for this pass — they are freshness-checked against the official Claude Code specification separately, via the `upstream-sources-registry` skill (`pdk-find-dev-rule`/`pdk-verify-dev-rules`/`pdk-update-dev-rule`), not by a live doc fetch on every single component check. If a tracked source is known to have drifted, that shows up as a recorded gap there, not as an ad-hoc verification step here
 3. Read `${CLAUDE_SKILL_DIR}/assets/settings.json` — load enabled rules and configuration values. Then check `{REPO_ROOT}/.claude/plugin-rulebook.config.json`; if present, merge its R23 `whitelist`/`blacklist`/`excluded_paths` on top per "Repo-Specific Configuration" above, and record exactly which entries it contributed — this record feeds step 7's disclosure, per `references/external-reference-policy.md`'s "Disclosure, not silent application" note
 4. List all files in the target component directory (Glob)
 5. For each enabled rule, check all applicable files
@@ -473,7 +473,7 @@ plugin.md` dry-run record: `.claude/output/plugin-rulebook/example-plugin-202609
 
 ## Upstream Source Verification
 
-Whether a rule traces back to an official Claude Code doc, and whether that doc has changed, is tracked by the `upstream-sources-registry` skill — not by this skill. `find-dev-rule`/`verify-dev-rules`/`update-dev-rule` consult that registry and surface any gap through their own classification. See `.claude/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section for the full procedure and how intentional divergences are recorded.
+Whether a rule traces back to an official Claude Code doc, and whether that doc has changed, is tracked by the `upstream-sources-registry` skill — not by this skill. `pdk-find-dev-rule`/`pdk-verify-dev-rules`/`pdk-update-dev-rule` consult that registry and surface any gap through their own classification. See `.claude/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section for the full procedure and how intentional divergences are recorded.
 
 ---
 
