@@ -1,0 +1,41 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the skill skipping the interview (no BATCH 1 or BATCH 2 question) and going straight to the Validation workflow",
+      "passed": true,
+      "evidence": "Validate routes directly to the Validation workflow; no interview or pre-analysis."
+    },
+    {
+      "text": "transcript.md shows delegation to the skill-reviewer agent in Structured output mode and to Skill(plugin-rulebook), with no self-made scoring",
+      "passed": true,
+      "evidence": "skill-reviewer (full, Structured output mode) and Skill(plugin-rulebook) delegated (simulated)."
+    },
+    {
+      "text": "report.md contains the verdict, findings grouped by severity, and the top priority fixes",
+      "passed": true,
+      "evidence": "report.md has headline, findings by severity, actionable summary."
+    },
+    {
+      "text": "report.md lists the plugin-rulebook FAIL under its own heading and shows the verdict downgraded from Pass to Reject",
+      "passed": true,
+      "evidence": "report.md: Headline status Reject, downgraded from Pass by the R8 FAIL, FAIL listed separately."
+    },
+    {
+      "text": "transcript.md shows the enhancement-suggestor Yes/No question asked and the agent NOT invoked after the answer No",
+      "passed": true,
+      "evidence": "enhancement-suggestor asked; operator No; not run."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r fixtures/demo-skill target -> identical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

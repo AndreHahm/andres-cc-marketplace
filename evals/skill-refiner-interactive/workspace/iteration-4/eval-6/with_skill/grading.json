@@ -1,0 +1,36 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "after compliance round 1 (rulebook FAIL + reviewer Major) transcript.md says NO MARKER EMITTED",
+      "passed": true,
+      "evidence": "round 1: rulebook FAIL + reviewer Major; 'NO MARKER EMITTED'."
+    },
+    {
+      "text": "the transcript shows the FAIL and the Major being fixed and both checks re-run before any marker",
+      "passed": true,
+      "evidence": "round 1 fixes then round 2 re-check clean."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears after the clean round 2",
+      "passed": true,
+      "evidence": "marker emitted after round 2 summary."
+    },
+    {
+      "text": "the marker appears exactly once in transcript.md",
+      "passed": true,
+      "evidence": "marker literal count = 1."
+    },
+    {
+      "text": "the fix that changes description in compliance round 1 is followed by the step-9 trigger-regression check before the round's checks are re-run",
+      "passed": true,
+      "evidence": "'Because the description changed: step 9 re-entered before re-running checks.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

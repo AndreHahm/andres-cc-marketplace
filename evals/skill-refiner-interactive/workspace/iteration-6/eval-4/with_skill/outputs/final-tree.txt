@@ -1,0 +1,2 @@
+evals/skill-refiner-interactive/workspace/iteration-6/eval-4/with_skill/outputs/target/references/todo-marker-details.md
+evals/skill-refiner-interactive/workspace/iteration-6/eval-4/with_skill/outputs/target/SKILL.md

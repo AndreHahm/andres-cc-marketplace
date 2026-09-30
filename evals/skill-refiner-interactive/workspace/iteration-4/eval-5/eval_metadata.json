@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "goal-measurement.md records a FAIL for the chain goal in the first measurement, with the actual result",
+      "type": "presence",
+      "target": "goal-measurement.md"
+    },
+    {
+      "text": "transcript.md shows the Accept with reason / Continue refining ask after the FAIL",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after 'Continue refining' the transcript returns to step 6 (make changes) with the failed goal as the focus",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "goal-measurement.md records a second measurement in which every goal is PASS",
+      "type": "presence",
+      "target": "goal-measurement.md"
+    },
+    {
+      "text": "no completion marker or step-10 compliance step appears before the second measurement passes",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "the pre-analysis report in transcript.md states the R13 tier as Soft Warning for the fixture's 307 lines",
+      "passed": true,
+      "evidence": "Pre-analysis says Soft Warning for 307 lines."
+    },
+    {
+      "text": "the Troubleshooting section is flagged as a large section of 50 or more lines",
+      "passed": true,
+      "evidence": "Troubleshooting flagged as a 60-line section."
+    },
+    {
+      "text": "the Content Extraction question is asked and answered Yes",
+      "passed": true,
+      "evidence": "Extraction question answered Yes."
+    },
+    {
+      "text": "the numbered action lines show CREATE (new reference file) before LINK (pointer in SKILL.md) before DELETE (inline section body)",
+      "passed": true,
+      "evidence": "CREATE, LINK, DELETE in order."
+    },
+    {
+      "text": "the final SKILL.md is shorter than the 307-line fixture and points at the new reference file, which holds the Troubleshooting content",
+      "passed": true,
+      "evidence": "SKILL.md is 280 lines and points at troubleshooting.md."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md logs Gate 1 (content audit), Gate 2 (capability assessment), Gate 3 (migration verification) and Gate 4 (operator confirmation) in that order",
+      "passed": true,
+      "evidence": "transcript.md lines 1-4 (Gate 1, Gate 2 in step 4; Gate 3 and Gate 4 inside step 6, in order; the transcript notes why)."
+    },
+    {
+      "text": "every Gate 1-4 line precedes the first DELETE line in transcript.md",
+      "passed": false,
+      "evidence": "As written this fails: the Gate 4 ask for deleting b.md (line ~73) comes after the DELETE of a.md (line ~72). The run asked for each file's deletion separately, which is stricter than the assertion assumed; the assertion was over-specified."
+    },
+    {
+      "text": "for the moved content, the CREATE line precedes the LINK line, which precedes the DELETE line",
+      "passed": true,
+      "evidence": "line 68 CREATE marker-details.md, line 70 LINK, line 72 DELETE a.md, line 74 DELETE b.md."
+    },
+    {
+      "text": "the DELETE is preceded by a recorded operator approval (Gate 4 or the step-3 consolidation approval)",
+      "passed": true,
+      "evidence": "each DELETE is preceded by its own Gate 4 ask answered Delete (lines 71 and 73)."
+    },
+    {
+      "text": "final-tree.txt lists the merged reference file containing the moved content and does not list the deleted source files, and SKILL.md links to the merged file",
+      "passed": true,
+      "evidence": "final-tree.txt lists marker-details.md and SKILL.md only; SKILL.md links to marker-details.md."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

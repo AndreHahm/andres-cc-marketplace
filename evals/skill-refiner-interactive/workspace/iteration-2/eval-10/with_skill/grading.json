@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md numbers exactly 3 compliance rounds, each with the rulebook FAIL and reviewer Major",
+      "passed": true,
+      "evidence": "transcript.md: compliance rounds 1, 2 and 3, each with the R8 FAIL and the reviewer Major."
+    },
+    {
+      "text": "NO MARKER EMITTED appears after each of the three rounds and before the post-round-3 question",
+      "passed": true,
+      "evidence": "'NO MARKER EMITTED' after each round, before the round-cap ask."
+    },
+    {
+      "text": "after round 3 the skill asks with three options: Continue another round, Accept remaining findings with reason, Stop",
+      "passed": true,
+      "evidence": "'Round cap ask': Continue another round / Accept remaining findings with reason / Stop."
+    },
+    {
+      "text": "the change summary records the accepted findings with the reason 'cosmetic, tracked separately'",
+      "passed": true,
+      "evidence": "change summary records both accepted findings with reason 'cosmetic, tracked separately'."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears exactly once, after the acceptance",
+      "passed": true,
+      "evidence": "grep -c of the literal marker = 1, after the acceptance. Note: the run exposed that step 9 has no re-entry from step 10, and that the marker gate's 'or the operator accepted them' wording reads as covering only skill-reviewer."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

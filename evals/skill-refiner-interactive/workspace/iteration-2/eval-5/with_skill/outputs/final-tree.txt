@@ -1,0 +1,3 @@
+references/a.md
+references/b.md
+SKILL.md

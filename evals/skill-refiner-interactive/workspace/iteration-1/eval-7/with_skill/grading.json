@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "passed": true,
+      "evidence": "transcript.md Gate 4: operator declines every deletion; 'consolidation is NOT performed and no file is deleted'."
+    },
+    {
+      "text": "transcript.md contains no DELETE action after the decline",
+      "passed": true,
+      "evidence": "No DELETE action in step 6; summary says 'Files deleted: none (operator declined all deletions at Gate 4)'."
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "passed": true,
+      "evidence": "final-tree.txt lists target/SKILL.md, target/references/a.md, target/references/b.md; b.md is byte-identical to the fixture's."
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "passed": true,
+      "evidence": "goal-measurement.md records PASS for all 3 selected goals."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

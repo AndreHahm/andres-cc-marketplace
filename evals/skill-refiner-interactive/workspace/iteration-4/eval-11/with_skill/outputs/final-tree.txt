@@ -1,0 +1,3 @@
+target/references/rules.md
+target/references/troubleshooting.md
+target/SKILL.md

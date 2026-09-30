@@ -1,0 +1,51 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "request (a) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "(a) -> skill-refiner-interactive."
+    },
+    {
+      "text": "request (b) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "(b) -> skill-refiner-interactive."
+    },
+    {
+      "text": "request (c) routes to skill-reviewer",
+      "passed": true,
+      "evidence": "(c) -> skill-reviewer."
+    },
+    {
+      "text": "request (d) routes to skill-development",
+      "passed": true,
+      "evidence": "(d) -> skill-development."
+    },
+    {
+      "text": "request (e) routes to skill-improver-loop",
+      "passed": true,
+      "evidence": "(e) -> skill-improver-loop."
+    },
+    {
+      "text": "request (f) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "(f) -> skill-refiner-interactive."
+    },
+    {
+      "text": "request (g) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "(g) -> skill-refiner-interactive; notes mild overlap with skill-reviewer."
+    },
+    {
+      "text": "request (h) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "(h) -> skill-refiner-interactive; notes mild overlap with skill-development."
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  }
+}

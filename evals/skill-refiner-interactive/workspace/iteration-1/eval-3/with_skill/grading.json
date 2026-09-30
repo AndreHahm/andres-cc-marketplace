@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "request (a) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "routing.md (a) -> skill-refiner-interactive."
+    },
+    {
+      "text": "request (b) routes to skill-refiner-interactive",
+      "passed": true,
+      "evidence": "routing.md (b) -> skill-refiner-interactive."
+    },
+    {
+      "text": "request (c) routes to skill-reviewer",
+      "passed": true,
+      "evidence": "routing.md (c) -> skill-reviewer."
+    },
+    {
+      "text": "request (d) routes to skill-development",
+      "passed": true,
+      "evidence": "routing.md (d) -> skill-development."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

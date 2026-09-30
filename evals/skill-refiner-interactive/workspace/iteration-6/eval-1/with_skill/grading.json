@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the pre-analysis report was emitted before any goal question or interview question",
+      "passed": true,
+      "evidence": "Pre-analysis report precedes goal and interview questions."
+    },
+    {
+      "text": "transcript.md shows up to 3 goals derived from pre-analysis findings, each with a verification check",
+      "passed": true,
+      "evidence": "3 goals, each with a verify check."
+    },
+    {
+      "text": "the step-5 plan-only branch was taken (by wording or by an approval option) and step 6 (make changes) was not run",
+      "passed": true,
+      "evidence": "Plan-only wording skipped the ask; step 6 not run."
+    },
+    {
+      "text": "changes.md exists at the confirmed draft path and contains a Selected Goals section, an Implementation Order section and at least one F/O/M-numbered finding",
+      "passed": true,
+      "evidence": "changes.md has Selected Goals, Implementation Order, F1-F3 and O1."
+    },
+    {
+      "text": "the target copy's files are byte-identical to the original fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r against fixture is empty."
+    },
+    {
+      "text": "no goal measurement was run in this session",
+      "passed": true,
+      "evidence": "Step 8 skipped per Plan-Only Runs."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

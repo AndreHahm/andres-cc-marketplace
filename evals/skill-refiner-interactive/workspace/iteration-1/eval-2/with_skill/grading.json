@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the step-5 approval ask with an Apply changes option, and the answer Apply changes leads on to step 6",
+      "passed": true,
+      "evidence": "transcript.md Step 5: 'Apply the approved scope?' [Apply changes] [Plan only...] [Stop]; answer Apply changes -> proceeds to step 6."
+    },
+    {
+      "text": "the target copy was actually edited to fix at least one pre-analysis finding",
+      "passed": true,
+      "evidence": "diff vs fixture: allowed-tools Read -> Read Grep; free-form ask replaced with AskUserQuestion block; b.md merged into a.md and deleted; 4 standard sections added."
+    },
+    {
+      "text": "transcript.md shows goal measurement (step 8) happening after validation (step 7) and before the trigger-regression/compliance steps",
+      "passed": true,
+      "evidence": "transcript.md order: Step 7 validate, Step 8 measure goals, Step 9 trigger regression (skipped), Step 10 compliance."
+    },
+    {
+      "text": "goal-measurement.md records a PASS or FAIL result for every selected goal, each from that goal's own verification check",
+      "passed": true,
+      "evidence": "goal-measurement.md: 3 goals, each with its verification and PASS."
+    },
+    {
+      "text": "no changes.md plan-only draft was written",
+      "passed": true,
+      "evidence": "outputs/ contains only transcript.md, goal-measurement.md, target/; no changes.md."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

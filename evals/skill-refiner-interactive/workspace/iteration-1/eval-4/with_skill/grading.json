@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md logs Gate 1 (content audit), Gate 2 (capability assessment), Gate 3 (migration verification) and Gate 4 (operator confirmation) in that order",
+      "passed": true,
+      "evidence": "transcript.md lines 1-4: GATE 1 Content Audit, GATE 2 Capability Assessment, GATE 3 Migration Verification, GATE 4 Operator Confirmation, in order."
+    },
+    {
+      "text": "every Gate 1-4 line precedes the first DELETE line in transcript.md",
+      "passed": true,
+      "evidence": "Gate lines 1-4 precede the first DELETE (line 7)."
+    },
+    {
+      "text": "for the moved content, the CREATE line precedes the LINK line, which precedes the DELETE line",
+      "passed": true,
+      "evidence": "line 5 CREATE marker-details.md, line 6 LINK (SKILL.md pointer verified), lines 7-8 DELETE a.md and b.md."
+    },
+    {
+      "text": "the DELETE is preceded by a recorded operator approval (Gate 4 or the step-3 consolidation approval)",
+      "passed": true,
+      "evidence": "Gate 4: 'Approve deleting references/a.md and references/b.md?' -> Approve, recorded before the deletes."
+    },
+    {
+      "text": "final-tree.txt no longer lists the deleted file and still lists references/a.md containing the moved content",
+      "passed": false,
+      "evidence": "As written this fails: final-tree.txt lists target/SKILL.md and target/references/marker-details.md only; references/a.md was also deleted. The moved content exists in marker-details.md and is linked, so the skill behaved validly; the assertion wrongly assumed the merge target would be a.md."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

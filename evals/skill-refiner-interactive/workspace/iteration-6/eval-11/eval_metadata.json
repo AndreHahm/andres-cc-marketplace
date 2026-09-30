@@ -1,0 +1,31 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "the pre-analysis report in transcript.md states the R13 tier as Soft Warning for the fixture's 307 lines",
+      "type": "presence",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the Troubleshooting section is flagged as a large section of 50 or more lines",
+      "type": "presence",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the Content Extraction question is asked and answered Yes",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the numbered action lines show CREATE (new reference file) before LINK (pointer in SKILL.md) before DELETE (inline section body)",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the final SKILL.md is shorter than the 307-line fixture and points at the new reference file, which holds the Troubleshooting content",
+      "type": "presence",
+      "target": "final-tree.txt and target"
+    }
+  ]
+}
