@@ -516,13 +516,34 @@ def test_permanence_malformed_records_do_not_crash():
     # Nothing registered at base (a non-object entry, an id-less record with
     # no prefix), so there is nothing to protect and no violation either way.
     base = {"plugins": ["junk", {"name": "no-id"}]}
-    head = {"plugins": {"not": "a list"}}
+    head = {"plugins": [{"id": "plugin_a", "name": "a"}]}
     assert find_prefix_permanence_violations(base, head) == []
-    non_object_head: Any = []  # a JSON file whose top level isn't an object
-    assert find_prefix_permanence_violations(base, non_object_head) == []
 
 
-@pytest.mark.parametrize("bad_id", [None, "", 123])
+_MALFORMED_INVENTORIES: list[Any] = [[], "x", {"plugins": {"a": 1}}, {"plugins": "x"}, {}]
+
+
+@pytest.mark.parametrize("malformed", _MALFORMED_INVENTORIES)
+def test_permanence_malformed_base_fails_closed(malformed):
+    # A structurally malformed base used to be read as an empty inventory,
+    # so every registered prefix silently lost its protection.
+    head = {"plugins": [_plugin("git-kit", "./git-kit", prefix="git")]}
+    violations = find_prefix_permanence_violations(malformed, head)
+    assert len(violations) == 1
+    assert violations[0].reason.startswith("base inventory ")
+    assert "cannot be checked" in violations[0].reason
+
+
+@pytest.mark.parametrize("malformed", _MALFORMED_INVENTORIES)
+def test_permanence_malformed_head_fails_closed(malformed):
+    base = {"plugins": [_plugin("git-kit", "./git-kit", prefix="git")]}
+    violations = find_prefix_permanence_violations(base, malformed)
+    assert len(violations) == 1
+    assert violations[0].reason.startswith("head inventory ")
+    assert "cannot be checked" in violations[0].reason
+
+
+@pytest.mark.parametrize("bad_id", [None, "", "   ", 123])
 def test_permanence_base_prefixed_record_without_joinable_id_is_violation(bad_id):
     # Skipping it would leave the prefix with no permanence protection at all.
     entry = _plugin("foo-kit", "./foo-kit", prefix="foo")
@@ -562,7 +583,16 @@ def test_missing_plugins_key_flagged(tmp_path):
     assert [v.reason for v in violations] == ["`plugins` key is missing"]
 
 
-@pytest.mark.parametrize("bad_id", [None, "", 123])
+def test_permanence_whitespace_only_head_id_does_not_count_as_a_repair():
+    broken = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    del broken["id"]
+    blank = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    blank["id"] = "   "
+    violations = find_prefix_permanence_violations({"plugins": [broken]}, {"plugins": [blank]})
+    assert any("no non-empty string `id`" in v.reason for v in violations)
+
+
+@pytest.mark.parametrize("bad_id", [None, "", "   ", 123])
 def test_missing_or_non_string_id_flagged(tmp_path, bad_id):
     entry = _plugin("foo-kit", "./foo-kit")
     if bad_id is None:
