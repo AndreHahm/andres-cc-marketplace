@@ -370,9 +370,9 @@ def validate_inventory(inventory):
 
 
 def _validate_prefix_fields(plugins):
-    """`prefix` is a required key on every record (`null` is an explicit
-    opt-out, currently only `example-plugin`'s, a test fixture);
-    `domain_prefix` stays optional -- see the prefixes concept draft and
+    """`prefix` is a required key on every record (`null` means none is
+    registered: an opt-out such as `example-plugin`'s, or a new record
+    awaiting registration); `domain_prefix` stays optional -- see the prefixes concept draft and
     its R33 addendum. Uniqueness is checked across every record
     regardless of status, not just active ones: both fields are permanent
     and never reused even after a plugin is retired/superseded.
@@ -393,7 +393,12 @@ def _validate_prefix_fields(plugins):
     assigned_domain_prefixes = {}
     for plugin in plugins:
         name = plugin["name"]
-        prefix = plugin.get("prefix")
+        if "prefix" not in plugin:
+            raise ValueError(
+                f"plugin {name!r} has no 'prefix' key -- the key is required; "
+                "use an explicit null when no prefix is registered"
+            )
+        prefix = plugin["prefix"]
         if prefix is not None:
             models.validate_prefix(prefix)
             if prefix in assigned_domain_prefixes and assigned_domain_prefixes[prefix] != name:

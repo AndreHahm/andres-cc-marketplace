@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report treats the record with an absent prefix key as non-compliant with R33",
+      "type": "presence",
+      "target": "R33 finding"
+    },
+    {
+      "text": "Report distinguishes an absent key from an explicit null and does not call the absent key a sanctioned opt-out or silently inert",
+      "type": "quality",
+      "target": "R33 reasoning"
+    },
+    {
+      "text": "Report states the fix: add the prefix key (a curated prefix, or explicit null to opt out)",
+      "type": "quality",
+      "target": "R33 fix"
+    }
+  ]
+}

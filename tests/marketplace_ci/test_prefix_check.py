@@ -94,13 +94,13 @@ def test_no_inventory_file_is_inert(tmp_path):
     assert find_prefix_violations(tmp_path) == []
 
 
-def test_unregistered_plugin_no_findings(tmp_path):
+def test_explicit_null_prefix_is_inert(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "check-pr-title.py").write_text("", encoding="utf-8")
-    _write_inventory(
-        tmp_path, [_plugin("git-kit", "./git-kit")]
-    )  # explicit opt-out: no prefix, no domain_prefix
+    entry = _plugin("git-kit", "./git-kit")
+    entry["prefix"] = None  # key present with value null; _plugin() alone omits the key
+    _write_inventory(tmp_path, [entry])
     assert find_prefix_violations(tmp_path) == []
 
 
