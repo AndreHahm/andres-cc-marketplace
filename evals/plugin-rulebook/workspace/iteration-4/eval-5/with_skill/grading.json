@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report raises no R33 finding for scripts/helper.sh",
+      "passed": true,
+      "evidence": "Verdict: R33 raises no finding (PASS / inert) for `scripts/helper.sh` and none for the inventory record."
+    },
+    {
+      "text": "Report identifies the explicit prefix null (no domain_prefix) as a deliberate opt-out that makes R33 inert",
+      "passed": true,
+      "evidence": "\"Gating: inert for an explicit `null` opt-out\" section says a plugin with `prefix: null` and no `domain_prefix` produces zero findings."
+    },
+    {
+      "text": "Report does not flag the inventory record itself, since the prefix key is present",
+      "passed": true,
+      "evidence": "The key is present, with an explicit `null` ... the record is compliant."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

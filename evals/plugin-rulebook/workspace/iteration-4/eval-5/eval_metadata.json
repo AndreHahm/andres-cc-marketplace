@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report raises no R33 finding for scripts/helper.sh",
+      "type": "presence",
+      "target": "R33 finding"
+    },
+    {
+      "text": "Report identifies the explicit prefix null (no domain_prefix) as a deliberate opt-out that makes R33 inert",
+      "type": "quality",
+      "target": "R33 reasoning"
+    },
+    {
+      "text": "Report does not flag the inventory record itself, since the prefix key is present",
+      "type": "quality",
+      "target": "R33 reasoning"
+    }
+  ]
+}

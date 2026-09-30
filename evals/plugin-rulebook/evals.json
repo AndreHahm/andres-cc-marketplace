@@ -30,6 +30,27 @@
       "prompt": "A plugin named 'misc-kit' has NO registered R33 prefix (no 'prefix' field in marketplace-inventory.json). It has a command file at commands/config-settings.md (frontmatter name 'config-settings', a minimal valid description and body -- 'config' is a noun, not a verb). Apply the plugin-rulebook skill's R27 (Component Naming: Grammatical Form) check to this command file. Report whether R27 flags it, and why.",
       "expected_output": "DOES flag 'config-settings.md' under R27 (ADVISORY) -- since no prefix is registered, the full basename is checked as-is, and 'config' is not a recognizable verb.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "R33 treats an explicit prefix null as a deliberate opt-out",
+      "prompt": "A plugin named 'example-kit' has a marketplace-inventory.json record with \"prefix\": null and no \"domain_prefix\" key at all (a deliberate, recorded opt-out). It has a file at scripts/helper.sh (no plugin prefix in its basename). Apply the plugin-rulebook skill's R33 (Component-File Naming: Plugin Prefix Required) check to this plugin. Report whether R33 raises any finding for scripts/helper.sh or for the inventory record, and why.",
+      "expected_output": "R33 raises NO finding: an explicit prefix null with no domain_prefix is a deliberate opt-out, so the rule is inert for this plugin (helper.sh is not flagged), and the record itself is not a violation because the prefix key is present.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "R33 still enforces a registered prefix (pdk) on a mis-prefixed file",
+      "prompt": "A plugin named 'plugin-devkit', status 'active', has a marketplace-inventory.json record with prefix 'pdk' and domain_prefix 'plugindevkit'. Its root scripts/ directory contains: scripts/pdk-lib.sh, scripts/helper-utils.sh, scripts/inventory_common/pdk_models.py, and scripts/inventory_common/__init__.py. Apply the plugin-rulebook skill's R33 check. Give a verdict per file (pass, exempt, or flagged) with the reason.",
+      "expected_output": "Only scripts/helper-utils.sh is flagged (basename starts with neither 'pdk-' nor 'plugindevkit-'). pdk-lib.sh passes (pdk- prefix); pdk_models.py passes (.py snake_case form pdk_); inventory_common/__init__.py is exempt (a Python package's __init__.py under the plugin-root scripts/).",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "R33 does not silently treat an omitted prefix key as inert",
+      "prompt": "A plugin named 'legacy-kit', status 'active', has a marketplace-inventory.json record with id, name, source and status fields but NO 'prefix' key at all (the key is absent, which is different from an explicit null). It has a file at scripts/legacy-tool.sh. According to the plugin-rulebook skill's R33 as documented, how should this record be treated? Report whether it is a finding, what kind, and what the fix is.",
+      "expected_output": "Reports the record as non-compliant: R33 states every plugin's inventory record must carry a prefix key, and an explicit null (with no domain_prefix) is the only sanctioned opt-out. An absent key is NOT silently treated as inert or as an opt-out; the fix is to add the key (a curated prefix, or an explicit null if opting out).",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

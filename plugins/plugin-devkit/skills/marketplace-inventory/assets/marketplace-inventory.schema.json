@@ -101,7 +101,7 @@
     "plugin": {
       "type": "object",
       "required": [
-        "id", "name", "source", "status", "status_history", "functional_role", "domains",
+        "id", "name", "prefix", "source", "status", "status_history", "functional_role", "domains",
         "score", "security_score", "created_on", "compatibility",
         "naming_history", "scoring_history", "security_scoring_history", "provenance"
       ],

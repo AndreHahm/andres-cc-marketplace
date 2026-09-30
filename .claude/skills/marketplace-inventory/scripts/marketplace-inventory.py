@@ -309,6 +309,7 @@ def apply_add(inventory, operation, existing_ids):
     record = {
         "id": new_id,
         "name": operation["name"],
+        "prefix": None,
         "source": operation["source"],
         "status": status,
         "status_history": [
@@ -360,8 +361,8 @@ def validate_inventory(inventory):
     """Delegates to the shared `inventory_common.pdk_reconcile.validate_records`,
     using this inventory's own bare-`name` active-record uniqueness key
     (unlike plugin-inventory's `(name, type)` pair -- a plugin has no
-    `type` field). Also validates the optional per-plugin `prefix` and
-    `domain_prefix` fields: format, and uniqueness -- both within each
+    `type` field). Also validates the per-plugin `prefix` (required key,
+    may be `null`) and optional `domain_prefix` fields: format, and uniqueness -- both within each
     field's own namespace and across the two (R33 addendum; see
     `_validate_prefix_fields`)."""
     reconcile.validate_records(inventory.get("plugins", []), uniqueness_key=lambda p: p["name"])
@@ -369,9 +370,10 @@ def validate_inventory(inventory):
 
 
 def _validate_prefix_fields(plugins):
-    """`prefix` and `domain_prefix` are both optional (most plugins have
-    neither yet, during the phased migration -- see the prefixes concept
-    draft and its R33 addendum). Uniqueness is checked across every record
+    """`prefix` is a required key on every record (`null` is an explicit
+    opt-out, currently only `example-plugin`'s, a test fixture);
+    `domain_prefix` stays optional -- see the prefixes concept draft and
+    its R33 addendum. Uniqueness is checked across every record
     regardless of status, not just active ones: both fields are permanent
     and never reused even after a plugin is retired/superseded.
 

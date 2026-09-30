@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags scripts/helper-utils.sh",
+      "type": "presence",
+      "target": "R33 finding"
+    },
+    {
+      "text": "Report passes scripts/pdk-lib.sh and scripts/inventory_common/pdk_models.py (snake_case .py form)",
+      "type": "presence",
+      "target": "R33 verdicts"
+    },
+    {
+      "text": "Report treats inventory_common/__init__.py as exempt, not flagged",
+      "type": "presence",
+      "target": "R33 verdicts"
+    }
+  ]
+}

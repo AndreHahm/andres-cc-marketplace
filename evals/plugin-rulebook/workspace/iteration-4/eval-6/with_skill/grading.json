@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags scripts/helper-utils.sh",
+      "passed": true,
+      "evidence": "`scripts/helper-utils.sh` | FLAGGED (REQUIRED) | starts with neither `pdk-` nor `plugindevkit-`"
+    },
+    {
+      "text": "Report passes scripts/pdk-lib.sh and scripts/inventory_common/pdk_models.py (snake_case .py form)",
+      "passed": true,
+      "evidence": "`pdk-lib.sh` PASS; `pdk_models.py` PASS (.py snake_case, starts with `pdk_`)"
+    },
+    {
+      "text": "Report treats inventory_common/__init__.py as exempt, not flagged",
+      "passed": true,
+      "evidence": "`__init__.py` | EXEMPT | Python package's `__init__.py` under root-level `scripts/`"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
