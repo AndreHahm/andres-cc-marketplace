@@ -1,0 +1,3 @@
+target/references/a.md
+target/references/b.md
+target/SKILL.md

@@ -1,0 +1,42 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the step-5 approval ask with an Apply changes option, and the answer Apply changes leads on to step 6",
+      "passed": true,
+      "evidence": "'## Step 5' has AskUserQuestion 'Apply the approved scope?' with Apply changes / Plan only / Stop, answer Apply changes; next heading is '## Step 6: Make changes'."
+    },
+    {
+      "text": "the target copy was actually edited to fix at least one pre-analysis finding",
+      "passed": true,
+      "evidence": "diff vs fixture: SKILL.md changed (allowed-tools Read -> Read Grep, intake replaced by AskUserQuestion block, sections added); a.md chain replaced with inline marker formats; b.md deleted."
+    },
+    {
+      "text": "transcript.md shows goal measurement (step 8) happening after validation (step 7) and before the trigger-regression/compliance steps",
+      "passed": true,
+      "evidence": "Headings run Step 7, Step 8, Step 9, Step 10 in order."
+    },
+    {
+      "text": "goal-measurement.md records a PASS or FAIL result for every selected goal, each from that goal's own verification check",
+      "passed": true,
+      "evidence": "Table rows G1, G2, G3, each with its own scan and PASS; end state on disk matches all three."
+    },
+    {
+      "text": "no changes.md plan-only draft was written",
+      "passed": true,
+      "evidence": "outputs holds only transcript.md, goal-measurement.md and target/; no changes.md."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Step 10 not executed (manual inspection only); disclosed, marker withheld.",
+    "Q4 'Keep validation gates' was reinterpreted as covering existing content only so a Testing & Validation section could be auto-added; disclosed, but a judgment call that other runs (1, 4, 6, 7, 10, 11, 13) did not make.",
+    "Description stays 22 chars (R21 floor 80), deferred.",
+    "SKILL.md grew 13 -> 53 lines via auto-added sections."
+  ]
+}

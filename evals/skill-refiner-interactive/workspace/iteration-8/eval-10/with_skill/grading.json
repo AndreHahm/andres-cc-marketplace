@@ -1,0 +1,53 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md numbers exactly 3 compliance rounds, each with the rulebook FAIL and reviewer Major",
+      "passed": true,
+      "evidence": "transcript.md has headings 'Compliance round 1/2/3' (lines 129, 135, 141), no round 4; each re-runs both checks and reports '1 FAIL (R8) still; 1 Major still'; the initial run is labelled 'not a round' per SKILL.md line 161."
+    },
+    {
+      "text": "NO MARKER EMITTED appears after each of the three rounds and before the post-round-3 question",
+      "passed": true,
+      "evidence": "'NO MARKER EMITTED' at lines 133, 139 and 145, one per round; the round-cap question starts at line 147."
+    },
+    {
+      "text": "after round 3 the skill asks with three options: Continue another round, Accept remaining findings with reason, Stop",
+      "passed": true,
+      "evidence": "Lines 147-148: AskUserQuestion with the three options; simulated answer 'Accept remaining findings with reason'."
+    },
+    {
+      "text": "the change summary records the accepted findings with the reason 'cosmetic, tracked separately'",
+      "passed": true,
+      "evidence": "Change summary lines 158-159 record both the plugin-rulebook R8 FAIL and the skill-reviewer Major as accepted with 'cosmetic, tracked separately'."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the acceptance",
+      "passed": true,
+      "evidence": "grep -c finds exactly 1 occurrence, at line 166, after the acceptance (line 149) and change summary (lines 151-161)."
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "passed": true,
+      "evidence": "Round 1 converts description to a >- scalar with the same words ('format-only, so step 9 is not re-entered'); round 2 only rewraps; target/SKILL.md confirms words unchanged."
+    },
+    {
+      "text": "the marker is emitted only after the acceptance covers BOTH the plugin-rulebook FAIL and the skill-reviewer Major",
+      "passed": true,
+      "evidence": "Round-cap question names both; summary records both as accepted; the 'Completion marker decision' block checks both before the marker at line 166."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Assertion 6 is only half exercised: the format-only branch is shown, never a description TEXT change followed by step 9.",
+    "Round-3 R8 fix is a no-op and round 2's rewrap is a contrived cosmetic change made to fill a round; the eval tests the cap mechanics, not finding resolution.",
+    "Transcript miscounts the description as 21 chars (it is 22); trivial.",
+    "Line 169 refers to 'delivered file blocks' that do not exist in transcript.md.",
+    "Not flagged by the grader, noted by the coordinator: the run's own pre-analysis says it did not open plugin-rulebook's settings and used fallback flat limits ('R13/R18 threshold source: skill-development fallback'), unlike the other runs that read settings.json. No assertion for this eval depends on the thresholds."
+  ]
+}

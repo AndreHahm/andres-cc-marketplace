@@ -1,0 +1,42 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "after compliance round 1 (rulebook FAIL + reviewer Major) transcript.md says NO MARKER EMITTED",
+      "passed": true,
+      "evidence": "transcript.md line 156: 'Completion marker: NO MARKER EMITTED (1 rulebook FAIL and 1 Major finding remain)' after the simulated R8 FAIL and Major; labelled 'First run of both checks (not a round)', matching SKILL.md step 10's definition."
+    },
+    {
+      "text": "the transcript shows the FAIL and the Major being fixed and both checks re-run before any marker",
+      "passed": true,
+      "evidence": "Lines 159-166 fix R8 (>- scalar) and add a Quick Start example, re-run step-7 phases and goals, then re-run both checks clean; marker only at lines 180-184; target/SKILL.md on disk shows both fixes."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears after the clean round 2",
+      "passed": false,
+      "evidence": "The transcript has no section called 'round 2'; it calls the clean re-run the 'end of round 1' (lines 164-167) and emits the marker 'at the end of round 1 after the clean re-run'. Substance matches the eval prompt, but a strict literal reading of 'after the clean round 2' is not shown."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the acceptance",
+      "passed": true,
+      "evidence": "grep -c returns 1, at line 183 inside one fenced emission block; no acceptance question was needed because every goal passed at step 8."
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "passed": true,
+      "evidence": "Only fix was format-only (description: >- with the same words); line 159 says step 9 does not re-enter."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  },
+  "concerns": [
+    "Assertion 3 fails on labelling: the run follows SKILL.md's definition (first check run is not a round), so the clean re-run is 'end of round 1' and no 'round 2' exists. The behavior is correct; the assertion wording ('round 1'/'round 2') conflicts with the skill's own round definition. Iteration 7's eval 6 (same assertions) passed with 'round 2' labelling, so this is run-to-run variation in labelling, not a behavior change.",
+    "Assertion 4's 'after the acceptance' has no literal counterpart (no acceptance was needed).",
+    "Goal-1 verification and line counts self-reported, not independently recounted.",
+    "'Keep validation gates' read as blocking an auto-added Testing & Validation section."
+  ]
+}

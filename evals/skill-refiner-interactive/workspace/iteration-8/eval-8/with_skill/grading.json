@@ -1,0 +1,46 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the skill skipping the interview (no BATCH 1 or BATCH 2 question) and going straight to the Validation workflow",
+      "passed": true,
+      "evidence": "Quick Start D: 'Validate -> skip the interview, go to Core Workflow: Validation'; only questions are the Action question and the enhancement-suggestor question; matches SKILL.md line 56."
+    },
+    {
+      "text": "transcript.md shows delegation to the skill-reviewer agent in Structured output mode and to Skill(plugin-rulebook), with no self-made scoring",
+      "passed": true,
+      "evidence": "'Validation step 2' lists 2a skill-reviewer (full, Structured output mode) and 2b Skill(plugin-rulebook) with simulated returns; 'No reimplementation'; only score shown is the supplied 82."
+    },
+    {
+      "text": "report.md contains the verdict, findings grouped by severity, and the top priority fixes",
+      "passed": true,
+      "evidence": "report.md: Status, Critical/Major/Minor subsections (M1, m1, m2), and an 'Actionable summary' containing the top priority fix."
+    },
+    {
+      "text": "report.md lists the plugin-rulebook FAIL under its own heading and shows the verdict downgraded from Pass to Reject",
+      "passed": true,
+      "evidence": "Separate '## plugin-rulebook FAIL findings' heading with R8; Status says reviewer returned Pass, displayed status downgraded to Reject."
+    },
+    {
+      "text": "transcript.md shows the enhancement-suggestor Yes/No question asked and the agent NOT invoked after the answer No",
+      "passed": true,
+      "evidence": "Step 3 asks the Yes/No question, 'Simulated answer: No. -> enhancement-suggestor NOT invoked.'; report.md Follow-up agrees."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r outputs/target fixtures/demo-skill produced no differences."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "report.md has no heading literally named 'top priority fixes'; the item is merged into 'Actionable summary' and labelled inline.",
+    "Action question simulated although skippable; harmless.",
+    "Some transcript claims (no pre-analysis) are self-reported; on-disk evidence consistent."
+  ]
+}

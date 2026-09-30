@@ -1,0 +1,44 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "iteration": 9,
+  "assertions_evaluated": [
+    {
+      "text": "after the first run of both compliance checks (rulebook FAIL + reviewer Major) transcript.md says NO MARKER EMITTED",
+      "passed": true,
+      "evidence": "transcript.md lines 157-160 'Run 1': rulebook 1 FAIL (R8), reviewer 1 Major, then '- NO MARKER EMITTED (1 FAIL and 1 Major outstanding...)'."
+    },
+    {
+      "text": "the transcript shows the FAIL and the Major being fixed and both checks re-run before any marker",
+      "passed": true,
+      "evidence": "Lines 162-167 'Round 1' show both fixes; target/SKILL.md confirms `description: >-` and an 'Example:' line. Lines 169-171 'Run 2' re-run both checks clean, and the marker at line 189 comes after."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears after the clean re-run of both checks",
+      "passed": true,
+      "evidence": "Literal marker at transcript.md line 189, after clean Run 2 (169-172) and the completion-gate conditions (175)."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the clean re-run of both checks",
+      "passed": true,
+      "evidence": "grep -c of the literal marker in transcript.md returns 1; it is in a single fenced block at lines 188-190, after Run 2."
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "passed": true,
+      "evidence": "Line 164 makes the description fix format-only (same words 'Helps with demo tasks.'); line 167 says 'Step 9 not re-entered: no text change to description.' The diff vs the fixture confirms only the scalar style changed."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Change summary says 'plugin-rulebook: 1 FAIL findings fixed'; it omits the fixed reviewer Major and the grammar is off.",
+    "The target sits under a globally gitignored path; the run treated the operator-named path as valid and used the pristine fixture as rollback source (unstated assumption).",
+    "Simulated answers did not cover BATCH 1 Q2-Q4, BATCH 2, consolidation or the Gate 4 delete, so the first option was taken each time; 'Keep validation gates' led to no Testing & Validation section. The clean Run 2 comes only from the simulation control.",
+    "Description stays 22 chars (R21 floor 80) yet Run 2 reports the rulebook clean; this follows the eval's control, not a real compliance result.",
+    "The run said it would not edit the description in step 7 (out of scope) and then edited it in round 1 for the R8 fix; a visible but consistent scope shift."
+  ]
+}

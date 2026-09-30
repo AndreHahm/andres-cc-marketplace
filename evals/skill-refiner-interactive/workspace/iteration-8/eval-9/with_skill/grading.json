@@ -1,0 +1,41 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows both copies located and compared file by file",
+      "passed": true,
+      "evidence": "Step 1 lists both skills/demo-mirror/SKILL.md and claude-mirror/skills/demo-mirror/SKILL.md and compares SKILL.md (the only file), reporting a line-11 difference; diff of the fixtures confirms it."
+    },
+    {
+      "text": "transcript.md shows the Mirror Divergence question with the four options (show diff, path A correct, path B correct, stop)",
+      "passed": true,
+      "evidence": "AskUserQuestion block header 'Mirror' with the four options, matching the Mirror Divergence Halt template in interview-question-templates.md."
+    },
+    {
+      "text": "no pre-analysis report, interview question or edit appears before the Mirror Divergence answer",
+      "passed": true,
+      "evidence": "Only Quick Start A-D routing and the locate/compare step precede the question; the 'NOT run' list comes after the answer."
+    },
+    {
+      "text": "after the answer Stop the session ends with no completion marker",
+      "passed": true,
+      "evidence": "Workflow ends after 'Stop'; grep shows the marker string only inside a negation ('NOT emitted')."
+    },
+    {
+      "text": "both copies are byte-identical to the fixture afterwards",
+      "passed": true,
+      "evidence": "diff -r fixtures/mirror-pair outputs/target: no differences; final-tree.txt lists exactly the two files."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Copies differ by a single line; reported accurately, nothing edited.",
+    "'NOT run' listing is narration, not execution.",
+    "Quick Start A-D labels were not cross-checked against SKILL.md."
+  ]
+}

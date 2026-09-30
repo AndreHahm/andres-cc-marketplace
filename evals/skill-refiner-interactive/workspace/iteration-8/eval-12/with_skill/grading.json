@@ -1,0 +1,46 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the escape-hatch question with header 'Interview' and two options (Infer from context, Define explicitly)",
+      "passed": true,
+      "evidence": "Quick Start A: header 'Interview', options 'Infer from context' / 'Define explicitly', simulated answer 'Infer from context'."
+    },
+    {
+      "text": "no BATCH 1 question (Focus Areas, Key Issues, Success, Scope Limits) is asked",
+      "passed": true,
+      "evidence": "'BATCH 1 - Refinement Focus' says SKIPPED, 'Questions 1-4 not asked'."
+    },
+    {
+      "text": "locating the skill and the pre-analysis report both happen before any goal or interview question",
+      "passed": true,
+      "evidence": "Step 1 locate and full Pre-Analysis precede the goal question and Requirements Interview; only the escape-hatch routing question comes earlier."
+    },
+    {
+      "text": "goal selection is asked after the pre-analysis report",
+      "passed": true,
+      "evidence": "Goal selection question appears after the Pre-Analysis report and goal derivation."
+    },
+    {
+      "text": "only BATCH 2 questions whose trigger was detected are asked; no Extraction, Arguments or Desc split question appears for a trigger that was not detected",
+      "passed": true,
+      "evidence": "Only Intake (detected) and Prod checks (always) asked; Extraction, Arguments, Desc split listed as not triggered."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r outputs/target fixtures/demo-skill: no differences; transcript ends at step-5 Stop."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Prod checks has no 'Yes' option; run read the operator's 'choose Yes' as selecting the first three options (disclosed).",
+    "Step-3 consolidation header 'Consolidate' is labelled assumed.",
+    "Pre-analysis accuracy not re-verified (no assertion depends on it)."
+  ]
+}
