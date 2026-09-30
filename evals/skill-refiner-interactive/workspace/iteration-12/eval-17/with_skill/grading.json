@@ -1,0 +1,48 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "iteration": 12,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the escape-hatch question answered 'Infer from context' and BATCH 1 skipped",
+      "passed": true,
+      "evidence": "transcript.md lines 9-16 show the escape-hatch question with simulated answer 'Infer from context'; line 77 says 'BATCH 1 is skipped; proceed straight to BATCH 2'."
+    },
+    {
+      "text": "the goal-selection question offers a candidate goal for the operator's stated need (the Quick Start being unclear to a first-time reader) alongside goals derived from pre-analysis",
+      "passed": true,
+      "evidence": "transcript.md lines 69-72 list option 3 'Clear Quick Start' (custom, from the operator's context) next to two pre-analysis-derived goals."
+    },
+    {
+      "text": "that candidate goal states a concrete proposed verification check",
+      "passed": true,
+      "evidence": "transcript.md line 72 gives a four-item check (what the skill does, numbered first actions, input/expected output, no reference file needed for the first step) that the operator confirms."
+    },
+    {
+      "text": "no more than 3 goals are offered in total, and any derived goal displaced by the candidate is listed as a deferred candidate",
+      "passed": true,
+      "evidence": "Exactly 3 options (lines 70-72). Line 62 says the candidate displaced the R21 description-size goal; line 64 lists it first among deferred candidates."
+    },
+    {
+      "text": "the recorded goals, after the simulated 'select all', include the context-derived goal",
+      "passed": true,
+      "evidence": "transcript.md line 74: 'Recorded goals: G1 no ref->ref chains; G2 all invoked tools declared; G3 clear Quick Start.'"
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r fixtures/demo-skill outputs/target produced no differences; transcript ends at the step-5 Stop (lines 135-142)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The Prod checks question is multiSelect with no 'Yes' option, so the run fell back to the first option and recorded the deviation itself (line 95); an unresolved wording gap between the eval and the skill.",
+    "The step-3 consolidation question had no simulated answer, so the run took the first option by default; it never took effect because the run stopped at step 5.",
+    "The candidate goal took the lowest-priority slot, displacing the R21 description-size goal; that ordering is asserted by the run and was not checked by the grader against goal-derivation.md (coordinator note: it matches the Custom Goals section).",
+    "Pre-analysis findings and thresholds were not independently re-verified by the grader against the fixture or rulebook; only assertion-relevant behavior was checked."
+  ]
+}

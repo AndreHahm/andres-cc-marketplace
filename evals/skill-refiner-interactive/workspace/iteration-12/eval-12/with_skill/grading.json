@@ -1,0 +1,49 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "iteration": 12,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the escape-hatch question with header 'Interview' and two options (Infer from context, Define explicitly)",
+      "passed": true,
+      "evidence": "Quick Start A shows header 'Interview' with options 'Infer from context' / 'Define explicitly' and the simulated answer 'Infer from context'."
+    },
+    {
+      "text": "no BATCH 1 question (Focus Areas, Key Issues, Success, Scope Limits) is asked",
+      "passed": true,
+      "evidence": "transcript.md states 'BATCH 1 is skipped entirely (Questions 1-4 not asked)'; the only questions are Interview, Goals, Prod checks, Consolidate and Apply."
+    },
+    {
+      "text": "locating the skill and the pre-analysis report both happen before any goal or interview question",
+      "passed": true,
+      "evidence": "Step 1 locate and the full pre-analysis report precede the goal derivation and the Requirements Interview; the only earlier question is the routing escape hatch."
+    },
+    {
+      "text": "goal selection is asked after the pre-analysis report",
+      "passed": true,
+      "evidence": "The Goals multiSelect question appears after the pre-analysis report block."
+    },
+    {
+      "text": "only BATCH 2 questions whose trigger was detected are asked; no Extraction, Arguments or Desc split question appears for a trigger that was not detected",
+      "passed": true,
+      "evidence": "Extraction, Intake, Arguments and Desc split are listed as 'not detected, not asked'; the only BATCH 2 question is Prod checks, asked in every session."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r outputs/target fixtures/demo-skill printed no differences; the transcript ends at step 5 with 'Stop'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The Prod checks question has no Yes option, so the run applied the first-option default; the operator's 'choose Yes for BATCH 2' instruction did not apply.",
+    "Intake was not flagged (unbounded file-path input exempt), yet the run offered the operator-stated 'intake is sloppy' as custom goal G3, checked by a scan for an AskUserQuestion note or an explicit plain-text note; G3 displaced the description-size (R21) finding to the deferred list. Coordinator note: this is the intake exemption and the new context-derived goal working together as designed. Iteration 11's eval 12 flagged the same line instead, so the exemption is still applied unevenly across runs.",
+    "The step-3 consolidation question had no simulated answer, so the first option was taken; it is outside what the assertions check.",
+    "target/ matches a global gitignore (simulation directory name), not a skill defect.",
+    "Regression guard for the goal-selection and Quick Start A edits: the Infer-from-context routing still holds."
+  ]
+}
