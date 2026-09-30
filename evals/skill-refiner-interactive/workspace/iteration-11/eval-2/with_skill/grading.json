@@ -1,0 +1,44 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "iteration": 11,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the step-5 approval ask with an Apply changes option, and the answer Apply changes leads on to step 6",
+      "passed": true,
+      "evidence": "'## Step 5: Plan-only exit' lists Apply changes / Plan only / Stop and records 'Apply changes'; the next heading is '## Step 6: Make changes'."
+    },
+    {
+      "text": "the target copy was actually edited to fix at least one pre-analysis finding",
+      "passed": true,
+      "evidence": "diff of fixtures/demo-skill against outputs/target: description grew from 22 to about 165 characters, Grep was added to allowed-tools, and the a.md->b.md chain was removed by merging both into references/todo-markers.md."
+    },
+    {
+      "text": "transcript.md shows goal measurement (step 8) happening after validation (step 7) and before the trigger-regression/compliance steps",
+      "passed": true,
+      "evidence": "Heading order is Step 7 (Validate), Step 8 (Measure goals), Step 9 (Trigger regression), Step 10 (Compliance)."
+    },
+    {
+      "text": "goal-measurement.md records a PASS or FAIL result for every selected goal, each from that goal's own verification check",
+      "passed": true,
+      "evidence": "goal-measurement.md has G1, G2, G3 each marked PASS with its own check (chain scan, tool-scoping scan, R21 length check)."
+    },
+    {
+      "text": "no changes.md plan-only draft was written",
+      "passed": true,
+      "evidence": "The outputs directory contains only transcript.md, goal-measurement.md and target/; no changes.md exists."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "G3's verification was offered as 'Skill(plugin-rulebook) R21 -> OK' but that skill was not run; the run measured description length by hand, disclosed it, and recorded PASS. A strict reader could say the result did not come from the goal's own stated check.",
+    "The run found a real skill gap: nothing says what to do when a step-10 REQUIRED FAIL (R28/R29) needs an area the operator excluded at BATCH 1 Q4. It improvised a re-ask (consistent with the disclose-before-overriding rule). The same latent gap appears as an 'expected R29 FAIL' note in most other runs; it is reported to the user as an unfixed, out-of-scope finding.",
+    "Coordinator note: this run did NOT flag the free-text intake line (it judged a file path unbounded under the new checklist exemption), so the intake goal was not offered and 'Description size OK' took its slot. Evals 12 and 16 flagged the same line as borderline under the same wording, so the exemption is applied inconsistently between runs. No eval 2 assertion depends on the intake goal, so the verdicts hold, but the pre-analysis is less stable than before the exemption.",
+    "Step 9's trigger check and step 10's plugin-rulebook and skill-reviewer passes were simulated and flagged SIMULATED in the transcript.",
+    "The run asked an early Gate 4 delete confirmation ahead of step 6 and cited it at the deletion, matching the step-4 wording added in the first review round."
+  ]
+}

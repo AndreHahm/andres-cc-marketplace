@@ -1,0 +1,46 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "iteration": 11,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the Intake question asked in BATCH 2 and records the simulated answer 'No'",
+      "passed": true,
+      "evidence": "transcript.md has a 'BATCH 2' section with the Intake question (Yes/No), followed by 'SIMULATED ANSWER: No. Intake stays as-is.'"
+    },
+    {
+      "text": "the intake goal offered at goal selection is scoped to intake sections the operator agrees to convert, not to all intake, and its verification excludes sections the operator kept free-form",
+      "passed": true,
+      "evidence": "transcript.md goal option 2 reads 'Every intake section the operator agrees to convert uses AskUserQuestion... 0 matches outside sections kept free-form'; goal-measurement.md G2 uses the same scoping."
+    },
+    {
+      "text": "the target's SKILL.md still contains the free-form intake line 'Ask the user which file to process' (the operator kept it)",
+      "passed": true,
+      "evidence": "target/SKILL.md line 11 still reads 'Ask the user which file to process. Then grep the file...'; the diff against the fixture shows that line unchanged."
+    },
+    {
+      "text": "goal-measurement.md records the intake goal as PASS, and transcript.md shows no 'Accept with reason' question asked for it",
+      "passed": true,
+      "evidence": "goal-measurement.md lists G2 as PASS; transcript.md Step 8 says the Accept with reason question was never asked, and no such question block appears."
+    },
+    {
+      "text": "the other selected goals were still carried out: no reference-to-reference chain remains in the target and Grep is declared in the target's allowed-tools",
+      "passed": true,
+      "evidence": "The diff shows a.md's 'Read references/b.md...' line removed and target/references/*.md have no path references; target/SKILL.md frontmatter reads 'allowed-tools: Read Grep'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Q2-Q4 and Prod checks had no simulated answers, so the first option was taken; Q4 'Keep validation gates' led the run to skip Testing & Validation, which the run's own Step 10 note says would be a REQUIRED R29 FAIL (the same latent gap seen in most runs).",
+    "Step 10 was not run; disclosed, marker withheld.",
+    "G1's scan is loose (greps 'references/' or '.md' in references/*.md) but catches the original chain.",
+    "The run also moved the b.md pointer into SKILL.md and auto-added three standard sections; consistent with approved scope, outside the five assertions.",
+    "Grep was unavailable, so scans ran through unscoped Bash grep (simulation limitation, disclosed).",
+    "The R21 description-size finding was deferred because of the 3-goal cap; disclosed.",
+    "New eval for the second-pass review finding; written after the fix by the session that wrote the fix."
+  ]
+}
