@@ -698,6 +698,314 @@ def test_permanence_uncoordinated_rename_with_repo_still_violation(tmp_path):
     assert "git-kit" in violations[0].reason and "git-kit-legacy" in violations[0].reason
 
 
+def test_permanence_id_takeover_by_unrelated_plugin_is_violation(tmp_path):
+    # #440 item 6 (reproduced bypass): permanence joins base to head on `id`
+    # alone. Plugin A (id X, prefix `abc`) gets a NEW unique id with
+    # `prefix: null`, while an unrelated, manifest-backed plugin B takes over
+    # id X and the prefix. Both ids stay unique, so the duplicate-id check
+    # stays quiet; B's "rename" from A joins marketplace.json, so the rename
+    # check accepts it. Net effect: the prefix moved to another plugin, A is
+    # silently prefix-less, and nothing is reported.
+    _write_marketplace_manifest(
+        tmp_path,
+        [{"name": "a", "source": "./a"}, {"name": "b", "source": "./b"}],
+    )
+    base = {"plugins": [{"id": "X", "name": "a", "source": "./a", "prefix": "abc"}]}
+    head = {
+        "plugins": [
+            {"id": "Y", "name": "a", "source": "./a", "prefix": None},
+            {"id": "X", "name": "b", "source": "./b", "prefix": "abc"},
+        ]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert violations, "prefix `abc` moved from plugin a to unrelated plugin b unreported"
+    assert any(v.plugin_id == "X" and "source changed" in v.reason for v in violations)
+
+
+def test_permanence_source_change_under_same_id_is_violation():
+    # Same id and prefix but a different `source` is a different plugin
+    # wearing the old id, even with no second record involved.
+    base = {"plugins": [{"id": "X", "name": "a", "source": "./a", "prefix": "abc"}]}
+    head = {"plugins": [{"id": "X", "name": "a", "source": "./other", "prefix": "abc"}]}
+    violations = find_prefix_permanence_violations(base, head)
+    assert len(violations) == 1
+    assert "source changed" in violations[0].reason
+
+
+def _src_rec(id_, name, source, prefix, status="active"):
+    return {"id": id_, "name": name, "source": source, "prefix": prefix, "status": status}
+
+
+def test_permanence_manifest_confirmed_source_move_is_allowed(tmp_path):
+    # marketplace-inventory's own `update source` flow: the manifest lists the
+    # new directory under the same name and nothing claims the old one.
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./plugins/a-v2"}])
+    base = {"plugins": [_src_rec("X", "a", "./plugins/a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./plugins/a-v2", "abc")]}
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path) == []
+
+
+def test_permanence_source_move_not_confirmed_by_manifest_is_violation(tmp_path):
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./plugins/a"}])
+    base = {"plugins": [_src_rec("X", "a", "./plugins/a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./plugins/a-v2", "abc")]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("source changed" in v.reason for v in violations)
+
+
+def test_permanence_source_move_without_repo_is_violation():
+    base = {"plugins": [_src_rec("X", "a", "./plugins/a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./plugins/a-v2", "abc")]}
+    assert find_prefix_permanence_violations(base, head)
+
+
+def test_permanence_planned_record_gaining_first_source_is_allowed():
+    base = {"plugins": [_src_rec("X", "a", None, "abc", status="planned")]}
+    head = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_permanence_first_source_under_a_different_name_is_violation():
+    base = {"plugins": [_src_rec("X", "a", None, "abc", status="planned")]}
+    head = {"plugins": [_src_rec("X", "b", "./b", "abc")]}
+    assert find_prefix_permanence_violations(base, head)
+
+
+@pytest.mark.parametrize("spelling", ["a", "./a/", ".\\a", "./A"])
+def test_permanence_source_spelling_change_is_not_a_move(spelling):
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", spelling, "abc")]}
+    assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_permanence_name_moved_to_new_id_while_old_id_keeps_source_is_violation(tmp_path):
+    # M2 (security-reviewer, delta pass): the swap in the other direction. The
+    # old id keeps its source and prefix under a dummy name, the real plugin
+    # name goes to a new unprefixed id pointing at a new directory.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "a", "source": "./a-new"}, {"name": "b", "source": "./a"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "b", "./a", "abc"), _src_rec("Y", "a", "./a-new", None)]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("holds that name" in v.reason for v in violations)
+
+
+def test_permanence_source_reregistered_under_new_id_is_violation(tmp_path):
+    # M3 (security-reviewer, delta pass): retire the record, register the same
+    # directory under a new name and id with no prefix -- the scan then skips
+    # both records and never looks at the directory.
+    _write_marketplace_manifest(tmp_path, [{"name": "a2", "source": "./a"}])
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc", status="retired"),
+            _src_rec("Y", "a2", "./a", None),
+        ]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("now claims that directory" in v.reason for v in violations)
+
+
+@pytest.mark.parametrize("spelling", ["./x/../a", "./a/./", "./a/../a"])
+def test_permanence_dotdot_respelling_cannot_hide_the_old_directory(tmp_path, spelling):
+    # Second security pass, M1: `./x/../a` is `./a`. Respelling the old
+    # directory must neither make it look released (confirmed_move) nor hide
+    # a new record's claim on it.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "a-new", "source": spelling}, {"name": "b", "source": "./b"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("Y", "a-new", spelling, None), _src_rec("X", "b", "./b", "abc")]}
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path)
+
+
+def test_permanence_dotdot_respelled_directory_reregistered_is_violation(tmp_path):
+    _write_marketplace_manifest(tmp_path, [{"name": "a2", "source": "./a/../a"}])
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc", status="retired"),
+            _src_rec("Y", "a2", "./a/../a", None),
+        ]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("now claims that directory" in v.reason for v in violations)
+
+
+def test_permanence_path_escaping_the_repo_never_reads_as_no_source():
+    # A `..`-escaping source gets a sentinel, not None: None would let it
+    # pass as a prefixed record that simply has no source yet.
+    base = {"plugins": [_src_rec("X", "a", "../outside", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    assert find_prefix_permanence_violations(base, head)
+
+
+def test_permanence_sibling_sharing_directory_at_base_cannot_be_reactivated(tmp_path):
+    # Second security pass, M2: a retired sibling that already shared the
+    # directory at base is exempt only while it is untouched. Reactivating it
+    # under a new name while the prefixed record retires must still be caught.
+    _write_marketplace_manifest(tmp_path, [{"name": "a2", "source": "./a"}])
+    base = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc"),
+            _src_rec("D", "old", "./a", None, status="retired"),
+        ]
+    }
+    head = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc", status="retired"),
+            _src_rec("D", "a2", "./a", None),
+        ]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("now claims that directory" in v.reason for v in violations)
+
+
+def test_permanence_sibling_sharing_name_at_base_cannot_take_the_name_to_a_new_directory(
+    tmp_path,
+):
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "zz", "source": "./a"}, {"name": "a", "source": "./a-new"}]
+    )
+    base = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc"),
+            _src_rec("D", "a", "./old", None, status="retired"),
+        ]
+    }
+    head = {"plugins": [_src_rec("X", "zz", "./a", "abc"), _src_rec("D", "a", "./a-new", None)]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("holds that name" in v.reason for v in violations)
+
+
+def test_permanence_source_move_allowed_despite_untouched_retired_sibling_on_old_path(tmp_path):
+    # Second security pass, M3: marketplace-inventory's `update source` only
+    # touches the active record; a retired sibling keeps the old path. That
+    # untouched sibling must not block the move.
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./a2"}])
+    base = {
+        "plugins": [
+            _src_rec("Z", "a", "./a", "xyz"),
+            _src_rec("W", "a", "./a", None, status="retired"),
+        ]
+    }
+    head = {
+        "plugins": [
+            _src_rec("Z", "a", "./a2", "xyz"),
+            _src_rec("W", "a", "./a", None, status="retired"),
+        ]
+    }
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path) == []
+
+
+def test_permanence_prefixed_record_becoming_another_plugin_is_violation(tmp_path):
+    # Third security pass, M1: the original attack mirrored. X keeps its id and
+    # prefix but turns into plugin `b` (new name AND new source), while the
+    # real plugin `a` is re-registered under a new unprefixed id.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "b", "source": "./b"}, {"name": "a-new", "source": "./a-new"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "b", "./b", "abc"), _src_rec("Y", "a-new", "./a-new", None)]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("at once" in v.reason and v.plugin_id == "X" for v in violations)
+
+
+@pytest.mark.parametrize("root", [".", "./", "./."])
+def test_permanence_repo_root_source_is_a_real_source_not_no_source(tmp_path, root):
+    # Fourth security pass, M1: a root-sourced plugin (common in single-plugin
+    # marketplaces) must not normalize to "no source", or the identity and
+    # directory rules all switch off and the mirrored takeover reopens for it.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "b", "source": "./b"}, {"name": "a-new", "source": root}]
+    )
+    base = {"plugins": [_src_rec("X", "a", root, "abc")]}
+    head = {"plugins": [_src_rec("X", "b", "./b", "abc"), _src_rec("Y", "a-new", root, None)]}
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path)
+
+
+def test_permanence_root_source_is_not_treated_as_a_first_source():
+    # `.` is a real source, so a planned record "gaining" it is not the
+    # no-source -> first-source case; the same holds in reverse.
+    base = {"plugins": [_src_rec("X", "a", None, "abc", status="planned")]}
+    head = {"plugins": [_src_rec("X", "a", "./", "abc")]}
+    assert find_prefix_permanence_violations(base, head) == []
+    assert find_prefix_permanence_violations(head, base)
+
+
+def test_permanence_prefixed_record_cannot_take_a_live_plugins_name_or_directory(tmp_path):
+    # Acquiring side of the same takeover: X renames onto / moves onto a live
+    # base plugin B's name or directory -- one change only, so the
+    # both-fields rule does not fire and the claim rule must.
+    _write_marketplace_manifest(tmp_path, [{"name": "b", "source": "./a"}])
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc"), _src_rec("B", "b", "./b", None)]}
+    renamed_onto_b = {
+        "plugins": [_src_rec("X", "b", "./a", "abc"), _src_rec("B", "b2", "./b", None)]
+    }
+    violations = find_prefix_permanence_violations(base, renamed_onto_b, repo=tmp_path)
+    assert any("belonged to live plugin" in v.reason for v in violations)
+
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./b"}])
+    moved_onto_b = {"plugins": [_src_rec("X", "a", "./b", "abc"), _src_rec("B", "b", "./b2", None)]}
+    violations = find_prefix_permanence_violations(base, moved_onto_b, repo=tmp_path)
+    assert any("belonged to live plugin" in v.reason for v in violations)
+
+
+def test_permanence_manifest_only_entry_cannot_take_the_old_name(tmp_path):
+    # Third security pass, M2a: no inventory record is involved -- the old
+    # name is simply listed in marketplace.json at a new directory after the
+    # prefixed record was (validly) renamed away from it.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "a-old", "source": "./a"}, {"name": "a", "source": "./new"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a-old", "./a", "abc")]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("marketplace.json still lists name" in v.reason for v in violations)
+
+
+def test_permanence_manifest_only_entry_cannot_take_the_old_directory(tmp_path):
+    # Third security pass, M2b: X retires and the directory is re-listed in
+    # marketplace.json under another name with no inventory record at all.
+    _write_marketplace_manifest(tmp_path, [{"name": "a2", "source": "./a"}])
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./a", "abc", status="retired")]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("under a different name" in v.reason for v in violations)
+
+
+def test_permanence_sibling_status_only_change_is_not_a_violation(tmp_path):
+    # Third security pass, m1: a superseded -> retired edit on a sibling that
+    # already shared the name at base is not a takeover (it never went live).
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./a"}])
+    base = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc"),
+            _src_rec("W", "a", "./a-old", None, status="superseded"),
+        ]
+    }
+    head = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc"),
+            _src_rec("W", "a", "./a-old", None, status="retired"),
+        ]
+    }
+    assert find_prefix_permanence_violations(base, head, repo=tmp_path) == []
+
+
+def test_permanence_unchanged_shared_source_and_name_at_base_is_not_a_violation():
+    # A pair that already coexisted at base (a retired prefixed record and an
+    # active one sharing its directory or name) must not trip the new checks.
+    base = {
+        "plugins": [
+            _src_rec("X", "a", "./a", "abc", status="retired"),
+            _src_rec("Y", "a", "./a", None),
+        ]
+    }
+    assert find_prefix_permanence_violations(base, base) == []
+
+
 def test_malformed_prefix_rejected(tmp_path):
     # Found by a live Codex cross-model-review pass (round 4): a
     # hand-edited marketplace-inventory.json bypassing the CLI's own

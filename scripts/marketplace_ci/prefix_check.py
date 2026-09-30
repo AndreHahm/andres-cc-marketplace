@@ -23,6 +23,7 @@ marketplace-inventory.json and the plugin trees it names.
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -176,6 +177,199 @@ def _inventory_structure_problem(inventory: Any) -> str | None:
     return None
 
 
+def _norm_source(source: Any) -> str | None:
+    """Comparable form of a `source` path, or None if it isn't a usable one.
+    `./a`, `a`, `./a/` and (for case-insensitive filesystems) `./A` all name
+    the same directory, so claims are compared in this form -- otherwise a
+    spelling change would either read as a move or, worse, hide a claim."""
+    if not isinstance(source, str) or not source.strip():
+        return None
+    # `..` is resolved (`./x/../a` is `./a`), or the same directory would
+    # compare as two and a claim could hide behind a respelling. A path that
+    # escapes the root or is absolute gets a sentinel that matches only itself
+    # -- never None, which would read as "no source".
+    normalized = posixpath.normpath(source.strip().replace("\\", "/"))
+    # The repo root (`.`) is a real source, not "no source": a root-sourced
+    # plugin is common, and returning None here would switch off every rule
+    # that keys on a record having a source.
+    if normalized.startswith("/") or normalized == ".." or normalized.startswith("../"):
+        return f"<outside-repo:{normalized}>"
+    return normalized.casefold()
+
+
+def _is_live(record: dict[str, Any]) -> bool:
+    """Whether `record` counts as live for name/directory ownership. An absent
+    `status` reads as `active` here -- conservative: `find_prefix_violations`
+    itself scans only an explicit `active`/`deprecated`, so this can over-block
+    (a record going from `retired` to no status counts as newly live) but never
+    lets a claim through."""
+    status = record.get("status", "active")
+    return isinstance(status, str) and status in CHECKED_STATUSES
+
+
+def _holds_claim_untouched(
+    other: dict[str, Any],
+    base_all_by_id: dict[str, Any],
+    *,
+    name: Any = None,
+    source: str | None = None,
+) -> bool:
+    """True if `other` already held this name (or directory) at base and did
+    not go from non-live to live since -- a sibling that merely coexisted with
+    a prefixed record (a retired or superseded predecessor) is not a takeover,
+    but one that was reactivated, renamed or moved onto the claim can be."""
+    if not _has_joinable_id(other):
+        return False
+    prior = base_all_by_id.get(other["id"])
+    if prior is None:
+        return False
+    held = (
+        prior.get("name") == name
+        if name is not None
+        else _norm_source(prior.get("source")) == source
+    )
+    return held and not (_is_live(other) and not _is_live(prior))
+
+
+def _manifest_entries(repo: Path) -> list[tuple[Any, str | None]]:
+    """Every marketplace.json entry as (name, normalized source), duplicates
+    included (`_load_authoritative_sources` keeps only the first per name)."""
+    path = repo / DEFAULT_MARKETPLACE_MANIFEST_PATH
+    if not path.is_file():
+        return []
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    return [
+        (e.get("name"), _norm_source(e.get("source")))
+        for e in manifest.get("plugins", [])
+        if isinstance(e, dict)
+    ]
+
+
+def _identity_binding_violations(
+    *,
+    plugin_id: str,
+    base_plugin: dict[str, Any],
+    head_plugin: dict[str, Any],
+    registered: str,
+    repo: Path | None,
+    authoritative_sources: dict[str, str],
+    duplicate_manifest_names: set[str],
+    manifest_entries: list[tuple[Any, str | None]],
+    base_all_by_id: dict[str, Any],
+    head_records: list[dict[str, Any]],
+) -> list[PrefixPermanenceViolation]:
+    """Bind a prefixed base record's identity to its `id` (#440 item 6).
+
+    Permanence joins base to head on `id` alone, so an id is only as trustworthy
+    as whatever holds it at head: a PR could give the prefixed plugin a fresh id
+    (prefix null) and hand the old id, with the prefix, to an unrelated plugin.
+    A plugin's identity is its (name, source) pair, so: at least one must stay
+    with the id; a source change needs marketplace.json's confirmation; the
+    record must not acquire a name or directory a live base record held; and
+    the name/directory it held at base must not end up with anyone else --
+    another inventory record or a bare marketplace.json entry -- unless that
+    claimant already held it at base and did not newly go live. This is a rule
+    on the head state, not on one diff shape, because each diff-shaped check
+    was bypassed by the next respelling or by a manifest-only entry. It binds
+    the installed name and the id to the prefix; it cannot stop content moving
+    between directories, which no metadata check can tell from delete + add."""
+    found: list[PrefixPermanenceViolation] = []
+    base_name, head_name = base_plugin.get("name"), head_plugin.get("name")
+    base_source = _norm_source(base_plugin.get("source"))
+    head_source = _norm_source(head_plugin.get("source"))
+    name_changed = head_name != base_name
+    source_changed = head_source != base_source
+    # The head record's own manifest entry exists under its head name at its
+    # head source. (When it doesn't, the rename/move is already reported by
+    # the confirmation checks, so the manifest-claimant check below stays
+    # quiet rather than reporting the same misconfiguration twice.)
+    head_joins_manifest = (
+        head_source is not None
+        and isinstance(head_name, str)
+        and head_name not in duplicate_manifest_names
+        and _norm_source(authoritative_sources.get(head_name)) == head_source
+    )
+
+    def add(reason: str) -> None:
+        found.append(
+            PrefixPermanenceViolation(
+                plugin_id=plugin_id,
+                plugin_name=str(head_name if head_name is not None else base_name),
+                reason=reason,
+            )
+        )
+
+    if name_changed and source_changed and base_source is not None:
+        add(
+            f"name changed from {base_name!r} to {head_name!r} and source changed from "
+            f"{base_plugin.get('source')!r} to {head_plugin.get('source')!r} at once while "
+            f"{registered} stayed registered under the same id -- (name, source) is the "
+            "plugin's identity, so at least one must stay with a prefixed id"
+        )
+    elif source_changed:
+        # Two supported changes: a `planned` record that reserved a prefix
+        # before it had a source getting its first one, and a move that
+        # marketplace.json confirms under the head name (marketplace-inventory's
+        # own `update source` flow).
+        first_source = base_source is None and head_source is not None and head_name == base_name
+        if not (first_source or (repo is not None and head_joins_manifest)):
+            add(
+                f"source changed from {base_plugin.get('source')!r} (base) to "
+                f"{head_plugin.get('source')!r} (head) while {registered} stayed registered "
+                "under the same id, and marketplace.json does not confirm the move -- an id "
+                "identifies one plugin, so a prefixed id must not move to a different one"
+            )
+
+    for other_id, other in base_all_by_id.items():
+        if other_id == plugin_id or not _is_live(other):
+            continue
+        if name_changed and isinstance(head_name, str) and other.get("name") == head_name:
+            add(f"name {head_name!r} belonged to live plugin {other_id!r} at base")
+        if source_changed and head_source is not None:
+            if _norm_source(other.get("source")) == head_source:
+                add(f"directory {head_plugin.get('source')!r} belonged to live plugin {other_id!r}")
+
+    for other in head_records:
+        if other is head_plugin:
+            continue
+        if (
+            isinstance(base_name, str)
+            and other.get("name") == base_name
+            and not _holds_claim_untouched(other, base_all_by_id, name=base_name)
+        ):
+            add(
+                f"name {base_name!r} had {registered} at base, but at head a different id "
+                f"({other.get('id')!r}) holds that name -- the prefixed plugin's name must "
+                "not move to another record"
+            )
+        if (
+            base_source is not None
+            and _norm_source(other.get("source")) == base_source
+            and not _holds_claim_untouched(other, base_all_by_id, source=base_source)
+        ):
+            add(
+                f"directory {base_plugin.get('source')!r} had {registered} at base, but at "
+                f"head a different id ({other.get('id')!r}) now claims that directory -- a "
+                "prefixed plugin's directory must not be re-registered under another record"
+            )
+
+    for entry_name, entry_source in manifest_entries:
+        if entry_name == head_name:
+            continue  # the prefixed record's own manifest entry
+        if entry_name == base_name:
+            if name_changed and head_joins_manifest:
+                add(
+                    f"marketplace.json still lists name {base_name!r}, which had {registered} "
+                    f"at base, after the prefixed record was renamed to {head_name!r}"
+                )
+        elif base_source is not None and entry_source == base_source:
+            add(
+                f"marketplace.json lists {base_plugin.get('source')!r}, which had "
+                f"{registered} at base, under a different name ({entry_name!r})"
+            )
+    return found
+
+
 def _records_by_id(inventory: dict) -> dict[str, Any]:
     """Index `inventory["plugins"]` by `id`, skipping records without a
     joinable one. Skipping is fail-closed on the head side (a head record
@@ -237,8 +431,12 @@ def find_prefix_permanence_violations(
 
     authoritative_sources: dict[str, str] = {}
     duplicate_manifest_names: set[str] = set()
+    manifest_entries: list[tuple[Any, str | None]] = []
     if repo is not None:
         authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
+        manifest_entries = _manifest_entries(repo)
+    base_all_by_id = _records_by_id(base_inventory)
+    head_records = _joinable_records(head_inventory)
 
     violations: list[PrefixPermanenceViolation] = []
     # A base record registering a prefix/domain_prefix but lacking a joinable
@@ -286,6 +484,20 @@ def find_prefix_permanence_violations(
                 )
             )
             continue
+        violations.extend(
+            _identity_binding_violations(
+                plugin_id=plugin_id,
+                base_plugin=base_plugin,
+                head_plugin=head_plugin,
+                registered=", ".join(f"{f}={base_plugin[f]!r}" for f in registered_fields),
+                repo=repo,
+                authoritative_sources=authoritative_sources,
+                duplicate_manifest_names=duplicate_manifest_names,
+                manifest_entries=manifest_entries,
+                base_all_by_id=base_all_by_id,
+                head_records=head_records,
+            )
+        )
         for field in registered_fields:
             base_value = base_plugin[field]
             head_value = head_plugin.get(field)
