@@ -2,6 +2,15 @@
 
 The **Movement Pattern** is the critical procedure for relocating content during refinement. It prevents broken links, lost content, and incomplete migrations.
 
+## Table of Contents
+1. [Why This Matters](#why-this-matters)
+2. [The Movement Pattern (Strict Sequence)](#the-movement-pattern-strict-sequence)
+3. [Why This Sequence Matters](#why-this-sequence-matters)
+4. [Applications](#applications)
+5. [Manual Verification (No Automated Hook)](#manual-verification-no-automated-hook)
+6. [Common Mistakes](#common-mistakes)
+7. [Real-World Example](#real-world-example)
+
 ## Why This Matters
 
 Content often needs to move during refinement:
@@ -10,32 +19,17 @@ Content often needs to move during refinement:
 - Between references/ files (reorganizing by topic)
 - Within SKILL.md (reordering sections)
 
-❌ **Wrong sequence causes failure:**
-```
-1. Remove content from source
-2. Intend to add to destination
-3. Never actually add it
-→ Content is lost forever
-```
-
-✅ **Correct sequence preserves functionality:**
-```
-1. Add content to destination first
-2. Verify destination has complete content
-3. Remove from source last
-→ Content is relocated, not lost
-```
+A wrong sequence causes failure: remove content from the source, intend to add it to the destination, never actually add it — the content is lost forever. The correct sequence relocates it instead: add to the destination first, verify the destination is complete, remove from the source last.
 
 ## The Movement Pattern (Strict Sequence)
 
-**⚠️ CRITICAL: Never violate this order**
+**CRITICAL: Never violate this order**
 
 ### Phase 1: CREATE/UPDATE Destination
 
 **Step 1: Identify the destination**
-- [ ] Reference file exists AND is readable
 - [ ] Reference file path matches what SKILL.md will link to
-- [ ] **Read the destination file completely** (use Read tool, not search)
+- [ ] If the destination already exists, **read it completely** (Read tool, not search); otherwise create it in Step 2
 
 **Step 2: Add content to destination**
 - [ ] Copy exact text being removed from source file
@@ -68,12 +62,12 @@ Content often needs to move during refinement:
 
 ### Phase 3: DELETE Old Source
 
-**⚠️ Only after Phase 2 is complete**
+**Only after Phase 2 is complete**
 
 **Step 1: Delete source files**
 - [ ] Delete old source files ONLY after Phase 2 links verified
 - [ ] Confirm file count reduction
-- [ ] Verify deletion is intentional
+- [ ] Verify deletion is intentional (deletions need operator approval)
 
 **Step 2: Final verification**
 - [ ] SKILL.md reads without errors
@@ -82,7 +76,7 @@ Content often needs to move during refinement:
 
 ## Why This Sequence Matters
 
-### ❌ WRONG: Create → Delete → Link
+**WRONG: Create → Delete → Link**
 
 ```
 1. Create destination with new content
@@ -92,9 +86,7 @@ Content often needs to move during refinement:
 → Content appears lost
 ```
 
-**Result:** Broken skill, lost content, cascading failures.
-
-### ✅ CORRECT: Create → Link → Delete
+**CORRECT: Create → Link → Delete**
 
 ```
 1. Create destination with merged content
@@ -104,29 +96,25 @@ Content often needs to move during refinement:
 → Content safely relocated
 ```
 
-**Result:** Smooth refinement, no broken links, content preserved.
-
 ## Applications
 
 ### Content Relocation: SKILL.md → references/
 
-**Example:** Moving edge-case patterns from SKILL.md to supplementary reference file
+**Example:** Moving edge-case patterns from SKILL.md to a supplementary reference file
 
-**Sequence:**
-1. **CREATE:** New reference file `references/advanced-patterns.md` with edge case content
-2. **LINK:** Update SKILL.md to reference new file: "See `references/advanced-patterns.md` for edge cases"
-3. **DELETE:** Remove edge cases from SKILL.md body
+1. **CREATE:** New reference file `references/edge-cases.md` with the edge-case content
+2. **LINK:** Update SKILL.md to point at the new file for edge cases
+3. **DELETE:** Remove the edge cases from the SKILL.md body
 
-**Verify:** SKILL.md still makes sense. Edge cases are now in reference file.
+**Verify:** SKILL.md still makes sense. Edge cases are now in the reference file.
 
 ### Content Consolidation: Multiple files → One file
 
 **Example:** Three related reference files on similar topics merge into one
 
-**Sequence:**
 1. **CREATE:** New consolidated file `references/consolidated-topic.md` with content from all 3 files
-2. **LINK:** Update SKILL.md to point to consolidated file (remove links to old files)
-3. **DELETE:** Delete 3 old reference files (only after links updated)
+2. **LINK:** Update SKILL.md to point to the consolidated file (remove links to old files)
+3. **DELETE:** Delete the 3 old reference files (only after links updated, and with operator approval)
 
 **Verify:** Consolidated file contains all content from sources. Links work. File count decreased.
 
@@ -134,66 +122,42 @@ Content often needs to move during refinement:
 
 **Example:** Move "Quick Start" section to top, move "Advanced Topics" to bottom
 
-**Sequence:**
 1. **CREATE:** New organization (copy full content, reorganize sections)
-2. **LINK:** (Not needed - same file)
-3. **DELETE:** (Not needed - replacing in place)
+2. **LINK:** Not needed — same file
+3. **DELETE:** Not needed — replacing in place
 
 **Verify:** All content present. Better order. Same line count.
 
-## Testing Movement Pattern Compliance
-
-Use this checklist to validate movement during refinement:
-
-- [ ] **Phase 1 (CREATE):** Destination file has ALL migrated content
-- [ ] **Phase 1 (CREATE):** Destination file read-verified for completeness
-- [ ] **Phase 2 (LINK):** SKILL.md updated to new location
-- [ ] **Phase 2 (LINK):** Old links removed from SKILL.md
-- [ ] **Phase 2 (LINK):** No broken references remain
-- [ ] **Phase 3 (DELETE):** Old source files deleted ONLY after Phase 2
-- [ ] **Phase 3 (DELETE):** Final read-verify: SKILL.md works without errors
-
 ## Manual Verification (No Automated Hook)
 
-No hook automatically validates Movement Pattern in this plugin — compliance is the operator's (or the refining agent's) manual responsibility. Before committing a move, verify:
+No hook automatically validates the Movement Pattern in this plugin — compliance is the operator's (or the refining agent's) manual responsibility. Before committing a move, verify:
 
 - Is content being removed?
-- Does destination file exist and contain equivalent content?
-- Are links in SKILL.md pointing to destination?
+- Does the destination file exist and contain equivalent content?
+- Are links in SKILL.md pointing to the destination?
 - Reject if: "Content deleted with no corresponding destination"
 - Accept if: "Content clearly relocated to another location"
 
 ## Common Mistakes
 
-❌ **"I'll move it later"** → Don't. Create destination FIRST.
-
-❌ **"I'll delete and recreate"** → Don't. Violates movement pattern.
-
-❌ **"The file doesn't exist yet"** → Create it first, THEN delete source.
-
-❌ **"Just leave broken links for now"** → Don't. Fix before deleting source.
-
-✅ **"Create destination, update links, then delete source"** → Correct order.
+- **"I'll move it later"** → Don't. Create the destination FIRST.
+- **"I'll delete and recreate"** → Don't. Violates the movement pattern.
+- **"The file doesn't exist yet"** → Create it first, THEN delete the source.
+- **"Just leave broken links for now"** → Don't. Fix before deleting the source.
+- **Right order:** create the destination, update links, then delete the source.
 
 ## Real-World Example
 
-**Skill:** skill-creator (version 1.2.0 → 1.2.1)
-**Plan:** Extract refinement content into separate references/ file
+**Plan:** Extract refinement content from a skill's SKILL.md into a separate reference file
 
-**Wrong approach (❌):**
+**Wrong approach:**
 1. Delete refinement sections from SKILL.md
-2. Plan to create new reference file later
+2. Plan to create the new reference file later
 3. (Never create the file)
 → Content lost, skill broken
 
-**Correct approach (✅):**
+**Correct approach:**
 1. **CREATE:** `references/refinement-workflow.md` with all refinement content from SKILL.md
-2. **LINK:** Update SKILL.md: "For refinement, see `references/refinement-workflow.md`"
-3. **DELETE:** Remove refinement sections from SKILL.md (now safely in reference)
+2. **LINK:** Update SKILL.md to point at `references/refinement-workflow.md` for refinement
+3. **DELETE:** Remove the refinement sections from SKILL.md (now safely in the reference)
 → Content relocated, links work, skill improved
-
-## References
-
-- **Gate 3: Migration Verification** in `refinement-workflow.md` - Full detailed gates
-- **Preservation Gates** in `preservation-rules.md` - How gates protect against content loss
-- **The 80% Rule** in `80-percent-rule.md` - Deciding what content moves

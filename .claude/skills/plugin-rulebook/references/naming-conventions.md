@@ -55,7 +55,7 @@ These names are not allowed because they provide no information about content:
 
 | Bad | Good | Why |
 |---|---|---|
-| `ref.md` | `80-percent-rule.md` | Specific topic |
+| `ref.md` | `eighty-percent-rule.md` | Specific topic |
 | `guide.md` | `refinement-workflow.md` | Describes the workflow |
 | `stuff.md` | `movement-pattern.md` | Names the pattern |
 | `docs.md` | `validation-checklist.md` | Names the artifact |

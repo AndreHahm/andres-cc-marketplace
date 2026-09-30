@@ -2,6 +2,14 @@
 
 The `allowed-tools` field pre-approves the listed tools so Claude can use them without a permission prompt during the turn that invokes the skill — it does not restrict which tools are available (every tool remains callable; unlisted tools still just fall through to normal permission prompting). Implement principle of least privilege anyway: only grant tools your skill actually needs, since a broad grant skips approval prompts for actions a reviewer may want to catch.
 
+## Table of Contents
+1. [Syntax Formats](#syntax-formats)
+2. [Available Tools](#available-tools-case-sensitive)
+3. [Practical Examples](#practical-examples)
+4. [Implementation Details](#implementation-details)
+5. [Security & Best Practices](#security--best-practices)
+6. [Team Skills](#team-skills)
+
 ## Syntax Formats
 
 ### Space-separated (preferred style for SKILL.md frontmatter)
@@ -21,7 +29,7 @@ Note: Comma-separated (`Read,Grep,Glob`) and YAML list formats are also valid fo
 | `Bash(pattern:*)` | Execute specific bash commands |
 | `Grep` | Search file contents |
 | `Glob` | Find files by pattern |
-| `Task` | Launch specialized agents |
+| `Agent` | Launch specialized agents (older documentation calls this tool `Task`) |
 | `Skill` | Invoke other skills |
 | `AskUserQuestion` | Always callable regardless of `allowed-tools` (verified against current Claude Code docs: the field pre-approves permission prompts, it doesn't restrict availability) — listing it is a harmless no-op, not required and not forbidden |
 
@@ -45,39 +53,37 @@ allowed-tools: Bash(git:*)
 ```
 Use when: Pure git operations (commit, push, branch management).
 
-### Example 4: Multiple bash commands
+### Example 4: Several named Bash commands
 ```yaml
-allowed-tools: Bash(grep:*,ls:*,find:*)
+allowed-tools: Bash(git:*) Bash(mkdir:*)
 ```
-Use when: Shell utilities for searching and listing files.
+Use when: A workflow needs more than one command that has no dedicated tool. Each command is named explicitly. Prefer `Grep`, `Glob` and `Read` over shell `grep`, `find` and `cat` — they need no Bash grant at all.
 
 ### Example 5: Combined: bash + built-in tools
 ```yaml
-allowed-tools: Read Glob Bash(curl:*,wget:*)
+allowed-tools: Read Glob Bash(curl:*)
 ```
 Use when: Fetching remote content and analyzing local files.
 
 ## Implementation Details
 
-**Claude Code CLI only**: `allowed-tools` only works with Claude Code (not SDK)
+**Omitted field:** if `allowed-tools` is omitted, nothing is pre-approved and Claude uses the standard permission model.
 
-**No restrictions by default**: If omitted, no tool restrictions apply (Claude uses standard permission model)
+**Wildcard filtering:**
+- `Bash(git:*)` — pre-approves all git commands
+- `Bash(python:*)` — pre-approves python only
+- `Bash(git:*) Bash(mkdir:*)` — pre-approves several specific commands, each named
 
-**Wildcard filtering**:
-- `Bash(git:*)` — allows all git commands
-- `Bash(python:*)` — restricts to python only
-- `Bash(grep:*,ls:*)` — allows multiple specific commands
-
-**Case-sensitive**: Use exact names (e.g., `Read` not `read`)
+**Case-sensitive:** Use exact names (e.g., `Read` not `read`)
 
 ## Security & Best Practices
 
 ### Why allowed-tools Matters
 
-1. **Security**: Prevent unintended tool use in sensitive workflows
+1. **Review surface**: Pre-approve only what the skill needs, so anything else still goes through a permission prompt a reviewer can catch
 2. **Clarity**: Document which tools your skill depends on
 3. **Team communication**: Signal principle of least privilege to team members
-4. **Production safety**: Restrict capabilities in shared or critical skills
+4. **Production safety**: A narrow grant in shared or critical skills limits what runs without a prompt
 
 ### Choosing Tools for Your Skill
 
@@ -88,15 +94,9 @@ Use when: Fetching remote content and analyzing local files.
 
 ### Anti-Patterns
 
-❌ **Don't use**: `allowed-tools: Bash(*)`
-- Too broad, violates principle of least privilege
-
-❌ **Don't assume**: If tool works without `allowed-tools`, you don't need it
-- Declare it explicitly for clarity
-
-✅ **Do use**: Minimal, specific permissions
-- Example: `Read Write Edit` for file-only skills
-- Example: `Bash(git:*)` for git workflows
+- **Don't use** `allowed-tools: Bash(*)` — too broad, violates principle of least privilege
+- **Don't assume** that because a tool works without `allowed-tools` you don't need to declare it — declare it explicitly for clarity
+- **Do use** minimal, specific permissions: `Read Write Edit` for file-only skills, `Bash(git:*)` for git workflows
 
 ## Team Skills
 

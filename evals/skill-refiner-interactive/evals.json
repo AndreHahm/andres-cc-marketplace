@@ -1,0 +1,155 @@
+{
+  "skill_name": "skill-refiner-interactive",
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "description": "Interactively refines and validates existing Claude Code skills, now with goal-driven sessions and a plan-only exit.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "plan-only-exit",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record, in transcript.md, which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-1/with_skill/outputs. The operator says: 'Analyze the skill in OUTDIR/target and just write a changes.md, do not apply anything.' Simulated operator answers: skill is already located; select all goals offered; draft path is OUTDIR/changes.md. Produce OUTDIR/transcript.md and OUTDIR/changes.md.",
+      "expected_output": "Runs pre-analysis, derives and offers goals, reaches the plan-only branch, writes changes.md per references/changes-draft-format.md with selected goals, makes zero edits to the target copy, and skips goal measurement.",
+      "files": [
+        "changes.md",
+        "transcript.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "normal-refine-regression",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record, in transcript.md, which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-2/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill is already located; select all goals offered; at the step-5 approval ask choose 'Apply changes'; for any goal verification that fails, choose 'Accept with reason'. Actually perform the edits, but only on files under OUTDIR/target (keep edits minimal: fix what the pre-analysis found). Produce OUTDIR/transcript.md listing each numbered step reached, and OUTDIR/goal-measurement.md with each goal's PASS/FAIL result.",
+      "expected_output": "Without plan-only wording, the skill asks the step-5 approval, proceeds to step 6 (make changes) on the target copy, then runs goal measurement at step 8 before trigger-regression and compliance steps.",
+      "files": [
+        "transcript.md",
+        "goal-measurement.md"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "activation-routing",
+      "prompt": "Paths are relative to the repository root. You are simulating how a Claude Code session chooses which component handles a request, using ONLY the activation descriptions: the skill-refiner-interactive skill's frontmatter (description and when_to_use) in plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md, the skill-reviewer agent's description in plugins/plugin-devkit/agents/skill-reviewer.md, the skill-development skill's description in plugins/plugin-devkit/skills/skill-development/SKILL.md, and the skill-improver-loop skill's description in plugins/plugin-devkit/skills/skill-improver-loop/SKILL.md. Do not read any other file. OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-3/with_skill/outputs. For each of these eight requests, decide which ONE of the four components would handle it and write a line 'request -> component: one-sentence reason' into OUTDIR/routing.md: (a) 'analyze this skill for improvements and then apply the fixes with me step by step'; (b) 'refine this skill interactively'; (c) 'give me a one-shot quality report on this skill, I do not want any changes'; (d) 'create a new skill for summarizing TODO comments'; (e) 'run fix-review on this skill automatically until it is clean, without asking me anything'; (f) 'apply the 80% rule to this skill's reference files'; (g) 'validate this skill is production-ready'; (h) 'consolidate these reference files'. Also state in OUTDIR/routing.md one sentence on whether any pair of the four descriptions is ambiguous for any of the eight requests.",
+      "expected_output": "Requests (a), (b) and (f) route to skill-refiner-interactive, (c) to skill-reviewer, (d) to skill-development, (e) to skill-improver-loop.",
+      "files": [
+        "routing.md"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "gates-and-movement-order",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-4/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill already located; select all goals offered; consolidate the reference files when step 3 asks; approve the deletion of any file at Gate 4; at the step-5 approval ask choose 'Apply changes'. Actually perform the edits, only under OUTDIR/target. In transcript.md log every Gate 1-4 action and every CREATE, LINK and DELETE action as its own numbered line, in the exact order performed, so the sequence can be checked. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line). Produce OUTDIR/transcript.md, OUTDIR/goal-measurement.md and OUTDIR/final-tree.txt.",
+      "expected_output": "Gates 1-4 run in order before any deletion; CREATE precedes LINK precedes DELETE; the file is deleted only after links are verified and the operator approved.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "failed-goal-loop",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-5/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill already located; select all goals offered; at the step-5 approval ask choose 'Apply changes'. Simulation control for step 8 (goal measurement), first pass only: pretend your first round of edits missed the reference-chain fix, so the chain-goal verification FAILS on the first measurement (actual result: references/a.md line 5 still says 'Read references/b.md'); at the resulting ask choose 'Continue refining', then make the missing fix under OUTDIR/target and measure again (second measurement: all goals PASS). Actually perform the edits, only under OUTDIR/target. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line). Produce OUTDIR/transcript.md (mark each measurement pass and each return to a step), OUTDIR/goal-measurement.md (both measurement rounds) and OUTDIR/final-tree.txt.",
+      "expected_output": "A failing goal measurement asks Accept with reason / Continue refining; Continue refining returns to step 6, and the goal is re-measured and passes before completion.",
+      "files": [
+        "transcript.md",
+        "goal-measurement.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "completion-gate",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-6/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill already located; select all goals offered; 'Apply changes' at step 5. Simulation control for the compliance step (step 10), since you cannot dispatch anything: on the FIRST compliance round pretend Skill(plugin-rulebook) reports 1 FAIL finding (R8: the description needs the >- block scalar) and the skill-reviewer agent reports 1 Major finding (missing example in Quick Start); on the SECOND compliance round pretend both report clean (no FAIL, no Critical or Major). All goal verifications pass. Actually perform the edits, only under OUTDIR/target. In transcript.md write the literal text of any completion marker the skill would emit, at the exact point it would emit it, and write 'NO MARKER EMITTED' at each compliance round where it would not. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "With a rulebook FAIL and a reviewer Major on round 1, no completion marker is emitted; after fixes and a clean round 2 the marker is emitted exactly once.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "gate4-declined-deletion",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-7/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill already located; select all goals offered; consolidate the reference files when step 3 asks; at Gate 4, the operator DECLINES any deletion (choose the option that keeps every existing file); at the step-5 approval ask choose 'Apply changes'. Actually perform whatever edits remain permitted, only under OUTDIR/target. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line). Produce OUTDIR/transcript.md, OUTDIR/goal-measurement.md and OUTDIR/final-tree.txt.",
+      "expected_output": "When the operator declines deletion at Gate 4, no file is deleted and every original file still exists.",
+      "files": [
+        "transcript.md",
+        "goal-measurement.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "validation-mode",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-8/with_skill/outputs. The operator says: 'Validate the skill in OUTDIR/target.' Simulated operator answers: skill already located; at the action question choose 'Validate'. Simulation control, since you cannot dispatch anything: the skill-reviewer agent (Structured output mode) returns this YAML: verdict: Pass, score: 82, counts: {critical: 0, major: 1, minor: 2}, findings: [{id: M1, severity: major, finding: 'Quick Start has no example'}, {id: m1, severity: minor, finding: 'description is single-line'}, {id: m2, severity: minor, finding: 'no Testing & Validation section'}], top_priority_fixes: ['Add a Quick Start example']. Skill(plugin-rulebook) returns 1 FAIL finding: R8 (description needs the >- block scalar). At the enhancement-suggestor question, the operator answers 'No'. Make NO edits to OUTDIR/target. Produce OUTDIR/transcript.md, OUTDIR/report.md (the report the skill would present to the operator) and OUTDIR/final-tree.txt. ",
+      "expected_output": "Validate mode skips the interview, delegates to skill-reviewer (structured) and plugin-rulebook, presents a report with the FAIL downgrading the verdict, asks before enhancement-suggestor, edits nothing.",
+      "files": [
+        "transcript.md",
+        "report.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "mirror-divergence-halt",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/mirror-pair/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-9/with_skill/outputs. Treat OUTDIR/target/skills/demo-mirror as the `skills/demo-mirror/` copy and OUTDIR/target/claude-mirror/skills/demo-mirror as its `.claude/skills/demo-mirror/` mirror. The operator says: 'Refine the skill demo-mirror.' Simulated operator answers: at the Mirror Divergence question choose 'Stop'. Make no edits. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "When the two copies differ, the skill halts with the Mirror Divergence question before any analysis or edit, and 'Stop' leaves both copies untouched.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "review-round-cap",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-10/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill already located; select all goals offered; 'Apply changes' at step 5; after the third compliance round choose 'Accept remaining findings with reason' with the reason 'cosmetic, tracked separately'. Simulation control for step 10, since you cannot dispatch anything: in EVERY compliance round, pretend each fix you make fails to clear the finding, so Skill(plugin-rulebook) keeps reporting 1 FAIL (R8) and the skill-reviewer agent keeps reporting 1 Major (missing Quick Start example). All goal verifications pass. Edit only under OUTDIR/target. In transcript.md number each compliance round, write the literal text of any completion marker at the exact point the skill would emit it, and write 'NO MARKER EMITTED' at each point where it would not. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "Compliance and reviewer rounds stop at 3; the skill then asks Continue / Accept with reason / Stop, records the accepted findings, and only then emits the marker.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "large-skill-extraction",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/big-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-11/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it is lighter.' Simulated operator answers: skill already located; select all goals offered; at the Content Extraction question answer 'Yes'; approve the deletion of the inline section body at Gate 4; 'Apply changes' at step 5. Actually perform the edits, only under OUTDIR/target. In transcript.md log the R13 tier from the pre-analysis report, and log every CREATE, LINK and DELETE action as its own numbered line in the order performed. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md, OUTDIR/goal-measurement.md and OUTDIR/final-tree.txt.",
+      "expected_output": "On a 307-line fixture the pre-analysis reports the Soft Warning tier and the 60-line low-frequency section; with approval the section moves to a reference in CREATE -> LINK -> DELETE order.",
+      "files": [
+        "transcript.md",
+        "goal-measurement.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "escape-hatch-infer",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question, its header and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-12/with_skill/outputs. Context: earlier in this conversation the operator pasted this skill's SKILL.md (treat OUTDIR/target/SKILL.md as that pasted content) and said 'the intake is sloppy and a tool isn't declared'. The operator now says: 'Refine it.' Simulated operator answers: at the escape-hatch question choose 'Infer from context'; the skill is already located at OUTDIR/target; select all goals offered; for any BATCH 2 question choose 'Yes'; at the step-5 approval choose 'Stop'. Make no edits. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "With predating context and 'Infer from context', BATCH 1 is skipped but locating, pre-analysis and goal selection still run before the interview, and only triggered BATCH 2 questions are asked.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "existing-draft-preserved",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question, its header and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-13/with_skill/outputs. Before anything else, copy evals/skill-refiner-interactive/fixtures/existing-draft/changes.md to OUTDIR/changes.md: that is the draft an earlier session left at the draft path. The operator says: 'Analyze the skill in OUTDIR/target and just write a changes.md, do not apply anything.' Simulated operator answers: skill already located; select all goals offered; draft path is OUTDIR/changes.md (the existing file). Make no edits to OUTDIR/target. Produce OUTDIR/transcript.md and the updated OUTDIR/changes.md.",
+      "expected_output": "A plan-only run reads the existing draft first and adds new findings without overwriting the earlier approved finding.",
+      "files": [
+        "transcript.md",
+        "changes.md"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "zero-findings",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question, its header and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/clean-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-14/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it is clearer.' Simulated operator answers: skill already located; action 'Refine'; at BATCH 1 Question 1 choose 'Clarity', Questions 2-4 first options; at the Production Checks question choose 'None needed'; at the step-5 approval choose 'Stop'. Make no edits. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "With a clean skill, pre-analysis reports nothing to fix, goal selection is skipped, BATCH 1 runs as written, Production Checks is still asked, and no edits are made.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 6,
+    "declared_scenarios_covered": 6,
+    "uncovered": []
+  }
+}

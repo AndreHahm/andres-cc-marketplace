@@ -4,7 +4,7 @@
 
 A new or structurally-modified `plugin-devkit` component whose job is to inspect, review, validate, or
 otherwise operate against a plugin's actual on-disk component/manifest structure — before that component
-is finalized. This covers 22 agents and 10 skills (see "In Scope" below), not every plugin-devkit
+is finalized. This covers 22 agents and 13 skills (see "In Scope" below), not every plugin-devkit
 component.
 
 ## Rule
@@ -29,7 +29,7 @@ named claim targets and canonical-source claims against real on-disk files) — 
 "operates against a plugin's actual structure/components" criterion the same way its sibling
 `*-reviewer` agents do.
 
-**In scope — 10 skills:**
+**In scope — 13 skills:**
 - `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance`
 - `plugin-auditor`, `plugin-grader`, `plugin-comparison`, `plugin-rulebook` (its direct-invocation
   mode, not just via `plugin-rulebook-checker`)
@@ -46,6 +46,32 @@ named claim targets and canonical-source claims against real on-disk files) — 
   live during this component's own build (Phase 7's eval-1 read the real `marketplace.json`, and this
   rule's own resweep session manually cross-checked `example-plugin`'s entry against README's table) — see
   Recording the run below for the persisted record.
+- `skill-refiner-interactive` (added 2026-09-30) — its pre-analysis inspects a target skill's actual
+  on-disk structure: a Glob for `**/skills/<name>/SKILL.md`, reference, orphan and chain scans, size
+  counts, and a mirror-pair check between `plugins/<plugin>/skills/<name>/` and
+  `<repo root>/.claude/skills/<name>/`. That meets this rule's own "operates against a plugin's actual
+  structure/components" criterion the same way `plugin-auditor` and `plugin-grader` do; unlike the
+  excluded Design skills, it refines an existing skill rather than generating one from a spec. Its
+  dry run against `example-plugin`'s `example-skill` was a plan-only Refine run with simulated
+  questions: Validation mode and the mirror-present path were not exercised, because `example-skill`
+  has no `.claude/` mirror. It is recorded at
+  `.claude/output/skill-refiner-interactive/example-plugin-20260930T185015Z.md`, found six small
+  gaps in the skill's Glob, mirror-pair and pre-analysis wording, and all six were fixed in the same
+  change (the record lists them).
+- `skill-stocktake` and `skill-improver-loop` (added 2026-09-30, by the resweep that the
+  `skill-refiner-interactive` addition triggered) — both resolve real skill directories and scripts
+  (`skill-stocktake`'s `scan.sh`/`quick-diff.sh` over a skills directory; `skill-improver-loop`'s
+  Glob for `**/SKILL.md`, state file, stop hook and command layer), so a bad path or pattern is the
+  defect a dry run catches. Both were dry-run against `example-plugin` on the same date in a weaker form
+  than the live dry run this rule asks for: `skill-stocktake`'s was read-only with only `scan.sh` and
+  `quick-diff.sh` executed, and `skill-improver-loop`'s was purely static, with nothing executed. The
+  records are
+  `.claude/output/skill-stocktake/example-plugin-20260930T210000Z.md` and
+  `.claude/output/skill-improver-loop/example-plugin-20260930T210500Z.md`. `skill-stocktake`'s run found
+  that its documented scope and hardcoded `~/.claude/skills/skill-stocktake/` paths do not reach a
+  plugin-layout skill by default; `skill-improver-loop`'s found limit, entry-point and wording mismatches,
+  none blocking. Neither was fixed
+  by the change that listed them, so both remain open findings for their own follow-up.
 
 **Explicitly excluded, with reasoning:**
 - `agent-creator` — creates a *new* agent; its target is a spec to generate from, not an existing

@@ -15,7 +15,7 @@ Verify activation doesn't suffer from moved content.
 
 ## "Improve user interaction UX"
 
-Audit all AskUserQuestion calls (max 4 options, progressive disclosure).
+Audit all AskUserQuestion calls (2-4 options per question, at most 4 questions per call, progressive disclosure).
 Convert free-form instructions to predefined AskUserQuestion options where applicable.
 Ensure questions follow wizard pattern (ask → wait → ask, not forms).
 Verify descriptions are clear and help users make good choices.
@@ -24,7 +24,7 @@ Check for >4 options violations — split into multiple AskUserQuestion batches.
 ## "Improve reference quality"
 
 Audit every reference link: does it provide context about what agents will find?
-Pattern check: `[Core knowledge]. See references/file.md for [edge cases/depth].`
+Pattern check: `[Core knowledge]. Edge cases and depth: references/file.md.`
 Flag orphaned links (bare links with no context) — agents don't know what's in them.
 Add context snippets so agents load references intentionally, not out of uncertainty.
 
@@ -37,21 +37,16 @@ Present `skill-reviewer`'s verdict plus any `plugin-rulebook` FAIL findings.
 
 ## "Fix my skill" / "Run improvement loop"
 
-Requires `plugin-devkit` plugin for the `skill-reviewer` agent.
-Call `skill-reviewer` → categorize issues → fix Critical/Major → evaluate Minor → repeat.
-Output `<skill-improvement-complete>` marker when no Critical/Major issues remain.
+Automated fix-review loops with no operator checkpoints belong to `skill-improver-loop`, which owns issue categorization, the completion marker and the stop-hook contract. This skill is for interactive refinement: its own step 10 runs `skill-reviewer` and `Skill(plugin-rulebook)` once goals are measured, and emits `<skill-improvement-complete>` only after both are clean and every selected goal passed or was accepted with a reason.
+
+## "Just tell me what to change, don't edit anything"
+
+Plan-only run: pre-analysis, goal selection and the interview happen as usual, then the plan-only exit (step 5) writes the approved findings and selected goals to a `changes.md` draft and stops. No edits, no goal measurement.
+
+## "Make this skill pass a measurable bar"
+
+Goal-driven run: pre-analysis findings become up to 3 goals, each with a verification. Step 8 measures them after validation; a failed goal either returns to step 6 or is accepted with a recorded reason.
 
 ## "This SKILL.md section is too large"
 
-When a section is ≥80 lines and used in <20% of activations, extract it to a reference file.
-
-1. **Pre-analysis:** Identify section name, line count, and estimated activation frequency
-2. **Gate 2:** Confirm extraction won't impair execution (section must be supplementary)
-3. **CREATE** `references/<topic>.md` with the full section content
-4. **LINK:** Replace the inline section with a pointer (8 lines or fewer):
-   ```markdown
-   ## Section Name
-   See `references/<topic>.md` for [what's there].
-   ```
-5. **DELETE** the inline body (the pointer replaces it)
-6. **Validate:** Phase 5 (references exist, no orphans) + Phase 7 (pointer resolves correctly)
+Extract it by the Content Extraction procedure in `refinement-workflow.md` (when to extract, CREATE → LINK → DELETE, extraction report). Gate 2 confirms the section is supplementary first; validation phases 5 and 7 then confirm the pointer resolves and no orphan appeared.
