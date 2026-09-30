@@ -232,6 +232,7 @@
           "valid_to": null
         }
       ],
+      "prefix": null,
       "provenance": {},
       "score": null,
       "scoring_history": [],

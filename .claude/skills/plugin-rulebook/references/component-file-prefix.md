@@ -48,9 +48,9 @@ file; a plugin legitimately mixes both forms across its own tree (e.g. `ctx-a.md
 `context-b.md` in the same directory).
 
 **Independent, optional field.** `domain_prefix` is optional independently of `prefix` — a plugin may
-register one, the other, or both, in either order. R33 is inert for a given plugin only when *neither*
-field is registered; once either is set, every in-scope file must match at least one of whichever
-field(s) are registered.
+register it or not. The `prefix` key itself is required in both inventory schemas; an explicit `null`
+(with no `domain_prefix`) opts a plugin out, and R33 is inert for it. Once either is set, every in-scope
+file must match at least one of whichever field(s) are registered.
 
 ## Python files may use snake_case
 
@@ -113,13 +113,14 @@ to this rule and to `prefix_check.py`'s `ANTIGRAVITY_ONLY_DIRS`.
   repository-internal tooling, not a plugin-root source file; this rule only governs a plugin's own
   canonical `plugins/<plugin>/` tree.
 
-## Gating: inert until registered
+## Gating: inert for an explicit `null` opt-out
 
 This rule produces **zero findings** for any plugin whose `marketplace-inventory.json` record has
-neither a `prefix` nor a `domain_prefix` field yet — not a warning, not an ADVISORY, nothing. This is the
-same "vacuous until registered" gate `prefix_check.py` uses mechanically, so a plugin migrates from
-"unchecked" to "fully checked" atomically the moment its own migration PR registers a curated prefix
-and/or domain_prefix — no plugin is ever partially or ambiguously in scope. Once registered, every
+`prefix: null` and no `domain_prefix` — not a warning, not an ADVISORY, nothing. That is a deliberate,
+recorded opt-out (today only `example-plugin`, a test fixture), not a transition state: the `prefix` key
+is required in both inventory schemas, so no plugin can be silently unregistered. This is the same
+"vacuous when neither is set" gate `prefix_check.py` uses mechanically, so a plugin that registers a
+curated prefix and/or domain_prefix is atomically and unambiguously in scope. Once registered, every
 in-scope file must match at least one of whichever field(s) are registered.
 
 Additionally, a plugin whose `status` is `superseded` or `retired` is skipped **only if it has also been

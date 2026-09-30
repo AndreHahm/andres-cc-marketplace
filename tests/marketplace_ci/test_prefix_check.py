@@ -98,7 +98,9 @@ def test_unregistered_plugin_no_findings(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "check-pr-title.py").write_text("", encoding="utf-8")
-    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit")])  # no prefix yet
+    _write_inventory(
+        tmp_path, [_plugin("git-kit", "./git-kit")]
+    )  # explicit opt-out: no prefix, no domain_prefix
     assert find_prefix_violations(tmp_path) == []
 
 
@@ -1028,3 +1030,33 @@ def test_domain_prefix_permanence_violation_when_reassigned():
     violations = find_prefix_permanence_violations(base, head)
     assert len(violations) == 1
     assert "domain_prefix changed from 'context'" in violations[0].reason
+
+
+def test_prefix_is_required_and_present_on_every_real_record():
+    # PR 11: `prefix` is a required key in both inventory schemas; `null` is
+    # an explicit opt-out (example-plugin), so every live record must carry
+    # the key rather than omit it.
+    repo_root = Path(__file__).resolve().parents[2]
+    skills = repo_root / "plugins/plugin-devkit/skills"
+    marketplace_schema = json.loads(
+        (skills / "marketplace-inventory/assets/marketplace-inventory.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    plugin_schema = json.loads(
+        (skills / "plugin-inventory/assets/plugin-inventory.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert "prefix" in marketplace_schema["definitions"]["plugin"]["required"]
+    assert "prefix" in plugin_schema["required"]
+
+    marketplace = json.loads(
+        (repo_root / ".claude-plugin/marketplace-inventory.json").read_text(encoding="utf-8")
+    )
+    missing = [p["name"] for p in marketplace["plugins"] if "prefix" not in p]
+    for inventory_path in (repo_root / "plugins").glob("*/.claude-plugin/plugin-inventory.json"):
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        if "prefix" not in inventory:
+            missing.append(inventory["plugin_name"])
+    assert missing == []

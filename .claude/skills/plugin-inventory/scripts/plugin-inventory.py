@@ -142,6 +142,7 @@ def empty_inventory(plugin_id, plugin_name):
         "schema_version": SCHEMA_VERSION,
         "plugin_id": plugin_id,
         "plugin_name": plugin_name,
+        "prefix": None,
         "updated_on": reconcile.today(),
         "components": [],
         "extensions": {},

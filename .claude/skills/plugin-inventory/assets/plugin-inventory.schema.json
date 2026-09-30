@@ -4,7 +4,7 @@
   "title": "Plugin Inventory",
   "description": "Canonical schema for plugins/<plugin>/.claude-plugin/plugin-inventory.json.",
   "type": "object",
-  "required": ["schema_version", "plugin_id", "plugin_name", "updated_on", "components"],
+  "required": ["schema_version", "plugin_id", "plugin_name", "prefix", "updated_on", "components"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "type": "string" },

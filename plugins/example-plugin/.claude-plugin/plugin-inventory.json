@@ -127,6 +127,7 @@
   "extensions": {},
   "plugin_id": "plugin_09eda917",
   "plugin_name": "example-plugin",
+  "prefix": null,
   "schema_version": "1.0.0",
   "updated_on": "2026-08-29"
 }

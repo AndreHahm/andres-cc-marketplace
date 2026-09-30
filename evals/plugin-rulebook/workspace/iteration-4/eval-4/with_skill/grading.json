@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags config-settings.md as an R27 ADVISORY violation",
+      "passed": true,
+      "evidence": "Result: R27 FLAGS it - ADVISORY (never REQUIRED)."
+    },
+    {
+      "text": "Report correctly notes no prefix is registered, so the full basename is checked as-is",
+      "passed": true,
+      "evidence": "misc-kit has no registered R33 prefix, so no prefix is stripped ... Full basename checked: `config-settings`."
+    },
+    {
+      "text": "Report does not incorrectly treat 'config' as a verb",
+      "passed": true,
+      "evidence": "It starts with `config`, a noun, not a verb."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
