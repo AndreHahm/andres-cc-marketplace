@@ -1,0 +1,31 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the existing draft at the confirmed path being read before any new content is written",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "changes.md still contains the earlier finding 'Pre-existing finding (approved earlier)' unchanged",
+      "type": "presence",
+      "target": "changes.md"
+    },
+    {
+      "text": "changes.md contains new findings with IDs that do not collide with F1",
+      "type": "structure",
+      "target": "changes.md"
+    },
+    {
+      "text": "the Implementation Order in changes.md lists F1 together with the new findings",
+      "type": "structure",
+      "target": "changes.md"
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "type": "functionality",
+      "target": "OUTDIR/target vs fixtures/demo-skill"
+    }
+  ]
+}

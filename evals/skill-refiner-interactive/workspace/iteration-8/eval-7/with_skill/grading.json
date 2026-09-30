@@ -1,0 +1,44 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "passed": true,
+      "evidence": "transcript.md lines 79-81: '### Gate 4' with Delete/Keep options; simulated answer 'Keep (operator declines any deletion)'."
+    },
+    {
+      "text": "transcript.md contains no DELETE action and reports the consolidation as declined, not performed",
+      "passed": true,
+      "evidence": "grep -c DELETE = 0; Step 6 says no deletions; line 81 'the consolidation is NOT performed ... Reported as declined'; line 116 'declined at Gate 4 ..., not performed'."
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "passed": true,
+      "evidence": "final-tree.txt lists all three; diff -r shows no file missing or added."
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "passed": true,
+      "evidence": "goal-measurement.md row 'Zero reference->reference chains' PASS; a.md line 5 now a non-directive mention and b.md has no links."
+    },
+    {
+      "text": "no copy of b.md's marker-format lines was merged into a.md (no duplicated content)",
+      "passed": true,
+      "evidence": "a.md holds title, summary sentence and reworded pointer only; neither marker bullet present; diff shows only line 5 changed."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Run treats the declined source deletion as cancelling the whole consolidation, citing step 4; grader did not check that against SKILL.md.",
+    "Three standard sections added (13 -> 38 lines), none a selected goal.",
+    "a.md now carries an oddly worded self-referential sentence ('linked from SKILL.md').",
+    "Step 10 not run; marker withheld.",
+    "First-option defaults for Q2-Q4; 'Keep validation gates' suppressed Testing & Validation.",
+    "Slightly inconsistent Gate 3/Gate 4 bookkeeping."
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the pre-analysis report was emitted before any goal question or interview question",
+      "passed": true,
+      "evidence": "transcript.md: the fenced 'Pre-Analysis: demo-skill' block under step 1 precedes the first AskUserQuestion (goals) and the Requirements Interview section."
+    },
+    {
+      "text": "transcript.md shows up to 3 goals derived from pre-analysis findings, each with a verification check",
+      "passed": true,
+      "evidence": "Exactly 3 goals (G1 zero ref->ref chains, G2 intake via AskUserQuestion, G3 every invoked tool declared), each with a 'verify by re-running ... scan' check traced to a pre-analysis finding."
+    },
+    {
+      "text": "the step-5 plan-only branch was taken (by wording or by an approval option) and step 6 (make changes) was not run",
+      "passed": true,
+      "evidence": "'Step 5: Plan-only exit' cites the plan-only wording and 'step 6 not run'; the target diff is empty."
+    },
+    {
+      "text": "changes.md exists at the confirmed draft path and contains a Selected Goals section, an Implementation Order section and at least one F/O/M-numbered finding",
+      "passed": true,
+      "evidence": "OUTDIR/changes.md has '## Selected Goals', '## Implementation Order' and findings F1-F4 and O1."
+    },
+    {
+      "text": "the target copy's files are byte-identical to the original fixture (zero edits)",
+      "passed": true,
+      "evidence": "'diff -r outputs/target fixtures/demo-skill' produced no differences."
+    },
+    {
+      "text": "no goal measurement was run in this session",
+      "passed": true,
+      "evidence": "Transcript says steps 6-10 skipped by design; no measurement output in transcript.md or changes.md; 'Post-Implementation Verification' items are plans."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Interview Q2-Q4 and BATCH 2 prod-checks ran although only a plan was requested; first-option defaults ('Keep validation gates') changed the plan content.",
+    "Step-5 skip-on-plan-only-wording was not checked against SKILL.md by the grader.",
+    "changes.md F4/O1 go beyond the three selected goals (deferred candidate and auto-added sections).",
+    "Pre-analysis counts (13 lines, 22-char description) were not re-derived by the grader."
+  ]
+}

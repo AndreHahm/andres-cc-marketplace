@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the step-5 approval ask with an Apply changes option, and the answer Apply changes leads on to step 6",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the target copy was actually edited to fix at least one pre-analysis finding",
+      "type": "functionality",
+      "target": "OUTDIR/target"
+    },
+    {
+      "text": "transcript.md shows goal measurement (step 8) happening after validation (step 7) and before the trigger-regression/compliance steps",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "goal-measurement.md records a PASS or FAIL result for every selected goal, each from that goal's own verification check",
+      "type": "presence",
+      "target": "goal-measurement.md"
+    },
+    {
+      "text": "no changes.md plan-only draft was written",
+      "type": "presence",
+      "target": "OUTDIR"
+    }
+  ]
+}

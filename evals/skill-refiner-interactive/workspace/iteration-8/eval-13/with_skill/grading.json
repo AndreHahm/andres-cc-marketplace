@@ -1,0 +1,43 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the existing draft at the confirmed path being read before any new content is written",
+      "passed": true,
+      "evidence": "Step 5: 'A draft already exists at the confirmed path, so ... it was read first. It holds one approved finding, F1 ...' before the additions are listed. Evidence is the transcript's narration; no literal file contents shown."
+    },
+    {
+      "text": "changes.md still contains the earlier finding 'Pre-existing finding (approved earlier)' unchanged",
+      "passed": true,
+      "evidence": "'## F1: Pre-existing finding (approved earlier)' with Problem, Files affected and Verification matching fixtures/existing-draft/changes.md word for word."
+    },
+    {
+      "text": "changes.md contains new findings with IDs that do not collide with F1",
+      "passed": true,
+      "evidence": "Adds F2, F3, F4 and M1, each once; F1 appears once as a heading."
+    },
+    {
+      "text": "the Implementation Order in changes.md lists F1 together with the new findings",
+      "passed": true,
+      "evidence": "Implementation Order: 1 F1, 2 F2, 3 F3, 4 F4, 5 M1."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r OUTDIR/target fixtures/demo-skill exited 0."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "'Read first' claim rests on narration only.",
+    "The draft's header sentence was rewritten and Selected Goals / Pre-Analysis sections inserted above F1; F1's own section is verbatim.",
+    "F4 adds Glob beyond the single undeclared tool found.",
+    "target/ matches the global gitignore (noted by the run).",
+    "Step-5 ask skipped on plan-only wording; not checked against SKILL.md."
+  ]
+}

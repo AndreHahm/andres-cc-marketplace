@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md logs Gate 1 (content audit), Gate 2 (capability assessment), Gate 3 (migration verification) and Gate 4 (operator confirmation) in that order",
+      "type": "structure",
+      "target": "transcript.md"
+    },
+    {
+      "text": "Gates 1 and 2 precede the first CREATE, and every DELETE line is preceded by its own Gate 4 approval line",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "for the moved content, the CREATE line precedes the LINK line, which precedes the DELETE line",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the DELETE is preceded by a recorded operator approval (Gate 4 or the step-3 consolidation approval)",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "final-tree.txt lists the merged reference file containing the moved content and does not list the deleted source files, and SKILL.md links to the merged file",
+      "type": "presence",
+      "target": "final-tree.txt"
+    }
+  ]
+}

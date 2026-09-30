@@ -1,0 +1,24 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "request (a) routes to skill-refiner-interactive", "passed": true, "evidence": "routing.md line (a): '-> skill-refiner-interactive: it improves an existing skill with operator approval at each step...'"},
+    {"text": "request (b) routes to skill-refiner-interactive", "passed": true, "evidence": "routing.md line (b): '-> skill-refiner-interactive' citing its when_to_use 'interactive fix-review workflows'."},
+    {"text": "request (c) routes to skill-reviewer", "passed": true, "evidence": "routing.md line (c): '-> skill-reviewer', because the refiner's description redirects one-shot reports with no fixes to the skill-reviewer agent. That redirect is confirmed in the SKILL.md frontmatter."},
+    {"text": "request (d) routes to skill-development", "passed": true, "evidence": "routing.md line (d): '-> skill-development', because the refiner excludes creating new skills. The frontmatter says 'Not for creating new skills — use skill-development instead'."},
+    {"text": "request (e) routes to skill-improver-loop", "passed": true, "evidence": "routing.md line (e): '-> skill-improver-loop', unattended fix-review cycles. The refiner's frontmatter redirects 'automated fix-review loops with no user checkpoints' to skill-improver-loop."},
+    {"text": "request (f) routes to skill-refiner-interactive", "passed": true, "evidence": "routing.md line (f): '-> skill-refiner-interactive'. '80% rule' appears in both the description and the when_to_use of SKILL.md frontmatter."},
+    {"text": "request (g) routes to skill-refiner-interactive", "passed": true, "evidence": "routing.md line (g): '-> skill-refiner-interactive'. The frontmatter says 'production readiness' and 'validating against best practices'."},
+    {"text": "request (h) routes to skill-refiner-interactive", "passed": true, "evidence": "routing.md line (h): '-> skill-refiner-interactive'. The frontmatter says 'consolidates references' and 'consolidating references'."}
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The run states in routing.md that skill-reviewer's description contains 'validate skill structure' and that skill-development's triggers include 'create a skill' and 'consolidate skills'. The grader only confirmed the refiner's own frontmatter directly, so those quotes from the other three descriptions are unverified.",
+    "The ambiguity sentence says no pair is fully ambiguous but admits (g) and (h) are mild near-overlaps. Hedged but consistent.",
+    "Only the refiner's frontmatter was confirmed to match what routing.md claims; the run was constrained not to read other files, so its claims about the other three descriptions could not be checked."
+  ]
+}

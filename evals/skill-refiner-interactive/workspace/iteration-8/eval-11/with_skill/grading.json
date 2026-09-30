@@ -1,0 +1,43 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "the pre-analysis report in transcript.md states the R13 tier as Soft Warning for the fixture's 307 lines",
+      "passed": true,
+      "evidence": "Pre-analysis block: 'Lines: 307 - Soft Warning (R13)'; fixture is 307 lines (wc -l)."
+    },
+    {
+      "text": "the Troubleshooting section is flagged as a large section of 50 or more lines",
+      "passed": true,
+      "evidence": "'Large sections (>=50 lines): \"Troubleshooting (Edge Cases)\" - 60 lines ... low-frequency (<20%)'."
+    },
+    {
+      "text": "the Content Extraction question is asked and answered Yes",
+      "passed": true,
+      "evidence": "BATCH 2 'Extraction question' with Yes/No, 'Simulated answer: Yes.'"
+    },
+    {
+      "text": "the numbered action lines show CREATE (new reference file) before LINK (pointer in SKILL.md) before DELETE (inline section body)",
+      "passed": true,
+      "evidence": "Step 6 actions: 1 CREATE troubleshooting.md, 2 LINK pointer, 3 LINK Reference Guide, 4 DELETE inline body."
+    },
+    {
+      "text": "the final SKILL.md is shorter than the 307-line fixture and points at the new reference file, which holds the Troubleshooting content",
+      "passed": true,
+      "evidence": "target/SKILL.md is 271 lines; points to references/troubleshooting.md (59 lines, 55 'Failure mode' bullets); SKILL.md keeps one occurrence (the pointer)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "Transcript says the section is 60 lines but the extracted body was 57 lines; 59-line reference file is an unexplained counting mismatch.",
+    "Run auto-added When to Use, When NOT to Use, Goal Verification and Reference Guide sections (unrequested scope); Goal Verification arguably conflicts with the 'Keep validation gates' exclusion and the transcript flags it.",
+    "First-option defaults for Q2-Q4 and Prod checks changed scope.",
+    "Steps 9-10 not run; marker correctly withheld.",
+    "Report elided repeated sub-step bullets from SKILL.md; the on-disk file is the full 271 lines."
+  ]
+}

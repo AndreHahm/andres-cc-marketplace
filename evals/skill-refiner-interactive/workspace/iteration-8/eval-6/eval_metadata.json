@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "after compliance round 1 (rulebook FAIL + reviewer Major) transcript.md says NO MARKER EMITTED",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the transcript shows the FAIL and the Major being fixed and both checks re-run before any marker",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears after the clean round 2",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the acceptance",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}

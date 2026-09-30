@@ -1,0 +1,9 @@
+OUTDIR
+OUTDIR/final-tree.txt
+OUTDIR/report.md
+OUTDIR/target
+OUTDIR/target/references
+OUTDIR/target/references/a.md
+OUTDIR/target/references/b.md
+OUTDIR/target/SKILL.md
+OUTDIR/transcript.md
