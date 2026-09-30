@@ -166,6 +166,16 @@
         "goal-measurement.md",
         "final-tree.txt"
       ]
+    },
+    {
+      "id": 17,
+      "name": "infer-context-captures-stated-need",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs, including references/interview-question-templates.md where the skill points at it). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion or dispatch other skills/agents. Every time the skill would ask the operator something, write the question, its header and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record in transcript.md which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-17/with_skill/outputs. Context: earlier in this conversation the operator pasted this skill's SKILL.md (treat OUTDIR/target/SKILL.md as that pasted content) and said 'the Quick Start is unclear to a first-time reader, please fix that'. The operator now says: 'Refine it.' Simulated operator answers: at the escape-hatch question choose 'Infer from context'; the skill is already located at OUTDIR/target; select all goals offered (write the goal-selection question's options and each option's verification check into transcript.md exactly as offered); for any BATCH 2 question choose 'Yes'; at the step-5 approval choose 'Stop'. Make no edits. When finished, also write OUTDIR/final-tree.txt listing every file that exists under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md and OUTDIR/final-tree.txt.",
+      "expected_output": "With predating context that states a need pre-analysis cannot detect and 'Infer from context', BATCH 1 is skipped but the stated need is offered at goal selection as a candidate goal with a proposed verification check, within the cap of 3 goals.",
+      "files": [
+        "transcript.md",
+        "final-tree.txt"
+      ]
     }
   ],
   "testing_validation_coverage": {
