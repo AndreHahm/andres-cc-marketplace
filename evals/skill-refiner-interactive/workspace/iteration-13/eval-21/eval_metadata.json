@@ -1,0 +1,31 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "BATCH 1 Question 4 is answered 'Keep tool scoping' and recorded as an exclusion in the approved scope",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "when the simulated R6 FAIL requires adding Grep to allowed-tools, the skill asks an expand-scope question with options 'Expand scope for this fix' / 'Keep the exclusion' before changing allowed-tools",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after the simulated 'Keep the exclusion' answer, the allowed-tools line in target/SKILL.md is unchanged from the fixture",
+      "type": "structure",
+      "target": "target/SKILL.md"
+    },
+    {
+      "text": "the unresolved R6 finding is reported as remaining (for example in the change summary or transcript)",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "no completion marker is emitted at any compliance check run (every run is marked NO MARKER EMITTED)",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "goal-measurement.md records a FAIL for the chain goal in the first measurement, with the actual result",
+      "passed": true,
+      "evidence": "Measurement pass 1: G1 FAIL, 'references/a.md line 5 still says \"Read references/b.md\"'."
+    },
+    {
+      "text": "transcript.md shows the Accept with reason / Continue refining ask after the FAIL",
+      "passed": true,
+      "evidence": "The ask with both options, answered 'Continue refining'."
+    },
+    {
+      "text": "after 'Continue refining' the transcript returns to step 6 (make changes) with the failed goal as the focus",
+      "passed": true,
+      "evidence": "'RETURN to step 6 (focus: G1)', then the stale line is removed from references/a.md."
+    },
+    {
+      "text": "goal-measurement.md records a second measurement in which every goal is PASS",
+      "passed": true,
+      "evidence": "Measurement pass 2: G1, G2 and G3 all PASS."
+    },
+    {
+      "text": "no completion marker or step-10 compliance step appears before the second measurement passes",
+      "passed": true,
+      "evidence": "Step 10 and the not-emitted marker statement both come after measurement pass 2."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The round-1 'missed chain fix' is narrated only and was never a consistent on-disk state; it follows the eval's simulation control.",
+    "Step 7 was re-run only for the touched phase; steps 9-10 were not run, so no real completion was reached.",
+    "G3 was checked by hand because plugin-rulebook could not be dispatched; disclosed.",
+    "The run used first-option Q4 'Keep validation gates' as its basis for leaving out Testing & Validation; disclosed.",
+    "Regression guard for the step-8/9 edit: the failed-goal loop is unchanged."
+  ]
+}

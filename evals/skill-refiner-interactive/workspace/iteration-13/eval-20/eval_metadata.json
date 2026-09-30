@@ -1,0 +1,31 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "the Refinement four-option Mirror question is asked before any analysis or edit, and its two 'is correct' options select an authoritative copy for analysis without saying the other copy is overwritten at that point",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the simulated answer is recorded as the skills/demo-mirror copy being authoritative for this session, with no overwrite performed at that point",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the plan-only exit is taken: the transcript shows step 6 (Make changes) is not run",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "a changes.md is written at OUTDIR/changes.md containing the approved findings",
+      "type": "functionality",
+      "target": "changes.md"
+    },
+    {
+      "text": "both copies under target/ are byte-identical to the pristine mirror-pair fixture (neither was edited or overwritten)",
+      "type": "structure",
+      "target": "target/"
+    }
+  ]
+}

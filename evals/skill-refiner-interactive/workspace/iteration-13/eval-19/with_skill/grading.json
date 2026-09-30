@@ -1,0 +1,48 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "goal measurement 1 (step 8), after step 6's edit, records the description goal as PASS with a character count between 80 and 1024",
+      "passed": true,
+      "evidence": "Measurement 1: description = 145 characters, PASS, in step 8 after the step-6 edit."
+    },
+    {
+      "text": "at step 9 the trigger-eval check is run and the description in target/SKILL.md is rewritten to more than 1024 characters",
+      "passed": true,
+      "evidence": "'Run trigger-eval check' chosen; a 1179-character description applied; the grader parsed target/SKILL.md's frontmatter and got 1179."
+    },
+    {
+      "text": "after the step-9 rewrite and before step 10's compliance checks, the selected goals are measured again (a second goal measurement)",
+      "passed": true,
+      "evidence": "'Step 8 re-run ... measurement 2' sits after the step-9 rewrite and before the Step 10 heading."
+    },
+    {
+      "text": "the second goal measurement records the description goal as FAIL and reports a character count above 1024",
+      "passed": true,
+      "evidence": "'measurement 2: description = 1179 characters. 1179 > 1024 -> FAIL.'"
+    },
+    {
+      "text": "on that FAIL the skill asks Accept with reason / Continue refining, and no completion marker is emitted before that answer",
+      "passed": true,
+      "evidence": "The 'Goal failed' question with those two options; every earlier point says NO MARKER EMITTED."
+    },
+    {
+      "text": "after 'Accept with reason' the accepted goal failure and its reason are recorded, and the completion marker is emitted exactly once, at the end",
+      "passed": true,
+      "evidence": "G1 FAIL accepted with reason 'trigger-tuned description is intentionally long', repeated in the change summary; the marker appears once, after step 10."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The simulated 'clean' plugin-rulebook result at step 10 rests on the simulation; the run's own note says a real R21 check would flag a 1179-character description.",
+    "The BATCH 2 scope note mislabels the Q4 choice ('Keep tool scoping was not chosen' where the operator picked 'Keep validation gates').",
+    "The grader did not diff target/ against the fixture; final-tree.txt lists the expected three files.",
+    "New eval for finding 1 (goal re-measured after the step-9 trigger rewrite)."
+  ]
+}

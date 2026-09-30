@@ -1,0 +1,42 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the Mirror Divergence question in its Validation form with exactly two options, 'Show me the diff first' and 'Stop'",
+      "passed": true,
+      "evidence": "Header 'Mirror', the 'Validation is report-only' question text, and exactly the two options."
+    },
+    {
+      "text": "no overwrite option ('[path] is correct') appears in the question the transcript asks",
+      "passed": true,
+      "evidence": "Only two options are listed; '[path A] is correct' appears only in a note saying it is absent."
+    },
+    {
+      "text": "after the simulated answer 'Show me the diff first' the transcript displays the difference between the two copies and then ends the session, with no report",
+      "passed": true,
+      "evidence": "A diff of line 11 matching the real fixture diff is shown; the session then ends and Validation step 3 (report) is stated as NOT reached."
+    },
+    {
+      "text": "transcript.md contains no 'DELEGATION REACHED' marker and no skill-reviewer or plugin-rulebook delegation, and no pre-analysis, goal or interview question",
+      "passed": false,
+      "evidence": "grep -c 'DELEGATION REACHED' returns 1, from the line 'DELEGATION REACHED: no (session ended at the mirror halt...)'. No actual delegation, pre-analysis, goal or interview question appears, but the literal marker string is present, so this fails under literal grading."
+    },
+    {
+      "text": "both mirror copies are byte-identical to the fixture afterwards",
+      "passed": true,
+      "evidence": "diff -r of fixtures/mirror-pair against outputs/target: identical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  },
+  "concerns": [
+    "Assertion 4 fails only on the literal marker string: the runner wrote 'DELEGATION REACHED: no' as a negated status line. The behavior is correct (the session ended at the mirror halt, before any delegation). Recorded as graded, not rewritten as a pass. Coordinator note: this is a fixture-wording artifact, not a regression; iteration 10's run of this eval passed the same assertion.",
+    "The transcript mentions skill-reviewer and plugin-rulebook only to say step 2 was not reached; that is not a delegation.",
+    "Regression guard for the Mirror template edit (the Validation form is unchanged by finding 4)."
+  ]
+}

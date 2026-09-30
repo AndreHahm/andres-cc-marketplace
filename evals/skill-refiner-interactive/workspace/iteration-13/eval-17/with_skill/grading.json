@@ -1,0 +1,47 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "iteration": 13,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the escape-hatch question answered 'Infer from context' and BATCH 1 skipped",
+      "passed": true,
+      "evidence": "The question with 'SIMULATED ANSWER: Infer from context'; BATCH 1 'SKIPPED ... No Questions 1-4 asked'."
+    },
+    {
+      "text": "the goal-selection question offers a candidate goal for the operator's stated need (the Quick Start being unclear to a first-time reader) alongside goals derived from pre-analysis",
+      "passed": true,
+      "evidence": "Option 3 'Clear Quick Start' (from the stated context need) beside the derived options 'Zero ref chains' and 'Declare all tools'."
+    },
+    {
+      "text": "that candidate goal states a concrete proposed verification check",
+      "passed": true,
+      "evidence": "A four-part check: input, steps in order with tools, expected output, no 'see references/...' pointer needed."
+    },
+    {
+      "text": "no more than 3 goals are offered in total, and any derived goal displaced by the candidate is listed as a deferred candidate",
+      "passed": true,
+      "evidence": "Exactly 3 options; the displaced 'R21 description size' goal is listed under Deferred goal candidates."
+    },
+    {
+      "text": "the recorded goals, after the simulated 'select all', include the context-derived goal",
+      "passed": true,
+      "evidence": "'Recorded selected goals' lists G1-G3, where G3 'Clear Quick Start' is the context-derived goal."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r against fixtures/demo-skill: no differences; session ends at the step-5 Stop."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "'BATCH 2 = Yes' had nothing to bind to; the run took the first Prod checks option, disclosed.",
+    "The step-3 consolidation ask had no simulated answer; the run took 'Consolidate', disclosed; no effect because the session stopped at step 5.",
+    "Regression guard for the goal-selection edit (the multi-goal path is unchanged by the single-goal fix)."
+  ]
+}

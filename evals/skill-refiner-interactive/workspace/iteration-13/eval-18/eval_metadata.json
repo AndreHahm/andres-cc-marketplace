@@ -1,0 +1,36 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "the pre-analysis report lists exactly one finding for the target",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the goal-selection question is single-select and offers exactly two options labelled 'Select this goal' and 'No goals' (plus the automatic Other)",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the 'Select this goal' option's description shows the goal's verification check",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "after the simulated 'Select this goal' answer, exactly one goal is recorded",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "BATCH 1 Question 1 is skipped because a goal was selected",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "type": "structure",
+      "target": "final-tree.txt and target/"
+    }
+  ]
+}
