@@ -201,7 +201,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** Verify `allowed-tools` field matches actual tool usage and applies principle of least privilege.
 
 **Check:**
-- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — an undeclared tool is not pre-approved, so each use needs a permission prompt (R6 tool-completeness; Major)
+- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — an undeclared tool is not pre-approved and remains subject to the active permission settings (R6 tool-completeness; Major)
 - [ ] **Unused declared tools:** No tools in `allowed-tools` that are never referenced in SKILL.md or any reference file — principle of least privilege (Minor)
 - [ ] **Bash-for-dedicated-tool misuse:** No `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)` where Grep, Glob, Read would serve the same purpose (Minor)
 - [ ] Wildcards used appropriately (`Bash(git:*)` for git-only; bare `Agent` pre-approves any agent type, so narrow it to `Agent(<type>)` only where the current Claude Code docs confirm that form for `allowed-tools`)
@@ -382,6 +382,6 @@ Score the current and proposed versions on a fixed held-out check set (3–8 tas
 
 Refinement edits, deletes and (for a mirror pair) overwrites files, and it can stop part-way: a declined Gate 4, a failed goal the operator abandons, or the 3-round cap. Settle how to undo it before the first edit in SKILL.md step 6:
 
-- **Project skill under version control:** the pre-edit state is the last commit. Note in the plan whether the target's files already have uncommitted changes, since a restore would discard them too. To undo, restore the listed files from version control, and restore both copies of a mirror pair.
+- **Project skill under version control:** the pre-edit state is the last commit. Note in the plan whether the target's files already have uncommitted changes. If none do, undo by restoring the listed files from version control (both copies of a mirror pair). If any do, a whole-file restore would discard those earlier edits: before the first edit, save a copy of each dirty file (or its `git diff` as a patch) in a scratch location outside the repository, and undo by reversing only this refinement's changes against that copy, never by restoring the file from version control.
 - **User-space skill (`~/.claude/skills/`):** no version control is assumed. Before the first edit, ask the operator to copy the skill directory somewhere safe, or accept that there is no undo.
 - **After a stop:** the change summary's "Files created" and "Files deleted" lists are the restore list. A consolidation whose source deletion was declined was not performed, so leave the destination file out of that list.

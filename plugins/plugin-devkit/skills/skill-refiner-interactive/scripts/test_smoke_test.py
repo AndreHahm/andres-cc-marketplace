@@ -97,6 +97,20 @@ MUTATIONS = {
             refs(d, "common-scenarios.md"), "\nFor the mapping, see `goal-derivation.md`.\n"
         ),
     ),
+    "chain-intervening": (
+        {"check_no_reference_chains"},
+        lambda d: append(
+            refs(d, "common-scenarios.md"),
+            "\nRead the instructions in references/goal-derivation.md.\n",
+        ),
+    ),
+    "malformed-flow": (
+        {"check_frontmatter"},
+        lambda d: edit(
+            skill_md(d),
+            lambda t: t.replace("when_to_use: >-\n", "when_to_use: [unterminated\n", 1),
+        ),
+    ),
     "big-block": (
         {"check_size_ceilings"},
         lambda d: append(refs(d, "common-scenarios.md"), "\n```\n" + "line\n" * 35 + "```\n"),
@@ -162,6 +176,24 @@ MUTATIONS = {
     "read-skill-md-ok": (
         set(),
         lambda d: append(refs(d, "common-scenarios.md"), "\nRead SKILL.md first.\n"),
+    ),
+    "sentence-boundary-ok": (
+        set(),
+        lambda d: append(
+            refs(d, "common-scenarios.md"),
+            "\nRead the target SKILL.md first. The goal-derivation.md table is a sibling.\n",
+        ),
+    ),
+    "bracket-in-block-scalar-ok": (
+        set(),
+        lambda d: edit(
+            skill_md(d),
+            lambda t: t.replace(
+                "description: >-\n",
+                "description: >-\n  Unmatched [ bracket and 'quote in a block scalar.\n",
+                1,
+            ),
+        ),
     ),
     "nested-fence-ok": (
         set(),
