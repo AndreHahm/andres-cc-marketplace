@@ -1791,6 +1791,49 @@ def check_prefix_mismatch_conflict():
         )
 
 
+def check_plugin_inventory_missing_prefix_key_conflict():
+    """PR 11 scenario: a plugin-inventory.json with the `prefix` key absent must
+    surface as a conflict even though the marketplace record's prefix is an
+    explicit null (an absent key must not compare equal to null)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
+        plugin_id, plugin_name = plugin["id"], plugin["name"]
+        if plugin.get("prefix", "absent") is not None:
+            return False, "bootstrap did not write an explicit prefix null on the marketplace side"
+
+        plugin_inventory_dir = repo_root / "plugin-a" / ".claude-plugin"
+        plugin_inventory_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_inventory_dir / "plugin-inventory.json").write_text(
+            json.dumps({"plugin_id": plugin_id, "components": []}),
+            encoding="utf-8",
+        )
+
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op
+            for op in operations
+            if op["operation"] == "conflict"
+            and op["name"] == plugin_name
+            and "no 'prefix' key" in op["reason"]
+        ]
+        if not conflicts:
+            return (
+                False,
+                f"expected a missing-prefix-key conflict for {plugin_name}, got: {operations}",
+            )
+        return True, "a plugin-inventory.json with no prefix key correctly surfaced as a conflict"
+
+
 def check_domain_prefix_valid_accepted():
     """R33 addendum (2026-09-27) scenario: a curated, valid domain_prefix set via
     'update' is persisted -- mirrors check_prefix_valid_accepted."""
@@ -2215,6 +2258,7 @@ CHECKS = [
     check_repair_history_succeeds_on_malformed_current_inventory,
     check_prefix_valid_accepted,
     check_missing_prefix_key_rejected,
+    check_plugin_inventory_missing_prefix_key_conflict,
     check_prefix_format_rejected,
     check_prefix_trailing_newline_rejected,
     check_prefix_duplicate_rejected,
