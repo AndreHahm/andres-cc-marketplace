@@ -12,7 +12,6 @@ Apply the **80% rule**: identify supplementary content used in <20% of cases tha
 Keep core content (80%+ usage) in SKILL.md.
 Consolidate related reference files.
 Verify activation doesn't suffer from moved content.
-See `references/80-percent-rule.md` for decision examples.
 
 ## "Improve user interaction UX"
 
@@ -21,7 +20,6 @@ Convert free-form instructions to predefined AskUserQuestion options where appli
 Ensure questions follow wizard pattern (ask → wait → ask, not forms).
 Verify descriptions are clear and help users make good choices.
 Check for >4 options violations — split into multiple AskUserQuestion batches.
-See `references/ask-user-question-patterns.md` for patterns and decision trees.
 
 ## "Improve reference quality"
 
@@ -34,7 +32,7 @@ Add context snippets so agents load references intentionally, not out of uncerta
 
 Run Core Workflow: Validation — delegates to `skill-reviewer` (full mode) and `Skill(plugin-rulebook)`, does not reimplement their checks.
 Check: error handling, tool scoping, clear trigger phrases, comprehensive testing.
-Flag missing production patterns. See `references/production-patterns.md`.
+Flag missing production patterns.
 Present `skill-reviewer`'s verdict plus any `plugin-rulebook` FAIL findings.
 
 ## "Fix my skill" / "Run improvement loop"
@@ -57,5 +55,3 @@ When a section is ≥80 lines and used in <20% of activations, extract it to a r
    ```
 5. **DELETE** the inline body (the pointer replaces it)
 6. **Validate:** Phase 5 (references exist, no orphans) + Phase 7 (pointer resolves correctly)
-
-See `references/refinement-workflow.md#content-extraction` for detailed procedure and examples.

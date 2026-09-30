@@ -1,6 +1,6 @@
 # AskUserQuestion Patterns & Best Practices
 
-Use this guide when refining skills that interact with users. AskUserQuestion is the primary tool for gathering input; patterns here ensure good UX and compliance with framework constraints.
+Use this guide when creating skills that interact with users. AskUserQuestion is the primary tool for gathering input; patterns here ensure good UX and compliance with framework constraints.
 
 ## Core Constraint: Maximum 4 Options Per Question
 
@@ -48,20 +48,7 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
 
 **Examples from toolkit:**
 
-✅ **skill-refiner**:
-```json
-{
-  "question": "What would you like to do with this skill?",
-  "header": "Action",
-  "options": [
-    { "label": "Refine", "description": "Improve clarity, structure, efficiency..." },
-    { "label": "Validate", "description": "Check if it's production-ready..." }
-  ],
-  "multiSelect": false
-}
-```
-
-✅ **skill-creator**:
+✅ **skill-creator** (lines 21-38):
 ```json
 {
   "question": "What do you want to do?",
@@ -71,6 +58,19 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
     { "label": "Convert a slash command", "description": "..." }
   ],
   "multiSelect": false
+}
+```
+
+✅ **skill-refiner** (lines 30-46):
+```json
+{
+  "question": "What would you like to do with this skill?",
+  "header": "Action",
+  "options": [
+    { "label": "Refine", "description": "Improve clarity, structure, efficiency, token usage, or organization" },
+    { "label": "Validate", "description": "Check if it's production-ready (tool scoping, completeness, error handling)" }
+  ],
+  "multiSelect": false  // Single action per session (user picks one path)
 }
 ```
 
@@ -98,7 +98,7 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
 
 **Example from toolkit:**
 
-✅ **plugin-creator (CORRECTED)** - BATCH 1:
+✅ **plugin-creator (CORRECTED)** - BATCH 1 (lines 149-162):
 ```json
 {
   "question": "Which core components will the plugin include?",
@@ -191,13 +191,13 @@ Batch 3: Continue as needed
 
 **Real toolkit example:**
 
-✅ **plugin-creator**:
-- BATCH 1: "Which core components?" (4 options, multiSelect)
-- BATCH 2: "Include LSP support?" (2 options, yes/no)
+✅ **plugin-creator** (lines 146-180):
+- BATCH 1 (lines 149-162): "Which core components?" (4 options, multiSelect)
+- BATCH 2 (lines 167-177): "Include LSP support?" (2 options, yes/no)
 
-✅ **skill-refiner**:
-- BATCH 1: "What aspects need improvement?" (4 options: Clarity, Efficiency, Structure, User Interaction UX) + 3 open-form questions
-- BATCH 2: "Should we consolidate references?" (yes/no) + "Validate for production?" (yes/no) + "Add testing patterns?" (yes/no)
+✅ **skill-refiner** (lines 69-132):
+- BATCH 1 (lines 72-100): "What aspects need improvement?" (4 options: Clarity, Efficiency, Structure, User Interaction UX) + 3 open-form questions
+- BATCH 2 (lines 107-132): "Should we consolidate references?" (yes/no) + "Validate for production?" (yes/no) + "Add testing patterns?" (yes/no)
 
 ---
 
@@ -218,39 +218,7 @@ Batch 3: Continue as needed
 
 **Examples from toolkit:**
 
-**R18 exception (recorded):** the example below intentionally exceeds the 30-line threshold — a complete, real `AskUserQuestion` call; splitting it would leave an invalid, incomplete call.
-
-✅ **skill-refiner - BATCH 1 (interview)**:
-```json
-{
-  "question": "What aspects need improvement?",
-  "header": "Focus Areas",
-  "options": [
-    { "label": "Clarity", "description": "Make instructions clearer, remove jargon, improve examples" },
-    { "label": "Efficiency", "description": "Reduce token usage, consolidate references, optimize content" },
-    { "label": "Structure", "description": "Reorganize sections, improve flow, better grouping" },
-    { "label": "User Interaction UX", "description": "Convert free-form interactions to AskUserQuestion patterns, improve workflows" }
-  ],
-  "multiSelect": true  // ← Multiple aspects can need work simultaneously
-},
-{
-  "question": "What specific problems are you seeing?",
-  "header": "Key Issues",
-  "options": []  // Open-form; captures issues across all selected aspects
-},
-{
-  "question": "What would success look like?",
-  "header": "Success Metric",
-  "options": []  // Open-form
-},
-{
-  "question": "Any areas to exclude or preserve as-is?",
-  "header": "Scope Limits",
-  "options": []  // Open-form
-}
-```
-
-✅ **skill-creator**:
+✅ **skill-creator** (lines 147-169):
 ```json
 {
   "question": "What domain-specific task should Claude execute?",
@@ -260,6 +228,20 @@ Batch 3: Continue as needed
 {
   "question": "What phrases will Claude see in user requests?",
   "header": "Trigger Phrases",
+  "options": []  // Open-form
+}
+```
+
+✅ **skill-refiner** (lines 84-98):
+```json
+{
+  "question": "What specific problems are you seeing?",
+  "header": "Key Issues",
+  "options": []  // Open-form
+},
+{
+  "question": "What would success look like?",
+  "header": "Success Metric",
   "options": []  // Open-form
 }
 ```
@@ -281,26 +263,26 @@ IF response == "Option B" → Ask follow-up for Option B
 IF response == "Option C" → Skip to step X
 ```
 
-**Example: skill-refiner routing**
+**Example: skill-creator routing**
 
 ```
-Q1: "What would you like to do?"
-  - Option A: "Refine" → Route to Refinement Interview
-  - Option B: "Validate" → Skip to Validation Phase
+Q1: "What do you want to do?"
+  - Option A: "Create a new skill" → Route to Requirements Interview
+  - Option B: "Convert a slash command" → Route to Conversion Workflow
 
 Q2: [Depends on Q1 answer]
-  IF "Refine": Ask "What aspect needs improvement?"
-  IF "Validate": Ask "Ready for validation checklist?"
+  IF "Create": Ask "What's the skill's purpose?"
+  IF "Convert": Ask "Where is the slash command?"
 ```
 
 **Real toolkit example:**
 
-✅ **skill-refiner**:
+✅ **skill-creator** (lines 71-102):
 ```
-1. Ask: "What would you like to do?" (Refine / Validate)
+1. Ask: "What do you want to do?" (create / convert slash command)
 2. Wait for response
-3. IF "Refine" → proceed to "Core Workflow: Refinement"
-   IF "Validate" → proceed to "Core Workflow: Validation"
+3. IF "create" → proceed to "Requirements Interview" section
+   IF "convert" → proceed to "Conversion Workflow" section
 ```
 
 ---
@@ -346,19 +328,45 @@ Q2: [Depends on Q1 answer]
 
 **Example from toolkit:**
 
-✅ **skill-refiner - BATCH 1**:
+✅ **skill-creator - BATCH 1** (lines 144-169):
 ```json
 {
   "questions": [
-    { "question": "What aspect needs improvement?", "options": [...] },  // 4 options
-    { "question": "What specific problems are you seeing?", "options": [] },  // open-form
-    { "question": "What would success look like?", "options": [] },  // open-form
-    { "question": "Any areas to exclude?", "options": [] }  // open-form
+    { "question": "What domain-specific task?", "options": [] },
+    { "question": "What trigger phrases?", "options": [] },
+    { "question": "What's in/out of scope?", "options": [] },
+    { "question": "Which tools needed?", "options": [] }
   ]
 }
 ```
 
-All 4 questions are independent; user answers all together, then waits for BATCH 2.
+All 4 questions are independent; user answers all together, then waits for next batch.
+
+---
+
+## Pattern 7: Uncertainty Option
+
+**Use when:** A question requires domain judgment the user may not confidently have — category selection, architecture tradeoffs, tool choices — not every choice question needs this. Routine yes/no or preference questions don't, since adding it everywhere dilutes the 4-option budget without adding value.
+
+**Structure:**
+```json
+{
+  "questions": [{
+    "question": "Which category best fits this skill?",
+    "header": "Category",
+    "options": [
+      { "label": "Option A", "description": "..." },
+      { "label": "Option B", "description": "..." },
+      { "label": "I'm not sure — help me decide", "description": "Infer from earlier answers, or run a short clarifying/research step" }
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+**Why this matters:** without an explicit "I'm not sure" option, a user facing a genuine judgment call is forced to guess — and a wrong guess here propagates into every downstream decision (scaffold, triggers, structure) built on top of it.
+
+**Handling the answer:** when selected, either infer the answer from context already gathered in prior questions, or run a short clarifying/research step before re-asking — don't leave the field blank and proceed.
 
 ---
 
@@ -409,8 +417,6 @@ Are next questions conditional on previous answers?
 
 **Fix:** Split into 2+ AskUserQuestion calls OR reduce to ≤4 options
 
-**Historical example:** plugin-creator had 6 component options initially (❌ Incorrect). After refinement: BATCH 1 with 4 options + BATCH 2 with 2 options (✅ Correct).
-
 ### ❌ Mistake 2: Asking All Questions as a Form
 
 ```json
@@ -455,7 +461,7 @@ Are next questions conditional on previous answers?
 // WRONG - Can't handle conditional logic
 {
   "questions": [
-    { "question": "Refine or validate?", "options": [...] },
+    { "question": "Create or refine?", "options": [...] },
     { "question": "[conditional follow-up]", "options": [...] }  // ← Doesn't work!
   ]
 }
@@ -463,12 +469,38 @@ Are next questions conditional on previous answers?
 
 **Fix:** Use separate AskUserQuestion calls:
 ```
-Call 1: "Refine or validate?" → wait
-Call 2 (conditional): IF "Refine" → ask refinement questions
-        (or IF "Validate" → ask validation questions)
+Call 1: "Create or refine?" → wait
+Call 2 (conditional): IF "Create" → ask follow-up
+        (or IF "Refine" → ask different follow-up)
 ```
 
-### ❌ Mistake 5: Vague Option Descriptions
+### ❌ Mistake 5: Recommending a Follow-Up Action in Prose Instead of Gating It
+
+```
+// WRONG - states a suggestion and waits for the user to notice and reply
+"If you want, you could run `enhancement-suggestor` against this report
+for a prioritized action plan."
+```
+
+This looks harmless but produces real friction: the user has to notice the suggestion buried in prose, decide, and type a follow-up message in a new turn — versus getting an immediate yes/no decision point in the same turn. A real instance of this mistake shipped in this toolkit's own `plugin-comparison` skill: its first design ended every comparison with a prose "offer" to run `enhancement-suggestor`, and the pattern was copy-pasted into 19 other reviewer/skill components before a user explicitly asked for it to be replaced with an interactive prompt — meaning the fix required a second full sweep across every file that had already copied the wrong default.
+
+**Fix:** any "here's a recommended follow-up, but don't auto-invoke it" design should default to `AskUserQuestion` with a Yes/No (or named-options) choice from the first draft, not prose:
+
+```json
+{
+  "question": "Run enhancement-suggestor against these findings for a classified action plan?",
+  "header": "Next step",
+  "options": [
+    { "label": "Yes — run enhancement-suggestor", "description": "..." },
+    { "label": "No — skip for now", "description": "..." }
+  ],
+  "multiSelect": false
+}
+```
+
+**Rule of thumb:** if the next sentence after a finding/report is "you could..." or "consider running...", that's a signal that the design should be an `AskUserQuestion` gate instead — reserve pure prose recommendations for cases where no concrete follow-up action actually exists to invoke.
+
+### ❌ Mistake 6: Vague Option Descriptions
 
 ```json
 // WRONG - User doesn't understand what each option does
@@ -484,17 +516,34 @@ Call 2 (conditional): IF "Refine" → ask refinement questions
 ```json
 {
   "options": [
-    { "label": "Refine", "description": "Improve clarity, structure, efficiency, token usage, or organization" },
-    { "label": "Validate", "description": "Check if it's production-ready (tool scoping, completeness, error handling)" }
+    { "label": "Create a skill", "description": "Build from scratch with proper structure" },
+    { "label": "Refine existing", "description": "Improve clarity, efficiency, or organization" }
   ]
 }
 ```
+
+### ❌ Mistake 7: No Escape Hatch for Genuine Uncertainty
+
+```json
+// WRONG - forces a guess when the user may not know
+{
+  "question": "Which of these 9 categories fits this skill?",
+  "options": [
+    { "label": "Category A" },
+    { "label": "Category B" },
+    { "label": "Category C" }
+    // no path for "I don't know"
+  ]
+}
+```
+
+**Fix:** add an "I'm not sure — help me decide" option (Pattern 7) to any judgment-call question where a wrong guess would propagate into downstream decisions.
 
 ---
 
 ## Best Practices Checklist
 
-When refining skills that use AskUserQuestion, verify:
+When creating a skill that uses AskUserQuestion, verify:
 
 - ✅ **Max 4 options** per question (no exceptions)
 - ✅ **Progressive disclosure** - Ask one batch, wait, ask next (no forms)
@@ -502,6 +551,7 @@ When refining skills that use AskUserQuestion, verify:
 - ✅ **Predefined vs open-form** - Use options: [] for free-text, [options] for choices
 - ✅ **Conditional routing** - Next question logic is clear (if/then paths documented)
 - ✅ **Batching** - Related questions grouped; unrelated questions separated
+- ✅ **Uncertainty option** - Judgment-call questions include an "I'm not sure" path (Pattern 7)
 - ✅ **No violations** - Use fact-check or linting to verify compliance
 
 ---
@@ -520,57 +570,25 @@ grep -A 15 "options: \[" SKILL.md | grep "{ label:" | wc -l
 
 **Rule:** If any question has >4 options, split it into multiple AskUserQuestion calls.
 
-**Red flags to watch during refinement:**
-- ⚠️ User wants to add "just one more option" → Suggests >4 total incoming
-- ⚠️ Skills with conditional logic → Verify separate AskUserQuestion batches
-- ⚠️ Large interview sections → Break into multiple progressive batches
-- ⚠️ Mix of choices and free-text → Use separate questions for each type
-
 ---
 
 ## Examples from the Toolkit
 
-Historically, toolkit skills followed these patterns (skill-creator, plugin-creator, hook-creator, and subagent-creator have since been consolidated into skill-development/plugin-development/hook-development/agent-development — the pattern names below still apply to their current equivalents):
+All toolkit skills now follow these patterns:
 
-| Original skill | Pattern |
-|-------|---------|
-| **skill-creator** | Pattern 1 + Pattern 4 (routing + interviews) |
-| **skill-refiner** | Pattern 1 + Pattern 4 (action choice + interview batches) |
-| **plugin-creator** | Pattern 1 + Pattern 3 (action choice + split components) |
-| **hook-creator** | Pattern 1 (simple action choice) |
-| **subagent-creator** | Pattern 1 + Pattern 4 (action + scope + interviews) |
+| Skill | Pattern | Location |
+|-------|---------|----------|
+| **skill-creator** | Pattern 1 + Pattern 4 (routing + interviews) | Lines 21-38, 147-169, 176-196 |
+| **skill-refiner** | Pattern 1 + Pattern 4 (action choice + interview batches) | Lines 30-46, 72-127 |
+| **plugin-creator** | Pattern 1 + Pattern 3 (action choice + split components) | Lines 18-43, 149-177 |
+| **hook-creator** | Pattern 1 (simple action choice) | Lines 22-43 |
+| **subagent-creator** | Pattern 1 + Pattern 4 (action + scope + interviews) | Lines 18-42, 104-165 |
 
 All comply with:
 - ✅ Maximum 4 options per question
 - ✅ Progressive disclosure (ask → wait → ask)
 - ✅ Clear descriptions
 - ✅ Appropriate use of open-form vs predefined
-
----
-
-## How to Use This Reference During Refinement
-
-When refining a skill that uses AskUserQuestion:
-
-1. **Audit phase:** Count options per question (target: ≤4)
-2. **Design phase:** If >4 found, plan split into multiple batches
-3. **Implementation phase:** Apply appropriate pattern from above
-4. **Validation phase:** Verify with verification patterns (bash script)
-5. **Testing phase:** Try the skill; verify questions appear in correct order
-
-**Example refinement workflow:**
-
-```
-FOUND: Question with 6 options
-  ↓
-DESIGN: Split into BATCH 1 (4 options) + BATCH 2 (2 options)
-  ↓
-IMPLEMENT: Update SKILL.md with 2 separate AskUserQuestion calls
-  ↓
-VALIDATE: Run verification patterns; confirm ≤4 per question
-  ↓
-TEST: Run skill; verify BATCH 1 → wait → BATCH 2 flow works
-```
 
 ---
 

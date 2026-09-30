@@ -21,7 +21,7 @@ Quick reference checklist for validating Claude Code skills. `skill-reviewer` an
   - [ ] ≤64 characters
   - [ ] Doesn't contain "anthropic" or "claude"
 - [ ] `description` field present
-  - [ ] 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see plugin-rulebook R21, or skill-development's `references/size-limits.md`)
+  - [ ] 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see plugin-rulebook R21, or `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/size-limits.md`)
   - [ ] Includes specific trigger phrases (e.g., "refine", "validate", "improve")
   - [ ] Clear use case context ("Use when...")
   - [ ] Mentions scope and constraints
@@ -215,7 +215,7 @@ If any check fails, identify specific issues and address them before deployment.
 
 ## Anti-Patterns Validation
 
-Check against common skill creation mistakes. For detailed examples, see `skill-development/references/anti-patterns.md`.
+Check against common skill creation mistakes. For detailed examples, see `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/anti-patterns.md`.
 
 ### Activation Anti-Patterns
 
