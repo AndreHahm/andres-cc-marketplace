@@ -139,6 +139,36 @@ def test_hooks_json_always_exempt(tmp_path):
     assert find_prefix_violations(tmp_path) == []
 
 
+def test_python_package_init_exempt_but_sibling_modules_checked(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts" / "shared").mkdir(parents=True)
+    (plugin_dir / "scripts" / "shared" / "__init__.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "shared" / "git_models.py").write_text("", encoding="utf-8")
+    (plugin_dir / "scripts" / "shared" / "models.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert [v.path.name for v in violations] == ["models.py"]
+
+
+def test_init_outside_scripts_dir_not_exempt(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    for dirname in ("commands", "hooks"):
+        (plugin_dir / dirname).mkdir(parents=True)
+        (plugin_dir / dirname / "__init__.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert sorted(v.path.parent.name for v in violations) == ["commands", "hooks"]
+
+
+def test_init_lookalike_basename_not_exempt(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "__init__.txt").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert [v.path.name for v in violations] == ["__init__.txt"]
+
+
 @requires_symlinks
 def test_symlinked_hooks_json_not_exempt(tmp_path):
     # Codex P1 finding (PR #387 round 2): the hooks.json manifest exemption

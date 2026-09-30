@@ -84,6 +84,15 @@ ANTIGRAVITY_ONLY_DIRS = ("bin", "docs")
 # the same way sync.py's own mirroring already treats it specially.
 HOOKS_MANIFEST_BASENAME = "hooks.json"
 
+# A Python package's __init__.py is a language-mandated filename, never a
+# plugin-authored choice -- renaming it breaks the package itself, so it is
+# exempt from prefixing (only this exact basename, and only under a plugin's
+# root-level scripts/ directory -- the one place Python packages live; the
+# package's other modules stay in scope, and an __init__.py under commands/,
+# hooks/, etc. is still checked).
+PYTHON_PACKAGE_MARKER_BASENAME = "__init__.py"
+PYTHON_PACKAGE_SCOPE_DIR = "scripts"
+
 # A plugin is only checked once it is both actually live (active/deprecated)
 # and carries a registered prefix -- a superseded/retired plugin keeps its
 # permanent prefix forever (concept v3's own prefix-lifecycle decision) but
@@ -733,7 +742,10 @@ def find_prefix_violations(
                         )
                     )
                     continue
-                if file_path == hooks_manifest:
+                if file_path == hooks_manifest or (
+                    dirname == PYTHON_PACKAGE_SCOPE_DIR
+                    and file_path.name == PYTHON_PACKAGE_MARKER_BASENAME
+                ):
                     continue
                 reason = _basename_violation_reason(
                     plugin_name, file_path.name, prefix, domain_prefix

@@ -90,6 +90,10 @@ to this rule and to `prefix_check.py`'s `ANTIGRAVITY_ONLY_DIRS`.
 
 - `hooks/hooks.json` itself — structurally merged by `scripts/marketplace_ci/sync.py`'s
   `plan_hooks_merge`, never a plugin-authored filename choice.
+- A Python package's `__init__.py` (exact basename) under a plugin's root-level `scripts/` directory —
+  a language-mandated filename; renaming it breaks the package. The package's other modules stay in
+  scope and must carry the prefix, and an `__init__.py` under any other scoped directory (`commands/`,
+  `hooks/`, `references/`, `assets/`) is still checked.
 - Every skill-scoped resource under `skills/**/{scripts,references,assets}/` — already namespaced by
   the skill's own directory path when mirrored; no flat-collision risk.
 - The plugin-root `agents/` directory — out of scope for this rule's first rollout. A collision risk
