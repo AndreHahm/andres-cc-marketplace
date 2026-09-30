@@ -18,7 +18,6 @@ Verification uses `Grep`, `Glob` and `Read`, plus `wc -l` through the scoped `Ba
 | Tool scoping (undeclared tool) | Every invoked tool is declared in `allowed-tools` | Re-run the checklist's tool-scoping scan → no undeclared tools |
 | Dead links / cross-skill references | No dead links; cross-skill paths use the explicit `${CLAUDE_PLUGIN_ROOT}/skills/<skill>/references/` form | `Glob` each linked `references/` path → all exist; re-run the checklist's cross-skill scan → 0 bare paths |
 | Oversize files (≥400 lines) | All reference files under 400 lines | `wc -l references/*.md` → no count ≥400 |
-| Missing standard sections | All 5 standard sections present | `Grep` for each required `## ` heading → 1 match each |
 | Missing goal verification | Target skill has a goal-measurement step | `Grep` for a `## Goal Verification` heading or an equivalent step → present |
 | Reference clusters (same topic) | One reference file per topic | Re-list `references/`; no two files cover the same topic (operator confirms) |
 | `when_to_use` split candidate | Frontmatter R21-compliant with `description` + `when_to_use` | `Skill(plugin-rulebook)` R21 → OK |
@@ -29,7 +28,7 @@ Verification uses `Grep`, `Glob` and `Read`, plus `wc -l` through the scoped `Ba
 Derive at most 3 goals, highest severity first:
 
 1. **Critical:** chain violations, intake violations, R22 mismatches
-2. **Major:** undeclared tools, dead links, oversize files, missing sections
+2. **Major:** undeclared tools, dead links, oversize files
 3. **Minor:** missing goal verification, clusters, `when_to_use` split, spawn anti-patterns
 
 Edge cases:

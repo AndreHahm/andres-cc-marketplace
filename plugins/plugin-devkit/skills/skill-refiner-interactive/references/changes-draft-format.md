@@ -26,7 +26,7 @@ CREATE → LINK → DELETE wherever a file is removed.
 
 ## Selected Goals
 
-[Each selected goal with its verification check — see goal-derivation.md]
+[Each selected goal with its verification check]
 
 ## Pre-Analysis Report (complete)
 

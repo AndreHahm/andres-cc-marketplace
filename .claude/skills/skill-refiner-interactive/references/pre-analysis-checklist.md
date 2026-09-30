@@ -37,5 +37,6 @@ Tool scoping (R6): [undeclared tools list | "none"] / [unused declared tools lis
 Dead links: [list | "none"] / Cross-skill references: [list | "none"]
 Missing standard sections: [list | "all 5 present"]
 Goal verification: [present | "absent — flag as Missing"]
+Deferred goal candidates: [list | "none"]
 R13/R18 threshold source: [plugin-rulebook/assets/settings.json | skill-development fallback]
 ```
