@@ -27,7 +27,7 @@
     {
       "id": 4,
       "name": "R27 still checks the full basename when no prefix is registered",
-      "prompt": "A plugin named 'misc-kit' has NO registered R33 prefix (no 'prefix' field in marketplace-inventory.json). It has a command file at commands/config-settings.md (frontmatter name 'config-settings', a minimal valid description and body -- 'config' is a noun, not a verb). Apply the plugin-rulebook skill's R27 (Component Naming: Grammatical Form) check to this command file. Report whether R27 flags it, and why.",
+      "prompt": "A plugin named 'misc-kit' has no registered R33 prefix (its marketplace-inventory.json record has \"prefix\": null and no 'domain_prefix'). It has a command file at commands/config-settings.md (frontmatter name 'config-settings', a minimal valid description and body -- 'config' is a noun, not a verb). Apply the plugin-rulebook skill's R27 (Component Naming: Grammatical Form) check to this command file. Report whether R27 flags it, and why.",
       "expected_output": "DOES flag 'config-settings.md' under R27 (ADVISORY) -- since no prefix is registered, the full basename is checked as-is, and 'config' is not a recognizable verb.",
       "files": []
     },

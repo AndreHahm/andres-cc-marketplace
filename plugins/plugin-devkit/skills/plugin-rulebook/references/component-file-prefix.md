@@ -48,8 +48,8 @@ file; a plugin legitimately mixes both forms across its own tree (e.g. `ctx-a.md
 `context-b.md` in the same directory).
 
 **Independent, optional field.** `domain_prefix` is optional independently of `prefix` — a plugin may
-register it or not. The `prefix` key itself is required in both inventory schemas; an explicit `null`
-(with no `domain_prefix`) opts a plugin out, and R33 is inert for it. Once either is set, every in-scope
+register it or not. The `prefix` key itself is required in both inventory schemas; `null` (with no
+`domain_prefix`) means none is registered, and R33 is inert for it. Once either is set, every in-scope
 file must match at least one of whichever field(s) are registered.
 
 ## Python files may use snake_case
@@ -113,12 +113,14 @@ to this rule and to `prefix_check.py`'s `ANTIGRAVITY_ONLY_DIRS`.
   repository-internal tooling, not a plugin-root source file; this rule only governs a plugin's own
   canonical `plugins/<plugin>/` tree.
 
-## Gating: inert for an explicit `null` opt-out
+## Gating: inert while no prefix is registered
 
 This rule produces **zero findings** for any plugin whose `marketplace-inventory.json` record has
-`prefix: null` and no `domain_prefix` — not a warning, not an ADVISORY, nothing. That is a deliberate,
-recorded opt-out (today only `example-plugin`, a test fixture), not a transition state: the `prefix` key
-is required in both inventory schemas, so no plugin can be silently unregistered. This is the same
+`prefix: null` and no `domain_prefix` — not a warning, not an ADVISORY, nothing. `null` is either a
+deliberate, recorded opt-out (today only `example-plugin`, a test fixture) or a newly added plugin that
+hasn't registered its curated prefix yet (new records start `null`). The `prefix` key itself is required
+in both inventory schemas and enforced by the two inventory scripts' validators, so an absent key is
+never treated as inert there; `prefix_check.py` does not yet tell an absent key from `null`. This is the same
 "vacuous when neither is set" gate `prefix_check.py` uses mechanically, so a plugin that registers a
 curated prefix and/or domain_prefix is atomically and unambiguously in scope. Once registered, every
 in-scope file must match at least one of whichever field(s) are registered.

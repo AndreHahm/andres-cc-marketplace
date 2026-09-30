@@ -1547,6 +1547,31 @@ def check_prefix_valid_accepted():
         return True, "valid curated prefix accepted and persisted via update"
 
 
+def check_missing_prefix_key_rejected():
+    """PR 11 scenario: a record with the `prefix` key absent (not an explicit
+    null) is rejected by `check`; a freshly bootstrapped record carries an
+    explicit null."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        if inventory["plugins"][0].get("prefix", "absent") is not None:
+            return False, "bootstrap did not write an explicit prefix null on a new record"
+        del inventory["plugins"][0]["prefix"]
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+        check = _run("check", repo_root, inventory_path)
+        if check.returncode == 0:
+            return False, "check accepted a record with no prefix key -- should be rejected"
+        if "prefix" not in check.stderr + check.stdout:
+            return False, f"check failed, but not over the prefix key: {check.stderr.strip()}"
+        return True, "check correctly rejected a record missing the required prefix key"
+
+
 def check_prefix_format_rejected():
     """R33 scenario: a malformed prefix (wrong pattern) is rejected before any write."""
     import tempfile
@@ -2189,6 +2214,7 @@ CHECKS = [
     check_repair_history_evidence_item_type_rejected,
     check_repair_history_succeeds_on_malformed_current_inventory,
     check_prefix_valid_accepted,
+    check_missing_prefix_key_rejected,
     check_prefix_format_rejected,
     check_prefix_trailing_newline_rejected,
     check_prefix_duplicate_rejected,

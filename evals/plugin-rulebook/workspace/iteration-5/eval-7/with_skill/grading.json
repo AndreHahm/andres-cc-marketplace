@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report treats the record with an absent prefix key as non-compliant with R33",
+      "passed": true,
+      "evidence": "Verdict: this is a finding. It is not silently inert ... REQUIRED-level record/schema violation (missing required prefix key)."
+    },
+    {
+      "text": "Report distinguishes an absent key from an explicit null and does not call the absent key a sanctioned opt-out or silently inert",
+      "passed": true,
+      "evidence": "This is a missing required key, not prefix: null. The null opt-out does not apply."
+    },
+    {
+      "text": "Report states the fix: add the prefix key (a curated prefix, or explicit null to opt out)",
+      "passed": true,
+      "evidence": "Fix: add a prefix key to the record via marketplace-inventory; explicit \"prefix\": null if unregistered."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -317,8 +317,8 @@ def validate_inventory(inventory):
     """Cross-record invariants JSON Schema alone can't express. Delegates to
     the shared `inventory_common.pdk_reconcile.validate_records`, using this
     inventory's own `(name, type)` active-record uniqueness key. Also
-    validates the optional top-level `prefix` field's format when present
-    -- marketplace-wide uniqueness is marketplace-inventory.json's own
+    requires the top-level `prefix` key (`null` allowed) and validates its
+    format when set -- marketplace-wide uniqueness is marketplace-inventory.json's own
     concern (this file describes only one plugin, so there is nothing to
     compare it against locally); cross-file equality against the
     marketplace record is checked by marketplace-inventory.py's own
@@ -327,7 +327,12 @@ def validate_inventory(inventory):
         inventory.get("components", []),
         uniqueness_key=lambda c: (c["name"], c["type"]),
     )
-    if inventory.get("prefix") is not None:
+    if "prefix" not in inventory:
+        raise ValueError(
+            "inventory has no 'prefix' key -- the key is required; "
+            "use an explicit null when no prefix is registered"
+        )
+    if inventory["prefix"] is not None:
         models.validate_prefix(inventory["prefix"])
     if inventory.get("domain_prefix") is not None:
         models.validate_domain_prefix(inventory["domain_prefix"])

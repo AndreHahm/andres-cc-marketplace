@@ -1461,6 +1461,32 @@ def check_set_prefix_overwrite_refused():
         return True, "set-prefix correctly refused to overwrite an already-registered prefix"
 
 
+def check_missing_prefix_key_rejected():
+    """PR 11 scenario: an inventory with the top-level `prefix` key absent (not
+    an explicit null) is rejected by `check`; a freshly bootstrapped one carries
+    an explicit null."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        if inventory.get("prefix", "absent") is not None:
+            return False, "bootstrap did not write an explicit prefix null"
+        del inventory["prefix"]
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+        check = _run("check", inventory_path, plugin_dir)
+        if check.returncode == 0:
+            return False, "check accepted an inventory with no prefix key -- should be rejected"
+        if "prefix" not in check.stderr + check.stdout:
+            return False, f"check failed, but not over the prefix key: {check.stderr.strip()}"
+        return True, "check correctly rejected an inventory missing the required prefix key"
+
+
 def check_set_domain_prefix_succeeds():
     """R33 addendum (2026-09-27) scenario: set-domain-prefix persists a curated,
     valid domain_prefix on a fresh (never-registered) plugin inventory -- mirrors
@@ -1660,6 +1686,7 @@ CHECKS = [
     check_set_domain_prefix_format_rejected,
     check_set_domain_prefix_stale_hash_rejected,
     check_set_domain_prefix_overwrite_refused,
+    check_missing_prefix_key_rejected,
 ]
 
 
