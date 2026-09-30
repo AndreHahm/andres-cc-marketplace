@@ -146,7 +146,7 @@ When proxies conflict, apply in order:
 **Better consolidation scenario:**
 - Two reference files that both describe the same critical procedure (for example two files that each spell out the full CREATE → LINK → DELETE sequence)
 - **Assessment:** Both cover the same topic, and it is core procedural (used in 80%+ of refinements).
-- **Decision:** Consolidate both into one clear file. This reduces file count while keeping critical content accessible.
+- **Decision:** Consolidate both into SKILL.md as one copy, since core procedural content stays there, and delete the two reference files once the operator approves (Gate 4). This reduces file count while keeping critical content in the file Claude always loads.
 
 ## When the 80% Rule Applies
 

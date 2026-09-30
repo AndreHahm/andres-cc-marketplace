@@ -80,7 +80,7 @@ Use when: Fetching remote content and analyzing local files.
 
 ### Why allowed-tools Matters
 
-1. **Review surface**: Pre-approve only what the skill needs, so anything else still goes through a permission prompt a reviewer can catch
+1. **Review surface**: Pre-approve only what the skill needs, so anything else stays subject to the active permission settings (a prompt by default) that a reviewer can catch
 2. **Clarity**: Document which tools your skill depends on
 3. **Team communication**: Signal principle of least privilege to team members
 4. **Production safety**: A narrow grant in shared or critical skills limits what runs without a prompt

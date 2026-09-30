@@ -70,7 +70,7 @@ Use when: Fetching remote content and analyzing local files.
 
 **Wildcard filtering**:
 - `Bash(git:*)` — allows all git commands
-- `Bash(python:*)` — restricts to python only
+- `Bash(python:*)` — pre-approves python commands only
 - `Bash(grep:*,ls:*)` — allows multiple specific commands
 
 **Case-sensitive**: Use exact names (e.g., `Read` not `read`)
@@ -79,10 +79,10 @@ Use when: Fetching remote content and analyzing local files.
 
 ### Why allowed-tools Matters
 
-1. **Security**: Prevent unintended tool use in sensitive workflows
+1. **Review surface**: Pre-approve only what the skill needs, so anything else stays subject to the active permission settings; `allowed-tools` itself blocks nothing
 2. **Clarity**: Document which tools your skill depends on
 3. **Team communication**: Signal principle of least privilege to team members
-4. **Production safety**: Restrict capabilities in shared or critical skills
+4. **Production safety**: For a hard restriction in shared or critical skills, use `disallowed-tools` or permission deny rules; `allowed-tools` only limits permission prompts
 
 ### Choosing Tools for Your Skill
 
@@ -105,13 +105,13 @@ Use when: Fetching remote content and analyzing local files.
 
 ## Complex Skills
 
-For complex skills requiring tool restrictions:
+For complex skills needing scoped tool pre-approval:
 - Always declare `allowed-tools`
 - Include explanation in documentation
 - Test with real workflows
 - Document any prerequisites (Python, Node.js, etc.)
 
-Example skill with tool restrictions:
+Example skill with scoped pre-approval:
 ```yaml
 ---
 name: pdf-processor

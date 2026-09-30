@@ -123,6 +123,38 @@ def check_layout():
     return True, "SKILL.md and references/ are present"
 
 
+def unterminated_flow_field(frontmatter):
+    # Returns the first top-level field whose own value opens a flow collection ([ or {)
+    # that never closes, else None. Only that opening is scanned: indented lines are read
+    # only as continuation of an open collection, so an unmatched bracket inside a block
+    # scalar (description: >-) or a quoted scalar stays valid.
+    pairs = {"[": "]", "{": "}"}
+    lines = frontmatter.splitlines()
+    i = 0
+    while i < len(lines):
+        match = re.match(r"^([\w-]+):[ \t]*(.*)$", lines[i])
+        i += 1
+        if not match or not match.group(2).startswith(("[", "{")):
+            continue
+        text = match.group(2)
+        while i < len(lines) and lines[i][:1] in (" ", "\t"):
+            text += "\n" + lines[i]
+            i += 1
+        stack, quote = [], None
+        for ch in text:
+            if quote:
+                quote = None if ch == quote else quote
+            elif ch in "\"'":
+                quote = ch
+            elif ch in pairs:
+                stack.append(pairs[ch])
+            elif ch in pairs.values() and (not stack or stack.pop() != ch):
+                return match.group(1)
+        if stack or quote:
+            return match.group(1)
+    return None
+
+
 def check_frontmatter():
     frontmatter, _ = split_frontmatter(read(SKILL_MD))
     if frontmatter is None:
@@ -138,6 +170,9 @@ def check_frontmatter():
         return False, "description must use the '>-' block scalar (R8)"
     if re.search(r"^version:", frontmatter, re.MULTILINE):
         return False, "'version' is not a valid skill frontmatter field (R5)"
+    broken = unterminated_flow_field(frontmatter)
+    if broken:
+        return False, f"frontmatter field '{broken}' opens a flow collection that never closes"
     return True, "frontmatter present, closed, and within the R5/R8 basics"
 
 
@@ -213,13 +248,14 @@ def check_no_reference_chains():
     # An imperative directive to read another references/ file is a chain violation. The
     # pattern is built from the real sibling file names, so prose such as "Read SKILL.md"
     # (the target skill's own file) or "see README.md" never matches; fenced examples are skipped.
+    # Words between the verb and the file name are allowed up to the end of the sentence.
     names = sorted(p.name for p in REFS_DIR.glob("*.md"))
     if not names:
         return True, "no reference files to check"
     alternatives = "|".join(re.escape(n) for n in names)
     pattern = re.compile(
-        r"\b(?:see|read|load|consult|open|refer to)\s+[`(\"']?"
-        r"(?:\$\{CLAUDE_SKILL_DIR\}/)?(?:references/)?(" + alternatives + r")(?![\w.-])",
+        r"\b(?:see|read|load|consult|open|refer to)\b[^\n.]*?\s+[`(\"']?"
+        r"(?:\$\{CLAUDE_SKILL_DIR\}/)?(?:references/)?(" + alternatives + r")(?![\w-]|\.\w)",
         re.IGNORECASE,
     )
     hits = []

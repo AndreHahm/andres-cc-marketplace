@@ -130,10 +130,12 @@ question: "Found this skill at both [path A] and [path B], but their content dif
 header: "Mirror"
 options:
   - "Show me the diff first": display what differs before deciding
-  - "[path A] is correct": overwrite [path B] with [path A], then proceed
-  - "[path B] is correct": overwrite [path A] with [path B], then proceed
+  - "[path A] is correct": analyze [path A]; [path B] is overwritten with it in step 6, only if changes are applied
+  - "[path B] is correct": analyze [path B]; [path A] is overwritten with it in step 6, only if changes are applied
   - "Stop": don't touch either copy; end the session so the operator can reconcile
 ```
+
+Choosing a copy never edits anything at this point, so a plan-only run leaves both copies untouched.
 
 Validation form (report-only; no overwrite option):
 
