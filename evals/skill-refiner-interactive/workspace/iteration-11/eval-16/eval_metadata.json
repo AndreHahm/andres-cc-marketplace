@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the Intake question asked in BATCH 2 and records the simulated answer 'No'",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the intake goal offered at goal selection is scoped to intake sections the operator agrees to convert, not to all intake, and its verification excludes sections the operator kept free-form",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the target's SKILL.md still contains the free-form intake line 'Ask the user which file to process' (the operator kept it)",
+      "type": "structure",
+      "target": "target/SKILL.md"
+    },
+    {
+      "text": "goal-measurement.md records the intake goal as PASS, and transcript.md shows no 'Accept with reason' question asked for it",
+      "type": "functionality",
+      "target": "goal-measurement.md and transcript.md"
+    },
+    {
+      "text": "the other selected goals were still carried out: no reference-to-reference chain remains in the target and Grep is declared in the target's allowed-tools",
+      "type": "functionality",
+      "target": "target/"
+    }
+  ]
+}

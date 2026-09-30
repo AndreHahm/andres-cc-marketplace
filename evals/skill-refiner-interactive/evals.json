@@ -155,6 +155,17 @@
         "transcript.md",
         "final-tree.txt"
       ]
+    },
+    {
+      "id": 16,
+      "name": "intake-conversion-declined",
+      "prompt": "Paths are relative to the repository root. You are simulating the skill-refiner-interactive skill (SKILL.md at plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md; read its references/ files as it directs). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion. Every time the skill would ask the operator something, write the question and the option labels into transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Follow the skill's steps in order and record, in transcript.md, which numbered step or sub-block you are executing. Read the skill's files ONLY from plugins/plugin-devkit/skills/skill-refiner-interactive. Copy the fixture skill evals/skill-refiner-interactive/fixtures/demo-skill/ into OUTDIR/target/ and treat that copy as the target skill (never modify the original fixture, never modify any file outside OUTDIR). OUTDIR is evals/skill-refiner-interactive/workspace/iteration-{iteration}/eval-16/with_skill/outputs. The operator says: 'Refine the skill in OUTDIR/target so it follows best practices.' Simulated operator answers: skill is already located; select all goals offered; at the BATCH 2 Intake question choose 'No' (keep free-form: the section intentionally takes open-ended input); at the step-3 consolidation question choose 'Leave as-is'; at the step-5 approval ask choose 'Apply changes'; for any goal verification that fails, choose 'Accept with reason' (and write that question into transcript.md if it is ever asked). Actually perform the edits, but only on files under OUTDIR/target (keep edits minimal: fix what the pre-analysis found, except what the operator declined). When finished, also write OUTDIR/final-tree.txt listing every file under OUTDIR/target (one path per line, relative to OUTDIR). Produce OUTDIR/transcript.md listing each numbered step reached, OUTDIR/goal-measurement.md with each goal's PASS/FAIL result, and OUTDIR/final-tree.txt.",
+      "expected_output": "When the operator declines the Intake conversion, the free-form intake line is left untouched, the intake goal (scoped to sections the operator agrees to convert) measures PASS without an accept-with-reason question, and the other goals are still carried out.",
+      "files": [
+        "transcript.md",
+        "goal-measurement.md",
+        "final-tree.txt"
+      ]
     }
   ],
   "testing_validation_coverage": {

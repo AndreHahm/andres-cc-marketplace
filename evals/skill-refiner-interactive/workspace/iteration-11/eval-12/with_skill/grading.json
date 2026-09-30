@@ -1,0 +1,48 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "iteration": 11,
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the escape-hatch question with header 'Interview' and two options (Infer from context, Define explicitly)",
+      "passed": true,
+      "evidence": "Quick Start A shows header 'Interview' with exactly two options, 'Infer from context' and 'Define explicitly'; simulated answer 'Infer from context'."
+    },
+    {
+      "text": "no BATCH 1 question (Focus Areas, Key Issues, Success, Scope Limits) is asked",
+      "passed": true,
+      "evidence": "'BATCH 1: Refinement Focus - SKIPPED' with the reason that 'Infer from context' skips BATCH 1; no Focus Areas, Key Issues, Success or Scope Limits question appears."
+    },
+    {
+      "text": "locating the skill and the pre-analysis report both happen before any goal or interview question",
+      "passed": true,
+      "evidence": "Order is escape hatch (routing), step 1 locate, pre-analysis report, goal selection, then the interview."
+    },
+    {
+      "text": "goal selection is asked after the pre-analysis report",
+      "passed": true,
+      "evidence": "The 'Pre-Analysis: demo-skill' report is written first; the Goals multiSelect question follows it."
+    },
+    {
+      "text": "only BATCH 2 questions whose trigger was detected are asked; no Extraction, Arguments or Desc split question appears for a trigger that was not detected",
+      "passed": true,
+      "evidence": "BATCH 2 marks Extraction, Arguments and Desc split as not triggered; only Intake (triggered) and Prod checks (always asked) are asked."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "diff -r outputs/target fixtures/demo-skill printed nothing; final-tree.txt lists the same three files; the step-5 answer is 'Stop'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "concerns": [
+    "The Prod checks question has no 'Yes' option, so the run chose the three substantive options and disclosed the deviation.",
+    "target/ matches a global gitignore rule; the run proceeded because the operator named it as the target (an artifact of where the eval writes output).",
+    "The Intake trigger is borderline under the new exemption (a file path is close to unbounded); the run flagged it anyway, citing the operator's 'intake is sloppy' remark, and its goal text already uses the new scoped wording ('0 matches outside sections kept free-form'). Asking Intake is consistent with the assertion.",
+    "Regression guard for the checklist/goal-derivation edit: the intake-asked path still works."
+  ]
+}
