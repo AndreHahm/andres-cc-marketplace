@@ -3,6 +3,7 @@ component-file-prefix rule's mechanical enforcement counterpart."""
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -82,7 +83,7 @@ def _write_marketplace_manifest(repo: Path, plugins: list[dict]) -> Path:
 
 
 def _plugin(name, source, prefix=None, domain_prefix=None, status="active"):
-    # `prefix` is a required key (PR 11), so a record always carries it --
+    # `prefix` became a required key in #433, so a record always carries it --
     # `None` here is the explicit-null opt-out, not an absent key.
     entry = {
         "id": f"plugin_{name}",
@@ -131,6 +132,32 @@ def test_absent_prefix_key_flagged_even_with_domain_prefix_registered(tmp_path):
     violations = find_prefix_violations(tmp_path)
     assert [v.reason for v in violations if "required `prefix` key" in v.reason] != []
     assert len(violations) == 1
+
+
+def test_non_object_plugin_entry_reported_not_crashed(tmp_path):
+    path = _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit")])
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["plugins"].append("not-an-object")
+    path.write_text(json.dumps(data), encoding="utf-8")
+    violations = find_prefix_violations(tmp_path)
+    assert [v.reason for v in violations] == ["record is not a JSON object"]
+    assert violations[0].plugin == "plugins[1]"
+
+
+def test_non_list_plugins_value_reported_not_crashed(tmp_path):
+    path = _write_inventory(tmp_path, [])
+    path.write_text(json.dumps({"plugins": {"git-kit": {}}}), encoding="utf-8")
+    violations = find_prefix_violations(tmp_path)
+    assert [v.reason for v in violations] == ["`plugins` is not a JSON array"]
+
+
+def test_non_object_top_level_reported_not_crashed(tmp_path):
+    path = _write_inventory(tmp_path, [])
+    path.write_text("[]", encoding="utf-8")
+    violations = find_prefix_violations(tmp_path)
+    assert [v.reason for v in violations] == [
+        "marketplace-inventory.json's top level is not a JSON object"
+    ]
 
 
 def test_absent_prefix_key_flagged_regardless_of_status(tmp_path):
@@ -465,6 +492,72 @@ def test_permanence_unchanged_prefix_no_violation():
     base = {"plugins": [{"id": "p1", "name": "a", "prefix": "abc"}]}
     head = {"plugins": [{"id": "p1", "name": "a", "prefix": "abc"}]}
     assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_permanence_head_omitting_prefix_key_is_violation():
+    base = {"plugins": [_plugin("git-kit", "./git-kit", prefix="git")]}
+    head_entry = _plugin("git-kit", "./git-kit")
+    del head_entry["prefix"]  # omitted, not nulled
+    violations = find_prefix_permanence_violations(base, {"plugins": [head_entry]})
+    assert len(violations) == 1
+    assert "prefix changed from 'git' (base) to None (head)" in violations[0].reason
+
+
+def test_permanence_head_record_missing_id_reported_as_removed_not_crashed():
+    base = {"plugins": [_plugin("git-kit", "./git-kit", prefix="git")]}
+    head_entry = _plugin("git-kit", "./git-kit", prefix="git")
+    del head_entry["id"]
+    violations = find_prefix_permanence_violations(base, {"plugins": [head_entry]})
+    assert len(violations) == 1
+    assert "no longer exists at head" in violations[0].reason
+
+
+def test_permanence_malformed_records_do_not_crash():
+    # Nothing registered at base (a non-object entry, an id-less record with
+    # no prefix), so there is nothing to protect and no violation either way.
+    base = {"plugins": ["junk", {"name": "no-id"}]}
+    head = {"plugins": {"not": "a list"}}
+    assert find_prefix_permanence_violations(base, head) == []
+    non_object_head: Any = []  # a JSON file whose top level isn't an object
+    assert find_prefix_permanence_violations(base, non_object_head) == []
+
+
+@pytest.mark.parametrize("bad_id", [None, "", 123])
+def test_permanence_base_prefixed_record_without_joinable_id_is_violation(bad_id):
+    # Skipping it would leave the prefix with no permanence protection at all.
+    entry = _plugin("foo-kit", "./foo-kit", prefix="foo")
+    if bad_id is None:
+        del entry["id"]
+    else:
+        entry["id"] = bad_id
+    violations = find_prefix_permanence_violations({"plugins": [entry]}, {"plugins": [entry]})
+    assert len(violations) == 1
+    assert violations[0].plugin_name == "foo-kit"
+    assert "no non-empty string `id`" in violations[0].reason
+
+
+@pytest.mark.parametrize("bad_id", [None, "", 123])
+def test_missing_or_non_string_id_flagged(tmp_path, bad_id):
+    entry = _plugin("foo-kit", "./foo-kit")
+    if bad_id is None:
+        del entry["id"]
+    else:
+        entry["id"] = bad_id
+    _write_inventory(tmp_path, [entry])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "missing or not a non-empty string" in violations[0].reason
+
+
+def test_duplicate_id_flagged_so_a_decoy_record_cannot_stand_in(tmp_path):
+    real = _plugin("foo-kit", "./foo-kit", prefix="xyz")
+    decoy = _plugin("foo-kit", "./foo-kit", prefix="abc", status="retired")
+    decoy["id"] = real["id"]  # same id as the real record
+    _write_inventory(tmp_path, [real, decoy])
+    violations = find_prefix_violations(tmp_path)
+    assert any(
+        "is already used by" in v.reason and "an id is unique" in v.reason for v in violations
+    )
 
 
 def test_permanence_no_prefix_at_base_no_violation():
