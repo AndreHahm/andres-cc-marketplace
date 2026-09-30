@@ -235,8 +235,9 @@ generic JSON Schema validator against it (no such dependency is available in thi
   `set-prefix` mode. Running `set-prefix` when `plugin-inventory.json` already holds the value is a
   no-op that doesn't touch this side's own missing/mismatched field. A `plugin-inventory.json` with the
   `prefix` key absent entirely (not `null`) is its own `conflict`, even when this record's `prefix` is an
-  explicit `null` — the key is required on both sides. Both sides `null` is not a conflict — no prefix is
-  registered (an opt-out, or awaiting registration).
+  explicit `null`; likewise this record lacking the key is its own `conflict` even when
+  `plugin-inventory.json` carries an explicit `null` — the key is required on both sides. Both sides
+  `null` is not a conflict — no prefix is registered (an opt-out, or awaiting registration).
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (including a
   `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`, or a `graded_at`
   that isn't a non-empty string, doesn't end in `'Z'` (UTC), or doesn't parse as ISO-8601) — reject the
