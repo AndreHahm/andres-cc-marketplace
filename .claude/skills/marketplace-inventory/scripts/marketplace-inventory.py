@@ -395,8 +395,10 @@ def _validate_prefix_fields(plugins):
         name = plugin["name"]
         if "prefix" not in plugin:
             raise ValueError(
-                f"plugin {name!r} has no 'prefix' key -- the key is required; "
-                "use an explicit null when no prefix is registered"
+                f"plugin {name!r} has no 'prefix' key -- the key is required; add "
+                '"prefix": null by hand to record that none is registered '
+                "(set-prefix only writes a string prefix, never null), or register "
+                "a curated prefix"
             )
         prefix = plugin["prefix"]
         if prefix is not None:
