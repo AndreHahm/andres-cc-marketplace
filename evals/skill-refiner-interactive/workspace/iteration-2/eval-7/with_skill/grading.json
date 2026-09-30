@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "passed": true,
+      "evidence": "transcript.md Gate 4: 'Okay to delete this?' -> Keep (declined)."
+    },
+    {
+      "text": "transcript.md contains no DELETE action after the decline",
+      "passed": true,
+      "evidence": "step 6: 'DELETE leg: references/b.md NOT deleted'; summary 'Files deleted: none'."
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "passed": true,
+      "evidence": "final-tree.txt lists target/SKILL.md, references/a.md and references/b.md."
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "passed": true,
+      "evidence": "goal-measurement.md records PASS for all 3 goals. Note: the run merged b.md into a.md and kept both, leaving duplicated content, which the skill text does not forbid."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "passed": true,
+      "evidence": "Gate 4 asked, answer Keep."
+    },
+    {
+      "text": "transcript.md contains no DELETE action and reports the consolidation as declined, not performed",
+      "passed": true,
+      "evidence": "No DELETE; consolidation reported declined."
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "passed": true,
+      "evidence": "final-tree lists a.md, b.md, SKILL.md."
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "passed": true,
+      "evidence": "Chain goal PASS in goal-measurement.md."
+    },
+    {
+      "text": "no copy of b.md's marker-format lines was merged into a.md (no duplicated content)",
+      "passed": true,
+      "evidence": "a.md only lost the chain directive line; nothing merged."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

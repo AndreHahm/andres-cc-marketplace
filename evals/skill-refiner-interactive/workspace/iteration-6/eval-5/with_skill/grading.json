@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "goal-measurement.md records a FAIL for the chain goal in the first measurement, with the actual result",
+      "passed": true,
+      "evidence": "Round 1 G1 FAIL with actual result (a.md line 5)."
+    },
+    {
+      "text": "transcript.md shows the Accept with reason / Continue refining ask after the FAIL",
+      "passed": true,
+      "evidence": "Accept with reason / Continue refining asked after the FAIL."
+    },
+    {
+      "text": "after 'Continue refining' the transcript returns to step 6 (make changes) with the failed goal as the focus",
+      "passed": true,
+      "evidence": "Returned to step 6 with G1 as focus."
+    },
+    {
+      "text": "goal-measurement.md records a second measurement in which every goal is PASS",
+      "passed": true,
+      "evidence": "Round 2 shows G1-G3 PASS."
+    },
+    {
+      "text": "no completion marker or step-10 compliance step appears before the second measurement passes",
+      "passed": true,
+      "evidence": "Marker only after the second measurement passed (step 10 checks were simulated)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

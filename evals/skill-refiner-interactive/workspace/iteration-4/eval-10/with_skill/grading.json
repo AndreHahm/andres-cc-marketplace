@@ -1,0 +1,46 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md numbers exactly 3 compliance rounds, each with the rulebook FAIL and reviewer Major",
+      "passed": true,
+      "evidence": "three compliance rounds each with the R8 FAIL and the Major."
+    },
+    {
+      "text": "NO MARKER EMITTED appears after each of the three rounds and before the post-round-3 question",
+      "passed": true,
+      "evidence": "NO MARKER EMITTED after each round."
+    },
+    {
+      "text": "after round 3 the skill asks with three options: Continue another round, Accept remaining findings with reason, Stop",
+      "passed": true,
+      "evidence": "round-cap ask with three options."
+    },
+    {
+      "text": "the change summary records the accepted findings with the reason 'cosmetic, tracked separately'",
+      "passed": true,
+      "evidence": "summary records both accepted findings with the reason."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears exactly once, after the acceptance",
+      "passed": true,
+      "evidence": "marker literal count = 1, after acceptance."
+    },
+    {
+      "text": "the step-9 trigger-regression check is run when a compliance-round fix changes description",
+      "passed": true,
+      "evidence": "step 9 re-entered in each round after the description change."
+    },
+    {
+      "text": "the marker is emitted only after the acceptance covers BOTH the plugin-rulebook FAIL and the skill-reviewer Major",
+      "passed": true,
+      "evidence": "marker only after acceptance covered both findings."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

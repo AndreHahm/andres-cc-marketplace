@@ -1,0 +1,36 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows both copies located and compared file by file",
+      "passed": true,
+      "evidence": "both copies located via Glob and compared; DIFFER at line 11."
+    },
+    {
+      "text": "transcript.md shows the Mirror Divergence question with the four options (show diff, path A correct, path B correct, stop)",
+      "passed": true,
+      "evidence": "Mirror question with header 'Mirror' and four options."
+    },
+    {
+      "text": "no pre-analysis report, interview question or edit appears before the Mirror Divergence answer",
+      "passed": true,
+      "evidence": "nothing precedes the question but locate."
+    },
+    {
+      "text": "after the answer Stop the session ends with no completion marker",
+      "passed": true,
+      "evidence": "Stop ends the session; no marker."
+    },
+    {
+      "text": "both copies are byte-identical to the fixture afterwards",
+      "passed": true,
+      "evidence": "diff -r fixtures/mirror-pair target -> identical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

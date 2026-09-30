@@ -1,0 +1,2 @@
+target/claude-mirror/skills/demo-mirror/SKILL.md
+target/skills/demo-mirror/SKILL.md

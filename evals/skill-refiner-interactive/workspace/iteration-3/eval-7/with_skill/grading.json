@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "passed": true,
+      "evidence": "transcript.md: Gate 4 ask answered 'Keep every existing file'."
+    },
+    {
+      "text": "transcript.md contains no DELETE action and reports the consolidation as declined, not performed",
+      "passed": true,
+      "evidence": "transcript.md: 'consolidation is NOT performed (merging without deleting would only duplicate content). Reported as declined'; 'Files deleted: none'."
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "passed": true,
+      "evidence": "final-tree.txt lists SKILL.md, references/a.md, references/b.md."
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "passed": true,
+      "evidence": "goal verification recorded PASS for all 3 goals."
+    },
+    {
+      "text": "no copy of b.md's marker-format lines was merged into a.md (no duplicated content)",
+      "passed": true,
+      "evidence": "grep of TODO:/FIXME: marker lines in target a.md = 0 (no merged duplicate)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the existing draft at the confirmed path being read before any new content is written",
+      "passed": true,
+      "evidence": "transcript: 'An existing draft is there ... it was read first and the new findings were added'."
+    },
+    {
+      "text": "changes.md still contains the earlier finding 'Pre-existing finding (approved earlier)' unchanged",
+      "passed": true,
+      "evidence": "F1 section 'Pre-existing finding (approved earlier)' present verbatim."
+    },
+    {
+      "text": "changes.md contains new findings with IDs that do not collide with F1",
+      "passed": true,
+      "evidence": "new findings F2, F3, F4, M1; no ID collision."
+    },
+    {
+      "text": "the Implementation Order in changes.md lists F1 together with the new findings",
+      "passed": true,
+      "evidence": "Implementation Order lists F1, F2, F3, F4, M1."
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (zero edits)",
+      "passed": true,
+      "evidence": "diff -r fixtures/demo-skill target -> identical."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

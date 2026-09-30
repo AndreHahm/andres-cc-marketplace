@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows Gate 4 with the operator declining deletion",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "transcript.md contains no DELETE action after the decline",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "final-tree.txt lists every file of the original fixture (SKILL.md, references/a.md, references/b.md)",
+      "type": "presence",
+      "target": "final-tree.txt"
+    },
+    {
+      "text": "the chain goal's result is recorded in goal-measurement.md (PASS, or FAIL with an accept-with-reason record) rather than silently dropped",
+      "type": "presence",
+      "target": "goal-measurement.md"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+evals/skill-refiner-interactive/workspace/iteration-6/eval-5/with_skill/outputs/target/SKILL.md
+evals/skill-refiner-interactive/workspace/iteration-6/eval-5/with_skill/outputs/target/references/a.md
+evals/skill-refiner-interactive/workspace/iteration-6/eval-5/with_skill/outputs/target/references/b.md

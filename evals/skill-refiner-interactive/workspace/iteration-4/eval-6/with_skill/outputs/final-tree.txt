@@ -1,0 +1,2 @@
+evals/skill-refiner-interactive/workspace/iteration-4/eval-6/with_skill/outputs/target/references/marker-details.md
+evals/skill-refiner-interactive/workspace/iteration-4/eval-6/with_skill/outputs/target/SKILL.md

@@ -1,0 +1,36 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "the pre-analysis report in transcript.md finds nothing to fix for the clean fixture",
+      "passed": true,
+      "evidence": "Pre-analysis finds nothing on the clean fixture."
+    },
+    {
+      "text": "goal selection is skipped with a 'no issues detected' note",
+      "passed": true,
+      "evidence": "Goal selection skipped with 'no issues detected'."
+    },
+    {
+      "text": "BATCH 1 runs as written, including Question 1, because no goals were selected",
+      "passed": true,
+      "evidence": "BATCH 1 runs including Question 1."
+    },
+    {
+      "text": "the Production Checks question is asked even though no other BATCH 2 trigger applies",
+      "passed": true,
+      "evidence": "Production Checks asked even with no other trigger."
+    },
+    {
+      "text": "no edits are made and no completion marker is emitted (session ends at the step-5 Stop)",
+      "passed": true,
+      "evidence": "No edits and no marker; ends at step 5 Stop."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

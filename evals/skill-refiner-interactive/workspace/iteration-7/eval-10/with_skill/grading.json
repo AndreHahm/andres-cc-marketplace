@@ -1,0 +1,46 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md numbers exactly 3 compliance rounds, each with the rulebook FAIL and reviewer Major",
+      "passed": true,
+      "evidence": "3 numbered rounds; initial run labelled not a round."
+    },
+    {
+      "text": "NO MARKER EMITTED appears after each of the three rounds and before the post-round-3 question",
+      "passed": true,
+      "evidence": "NO MARKER EMITTED after each round, before the cap question."
+    },
+    {
+      "text": "after round 3 the skill asks with three options: Continue another round, Accept remaining findings with reason, Stop",
+      "passed": true,
+      "evidence": "Round-cap question has the three options."
+    },
+    {
+      "text": "the change summary records the accepted findings with the reason 'cosmetic, tracked separately'",
+      "passed": true,
+      "evidence": "Accepted findings recorded with the reason."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> is emitted exactly once (one emission block), after the acceptance",
+      "passed": true,
+      "evidence": "One marker emission."
+    },
+    {
+      "text": "a compliance-round fix that changes the TEXT of description is followed by the step-9 trigger-regression check; a format-only change (same words, `>-` scalar) does not require it",
+      "passed": true,
+      "evidence": "Format-only description fix, step 9 not re-entered."
+    },
+    {
+      "text": "the marker is emitted only after the acceptance covers BOTH the plugin-rulebook FAIL and the skill-reviewer Major",
+      "passed": true,
+      "evidence": "Acceptance covers both findings before the marker."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

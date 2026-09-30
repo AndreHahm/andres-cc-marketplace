@@ -1,0 +1,46 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md numbers exactly 3 compliance rounds, each with the rulebook FAIL and reviewer Major",
+      "passed": true,
+      "evidence": "Three numbered compliance rounds, each with FAIL and Major (an unnumbered initial check precedes them; SKILL.md now defines a round)."
+    },
+    {
+      "text": "NO MARKER EMITTED appears after each of the three rounds and before the post-round-3 question",
+      "passed": true,
+      "evidence": "NO MARKER EMITTED after each round."
+    },
+    {
+      "text": "after round 3 the skill asks with three options: Continue another round, Accept remaining findings with reason, Stop",
+      "passed": true,
+      "evidence": "Round-cap question lists the three options."
+    },
+    {
+      "text": "the change summary records the accepted findings with the reason 'cosmetic, tracked separately'",
+      "passed": true,
+      "evidence": "Summary records 'cosmetic, tracked separately'."
+    },
+    {
+      "text": "the literal marker <skill-improvement-complete> appears exactly once, after the acceptance",
+      "passed": false,
+      "evidence": "FAIL (literal): the marker string occurs twice, once as the emission and once in a recap line; one real emission. Assertion revised to count emission blocks."
+    },
+    {
+      "text": "the step-9 trigger-regression check is run when a compliance-round fix changes description",
+      "passed": false,
+      "evidence": "FAIL (literal): rounds only changed the description's scalar style and the run skipped step 9; same ambiguity as eval 6, now clarified."
+    },
+    {
+      "text": "the marker is emitted only after the acceptance covers BOTH the plugin-rulebook FAIL and the skill-reviewer Major",
+      "passed": true,
+      "evidence": "Acceptance covers both findings before the marker."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 5,
+    "pass_rate": 0.714
+  }
+}

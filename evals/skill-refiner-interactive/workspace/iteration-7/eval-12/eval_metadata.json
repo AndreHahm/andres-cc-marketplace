@@ -1,0 +1,36 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the escape-hatch question with header 'Interview' and two options (Infer from context, Define explicitly)",
+      "type": "structure",
+      "target": "transcript.md"
+    },
+    {
+      "text": "no BATCH 1 question (Focus Areas, Key Issues, Success, Scope Limits) is asked",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "locating the skill and the pre-analysis report both happen before any goal or interview question",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "goal selection is asked after the pre-analysis report",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "only BATCH 2 questions whose trigger was detected are asked; no Extraction, Arguments or Desc split question appears for a trigger that was not detected",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the target copy is byte-identical to the fixture (session ends at the step-5 Stop)",
+      "type": "functionality",
+      "target": "OUTDIR/target vs fixtures/demo-skill"
+    }
+  ]
+}

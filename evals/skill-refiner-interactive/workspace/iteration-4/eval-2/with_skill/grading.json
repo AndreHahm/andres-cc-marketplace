@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the step-5 approval ask with an Apply changes option, and the answer Apply changes leads on to step 6",
+      "passed": true,
+      "evidence": "transcript Step 5 'Plan-only exit' asked, Apply changes, then Step 6."
+    },
+    {
+      "text": "the target copy was actually edited to fix at least one pre-analysis finding",
+      "passed": true,
+      "evidence": "diff shows SKILL.md and references/a.md edited."
+    },
+    {
+      "text": "transcript.md shows goal measurement (step 8) happening after validation (step 7) and before the trigger-regression/compliance steps",
+      "passed": true,
+      "evidence": "order Step 7, 8, 9, 10."
+    },
+    {
+      "text": "goal-measurement.md records a PASS or FAIL result for every selected goal, each from that goal's own verification check",
+      "passed": true,
+      "evidence": "goal-measurement.md: 3 goals with verification and result."
+    },
+    {
+      "text": "no changes.md plan-only draft was written",
+      "passed": true,
+      "evidence": "no changes.md in outputs."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the pre-analysis report was emitted before any goal question or interview question",
+      "type": "presence",
+      "target": "transcript.md"
+    },
+    {
+      "text": "transcript.md shows up to 3 goals derived from pre-analysis findings, each with a verification check",
+      "type": "presence",
+      "target": "transcript.md"
+    },
+    {
+      "text": "the step-5 plan-only branch was taken (by wording or by an approval option) and step 6 (make changes) was not run",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "changes.md exists at the confirmed draft path and contains a Selected Goals section, an Implementation Order section and at least one F/O/M-numbered finding",
+      "type": "structure",
+      "target": "changes.md"
+    },
+    {
+      "text": "the target copy's files are byte-identical to the original fixture (zero edits)",
+      "type": "functionality",
+      "target": "OUTDIR/target vs fixtures/demo-skill"
+    },
+    {
+      "text": "no goal measurement was run in this session",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}
