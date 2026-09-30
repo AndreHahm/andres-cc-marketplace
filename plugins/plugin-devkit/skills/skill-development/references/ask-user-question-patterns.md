@@ -18,14 +18,14 @@ Use this guide when creating skills that interact with users. AskUserQuestion is
 
 ## Core Constraints
 
-The tool schema enforces all of these; a violation is rejected, so the question never reaches the user.
+The tool schema enforces the two array limits below (options per question, questions per call) and rejects a violation, so the question never reaches the user. The `header` and `label` limits are conventions stated in the tool's own description; the schema does not reject a violation, but follow them.
 
 | Constraint | Limit |
 |------------|-------|
-| Options per question | 2 to 4 (at least 2, at most 4) |
-| Questions per call | 1 to 4 |
-| `header` | short chip label (12 characters at most) |
-| Option `label` | concise, 1-5 words |
+| Options per question | 2 to 4 (at least 2, at most 4); schema-enforced |
+| Questions per call | 1 to 4; schema-enforced |
+| `header` | short chip label, 12 characters at most (documented convention, not rejected by the schema) |
+| Option `label` | concise, 1-5 words (documented convention, not rejected by the schema) |
 | Free-text answer | always available: the tool adds an "Other" choice automatically, so never list one yourself |
 
 These limits come from the tool's current schema; if the tool's own definition in your environment states different limits, follow that definition.
@@ -38,7 +38,7 @@ These limits come from the tool's current schema; if the tool's own definition i
 }]}
 ```
 
-**Violation impact:** a schema rejection, so the user never sees the question and the workflow step fails. **Fix:** split into several questions or calls, or cut options.
+**Violation impact (array sizes):** a schema rejection, so the user never sees the question and the workflow step fails. **Fix:** split into several questions or calls, or cut options. An over-long `header` or `label` is not rejected, but it breaks the documented convention.
 
 ---
 

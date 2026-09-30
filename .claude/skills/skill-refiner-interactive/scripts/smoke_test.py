@@ -27,7 +27,7 @@ FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 DEFAULT_R13_CRITICAL = 500
 DEFAULT_R18_CRITICAL = 30
 MIN_REFINEMENT_STEPS = 10
-HEADER_LIMIT = 12  # the AskUserQuestion schema's header limit
+HEADER_LIMIT = 12  # the limit stated in the AskUserQuestion tool's own description
 
 
 def read(path):
@@ -257,8 +257,9 @@ def check_size_ceilings():
 
 
 def check_askuserquestion_headers():
-    # The tool rejects a `header` over the limit, so the question never reaches the
-    # operator. Dry-run evals cannot call the tool, so this is checked statically.
+    # The tool's description states a 12-character limit for `header`, but its schema does
+    # not reject a longer one, so this enforces a documented convention, not a rejection.
+    # Dry-run evals cannot call the tool, so this is checked statically.
     problems = []
     for path in [SKILL_MD, *sorted(REFS_DIR.glob("*.md"))]:
         for number, line in enumerate(read(path).splitlines(), 1):
