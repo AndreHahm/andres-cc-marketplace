@@ -44,6 +44,8 @@ Edge cases:
 
 An operator can type a goal under "Other". A goal with no verification can't be measured, so ask for one in a follow-up `AskUserQuestion`, and reject the goal if none is given.
 
+**Needs from predating context.** With "Infer from context", each need the operator's predating context states that pre-analysis cannot detect (for example, a Quick Start that is unclear to a first-time reader) is offered as a candidate custom goal: name it and propose a verification check the operator can confirm. It counts toward the cap of 3 and takes the lowest-priority slot if the cap is reached, and the displaced derived goal moves to the deferred candidates in the report. Reject it, as with any custom goal, if no verification check is agreed.
+
 ## Measurement
 
 After the validation phases, before the trigger-regression and compliance steps, for each selected goal:
