@@ -833,6 +833,26 @@ def test_permanence_dotdot_respelled_directory_reregistered_is_violation(tmp_pat
     assert any("now claims that directory" in v.reason for v in violations)
 
 
+def test_permanence_literal_sentinel_lookalike_source_is_not_an_escaping_path():
+    # Third security pass, m3: the marker for an escaping path must not be
+    # reproducible from a plain string, or a source spelled like it would
+    # compare equal to a real `../x` one.
+    base = {"plugins": [_src_rec("X", "a", "../x", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "<outside-repo:../x>", "abc")]}
+    assert find_prefix_permanence_violations(base, head)
+
+
+@pytest.mark.parametrize("bad_name", [["a"], {"k": "v"}])
+def test_permanence_unhashable_head_name_reported_not_crashed(tmp_path, bad_name):
+    # Third security pass, m6 (pre-existing): an unhashable `name` with a
+    # `repo` supplied raised TypeError at the rename join check.
+    _write_marketplace_manifest(tmp_path, [{"name": "a", "source": "./a"}])
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", bad_name, "./a", "abc")]}
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any(v.plugin_id == "X" for v in violations)
+
+
 def test_permanence_path_escaping_the_repo_never_reads_as_no_source():
     # A `..`-escaping source gets a sentinel, not None: None would let it
     # pass as a prefixed record that simply has no source yet.

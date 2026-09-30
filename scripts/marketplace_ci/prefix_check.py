@@ -177,7 +177,10 @@ def _inventory_structure_problem(inventory: Any) -> str | None:
     return None
 
 
-def _norm_source(source: Any) -> str | None:
+_NormSource = str | tuple[str, str] | None
+
+
+def _norm_source(source: Any) -> _NormSource:
     """Comparable form of a `source` path, or None if it isn't a usable one.
     `./a`, `a`, `./a/` and (for case-insensitive filesystems) `./A` all name
     the same directory, so claims are compared in this form -- otherwise a
@@ -193,7 +196,8 @@ def _norm_source(source: Any) -> str | None:
     # plugin is common, and returning None here would switch off every rule
     # that keys on a record having a source.
     if normalized.startswith("/") or normalized == ".." or normalized.startswith("../"):
-        return f"<outside-repo:{normalized}>"
+        # A tuple, not a string: no string a `source` can spell equals it.
+        return ("outside-repo", normalized)
     return normalized.casefold()
 
 
@@ -212,7 +216,7 @@ def _holds_claim_untouched(
     base_all_by_id: dict[str, Any],
     *,
     name: Any = None,
-    source: str | None = None,
+    source: Any = None,
 ) -> bool:
     """True if `other` already held this name (or directory) at base and did
     not go from non-live to live since -- a sibling that merely coexisted with
@@ -231,7 +235,7 @@ def _holds_claim_untouched(
     return held and not (_is_live(other) and not _is_live(prior))
 
 
-def _manifest_entries(repo: Path) -> list[tuple[Any, str | None]]:
+def _manifest_entries(repo: Path) -> list[tuple[Any, _NormSource]]:
     """Every marketplace.json entry as (name, normalized source), duplicates
     included (`_load_authoritative_sources` keeps only the first per name)."""
     path = repo / DEFAULT_MARKETPLACE_MANIFEST_PATH
@@ -254,7 +258,7 @@ def _identity_binding_violations(
     repo: Path | None,
     authoritative_sources: dict[str, str],
     duplicate_manifest_names: set[str],
-    manifest_entries: list[tuple[Any, str | None]],
+    manifest_entries: list[tuple[Any, _NormSource]],
     base_all_by_id: dict[str, Any],
     head_records: list[dict[str, Any]],
 ) -> list[PrefixPermanenceViolation]:
@@ -431,7 +435,7 @@ def find_prefix_permanence_violations(
 
     authoritative_sources: dict[str, str] = {}
     duplicate_manifest_names: set[str] = set()
-    manifest_entries: list[tuple[Any, str | None]] = []
+    manifest_entries: list[tuple[Any, _NormSource]] = []
     if repo is not None:
         authoritative_sources, duplicate_manifest_names = _load_authoritative_sources(repo)
         manifest_entries = _manifest_entries(repo)
@@ -534,7 +538,7 @@ def find_prefix_permanence_violations(
             # independently flagged that rule as over-broad.
             still_joins = (
                 repo is not None
-                and head_name is not None
+                and isinstance(head_name, str)
                 and head_name not in duplicate_manifest_names
                 and head_plugin.get("source") is not None
                 and authoritative_sources.get(head_name) == head_plugin.get("source")
