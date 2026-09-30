@@ -220,12 +220,13 @@ def build_plan(inventory, discovered, repo_root):
 
         # Independent of the plugin_id check above (not an elif) -- both can
         # legitimately fire together, and each is its own separate conflict to
-        # resolve. `prefix` is a required key on both sides, so a plugin
-        # inventory with the key absent is its own conflict (an explicit null
-        # on the marketplace side must not mask it); past that, a null on one
-        # side only (None != "git") and mismatched values ("git" != "ctx") are
-        # both caught by a plain !=, while both sides null is not a conflict --
-        # no prefix is registered (an opt-out, or awaiting registration).
+        # resolve. `prefix` is a required key on both sides, so a record with
+        # the key absent is its own conflict on whichever side lacks it (an
+        # explicit null on the other side must not mask it); past that, a null
+        # on one side only (None != "git") and mismatched values ("git" !=
+        # "ctx") are both caught by a plain !=, while both sides null is not a
+        # conflict -- no prefix is registered (an opt-out, or awaiting
+        # registration).
         if plugin_inventory is not None and existing and "prefix" not in plugin_inventory:
             plan.append(
                 {
@@ -238,10 +239,22 @@ def build_plan(inventory, discovered, repo_root):
                     "requires_approval": True,
                 }
             )
+        elif plugin_inventory is not None and existing and "prefix" not in existing:
+            plan.append(
+                {
+                    "operation": "conflict",
+                    "id": existing["id"],
+                    "name": candidate["name"],
+                    "reason": "this marketplace record has no 'prefix' key -- the key is required; "
+                    'add "prefix": null by hand to record that none is registered, or register '
+                    "a curated prefix with an 'update' operation setting prefix",
+                    "requires_approval": True,
+                }
+            )
         elif (
             plugin_inventory is not None
             and existing
-            and plugin_inventory["prefix"] != existing.get("prefix")
+            and plugin_inventory["prefix"] != existing["prefix"]
         ):
             plan.append(
                 {
