@@ -110,33 +110,7 @@ questions: [
    - If in cache (`~/.claude/plugins/cache/`) → REFUSE: "That's an installed copy (read-only)"
    - If not found anywhere → use `AskUserQuestion` — question: "Where should I find this skill?", options: "Project skill" / "User-space skill" / "Other" (lets the operator type a path)
 
-   **Immediately after locating — pre-analyze before any interview:**
-   - Check for `plugin-rulebook` skill (Glob `**/plugin-rulebook/SKILL.md`); if found, read its `assets/settings.json` and load BOTH R13 (SKILL.md line-count) and R18 (inline code-block size) tiered thresholds — these supersede the flat limits below for the rest of pre-analysis. If not found, fall back to `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/size-limits.md`'s flat 500-line / 10-line limits.
-   - Read SKILL.md; count body lines (exclude frontmatter); classify against the resolved R13 tiers (OK / Weak Warning / Soft Warning / Warning / Critical) — don't treat 500 as the only threshold worth reporting; a Soft Warning at, say, 350 lines is worth surfacing even though it's non-blocking
-   - Scan frontmatter: flag non-standard fields per `plugin-rulebook`'s R5 (if found in the check above — currently just `version`; treat R5's own text as authoritative rather than restating its list here, since it's the source of truth this file would otherwise drift from), single-line `description` (needs `>-`) — `allowed-tools` may be space-separated, comma-separated, or a YAML list (space-separated is preferred style, not a requirement), and `argument-hint` is an allowed skill field, not a violation. If `plugin-rulebook` wasn't found, fall back to: `version` is the only forbidden field; `AskUserQuestion` in `allowed-tools` is a harmless no-op, not a violation.
-   - Identify sections ≥50 lines; classify core (80%+ usage) vs. low-frequency (<20%)
-   - List reference files; note topically related clusters (≥2 files, same domain); flag any `references/*.md` ≥400 lines
-   - Check all `workflows/*.md`; flag any ≥300 lines; scan each for links to `references/` files used as action steps (workflow→reference chain violation); also scan each `references/*.md` for imperative directives to read another `references/` file (reference→reference chain violation)
-   - Scan SKILL.md and all `references/*.md` for spawn anti-patterns: Cartesian product spawning (subagents spawned for every combination of two or more independent lists), unbounded agent spawning (spawn inside a loop with no explicit count cap where the list is user-controlled), vague subagent prompts (dispatch instructions with no file paths, no goal statement, no output spec)
-   - Scan SKILL.md for sections that handle user intake: grep for `ask the user`, `prompt the user`, free-form `questions:` blocks (i.e., `questions:` key present but no `options:` key in the same block). Flag each as a behavioral intake violation — sections that collect input without `AskUserQuestion` should be converted to use it
-   - Check R22 argument-hint/arguments consistency: if `plugin-rulebook` was found above, read `${CLAUDE_PLUGIN_ROOT}/skills/plugin-rulebook/references/argument-consistency.md` for the detection procedure; otherwise scan the body directly for `$ARGUMENTS`, `$ARGUMENTS[N]`, a bare unescaped `$0`/`$1`/`$2`/..., or `$name` for a name declared in `arguments`. Compare against frontmatter `argument-hint`/`arguments`: flag a missing declaration (body accepts arguments but frontmatter is empty), an orphaned declaration (frontmatter declares a slot never referenced in the body), or a wrong-position mismatch (declared order doesn't match consumption order). Catching this in pre-analysis lets the operator fix it as part of BATCH 2 instead of only via the mandatory `plugin-rulebook` gate at the end of the workflow.
-   - Check for a `when_to_use`-split candidate: if no `when_to_use` field is present, scan `description` for an embedded trigger-condition clause (e.g., a `Use when` / `use when` phrase mid-description). If found and `description` alone exceeds roughly 400 characters, flag it — the trigger conditions could move to `when_to_use`, tightening `description` to the "what" per `skill-development`'s What+When formula (see `skill-development/references/content-guidelines.md`).
-
-   **Emit pre-analysis report before proceeding:**
-   ```
-   📋 Pre-Analysis: <skill-name>
-   Lines: X — [OK | Weak Warning | Soft Warning | Warning | Critical] (R13)
-   Frontmatter issues: [list or "none"]
-   Large sections (≥50 lines): [name — X lines | "none"]
-   Reference files: N [clusters: list | "none"] [oversize ≥400 lines: list | "none"]
-   Workflow files: N [oversize ≥300 lines: list | "none"] [workflow→ref chain violations: list | "none"]
-   Reference chain violations (ref→ref): [list | "none"]
-   Spawn anti-patterns: [list | "none"]
-   Intake pattern violations: [section name — reason | "none"]
-   Argument consistency (R22): [mismatch description | "none"]
-   when_to_use split candidate: [description length + embedded trigger clause | "no"]
-   R13/R18 threshold source: [plugin-rulebook/assets/settings.json | skill-development fallback]
-   ```
+   **Immediately after locating — pre-analyze before any interview:** run every check in `${CLAUDE_PLUGIN_ROOT}/skills/skill-refiner-interactive/references/pre-analysis-checklist.md` and emit its pre-analysis report before proceeding.
 
 ### Requirements Interview (Progressive Disclosure - One Batch at a Time)
 
