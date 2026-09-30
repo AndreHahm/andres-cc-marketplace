@@ -82,9 +82,15 @@ def _write_marketplace_manifest(repo: Path, plugins: list[dict]) -> Path:
 
 
 def _plugin(name, source, prefix=None, domain_prefix=None, status="active"):
-    entry = {"id": f"plugin_{name}", "name": name, "source": source, "status": status}
-    if prefix is not None:
-        entry["prefix"] = prefix
+    # `prefix` is a required key (PR 11), so a record always carries it --
+    # `None` here is the explicit-null opt-out, not an absent key.
+    entry = {
+        "id": f"plugin_{name}",
+        "name": name,
+        "source": source,
+        "status": status,
+        "prefix": prefix,
+    }
     if domain_prefix is not None:
         entry["domain_prefix"] = domain_prefix
     return entry
@@ -98,10 +104,42 @@ def test_explicit_null_prefix_is_inert(tmp_path):
     plugin_dir = tmp_path / "git-kit"
     (plugin_dir / "scripts").mkdir(parents=True)
     (plugin_dir / "scripts" / "check-pr-title.py").write_text("", encoding="utf-8")
-    entry = _plugin("git-kit", "./git-kit")
-    entry["prefix"] = None  # key present with value null; _plugin() alone omits the key
-    _write_inventory(tmp_path, [entry])
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit")])
     assert find_prefix_violations(tmp_path) == []
+
+
+def test_absent_prefix_key_is_flagged(tmp_path):
+    entry = _plugin("git-kit", "./git-kit")
+    del entry["prefix"]  # key omitted entirely, unlike an explicit null
+    path = _write_inventory(tmp_path, [entry])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].plugin == "git-kit"
+    assert violations[0].path == path
+    assert "required `prefix` key" in violations[0].reason
+
+
+def test_absent_prefix_key_flagged_even_with_domain_prefix_registered(tmp_path):
+    # A registered domain_prefix makes the plugin scannable, but the missing
+    # required key is still its own defect.
+    plugin_dir = tmp_path / "context-kit"
+    (plugin_dir / "scripts").mkdir(parents=True)
+    (plugin_dir / "scripts" / "context-audit.py").write_text("", encoding="utf-8")
+    entry = _plugin("context-kit", "./context-kit", domain_prefix="context")
+    del entry["prefix"]
+    _write_inventory(tmp_path, [entry])
+    violations = find_prefix_violations(tmp_path)
+    assert [v.reason for v in violations if "required `prefix` key" in v.reason] != []
+    assert len(violations) == 1
+
+
+def test_absent_prefix_key_flagged_regardless_of_status(tmp_path):
+    entry = _plugin("old-kit", "./old-kit", status="retired")
+    del entry["prefix"]
+    _write_inventory(tmp_path, [entry])
+    violations = find_prefix_violations(tmp_path)
+    assert len(violations) == 1
+    assert "required `prefix` key" in violations[0].reason
 
 
 def test_registered_plugin_conformant_tree_passes(tmp_path):
