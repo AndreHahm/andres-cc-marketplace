@@ -433,6 +433,21 @@ def find_prefix_violations(
     assigned_domain_prefixes: dict[str, str] = {}
     for plugin in inventory.get("plugins", []):
         plugin_name = plugin.get("name", "?")
+        if "prefix" not in plugin:
+            # `prefix` is a required key (PR 11): an explicit `null` is the
+            # "none registered" opt-out and stays inert below, but an
+            # omitted key is malformed. Both read as None via `.get()`, so
+            # presence has to be checked here, before that collapse.
+            violations.append(
+                PrefixViolation(
+                    plugin=plugin_name,
+                    path=marketplace_inventory_path,
+                    reason=(
+                        "record is missing the required `prefix` key -- use an explicit "
+                        "`null` if no prefix is registered yet"
+                    ),
+                )
+            )
         prefix = plugin.get("prefix")
         if prefix is not None:
             # fullmatch, not match -- see the identical comment on

@@ -119,8 +119,10 @@ This rule produces **zero findings** for any plugin whose `marketplace-inventory
 `prefix: null` and no `domain_prefix` — not a warning, not an ADVISORY, nothing. `null` is either a
 deliberate, recorded opt-out (today only `example-plugin`, a test fixture) or a newly added plugin that
 hasn't registered its curated prefix yet (new records start `null`). The `prefix` key itself is required
-in both inventory schemas and enforced by the two inventory scripts' validators, so an absent key is
-never treated as inert there; `prefix_check.py` does not yet tell an absent key from `null`. This is the same
+in both inventory schemas and enforced by the two inventory scripts' validators and by `prefix_check.py`
+(which reports an absent key on a marketplace record as a finding), so an absent key is never treated as
+inert; only an explicit `null` is. The fix for an absent key is to add it: a curated `prefix`, or an
+explicit `null` if none is registered yet. This is the same
 "vacuous when neither is set" gate `prefix_check.py` uses mechanically, so a plugin that registers a
 curated prefix and/or domain_prefix is atomically and unambiguously in scope. Once registered, every
 in-scope file must match at least one of whichever field(s) are registered.
