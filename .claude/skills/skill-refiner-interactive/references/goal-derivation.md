@@ -13,7 +13,7 @@ Verification uses `Grep`, `Glob` and `Read`, plus `wc -l` through the scoped `Ba
 | Pre-analysis finding | Goal | Verification |
 |---|---|---|
 | Reference chains (ref→ref) | Zero reference→reference chains | Re-run the checklist's chain scan over `references/*.md` → 0 matches |
-| Intake violations | All intake uses `AskUserQuestion` with options | Re-run the checklist's intake scan → 0 matches |
+| Intake violations | Every intake section the operator agrees to convert uses `AskUserQuestion` with options | Re-run the checklist's intake scan → 0 matches outside sections the operator kept free-form at the Intake question |
 | R22 mismatch | `argument-hint`/`arguments` consistent | `Skill(plugin-rulebook)` R22 → OK |
 | Tool scoping (undeclared tool) | Every invoked tool is declared in `allowed-tools` | Re-run the checklist's tool-scoping scan → no undeclared tools |
 | Dead links / cross-skill references | No dead links; cross-skill paths use the explicit `${CLAUDE_PLUGIN_ROOT}/skills/<skill>/references/` form | `Glob` each linked `references/` path → all exist; re-run the checklist's cross-skill scan → 0 bare paths |
