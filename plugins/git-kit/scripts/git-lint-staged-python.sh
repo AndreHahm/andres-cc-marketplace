@@ -53,6 +53,18 @@ lint_failed=0
 # matches a nested path); the `glob` magic word switches to POSIX glob
 # semantics where '*' does NOT cross '/', which would silently narrow this
 # to top-level .py files only -- verified live, both forms tested directly.
+#
+# In a marketplace-CI repo (.claude/marketplace-sync.json present), .claude/, .agents/ and
+# .codex/ hold generated mirrors/exports of canonical sources, so they are left out: ruff
+# format/--fix rewrites a mirror in place and silently breaks its byte-parity with the source
+# (`check-all --staged` only compares a pair whose source is also staged, so it would not
+# catch that), and ty would report diagnostics in code CI never type-checks. The condition
+# keeps this repo-agnostic: elsewhere .claude/ may hold hand-authored Python that should be
+# linted like any other.
+pathspecs=(':(top)*.py')
+if [ -f .claude/marketplace-sync.json ]; then
+  pathspecs+=(':(top,exclude).claude' ':(top,exclude).agents' ':(top,exclude).codex')
+fi
 while IFS= read -r -d '' file; do
   to_check+=("$file")
 
@@ -81,7 +93,7 @@ while IFS= read -r -d '' file; do
   if [ "$format_ok" -eq 0 ] || [ "$check_ok" -eq 0 ]; then
     lint_failed=1
   fi
-done < <(git -c diff.relative=false diff --cached --name-only -z --diff-filter=ACMR -- ':(top)*.py')
+done < <(git -c diff.relative=false diff --cached --name-only -z --diff-filter=ACMR -- "${pathspecs[@]}")
 
 if [ "${#to_check[@]}" -eq 0 ]; then
   exit 0
