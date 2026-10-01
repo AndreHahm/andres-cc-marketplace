@@ -65,6 +65,20 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/standard-sections.md (read these files directly; do not rely on any other copy of the skill). A newly-created skill has a SKILL.md with these ## headings only: Quick Start, When to Use This Skill, Testing & Validation. It has no references/ directory. Using the plugin-rulebook skill's R35 as documented in those files, report which required sections are missing, whether the missing Reference Guide or the 'When to Use This Skill' wording is a problem, and what happens with Testing & Validation.",
       "expected_output": "Reports '## When NOT to Use' as the one missing required section. 'When to Use This Skill' satisfies '## When to Use' because headings are matched by substance, not exact wording. '## Reference Guide' is not required because the skill has no references/ directory. Testing & Validation is not checked by R35 at all; R29 owns it, so a missing or present heading is never reported twice.",
       "files": []
+    },
+    {
+      "id": 10,
+      "name": "R36 reports only overlapping one-way exclusions, not pure delegation",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/reciprocal-exclusions.md (read these files directly; do not rely on any other copy of the skill). A newly-created skill 'deep-review' has a '## When NOT to Use' section containing two lines: (a) 'Reviewing a single skill's structure -> use skill-quick-check instead', and (b) 'Saving the reviewed changes to version control -> use save-changes instead'. Neither 'skill-quick-check' (another review skill that covers a single skill's structure; a request to review one skill could plausibly match either) nor 'save-changes' (a helper that records changes to version control) names 'deep-review' anywhere in its When NOT to Use or description. Using the plugin-rulebook skill's R36 as documented in those files, report for (a) and (b): finding or not, severity, and what the fix would be.",
+      "expected_output": "(a) is an ADVISORY finding reported against skill-quick-check: the two review skills overlap, so a request could match either, and skill-quick-check should name deep-review back with its own half of the distinguishing criterion. (b) is NOT a finding: pointing at save-changes is pure delegation to a differently-scoped helper whose domain would never attract review requests. R36 is ADVISORY, never blocking, and the report states the overlap it judged.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "R37 does not exempt a hook script because shell is set to bash",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). A newly-created plugin ships a hook whose hooks.json command is the bare path \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard.sh\" with \"shell\": \"bash\" set. `git ls-files -s` shows guard.sh at mode 100644, while `ls -l` on the author's machine shows it executable. The same plugin's skill also has `allowed-tools: Bash(python:*)` and runs scripts/tool.py through it; `git ls-files -s` shows tool.py at mode 100644. Using the plugin-rulebook skill's R37 as documented in those files, report for guard.sh and for tool.py: finding or not, severity, which mode source counts, and the fix.",
+      "expected_output": "guard.sh is a REQUIRED finding: it is run directly by a bare-path hook command, its committed mode is 100644, and the 'shell: bash' setting does NOT exempt it because a shell running a non-executable path directly fails with Permission denied. The committed mode from `git ls-files -s` counts, not the on-disk `ls -l` bit. Fix: git update-index --chmod=+x (and chmod +x) in every mirrored copy. tool.py is NOT a finding: it is run through the python interpreter grant, which is not a direct invocation.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

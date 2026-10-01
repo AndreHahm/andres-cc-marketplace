@@ -1,0 +1,26 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags the one-way pointer to skill-quick-check as an ADVISORY finding because the two review skills overlap",
+      "type": "presence",
+      "target": "R36 (a)"
+    },
+    {
+      "text": "Report says skill-quick-check is the component that should name deep-review back, with its own half of the distinguishing criterion",
+      "type": "quality",
+      "target": "R36 fix"
+    },
+    {
+      "text": "Report says the pointer to save-changes is NOT a finding because it is pure delegation to a differently-scoped helper",
+      "type": "presence",
+      "target": "R36 (b)"
+    },
+    {
+      "text": "Report states R36 is ADVISORY / never blocking",
+      "type": "quality",
+      "target": "R36 severity"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags guard.sh as a REQUIRED R37 finding (bare-path hook command, committed mode 100644)",
+      "type": "presence",
+      "target": "R37 guard.sh"
+    },
+    {
+      "text": "Report says 'shell: bash' does NOT exempt it, because a shell running a non-executable path directly still fails with Permission denied",
+      "type": "quality",
+      "target": "R37 no exemption"
+    },
+    {
+      "text": "Report says the committed mode from `git ls-files -s` is what counts, not the on-disk ls -l executable bit",
+      "type": "quality",
+      "target": "R37 mode source"
+    },
+    {
+      "text": "Report says tool.py is NOT a finding because the python interpreter grant is not a direct invocation",
+      "type": "presence",
+      "target": "R37 tool.py"
+    }
+  ]
+}

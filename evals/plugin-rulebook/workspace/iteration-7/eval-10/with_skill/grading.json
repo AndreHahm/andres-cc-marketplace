@@ -1,0 +1,27 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags the one-way pointer to skill-quick-check as an ADVISORY finding because the two review skills overlap",
+      "passed": true,
+      "evidence": "Finding: YES, reported against skill-quick-check. Severity: ADVISORY. Overlap judged: both are review skills covering skill structure, so a request to review one skill could match either."
+    },
+    {
+      "text": "Report says skill-quick-check is the component that should name deep-review back, with its own half of the distinguishing criterion",
+      "passed": true,
+      "evidence": "Add to skill-quick-check's When NOT to Use a line naming deep-review and stating skill-quick-check's own half of the distinguishing criterion."
+    },
+    {
+      "text": "Report says the pointer to save-changes is NOT a finding because it is pure delegation to a differently-scoped helper",
+      "passed": true,
+      "evidence": "Finding: NO. This is plain delegation to a differently-scoped helper; nobody asks save-changes for a review."
+    },
+    {
+      "text": "Report states R36 is ADVISORY / never blocking",
+      "passed": true,
+      "evidence": "R36 is ADVISORY, judgment-based, forward-looking, never blocking."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
