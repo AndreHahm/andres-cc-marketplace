@@ -822,3 +822,56 @@ def test_mirrored_script_keeps_its_executable_bit(repo):
     )
     apply_sync_plan(plan)
     assert (repo / ".claude" / "scripts" / "sk-run.sh").stat().st_mode & 0o111
+
+
+# --- a destination still owned by a registered plugin is never scheduled for deletion ---
+# (PR #455 review: Codex P2 and CodeRabbit Major on the delete plan)
+
+
+def test_opting_out_keeps_a_script_another_plugin_still_owns(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/shared.sh", "from sample-kit\n")
+    _write_file(repo, "plugins/sample-kit-two/scripts/shared.sh", "from sample-kit-two\n")
+    _write_file(repo, ".claude/scripts/shared.sh", "from sample-kit-two\n")
+    mirrors = ["sample-kit", "sample-kit-two"]
+    previous = _registry(mirrors, mirrors)
+    current = _registry(mirrors, ["sample-kit-two"])
+
+    plan = plan_plugin_sync(repo, current, previous=previous, bootstrap=False)
+
+    assert ".claude/scripts/shared.sh" not in _destinations(repo, plan, "delete")
+    apply_sync_plan(plan)
+    assert (repo / ".claude/scripts/shared.sh").read_text(
+        encoding="utf-8"
+    ) == "from sample-kit-two\n"
+
+
+def test_script_ownership_transfer_ends_with_the_new_owners_mirror(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/shared.sh", "from sample-kit\n")
+    _write_file(repo, "plugins/sample-kit-two/scripts/shared.sh", "from sample-kit-two\n")
+    _write_file(repo, ".claude/scripts/shared.sh", "from sample-kit\n")
+    mirrors = ["sample-kit", "sample-kit-two"]
+    previous = _registry(mirrors, ["sample-kit"])
+    current = _registry(mirrors, ["sample-kit-two"])
+
+    plan = plan_plugin_sync(repo, current, previous=previous, bootstrap=False)
+
+    assert ".claude/scripts/shared.sh" in _destinations(repo, plan, "update")
+    assert ".claude/scripts/shared.sh" not in _destinations(repo, plan, "delete")
+    apply_sync_plan(plan)
+    assert (repo / ".claude/scripts/shared.sh").read_text(
+        encoding="utf-8"
+    ) == "from sample-kit-two\n"
+
+
+def test_removing_a_plugin_keeps_a_script_another_plugin_still_owns(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/shared.sh", "from sample-kit\n")
+    _write_file(repo, "plugins/sample-kit-two/scripts/shared.sh", "from sample-kit-two\n")
+    _write_file(repo, ".claude/scripts/shared.sh", "from sample-kit-two\n")
+    previous = _registry(["sample-kit", "sample-kit-two"], ["sample-kit", "sample-kit-two"])
+    current = _registry(["sample-kit-two"], ["sample-kit-two"])
+
+    plan = plan_plugin_sync(repo, current, previous=previous, bootstrap=False)
+
+    assert ".claude/scripts/shared.sh" not in _destinations(repo, plan, "delete")
+    apply_sync_plan(plan)
+    assert (repo / ".claude/scripts/shared.sh").exists()

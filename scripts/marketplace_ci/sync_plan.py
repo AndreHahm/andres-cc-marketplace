@@ -139,6 +139,12 @@ def plan_plugin_sync(
         for source_file in _iter_component_files(plugin_root, (SCRIPTS_DIR,)):
             dest = _resolve_destination(source_file, plugin_root, claude_root)
             delete_destinations[dest] = source_file
+    # A destination a currently registered plugin still produces is never pruned, even when
+    # another plugin that used to own it was removed or dropped its scripts/ opt-in: the plan
+    # would otherwise create/update it and then delete it again (PR #455 review).
+    delete_destinations = {
+        dest: source for dest, source in delete_destinations.items() if dest not in destinations
+    }
 
     actions: list[SyncAction] = []
     matched_exceptions: set[tuple[str, str]] = set()
