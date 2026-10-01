@@ -1,0 +1,26 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags Skill A as an ADVISORY finding and recommends moving the 'Use when...' clause into when_to_use",
+      "type": "presence",
+      "target": "R21 A"
+    },
+    {
+      "text": "Report says Skill B is NOT a finding because 880 is at or under the 900 threshold",
+      "type": "presence",
+      "target": "R21 B"
+    },
+    {
+      "text": "Report says Skill C is NOT flagged because a when_to_use field already exists",
+      "type": "presence",
+      "target": "R21 C"
+    },
+    {
+      "text": "Report says the hint is never blocking",
+      "type": "quality",
+      "target": "R21 severity"
+    }
+  ]
+}

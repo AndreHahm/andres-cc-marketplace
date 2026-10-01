@@ -131,6 +131,11 @@ path, verify inside the current working directory, fail-closed on any ambiguity)
 **Check (REQUIRED, immediate):**
 - `check_evals.py --smoke-test <path> --skill-md <path>`: zero-match guard, anchored-matching check →
   FAIL on a vacuous assertion or unanchored short-needle search.
+- **Registry completeness (REQUIRED, immediate):** every `evals/<skill>/workspace/iteration-*/eval-N` directory
+  needs a matching `evals.json` entry — matched by `id`, `eval_id`, or a string id of the form `"eval-N"`, since
+  the schema varies across skills (a naive integer-`id` comparison reports false gaps). Not yet implemented in
+  `check_evals.py`; the reviewing agent applies it with Glob and Read. One real gap is known today:
+  `plugin-lifecycle-maintenance` has evals 10 and 11 as workspace artifacts only (issue #145).
 - `check_evals.py --evals-json <path>`: JSON-parse validity,
   `declared_scenarios_covered + len(uncovered) == declared_scenarios_total` arithmetic → FAIL on parse
   failure or arithmetic mismatch.

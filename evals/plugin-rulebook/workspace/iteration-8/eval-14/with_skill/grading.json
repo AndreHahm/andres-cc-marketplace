@@ -1,0 +1,31 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags Skill A as an ADVISORY finding and recommends moving the 'Use when...' clause into when_to_use",
+      "passed": true,
+      "evidence": "A: Yes, split hint, ADVISORY. Move the 'Use when...' clause into a new when_to_use field (cap 512)."
+    },
+    {
+      "text": "Report says Skill B is NOT a finding because 880 is at or under the 900 threshold",
+      "passed": true,
+      "evidence": "B: No. 880 is not over 900, so the hint is never raised."
+    },
+    {
+      "text": "Report says Skill C is NOT flagged because a when_to_use field already exists",
+      "passed": true,
+      "evidence": "C: No. The hint needs 'no when_to_use', and C has one."
+    },
+    {
+      "text": "Report says the hint is never blocking",
+      "passed": true,
+      "evidence": "ADVISORY (non-blocking); a tradeoff, not a defect; the user may decline it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

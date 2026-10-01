@@ -1,0 +1,26 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags foo's workspace eval-4 as having no matching evals.json entry, a REQUIRED finding",
+      "type": "presence",
+      "target": "R31 foo"
+    },
+    {
+      "text": "Report says bar has NO finding because eval_id is an accepted identifier form",
+      "type": "presence",
+      "target": "R31 bar"
+    },
+    {
+      "text": "Report gives the fix: add the missing registry entry",
+      "type": "quality",
+      "target": "R31 fix"
+    },
+    {
+      "text": "Report says the clause is not yet implemented in check_evals.py and is applied by the reviewing agent",
+      "type": "quality",
+      "target": "R31 who checks"
+    }
+  ]
+}

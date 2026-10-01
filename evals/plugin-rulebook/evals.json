@@ -79,6 +79,34 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). A newly-created plugin ships a hook whose hooks.json command is the bare path \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard.sh\" with \"shell\": \"bash\" set. `git ls-files -s` shows guard.sh at mode 100644, while `ls -l` on the author's machine shows it executable. The same plugin's skill also has `allowed-tools: Bash(python:*)` and runs scripts/tool.py through it; `git ls-files -s` shows tool.py at mode 100644. Using the plugin-rulebook skill's R37 as documented in those files, report for guard.sh and for tool.py: finding or not, severity, which mode source counts, and the fix.",
       "expected_output": "guard.sh is a REQUIRED finding: it is run directly by a bare-path hook command, its committed mode is 100644, and the 'shell: bash' setting does NOT exempt it because a shell running a non-executable path directly fails with Permission denied. The committed mode from `git ls-files -s` counts, not the on-disk `ls -l` bit. Fix: git update-index --chmod=+x (and chmod +x) in every mirrored copy. tool.py is NOT a finding: it is run through the python interpreter grant, which is not a direct invocation.",
       "files": []
+    },
+    {
+      "id": 12,
+      "name": "R9 flags a real username in a committed fixture but not placeholders or redaction examples",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/local-identifiers.md (read these files directly; do not rely on any other copy of the skill). A newly-added eval output file evals/demo/workspace/iteration-1/eval-1/with_skill/outputs/report.md contains three absolute paths: (1) '/home/mara/projects/demo/src/app.py' in the recorded output of a command; (2) '/home/user/projects/demo/src/app.py' in the same recorded output; (3) 'C:\\\\Users\\\\mara\\\\x' as the test input of a redaction script, shown in a section explaining what gets redacted. Using the plugin-rulebook skill's R9 local-identifier clause as documented in those files, report for each of the three: finding or not, severity, and the fix.",
+      "expected_output": "(1) is a REQUIRED finding: a real OS username in a committed eval output; fix: replace with a placeholder such as <user> or a repo-relative path and regenerate the fixture. (2) is NOT a finding: 'user' is a placeholder name. (3) is NOT a finding: it is an illustrative redaction-test example the text presents as one (a judgment call). History rewriting is a separate maintainer decision.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "R14 flags a reference file that requires loading another one but not a see-also",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/reference-chains.md (read these files directly; do not rely on any other copy of the skill). A newly-created skill has two reference files. references/api-calls.md says: 'Before applying this procedure, load references/auth-flow.md, which holds steps 1-3 of the procedure.' references/errors.md says: 'See also references/auth-flow.md for background on token expiry.' The skill's SKILL.md also points at both files. Using the plugin-rulebook skill's R14 chain clause as documented in those files, report for api-calls.md, errors.md and the SKILL.md pointers: finding or not, severity, and the fix.",
+      "expected_output": "api-calls.md is an ADVISORY finding: it requires loading auth-flow.md to be usable (a chain); fix: inline the needed part, merge the files, or restate as an optional see-also, but never nest into subdirectories. errors.md is NOT a finding: a plain see-also cross-reference. The SKILL.md pointers are NOT findings: that is the intended design. The chain clause is ADVISORY, never blocking, and the report names the sentence judged to be a load requirement.",
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "R21 split hint applies only above 900 chars, with a trigger clause and no when_to_use",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/size-rules.md (read these files directly; do not rely on any other copy of the skill). Three newly-created skills have these SKILL.md frontmatter facts. Skill A: description is 950 characters and includes a 'Use when...' trigger clause; there is no when_to_use field. Skill B: description is 880 characters and includes a 'Use when...' trigger clause; there is no when_to_use field. Skill C: description is 950 characters and includes a 'Use when...' clause; it also has a when_to_use field of 200 characters. Using the plugin-rulebook skill's R21 as documented in those files, report for A, B and C: finding or not, severity, and the recommendation.",
+      "expected_output": "A is an ADVISORY finding: over 900 chars with a trigger clause and no when_to_use; recommend moving the 'Use when...' clause into when_to_use (within its 512 cap). B is NOT a finding: 880 is at or under the 900 threshold. C is NOT flagged by this tier because a when_to_use field already exists. The split hint is never blocking, because the docs weight description more heavily than when_to_use for invocation.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "R31 registry completeness accepts id, eval_id and eval-N string ids",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/testing-mandate-rules.md (read these files directly; do not rely on any other copy of the skill). Two skills have eval registries. Skill 'foo': evals/foo/evals.json has entries with integer id 1, 2 and 3; its workspace has iteration-1/eval-1, iteration-1/eval-2, iteration-2/eval-3 and iteration-2/eval-4. Skill 'bar': evals/bar/evals.json has entries whose identifiers are written as eval_id 1 and 2 (no id key), and its workspace has iteration-1/eval-1 and iteration-1/eval-2. Using the plugin-rulebook skill's R31 registry-completeness clause as documented in those files, report for foo and bar: finding or not, severity, who checks it, and the fix.",
+      "expected_output": "foo has a REQUIRED finding: workspace eval-4 has no matching evals.json entry; fix: add the missing registry entry. bar has NO finding: eval_id is an accepted form of the identifier, so eval-1 and eval-2 match. The clause is not yet implemented in check_evals.py; the reviewing agent applies it with Glob and Read.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
