@@ -35,7 +35,7 @@ Checks that `argument-hint` and `arguments` frontmatter accurately describe the 
 
 **OK — declared and consumed consistently:**
 ```yaml
-argument-hint: [pr-number] [priority]
+argument-hint: "[pr-number] [priority]"
 arguments: [pr-number, priority]
 ```
 Body: `Review PR #$pr-number with priority $priority.` (equivalently `$0`/`$1`) — both slots declared, both consumed, correct order.
@@ -48,20 +48,20 @@ Body: `Summarize: $ARGUMENTS` — the body clearly accepts free-form input but t
 
 **Critical — missing argument:**
 ```yaml
-argument-hint: [file-path]
+argument-hint: "[file-path]"
 arguments: [file-path]
 ```
 Body: `Review @$file-path for issues, categorized by $1.` — `$1` (second position) is consumed but only one slot (`file-path`) is declared.
 
 **Critical — stale/orphaned argument:**
 ```yaml
-argument-hint: [environment] [version]
+argument-hint: "[environment] [version]"
 arguments: [environment, version]
 ```
 Body: `Deploy the app to $environment.` — `version` is declared but never referenced anywhere in the body.
 
 **Critical — wrong argument position (the 0-based/1-based shift):**
 ```yaml
-argument-hint: [pr-number] [priority] [assignee]
+argument-hint: "[pr-number] [priority] [assignee]"
 ```
 Body: `Review PR #$1 with priority $2. Assign to $3.` — three slots are declared via `argument-hint`, but the body reads them as `$1`/`$2`/`$3` (second/third/fourth position) instead of `$0`/`$1`/`$2` (first/second/third). Every argument the user types lands one position later than intended, and whatever fills `$3` was never declared at all (compounding into a missing-argument Critical too).
