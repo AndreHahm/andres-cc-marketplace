@@ -15,7 +15,11 @@ from pathlib import Path
 
 from scripts.marketplace_ci.registry import Registry, RemovalSet
 
-COMPONENT_DIRS = ("skills", "agents", "commands", "hooks", "rules")
+# references/ and assets/ are plugin-root shared folders mirrored for every registered plugin
+# (issue #446). scripts/ is deliberately absent: it is mirrored only for plugins listed in
+# Registry.scripts_mirrors -- see component_dirs_for.
+COMPONENT_DIRS = ("skills", "agents", "commands", "hooks", "rules", "references", "assets")
+SCRIPTS_DIR = "scripts"
 DEFAULT_REPO_RULES_PATH = Path("scripts/marketplace_ci/rules")
 
 
@@ -37,13 +41,27 @@ class SyncPlan:
     actions: tuple[SyncAction, ...]
 
 
-def _iter_component_files(plugin_root: Path):
-    for component_dir_name in COMPONENT_DIRS:
+def component_dirs_for(registry: Registry, plugin_name: str) -> tuple[str, ...]:
+    """The plugin-root directories mirrored for `plugin_name`: COMPONENT_DIRS, plus scripts/
+    when the plugin is listed in registry.scripts_mirrors."""
+    if plugin_name in registry.scripts_mirrors:
+        return (*COMPONENT_DIRS, SCRIPTS_DIR)
+    return COMPONENT_DIRS
+
+
+def _is_bytecode_cache(path: Path) -> bool:
+    # A local test or script run leaves these untracked next to the sources; they are never
+    # canonical content, and mirroring one would make check-all fail on a clean checkout.
+    return "__pycache__" in path.parts or path.suffix == ".pyc"
+
+
+def _iter_component_files(plugin_root: Path, dir_names: tuple[str, ...] = COMPONENT_DIRS):
+    for component_dir_name in dir_names:
         component_dir = plugin_root / component_dir_name
         if not component_dir.is_dir():
             continue
         for path in sorted(component_dir.rglob("*")):
-            if not path.is_file():
+            if not path.is_file() or _is_bytecode_cache(path.relative_to(plugin_root)):
                 continue
             if (
                 component_dir_name == "hooks"
@@ -89,7 +107,9 @@ def plan_plugin_sync(
         plugin_root = plugins_root / plugin_name
         if not plugin_root.is_dir():
             continue
-        for source_file in _iter_component_files(plugin_root):
+        for source_file in _iter_component_files(
+            plugin_root, component_dirs_for(registry, plugin_name)
+        ):
             register(source_file, plugin_root)
 
     if repo_rules_path is not None and repo_rules_path.is_dir():
@@ -105,7 +125,18 @@ def plan_plugin_sync(
         plugin_root = plugins_root / plugin_name
         if not plugin_root.is_dir():
             continue
-        for source_file in _iter_component_files(plugin_root):
+        # `previous` is never None here (removed is empty otherwise); a plugin that left
+        # plugin_mirrors takes its previously mirrored scripts/ with it.
+        removed_dirs = component_dirs_for(previous, plugin_name) if previous else COMPONENT_DIRS
+        for source_file in _iter_component_files(plugin_root, removed_dirs):
+            dest = _resolve_destination(source_file, plugin_root, claude_root)
+            delete_destinations[dest] = source_file
+    # A plugin that stays mirrored but dropped its scripts/ opt-in: prune only scripts/.
+    for plugin_name in removed.scripts_mirrors:
+        plugin_root = plugins_root / plugin_name
+        if plugin_name in removed.plugin_mirrors or not plugin_root.is_dir():
+            continue
+        for source_file in _iter_component_files(plugin_root, (SCRIPTS_DIR,)):
             dest = _resolve_destination(source_file, plugin_root, claude_root)
             delete_destinations[dest] = source_file
 
@@ -252,7 +283,10 @@ def plan_plugin_sync(
 
     if bootstrap:
         known = set(destinations) | set(delete_destinations)
-        for component_dir_name in COMPONENT_DIRS:
+        scanned_dirs = (
+            (*COMPONENT_DIRS, SCRIPTS_DIR) if registry.scripts_mirrors else COMPONENT_DIRS
+        )
+        for component_dir_name in scanned_dirs:
             dest_component_dir = claude_root / component_dir_name
             if not dest_component_dir.is_dir():
                 continue

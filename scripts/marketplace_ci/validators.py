@@ -20,7 +20,11 @@ from scripts.marketplace_ci.conversion import convert_agent, plan_exports
 from scripts.marketplace_ci.git_state import GitState
 from scripts.marketplace_ci.registry import Registry
 from scripts.marketplace_ci.sync import apply_sync_plan
-from scripts.marketplace_ci.sync_plan import _iter_component_files, plan_plugin_sync
+from scripts.marketplace_ci.sync_plan import (
+    _iter_component_files,
+    component_dirs_for,
+    plan_plugin_sync,
+)
 
 _INTERPRETER_COMMAND = {"python": "python", "bash": "bash"}
 
@@ -207,7 +211,9 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
         plugin_root = plugins_root / plugin_name
         if not plugin_root.is_dir():
             continue
-        for source_file in _iter_component_files(plugin_root):
+        for source_file in _iter_component_files(
+            plugin_root, component_dirs_for(registry, plugin_name)
+        ):
             rel_source = source_file.relative_to(repo).as_posix()
             rel_dest = (
                 (claude_root / source_file.relative_to(plugin_root)).relative_to(repo).as_posix()

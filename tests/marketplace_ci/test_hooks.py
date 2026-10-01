@@ -15,6 +15,8 @@ def _write_registry(repo, **kwargs):
     }
     if "divergence_exceptions" in kwargs:
         payload["divergence_exceptions"] = kwargs["divergence_exceptions"]
+    if "scripts_mirrors" in kwargs:
+        payload["scripts_mirrors"] = kwargs["scripts_mirrors"]
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -205,3 +207,25 @@ Review the target carefully.
     git_repo.stage(".codex/agents/export-demo.toml", 'name = "export-demo"\nstale = true\n')
     result = check_staged_parity(git_repo.root)
     assert result.exit_code == 1
+
+
+def test_staged_reference_without_staged_mirror_fails_parity(git_repo):
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
+    git_repo.stage("plugins/sample-kit/references/sk-guide.md", "new")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+    assert any(".claude/references/sk-guide.md" in m for m in result.messages)
+
+
+def test_staged_script_mirror_checked_only_for_opted_in_plugin(git_repo):
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
+    git_repo.stage("plugins/sample-kit/scripts/sk-run.sh", "new")
+    assert check_staged_parity(git_repo.root).exit_code == 0  # not opted in: not mirrored
+
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"], scripts_mirrors=["sample-kit"])
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+    assert any(".claude/scripts/sk-run.sh" in m for m in result.messages)
+
+    git_repo.stage(".claude/scripts/sk-run.sh", "new")
+    assert check_staged_parity(git_repo.root).exit_code == 0

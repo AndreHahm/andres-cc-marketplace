@@ -678,3 +678,147 @@ def test_bootstrap_does_not_flag_external_hook_scripts_mirror_as_orphan(repo, re
     plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
     warnings = [a for a in plan.actions if a.operation == "warn"]
     assert not any(a.destination == mirrored.resolve() for a in warnings)
+
+
+# --- plugin-root references/ assets/ (always) and scripts/ (per-plugin opt-in), issue #446 ---
+
+
+def _write_file(repo, rel_path, text="x\n"):
+    path = repo / rel_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _registry(mirrors, scripts=()):
+    from scripts.marketplace_ci.registry import Registry
+
+    return Registry(
+        version=1,
+        plugin_mirrors=tuple(mirrors),
+        skills=(),
+        agents=(),
+        scripts_mirrors=tuple(scripts),
+    )
+
+
+def _destinations(repo, plan, operation):
+    return {
+        a.destination.relative_to(repo).as_posix() for a in plan.actions if a.operation == operation
+    }
+
+
+def test_references_and_assets_mirror_for_every_registered_plugin(repo):
+    _write_file(repo, "plugins/sample-kit/references/sk-guide.md")
+    _write_file(repo, "plugins/sample-kit/assets/sk-logo.txt")
+    plan = plan_plugin_sync(repo, _registry(["sample-kit"]), previous=None, bootstrap=False)
+    created = _destinations(repo, plan, "create")
+    assert ".claude/references/sk-guide.md" in created
+    assert ".claude/assets/sk-logo.txt" in created
+
+
+def test_scripts_not_mirrored_without_opt_in(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    plan = plan_plugin_sync(repo, _registry(["sample-kit"]), previous=None, bootstrap=False)
+    assert ".claude/scripts/sk-run.sh" not in _destinations(repo, plan, "create")
+
+
+def test_scripts_mirrored_for_opted_in_plugin_including_nested_paths(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    _write_file(repo, "plugins/sample-kit/scripts/lib/sk-util.py")
+    plan = plan_plugin_sync(
+        repo, _registry(["sample-kit"], ["sample-kit"]), previous=None, bootstrap=False
+    )
+    created = _destinations(repo, plan, "create")
+    assert ".claude/scripts/sk-run.sh" in created
+    assert ".claude/scripts/lib/sk-util.py" in created
+
+
+def test_scripts_opt_in_is_per_plugin(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    _write_file(repo, "plugins/sample-kit-two/scripts/sk2-run.sh")
+    plan = plan_plugin_sync(
+        repo,
+        _registry(["sample-kit", "sample-kit-two"], ["sample-kit"]),
+        previous=None,
+        bootstrap=False,
+    )
+    created = _destinations(repo, plan, "create")
+    assert ".claude/scripts/sk-run.sh" in created
+    assert ".claude/scripts/sk2-run.sh" not in created
+
+
+def test_bytecode_caches_are_never_mirrored(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.py")
+    _write_file(repo, "plugins/sample-kit/scripts/__pycache__/sk-run.cpython-312.pyc")
+    _write_file(repo, "plugins/sample-kit/references/__pycache__/stray.pyc")
+    _write_file(repo, "plugins/sample-kit/references/sk-stray.pyc")
+    plan = plan_plugin_sync(
+        repo, _registry(["sample-kit"], ["sample-kit"]), previous=None, bootstrap=False
+    )
+    created = _destinations(repo, plan, "create")
+    assert ".claude/scripts/sk-run.py" in created
+    assert not any("__pycache__" in d or d.endswith(".pyc") for d in created)
+
+
+def test_two_opted_in_plugins_sharing_a_script_path_collide(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/shared.sh")
+    _write_file(repo, "plugins/sample-kit-two/scripts/shared.sh")
+    plan = plan_plugin_sync(
+        repo,
+        _registry(["sample-kit", "sample-kit-two"], ["sample-kit", "sample-kit-two"]),
+        previous=None,
+        bootstrap=False,
+    )
+    assert ".claude/scripts/shared.sh" in _destinations(repo, plan, "collision")
+    with pytest.raises(SyncError, match="collision"):
+        apply_sync_plan(plan)
+
+
+def test_removing_a_plugin_prunes_its_previously_mirrored_scripts(repo):
+    from scripts.marketplace_ci.registry import Registry
+
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    previous = _registry(["sample-kit"], ["sample-kit"])
+    plan = plan_plugin_sync(repo, Registry.empty(), previous=previous, bootstrap=False)
+    assert ".claude/scripts/sk-run.sh" in _destinations(repo, plan, "delete")
+
+
+def test_opting_out_prunes_scripts_but_keeps_other_mirrors(repo):
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    previous = _registry(["sample-kit"], ["sample-kit"])
+    plan = plan_plugin_sync(repo, _registry(["sample-kit"]), previous=previous, bootstrap=False)
+    deleted = _destinations(repo, plan, "delete")
+    assert ".claude/scripts/sk-run.sh" in deleted
+    assert not any(d.startswith(".claude/skills/") for d in deleted)
+
+
+def test_bootstrap_flags_ownerless_scripts_only_when_scripts_are_mirrored(repo):
+    _write_file(repo, ".claude/scripts/ownerless.sh")
+    without = plan_plugin_sync(repo, _registry(["sample-kit"]), previous=None, bootstrap=True)
+    assert ".claude/scripts/ownerless.sh" not in _destinations(repo, without, "warn")
+    _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh")
+    with_scripts = plan_plugin_sync(
+        repo, _registry(["sample-kit"], ["sample-kit"]), previous=None, bootstrap=True
+    )
+    assert ".claude/scripts/ownerless.sh" in _destinations(repo, with_scripts, "warn")
+
+
+def test_bootstrap_flags_ownerless_references_and_assets(repo):
+    _write_file(repo, ".claude/references/ownerless.md")
+    _write_file(repo, ".claude/assets/ownerless.png")
+    plan = plan_plugin_sync(repo, _registry(["sample-kit"]), previous=None, bootstrap=True)
+    warned = _destinations(repo, plan, "warn")
+    assert ".claude/references/ownerless.md" in warned
+    assert ".claude/assets/ownerless.png" in warned
+
+
+@requires_posix_permission_bits
+def test_mirrored_script_keeps_its_executable_bit(repo):
+    source = _write_file(repo, "plugins/sample-kit/scripts/sk-run.sh", "#!/bin/sh\n")
+    source.chmod(0o755)
+    plan = plan_plugin_sync(
+        repo, _registry(["sample-kit"], ["sample-kit"]), previous=None, bootstrap=False
+    )
+    apply_sync_plan(plan)
+    assert (repo / ".claude" / "scripts" / "sk-run.sh").stat().st_mode & 0o111
