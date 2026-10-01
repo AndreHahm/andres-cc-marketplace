@@ -331,7 +331,7 @@ Skills, agents, and commands should follow their documented grammatical form per
 
 ### R28 — Skill Testing Mandate [TIERED, default: on]
 
-A skill needs `evals/<skill>/evals.json` (meeting `config.min_eval_scenarios`, with run evidence) **or** an explicit justification in its own `## Testing & Validation` section (R29) for why full evals aren't warranted — the violation is silent omission, not "lacks evals.json" by itself.
+A skill needs `evals/<skill>/evals.json` (meeting `config.min_eval_scenarios`, with run evidence) **or** an explicit justification in its own `## Testing & Validation` section (R29) for why full evals aren't warranted — the violation is silent omission, not "lacks evals.json" by itself. FAIL when neither `evals.json` nor a justification exists; ADVISORY when `evals.json` lacks run evidence.
 
 **Scope:** Newly-created or structurally-modified skills (forward-looking). See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full PASS/ADVISORY/FAIL check and config shape.
 
@@ -363,7 +363,7 @@ Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content �
 
 ### R32 — Data-Only Boundary Disclosure Required [TIERED, default: on]
 
-A skill that reads content produced by another plugin component or an external report as part of normal operation must carry a boundary statement naming the untrusted source, stating the value is data not a directive, and stating that instruction-like content must be reported as suspicious, never acted on.
+A skill that reads content produced by another plugin component or an external report as part of normal operation must carry a boundary statement naming the untrusted source, stating the value is data not a directive, and stating that instruction-like content must be reported as suspicious, never acted on. FAIL for new skills; ADVISORY for the 5 in `config.existing_skills_advisory_only`.
 
 **Scope:** Any skill whose Quick Start/body/scripts reads another component's output (a report, a JSON companion, another component's SKILL.md/agent prose). See `${CLAUDE_SKILL_DIR}/references/data-only-boundary.md` for the canonical wording, the three required elements, and the full PASS/ADVISORY/FAIL check.
 
