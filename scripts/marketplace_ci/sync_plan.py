@@ -55,6 +55,13 @@ def _is_bytecode_cache(path: Path) -> bool:
     return "__pycache__" in path.parts or path.suffix == ".pyc"
 
 
+def _is_hooks_manifest(component_dir_name: str, component_dir: Path, path: Path) -> bool:
+    # Excluded from the file walk; handled by plan_hooks_merge.
+    return (
+        component_dir_name == "hooks" and path.name == "hooks.json" and path.parent == component_dir
+    )
+
+
 def _iter_component_files(plugin_root: Path, dir_names: tuple[str, ...] = COMPONENT_DIRS):
     for component_dir_name in dir_names:
         component_dir = plugin_root / component_dir_name
@@ -63,12 +70,8 @@ def _iter_component_files(plugin_root: Path, dir_names: tuple[str, ...] = COMPON
         for path in sorted(component_dir.rglob("*")):
             if not path.is_file() or _is_bytecode_cache(path.relative_to(plugin_root)):
                 continue
-            if (
-                component_dir_name == "hooks"
-                and path.name == "hooks.json"
-                and path.parent == component_dir
-            ):
-                continue  # excluded; handled by plan_hooks_merge
+            if _is_hooks_manifest(component_dir_name, component_dir, path):
+                continue
             yield path
 
 

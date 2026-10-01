@@ -41,6 +41,11 @@ def _validate_unique(names: tuple[str, ...], *, kind: str) -> None:
         seen.add(name)
 
 
+def _dropped(previous: tuple[str, ...], current: tuple[str, ...]) -> tuple[str, ...]:
+    """Names `previous` had that `current` no longer has, in `previous`'s order."""
+    return tuple(name for name in previous if name not in current)
+
+
 @dataclass(frozen=True)
 class RemovalSet:
     plugin_mirrors: tuple[str, ...]
@@ -209,12 +214,8 @@ class Registry:
     def removed_since(self, previous: Registry) -> RemovalSet:
         """What `previous` had that `self` no longer has."""
         return RemovalSet(
-            plugin_mirrors=tuple(
-                p for p in previous.plugin_mirrors if p not in self.plugin_mirrors
-            ),
-            skills=tuple(s for s in previous.skills if s not in self.skills),
-            agents=tuple(a for a in previous.agents if a not in self.agents),
-            scripts_mirrors=tuple(
-                s for s in previous.scripts_mirrors if s not in self.scripts_mirrors
-            ),
+            plugin_mirrors=_dropped(previous.plugin_mirrors, self.plugin_mirrors),
+            skills=_dropped(previous.skills, self.skills),
+            agents=_dropped(previous.agents, self.agents),
+            scripts_mirrors=_dropped(previous.scripts_mirrors, self.scripts_mirrors),
         )

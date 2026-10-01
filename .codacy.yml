@@ -68,7 +68,7 @@
 # secret-detection for it, accepted since it contains no secrets and the
 # canonical files it reads are never themselves excluded.
 #
-# .claude/skills|agents|commands|hooks|rules/** are this repo's own generated mirror
+# .claude/skills|agents|commands|hooks|rules|scripts|references|assets/** are this repo's own generated mirror
 # tree -- byte-identical copies of the canonical plugins/*/... source, kept in sync by
 # scripts/marketplace_ci (see .claude/marketplace-sync.json's plugin_mirrors and R19's
 # "in-development plugin mirror" exception in plugin-rulebook). The canonical
@@ -81,6 +81,13 @@
 # (fixing them means editing the canonical plugins/*/... file, which then re-syncs here
 # automatically). Same disclosed tradeoff as above: this also silences secret-detection
 # for the mirror tree, accepted since the canonical source is never itself excluded.
+#
+# .claude/scripts|references|assets/** (issue #446, PR #455) extend that same exclusion to the
+# plugin-root shared folders now mirrored flat into those directories (scripts/ only for the
+# plugins listed in scripts_mirrors). Verified live with the Codacy Cloud CLI before excluding:
+# all 18 security findings that PR reported were in six byte-identical mirror copies, and each
+# of those six canonical plugins/*/scripts/ files already carries findings of the same kind on
+# main -- so this hides no new finding, it only stops the duplicate flag at the mirror path.
 #
 # plugins/context-kit/skills/*/scripts/smoke_test.py is this plugin's own persisted
 # smoke-test convention (see .claude/rules -- the same shape as plugins/*/tests/**
@@ -127,4 +134,7 @@ exclude_paths:
   - ".claude/commands/**"
   - ".claude/hooks/**"
   - ".claude/rules/**"
+  - ".claude/scripts/**"
+  - ".claude/references/**"
+  - ".claude/assets/**"
   - "plugins/context-kit/skills/*/scripts/smoke_test.py"
