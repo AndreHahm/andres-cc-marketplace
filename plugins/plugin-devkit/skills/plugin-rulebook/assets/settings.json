@@ -300,6 +300,26 @@
           {"name": "Reference Guide", "heading_pattern": "^## Reference (Guide|Files|Index)", "only_if": "references/ directory exists"}
         ]
       }
+    },
+    "R36_reciprocal_exclusions": {
+      "enabled": true,
+      "severity": "ADVISORY",
+      "description": "When skill/agent A's When NOT to Use (or a 'use B instead' sentence in its description) names B and the two domains genuinely overlap, B should name A back with its own half of the criterion; pure delegation to a differently-scoped helper is not a finding -- forward-looking, judgment-based, never blocking; see references/reciprocal-exclusions.md",
+      "config": {
+        "canonical_reference": "references/reciprocal-exclusions.md",
+        "convention_source": ".claude/rules/resolve-activation-overlap-bidirectionally.md"
+      }
+    },
+    "R37_executable_bit": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "A script run directly by path (an allowed-tools grant naming the script path, or a hook command that is a bare path) must be committed with git mode 100755 per git ls-files -s; a hook's shell: bash does not exempt it -- forward-looking; see references/executable-bit.md",
+      "config": {
+        "canonical_reference": "references/executable-bit.md",
+        "required_mode": "100755",
+        "mode_source": "git ls-files -s",
+        "shell_selection_exempts": false
+      }
     }
   },
   "languages": {

@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Report flags guard.sh as a REQUIRED R37 finding (bare-path hook command, committed mode 100644)", "passed": true, "evidence": "Finding: yes. The hook command is a bare path ... committed mode is 100644. Severity: REQUIRED, so FAIL."},
+    {"text": "Report says 'shell: bash' does NOT exempt it, because a shell running a non-executable path directly still fails with Permission denied", "passed": true, "evidence": "\"shell\": \"bash\" does not exempt it. bash -c on a mode-644 file fails with Permission denied (exit 126)."},
+    {"text": "Report says the committed mode from `git ls-files -s` is what counts, not the on-disk ls -l executable bit", "passed": true, "evidence": "the committed mode from git ls-files -s (100644). The author's ls -l showing it executable does not count."},
+    {"text": "Report says tool.py is NOT a finding because the python interpreter grant is not a direct invocation", "passed": true, "evidence": "Finding: no. allowed-tools: Bash(python:*) names an interpreter, which is not a direct invocation."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

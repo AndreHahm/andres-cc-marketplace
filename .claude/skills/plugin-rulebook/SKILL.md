@@ -403,6 +403,22 @@ Every relative markdown link and `${CLAUDE_SKILL_DIR}/...` path in a skill's `SK
 
 ---
 
+### R36 — Reciprocal Exclusions [ADVISORY, default: on]
+
+When skill or agent A's `## When NOT to Use` (or a "use B instead" sentence in its `description`) names component B, and the two domains genuinely overlap, B should name A back with its own half of the distinguishing criterion. A one-way pointer that is pure delegation to a differently-scoped helper is not a finding.
+
+**Scope:** Newly-created or structurally-modified skills and agents (forward-looking). Judgment-based, never blocking. See `${CLAUDE_SKILL_DIR}/references/reciprocal-exclusions.md` for the overlap test and why a literal "every pointer needs a name-back" check would be mostly noise.
+
+---
+
+### R37 — Executable Bit: Directly-Invoked Scripts [REQUIRED, default: on]
+
+A script run directly by path — one a skill or command `allowed-tools` grant names (`Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`), or a hook `command` that is a bare path — must be committed with git mode `100755`, read from `git ls-files -s`, not from the disk. A hook's `"shell": "bash"` does not exempt it: a shell running a non-executable path directly fails with `Permission denied`.
+
+**Scope:** Newly-created or structurally-modified skills, commands and hooks (forward-looking). See `${CLAUDE_SKILL_DIR}/references/executable-bit.md` for the two invocation forms, the live-verified `shell` finding, and the fix.
+
+---
+
 ## Repo-Specific Configuration
 
 Two files hold data that's specific to the repository this plugin is installed in, rather than portable plugin defaults: `{REPO_ROOT}/.claude/plugin-rulebook.config.json` (R23's `whitelist`/`blacklist`/`excluded_paths`) and `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` (this repo's Upstream Audit decision log). See `references/repo-specific-configuration.md` for the load procedure and why these aren't `.claude/plugin-rulebook.local.md`-style personal files.
@@ -454,7 +470,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
 **Last dated run record:** 2026-10-01, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
-evals 8-9 (R34/R35) 4/4 assertions each (iteration 6); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
+evals 8-11 (R34-R37) 4/4 assertions each (iterations 6-7); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
 evals 1-2 passed 4/4 and 2/2 on 2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
 `${CLAUDE_SKILL_DIR}/references/testing-run-history.md`; scenario definitions are in `evals/plugin-rulebook/evals.json`.
 
