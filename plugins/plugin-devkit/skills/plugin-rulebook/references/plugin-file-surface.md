@@ -21,7 +21,7 @@ found file is included in a review — a gitignored draft or backup directory (`
 For **each** scope, Glob broadly rather than narrowly — the goal is every text file a human or Claude would read as documentation or instruction, not just `SKILL.md`/agent/command files:
 
 - All `SKILL.md`, `agents/*.md`, `commands/*.md`, rule `*.md` files
-- All `references/*.md`, `workflows/*.md`, `examples/*.md`, `templates/*` files
+- All `references/*.md`, `workflows/*.md`, `tasks/*.md`, `examples/*.md`, `templates/*` files
 - All scripts under `scripts/` and `hooks/` (any extension — `.sh`, `.py`, `.js`, `.ts`, etc.) and any script referenced from a `SKILL.md`/agent/command body even if it lives elsewhere in the plugin
 - Config/text assets: `hooks/hooks.json`, `.claude-plugin/plugin.json`, any `marketplace.json`, any `assets/*` text file (`.json`, `.txt`, `.md`) — JSON has no comments, but string values (descriptions, messages) still count
 - `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` wherever they're found in either scope

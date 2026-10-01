@@ -21,7 +21,7 @@ Run the `plugin-rulebook` skill **before finalizing** any operation that creates
 
 When the active `plugin-rulebook` (as configured in `.claude/skills/plugin-rulebook/assets/settings.json`) conflicts with any other project rule, CLAUDE.md instruction, or inline user preference, **the rulebook wins for plugin component decisions**. The priority stack is:
 
-1. Active rulebook rules (R1–R33, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions. R28-R32 (added 2026-08-27) are the testing-mandate and data-only-boundary-disclosure rules; R33 (added 2026-09-23) is the component-file-prefix rule — see `plugin-rulebook/SKILL.md`'s own Active Rules section for their detail.
+1. Active rulebook rules (R1–R37, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions. R28-R32 (added 2026-08-27) are the testing-mandate and data-only-boundary-disclosure rules; R33 (added 2026-09-23) is the component-file-prefix rule; R34-R37 (added 2026-10-01) are the reference-integrity, standard-sections, reciprocal-exclusions and executable-bit rules — see `plugin-rulebook/SKILL.md`'s own Active Rules section for their detail.
 2. CLAUDE.md project instructions
 3. Inline user preferences for the current session
 

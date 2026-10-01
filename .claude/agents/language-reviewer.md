@@ -48,7 +48,7 @@ Apply `language-rules.md`'s "Checking Language Compliance" procedure to every fi
 **R1 check** (per file):
 1. Frontmatter fields (`name`, `description`, `allowed-tools`, etc.) — flag non-English content
 2. Section headings — flag non-English headings
-3. Procedural instructions / body prose — flag non-English paragraphs or steps; applies the same way to `references/*.md`, `workflows/*.md`, and non-binary text assets (`assets/*.txt`, `assets/*.md`) — a text asset with no headings/frontmatter is still checked for prose language
+3. Procedural instructions / body prose — flag non-English paragraphs or steps; applies the same way to `references/*.md`, `workflows/*.md`, `tasks/*.md`, and non-binary text assets (`assets/*.txt`, `assets/*.md`) — a text asset with no headings/frontmatter is still checked for prose language
 4. Code comments in scripts (`scripts/*`, `hooks/*`, any extension — `.sh`, `.py`, `.js`, `.mjs`, etc.) — flag non-English comments, **except** a comment or string literal that is explicitly demonstrating a user-facing, locale-specific output string (the sanctioned exception) — the surrounding instructional text around it must still be English
 5. String values in config/text-JSON files (`hooks/hooks.json`, `.claude-plugin/plugin.json`, any `marketplace.json`, `assets/*.json`) — JSON has no comments, but `description`/`message`/label string values are prose and are checked exactly like code comments; flag non-English string values
 

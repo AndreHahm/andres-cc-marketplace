@@ -3,10 +3,10 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming conventions and R1-R33 formatting compliance, auditing a full plugin's
+  component, checking naming conventions and R1-R37 formatting compliance, auditing a full plugin's
   rule/naming/formatting compliance specifically (for the full multi-axis reviewer fan-out instead,
   see plugin-auditor), or loading active rule configuration, or before finalizing or packaging any
-  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R33) across the
+  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R37) across the
   entire plugin — not structural validation (manifest correctness, directory layout, component
   wiring), which is `plugin-validator`'s domain instead, and not scaffolding a plugin's own
   directory structure or package layout in the first place, which is `plugin-development`'s
@@ -35,21 +35,21 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 
 ## When NOT to Use
 
-- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R33) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
-- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R33) once it exists — it does not decide directory layout or scaffold new structure.
+- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R37) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
+- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R37) once it exists — it does not decide directory layout or scaffold new structure.
 - Project-specific behavioral rules → use `rule-development` instead
-- Validating a single existing rule file's quality (both its R1-R33 structural compliance and its
+- Validating a single existing rule file's quality (both its R1-R37 structural compliance and its
   behavioral-content quality — Incorrect/Correct examples, wording, scope) → use the
   `rule-reviewer` agent instead; it already incorporates this skill's generic rules for exactly
   this case, so a bare "validate this rule" request needs only that one dispatch
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
-- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R33 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
+- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R37 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
 - Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
 - A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
 - A general "audit this plugin" request wanting the full multi-axis reviewer fan-out (dependency,
   consistency, security, structure, content, completeness, activation, scripts, hooks) rather than
-  just R1-R33 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
+  just R1-R37 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
   single rule-compliance axis `plugin-auditor` itself dispatches (via the `plugin-rulebook-checker`
   agent) as one of nine reviewers.
 - An isolated, Agent-dispatchable batch sweep or background-task compliance check — a full-plugin
@@ -467,7 +467,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 
 **Quality gates:**
 - [ ] `${CLAUDE_SKILL_DIR}/assets/settings.json` loads without JSON errors
-- [ ] All enabled rules (R1–R10, R13, R14, R17–R33) appear in the compliance report
+- [ ] All enabled rules (R1–R10, R13, R14, R17–R37) appear in the compliance report
 - [ ] R14 and R17 findings are correctly classified (REQUIRED vs SUGGESTED)
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
