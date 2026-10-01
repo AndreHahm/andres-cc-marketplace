@@ -184,15 +184,16 @@ def _norm_source(source: Any) -> _NormSource:
     """Comparable form of a `source` path, or None if it isn't a usable one.
     `./a`, `a` and `./a/` all name the same directory, so claims are compared
     in this form -- otherwise a spelling change would either read as a move or,
-    worse, hide a claim. Case is kept: the enforcing CI runs on a case-sensitive
-    filesystem, where `./a` and `./A` are different directories."""
+    worse, hide a claim. Case and backslashes are kept as written: the enforcing
+    CI runs on a POSIX, case-sensitive filesystem, where `./a`, `./A` and `.\\a`
+    (a literal backslash in the name) are three different directories."""
     if not isinstance(source, str) or not source.strip():
         return None
     # `..` is resolved (`./x/../a` is `./a`), or the same directory would
     # compare as two and a claim could hide behind a respelling. A path that
     # escapes the root or is absolute gets a sentinel that matches only itself
     # -- never None, which would read as "no source".
-    normalized = posixpath.normpath(source.strip().replace("\\", "/"))
+    normalized = posixpath.normpath(source.strip())
     # The repo root (`.`) is a real source, not "no source": a root-sourced
     # plugin is common, and returning None here would switch off every rule
     # that keys on a record having a source.

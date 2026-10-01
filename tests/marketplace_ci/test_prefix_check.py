@@ -774,11 +774,30 @@ def test_permanence_first_source_under_a_different_name_is_violation():
     assert find_prefix_permanence_violations(base, head)
 
 
-@pytest.mark.parametrize("spelling", ["a", "./a/", ".\\a", "././a"])
+@pytest.mark.parametrize("spelling", ["a", "./a/", "././a"])
 def test_permanence_source_spelling_change_is_not_a_move(spelling):
     base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
     head = {"plugins": [_src_rec("X", "a", spelling, "abc")]}
     assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_permanence_backslash_source_is_a_distinct_directory(tmp_path):
+    # PR review (Codex P1): on the POSIX CI runner `.\a` is a directory with a
+    # literal backslash in its name, not `./a`. Translating it to `./a` let X
+    # move onto live B's `.\a` while B moved away, with no violation reported.
+    backslash_a = ".\\a"
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "a", "source": backslash_a}, {"name": "b", "source": "./b"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc"), _src_rec("B", "b", backslash_a, None)]}
+    head = {"plugins": [_src_rec("X", "a", backslash_a, "abc"), _src_rec("B", "b", "./b", None)]}
+    # The manifest confirms the move, so what must fire is the acquisition rule
+    # (X took live B's directory); without the manifest the move itself is
+    # also reported.
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("belonged to live plugin" in v.reason for v in violations)
+    unconfirmed = find_prefix_permanence_violations(base, head)
+    assert any("source changed" in v.reason for v in unconfirmed)
 
 
 def test_permanence_case_only_source_change_is_a_move():
