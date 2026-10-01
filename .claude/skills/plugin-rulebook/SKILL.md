@@ -105,10 +105,7 @@ Reference files may have additional language-specific variants alongside the Eng
 **Naming:** `references/<topic>.<lang-code>.md`
 **Valid lang codes:** Per `settings.json → languages.additional` (default: `de`, `zh`, `fr`, `es`, `ja`, `pt`)
 
-**Examples:**
-- `references/patterns.md` — English (primary, required)
-- `references/patterns.de.md` — German (optional)
-- `references/patterns.zh.md` — Chinese (optional)
+**Example:** `references/patterns.md` (English, required) plus an optional `references/patterns.de.md`.
 
 **Rule:** Variants must cover the same content as the English primary. English is authoritative.
 
@@ -245,33 +242,17 @@ extraction targets.
 
 ### R19 — Canonical Path Resolution [REQUIRED, default: on]
 
-Before checking a component, resolve its actual absolute file path and verify no duplicate or shadow copy of the same named component exists in another scope.
+Before checking a component, resolve its actual absolute file path and verify no duplicate or shadow copy of the same named component exists in another scope. Report the resolved absolute path in the compliance report header; FAIL when same-named copies differ in content.
 
-**Scope:** Any component invoked by name (skill, agent, command, hook, rule) — check project `.claude/skills/`, plugin `plugins/*/skills/` (and equivalent `agents/`, `commands/`, `hooks/`, `.claude/rules/` locations), and user `~/.claude/skills/` for a same-named duplicate.
-
-**Violations:**
-- The invoked component name resolves to two or more directories, and their contents differ
-- The compliance report does not state the absolute path that was actually checked
-
-**Fix:** Report the resolved absolute path in the compliance report header. If duplicates exist with differing content, FAIL and require the invoker to disambiguate by full path or resync the copies before proceeding.
-
-**Exception — in-development plugin mirrors:** A plugin still under active development may need its components staged into the project's `.claude/` directory so they actually run before the plugin is packaged and installed — removing the `.claude/` copy at this stage would break the very components being developed. Treat this as an intentional, expected duplicate, not a violation: verify the copies are identical (see R20) and note it as PASS/informational, not ADVISORY-to-deduplicate. Do not suggest removing the `.claude/` copy until the plugin has actually been installed (confirmed via `/plugin` or the marketplace) — finishing edits is not the same as installation.
-
-**Exception — distributed-vs-local canonical divergence:** A component whose own content must resolve differently depending on install context (e.g. a path variable inside a skill's frontmatter `hooks:` block that needs to reference the *distributed* plugin install location in the canonical `plugins/*/` copy, but the *local repo* location in the `.claude/` mirror copy, since the mirror is never itself distributed) may need its two copies to genuinely differ in content, not just directory location. This is **not** the same as the in-development-mirror exception above — that one requires identical content; this one requires the opposite. Treat it as PASS/informational, not a violation, **only when** `.claude/marketplace-sync.json`'s `divergence_exceptions` list contains an entry whose `source` and `dest` fields exactly match the two file paths under review (not merely *some* entry with a non-empty `reason` — the source/dest fields are what tell a real R19 violation apart from a legitimately-declared one, since both look identical from the diff alone). Report the divergence and cite the matching entry's `reason` in the compliance report rather than silently passing it.
+Two documented exceptions (the in-development `.claude/` plugin mirror, which must be identical, and a declared distributed-vs-local divergence, which must match a `divergence_exceptions` entry) are PASS/informational, not violations. Scope, violations, fix and both exceptions in full: `${CLAUDE_SKILL_DIR}/references/canonical-path-resolution.md`.
 
 ---
 
 ### R20 — Duplicate Fact Sweep [REQUIRED, default: on]
 
-When a canonical value changes (enum lists, size thresholds, forbidden-field lists, model or tool names), search the plugin tree for other occurrences of the old value in sibling files and flag any not updated.
+When a canonical value changes (enum lists, size thresholds, forbidden-field lists, model or tool names), grep the plugin tree for the previous value before closing out the change; update every occurrence in sibling files, or record the divergence as intentional.
 
-**Scope:** SKILL.md prose, prompt/template files, validator scripts, and other skills that duplicate a fact owned by `settings.json` or another canonical source.
-
-**Violations:**
-- A `settings.json` value changes (e.g., `agent.color.valid_values`, `agent.permissionMode.valid_values`, R13/R18 thresholds, R5 forbidden-field list) but a sibling file still references the old value
-- A quick-reference copy of a fact (e.g., a table in another skill's SKILL.md) goes stale after its source of truth is edited
-
-**Fix:** Grep the plugin directory for the previous value before closing out the change; update every occurrence, or record the divergence as intentional.
+**Scope:** SKILL.md prose, prompt/template files, validator scripts, and other skills duplicating a fact owned by `settings.json` or another canonical source (e.g. a `settings.json` threshold or enum edited while a sibling file still states the old value).
 
 ---
 
@@ -295,9 +276,7 @@ Enforce that `argument-hint`/`arguments` frontmatter accurately reflects the arg
 
 **Scope:** SKILL.md and command files (`commands/*.md`) — commands and skills share the same frontmatter fields and substitution mechanism.
 
-**Reminder — positional placeholders are 0-based:** `\$0` is the first argument, `\$1` the second, matching `\$ARGUMENTS[0]`/`\$ARGUMENTS[1]`. A file that uses `\$1` to mean "the first argument" is itself off by one — check for this specifically, it's the most common instance of the wrong-position case below.
-
-**Detecting "accepts arguments":** the body contains `\$ARGUMENTS`, `\$ARGUMENTS[N]`, a bare `\$0`/`\$1`/`\$2`/... placeholder not escaped with a backslash, or `$name` for a name declared in `arguments`.
+Positional placeholders are 0-based (`\$0` is the first argument); detection of what counts as "accepts arguments" is in the reference file below.
 
 **Severity:**
 
@@ -320,12 +299,7 @@ Every reference to an external company, GitHub organization, marketplace, plugin
 
 **Classification** (configurable in `assets/settings.json → rules.R23_external_reference_policy.config`, merged with the repo-specific override file — `config.whitelist`/`config.blacklist`/`config.excluded_paths` are inherently repo-specific and ship empty by default, see "Repo-Specific Configuration" below):
 
-| Classification | Meaning | Severity |
-|---|---|---|
-| **Blacklisted** | Matches `config.blacklist` — checked *before* whitelist/auto-allow below, so it always wins | ❌ Critical — must be removed or replaced before proceeding |
-| **Whitelisted** | Matches `config.whitelist`, or a plugin explicitly listed in a `marketplace.json` found in the repo (excluding any `marketplace.json` inside the plugin root that owns the component under review — see the reference file) | OK — no finding |
-| **Unknown** | Matches neither list | ⚠️ Advisory — flag for the maintainer to explicitly whitelist or blacklist, not a blocking defect by itself |
-| **Broken** | A referenced URL, repo, plugin, or skill name that doesn't resolve to anything that exists | ❌ Critical — distinct from classification; a stale or invalid reference is a correctness defect regardless of whitelist/blacklist status |
+Outcomes: **Blacklisted** (checked first, always wins) and **Broken** (a reference that resolves to nothing) are ❌ Critical; **Whitelisted** is OK; **Unknown** is ⚠️ Advisory. The matching steps behind each are in the reference file below.
 
 Marketplace auto-allow, excluded-path handling, the illustrative-example exception, whitelist/blacklist entry-format examples, and the full matching procedure: `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md`. Every repo-override and marketplace-auto-allow entry actually applied must be disclosed in the compliance report — see that reference file's "Disclosure, not silent application" note and the Compliance Check Procedure below.
 
@@ -463,18 +437,10 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
-**Last dated run record:** 2026-08-15, `evals/plugin-rulebook/` — eval-1: 4/4 assertions passed;
-eval-2: 2/2 assertions passed (both `with_skill`, via `skill-tester`'s blind-comparison harness).
-Iteration-3 (2026-09-24, `skill-tester` Quick Workflow, `with_skill`-only): eval-3 (R27 applies
-verb-first to the filename portion after an R33-registered prefix) 3/3 assertions passed; eval-4 (R27
-still checks the full basename when no prefix is registered) 3/3 assertions passed.
-Iteration-4 (2026-09-30, same harness, `with_skill`-only, PR 11's R33 wording change): evals 3-4 re-run as regressions
-(3/3, 3/3), plus new eval-5 (explicit `prefix: null` is an inert opt-out) 3/3, eval-6 (registered `pdk` still flags a
-mis-prefixed file; `__init__.py` exempt) 3/3, eval-7 (an absent `prefix` key is a finding, not silently inert) 3/3.
-Iteration-5 (2026-09-30, after a cross-model-review fix round reworded R33's null/absent-key text and eval 4's premise):
-evals 4, 5, 7 re-run against the reworded files, 3/3 each.
-See `evals/plugin-rulebook/evals.json` for the scenario definitions. R33's own `test-against-example-
-plugin.md` dry-run record: `.claude/output/plugin-rulebook/example-plugin-20260923T204026Z.md`.
+**Last dated run record:** 2026-09-30, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
+evals 3-7 (R27/R33 prefix handling) 3/3 assertions each (iterations 3-5); evals 1-2 passed 4/4 and 2/2 on
+2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
+`${CLAUDE_SKILL_DIR}/references/testing-run-history.md`; scenario definitions are in `evals/plugin-rulebook/evals.json`.
 
 ## Upstream Source Verification
 

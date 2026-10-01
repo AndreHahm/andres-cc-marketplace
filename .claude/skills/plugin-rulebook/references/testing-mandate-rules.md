@@ -36,7 +36,7 @@ from "evals exist, never run."
 three evaluations created." Tracked as `skill-authoring-evaluations-guidance` in
 `upstream-sources-registry/assets/sources.json` (`custom: true`, `authority: guide`,
 `volatility: evolving`). This is `guide`-tier, not `spec`-tier — the source page itself states there is
-no built-in way to run these evaluations, so per `references/classification-criteria.md` a `guide`-tier
+no built-in way to run these evaluations, so per `upstream-sources-registry/references/classification-criteria.md` a `guide`-tier
 source backs an `ADVISORY`-severity threshold, not a blocking `REQUIRED` one. It is Anthropic's general
 Agent Skills guide, not Claude-Code-specific, though it applies equally to plugin-devkit skills. The
 source page's own example eval JSON shape (`skills`/`query`/`files`/`expected_behavior`) is illustrative

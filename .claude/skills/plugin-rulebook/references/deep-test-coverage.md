@@ -12,7 +12,7 @@ the scope.
 
 | Type | Test path | Mechanism |
 |---|---|---|
-| Skill | Yes | `skill-tester` — Quick Workflow (fast pass/fail) or Full Pipeline (baseline-comparison benchmark); see its own `references/eval-schema.md` |
+| Skill | Yes | `skill-tester` — Quick Workflow (fast pass/fail) or Full Pipeline (baseline-comparison benchmark); see `skill-tester/references/eval-schema.md` |
 | Agent | Yes | `agent-development/scripts/test-agent-trigger.sh` — full trigger-phrase battery, `--json`/`--yaml` for structured output |
 | Hook | Yes | `hook-development/scripts/test-hook.sh` against every event type the hook's `matcher` configures — see `hook-development/SKILL.md`'s "Deep Test coverage for a hook" |
 | Command | **No** | No exhaustive test path exists yet |

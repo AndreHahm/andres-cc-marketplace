@@ -33,6 +33,8 @@ its own R13 threshold as new rules (R28-R33) were added.
 | `${CLAUDE_SKILL_DIR}/references/data-only-boundary.md` | R32 canonical wording, the three required elements, and the full check |
 | `${CLAUDE_SKILL_DIR}/references/component-naming-grammatical-form.md` | R27 full detail — expected grammatical form per component type, violation examples, and the fix |
 | `${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` | R33 full detail — in-scope directories, exclusions, the `antigravity-kit`-only `bin`/`docs` exception, and the mechanical counterpart (`scripts/marketplace_ci/prefix_check.py`) |
+| `${CLAUDE_SKILL_DIR}/references/canonical-path-resolution.md` | R19 full detail — scope, violations, fix, and the two exceptions (in-development mirror, declared divergence) |
+| `${CLAUDE_SKILL_DIR}/references/testing-run-history.md` | Full dated eval run records for this skill; SKILL.md's Testing & Validation keeps only the latest summary |
 | `${CLAUDE_SKILL_DIR}/scripts/mirror-parity-check.sh` | CI-owned, not invoked from within this skill's own Compliance Check Procedure — confirmed consumer is `.github/marketplace-validators.json`'s `plugin-devkit.mirror-parity-check` entry, not an agent-driven check, so it carries no `allowed-tools` Bash grant here |
 | `${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh` | Automates the R20 sibling sweep's repo-wide grep for a stale rule-count-ceiling mention — see `references/adding-a-new-rule.md`'s Touch List |
 | `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py` | Mechanical backing check for R6's "Tool completeness" sub-rule — flags a body command span with no matching `Bash(<prefix>:*)` grant; full-file heuristic, not a diff, see its own docstring for known false-positive classes |
