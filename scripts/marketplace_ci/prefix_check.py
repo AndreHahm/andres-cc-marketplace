@@ -182,9 +182,10 @@ _NormSource = str | tuple[str, str] | None
 
 def _norm_source(source: Any) -> _NormSource:
     """Comparable form of a `source` path, or None if it isn't a usable one.
-    `./a`, `a`, `./a/` and (for case-insensitive filesystems) `./A` all name
-    the same directory, so claims are compared in this form -- otherwise a
-    spelling change would either read as a move or, worse, hide a claim."""
+    `./a`, `a` and `./a/` all name the same directory, so claims are compared
+    in this form -- otherwise a spelling change would either read as a move or,
+    worse, hide a claim. Case is kept: the enforcing CI runs on a case-sensitive
+    filesystem, where `./a` and `./A` are different directories."""
     if not isinstance(source, str) or not source.strip():
         return None
     # `..` is resolved (`./x/../a` is `./a`), or the same directory would
@@ -198,7 +199,7 @@ def _norm_source(source: Any) -> _NormSource:
     if normalized.startswith("/") or normalized == ".." or normalized.startswith("../"):
         # A tuple, not a string: no string a `source` can spell equals it.
         return ("outside-repo", normalized)
-    return normalized.casefold()
+    return normalized
 
 
 def _is_live(record: dict[str, Any]) -> bool:

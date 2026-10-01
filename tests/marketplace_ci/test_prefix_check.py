@@ -732,8 +732,11 @@ def test_permanence_source_change_under_same_id_is_violation():
     assert "source changed" in violations[0].reason
 
 
-def _src_rec(id_, name, source, prefix, status="active"):
-    return {"id": id_, "name": name, "source": source, "prefix": prefix, "status": status}
+def _src_rec(id_, name, source, prefix, status="active", domain_prefix=None):
+    record = {"id": id_, "name": name, "source": source, "prefix": prefix, "status": status}
+    if domain_prefix is not None:
+        record["domain_prefix"] = domain_prefix
+    return record
 
 
 def test_permanence_manifest_confirmed_source_move_is_allowed(tmp_path):
@@ -771,11 +774,39 @@ def test_permanence_first_source_under_a_different_name_is_violation():
     assert find_prefix_permanence_violations(base, head)
 
 
-@pytest.mark.parametrize("spelling", ["a", "./a/", ".\\a", "./A"])
+@pytest.mark.parametrize("spelling", ["a", "./a/", ".\\a", "././a"])
 def test_permanence_source_spelling_change_is_not_a_move(spelling):
     base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
     head = {"plugins": [_src_rec("X", "a", spelling, "abc")]}
     assert find_prefix_permanence_violations(base, head) == []
+
+
+def test_permanence_case_only_source_change_is_a_move():
+    # Cross-model review F1: the enforcing CI runs on case-sensitive Linux,
+    # where `./A` and `./a` are different directories, so a case-only edit is
+    # a real source change and needs the same manifest confirmation as any
+    # other move.
+    base = {"plugins": [_src_rec("X", "a", "./a", "abc")]}
+    head = {"plugins": [_src_rec("X", "a", "./A", "abc")]}
+    violations = find_prefix_permanence_violations(base, head)
+    assert any("source changed" in v.reason for v in violations)
+
+
+def test_permanence_domain_prefix_only_record_is_bound_to_its_identity(tmp_path):
+    # Cross-model review C1: the identity rules key on whichever of `prefix` /
+    # `domain_prefix` is registered, not on `prefix` alone.
+    _write_marketplace_manifest(
+        tmp_path, [{"name": "b", "source": "./b"}, {"name": "a-new", "source": "./a-new"}]
+    )
+    base = {"plugins": [_src_rec("X", "a", "./a", None, domain_prefix="dom")]}
+    head = {
+        "plugins": [
+            _src_rec("X", "b", "./b", None, domain_prefix="dom"),
+            _src_rec("Y", "a-new", "./a-new", None),
+        ]
+    }
+    violations = find_prefix_permanence_violations(base, head, repo=tmp_path)
+    assert any("at once" in v.reason and "domain_prefix" in v.reason for v in violations)
 
 
 def test_permanence_name_moved_to_new_id_while_old_id_keeps_source_is_violation(tmp_path):
