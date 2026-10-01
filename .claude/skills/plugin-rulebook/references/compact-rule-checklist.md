@@ -1,7 +1,7 @@
 # Compact Rule Checklist
 
-Mechanical pattern → violation → severity reference for all 29 currently-enabled rules (R1-R10, R13, R14,
-R17-R33; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
+Mechanical pattern → violation → severity reference for all 31 currently-enabled rules (R1-R10, R13, R14,
+R17-R35; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
 "why enable" content — read `SKILL.md` instead for that. Kept in sync with `assets/settings.json` and
 `SKILL.md`'s own Active Rules section; any threshold shown here must match those two files exactly (R20).
 
@@ -40,6 +40,8 @@ model quality regardless of dispatch mode).
 | R31 Eval Fixture Integrity | REQUIRED | M | Any existing `evals.json`/`smoke_test.*` | `check_evals.py` zero-match guard, anchored-matching, or coverage-arithmetic check fails (dispatched from `plugin-auditor`) | Fix the vacuous assertion, unanchored needle, or arithmetic mismatch |
 | R32 Data-Only Boundary Disclosure Required | TIERED | J | SKILL.md body (skills reading another component's output) | No boundary statement, or missing "report as suspicious" element → REQUIRED (forward-looking). One of the 5 pre-existing hand-written skills missing that element or diverging in wording → ADVISORY | Add/complete the boundary statement per `references/data-only-boundary.md` |
 | R33 Component-File Naming: Plugin Prefix Required | REQUIRED | M | Registered plugin (status `active`/`deprecated`, or any status if still listed in `marketplace.json`) `scripts/`, `references/`, `assets/`, `hooks/` (incl. nested), `commands/` (recursive basenames) | File basename doesn't start with `<prefix>-`; inert only while the plugin's `marketplace-inventory.json` record has an explicit `prefix: null` (and no `domain_prefix`) — a record with the `prefix` key absent entirely is itself non-compliant, never inert; a `superseded`/`retired` plugin is exempt only once it's also removed from `marketplace.json` | Rename to `<prefix>-<rest>` and update every reference, per `references/component-file-prefix.md` |
+| R34 Reference Integrity | REQUIRED (tiered) | J | Newly-created/structurally-modified skills: SKILL.md + references/*.md, fenced blocks excluded | Relative markdown link or `${CLAUDE_SKILL_DIR}/...` path that doesn't resolve → Critical. Path leaving the skill folder that lands outside plugin-root `references/`/`assets/` (or `scripts/` for plugins in `.claude/marketplace-sync.json` `scripts_mirrors`), incl. `docs/`, repo-root files, a sibling skill's folder → Critical. `..` that normalizes back inside the skill → Critical. Bare backticked `references/<file>.md` absent from the skill's own `references/` → ADVISORY. Skip URLs, `#anchor`, placeholders (`<>*{}`), illustrative examples, bare `scripts/`/`assets/`; `..` alone is not a finding | Fix the path; move shared files to plugin-root `references/`/`assets/`/`scripts/`; qualify a wrong-skill bare pointer as `<skill>/references/<file>.md` |
+| R35 Standard Sections Required | REQUIRED | M | SKILL.md (newly-created/structurally-modified skills) | Missing `## Quick Start`, `## When to Use`, `## When NOT to Use`, or (only when the skill has a `references/` dir) `## Reference Guide` — matched by substance, not exact wording. `## Testing & Validation` is R29's, not checked here | Add the missing section |
 
 ## R19/R20 Procedure Reminder (always full-quality, never skipped in Fast path)
 

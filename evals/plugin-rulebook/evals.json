@@ -51,6 +51,20 @@
       "prompt": "A plugin named 'legacy-kit', status 'active', has a marketplace-inventory.json record with id, name, source and status fields but NO 'prefix' key at all (the key is absent, which is different from an explicit null). It has a file at scripts/legacy-tool.sh. According to the plugin-rulebook skill's R33 as documented, how should this record be treated? Report whether it is a finding, what kind, and what the fix is.",
       "expected_output": "Reports the record as non-compliant: R33 states every plugin's inventory record must carry a prefix key, and an explicit null (with no domain_prefix) is the only sanctioned opt-out. An absent key is NOT silently treated as inert or as an opt-out; the fix is to add the key (a curated prefix, or an explicit null if opting out).",
       "files": []
+    },
+    {
+      "id": 8,
+      "name": "R34 flags an escaping path and a dead link but not a legitimate plugin-root pointer",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/reference-integrity.md (read these files directly; do not rely on any other copy of the skill). A newly-created skill 'demo-skill' in plugin 'example-kit' (a plugin NOT listed in scripts_mirrors) has a SKILL.md with three relative references: (1) a markdown link to '../../references/shared-contract.md', which exists at the plugin root; (2) a markdown link to '../../docs/design-notes.md', which exists at the plugin root; (3) a markdown link to 'references/missing-guide.md', which does not exist anywhere. Using the plugin-rulebook skill's R34 as documented in those files, report each of the three: finding or not, the severity, and the fix.",
+      "expected_output": "(1) is NOT a finding: '..' alone is not a violation, and it lands in the plugin-root references/ folder, which the .claude/ mirror carries. (2) is a Critical finding: it leaves the skill folder and lands in docs/, which is not a mirrored plugin-root folder; fix by moving the shared file into plugin-root references/ or assets/. (3) is a Critical finding: a markdown link that resolves to nothing; fix by correcting the path or creating the file.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "R35 requires Reference Guide only when a references directory exists, and leaves Testing & Validation to R29",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/standard-sections.md (read these files directly; do not rely on any other copy of the skill). A newly-created skill has a SKILL.md with these ## headings only: Quick Start, When to Use This Skill, Testing & Validation. It has no references/ directory. Using the plugin-rulebook skill's R35 as documented in those files, report which required sections are missing, whether the missing Reference Guide or the 'When to Use This Skill' wording is a problem, and what happens with Testing & Validation.",
+      "expected_output": "Reports '## When NOT to Use' as the one missing required section. 'When to Use This Skill' satisfies '## When to Use' because headings are matched by substance, not exact wording. '## Reference Guide' is not required because the skill has no references/ directory. Testing & Validation is not checked by R35 at all; R29 owns it, so a missing or present heading is never reported twice.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

@@ -1,0 +1,27 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report says the '../../references/shared-contract.md' link is NOT a finding: '..' alone is not a violation and it lands in the mirrored plugin-root references/ folder",
+      "passed": true,
+      "evidence": "No / PASS. ../.. reaches the plugin root. The target is in plugin-root references/, which the .claude/ mirror carries for every plugin. `..` alone is not a finding."
+    },
+    {
+      "text": "Report flags the '../../docs/design-notes.md' link as Critical because it leaves the skill folder and lands in docs/, which is not a mirrored plugin-root folder",
+      "passed": true,
+      "evidence": "Yes / Critical (blocking). The file exists, but it escapes into plugin-root docs/, which the .claude/ mirror does not carry."
+    },
+    {
+      "text": "Report flags the 'references/missing-guide.md' link as Critical (dead link, resolves to nothing)",
+      "passed": true,
+      "evidence": "Yes / Critical (blocking). This is a markdown link that resolves to nothing, so it is a dead link."
+    },
+    {
+      "text": "Report gives a fix for the docs/ link: move the shared file into plugin-root references/ or assets/ (or equivalent mirrored folder)",
+      "passed": true,
+      "evidence": "Move the shared content into plugin-root references/ (or assets/) and relink to ../../references/design-notes.md."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
