@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Report says the '../../references/shared-contract.md' link is NOT a finding: '..' alone is not a violation and it lands in the mirrored plugin-root references/ folder", "type": "quality", "target": "R34 link 1"},
+    {"text": "Report flags the '../../docs/design-notes.md' link as Critical because it leaves the skill folder and lands in docs/, which is not a mirrored plugin-root folder", "type": "presence", "target": "R34 link 2"},
+    {"text": "Report flags the 'references/missing-guide.md' link as Critical (dead link, resolves to nothing)", "type": "presence", "target": "R34 link 3"},
+    {"text": "Report gives a fix for the docs/ link: move the shared file into plugin-root references/ or assets/ (or equivalent mirrored folder)", "type": "quality", "target": "R34 fix"}
+  ]
+}

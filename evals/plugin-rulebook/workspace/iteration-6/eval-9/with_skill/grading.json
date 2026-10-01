@@ -1,0 +1,31 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report names '## When NOT to Use' as the missing required section",
+      "passed": true,
+      "evidence": "`## When NOT to Use` is missing. R35 requires it on every skill (\"Always\"). This is the only R35 finding."
+    },
+    {
+      "text": "Report says 'When to Use This Skill' satisfies '## When to Use' because headings are matched by substance, not exact wording",
+      "passed": true,
+      "evidence": "Headings are matched by substance, not exact wording. `## When to Use This Skill` satisfies `## When to Use`."
+    },
+    {
+      "text": "Report says '## Reference Guide' is not required because the skill has no references/ directory",
+      "passed": true,
+      "evidence": "`## Reference Guide` is required only when the skill has a `references/` directory. This skill has none, so its absence is fine."
+    },
+    {
+      "text": "Report says Testing & Validation is not checked by R35 and is owned by R29, so it is never reported twice",
+      "passed": true,
+      "evidence": "R35 deliberately does not check it, to avoid reporting one missing heading twice. ... R29 is what enforces it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

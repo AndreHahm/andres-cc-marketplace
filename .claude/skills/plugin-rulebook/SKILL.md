@@ -387,6 +387,22 @@ Every file recursively under a registered plugin's root-level `scripts/`, `refer
 
 ---
 
+### R34 — Reference Integrity: No Dead Links or Fragile Cross-Skill Paths [REQUIRED, default: on]
+
+Every relative markdown link and `${CLAUDE_SKILL_DIR}/...` path in a skill's `SKILL.md` and `references/*.md` must resolve, and a path that leaves the skill folder may land only in a plugin-root folder the `.claude/` mirror also carries (`references/`, `assets/`, and `scripts/` for the plugins in `.claude/marketplace-sync.json`'s `scripts_mirrors`) — never `docs/`, a repo-root file, or a sibling skill's own folder. A dead link or an escaping path is Critical; a bare backticked `references/<file>.md` missing from the skill's own `references/` is ADVISORY (usually a pointer meant for another skill).
+
+**Scope:** Newly-created or structurally-modified skills (forward-looking). Anchors, URLs, placeholders and illustrative examples are skipped; `..` is not itself a finding. See `${CLAUDE_SKILL_DIR}/references/reference-integrity.md` for what is skipped, how paths resolve, and the full severity table.
+
+---
+
+### R35 — Standard Sections Required [REQUIRED, default: on]
+
+`SKILL.md` must contain `## Quick Start`, `## When to Use` and `## When NOT to Use`, plus `## Reference Guide` when the skill has a `references/` directory — matched by substance, not exact wording. `## Testing & Validation` is enforced by R29, not here.
+
+**Scope:** Newly-created or structurally-modified skills (forward-looking). See `${CLAUDE_SKILL_DIR}/references/standard-sections.md` for the matching rule and the reasoning.
+
+---
+
 ## Repo-Specific Configuration
 
 Two files hold data that's specific to the repository this plugin is installed in, rather than portable plugin defaults: `{REPO_ROOT}/.claude/plugin-rulebook.config.json` (R23's `whitelist`/`blacklist`/`excluded_paths`) and `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` (this repo's Upstream Audit decision log). See `references/repo-specific-configuration.md` for the load procedure and why these aren't `.claude/plugin-rulebook.local.md`-style personal files.
@@ -437,9 +453,9 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
-**Last dated run record:** 2026-09-30, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
-evals 3-7 (R27/R33 prefix handling) 3/3 assertions each (iterations 3-5); evals 1-2 passed 4/4 and 2/2 on
-2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
+**Last dated run record:** 2026-10-01, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
+evals 8-9 (R34/R35) 4/4 assertions each (iteration 6); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
+evals 1-2 passed 4/4 and 2/2 on 2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
 `${CLAUDE_SKILL_DIR}/references/testing-run-history.md`; scenario definitions are in `evals/plugin-rulebook/evals.json`.
 
 ## Upstream Source Verification

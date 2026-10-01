@@ -1,0 +1,10 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Report names '## When NOT to Use' as the missing required section", "type": "presence", "target": "R35 missing section"},
+    {"text": "Report says 'When to Use This Skill' satisfies '## When to Use' because headings are matched by substance, not exact wording", "type": "quality", "target": "R35 substance matching"},
+    {"text": "Report says '## Reference Guide' is not required because the skill has no references/ directory", "type": "quality", "target": "R35 conditional section"},
+    {"text": "Report says Testing & Validation is not checked by R35 and is owned by R29, so it is never reported twice", "type": "quality", "target": "R35 vs R29"}
+  ]
+}

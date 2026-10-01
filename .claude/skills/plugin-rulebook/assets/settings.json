@@ -274,6 +274,32 @@
         "checked_statuses_note": "A plugin outside checked_statuses is exempt only if it is also absent from .claude-plugin/marketplace.json -- a superseded/retired plugin still listed there is checked regardless of status; see component-file-prefix.md's Gating section",
         "mechanical_counterpart": "scripts/marketplace_ci/prefix_check.py"
       }
+    },
+    "R34_reference_integrity": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Every relative markdown link and ${CLAUDE_SKILL_DIR}/... path in SKILL.md and references/*.md must resolve, and a path leaving the skill folder may land only in a plugin-root folder the .claude/ mirror also carries -- dead link or escaping path is Critical, a bare backticked references/<file>.md missing from the skill's own references/ is ADVISORY -- forward-looking only; see references/reference-integrity.md",
+      "config": {
+        "canonical_reference": "references/reference-integrity.md",
+        "always_mirrored_plugin_root_dirs": ["references", "assets"],
+        "scripts_mirror_source": ".claude/marketplace-sync.json -> scripts_mirrors",
+        "advisory_bare_prefixes": ["references/"],
+        "exempt_bare_prefixes": ["scripts/", "assets/"]
+      }
+    },
+    "R35_standard_sections_required": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "SKILL.md must contain Quick Start, When to Use and When NOT to Use sections, plus Reference Guide when the skill has a references/ directory -- matched by substance, not exact wording; Testing & Validation is enforced by R29, not here -- forward-looking only; see references/standard-sections.md",
+      "config": {
+        "canonical_reference": "references/standard-sections.md",
+        "required_sections": [
+          {"name": "Quick Start", "heading_pattern": "^## Quick ?Start"},
+          {"name": "When to Use", "heading_pattern": "^## When to Use"},
+          {"name": "When NOT to Use", "heading_pattern": "^## When NOT to Use"},
+          {"name": "Reference Guide", "heading_pattern": "^## Reference (Guide|Files|Index)", "only_if": "references/ directory exists"}
+        ]
+      }
     }
   },
   "languages": {

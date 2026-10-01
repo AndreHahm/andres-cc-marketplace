@@ -14,3 +14,4 @@ Iteration-5 (2026-09-30, after a cross-model-review fix round reworded R33's nul
 evals 4, 5, 7 re-run against the reworded files, 3/3 each.
 See `evals/plugin-rulebook/evals.json` for the scenario definitions. R33's own `test-against-example-
 plugin.md` dry-run record: `.claude/output/plugin-rulebook/example-plugin-20260923T204026Z.md`.
+Iteration-6 (2026-10-01, same harness, `with_skill`-only, R34/R35 added): eval-8 (R34: a `..` link into plugin-root `references/` passes, a link into `docs/` and a dead link are Critical) 4/4; eval-9 (R35: `When to Use This Skill` satisfies `When to Use`, `Reference Guide` only required with a `references/` directory, Testing & Validation left to R29) 4/4. Agents were pointed at the worktree files directly, since a by-name skill dispatch resolves to the main checkout's copy.
