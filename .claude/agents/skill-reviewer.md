@@ -9,7 +9,9 @@ description: >-
   created or modified. For a skill's references/scripts/assets/workflows/
   examples/templates changing without a SKILL.md edit, use
   skilldir-reviewer instead — both may legitimately run together when a
-  whole skill directory changes.
+  whole skill directory changes. For rule compliance (R1-R37 naming,
+  language, formatting, tool-scoping) rather than skill quality scoring,
+  use plugin-rulebook instead.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]

@@ -26,6 +26,13 @@ executable bit. The two fixes in issue #305 solve different problems — `git up
 POSIX, `"shell": "bash"` for Windows without Git Bash — and a hook needs both. R37 checks only the first.
 Whether a `.sh` hook command also sets `"shell": "bash"` is a separate concern, left to `hook-reviewer`.
 
+## When the reviewer cannot read git
+
+Reading the committed mode needs Bash (`git ls-files -s`). A reviewer without it — `plugin-rulebook-checker`
+has `Read`, `Grep` and `Glob` only — confirms the script exists and reports R37 as `unverified`, never PASS.
+`SKILL.md` grants `Bash(git ls-files:*)`, so a direct `plugin-rulebook` run can check it. Check the
+`.claude/` mirror copy of each script too, not only the canonical one.
+
 ## Severity
 
 REQUIRED. A committed mode other than `100755` on a directly-invoked script is a FAIL; a missing file is also

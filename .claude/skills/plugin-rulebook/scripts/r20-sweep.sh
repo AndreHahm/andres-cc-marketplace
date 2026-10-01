@@ -9,18 +9,19 @@ set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <previous-rule-number>" >&2
-  echo "Example: when adding R33, run: $0 32" >&2
-  echo "  (sweeps for stale R1-R32 / R1<en-dash>R32 / \"32 total\" / \"32 enabled\" mentions)" >&2
+  echo "Example: when adding R38, run: $0 37" >&2
+  echo "  (sweeps for stale R1-R37 / R1<en-dash>R37 / \"37 total\" / \"37 enabled\" mentions)" >&2
   exit 1
 fi
 
 PREV="$1"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# Matches the previous ceiling's restatements: "R1-R24", "R1–R24" (en dash),
-# "24 total", and "24 enabled" (covers both "24 enabled rules" and "all 24
-# enabled" -- the two real R26->R27 misses this pattern didn't catch until
-# added here; a manual follow-up grep had to find them instead). Deliberately
+# Matches the previous ceiling's restatements: "R1-R<PREV>", "R1–R<PREV>" (en
+# dash), "<PREV> total", and "<PREV> enabled" (covers both "<PREV> enabled
+# rules" and "all <PREV> enabled" -- two real misses an earlier pattern didn't
+# catch; a manual follow-up grep had to find them instead). It does not match
+# the gapped "R17-R<PREV>" form, so check that one by hand. Deliberately
 # greps the OLD number, not RNN -- per adding-a-new-rule.md's note, a stale
 # mention cites the ceiling being replaced, not the one being added.
 PATTERN="R1[-–]R${PREV}\\b|\\b${PREV} total\\b|\\b${PREV} enabled\\b"

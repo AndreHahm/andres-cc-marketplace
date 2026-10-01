@@ -113,6 +113,10 @@ to this rule and to `prefix_check.py`'s `ANTIGRAVITY_ONLY_DIRS`.
   repository-internal tooling, not a plugin-root source file; this rule only governs a plugin's own
   canonical `plugins/<plugin>/` tree.
 
+**Not an exclusion:** a placeholder `.gitkeep` in a scoped directory. `prefix_check.py` checks it like any other
+file, so once a plugin registers a prefix its empty `hooks/` or `commands/` placeholder fails `<prefix>-<rest>`;
+remove the placeholder or add the first real file.
+
 ## Gating: inert while no prefix is registered
 
 This rule produces **zero findings** for any plugin whose `marketplace-inventory.json` record has

@@ -8,7 +8,7 @@ Two independent checks, shared by `plugin-lifecycle-upstream`, `plugin-lifecycle
 
 **Procedure:**
 1. `gh pr view --json number,state,url` for the current branch (`Bash(gh pr view:*)`). A non-zero exit / "no pull requests found" means there's no PR for this branch — proceed, no ask.
-2. If a PR is found and `state == "OPEN"`: ask via `AskUserQuestion` — "An open PR already exists for this branch (#`<number>`: `<url>`). It's recommended to merge it before starting new work here." Options: **"I'll merge it first — stop here"** (halt the whole run cleanly; point at `Skill(git-kit:merge-pr)` to actually do the merge) / **"Continue anyway"** (proceed; the new work will land as additional commits on the same branch/PR rather than a fresh one).
+2. If a PR is found and `state == "OPEN"`: ask via `AskUserQuestion` — "An open PR already exists for this branch (#`<number>`: `<url>`). It's recommended to merge it before starting new work here." Options: **"I'll merge it first — stop here"** (halt the whole run cleanly; point at `Skill(merge-pr)` to actually do the merge; use the name exactly as the session's skill listing shows it) / **"Continue anyway"** (proceed; the new work will land as additional commits on the same branch/PR rather than a fresh one).
 3. If `state` is `MERGED` or `CLOSED`, that PR is no longer open — proceed, no ask.
 
 Never skip this silently when an open PR is found — always ask; never hard-block with no escape hatch (matches every other gate in this plugin, which always leaves the human a way to proceed).
@@ -20,7 +20,7 @@ Never skip this silently when an open PR is found — always ask; never hard-blo
 **Procedure:**
 1. `git branch --show-current` (`Bash(git branch:*)`).
 2. **Not scoped** if either is true: the name is `main` or `master`; or the name doesn't fit git-kit's `<type>/<description>` convention (see `commit`'s own "Branch Naming Convention" section for the canonical type list and kebab-case rule for `<description>` — don't restate or re-derive that list here, just apply it).
-3. If not scoped: ask via `AskUserQuestion` — "Current branch `<name>` doesn't look scoped for this work. Create a new branch, or continue on `<name>` anyway?" Options: **"Create a new branch"** (invoke `Skill(git-kit:starting-work)` — do not reimplement its sync/name-validation/checkout logic here — then resume this run on the newly created branch) / **"Continue on `<name>` anyway"** (proceed as-is; this is a deliberate override, not an error).
+3. If not scoped: ask via `AskUserQuestion` — "Current branch `<name>` doesn't look scoped for this work. Create a new branch, or continue on `<name>` anyway?" Options: **"Create a new branch"** (invoke `Skill(starting-work)` — do not reimplement its sync/name-validation/checkout logic here — then resume this run on the newly created branch) / **"Continue on `<name>` anyway"** (proceed as-is; this is a deliberate override, not an error).
 4. If scoped (a non-main/master branch matching the convention): proceed, no ask.
 
 This check only needs to run once per invocation, immediately before the first actual file write/commit that invocation will make — not before every phase or step that merely reads or drafts content in-memory.

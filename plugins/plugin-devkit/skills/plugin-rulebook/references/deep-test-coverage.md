@@ -29,7 +29,7 @@ as:
 
 Never omit the entry entirely — an omitted component reads as "not in scope," which is a
 different claim than "in scope, but nothing to run." A caller aggregating Deep Test results
-across a whole plugin (e.g. `plugin-lifecycle-downstream`'s Deep Test step, or M11's future
+across a whole plugin (e.g. `plugin-lifecycle-downstream`'s Deep Test step, or a future
 `smoke_test.py` upgrade) should count `skipped` entries separately from `pass`/`fail`, and
 must not treat a plugin's coverage as complete when it still contains any.
 

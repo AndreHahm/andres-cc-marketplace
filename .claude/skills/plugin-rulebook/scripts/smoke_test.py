@@ -13,7 +13,6 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SETTINGS = SKILL_DIR / "assets" / "settings.json"
 CATALOG = SKILL_DIR / "references" / "skill-file-catalog.md"
-SKILL_LINE_LIMIT = 490
 
 
 def load_rules():
@@ -53,10 +52,11 @@ def check_catalog_complete():
 
 
 def check_skill_md_size():
+    limit = load_rules()["R13_skillmd_line_limit"]["config"]["thresholds"]["warning"]
     lines = len(SKILL_MD.read_text(encoding="utf-8").splitlines())
-    if lines > SKILL_LINE_LIMIT:
-        return False, f"SKILL.md is {lines} lines, above R13's {SKILL_LINE_LIMIT}-line warning"
-    return True, f"SKILL.md is {lines} lines, within R13's {SKILL_LINE_LIMIT}-line warning"
+    if lines > limit:
+        return False, f"SKILL.md is {lines} lines, above R13's {limit}-line warning"
+    return True, f"SKILL.md is {lines} lines, within R13's {limit}-line warning"
 
 
 def check_mirror():

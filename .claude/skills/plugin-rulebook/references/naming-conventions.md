@@ -50,6 +50,9 @@ These names are not allowed because they provide no information about content:
 | `info.md` | Meaningless | `plugin-manifest.md` |
 | `readme.md` | Human docs, not AI instructions | N/A — remove entirely |
 | `index.md` | Use table of contents in SKILL.md | N/A |
+| `stuff.md` | Meaningless | Name the actual topic |
+| `misc.md` | No scope | Name the actual topic |
+| `other.md` | No scope | Name the actual topic |
 
 ### Good vs Bad Examples
 

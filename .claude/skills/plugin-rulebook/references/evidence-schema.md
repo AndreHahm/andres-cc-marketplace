@@ -129,8 +129,7 @@ severities from different producers on one scale:
 
 **`rule_type`** — rulebook-sourced findings only (`source: plugin-rulebook-checker`) carry
 one additional field alongside canonical `severity`: `rule_type: required | advisory`,
-mirroring the rulebook's own REQUIRED/ADVISORY distinction (`.claude/rules/
-plugin-rulebook-enforcement.md`). This is a separate axis from severity, not a replacement
+mirroring the rulebook's own REQUIRED/ADVISORY distinction (`.claude/rules/plugin-rulebook-enforcement.md`). This is a separate axis from severity, not a replacement
 for it — `SKILL.md`'s Success and Stop Rules gate REQUIRED violations out of risk-acceptance
 regardless of severity, which the canonical `severity` field alone cannot express.
 

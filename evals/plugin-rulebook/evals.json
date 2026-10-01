@@ -110,12 +110,14 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 3,
+    "declared_scenarios_total": 5,
     "declared_scenarios_covered": 0,
     "uncovered": [
-      "'run r1 through r27' / 'check compliance' triggers",
-      "'validate this skill against the rulebook' triggers",
-      "'audit rule compliance' triggers"
+      "'validate this skill for rulebook compliance' trigger",
+      "'audit my plugin component for naming compliance' trigger",
+      "'check R6 tool scoping on this skill' trigger",
+      "'run rulebook compliance before I finalize this agent' trigger",
+      "'does my hook follow the plugin rules?' trigger"
     ]
   }
 }
