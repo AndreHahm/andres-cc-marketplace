@@ -24,7 +24,7 @@ Frontmatter issues: description is single-line, 22 chars (<=80 so R8 fine); no f
 Large sections (>=50 lines): none
 Reference files: 2 [clusters: a.md + b.md (TODO summary/marker formats)] [oversize >=400: none]
 Workflow files: 0
-Reference chain violations (ref->ref): references/a.md "Read references/b.md ..." 
+Reference chain violations (ref->ref): references/a.md "Read references/b.md ..."
 Spawn anti-patterns: none
 Intake pattern violations: Quick Start — "Ask the user which file to process" without AskUserQuestion
 Argument consistency (R22): none

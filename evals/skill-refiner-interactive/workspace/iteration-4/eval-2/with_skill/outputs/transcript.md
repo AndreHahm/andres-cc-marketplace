@@ -21,7 +21,7 @@ Frontmatter issues: single-line `description` (needs >-)
 Large sections (>=50 lines): none
 Reference files: 2 [clusters: none (a.md = summary format, b.md = marker syntax: different topics)] [oversize >=400: none]
 Workflow files: 0
-Reference chain violations (ref->ref): references/a.md "Read references/b.md ..." 
+Reference chain violations (ref->ref): references/a.md "Read references/b.md ..."
 Spawn anti-patterns: none
 Intake pattern violations: Quick Start - "Ask the user which file to process" without AskUserQuestion
 Argument consistency (R22): none
@@ -61,7 +61,7 @@ refinement-workflow.md loaded for preservation gates and validation phases.
 references/ files: a.md (5 lines), b.md (4 lines). Different topics, no merge candidate -> no ask (the consolidation ask applies only when a cluster was flagged).
 
 ### Step 4 Preservation gates
- - Gate 1 content audit: all content core (tiny skill). 
+ - Gate 1 content audit: all content core (tiny skill).
  - Gate 2 capability: edits only add content / remove an imperative read directive; no capability impaired.
  - Gate 3: destination for the a.md->b.md pointer (SKILL.md Reference Guide + Quick Start link) created before the directive was removed.
  - Gate 4: no deletions of files; the only removal is one sentence in a.md, whose content was migrated (b.md link now lives in SKILL.md). No Gate 4 ask needed.

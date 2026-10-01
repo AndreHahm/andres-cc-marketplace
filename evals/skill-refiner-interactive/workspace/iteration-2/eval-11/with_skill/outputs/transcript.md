@@ -57,7 +57,7 @@ BATCH 2 (Define-explicitly path, goals selected; trigger-detected questions only
 - Reference-file clusters: none, and not asked here.
 
 ### 2. Load workflow reference
-Reviewed refinement-workflow.md conceptually (preservation gates, validation phases). 
+Reviewed refinement-workflow.md conceptually (preservation gates, validation phases).
 
 ### 3. Consolidation
 1 reference file (rules.md), no clusters -> no consolidation candidates, so no ask.

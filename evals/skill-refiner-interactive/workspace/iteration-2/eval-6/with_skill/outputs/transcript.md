@@ -36,7 +36,7 @@ Dead links: none / Cross-skill references: none
 Missing standard sections: When to Use, When NOT to Use, Testing & Validation, Reference Guide
 Goal verification: absent - flag as Missing
 Deferred goal candidates: frontmatter single-line description, missing goal verification, reference cluster
-R13/R18 threshold source: plugin-rulebook settings (assumed) 
+R13/R18 threshold source: plugin-rulebook settings (assumed)
 ```
 
 ### Goal derivation and selection (AskUserQuestion, multiSelect)

@@ -86,7 +86,7 @@ Answer: Continue refining.
 ## RETURN TO STEP 6 (loop 1, focus: G1)
 Edited references/a.md: removed the "Read references/b.md" line. Edited SKILL.md: Quick Start now says "See references/a.md for details and references/b.md for the full list of marker formats" (b.md stays reachable one level deep, LINK before removing the chain). No file deleted.
 
-## Step 7 re-run (validate) 
+## Step 7 re-run (validate)
 Phase 5 references: a.md has no further references, b.md reachable from SKILL.md; no chains. Other phases unchanged.
 
 ## Step 8 (measure goals) - MEASUREMENT PASS 2
