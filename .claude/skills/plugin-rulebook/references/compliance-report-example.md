@@ -7,7 +7,7 @@ Procedure" section), extracted here to keep `SKILL.md` itself under its own R13 
 📋 Rulebook Compliance: <component-name> (<type>)
 Path: <resolved-absolute-path> [R19: no duplicates found]
 Settings: assets/settings.json [loaded]
-Repo overrides applied (.claude/plugin-rulebook.config.json): whitelist +["acme-tools"], blacklist +["rcc"]
+Repo overrides applied (.claude/plugin-rulebook.config.json): whitelist +["acme-tools"], blacklist +["some-abandoned-fork"]
 Marketplace auto-allow applied: none found
 Rules checked: N enabled / 37 total
 
@@ -35,31 +35,9 @@ overrides were applied."
 
 ## Worked Example: R23 Blacklist-First, Self-Whitelisting Excluded
 
-Concrete scenario exercising the blacklist-first classification order and the same-plugin
-`marketplace.json` exclusion (`external-reference-policy.md`'s Detection Procedure steps 2-3) —
-this is the check that would have caught the pre-fix self-whitelisting bypass, and stands in as
-this rule's own documented test scenario per `require-tests-for-behavior-changes.md`'s
-"Skill, most other cases" tier.
+The scenario and its reasoning live in `external-reference-policy.md` ("Critical — a component under
+review cannot self-whitelist a blacklisted name"); this rule's documented test scenario per
+`require-tests-for-behavior-changes.md`'s "Skill, most other cases" tier. The report line it must produce:
 
-**Setup:**
-```yaml
-config:
-  blacklist: ["some-abandoned-fork/plugin-devkit"]
-```
-The plugin under review ships its own `<plugin-root>/.claude-plugin/marketplace.json` listing
-`some-abandoned-fork/plugin-devkit` (a self-authored attempt to whitelist that name via the
-marketplace auto-allow path), and its `SKILL.md` body mentions
-`"mirrors some-abandoned-fork/plugin-devkit's live check_hooks_json behavior"`.
-
-**Expected outcome:**
-1. Step 2 drops the plugin's own `marketplace.json` from the auto-allow candidate set — it resolves
-   inside the owning plugin root under review, so it never reaches the whitelist/auto-allow set at all.
-2. Step 3 checks `config.blacklist` first, regardless: `some-abandoned-fork/plugin-devkit` matches →
-   **Blacklisted, Critical** — classified before whitelist/auto-allow is even consulted, so the
-   dropped `marketplace.json` (had it survived step 2) could never have silently cleared this anyway.
-3. Report line: `FAIL R23 — some-abandoned-fork/plugin-devkit (SKILL.md:N) [REQUIRED] — blacklisted,
-   self-authored marketplace.json excluded (resolves inside plugin under review)`.
-
-**What this catches:** the pre-fix ordering bug (whitelist/auto-allow classified *before* blacklist,
-with no same-plugin exclusion) would have let the plugin's own `marketplace.json` silently clear this
-exact reference — Whitelisted, no finding, on a name the maintainer had explicitly blacklisted.
+`FAIL R23 — some-abandoned-fork/plugin-devkit (SKILL.md:N) [REQUIRED] — blacklisted, self-authored
+marketplace.json excluded (resolves inside plugin under review)`

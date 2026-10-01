@@ -33,7 +33,7 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 ## R6 — Format and Tool-Completeness Detail
 
 **Format:** `allowed-tools` may be space-separated (preferred internal style), comma-separated, or a
-YAML list.
+YAML list (block `- Read` form, or flow form such as `[Read, Grep]` — an agent's `tools` often uses the latter).
 
 **Preferred:** `allowed-tools: Read Edit Write Glob`
 **Also valid:** `allowed-tools: Read,Edit,Write,Glob` (comma-separated), or a YAML list

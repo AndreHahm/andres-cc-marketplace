@@ -2,7 +2,7 @@
 
 Full index of every resource this skill ships or reads — extracted from `SKILL.md`'s own "Reference
 Guide" section per `references/adding-a-new-rule.md`'s line-budget step, to keep `SKILL.md` itself under
-its own R13 threshold as new rules (R28-R33) were added.
+its own R13 threshold as new rules were added.
 
 | Resource | Purpose |
 |---|---|
