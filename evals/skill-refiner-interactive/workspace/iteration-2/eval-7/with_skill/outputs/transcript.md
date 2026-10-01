@@ -58,7 +58,7 @@ Simulated: all three selected. Custom goals: none.
 ## Refinement step 2: load references/refinement-workflow.md (gates, validation phases)
 
 ## Refinement step 3: Consolidation opportunities
-Files: references/a.md (5 lines), references/b.md (4 lines). Same topic (TODO summary and marker formats), a links to b. 
+Files: references/a.md (5 lines), references/b.md (4 lines). Same topic (TODO summary and marker formats), a links to b.
 Question: "Should we consolidate these files? Saves N lines, improves clarity." Options: Consolidate / Leave as-is. Simulated: Consolidate.
 Plan: merge b.md's content into a.md (a.md is already the file SKILL.md links), replacing a.md's pointer to b.md with the content itself.
 

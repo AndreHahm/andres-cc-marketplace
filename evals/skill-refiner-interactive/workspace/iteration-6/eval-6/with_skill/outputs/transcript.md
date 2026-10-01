@@ -26,7 +26,7 @@ Frontmatter issues: single-line description (needs >-); no forbidden fields
 Large sections (>=50 lines): none
 Reference files: 2 [clusters: a.md + b.md (both TODO marker details)] [oversize >=400 lines: none]
 Workflow files: 0 [oversize: none] [workflow->ref chain violations: none]
-Reference chain violations (ref->ref): references/a.md line 5 "Read references/b.md ..." 
+Reference chain violations (ref->ref): references/a.md line 5 "Read references/b.md ..."
 Spawn anti-patterns: none
 Intake pattern violations: Quick Start - "Ask the user which file to process" (intake without AskUserQuestion)
 Argument consistency (R22): none

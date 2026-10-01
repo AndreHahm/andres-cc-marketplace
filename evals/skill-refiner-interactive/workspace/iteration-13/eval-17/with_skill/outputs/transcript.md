@@ -172,7 +172,7 @@ Operator approves consolidation as part of the scope. (Deleting the source files
 Gates 1 and 2 run here; Gates 3 and 4 apply at each move/deletion in step 6 (not reached).
 
 - GATE 1 Content Audit (all content classified):
-  - `SKILL.md` Frontmatter (name, description, allowed-tools): core. 
+  - `SKILL.md` Frontmatter (name, description, allowed-tools): core.
   - `SKILL.md` Quick Start (lines 9-13, ~5 lines): core (the only body section; used in 100% of activations).
   - `references/a.md` (5 lines, "Details": what a summary lists): supplementary/borderline; it is the target of the Quick Start pointer and is needed to produce a summary, so treat as core to execution.
   - `references/b.md` (4 lines, "Marker Formats": `TODO:`/`FIXME:`): core to execution (defines what to search for).
