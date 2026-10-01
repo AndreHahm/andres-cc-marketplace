@@ -1,0 +1,31 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags api-calls.md as an ADVISORY finding because it requires loading auth-flow.md to be usable",
+      "passed": true,
+      "evidence": "FINDING (chain), ADVISORY: 'Before applying this procedure, load references/auth-flow.md...' - unusable alone."
+    },
+    {
+      "text": "Report says errors.md is NOT a finding because it is a plain see-also cross-reference",
+      "passed": true,
+      "evidence": "NO FINDING: an ordinary cross-reference; the reader can finish with errors.md alone."
+    },
+    {
+      "text": "Report says the SKILL.md pointers are NOT findings",
+      "passed": true,
+      "evidence": "NO FINDING: SKILL.md pointing at a reference file is the intended design."
+    },
+    {
+      "text": "Report says the clause is ADVISORY and the fix is inline/merge/optional see-also, not nesting into subdirectories",
+      "passed": true,
+      "evidence": "ADVISORY, never blocking. Inline steps 1-3, merge, or make the pointer optional. Do not nest into subdirectories."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

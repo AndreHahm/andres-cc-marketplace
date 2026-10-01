@@ -69,6 +69,8 @@ Thresholds from `assets/settings.json → rules.R21_skill_description_size.confi
 | 1525–1536 | ⚠️ Warning | Approaching the 1536-char listing cap |
 | > 1536 | ❌ Critical | Exceeds the listing cap |
 
+**Description split hint (ADVISORY):** a `description` over `config.description_split_hint` (900 chars) that carries a "Use when..." trigger clause and has no `when_to_use` field gets an ADVISORY recommending the clause move to `when_to_use`, which has its own 512-char cap and keeps `description` short. Never blocking: the platform docs weight `description` more heavily than `when_to_use` for invocation, so moving text is a tradeoff, not a defect. A description at or under 900 chars is never flagged.
+
 **Severity behavior:**
 - **Warning** — flag with the specific metric and value; recommend trimming or expanding toward the target band; do not block
 - **Critical** — flag as Critical issue; block completion; require resolution before sign-off

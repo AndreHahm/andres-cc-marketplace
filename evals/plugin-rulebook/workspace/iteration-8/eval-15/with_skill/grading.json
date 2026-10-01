@@ -1,0 +1,11 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Report flags foo's workspace eval-4 as having no matching evals.json entry, a REQUIRED finding", "passed": true, "evidence": "iteration-2/eval-4 has no entry in evals.json. This is the gap. Severity: REQUIRED, applied immediately."},
+    {"text": "Report says bar has NO finding because eval_id is an accepted identifier form", "passed": true, "evidence": "bar: NO FINDING. The clause explicitly accepts eval_id. Both workspace directories match."},
+    {"text": "Report gives the fix: add the missing registry entry", "passed": true, "evidence": "Fix: add an evals.json entry for eval 4 (id 4, with its prompt and expected output)."},
+    {"text": "Report says the clause is not yet implemented in check_evals.py and is applied by the reviewing agent", "passed": true, "evidence": "The agent reviewing the plugin, using Glob and Read. The check is not yet implemented in check_evals.py."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

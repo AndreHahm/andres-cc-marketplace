@@ -1,0 +1,26 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags '/home/mara/...' (a real username in a committed eval output) as a REQUIRED finding",
+      "type": "presence",
+      "target": "R9 (1)"
+    },
+    {
+      "text": "Report says '/home/user/...' is NOT a finding because user is a placeholder name",
+      "type": "presence",
+      "target": "R9 (2)"
+    },
+    {
+      "text": "Report says the redaction-script test input is NOT a finding because it is an illustrative example",
+      "type": "presence",
+      "target": "R9 (3)"
+    },
+    {
+      "text": "Report gives the fix: replace with a placeholder or repo-relative path and regenerate the fixture",
+      "type": "quality",
+      "target": "R9 fix"
+    }
+  ]
+}

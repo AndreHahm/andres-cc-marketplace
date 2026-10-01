@@ -1,0 +1,26 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report flags api-calls.md as an ADVISORY finding because it requires loading auth-flow.md to be usable",
+      "type": "presence",
+      "target": "R14 chain"
+    },
+    {
+      "text": "Report says errors.md is NOT a finding because it is a plain see-also cross-reference",
+      "type": "presence",
+      "target": "R14 see-also"
+    },
+    {
+      "text": "Report says the SKILL.md pointers are NOT findings",
+      "type": "presence",
+      "target": "R14 SKILL.md"
+    },
+    {
+      "text": "Report says the clause is ADVISORY and the fix is inline/merge/optional see-also, not nesting into subdirectories",
+      "type": "quality",
+      "target": "R14 severity and fix"
+    }
+  ]
+}

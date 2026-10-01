@@ -177,6 +177,7 @@ No API keys, tokens, passwords, or secrets in any plugin file.
 
 **Scope:** All files including scripts, assets, and config files
 **Exception:** Placeholder values in examples only — `YOUR_API_KEY_HERE`, `$API_KEY`
+**Local identifiers (forward-looking):** a real OS username or local project directory name in a committed fixture, eval output or JSON file is also a FAIL — see `${CLAUDE_SKILL_DIR}/references/local-identifiers.md`.
 
 ---
 
@@ -214,6 +215,8 @@ No subdirectories inside `references/` — only `references/<file>.md` is valid.
 - `references/v2/schema.md` — versioned subdirectory
 
 **Fix:** Move nested files to the top level: `references/advanced-patterns.md`. If content volume demands grouping, extract to a dedicated skill instead.
+
+**Chains (ADVISORY, forward-looking):** a reference file that requires loading a second one to be usable is flagged; a plain "see also" is not — see `${CLAUDE_SKILL_DIR}/references/reference-chains.md`.
 
 ---
 
@@ -266,7 +269,7 @@ Limits (80–1024 chars for `description`, ≤512 for `when_to_use`, 80–1536 c
 five-tier threshold tables for all three metrics are configured in
 `assets/settings.json → rules.R21_skill_description_size.config` — see
 `${CLAUDE_SKILL_DIR}/references/size-rules.md` for those tables and the full severity behavior
-definitions; not restated here to avoid a second copy of the same thresholds drifting out of sync.
+definitions; not restated here to avoid a second copy of the same thresholds drifting out of sync. A `description` over 900 chars that carries a "Use when..." clause and has no `when_to_use` gets an ADVISORY to move that clause there.
 
 ---
 
@@ -365,7 +368,7 @@ A full eval/test-scenario walkthrough (a worked prompt → expected-output pair,
 
 ### R31 — Eval Fixture Integrity [REQUIRED, default: on]
 
-Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content — zero-match guard, anchored-matching, and coverage-arithmetic validation via `reviewing-evals/scripts/check_evals.py`, dispatched from `plugin-auditor` rather than checked here directly.
+Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content — zero-match guard, anchored-matching, and coverage-arithmetic validation via `reviewing-evals/scripts/check_evals.py`, dispatched from `plugin-auditor` rather than checked here directly. It also checks that every `workspace/iteration-*/eval-N` has a matching `evals.json` entry (by `id`, `eval_id` or `"eval-N"`).
 
 **Scope:** Every existing `evals.json`/`smoke_test.*` — not forward-looking, this checks correctness of content that already exists. See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full mechanism, the tool-grant rationale, and the exact checks run.
 
@@ -470,7 +473,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
 **Last dated run record:** 2026-10-01, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
-evals 8-11 (R34-R37) 4/4 assertions each (iterations 6-7); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
+evals 8-15 (R34-R37 and the R9/R14/R21/R31 extensions) 4/4 assertions each (iterations 6-8); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
 evals 1-2 passed 4/4 and 2/2 on 2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
 `${CLAUDE_SKILL_DIR}/references/testing-run-history.md`; scenario definitions are in `evals/plugin-rulebook/evals.json`.
 

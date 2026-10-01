@@ -39,6 +39,8 @@ its own R13 threshold as new rules (R28-R33) were added.
 | `${CLAUDE_SKILL_DIR}/references/standard-sections.md` | R35 full detail — the four required sections, matching by substance, and why Testing & Validation is left to R29 |
 | `${CLAUDE_SKILL_DIR}/references/reciprocal-exclusions.md` | R36 full detail — the overlap test that separates a real finding from plain delegation, and the fix |
 | `${CLAUDE_SKILL_DIR}/references/executable-bit.md` | R37 full detail — the two direct-invocation forms, why `shell: bash` is not an exemption, and the fix |
+| `${CLAUDE_SKILL_DIR}/references/local-identifiers.md` | R9 second clause — real OS usernames and local directory names in committed fixtures, what is exempt, and the fix |
+| `${CLAUDE_SKILL_DIR}/references/reference-chains.md` | R14 second clause — a reference file that requires loading a second one, versus a plain cross-reference |
 | `${CLAUDE_SKILL_DIR}/scripts/mirror-parity-check.sh` | CI-owned, not invoked from within this skill's own Compliance Check Procedure — confirmed consumer is `.github/marketplace-validators.json`'s `plugin-devkit.mirror-parity-check` entry, not an agent-driven check, so it carries no `allowed-tools` Bash grant here |
 | `${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh` | Automates the R20 sibling sweep's repo-wide grep for a stale rule-count-ceiling mention — see `references/adding-a-new-rule.md`'s Touch List |
 | `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py` | Mechanical backing check for R6's "Tool completeness" sub-rule — flags a body command span with no matching `Bash(<prefix>:*)` grant; full-file heuristic, not a diff, see its own docstring for known false-positive classes |

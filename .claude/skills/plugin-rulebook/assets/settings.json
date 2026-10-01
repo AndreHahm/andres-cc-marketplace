@@ -60,7 +60,17 @@
     "R9_no_hardcoded_credentials": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "No API keys, tokens, passwords, or secrets in any plugin file"
+      "description": "No API keys, tokens, passwords, or secrets in any plugin file; forward-looking, also no real OS username or local project directory name in a committed fixture, eval output or JSON file -- see references/local-identifiers.md",
+      "config": {
+        "canonical_reference": "references/local-identifiers.md",
+        "local_identifier_patterns": {
+          "posix_home": "/home/[a-z][a-z0-9._-]+/",
+          "macos_home": "/Users/[A-Za-z][A-Za-z0-9._-]+/",
+          "windows_profile": "[A-Za-z]:\\\\{1,2}Users\\\\{1,2}[A-Za-z][A-Za-z0-9._-]+"
+        },
+        "placeholder_names": ["user", "username", "you", "your", "name", "me", "example", "runner", "ubuntu", "node", "app", "dev", "devuser", "test", "foo", "bar", "alice", "bob", "jane", "jdoe", "public", "default"],
+        "exempt_generated_mirrors": [".claude/", ".agents/", ".codex/"]
+      }
     },
     "R10_reference_file_naming": {
       "enabled": true,
@@ -96,7 +106,11 @@
     "R14_references_one_level_deep": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "No nested subdirectories in references/ — only references/<file>.md is valid"
+      "description": "No nested subdirectories in references/ — only references/<file>.md is valid; ADVISORY, forward-looking: a reference file that requires loading a second one to be usable is flagged, a plain see-also is not -- see references/reference-chains.md",
+      "config": {
+        "canonical_reference": "references/reference-chains.md",
+        "chain_severity": "ADVISORY"
+      }
     },
     "R15_no_human_documentation_files": {
       "enabled": false,
@@ -156,7 +170,9 @@
           "description_high": 1024,
           "when_to_use_high": 512,
           "combined_high": 1536
-        }
+        },
+        "description_split_hint": 900,
+        "description_split_hint_note": "ADVISORY: a description over this many chars that carries a 'Use when...' clause and has no when_to_use should move the clause there (when_to_use stays within its 512 cap); the docs weight description more heavily than when_to_use for invocation, hence ADVISORY and the high threshold"
       }
     },
     "R22_argument_frontmatter_consistency": {
@@ -247,7 +263,7 @@
     "R31_eval_fixture_integrity": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "Mechanical correctness checks (zero-match guard, anchored matching, coverage arithmetic) for existing evals.json/smoke_test.* content via reviewing-evals/scripts/check_evals.py, dispatched from plugin-auditor -- not forward-looking, applies to existing content immediately; see references/testing-mandate-rules.md"
+      "description": "Mechanical correctness checks (zero-match guard, anchored matching, coverage arithmetic) for existing evals.json/smoke_test.* content via reviewing-evals/scripts/check_evals.py, dispatched from plugin-auditor -- not forward-looking, applies to existing content immediately; see references/testing-mandate-rules.md; also every workspace/iteration-*/eval-N must have a matching evals.json entry (id, eval_id or 'eval-N') -- not yet implemented in check_evals.py, applied by the reviewing agent via Glob and Read"
     },
     "R32_data_only_boundary_disclosure_required": {
       "enabled": true,

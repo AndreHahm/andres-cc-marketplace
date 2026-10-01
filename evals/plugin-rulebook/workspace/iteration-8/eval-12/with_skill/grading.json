@@ -1,0 +1,31 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report flags '/home/mara/...' (a real username in a committed eval output) as a REQUIRED finding",
+      "passed": true,
+      "evidence": "Yes / REQUIRED, so FAIL. It matches the posix_home pattern and mara is not a placeholder."
+    },
+    {
+      "text": "Report says '/home/user/...' is NOT a finding because user is a placeholder name",
+      "passed": true,
+      "evidence": "No finding: 'user' is on the placeholder list."
+    },
+    {
+      "text": "Report says the redaction-script test input is NOT a finding because it is an illustrative example",
+      "passed": true,
+      "evidence": "No (judgment-call exemption): a redaction script's own test input shown as an example."
+    },
+    {
+      "text": "Report gives the fix: replace with a placeholder or repo-relative path and regenerate the fixture",
+      "passed": true,
+      "evidence": "Replace mara with <user>, or use a repo-relative path. Regenerate the recorded output."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
