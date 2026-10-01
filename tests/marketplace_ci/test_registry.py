@@ -210,3 +210,63 @@ def test_registry_rejects_divergence_exception_unknown_key(tmp_path):
     )
     with pytest.raises(RegistryError, match="unknown divergence_exceptions key"):
         Registry.load(path)
+
+
+def _write_registry(tmp_path, **fields):
+    path = tmp_path / "marketplace-sync.json"
+    path.write_text(
+        json.dumps({"version": 1, "codex_exports": {}, **fields}),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_registry_loads_scripts_mirrors(tmp_path):
+    path = _write_registry(
+        tmp_path, plugin_mirrors=["git-kit", "analysis-kit"], scripts_mirrors=["git-kit"]
+    )
+    assert Registry.load(path).scripts_mirrors == ("git-kit",)
+
+
+def test_scripts_mirrors_defaults_to_empty(tmp_path):
+    path = _write_registry(tmp_path, plugin_mirrors=["git-kit"])
+    assert Registry.load(path).scripts_mirrors == ()
+    assert Registry.empty().scripts_mirrors == ()
+
+
+def test_registry_rejects_scripts_mirror_that_is_not_a_plugin_mirror(tmp_path):
+    path = _write_registry(tmp_path, plugin_mirrors=["git-kit"], scripts_mirrors=["analysis-kit"])
+    with pytest.raises(RegistryError, match="plugin_mirrors"):
+        Registry.load(path)
+
+
+def test_registry_rejects_duplicate_scripts_mirrors(tmp_path):
+    path = _write_registry(
+        tmp_path, plugin_mirrors=["git-kit"], scripts_mirrors=["git-kit", "git-kit"]
+    )
+    with pytest.raises(RegistryError, match="duplicate"):
+        Registry.load(path)
+
+
+def test_registry_rejects_traversal_in_scripts_mirrors(tmp_path):
+    path = _write_registry(tmp_path, plugin_mirrors=["git-kit"], scripts_mirrors=["../git-kit"])
+    with pytest.raises(RegistryError, match="exact plugin name"):
+        Registry.load(path)
+
+
+def test_registry_rejects_non_list_scripts_mirrors(tmp_path):
+    path = _write_registry(tmp_path, plugin_mirrors=["git-kit"], scripts_mirrors="git-kit")
+    with pytest.raises(RegistryError, match="scripts_mirrors must be a list"):
+        Registry.load(path)
+
+
+def test_removed_since_reports_scripts_mirror_opt_out():
+    old = Registry(
+        version=1,
+        plugin_mirrors=("git-kit",),
+        skills=(),
+        agents=(),
+        scripts_mirrors=("git-kit",),
+    )
+    new = Registry(version=1, plugin_mirrors=("git-kit",), skills=(), agents=())
+    assert new.removed_since(old).scripts_mirrors == ("git-kit",)

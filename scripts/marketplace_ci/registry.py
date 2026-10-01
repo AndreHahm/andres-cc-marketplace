@@ -9,7 +9,13 @@ from pathlib import Path
 
 SUPPORTED_VERSION = 1
 _NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_TOP_LEVEL_KEYS = {"version", "plugin_mirrors", "codex_exports", "divergence_exceptions"}
+_TOP_LEVEL_KEYS = {
+    "version",
+    "plugin_mirrors",
+    "scripts_mirrors",
+    "codex_exports",
+    "divergence_exceptions",
+}
 _CODEX_EXPORT_KEYS = {"skills", "agents"}
 _DIVERGENCE_EXCEPTION_KEYS = {"source", "dest", "reason"}
 
@@ -40,6 +46,7 @@ class RemovalSet:
     plugin_mirrors: tuple[str, ...]
     skills: tuple[str, ...]
     agents: tuple[str, ...]
+    scripts_mirrors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -81,6 +88,10 @@ class Registry:
     skills: tuple[str, ...]
     agents: tuple[str, ...]
     divergence_exceptions: tuple[DivergenceException, ...] = ()
+    # Subset of plugin_mirrors whose root `scripts/` folder is also mirrored into
+    # .claude/scripts/ (flat, shared by all opted-in plugins). references/ and assets/ are
+    # mirrored for every plugin in plugin_mirrors and need no list.
+    scripts_mirrors: tuple[str, ...] = ()
 
     @staticmethod
     def empty() -> Registry:
@@ -119,6 +130,19 @@ class Registry:
             _validate_name(name, kind="plugin_mirrors entry") for name in raw_mirrors
         )
         _validate_unique(plugin_mirrors, kind="plugin_mirrors")
+
+        raw_scripts_mirrors = raw.get("scripts_mirrors", [])
+        if not isinstance(raw_scripts_mirrors, list):
+            raise RegistryError(f"{source}: scripts_mirrors must be a list")
+        scripts_mirrors = tuple(
+            _validate_name(name, kind="scripts_mirrors entry") for name in raw_scripts_mirrors
+        )
+        _validate_unique(scripts_mirrors, kind="scripts_mirrors")
+        not_mirrored = [name for name in scripts_mirrors if name not in plugin_mirrors]
+        if not_mirrored:
+            raise RegistryError(
+                f"{source}: scripts_mirrors entries must also be in plugin_mirrors: {not_mirrored}"
+            )
 
         codex_exports = raw.get("codex_exports", {})
         if not isinstance(codex_exports, dict):
@@ -179,6 +203,7 @@ class Registry:
             skills=skills,
             agents=agents,
             divergence_exceptions=tuple(divergence_exceptions),
+            scripts_mirrors=scripts_mirrors,
         )
 
     def removed_since(self, previous: Registry) -> RemovalSet:
@@ -189,4 +214,7 @@ class Registry:
             ),
             skills=tuple(s for s in previous.skills if s not in self.skills),
             agents=tuple(a for a in previous.agents if a not in self.agents),
+            scripts_mirrors=tuple(
+                s for s in previous.scripts_mirrors if s not in self.scripts_mirrors
+            ),
         )

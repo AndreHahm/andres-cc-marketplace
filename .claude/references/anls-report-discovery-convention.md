@@ -24,6 +24,20 @@ A short kebab-case description of the scope a report covers, used as the filenam
 - **`mining-review-learnings`**: not a `<scope-slug>` in this file's sense at all — its own persisted-filename prefix takes one of 3 forms depending on input mode: `<pr-a>-to-<pr-b>` for a since-last-cited run (e.g. `pr-92-to-172`), `merged-<start>-to-<end>` for a merge-date range (e.g. `merged-2026-08-14-to-2026-08-20`), or `pr-<a>-<b>` for an explicit PR list (e.g. `pr-47-51`) — none of them a session/date-range scope identity.
 - **`managing-review-learnings`**: derives `<source-slug>` from the input `mining-review-learnings` report's own PR-set slug (e.g. `pr-47-172`), or `direct-finding-<date>` when acting on a user-named finding with no input report at all.
 
+**Validate before interpolating an externally-derived value into a discovery `Glob`.** A `<scope-slug>`-shaped
+value that a skill *captures* from somewhere else — parsed out of another skill's printed report path
+(`starting-an-analysis` Phase 4), or carried forward from an earlier compound slug (`comparing-sessions`'
+`<current-scope>`) — is not the same trust level as a value this skill derived itself from a direct user
+answer. Before interpolating any such captured value into a `Glob(...)` call, validate it against the
+documented short kebab-case format above: lowercase letters, digits, and single hyphens only, e.g.
+`^[a-z0-9]+(-[a-z0-9]+)*$`. Reject a value that doesn't match this pattern — in particular one containing
+`/`, `..`, or a glob metacharacter (`*`, `?`, `[`, `]`, `{`, `}`) — and fall back to a safe default (or ask
+for a corrected value) rather than interpolating it unchanged. An unvalidated value could otherwise be
+used to escape `.claude/output/`'s intended directories or match unintended files (path traversal,
+CWE-22). `reviewing-analysis-findings` Phase 1 already applies exactly this check to its own
+caller-supplied `<scope-slug>` — this is the same discipline extended to every site that captures or
+carries forward a value from somewhere other than a direct user answer.
+
 **Two different things share this one name — read this before wiring a new discovery glob.** `<scope-slug>` is used two ways in this plugin: as a *filename prefix* (always — every skill's own Persist step, per the derivations above), and as a *cross-skill discovery filter* (a `<value>-*.md` glob checking "do 2+ reports share this scope," used only at the specific sites listed below — not universally). Whether a site can filter by scope, and by what value, depends entirely on whether that skill's own persisted-filename slug is a value a sibling report could plausibly share:
 
 | Site | Filter used | Why |
