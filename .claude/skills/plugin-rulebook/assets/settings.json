@@ -329,7 +329,7 @@
     "R37_executable_bit": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "A script run directly by path (an allowed-tools grant naming the script path, or a hook command that is a bare path) must be committed with git mode 100755 per git ls-files -s; a hook's shell: bash does not exempt it -- forward-looking; see references/executable-bit.md",
+      "description": "A script run directly by path (an allowed-tools grant naming the script path that the skill's text invokes by that path, or a hook command that is a bare path) must be committed with git mode 100755 per git ls-files -s; a hook's shell: bash does not exempt it -- forward-looking; see references/executable-bit.md",
       "config": {
         "canonical_reference": "references/executable-bit.md",
         "required_mode": "100755",
