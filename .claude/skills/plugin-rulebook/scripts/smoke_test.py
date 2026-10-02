@@ -5,6 +5,7 @@ warning line, and the .claude/ mirror (when present) is identical."""
 
 import filecmp
 import json
+import os
 import pathlib
 import re
 import sys
@@ -70,6 +71,14 @@ def check_mirror():
 
     def walk(cmp, prefix=""):
         differing.extend(prefix + name for name in cmp.left_only + cmp.right_only + cmp.diff_files)
+        # dircmp compares shallowly (size and mtime), so confirm its "same" files byte for byte.
+        differing.extend(
+            prefix + name
+            for name in cmp.same_files
+            if not filecmp.cmp(
+                os.path.join(cmp.left, name), os.path.join(cmp.right, name), shallow=False
+            )
+        )
         for name, sub in cmp.subdirs.items():
             walk(sub, prefix + name + "/")
 
