@@ -46,7 +46,7 @@ Check the invocation context before starting:
 
 **Fast path:** use exactly the file(s) the caller named. If the caller also named specific rule IDs, check only those; otherwise check all 33 against the named file(s).
 
-For every resolved target, apply R19 first: resolve its canonical absolute path, and check for a same-named duplicate in another scope (project `.claude/`, plugin `plugins/*/`, user `~/.claude/`). If duplicates exist and differ, halt on that component with a FAIL before applying any other rule to it — except the documented `.claude/` ↔ in-development-plugin-mirror exception, which must instead be verified byte-identical (R20) and reported PASS/informational.
+For every resolved target, apply R19 first: resolve its canonical absolute path, and check for a same-named duplicate in another scope (project `.claude/`, plugin `plugins/*/`, user `~/.claude/`). If duplicates exist and differ, halt on that component with a FAIL before applying any other rule to it — except the documented `.claude/` ↔ in-development-plugin-mirror exception, which must instead be verified byte-identical (R20) and reported PASS/informational. A pair that exactly matches a `divergence_exceptions` entry's `source` and `dest` in `.claude/marketplace-sync.json` is also PASS/informational: cite that entry's `reason` (see the checklist's R19 row).
 
 ## Step 3: Apply Rules
 
