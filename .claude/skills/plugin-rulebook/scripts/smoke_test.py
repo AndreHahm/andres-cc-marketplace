@@ -42,10 +42,17 @@ def check_rule_counts():
 
 def check_catalog_complete():
     catalog = CATALOG.read_text(encoding="utf-8")
+
+    def has_table_row(name):
+        # A real catalog row starts with the resource path; a basename mentioned in prose or in
+        # another row's description does not count.
+        pattern = r"^\| `\$\{CLAUDE_SKILL_DIR\}/references/" + re.escape(name) + r"`"
+        return re.search(pattern, catalog, re.MULTILINE) is not None
+
     missing = [
         path.name
         for path in sorted((SKILL_DIR / "references").glob("*.md"))
-        if path.name != CATALOG.name and path.name not in catalog
+        if path.name != CATALOG.name and not has_table_row(path.name)
     ]
     if missing:
         return False, "reference file(s) not in skill-file-catalog.md: " + ", ".join(missing)
