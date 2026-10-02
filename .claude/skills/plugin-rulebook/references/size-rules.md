@@ -86,4 +86,4 @@ Thresholds from `assets/settings.json → rules.R21_skill_description_size.confi
 4. Read the frontmatter `description` and `when_to_use` (if present) values; compute their individual lengths and their combined length; compare each against the R21 thresholds
 5. Assign severity per the tables above
 6. Only Critical findings block completion; Weak Warnings and Warnings are advisory
-7. **R18 consolidation:** when 3 or more fenced blocks exceed the 10-line weak-warning threshold, emit a single consolidated ADVISORY — "N blocks exceed 10 lines; consider extracting the largest (M lines) to `references/` or `scripts/`" — rather than one entry per block
+7. **R18 consolidation:** when 3 or more fenced blocks are Weak Warnings (11-20 lines), emit a single consolidated ADVISORY — "N blocks exceed 10 lines; consider extracting the largest (M lines) to `references/` or `scripts/`" — rather than one entry per block. A Warning block (over 20 lines) or a Critical one (over 30, blocking) is always reported individually at its own tier.

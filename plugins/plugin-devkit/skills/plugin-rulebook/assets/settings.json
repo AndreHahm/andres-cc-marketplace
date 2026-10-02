@@ -263,7 +263,7 @@
     "R31_eval_fixture_integrity": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "Mechanical correctness checks (zero-match guard, anchored matching, coverage arithmetic) for existing evals.json/smoke_test.* content via reviewing-evals/scripts/check_evals.py, dispatched from plugin-auditor -- not forward-looking, applies to existing content immediately; see references/testing-mandate-rules.md; also every workspace/iteration-*/eval-N must have a matching evals.json entry (id, eval_id or 'eval-N') -- not yet implemented in check_evals.py, applied by the reviewing agent via Glob and Read"
+      "description": "Mechanical correctness checks (zero-match guard, anchored matching, coverage arithmetic) for existing evals.json/smoke_test.* content via reviewing-evals/scripts/check_evals.py, dispatched from plugin-auditor -- not forward-looking, applies to existing content immediately; see references/testing-mandate-rules.md; also every workspace/iteration-*/eval-N must have a matching evals.json entry (id, eval_id or 'eval-N', with an optional descriptive suffix) -- not yet implemented in check_evals.py, applied by the reviewing agent via Glob and Read"
     },
     "R32_data_only_boundary_disclosure_required": {
       "enabled": true,

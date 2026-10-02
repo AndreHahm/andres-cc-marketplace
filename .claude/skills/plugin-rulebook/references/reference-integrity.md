@@ -17,7 +17,7 @@ In a skill's `SKILL.md` and its own `references/*.md` (fenced code blocks exclud
 - URLs and `mailto:` targets.
 - Same-document anchors (`#some-heading`). A `file.md#heading` link is checked as `file.md` only — the
   fragment is dropped (issue #390).
-- Placeholders: any path containing `<`, `>`, `*`, `{` or `}` (`references/<topic>.md`, `references/*.md`), or a path whose segment is `...` (`${CLAUDE_SKILL_DIR}/...`). Rule-describing prose that quotes a path as an example (e.g. R34's and R37's own text) is an illustrative example.
+- Placeholders: any path containing `<`, `>` or `*` (`references/<topic>.md`, `references/*.md`), a `{` or `}` other than the recognized `${CLAUDE_SKILL_DIR}` variable (expand that one first, then check the result exists), or a path whose segment is `...` (`${CLAUDE_SKILL_DIR}/...`). Rule-describing prose that quotes a path as an example (e.g. R34's and R37's own text) is an illustrative example.
 - Illustrative examples: a filename shown to explain a rule (`references/patterns.de.md`,
   `references/advanced/patterns.md`, `path/to/file.md`). Judgment call — an example is exempt only when
   the surrounding text presents it as one.

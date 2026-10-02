@@ -30,7 +30,7 @@ Check the invocation context before starting:
 - **Fast path** (`--fast`, "delta", "targeted check", or the caller names specific files/rule IDs): check only the named files against only the named rules (all 33 otherwise) — skip full-plugin enumeration. The "did my fix resolve rule X" mode.
 - **Structured output** (`--yaml`, "structured output", "machine-readable", or a caller parsing programmatically): orthogonal to the above — same checks, YAML per "Structured Output Mode" below instead of narrative. Skip the "Suggested next step" trailer.
 
-**Model-tiering note (caller's choice, not detectable by this agent at runtime):** the `Agent` tool's `model` parameter overrides this file's `sonnet` default per-dispatch. A caller MAY use `model: haiku` when Fast path scope is purely mechanical rules (checklist Tier `M`). **Unvalidated** — verify via `skill-tester`/eval comparison against a sonnet baseline before trusting it in production. Never use `haiku` when scope includes a judgment-heavy rule (Tier `J`: R19, R20, R23, R25, R26). Always state in the report header which judgment-heavy rules (if any) are in scope, so a mismatched dispatch is visible.
+**Model-tiering note (caller's choice, not detectable by this agent at runtime):** the `Agent` tool's `model` parameter overrides this file's `sonnet` default per-dispatch. A caller MAY use `model: haiku` when Fast path scope is purely mechanical rules (checklist Tier `M`). **Unvalidated** — verify via `skill-tester`/eval comparison against a sonnet baseline before trusting it in production. Never use `haiku` when scope includes a judgment-heavy rule (any rule the checklist marks Tier `J`). Always state in the report header which judgment-heavy rules (if any) are in scope, so a mismatched dispatch is visible.
 
 ## Step 1: Load Checklist and Settings
 
@@ -58,7 +58,7 @@ For each resolved target, apply every in-scope rule except as follows: the forwa
 
 Apply the checklist's tiered rules (R13, R18, R21, R22, R23) using their threshold tables exactly as given — do not round or approximate a tier boundary.
 
-**R18 consolidation:** when 3+ code blocks in the same component exceed the 10-line weak-warning threshold, emit one consolidated ADVISORY rather than one entry per block.
+**R18 consolidation:** when 3+ code blocks in the same component are Weak Warnings (11-20 lines), emit one consolidated ADVISORY rather than one entry per block; Warning and Critical blocks always stay individual.
 
 **R20 sweep:** if this check's scope involves a canonical value that appears to have changed (a threshold, enum, or forbidden-field list looks inconsistent between the target and `settings.json`, or between two sibling files), grep the plugin tree for the old value and list every stale sibling occurrence as its own FAIL — this applies even in Fast path, since a Fast-path caller re-checking a fix is exactly the scenario where a sibling file might still hold the old value.
 
@@ -76,7 +76,7 @@ Settings: assets/settings.json [loaded]
 Repo overrides applied (.claude/plugin-rulebook.config.json): <entries, or "none found">
 Marketplace auto-allow applied: <file → entries, or "none found", or "disabled"> (plus "excluded (inside plugin under review): <path>" for any found-but-dropped file)
 Components checked: N skills, N agents, N commands, hooks: yes/no
-Judgment-heavy rules in scope: R19, R20, R23, R25, R26 (always full-quality regardless of dispatch model)
+Judgment-heavy rules in scope: the Tier `J` rules in the checklist (always full-quality regardless of dispatch model)
 
 <component-name> (<type>): PASS R1 R2 R4 ... | ADVISORY R7 (...) | FAIL R6 (...)
 <component-name> (<type>): PASS (all rules)
