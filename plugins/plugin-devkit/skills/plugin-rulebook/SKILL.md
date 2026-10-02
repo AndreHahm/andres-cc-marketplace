@@ -9,7 +9,7 @@ description: >-
   structural validation (manifest correctness, directory layout, component wiring), which is
   `plugin-validator`'s domain, and not scaffolding a plugin's directory structure or package
   layout, which is `plugin-development`'s domain.
-allowed-tools: Read Grep Glob Bash(git ls-files:*) Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py:*)
+allowed-tools: Read Grep Glob Bash(git ls-files:*) Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/smoke_test.py:*)
 ---
 
 # Plugin Rulebook

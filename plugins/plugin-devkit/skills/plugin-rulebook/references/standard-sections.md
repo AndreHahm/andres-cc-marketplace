@@ -5,7 +5,7 @@ R28-R30: checked on newly-created or structurally-modified skills, not as a swee
 
 ## Required headings
 
-A skill's `SKILL.md` must contain these four `##` sections:
+A skill's `SKILL.md` must contain these four `##` sections (headings match case-insensitively, so `## When Not to Use` counts):
 
 | Section | Required when |
 |---|---|

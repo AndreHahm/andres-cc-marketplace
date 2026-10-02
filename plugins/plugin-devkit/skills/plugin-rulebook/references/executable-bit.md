@@ -1,7 +1,7 @@
 # Executable Bit (R37)
 
 Full detail for R37. `SKILL.md` carries the rule's statement and a pointer here. Forward-looking, like
-R28-R30: checked on newly-created or structurally-modified skills and hooks.
+R28-R30: checked on newly-created or structurally-modified skills, commands and hooks.
 
 ## What is checked
 

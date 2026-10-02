@@ -310,10 +310,10 @@
       "config": {
         "canonical_reference": "references/standard-sections.md",
         "required_sections": [
-          {"name": "Quick Start", "heading_pattern": "^## Quick ?Start"},
-          {"name": "When to Use", "heading_pattern": "^## When to Use"},
-          {"name": "When NOT to Use", "heading_pattern": "^## When NOT to Use"},
-          {"name": "Reference Guide", "heading_pattern": "^## Reference (Guide|Files|Index)", "only_if": "references/ directory exists"}
+          {"name": "Quick Start", "heading_pattern": "(?i)^## quick ?start"},
+          {"name": "When to Use", "heading_pattern": "(?i)^## when to use"},
+          {"name": "When NOT to Use", "heading_pattern": "(?i)^## when not to use"},
+          {"name": "Reference Guide", "heading_pattern": "(?i)^## reference (guide|files|index)", "only_if": "references/ directory exists"}
         ]
       }
     },
