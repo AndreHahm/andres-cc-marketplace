@@ -164,7 +164,7 @@ No API keys, tokens, passwords, or secrets in any plugin file.
 
 **Scope:** All files including scripts, assets, and config files
 **Exception:** Placeholder values in examples only — `YOUR_API_KEY_HERE`, `$API_KEY`
-**Local identifiers (forward-looking):** a real OS username or local project directory name in a committed fixture, eval output or JSON file is also a FAIL — see `${CLAUDE_SKILL_DIR}/references/local-identifiers.md`.
+**Local identifiers (forward-looking):** a real OS username in a home-directory or profile path (three patterns) in a committed fixture, eval output or JSON file is also a FAIL; another absolute local path is judged and reported ADVISORY — see `${CLAUDE_SKILL_DIR}/references/local-identifiers.md`.
 
 ---
 

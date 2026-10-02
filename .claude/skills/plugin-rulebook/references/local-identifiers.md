@@ -7,7 +7,7 @@ like R28-R30: checked on newly-created or modified files, not as a sweep of ever
 
 R9 already forbids credentials. This clause adds a second class of leak: a **real local-machine identifier**
 committed in a fixture, eval output, recorded report or JSON file — the author's operating-system username
-inside an absolute path, or a real local project directory name. These show up when a command's output is
+inside an absolute path, and, as a judged case, a real local project directory name. These show up when a command's output is
 saved verbatim as an eval fixture or a recorded run (issues #285, #320, #256).
 
 Three path shapes are checked, with their regular expressions in
@@ -18,8 +18,11 @@ the two cannot drift):
 - a macOS home directory, `/Users/<name>/`
 - a Windows profile path, `C:\Users\<name>` (and its JSON-escaped form with doubled backslashes)
 
-A recorded absolute path in a generated record is the same leak even when it has no recognizable username, for
-example a workstation-specific `report_path` that is not portable across checkouts (issue #256). Prefer a
+Only these three shapes are matched mechanically. A recorded absolute path in a generated record is the same
+kind of leak even when it has no recognizable username, for example a workstation-specific `report_path` that is
+not portable across checkouts (issue #256), but there is no pattern for it: the reviewing agent judges it and
+reports an ADVISORY. Known limit: a real project directory name after a placeholder username
+(`/home/runner/<private-project>/`) is not detected, because the placeholder exempts the whole path. Prefer a
 repo-relative path.
 
 ## What is not a finding
@@ -33,7 +36,7 @@ repo-relative path.
 
 ## Severity
 
-REQUIRED, like the rest of R9: a real username or a real local directory name in a committed fixture is a FAIL.
+REQUIRED, like the rest of R9: a real username in one of the three path shapes in a committed fixture is a FAIL. A judged absolute path with no recognizable username is ADVISORY.
 
 ## Fix
 
