@@ -60,7 +60,7 @@
     "R9_no_hardcoded_credentials": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "No API keys, tokens, passwords, or secrets in any plugin file; forward-looking, also no real OS username or local project directory name in a committed fixture, eval output or JSON file -- see references/local-identifiers.md",
+      "description": "No API keys, tokens, passwords, or secrets in any plugin file; forward-looking, also no real OS username in a home-directory or profile path (three configured patterns) in a committed fixture, eval output or JSON file; another absolute local path is judged and reported ADVISORY -- see references/local-identifiers.md",
       "config": {
         "canonical_reference": "references/local-identifiers.md",
         "local_identifier_patterns": {

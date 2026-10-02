@@ -29,7 +29,10 @@ In a skill's `SKILL.md` and its own `references/*.md` (fenced code blocks exclud
 - A link resolves against the directory of the file that contains it.
 - `${CLAUDE_SKILL_DIR}` is the skill's own folder.
 - A repo-root path such as `scripts/marketplace_ci/prefix_check.py` is tried against the repo root when it
-  does not exist under the skill folder (issue #427).
+  does not exist under the skill folder (issue #427). That only stops it being reported as dead, and it does
+  not make the path portable: a link or `${CLAUDE_SKILL_DIR}` path that resolves only at the repo root still
+  lands outside the allowed folders and is flagged under "Paths that leave the skill folder" below. A bare
+  backticked `scripts/...` mention is skipped, as before.
 
 ## Severity
 
