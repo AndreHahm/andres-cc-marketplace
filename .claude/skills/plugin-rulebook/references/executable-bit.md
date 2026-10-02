@@ -14,7 +14,10 @@ Two ways a script is run directly:
 
 1. **A skill or command grant that names the script path** — `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`
    or `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)`. A grant naming an interpreter (`Bash(python:*)`,
-   `Bash(bash:*)`) is not a direct invocation and is not checked.
+   `Bash(bash:*)`) is not a direct invocation and is not checked. A grant is a permission, not proof of use:
+   check it only when the skill's body or `references/*.md` invoke the script by that path. If that text runs it
+   only through an interpreter (`python x.py`, `bash x.sh`), or never mentions it, report an informational
+   note and leave the mismatched or unused grant to R6, not a REQUIRED FAIL.
 2. **A hook `command` that is a bare path** — `"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard.sh"`, quoted or not,
    with nothing before it (`bash`, `python3`, `uv run`).
 

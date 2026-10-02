@@ -403,7 +403,7 @@ When skill or agent A's `## When NOT to Use` (or a "use B instead" sentence in i
 
 ### R37 — Executable Bit: Directly-Invoked Scripts [REQUIRED, default: on]
 
-A script run directly by path — one a skill or command `allowed-tools` grant names (`Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`), or a hook `command` that is a bare path — must be committed with git mode `100755`, read from `git ls-files -s`, not from the disk. A hook's `"shell": "bash"` does not exempt it: a shell running a non-executable path directly fails with `Permission denied`.
+A script run directly by path — one a skill or command `allowed-tools` grant names (`Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`) and its own text invokes by that path, or a hook `command` that is a bare path — must be committed with git mode `100755`, read from `git ls-files -s`, not from the disk. A hook's `"shell": "bash"` does not exempt it: a shell running a non-executable path directly fails with `Permission denied`.
 
 **Scope:** Newly-created or structurally-modified skills, commands and hooks (forward-looking). See `${CLAUDE_SKILL_DIR}/references/executable-bit.md` for the two invocation forms, the live-verified `shell` finding, and the fix.
 

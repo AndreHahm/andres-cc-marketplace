@@ -39,7 +39,7 @@ For every resolved target, apply R19 first: resolve its canonical absolute path,
 
 ## Step 3: Apply Rules
 
-For each resolved target, apply every in-scope rule (all 33 in Full review; the named subset, or all 33, in Fast path) per the compact checklist's pattern/violation/severity columns. Classify:
+For each resolved target, apply every in-scope rule except as follows: the forward-looking rules (R28-R30, R34-R37 and the R9/R14 extensions) raise a FAIL only when the caller supplied the changed paths or said to treat the component as modified, otherwise report them ADVISORY tagged `(forward-looking, no change in view)` per the checklist's \"Forward-looking scope\" note (all 33 in Full review; the named subset, or all 33, in Fast path) per the compact checklist's pattern/violation/severity columns. Classify:
 
 - **REQUIRED, violated** → FAIL (blocking)
 - **SUGGESTED/OPTIONAL, violated** → ADVISORY
