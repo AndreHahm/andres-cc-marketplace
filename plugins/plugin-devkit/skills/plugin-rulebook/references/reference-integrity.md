@@ -51,9 +51,12 @@ mirror also carries:
 
 Anything else is flagged: `docs/`, `bin/`, a repo-root file, or a sibling skill's own folder
 (`../other-skill/references/x.md`). Content shared between skills belongs in the plugin-root `references/`,
-`assets/` or `scripts/` folder, never in one skill's folder that a second skill reaches into. The reason is
-the `.claude/` mirror: a plugin-root `FOUNDATION_CONTRACTS.md` or `docs/` file is not part of it, so the same
-relative path resolves in `plugins/<plugin>/` but not in `.claude/` (issues #259, #316, #350, #446, #450).
+`assets/` or `scripts/` folder, never in one skill's folder that a second skill reaches into. There are two
+separate reasons. For `docs/`, `bin/` and repo-root files it is the `.claude/` mirror: a plugin-root
+`FOUNDATION_CONTRACTS.md` or `docs/` file is not part of it, so the same relative path resolves in
+`plugins/<plugin>/` but not in `.claude/` (issues #259, #316, #350, #446, #450). For a sibling skill's folder
+it is coupling, not resolvability: sibling skills are mirrored too, so a same-plugin path usually resolves in
+both layouts, but one skill then depends on another's internal layout.
 
 Pointers into **another plugin** are R23's domain, not this rule's.
 
