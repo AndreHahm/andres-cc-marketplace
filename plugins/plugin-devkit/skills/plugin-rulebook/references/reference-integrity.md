@@ -61,7 +61,7 @@ separate reasons. For `docs/`, `bin/` and repo-root files it is the `.claude/` m
 it is coupling, not resolvability: sibling skills are mirrored too, so a same-plugin path usually resolves in
 both layouts, but one skill then depends on another's internal layout.
 
-Pointers into **another plugin** are R23's domain, not this rule's.
+A *named* reference to another plugin, skill or marketplace is R23's domain, not this rule's. A relative path that crosses into another plugin's folder still leaves the skill folder, so it is flagged here under the rule above.
 
 `..` itself is not a violation: `../../references/x.md` from a skill folder is the normal way to reach the
 plugin-root `references/` folder. Only the outcomes in the severity table above are findings.
