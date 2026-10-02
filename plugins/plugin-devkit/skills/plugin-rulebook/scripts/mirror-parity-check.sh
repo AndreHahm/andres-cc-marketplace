@@ -72,11 +72,32 @@ check_component_type "hooks/scripts"
 # scripts/ is mirrored flat into .claude/scripts/ only for the plugins listed
 # in .claude/marketplace-sync.json's scripts_mirrors; for any other plugin a
 # canonical scripts/ file is not expected in the mirror, so it is not checked.
-# Skipped (not failed) when the sync file or python3 is unavailable.
-if python3 -c 'import json,sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1])).get("scripts_mirrors", []) else 1)' \
-  "$REPO_ROOT/.claude/marketplace-sync.json" "$PLUGIN" 2>/dev/null; then
-  check_component_type "scripts"
-fi
+# Skipped (not failed) when the plugin is not listed, the sync file does not
+# exist, or python3 is unavailable. A sync file that exists but cannot be read or
+# parsed is a failure: it could be hiding scripts/ drift.
+scripts_mirror_status=0
+python3 -c '
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as source:
+        config = json.load(source)
+except FileNotFoundError:
+    sys.exit(3)
+except (OSError, UnicodeError, ValueError):
+    sys.exit(2)
+mirrors = config.get("scripts_mirrors", []) if isinstance(config, dict) else None
+if not isinstance(mirrors, list):
+    sys.exit(2)
+sys.exit(0 if sys.argv[2] in mirrors else 1)
+' "$REPO_ROOT/.claude/marketplace-sync.json" "$PLUGIN" 2>/dev/null || scripts_mirror_status=$?
+case "$scripts_mirror_status" in
+  0) check_component_type "scripts" ;;
+  1 | 3 | 127) ;;
+  *)
+    echo "INVALID CONFIG: .claude/marketplace-sync.json is unreadable or malformed; cannot tell whether scripts/ is mirrored"
+    DRIFT_FOUND=1
+    ;;
+esac
 
 if [ "$DRIFT_FOUND" -eq 0 ]; then
   echo "No mirror drift found between .claude/ and plugins/$PLUGIN/."

@@ -355,7 +355,7 @@ A full eval/test-scenario walkthrough (a worked prompt → expected-output pair,
 
 ### R31 — Eval Fixture Integrity [REQUIRED, default: on]
 
-Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content — zero-match guard, anchored-matching, and coverage-arithmetic validation via `reviewing-evals/scripts/check_evals.py`, dispatched from `plugin-auditor` rather than checked here directly. It also checks that every `workspace/iteration-*/eval-N` has a matching `evals.json` entry (by `id`, `eval_id` or `"eval-N"`) — that registry check is not yet in `check_evals.py`; the reviewing agent applies it via Glob and Read.
+Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content — zero-match guard, anchored-matching, and coverage-arithmetic validation via `reviewing-evals/scripts/check_evals.py`, dispatched from `plugin-auditor` rather than checked here directly. It also checks that every `workspace/iteration-*/eval-N` has a matching `evals.json` entry (by `id`, `eval_id` or `"eval-N"`, with an optional descriptive suffix) — that registry check is not yet in `check_evals.py`; the reviewing agent applies it via Glob and Read.
 
 **Scope:** Every existing `evals.json`/`smoke_test.*` — not forward-looking, this checks correctness of content that already exists. See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full mechanism, the tool-grant rationale, and the exact checks run.
 
@@ -431,7 +431,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 6. Classify each finding:
    - **REQUIRED** → blocking violation (must fix before deployment)
    - **SUGGESTED** → advisory violation (recommended fix)
-   - **R13/R18 verification and R18 consolidation:** count SKILL.md lines and every fenced block's lines mechanically, never by visual sampling, and emit one consolidated ADVISORY when 3 or more blocks exceed 10 lines — see `references/size-rules.md`'s "How to Apply"
+   - **R13/R18 verification and R18 consolidation:** count SKILL.md lines and every fenced block's lines mechanically, never by visual sampling, and emit one consolidated ADVISORY when 3 or more blocks are Weak Warnings (11-20 lines), keeping Warning and Critical blocks individual — see `references/size-rules.md`'s "How to Apply"
    - **R20 sweep:** when a rule change touches a canonical enum/threshold/field value, grep sibling files across the plugin tree for the previous value and list each stale occurrence as a separate FAIL
 7. Emit compliance report — see `${CLAUDE_SKILL_DIR}/references/compliance-report-example.md` for the full worked example of this output shape
 

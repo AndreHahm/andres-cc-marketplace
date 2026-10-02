@@ -132,7 +132,7 @@ path, verify inside the current working directory, fail-closed on any ambiguity)
 - `check_evals.py --smoke-test <path> --skill-md <path>`: zero-match guard, anchored-matching check →
   FAIL on a vacuous assertion or unanchored short-needle search.
 - **Registry completeness (REQUIRED, immediate):** every `evals/<skill>/workspace/iteration-*/eval-N` directory
-  needs a matching `evals.json` entry — matched by `id`, `eval_id`, or a string id of the form `"eval-N"`, since
+  needs a matching `evals.json` entry — matched by `id`, `eval_id`, or a string id of the form `"eval-N"` with an optional descriptive suffix (`eval-1-seeded-create-brief` matches directory `eval-1`), since
   the schema varies across skills (a naive integer-`id` comparison reports false gaps). Not yet implemented in
   `check_evals.py`; the reviewing agent applies it with Glob and Read. One real gap is known today:
   `plugin-lifecycle-maintenance` has evals 10 and 11 as workspace artifacts only (issue #145).
