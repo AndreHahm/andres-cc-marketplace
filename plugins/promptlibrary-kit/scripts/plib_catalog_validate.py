@@ -7,7 +7,7 @@ with a path trust boundary, record validation, text hashing, secret screening, a
 Every subcommand prints one JSON object on stdout and exits 0 (ok) or 1 (not ok). Standard
 library only.
 
-Usage: plib_catalog_validate.py <subcommand> [args] [--root PATH]
+Usage: plib_catalog_validate.py [--root PATH] <subcommand> [args]
 Subcommands: validate, show, hash, screen, init, new-id, draft, update-draft, register, discard-
 orphan,
              record-verification, activate, deactivate, finalize
@@ -77,8 +77,22 @@ SLUG_PART = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_RE = re.compile(rf"^{SLUG_PART}__{SLUG_PART}$")
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
-# internal_id values that would collide with a file name the layout already uses.
-RESERVED_IDS = {"active", "catalog"}
+# internal_id values that would collide with a file name the layout already uses, or that name a
+# file Claude, Codex or Gemini load as instructions (the record file is <internal_id>.md, and
+# CLAUDE.md is the same file as claude.md on a case-insensitive filesystem), or a Windows device.
+RESERVED_IDS = {
+    "active",
+    "catalog",
+    "claude",
+    "agents",
+    "gemini",
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{n}" for n in range(10)),
+    *(f"lpt{n}" for n in range(10)),
+}
 # Origins whose text must pass the secret screen before it is filed or approved. session and web are
 # imports; claude text is built from session context, which can hold secrets.
 SCREENED_ORIGINS = ("session", "web", "claude")
@@ -223,7 +237,7 @@ def _dump_scalar(value) -> str:
         return str(value)
     text = str(value)
     if (
-        _SAFE_PLAIN.match(text)
+        _SAFE_PLAIN.fullmatch(text)
         and text not in ("true", "false", "null", "~")
         and not re.fullmatch(r"-?\d+", text)
         and not text.endswith(" ")
@@ -310,7 +324,7 @@ def hash_problems(meta: dict) -> list[str]:
         stored = ver.get(kind)
         if not stored:
             problems.append(f"verification.{kind} is missing")
-        elif not isinstance(stored, str) or not HASH_RE.match(stored):
+        elif not isinstance(stored, str) or not HASH_RE.fullmatch(stored):
             problems.append(f"verification.{kind} is not a SHA-256 hex digest")
         elif stored != current:
             problems.append(f"verification.{kind} does not match the current prompt text")
@@ -340,14 +354,13 @@ def validate_record(meta: dict, version: int) -> list[str]:
         or meta["version"] < 1
     ):
         errs.append("version must be a positive integer")
-    if isinstance(meta["slug"], str) and not SLUG_RE.match(meta["slug"]):
+    if isinstance(meta["slug"], str) and not SLUG_RE.fullmatch(meta["slug"]):
         errs.append("slug must match <kebab-area>__<kebab-name>")
-    if isinstance(meta["internal_id"], str) and (
-        not ID_RE.match(meta["internal_id"]) or len(meta["internal_id"]) > 64
-    ):
-        errs.append("internal_id must be lowercase kebab text of at most 64 characters")
-    elif meta["internal_id"] in RESERVED_IDS:
-        errs.append("internal_id is reserved: " + meta["internal_id"])
+    if isinstance(meta["internal_id"], str):
+        if not ID_RE.fullmatch(meta["internal_id"]) or len(meta["internal_id"]) > 64:
+            errs.append("internal_id must be lowercase kebab text of at most 64 characters")
+        elif meta["internal_id"] in RESERVED_IDS:
+            errs.append("internal_id is reserved: " + meta["internal_id"])
     if meta["status"] not in STATUSES:
         errs.append(f"status must be one of {', '.join(STATUSES)}")
     if meta["origin"] not in ORIGINS:
@@ -430,7 +443,8 @@ def _git_toplevel(cwd: Path) -> Path | None:
 
 def _is_tracked(project_root: Path, rel: Path) -> bool:
     """True when git tracks rel. Fails closed: any doubt counts as tracked, so the override is
-    ignored."""
+    ignored. Only git's exit code 1 (the path is not known to git) counts as untracked; any other
+    failure, such as a corrupt index or an ownership error, is doubt."""
     git = _find_git(project_root)
     if not git:
         return True
@@ -444,7 +458,7 @@ def _is_tracked(project_root: Path, rel: Path) -> bool:
         )
     except (OSError, subprocess.SubprocessError):
         return True
-    return out.returncode == 0
+    return out.returncode != 1
 
 
 def _case_insensitive(directory: Path) -> bool:
@@ -540,7 +554,12 @@ def resolve_root(cli_root: str | None, cwd: Path | None = None) -> dict:
         candidates.append(("--root", cli_root))
     local = project_root / LOCAL_OVERRIDE
     if local.is_file():
-        if top and _is_tracked(project_root, LOCAL_OVERRIDE):
+        if not top:
+            info["warnings"].append(
+                f"{LOCAL_OVERRIDE.as_posix()} cannot be checked against git here; its path value "
+                "is ignored"
+            )
+        elif _is_tracked(project_root, LOCAL_OVERRIDE):
             info["warnings"].append(
                 f"{LOCAL_OVERRIDE.as_posix()} is tracked by git; its path value is ignored"
             )
@@ -877,7 +896,7 @@ def cmd_init(args) -> dict:
 
 def cmd_new_id(args) -> dict:
     info, _, _, records = _load(args)
-    taken = {m.get("internal_id") for m in records.values()}
+    taken = {m["internal_id"] for m in records.values() if isinstance(m.get("internal_id"), str)}
     while True:
         candidate = "p" + hashlib.sha256(os.urandom(16)).hexdigest()[:12]
         if candidate not in taken:
