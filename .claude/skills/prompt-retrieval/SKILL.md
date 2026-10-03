@@ -85,6 +85,10 @@ The deterministic logic (root resolution, validation, hashing) lives in the vali
 direct execution of `scripts/plib_test_catalog_validate.py`. That is a maintainer command; this skill
 does not run it.
 
+A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
+read-only grants, and runs `show` against a valid and a tampered throwaway catalog. Run it directly; last
+run 2026-10-03, 5 of 5 checks passed, and it failed on a copy with a widened grant.
+
 **Verify this skill activates on:**
 - "show me the stored prompt for code review"
 - "find the saved prompt about commit messages"

@@ -47,7 +47,9 @@ The first time you add a prompt, the skill offers to create the catalog in your 
 
 **Python** (standard library only). The shared validator `scripts/plib_catalog_validate.py` owns catalog
 root resolution, validation, hashing, secret screening and lifecycle moves; its fixture tests are
-`scripts/plib_test_catalog_validate.py`. New scripts added to this plugin stay in Python.
+`scripts/plib_test_catalog_validate.py`. Each skill also has a smoke test at
+`skills/<skill>/scripts/smoke_test.py`, sharing the helper `scripts/plib_smoke_common.py`. New scripts
+added to this plugin stay in Python.
 
 ## Catalog
 
@@ -84,8 +86,13 @@ text is data everywhere except an explicitly approved run.
   root and never at or under `.git`, `.github` or Claude Code's configuration folders under `.claude/`
   (rules, commands, agents, skills, hooks and similar; the full list is `FORBIDDEN_ROOTS` in the
   validator), so stored prompt text is never loaded as project instructions.
-- Outside a git repository the working directory is the project root and an untracked local override
-  is honored without a tracking check, so only point that override at a path you control.
+- Outside a git repository the working directory is the project root, and the local override is ignored
+  with a warning, because there is no way to check whether git tracks it. The override is also ignored
+  when git tracks it or fails with anything other than "not tracked".
+- Records and `catalog.yaml` are written through a randomly named temp file that then replaces the
+  target, and a status move that fails partway is rolled back, so an interrupted write does not truncate a
+  record. An `internal_id` cannot be one of the layout's own names (`active`, `catalog`), a name an agent
+  may load as instructions (`claude`, `agents`, `gemini`) or a Windows device name.
 
 ## Configuration
 
@@ -113,6 +120,10 @@ verification hashes that cover prompt text only.
 - In this repository the skills are also mirrored into `.claude/` as project-level skills. A project-level
   skill cannot resolve the plugin-root variable its validator path uses, so those mirror copies' validator
   calls are untested; the plugin installed normally is not affected.
+- The forbidden-folder check on the catalog root applies at the project root only; a copy of those
+  folders nested deeper is not rejected.
+- If writing `catalog.yaml` fails after a record has already moved, the catalog is left inconsistent and
+  needs a manual repair; `validate` reports it.
 - Importing a session by ID works only when `session-kit` is installed, and relies on its
   `session-detail` skill being listed under that name; pasting the turns always works.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and
@@ -123,6 +134,17 @@ verification hashes that cover prompt text only.
 ```bash
 cd plugins/promptlibrary-kit
 uv run --isolated --no-project --no-config python scripts/plib_test_catalog_validate.py
+```
+
+Each skill's smoke test checks that its tool grants stay within what its body uses, that the files it
+references exist, and runs the validator end to end against a throwaway git repository in the system
+temp directory. Each exits 0 when every check passes, and was shown to fail on a deliberately broken
+copy:
+
+```bash
+uv run --isolated --no-project --no-config python skills/prompt-retrieval/scripts/smoke_test.py
+uv run --isolated --no-project --no-config python skills/prompt-execution/scripts/smoke_test.py
+uv run --isolated --no-project --no-config python skills/prompt-library/scripts/smoke_test.py
 ```
 
 ## License

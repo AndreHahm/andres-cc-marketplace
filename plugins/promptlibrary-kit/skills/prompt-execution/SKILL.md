@@ -103,6 +103,11 @@ written back into any record. See `references/prompt-execution-trust-model.md`.
 
 ## Testing & Validation
 
+A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter and
+`disable-model-invocation`, that its grants reach only `validate` and `show`, that the slug pattern in
+step 1 agrees with the validator's, and that an edited prompt invalidates the catalog. Run it directly;
+last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a weakened slug pattern.
+
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-execution review__missing-tests"
 - "run the stored prompts review__missing-tests and docs__changelog-entry"
