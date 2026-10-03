@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit", "workmanagement-kit", "session-kit", "context-kit", "antigravity-kit", "github-actions-kit"],
-  "scripts_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "session-kit", "workmanagement-kit", "context-kit"],
+  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit", "workmanagement-kit", "session-kit", "context-kit", "antigravity-kit", "github-actions-kit", "promptlibrary-kit"],
+  "scripts_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "session-kit", "workmanagement-kit", "context-kit", "promptlibrary-kit"],
   "codex_exports": {
     "skills": ["plugin-marketplace-review"],
     "agents": [
