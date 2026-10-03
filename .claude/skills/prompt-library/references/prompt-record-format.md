@@ -36,6 +36,8 @@ instructions) and the Windows device names (`con`, `prn`, `aux`, `nul`, `com0` t
 
 ## Example frontmatter for an imported record
 
+The required fields:
+
 ```yaml
 name: Missing tests review
 area: review
@@ -45,6 +47,11 @@ version: 1
 short_description: Find changes that lack tests.
 status: draft
 origin: web
+```
+
+A `web` record adds these to the same frontmatter:
+
+```yaml
 source_ref:
   url: https://example.com/prompts/review
   retrieved_on: 2026-10-03

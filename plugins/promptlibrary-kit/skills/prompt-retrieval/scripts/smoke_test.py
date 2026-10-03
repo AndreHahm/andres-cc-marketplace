@@ -46,6 +46,8 @@ def check_frontmatter():
 
 def check_referenced_files():
     _, body = C.read_skill(SKILL_DIR)
+    if not C.referenced_files(body):
+        return False, "the body names no references/ or assets/ file at all"
     missing = C.referenced_files_missing(SKILL_DIR, body)
     if missing:
         return False, "missing: " + ", ".join(missing)

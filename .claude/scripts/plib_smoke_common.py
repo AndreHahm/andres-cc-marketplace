@@ -87,10 +87,15 @@ def body_subcommands(body: str) -> set[str]:
     return set(re.findall(r"<CLI>\s+([a-z][a-z-]*)", body))
 
 
+def referenced_files(body: str) -> list[str]:
+    """Backticked references/ or assets/ markdown files the skill body names. A check built on this
+    must fail when the list is empty, or it passes without having looked at anything."""
+    return sorted(set(re.findall(r"`((?:references|assets)/[\w.-]+\.md)`", body)))
+
+
 def referenced_files_missing(skill_dir: Path, body: str) -> list[str]:
-    """Backticked references/ or assets/ markdown files that do not exist in the skill dir."""
-    pattern = r"`((?:references|assets)/[\w.-]+\.md)`"
-    return sorted({p for p in re.findall(pattern, body) if not (skill_dir / p).is_file()})
+    """The referenced files that do not exist in the skill dir."""
+    return [p for p in referenced_files(body) if not (skill_dir / p).is_file()]
 
 
 class Fixture:
