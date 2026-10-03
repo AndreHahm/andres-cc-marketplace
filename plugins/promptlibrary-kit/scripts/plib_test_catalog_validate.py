@@ -257,6 +257,25 @@ class PathBoundary(Base):
         with mock.patch.object(V, "_find_git", return_value=None):
             self.assertTrue(V._is_tracked(self.proj, Path(".claude/promptlibrary-kit.local.json")))
 
+    def test_tracking_check_treats_only_exit_code_1_as_untracked(self):
+        rel = Path(".claude/promptlibrary-kit.local.json")
+        for code, expected in ((0, True), (1, False), (128, True), (2, True)):
+            done = subprocess.CompletedProcess([], code, "", "")
+            with (
+                mock.patch.object(V, "_find_git", return_value="git"),
+                mock.patch.object(V.subprocess, "run", return_value=done),
+            ):
+                self.assertEqual(V._is_tracked(self.proj, rel), expected, code)
+
+    def test_override_is_ignored_when_git_cannot_be_asked(self):
+        local = self.proj / ".claude" / "promptlibrary-kit.local.json"
+        local.parent.mkdir(parents=True)
+        local.write_text(json.dumps({"catalog_root": "custom/prompts"}), encoding="utf-8")
+        with mock.patch.object(V, "_git_toplevel", return_value=None):
+            info = V.resolve_root(None)
+        self.assertEqual(info["root_source"], "default")
+        self.assertTrue(any("cannot be checked against git" in w for w in info["warnings"]))
+
     def test_git_binary_inside_the_working_directory_is_never_used(self):
         for name in ("git.bat", "git.cmd", "git.exe", "git"):
             (self.proj / name).write_text("echo hijacked", encoding="utf-8")
@@ -308,7 +327,7 @@ class FileReadLimits(Base):
         path = self.scratch(_body=f"key {FAKE_KEY}")
         code, res = self.run_cli("screen", path)
         self.assertEqual(code, 1)
-        self.assertNotIn(FAKE_KEY[:4] + "...", json.dumps(res))
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
         self.assertEqual(res["matches"][0]["pattern"], "aws_access_key")
 
 
@@ -427,13 +446,21 @@ class Lifecycle(Base):
             self.scratch(origin="web", source_ref=ref, short_description=f"Uses {FAKE_KEY}."),
         )
         self.assertEqual(code, 1)
+        self.assertIn("aws_access_key", res["error"])
+        self.assertNotIn(FAKE_KEY, json.dumps(res))
 
     def test_secret_added_after_draft_still_blocks_verification_and_activation(self):
         ref = {"session_id": "abc123", "turns": "1-2"}
         self.add_draft(origin="session", source_ref=ref)
         path = self.root / SLUG / "p000000000001.md"
         path.write_text(path.read_text(encoding="utf-8") + f"\nkey {FAKE_KEY}\n", encoding="utf-8")
-        self.assertEqual(self.verify("p000000000001")[0], 1)
+        code, res = self.verify("p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("aws_access_key", res["error"])
+        code, res = self.act("p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("aws_access_key", res["error"])
+        self.assertFalse((self.root / SLUG / "active.md").exists())
 
     def test_user_origin_text_is_not_blocked_by_the_import_screen(self):
         self.assertEqual(self.run_cli("init")[0], 0)
@@ -527,11 +554,13 @@ class Lifecycle(Base):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             V.main(["finalize", "p1", "--expect-sha256", "0" * 64, "--active", "--inactive"])
 
-    def test_second_active_for_a_slug_refused(self):
+    def test_a_successor_draft_is_refused_by_activate_and_must_use_finalize(self):
         self.make_active()
         self.add_draft("p000000000002", version=2, previous_id="p000000000001")
         self.verify("p000000000002")
-        self.assertEqual(self.act("p000000000002")[0], 1)
+        code, res = self.act("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertIn("finalize", res["error"])
 
     def test_fifty_one_line_prompt_rejected(self):
         self.assertEqual(self.run_cli("init")[0], 0)
@@ -542,8 +571,11 @@ class Lifecycle(Base):
         self.assertIn("50 nonblank", res["error"])
 
     def test_unsafe_slug_and_unknown_field_rejected(self):
-        for slug in ("Bad__Name", "no-double-underscore", "../x__y"):
-            self.assertIsNone(V.SLUG_RE.match(slug), slug)
+        for slug in ("Bad__Name", "no-double-underscore", "../x__y", "a__b\n"):
+            self.assertIsNone(V.SLUG_RE.fullmatch(slug), slug)
+            parsed, body = V.split_record(record(slug=slug))
+            parsed["_body"] = body
+            self.assertTrue(any("slug must match" in e for e in V.validate_record(parsed, 1)), slug)
         parsed, body = V.split_record(record(extra_field="x"))
         parsed["_body"] = body
         self.assertTrue(any("unknown field" in e for e in V.validate_record(parsed, 1)))
@@ -560,10 +592,41 @@ class Lifecycle(Base):
 class Hardening(Base):
     def test_reserved_internal_ids_rejected(self):
         self.assertEqual(self.run_cli("init")[0], 0)
-        for rid in ("active", "catalog"):
+        for rid in (
+            "active",
+            "catalog",
+            "claude",
+            "agents",
+            "gemini",
+            "con",
+            "nul",
+            "com1",
+            "lpt9",
+        ):
             code, res = self.run_cli("draft", self.scratch(internal_id=rid))
             self.assertEqual(code, 1, rid)
             self.assertIn("reserved", res["error"])
+
+    def test_trailing_newline_in_internal_id_or_hash_is_rejected(self):
+        parsed, body = V.split_record(record(internal_id="p000000000001\n"))
+        parsed["_body"] = body
+        self.assertTrue(any("internal_id" in e for e in V.validate_record(parsed, 1)))
+        self.assertIsNone(V.HASH_RE.fullmatch("a" * 64 + "\n"))
+
+    def test_new_id_survives_a_record_with_a_non_text_internal_id(self):
+        records = {"a": {"internal_id": ["x"]}, "b": {"internal_id": "p000000000001"}}
+        with mock.patch.object(V, "_load", return_value=({}, None, None, records)):
+            res = V.cmd_new_id(mock.Mock())
+        self.assertTrue(res["ok"])
+        self.assertRegex(res["internal_id"], r"p[0-9a-f]{12}")
+
+    def test_non_text_internal_id_is_a_validation_error_not_a_crash(self):
+        for bad in (["x"], {"a": "b"}, 7):
+            parsed, body = V.split_record(record())
+            parsed["_body"] = body
+            parsed["internal_id"] = bad
+            errs = V.validate_record(parsed, 1)
+            self.assertTrue(any("internal_id must be text" in e for e in errs), bad)
 
     def test_claude_origin_text_is_screened_but_user_and_codex_are_not(self):
         self.assertEqual(self.run_cli("init")[0], 0)

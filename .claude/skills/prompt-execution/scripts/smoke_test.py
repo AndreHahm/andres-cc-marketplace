@@ -31,6 +31,7 @@ INVALID_SLUGS = [
     "a__b c",
     "../x__y",
     "a__b\nc",
+    "a__b\n",
 ]
 
 

@@ -97,6 +97,9 @@ def check_live_web_secret_is_refused_and_nothing_filed():
         code, out = fx.run("init")
         if code != 0:
             return False, f"init failed: {out.get('error')}"
+        if not out.get("catalog_root"):
+            return False, "the validator did not report its catalog root, so the check is blind"
+        catalog_root = Path(out["catalog_root"])
         source = {"url": "https://example.com/p", "retrieved_on": "2026-10-03"}
         draft = fx.scratch(origin="web", source_ref=source, _body=f"Use key {C.FAKE_KEY}")
         code, out = fx.run("draft", draft)
@@ -107,9 +110,13 @@ def check_live_web_secret_is_refused_and_nothing_filed():
             return False, f"refused for the wrong reason: {message}"
         if C.FAKE_KEY in message:
             return False, "the refusal message echoed the secret"
-        filed = list((fx.repo / ".claude" / "prompts").glob("*/*.md"))
+        filed = list(catalog_root.glob("*/*.md"))
         if filed:
             return False, f"a record file was left behind: {[p.name for p in filed]}"
+        # Positive control: the same glob must see a record once a clean one is filed.
+        code, out = fx.run("draft", fx.scratch())
+        if code != 0 or not list(catalog_root.glob("*/*.md")):
+            return False, "control failed: a clean draft is not visible to the 'nothing filed' glob"
     finally:
         fx.close()
     return True, "web text with a key is refused, the key is not echoed, nothing is filed"
