@@ -823,8 +823,8 @@ def screen_blob(meta: dict) -> str:
 
 
 def _assert_clean(meta: dict) -> None:
-    """Enforce detect-and-block for imported text (session, web), not just in the skill's step
-    order."""
+    """Enforce detect-and-block for session, web and claude text (SCREENED_ORIGINS), not just in
+    the skill's step order."""
     if meta.get("origin") in SCREENED_ORIGINS:
         hits = screen_text(screen_blob(meta))
         if hits:

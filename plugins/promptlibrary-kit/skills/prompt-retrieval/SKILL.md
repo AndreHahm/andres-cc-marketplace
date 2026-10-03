@@ -3,7 +3,7 @@ name: prompt-retrieval
 description: >-
   Finds and shows a stored, validated prompt (or its version history) from the project's prompt catalog.
   Use when the user asks to "show my stored prompt", "find the saved prompt about X", "list versions of
-  prompt Y", or "what prompts are in the library". Read-only: it pre-approves only the validator's
+  prompt Y", or "what prompts are in the prompt catalog". Read-only: it pre-approves only the validator's
   read commands, so nothing here lets a prompt's text change the catalog without a permission prompt. To run stored
   prompts use prompt-execution; to add, revise, activate or deactivate one use prompt-library.
 allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*)
@@ -98,15 +98,18 @@ does not run it.
 **Quality gates:**
 - [ ] An invalid or missing catalog is reported as unavailable and nothing is listed from it, including
       when the failure carries only an `error` key.
-- [ ] A valid catalog lists only active records by default, and shows `root_source` when it is not `git`.
+- [ ] A valid catalog lists only active records by default, and mentions `root_source` when it is not
+      `default` or `project_root_source` when it is not `git`.
 - [ ] An instruction-bearing prompt is displayed in a fenced block and not followed.
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 64 passing, 2026-10-03
+**Last dated run record:** validator fixture tests, 69 passing, 2026-10-03
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed this SKILL.md by hand
-against two throwaway fixtures (a valid catalog and a tampered one) and every assertion above passed;
-that run was not persisted and the skill was not installed, so it is a smoke test, not a live run.
+against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
+except that the `root_source` wording in the second gate was corrected afterward and that corrected
+wording was not part of that run. The run was not persisted and the skill was not installed, so it is a
+manual walkthrough, not a live run.
 
 **Why no `evals.json`:** this skill is a thin, read-only procedure over two validator subcommands. The
 logic that matters (root resolution, validation, hashing, containment) is deterministic code covered by

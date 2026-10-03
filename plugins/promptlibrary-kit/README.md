@@ -68,8 +68,11 @@ text is data everywhere except an explicitly approved run.
 
 ## Safety design
 
-- `prompt-retrieval` and `prompt-execution` can run only the validator's `validate` and `show` commands.
-  Only `prompt-library` can change the catalog, and only through the validator.
+- `prompt-retrieval` and `prompt-execution` pre-approve only the validator's `validate` and `show`
+  commands; anything else they might attempt still needs a normal permission prompt. Only `prompt-library`
+  pre-approves commands that change the catalog, and only through the validator.
+- `origin` is a claim recorded at intake, not an attestation: a hand-edited `origin` skips the import
+  screen and the import hash.
 - The validator blocks secrets in `session`, `web` and `claude` text itself (detect and block, never
   rewrite, never echoed), not just in the skill's step order. `user` and `codex` text is only warned.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
@@ -119,7 +122,7 @@ verification hashes that cover prompt text only.
 
 ```bash
 cd plugins/promptlibrary-kit
-uv run --no-project python scripts/plib_test_catalog_validate.py
+uv run --isolated --no-project --no-config python scripts/plib_test_catalog_validate.py
 ```
 
 ## License

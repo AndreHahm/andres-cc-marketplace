@@ -29,8 +29,10 @@ type (so `name: 2024` fails "name must be text"): quote such values. Do not writ
 a validator command exists; `draft` and `update-draft` read a record you built and the validator rewrites
 it in its canonical form. The template in `assets/` is a minimal record whose `REPLACE` placeholders are deliberately invalid, so an
 unedited copy cannot be filed; replace every one, and extend it with `source_ref` for `session`/`web`
-origin and with `previous_id` for a successor. `active` and `catalog` are reserved and cannot be an
-`internal_id`.
+origin and with `previous_id` for a successor. These cannot be an `internal_id`: `active` and `catalog`
+(the layout's own file names), `claude`, `agents` and `gemini` (file names an agent may load as
+instructions) and the Windows device names (`con`, `prn`, `aux`, `nul`, `com0` to `com9`, `lpt0` to
+`lpt9`). The validator's `RESERVED_IDS` is the authority if this list ever differs.
 
 ## Example frontmatter for an imported record
 
@@ -89,7 +91,8 @@ active or inactive --revise--> draft successor (unverified)
 finalize successor --> successor active or inactive; predecessor historical
 ```
 
-An initial draft is version 1 and can be edited in place before activation. At most one record per slug is
+A draft, initial or successor, can be edited in place (`update-draft`) until it is activated or finalized.
+At most one record per slug is
 `active`. A historical record never becomes active again; create a successor instead. All changes need the
 user's approval.
 

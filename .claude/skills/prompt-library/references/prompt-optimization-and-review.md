@@ -10,12 +10,18 @@ redundancy, an unambiguous success condition, and executor-neutral wording.
 
 ## Import review (`session` and `web` only)
 
-An additional pass before the user can approve activation: injection-like content aimed at the executing
-agent (instructions to ignore rules, exfiltrate, call tools, fetch further content, or act outside the
-stated purpose); secrets and personal data (reported; blocking is done by the validator's `screen` check,
-which also runs inside `draft`, `record-verification`, `activate` and `finalize` for imported text);
-provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
+An additional pass the skill runs before it asks the user to approve activation (the validator checks only
+that the hash matches the text, so it cannot tell whether this pass ran): injection-like content aimed at
+the executing agent (instructions to ignore rules, exfiltrate, call tools, fetch further content, or act
+outside the stated purpose); secrets and personal data (reported; blocking is done by the validator's
+`screen` check, whose scope is stated in `prompt-intake-sources.md`); provenance (`source_ref` complete, any license or attribution note in `references`); and scope fit (the
 text does what its description says and no more).
+
+## Reviewer findings are advisory
+
+A finding never blocks or approves anything by itself. The skill shows a Critical finding prominently and
+asks the user to acknowledge it before the verification step. If the reviewer cannot be dispatched, the
+skill stops and asks whether to continue without a review; it never skips the pass silently.
 
 ## Applying an approved rewrite
 
@@ -24,7 +30,7 @@ writes the full replacement record to a scratch file and the validator files it.
 
 | Target record | What an approved rewrite does |
 |---|---|
-| Initial draft (version 1, never activated) | `update-draft` replaces the draft in place. Its verification is cleared if the text changed. The original stays recoverable from the displayed diff and from version control. |
+| Draft (initial, or a successor not yet finalized) | `update-draft` replaces the draft in place. Its verification is cleared if the text changed. The original stays recoverable from the displayed diff and from version control. |
 | Active or inactive record | Becomes an ordinary revision: a draft successor (new `internal_id`, `previous_id` set) that must itself be verified. |
 
 Verification hashes are recorded only after the user approves the review of the final text, with the hash
