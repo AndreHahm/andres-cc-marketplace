@@ -1,0 +1,8 @@
+{
+  "name": "promptlibrary-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "Project-local prompt library: keep reusable prompts (written by you, Claude or Codex, extracted from a session, or imported from the web) in a validated catalog, verify and optimize each one before it can be used, look prompts up read-only, and run one or more verified prompts in Claude after a full-text preview and a single approval. Python standard library only; no hooks, MCP server or background process.",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}
