@@ -315,8 +315,10 @@ class FileReadLimits(Base):
         outside = str(
             Path(__file__).with_name("plib_catalog_validate.py").resolve()
         )  # the plugin's own source tree is neither
-        self.assertEqual(self.run_cli("hash", outside)[0], 1)
-        self.assertEqual(self.run_cli("screen", outside)[0], 1)
+        for command in ("hash", "screen"):
+            code, res = self.run_cli(command, outside)
+            self.assertEqual(code, 1, command)
+            self.assertIn("inside the catalog root or the system temp directory", res["error"])
 
     def test_hash_and_screen_accept_scratch_files(self):
         path = self.scratch()
@@ -341,7 +343,9 @@ class Lifecycle(Base):
         self.assertEqual(self.run_cli("show", SLUG)[1]["records"][0]["prompt_text"], BODY)
         self.assertEqual(self.run_cli("deactivate", "p000000000001")[0], 0)
         self.assertTrue((self.root / SLUG / "p000000000001.md").is_file())
-        self.assertEqual(self.run_cli("show", SLUG)[0], 1)  # no active record
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 1)
+        self.assertIn("no active record", res["error"])
         self.assertEqual(self.run_cli("show", SLUG, "--history")[0], 0)
         self.assertEqual(self.act("p000000000001")[0], 0)
 
@@ -470,9 +474,9 @@ class Lifecycle(Base):
 
     def test_draft_refuses_reused_slug_and_bad_successors(self):
         self.make_active()
-        self.assertEqual(
-            self.run_cli("draft", self.scratch(internal_id="p000000000009"))[0], 1
-        )  # slug reuse
+        code, res = self.run_cli("draft", self.scratch(internal_id="p000000000009"))
+        self.assertEqual(code, 1)
+        self.assertIn("already used by another lineage", res["error"])
         code, res = self.run_cli(
             "draft", self.scratch(internal_id="p000000000002", version=2, previous_id="nope")
         )
@@ -484,6 +488,7 @@ class Lifecycle(Base):
             self.scratch(internal_id="p000000000004", version=2, previous_id="p000000000001"),
         )
         self.assertEqual(code, 1)  # a second successor for the same version
+        self.assertIn("this version or a later one already exists", res["error"])
 
     def test_update_draft_clears_stale_verification_and_keeps_current(self):
         self.add_draft()
@@ -497,16 +502,22 @@ class Lifecycle(Base):
         self.assertEqual(self.run_cli("update-draft", "p000000000001", changed)[0], 0)
         self.assertNotIn("verification", V.read_record(self.root / SLUG / "p000000000001.md"))
         origin_change = self.scratch(internal_id="p000000000001", origin="codex")
-        self.assertEqual(self.run_cli("update-draft", "p000000000001", origin_change)[0], 1)
+        code, res = self.run_cli("update-draft", "p000000000001", origin_change)
+        self.assertEqual(code, 1)
+        self.assertIn("cannot change when updating a draft", res["error"])
 
     def test_update_draft_refuses_non_drafts(self):
         self.make_active()
-        self.assertEqual(self.run_cli("update-draft", "p000000000001", self.scratch())[0], 1)
+        code, res = self.run_cli("update-draft", "p000000000001", self.scratch())
+        self.assertEqual(code, 1)
+        self.assertIn("only a draft can be updated", res["error"])
 
     def test_failed_catalog_write_leaves_no_orphan_file(self):
         self.assertEqual(self.run_cli("init")[0], 0)
         with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
-            self.assertEqual(self.run_cli("draft", self.scratch())[0], 1)
+            code, res = self.run_cli("draft", self.scratch())
+            self.assertEqual(code, 1)
+            self.assertIn("disk full", res["error"])
         self.assertEqual(list(self.root.glob("*/*.md")), [])
         self.assertEqual(self.run_cli("validate")[0], 0)
 
@@ -526,15 +537,21 @@ class Lifecycle(Base):
 
     def test_discard_orphan_refuses_listed_records(self):
         self.make_active()
-        self.assertEqual(self.run_cli("discard-orphan", f"{SLUG}/active.md")[0], 1)
+        code, res = self.run_cli("discard-orphan", f"{SLUG}/active.md")
+        self.assertEqual(code, 1)
+        self.assertIn("is not an unlisted record file", res["error"])
 
     def test_successor_finalize_retires_predecessor(self):
         self.make_active()
-        self.assertEqual(self.run_cli("init")[0], 1)  # already exists
+        code, res = self.run_cli("init")
+        self.assertEqual(code, 1)
+        self.assertIn("catalog.yaml already exists", res["error"])
         self.add_draft(
             "p000000000002", version=2, previous_id="p000000000001", _body=BODY + "\nBe terse."
         )
-        self.assertEqual(self.act("p000000000002")[0], 1)  # must use finalize
+        code, res = self.act("p000000000002")  # a successor must use finalize
+        self.assertEqual(code, 1)
+        self.assertIn("finalize", res["error"])
         self.assertEqual(self.verify("p000000000002")[0], 0)
         code, res = self.fin("p000000000002")
         self.assertEqual(code, 0, res)
@@ -547,7 +564,9 @@ class Lifecycle(Base):
         self.run_cli("deactivate", "p000000000001")
         self.add_draft("p000000000002", version=2, previous_id="p000000000001")
         self.verify("p000000000002")
-        self.assertEqual(self.fin("p000000000002")[0], 1)
+        code, res = self.fin("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertIn("pass --active or --inactive", res["error"])
         self.assertEqual(self.fin("p000000000002", "--inactive")[0], 0)
 
     def test_finalize_flags_are_mutually_exclusive(self):
@@ -658,6 +677,7 @@ class Hardening(Base):
         Path(name).write_text("---\nhunter2-private-line\n---\nbody\n", encoding="utf-8")
         code, res = self.run_cli("draft", name)
         self.assertEqual(code, 1)
+        self.assertIn("cannot read the draft file", res["error"])
         self.assertNotIn("hunter2", json.dumps(res))
 
     def test_register_drops_prefilled_verification(self):
@@ -669,7 +689,9 @@ class Hardening(Base):
         )
         self.assertEqual(self.run_cli("register", f"{SLUG}/p000000000001.md")[0], 0)
         self.assertNotIn("verification", V.read_record(self.root / SLUG / "p000000000001.md"))
-        self.assertEqual(self.act("p000000000001")[0], 1)  # still needs the real approval step
+        code, res = self.act("p000000000001")  # still needs the real approval step
+        self.assertEqual(code, 1)
+        self.assertIn("not verified", res["error"])
 
     def test_discard_orphan_only_removes_unlisted_drafts(self):
         self.assertEqual(self.run_cli("init")[0], 0)
@@ -678,10 +700,13 @@ class Hardening(Base):
         stray.write_text(record(status="active"), encoding="utf-8")  # an unlisted non-draft record
         code, res = self.run_cli("discard-orphan", f"{SLUG}/active.md")
         self.assertEqual(code, 1)
+        self.assertIn("only an unlisted draft can be discarded", res["error"])
         self.assertTrue(stray.exists())
         junk = self.root / SLUG / "junk.md"
         junk.write_text("not a record", encoding="utf-8")
-        self.assertEqual(self.run_cli("discard-orphan", f"{SLUG}/junk.md")[0], 1)
+        code, res = self.run_cli("discard-orphan", f"{SLUG}/junk.md")
+        self.assertEqual(code, 1)
+        self.assertIn("only an unlisted draft can be discarded", res["error"])
         self.assertTrue(junk.exists())
 
     def test_discard_orphan_reports_what_it_removed(self):
@@ -813,6 +838,104 @@ class Robustness(Base):
         self.assertEqual(V.read_record(self.root / SLUG / "p000000000002.md")["status"], "draft")
         self.assertEqual(self.run_cli("validate")[0], 0)
 
+    def test_failed_catalog_write_rolls_back_a_deactivation(self):
+        self.make_active()
+        listed_before = (self.root / "catalog.yaml").read_text(encoding="utf-8")
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            code, res = self.run_cli("deactivate", "p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertEqual(V.read_record(self.root / SLUG / "active.md")["status"], "active")
+        self.assertFalse((self.root / SLUG / "p000000000001.md").exists())
+        self.assertEqual((self.root / "catalog.yaml").read_text(encoding="utf-8"), listed_before)
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_failed_catalog_write_rolls_back_a_finalize_that_keeps_both_paths(self):
+        # Inactive predecessor and an --inactive successor: neither file changes name, so the undo
+        # takes the same-path branch and only rewrites the status.
+        self.make_active()
+        self.assertEqual(self.run_cli("deactivate", "p000000000001")[0], 0)
+        self.add_draft("p000000000002", version=2, previous_id="p000000000001")
+        self.assertEqual(self.verify("p000000000002")[0], 0)
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            code, res = self.fin("p000000000002", "--inactive")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertEqual(V.read_record(self.root / SLUG / "p000000000001.md")["status"], "inactive")
+        self.assertEqual(V.read_record(self.root / SLUG / "p000000000002.md")["status"], "draft")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_failed_first_move_of_a_finalize_changes_nothing(self):
+        self.make_active()
+        self.add_draft("p000000000002", version=2, previous_id="p000000000001")
+        self.assertEqual(self.verify("p000000000002")[0], 0)
+        real_write = V.write_record
+
+        def flaky(path, meta):
+            if meta["internal_id"] == "p000000000001" and meta["status"] == "historical":
+                raise OSError("disk full")
+            real_write(path, meta)
+
+        with mock.patch.object(V, "write_record", flaky):
+            code, res = self.fin("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertEqual(V.read_record(self.root / SLUG / "active.md")["status"], "active")
+        self.assertEqual(V.read_record(self.root / SLUG / "p000000000002.md")["status"], "draft")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_rollback_stops_when_an_undo_step_fails(self):
+        # The successor's undo renames active.md back and then fails to rewrite it. The rollback
+        # must stop there: running the predecessor's undo next would move p...1.md onto active.md.
+        self.make_active()
+        self.add_draft("p000000000002", version=2, previous_id="p000000000001")
+        self.assertEqual(self.verify("p000000000002")[0], 0)
+        real_write = V.write_record
+
+        def flaky(path, meta):
+            if meta["internal_id"] == "p000000000002" and meta["status"] == "draft":
+                raise OSError("undo failed")
+            real_write(path, meta)
+
+        with (
+            mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")),
+            mock.patch.object(V, "write_record", flaky),
+        ):
+            code, res = self.fin("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])  # the original error, not the undo's
+        self.assertTrue((self.root / SLUG / "p000000000002.md").exists())
+        self.assertEqual(
+            V.read_record(self.root / SLUG / "p000000000001.md")["status"], "historical"
+        )
+        self.assertFalse((self.root / SLUG / "active.md").exists())
+
+    def test_symlink_planted_at_the_target_name_blocks_activation(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        approved = self.hash_of(
+            "p000000000001"
+        )  # read before the link makes the catalog unreadable
+        with tempfile.TemporaryDirectory() as outside:
+            sentinel = Path(outside) / "sentinel.txt"
+            sentinel.write_text("untouched", encoding="utf-8")
+            try:
+                os.symlink(sentinel, self.root / SLUG / "active.md")
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are not permitted here")
+            code, res = self.run_cli("activate", "p000000000001", "--expect-sha256", approved)
+            self.assertEqual(code, 1)
+            self.assertIn("catalog is not valid", res["error"])
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "untouched")
+
+    def test_a_bom_on_stdin_does_not_hide_a_secret_on_the_first_line(self):
+        # The dotenv pattern is anchored at the start of a line, and U+FEFF is not whitespace.
+        text = chr(0xFEFF) + "MY_API_" + "KEY=" + "abcdef123456\n"
+        with mock.patch.object(sys, "stdin", io.StringIO(text)):
+            code, res = self.run_cli("screen", "-")
+        self.assertEqual(code, 1)
+        self.assertEqual(res["matches"][0]["pattern"], "dotenv_secret_line")
+
     def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
         self.make_active(_body="Do the → thing")
         env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
@@ -839,10 +962,12 @@ class Interrupted(Base):
         code, res = self.run_cli("validate")
         self.assertEqual(code, 1)
         self.assertTrue(any("missing" in e for e in res["errors"]))
-        self.assertEqual(self.run_cli("show", SLUG)[0], 1)
-        self.assertEqual(
-            self.run_cli("deactivate", "p000000000001")[0], 1
-        )  # management refuses too
+        code, res = self.run_cli("show", SLUG)
+        self.assertEqual(code, 1)
+        self.assertIn("catalog is not valid", res["error"])
+        code, res = self.run_cli("deactivate", "p000000000001")  # management refuses too
+        self.assertEqual(code, 1)
+        self.assertIn("catalog is not valid", res["error"])
 
     def test_unlisted_active_md_is_flagged(self):
         self.make_active()
