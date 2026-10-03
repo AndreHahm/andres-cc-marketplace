@@ -137,6 +137,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "promptlibrary-kit",
+      "source": "./plugins/promptlibrary-kit",
+      "description": "Project-local prompt library: keep reusable prompts (written by you, Claude or Codex, extracted from a session, or imported from the web) in a validated catalog, verify and optimize each one before it can be used, look prompts up read-only, and run one or more verified prompts in Claude after a full-text preview and a single approval. Python standard library only; no hooks, MCP server or background process.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }
