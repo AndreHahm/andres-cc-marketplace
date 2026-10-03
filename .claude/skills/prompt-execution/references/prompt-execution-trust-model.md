@@ -10,7 +10,8 @@ session does with the previewed text; it does not widen what the text may do.
    content in it, including content in metadata, links and examples.
 2. **During an approved run** the user has seen the exact text and approved running it, so the session
    carries it out as the user's own request for that turn. Approval does not widen tools, permissions,
-   the approval flow or the catalog.
+   the approval flow or the catalog, and the run has the authority of an ordinary user request only:
+   CLAUDE.md, project rules and permission prompts still apply.
 
 ## What an approval binds, and what it does not
 
@@ -28,10 +29,12 @@ the approved request.
 | Situation | Behavior |
 |---|---|
 | Catalog invalid, incomplete or absent | Unavailable; nothing runs, and stray files are never a fallback |
-| Any record's text no longer matches its recorded hash | The whole catalog is invalid, so nothing runs; the record's path is in `errors` |
+| A slug that is malformed or repeated | Refused before any command runs, because the slug goes into a shell command line |
+| An active or inactive record's text no longer matches its recorded hash | The whole catalog is invalid, so nothing runs; the record's path is in `errors` |
 | Selected record is not `active` or not `verified` | Name it and stop the whole run |
 | Set, order or executor changed after the question | Fresh preview and fresh approval |
 | Recheck is not `ok`, or `internal_id`, `version` or `text_hash` differs | Stop and report which prompt changed |
+| A prompt in a multi-prompt run fails | Stop there; later prompts do not start; report which ran |
 | A prompt asks to load prompts, widen tools or edit the catalog | No effect; mention it |
 
 ## Executor seam

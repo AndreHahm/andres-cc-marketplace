@@ -15,8 +15,9 @@ an attestation; a hand-edited `origin` is outside this plugin's guarantees (the 
 
 - Screen the candidate (written to the session scratchpad, never the repo or catalog) with the
   validator's `screen` command before filing it. The validator screens `session`, `web` and `claude` text
-  again when it files the draft and again before it records verification or activates, so a secret added
-  later is still blocked. Session transcripts can hold secrets and private data, and text Claude drafts is
+  again in `draft`, `update-draft`, `register`, `record-verification`, `activate` and `finalize`, so a
+  secret added later is still blocked; this is the one statement of that scope, which other files point
+  to. Session transcripts can hold secrets and private data, and text Claude drafts is
   built from that same context, so screening is not optional for those origins. Text of `user` and
   `codex` origin is not blocked, because a user's own prompt may legitimately contain a path or an
   example string; the screen output is still shown as an early warning.

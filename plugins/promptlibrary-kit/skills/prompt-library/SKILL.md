@@ -59,7 +59,8 @@ report the message, and take no further step that depends on it. The one excepti
 `ok: false` is the expected report of matches, so carry on to the user's decision in step 4. Scratch files
 go in the session scratchpad directory, never the repo root or the catalog; write them with the `Write`
 tool (it asks permission), and when a line in the pasted text looks like a secret, never repeat it in your
-own messages or commands.
+own messages or commands. The validator reads scratch files only from inside the catalog or the system
+temp directory; if the scratchpad is somewhere else, it refuses the file and you must say so.
 
 1. **Preflight.** `<CLI> validate`. If the catalog is missing, offer `<CLI> init` via `AskUserQuestion`,
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
@@ -69,11 +70,16 @@ own messages or commands.
 2. **Mode.** Use the first word of `$ARGUMENTS` (`add`, `revise`, `activate`, `deactivate`) and, for
    the last three, the second word as the slug; if either is absent, ask with `AskUserQuestion`. The CLI takes an `internal_id`, not a slug, so resolve a slug to
    its record(s) from `validate`'s `records` or `<CLI> show <slug> --history`; if more than one fits,
-   ask which. `deactivate` and `activate` of an existing record skip steps 3 to 8: go to step 9.
+   ask which. `deactivate`, and `activate` of an inactive record, skip steps 3 to 8: go to step 9. A draft
+   left by an interrupted add or revise (also when `activate` names a draft) resumes by its state: step 7
+   if `prompt-reviewer` has not run on it, step 8 if it lacks a recorded quality verification (or, for
+   `session` and `web` origin, an import one), step 9 once it is fully verified. A successor ends with
+   `finalize`; never start a second successor.
 3. **Intake.** For `add`, follow `references/prompt-intake-sources.md`. The intake path sets `origin`:
    fetched text is always `web`, session text is always `session`; the user cannot label either as
-   `user`. For `revise`, take the record from step 2, run `<CLI> show <slug>` for its text, and start
-   from that text with `version` = predecessor's + 1, `previous_id` = predecessor's `internal_id`, the
+   `user`. For `revise`, take the record from step 2, run `<CLI> show <slug> --history` (a plain `show`
+   returns only an active record, so it fails for an inactive one) and read the text of the chosen
+   `internal_id`, and start from that text with `version` = predecessor's + 1, `previous_id` = predecessor's `internal_id`, the
    same `slug`, `area` and `origin`, and a fresh id from `<CLI> new-id`. For `add`, also get the
    `internal_id` from `<CLI> new-id`. Build the full record in a scratch file from
    `assets/prompt-record-template.md`, following `references/prompt-record-format.md` (a `session` or
@@ -82,8 +88,8 @@ own messages or commands.
    scratch record, frontmatter included) and a pattern name (the script does not echo the matched text)
    and let the user remove it, then screen again. Nothing is
    auto-redacted. For `session`, `web` and `claude` text a match also blocks filing: the validator
-   screens again inside `draft`, `update-draft`, `record-verification`, `activate` and `finalize` and
-   refuses. For `user` and `codex` text a match is a warning the user may accept, because their own prompt
+   screens again at each later filing, verification and activation step and refuses (the exact scope is in
+   `references/prompt-intake-sources.md`). For `user` and `codex` text a match is a warning the user may accept, because their own prompt
    can legitimately contain a path or an example string.
 5. **Triage.** Ask whether this is one reusable instruction text (a prompt) or needs something a prompt
    cannot provide (a skill: point to `skill-development` and create no record). Then filter `validate`'s
@@ -93,14 +99,15 @@ own messages or commands.
    warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output,
    and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
-   <scratch-file>`; it validates, enforces the secret screen for imported text, writes the record and
+   <scratch-file>`; it validates, enforces the secret screen for `session`, `web` and `claude` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
 7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
    (`catalog_root` + `/` + `path`) and its `origin`; it is read-only. Present its findings and its
    proposed rewrite as a diff. If the user approves a rewrite, write the full replacement record to a
    scratch file and run `<CLI> update-draft <internal_id> <scratch-file>`; it screens the new text and
-   clears any earlier verification. See `references/prompt-optimization-and-review.md`; an active or
-   inactive record is never edited in place, a revision is a new draft.
+   clears the earlier verification when the text changed. This works on any draft, initial or successor.
+   See `references/prompt-optimization-and-review.md`; an active or inactive record is never edited in
+   place, a revision is a new draft.
 8. **Verify.** Get the final prompt text and its `text_hash` from the filed record (`<CLI> show <slug>
    --history`), not from the scratch copy. Show both to the user and ask with `AskUserQuestion` whether
    to approve exactly this text. On yes, run `<CLI> record-verification <internal_id> --kind
@@ -122,9 +129,13 @@ own messages or commands.
 - Editing text clears or invalidates verification: never activate on a hash recorded before the last
   edit. The script enforces this with `--expect-sha256`; do not pass a hash you did not show the user.
 - `prompt-reviewer` only reports and proposes. It cannot approve, activate or write; the user approves.
-- An initial draft is replaced in place (`update-draft`); an active or inactive record gets a successor.
+  Its findings are advisory, and the validator cannot tell whether the review ran. Show a Critical
+  finding prominently and ask the user to acknowledge it before step 8; if the dispatch fails, stop and
+  ask whether to continue without a review rather than skipping it silently.
+- A draft, initial or successor, is replaced in place (`update-draft`); an active or inactive record gets
+  a successor.
 - A revision never retires the active prompt before `finalize`.
-- If `session-detail` is not among the listed skills, session-by-reference intake is unavailable; fall
+- If `session-detail` (from session-kit) is not among the listed skills, session-by-reference intake is unavailable; fall
   back to the user pasting the chosen turns. Do not install or declare session-kit.
 - Set `origin` from the intake path and never leave the template's placeholder: the template is
   invalid until every `REPLACE` value is edited, so an unedited copy cannot be filed. A mislabeled origin
@@ -159,7 +170,7 @@ maintainer command; this skill does not run it).
 **Quality gates:**
 - [ ] A catalog that fails validation blocks every change; only an orphan file can be discarded, and only
       with the user's consent.
-- [ ] A secret in imported or session text blocks the draft and is never auto-redacted or echoed.
+- [ ] A secret in `session`, `web` or `claude` text blocks the draft and is never auto-redacted or echoed.
 - [ ] Script-needing content is routed to `skill-development` with no record created.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
@@ -168,7 +179,7 @@ maintainer command; this skill does not run it).
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 
-**Last dated run record:** validator fixture tests, 64 passing, 2026-10-03
+**Last dated run record:** validator fixture tests, 69 passing, 2026-10-03
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed steps 1 to 6 by hand
 against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
 it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user
