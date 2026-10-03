@@ -185,7 +185,7 @@ pre-approved Write.
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 
-**Last dated run record:** validator fixture tests, 78 passing, 2026-10-03
+**Last dated run record:** validator fixture tests, 84 passing, 2026-10-03
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed steps 1 to 6 by hand
 against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
 it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user
