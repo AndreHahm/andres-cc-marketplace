@@ -292,15 +292,34 @@ def split_record(raw: str) -> tuple[dict, str]:
 
 
 def read_record(path: Path) -> dict:
-    meta, body = split_record(path.read_text(encoding="utf-8"))
+    meta, body = split_record(path.read_text(encoding="utf-8-sig"))
     meta["_body"] = normalize_text(body)
     return meta
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """Write text to a temp file beside path, then replace path, so a failed write (an unencodable
+    character, a full disk) never truncates the file that was already there. The temp file has a
+    random name and is created exclusively (mkstemp), so a symlink a repository planted at a
+    predictable name can never redirect the write outside the catalog."""
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass  # the original error is the one worth reporting
+        raise
 
 
 def write_record(path: Path, meta: dict) -> None:
     clean = {k: v for k, v in meta.items() if not k.startswith("_")}
     text = "---\n" + dump_yaml(clean, FIELD_ORDER) + "---\n\n" + meta["_body"] + "\n"
-    path.write_text(text, encoding="utf-8", newline="\n")
+    _write_atomic(path, text)
 
 
 def nonblank_lines(text: str) -> int:
@@ -432,7 +451,8 @@ def _git_toplevel(cwd: Path) -> Path | None:
             [git, "rev-parse", "--show-toplevel"],
             cwd=str(cwd),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=15,
         )
     except (OSError, subprocess.SubprocessError):
@@ -453,7 +473,8 @@ def _is_tracked(project_root: Path, rel: Path) -> bool:
             [git, "ls-files", "--error-unmatch", "--", rel.as_posix()],
             cwd=str(project_root),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=15,
         )
     except (OSError, subprocess.SubprocessError):
@@ -527,7 +548,7 @@ def _settings_dir() -> Path:
 
 def _read_json(path: Path):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
 
@@ -591,7 +612,7 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
     if not cat_path.is_file():
         return {}, {}, ["catalog.yaml is missing"]
     try:
-        cat = parse_yaml(cat_path.read_text(encoding="utf-8"))
+        cat = parse_yaml(cat_path.read_text(encoding="utf-8-sig"))
     except CatalogError as exc:
         return {}, {}, [f"catalog.yaml: {exc}"]
     version = cat.get("catalog_version")
@@ -627,7 +648,7 @@ def load_catalog(root: Path) -> tuple[dict, dict, list[str]]:
             continue
         try:
             meta = read_record(path)
-        except (CatalogError, OSError, UnicodeDecodeError) as exc:
+        except (CatalogError, OSError, ValueError) as exc:
             errs.append(f"{rel}: {exc}")
             continue
         meta["_path"] = rel
@@ -784,7 +805,7 @@ def cmd_hash(args) -> dict:
     info = resolve_root(getattr(args, "root", None))
     path = _readable_candidate(args.file, Path(info["catalog_root"]))
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError) as exc:
         raise CatalogError(f"cannot read {args.file}: {exc}") from exc
     body = split_record(raw)[1] if raw.replace("\r\n", "\n").startswith("---\n") else raw
@@ -844,13 +865,13 @@ def _check_expected(meta: dict, expected: str) -> None:
 def cmd_screen(args) -> dict:
     try:
         if args.file == "-":
-            text = sys.stdin.read(MAX_INPUT_BYTES + 1)
+            text = sys.stdin.read(MAX_INPUT_BYTES + 1).removeprefix(chr(0xFEFF))
             if len(text) > MAX_INPUT_BYTES:
                 raise CatalogError("the input is too large")
         else:
             info = resolve_root(getattr(args, "root", None))
             path = _readable_candidate(args.file, Path(info["catalog_root"]))
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError) as exc:
         raise CatalogError(f"cannot read {args.file}: {exc}") from exc
     matches = screen_text(text)
@@ -876,11 +897,7 @@ def write_catalog(root: Path, cat: dict, record_paths: list[str]) -> None:
         "records": sorted(record_paths),
     }
     target = _inside(root, root / "catalog.yaml")
-    target.write_text(
-        dump_yaml(out, ("catalog_version", "scope", "snapshot_id", "records")),
-        encoding="utf-8",
-        newline="\n",
-    )
+    _write_atomic(target, dump_yaml(out, ("catalog_version", "scope", "snapshot_id", "records")))
 
 
 def cmd_init(args) -> dict:
@@ -1052,7 +1069,7 @@ def cmd_discard_orphan(args) -> dict:
     path = _inside(root, root / parts[0] / parts[1])
     try:
         meta = read_record(path)
-    except (CatalogError, OSError, UnicodeDecodeError):
+    except (CatalogError, OSError, ValueError):
         meta = {}
     if meta.get("status") != "draft":
         raise CatalogError(
@@ -1090,12 +1107,33 @@ def _move(root: Path, meta: dict, new_status: str, paths: list[str]) -> None:
     new_name = "active.md" if new_status == "active" else f"{meta['internal_id']}.md"
     new_rel = f"{meta['slug']}/{new_name}"
     old_path, new_path = _inside(root, root / old_rel), _inside(root, root / new_rel)
+    old_status = meta["status"]
     meta["status"] = new_status
-    write_record(old_path, meta)
-    if new_rel != old_rel:
+    if new_rel == old_rel:
+        try:
+            write_record(old_path, meta)
+        except BaseException:
+            meta["status"] = old_status
+            raise
+        return
+    # Rename first, then write the new status into the moved file, so a failure at any point leaves
+    # a record whose status still matches its file name (the rename is undone if the write fails).
+    try:
         old_path.replace(new_path)
-        paths[paths.index(old_rel)] = new_rel
-        meta["_path"] = new_rel
+    except BaseException:
+        meta["status"] = old_status
+        raise
+    try:
+        write_record(new_path, meta)
+    except BaseException:
+        meta["status"] = old_status
+        try:
+            new_path.replace(old_path)
+        except OSError:
+            pass  # the original error is the one worth reporting; validate will show the mismatch
+        raise
+    paths[paths.index(old_rel)] = new_rel
+    meta["_path"] = new_rel
 
 
 def _lifecycle(args, op: str) -> dict:
@@ -1218,9 +1256,21 @@ def main(argv=None) -> int:
         result = {"ok": False, "error": str(exc)}
     except OSError as exc:
         result = {"ok": False, "error": f"filesystem error: {exc}"}
+    except ValueError as exc:  # includes UnicodeError, e.g. a value that cannot be encoded as UTF-8
+        result = {"ok": False, "error": f"invalid content: {exc}"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
 
 
+def _use_utf8_streams() -> None:
+    """Read stdin and write stdout as UTF-8 whatever the console code page is, and never let an
+    unencodable character crash the final print."""
+    for stream, errors in ((sys.stdin, "strict"), (sys.stdout, "backslashreplace")):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors=errors)
+
+
 if __name__ == "__main__":
+    _use_utf8_streams()
     sys.exit(main())
