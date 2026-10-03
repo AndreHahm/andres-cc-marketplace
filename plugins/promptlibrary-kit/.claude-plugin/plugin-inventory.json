@@ -1,0 +1,175 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5a3fff3b",
+      "name": "prompt-execution",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/prompt-execution"
+          ],
+          "name": "prompt-execution",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/prompt-execution",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/prompt-execution"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e0b689bd",
+      "name": "prompt-library",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/prompt-library"
+          ],
+          "name": "prompt-library",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/prompt-library",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/prompt-library"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a1d68529",
+      "name": "prompt-retrieval",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/prompt-retrieval"
+          ],
+          "name": "prompt-retrieval",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/prompt-retrieval",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/prompt-retrieval"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_69adb5b5",
+      "name": "prompt-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/prompt-reviewer.md"
+          ],
+          "name": "prompt-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/prompt-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/prompt-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-03",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    }
+  ],
+  "domain_prefix": "prompt",
+  "extensions": {},
+  "plugin_id": "plugin_a7f39ddc",
+  "plugin_name": "promptlibrary-kit",
+  "prefix": "plib",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-10-03"
+}
