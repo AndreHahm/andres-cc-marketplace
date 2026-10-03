@@ -22,6 +22,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`example-plugin`](./plugins/example-plugin) | Minimal example/test-fixture plugin used by plugin-devkit's own tooling. |
 | [`antigravity-kit`](./plugins/antigravity-kit) | Run the Antigravity CLI (Gemini) as a collaborating sub-agent inside Claude Code, with intelligent model routing across the SDLC. |
 | [`github-actions-kit`](./plugins/github-actions-kit) | Generate, validate, and audit GitHub Actions workflows and custom actions. |
+| [`promptlibrary-kit`](./plugins/promptlibrary-kit) | Project-local prompt library: store, verify and optimize reusable prompts, look them up read-only, and run approved prompts in Claude. |
 
 See each plugin's own README for details.
 
