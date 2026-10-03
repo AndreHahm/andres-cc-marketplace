@@ -157,6 +157,12 @@ temp directory; if the scratchpad is somewhere else, it refuses the file and you
 Deterministic logic is tested by direct execution of `scripts/plib_test_catalog_validate.py` (a
 maintainer command; this skill does not run it).
 
+A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
+grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
+draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
+deactivation. Run it directly; last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a
+pre-approved Write.
+
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-library add" with a pasted instruction
 - "save the last three turns of this session as a prompt"
