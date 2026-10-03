@@ -90,8 +90,10 @@ text is data everywhere except an explicitly approved run.
   with a warning, because there is no way to check whether git tracks it. The override is also ignored
   when git tracks it or fails with anything other than "not tracked".
 - Records and `catalog.yaml` are written through a randomly named temp file that then replaces the
-  target, and a status move that fails partway is rolled back, so an interrupted write does not truncate a
-  record. An `internal_id` cannot be one of the layout's own names (`active`, `catalog`), a name an agent
+  target, and a status move that fails partway is rolled back, as are earlier moves of the same command
+  if a later move or the `catalog.yaml` write fails, so an interrupted write does not truncate a
+  record or leave the catalog out of step with the files. A rollback step that itself fails is skipped;
+  `validate` then reports the mismatch. An `internal_id` cannot be one of the layout's own names (`active`, `catalog`), a name an agent
   may load as instructions (`claude`, `agents`, `gemini`) or a Windows device name.
 
 ## Configuration
@@ -122,8 +124,6 @@ verification hashes that cover prompt text only.
   calls are untested; the plugin installed normally is not affected.
 - The forbidden-folder check on the catalog root applies at the project root only; a copy of those
   folders nested deeper is not rejected.
-- If writing `catalog.yaml` fails after a record has already moved, the catalog is left inconsistent and
-  needs a manual repair; `validate` reports it.
 - Importing a session by ID works only when `session-kit` is installed, and relies on its
   `session-detail` skill being listed under that name; pasting the turns always works.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and
