@@ -712,6 +712,82 @@ class Hardening(Base):
         self.assertEqual(list(self.root.glob("*/*.md")), [])
 
 
+class Robustness(Base):
+    def test_bom_in_a_scratch_draft_does_not_change_the_hash_or_block_filing(self):
+        plain, bom = self.scratch(), self.scratch()
+        Path(bom).write_text(record(), encoding="utf-8-sig")
+        self.assertEqual(
+            self.run_cli("hash", bom)[1]["sha256"], self.run_cli("hash", plain)[1]["sha256"]
+        )
+        self.assertEqual(self.run_cli("init")[0], 0)
+        code, res = self.run_cli("draft", bom)
+        self.assertEqual(code, 0, res)
+
+    def test_unencodable_value_leaves_the_existing_record_untouched(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        before = path.read_bytes()
+        meta = V.read_record(path)
+        meta["name"] = "bad \ud800 name"
+        with self.assertRaises(UnicodeEncodeError):
+            V.write_record(path, meta)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(path.parent.glob("*.tmp")), [])
+
+    def test_unencodable_value_in_a_draft_is_a_json_error_with_nothing_filed(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        scratch = Path(self.scratch())
+        text = scratch.read_text(encoding="utf-8")
+        scratch.write_text(text.replace("name: Missing tests review", 'name: "bad \\ud800 name"'))
+        code, res = self.run_cli("draft", str(scratch))
+        self.assertEqual(code, 1)
+        self.assertIn("invalid content", res["error"])
+        self.assertEqual(list(self.root.glob("*/*")), [])
+
+    def test_planted_tmp_symlink_cannot_redirect_a_write_outside_the_catalog(self):
+        self.make_active()
+        with tempfile.TemporaryDirectory() as outside:
+            sentinel = Path(outside) / "sentinel.txt"
+            sentinel.write_text("untouched", encoding="utf-8")
+            for name in ("catalog.yaml.tmp", f"{SLUG}/active.md.tmp"):
+                try:
+                    os.symlink(sentinel, self.root / name)
+                except (OSError, NotImplementedError):
+                    self.skipTest("symlinks are not permitted here")
+            code, res = self.run_cli("deactivate", "p000000000001")
+            self.assertEqual(code, 0, res)
+            self.assertEqual(sentinel.read_text(encoding="utf-8"), "untouched")
+
+    def test_failed_write_during_a_move_restores_the_old_path_and_status(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        with mock.patch.object(V, "write_record", side_effect=OSError("disk full")):
+            code, res = self.act("p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertTrue((self.root / SLUG / "p000000000001.md").exists())
+        self.assertFalse((self.root / SLUG / "active.md").exists())
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
+        self.make_active(_body="Do the → thing")
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).with_name("plib_catalog_validate.py")),
+                "show",
+                SLUG,
+            ],
+            cwd=self.proj,
+            env=env,
+            capture_output=True,
+            timeout=60,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("→".encode(), proc.stdout)
+
+
 class Interrupted(Base):
     def test_listed_but_missing_file_makes_catalog_unavailable(self):
         self.make_active()
