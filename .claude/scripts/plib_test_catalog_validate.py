@@ -769,6 +769,50 @@ class Robustness(Base):
         self.assertFalse((self.root / SLUG / "active.md").exists())
         self.assertEqual(self.run_cli("validate")[0], 0)
 
+    def test_failed_catalog_write_rolls_back_an_activation(self):
+        self.add_draft()
+        self.assertEqual(self.verify("p000000000001")[0], 0)
+        listed_before = (self.root / "catalog.yaml").read_text(encoding="utf-8")
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            code, res = self.act("p000000000001")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertTrue((self.root / SLUG / "p000000000001.md").exists())
+        self.assertFalse((self.root / SLUG / "active.md").exists())
+        self.assertEqual((self.root / "catalog.yaml").read_text(encoding="utf-8"), listed_before)
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_failed_catalog_write_rolls_back_both_moves_of_a_finalize(self):
+        self.make_active()
+        self.add_draft("p000000000002", version=2, previous_id="p000000000001")
+        self.assertEqual(self.verify("p000000000002")[0], 0)
+        with mock.patch.object(V, "write_catalog", side_effect=OSError("disk full")):
+            code, _ = self.fin("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertEqual(V.read_record(self.root / SLUG / "active.md")["status"], "active")
+        self.assertEqual(V.read_record(self.root / SLUG / "p000000000002.md")["status"], "draft")
+        self.assertFalse((self.root / SLUG / "p000000000001.md").exists())
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
+    def test_failed_second_move_of_a_finalize_restores_the_predecessor(self):
+        self.make_active()
+        self.add_draft("p000000000002", version=2, previous_id="p000000000001")
+        self.assertEqual(self.verify("p000000000002")[0], 0)
+        real_write = V.write_record
+
+        def flaky(path, meta):
+            if meta["internal_id"] == "p000000000002" and meta["status"] != "draft":
+                raise OSError("disk full")
+            real_write(path, meta)
+
+        with mock.patch.object(V, "write_record", flaky):
+            code, res = self.fin("p000000000002")
+        self.assertEqual(code, 1)
+        self.assertIn("disk full", res["error"])
+        self.assertEqual(V.read_record(self.root / SLUG / "active.md")["status"], "active")
+        self.assertEqual(V.read_record(self.root / SLUG / "p000000000002.md")["status"], "draft")
+        self.assertEqual(self.run_cli("validate")[0], 0)
+
     def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
         self.make_active(_body="Do the → thing")
         env = {**os.environ, "PYTHONIOENCODING": "cp1252"}

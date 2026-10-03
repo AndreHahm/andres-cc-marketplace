@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 SETTINGS_NAME = "promptlibrary-kit.settings.json"
@@ -1102,20 +1103,29 @@ def cmd_record_verification(args) -> dict:
     return info
 
 
-def _move(root: Path, meta: dict, new_status: str, paths: list[str]) -> None:
+def _move(root: Path, meta: dict, new_status: str, paths: list[str]) -> Callable[[], None]:
+    """Move a record to new_status. Returns a step that undoes the move, so the caller can roll back
+    earlier moves when a later move or the catalog.yaml write fails."""
     old_rel = meta["_path"]
     new_name = "active.md" if new_status == "active" else f"{meta['internal_id']}.md"
     new_rel = f"{meta['slug']}/{new_name}"
     old_path, new_path = _inside(root, root / old_rel), _inside(root, root / new_rel)
     old_status = meta["status"]
     meta["status"] = new_status
+
+    def undo() -> None:
+        meta["status"] = old_status
+        if new_rel != old_rel:
+            new_path.replace(old_path)
+        write_record(old_path, meta)
+
     if new_rel == old_rel:
         try:
             write_record(old_path, meta)
         except BaseException:
             meta["status"] = old_status
             raise
-        return
+        return undo
     # Rename first, then write the new status into the moved file, so a failure at any point leaves
     # a record whose status still matches its file name (the rename is undone if the write fails).
     try:
@@ -1134,6 +1144,7 @@ def _move(root: Path, meta: dict, new_status: str, paths: list[str]) -> None:
         raise
     paths[paths.index(old_rel)] = new_rel
     meta["_path"] = new_rel
+    return undo
 
 
 def _lifecycle(args, op: str) -> dict:
@@ -1143,40 +1154,54 @@ def _lifecycle(args, op: str) -> dict:
     meta = _record_by_id(records, args.internal_id)
     group = [m for m in records.values() if m["slug"] == meta["slug"]]
     active = next((m for m in group if m["status"] == "active"), None)
-    if op == "deactivate":
-        if meta["status"] != "active":
-            raise CatalogError("only an active record can be deactivated")
-        _move(root, meta, "inactive", paths)
-    elif op == "activate":
-        if meta["status"] not in ("draft", "inactive"):
-            raise CatalogError("only a draft or inactive record can be activated")
-        if meta.get("previous_id") and meta["status"] == "draft":
-            raise CatalogError("a successor is activated with finalize, not activate")
-        if active is not None:
-            raise CatalogError(f"{meta['slug']} already has an active record")
-        _check_expected(meta, args.expect_sha256)
-        _assert_clean(meta)
-        problems = hash_problems(meta)
-        if problems:
-            raise CatalogError("not verified: " + "; ".join(problems))
-        _move(root, meta, "active", paths)
-    else:  # finalize
-        if meta["status"] != "draft" or not meta.get("previous_id"):
-            raise CatalogError("finalize applies to a draft successor (one with previous_id)")
-        _check_expected(meta, args.expect_sha256)
-        _assert_clean(meta)
-        problems = hash_problems(meta)
-        if problems:
-            raise CatalogError("not verified: " + "; ".join(problems))
-        pred = _record_by_id(records, meta["previous_id"])
-        if pred["status"] not in ("active", "inactive"):
-            raise CatalogError("the predecessor is neither active nor inactive")
-        if pred["status"] == "inactive" and not args.active and not args.inactive:
-            raise CatalogError("predecessor is inactive: pass --active or --inactive to choose")
-        goes_active = args.active or (pred["status"] == "active" and not args.inactive)
-        _move(root, pred, "historical", paths)
-        _move(root, meta, "active" if goes_active else "inactive", paths)
-    write_catalog(root, cat, paths)  # catalog.yaml last, after every record move succeeded
+    undo_steps: list[Callable[[], None]] = []
+    try:
+        if op == "deactivate":
+            if meta["status"] != "active":
+                raise CatalogError("only an active record can be deactivated")
+            undo_steps.append(_move(root, meta, "inactive", paths))
+        elif op == "activate":
+            if meta["status"] not in ("draft", "inactive"):
+                raise CatalogError("only a draft or inactive record can be activated")
+            if meta.get("previous_id") and meta["status"] == "draft":
+                raise CatalogError("a successor is activated with finalize, not activate")
+            if active is not None:
+                raise CatalogError(f"{meta['slug']} already has an active record")
+            _check_expected(meta, args.expect_sha256)
+            _assert_clean(meta)
+            problems = hash_problems(meta)
+            if problems:
+                raise CatalogError("not verified: " + "; ".join(problems))
+            undo_steps.append(_move(root, meta, "active", paths))
+        else:  # finalize
+            if meta["status"] != "draft" or not meta.get("previous_id"):
+                raise CatalogError("finalize applies to a draft successor (one with previous_id)")
+            _check_expected(meta, args.expect_sha256)
+            _assert_clean(meta)
+            problems = hash_problems(meta)
+            if problems:
+                raise CatalogError("not verified: " + "; ".join(problems))
+            pred = _record_by_id(records, meta["previous_id"])
+            if pred["status"] not in ("active", "inactive"):
+                raise CatalogError("the predecessor is neither active nor inactive")
+            if pred["status"] == "inactive" and not args.active and not args.inactive:
+                raise CatalogError("predecessor is inactive: pass --active or --inactive to choose")
+            goes_active = args.active or (pred["status"] == "active" and not args.inactive)
+            undo_steps.append(_move(root, pred, "historical", paths))
+            undo_steps.append(_move(root, meta, "active" if goes_active else "inactive", paths))
+        write_catalog(root, cat, paths)  # catalog.yaml last, after every record move succeeded
+    except BaseException:
+        # A move or the catalog write failed: put every record that already moved back, newest
+        # first, so catalog.yaml (still listing the old paths) and the files on disk agree again.
+        # If an undo itself fails, stop: undoing an earlier move on top of a half-restored state
+        # could overwrite a file (both records can share active.md). The error worth reporting is
+        # still the original one, and validate shows what is left.
+        for undo in reversed(undo_steps):
+            try:
+                undo()
+            except (OSError, ValueError):
+                break
+        raise
     info["ok"] = True
     info["status"] = meta["status"]
     return info
