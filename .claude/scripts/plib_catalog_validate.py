@@ -613,10 +613,12 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
     # The same folders nested deeper (sub/.claude/rules) can be loaded as instructions too. Match
     # the resolved path and the path as written: a symlink named .claude/rules is read under that
     # name, whatever it points at.
-    # Each form is measured against the project root in the same form, never a mix.
+    # Each form is measured against the project root in the same form, never a mix. Names are
+    # folded here whatever the filesystem does: a ".CLAUDE" folder is refused even where it would
+    # be a different folder, so the rule never depends on the case behavior of one machine.
     for norm in (_norm, _norm_lexical):
         try:
-            rel = os.path.relpath(norm(candidate, fold), norm(project_root, fold))
+            rel = os.path.relpath(norm(candidate, True), norm(project_root, True))
         except ValueError:  # different drives: cannot be placed under the root, so refuse
             return None, "cannot be compared with the project root"
         parts = rel.replace("\\", "/").split("/")
