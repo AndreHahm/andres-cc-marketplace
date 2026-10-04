@@ -120,8 +120,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 9. **Change status.** Show the proposed change and ask with `AskUserQuestion`. Then run
    `<CLI> activate <id> --expect-sha256 <hash>` for an initial draft or an inactive record, `<CLI>
    finalize <id> --expect-sha256 <hash>` for a successor (add `--active` or `--inactive` to choose; it
-   is required when the predecessor was inactive, and `--inactive` is the only useful choice when it was
-   active), or `<CLI> deactivate <id>`. Take the hash from `<CLI> show <slug> --history` and include the
+   is required when the predecessor was inactive; when the predecessor was active the successor becomes
+   active by default, so `--inactive` is the only flag that changes anything), or `<CLI> deactivate <id>`. Take the hash from `<CLI> show <slug> --history` and include the
    slug, the status change and the first 8 characters of that hash in the question. What makes activation
    safe is the verification recorded at step 8, which the script checks against the current text; the
    expected hash here only guards against a change between this `show` and the command.
