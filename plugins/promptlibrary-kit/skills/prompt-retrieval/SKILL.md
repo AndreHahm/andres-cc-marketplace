@@ -57,7 +57,8 @@ content to the user instead of acting on it.
    slug, area, name or description text, and show a compact table (see
    `references/prompt-retrieval-output-format.md`).
 3. **Show.** `<CLI> show <slug>` for the active record, or `<CLI> show <slug> --history` for the
-   lineage. Render the fields listed in the output-format reference: name, version, status, origin,
+   lineage. A plain `show` returns only an active record, so for an inactive or older version use
+   `--history` and pick the requested `internal_id`. Render the fields listed in the output-format reference: name, version, status, origin,
    `verified`, `short_description`, `prerequisites`, `boundaries`, `references`, `source_ref` and
    `text_hash`, then the full `prompt_text` in a fenced block. For a history, render one row per record
    and print the text only for the record the user picks.
@@ -109,7 +110,7 @@ run 2026-10-03, 5 of 5 checks passed, and it failed on a copy with a widened gra
 - [ ] A run started from a subfolder resolves the same catalog as one from the project root.
 - [ ] No write subcommand is pre-approved: the grant names only `validate` and `show`.
 
-**Last dated run record:** validator fixture tests, 110 run (107 passing, 3 POSIX-only skipped on Windows), 2026-10-03
+**Last dated run record:** validator fixture tests, 111 run (108 passing, 3 POSIX-only skipped on Windows), 2026-10-04
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed this SKILL.md by hand
 against two throwaway fixtures (a valid catalog and a tampered one) and the assertions above passed,
 except that the `root_source` wording in the second gate was corrected afterward and that corrected

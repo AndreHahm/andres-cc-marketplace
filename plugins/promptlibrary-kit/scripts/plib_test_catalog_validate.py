@@ -357,6 +357,13 @@ class PathBoundary(Base):
         path, reason = V.check_catalog_path(absolute, self.proj)
         self.assertIsNone(path, absolute)
 
+    def test_nested_forbidden_folders_are_rejected_on_a_case_sensitive_filesystem(self):
+        with mock.patch.object(V, "_case_insensitive", return_value=False):
+            for value in ("sub/.CLAUDE/Rules/x", "A/.Git/p"):
+                path, reason = V.check_catalog_path(value, self.proj)
+                self.assertIsNone(path, value)
+                self.assertIn("below the project root", reason or "", value)
+
     def test_dot_dot_that_leaves_a_forbidden_folder_is_allowed(self):
         path, reason = V.check_catalog_path("a/.claude/../prompts", self.proj)
         self.assertIsNotNone(path, reason)
