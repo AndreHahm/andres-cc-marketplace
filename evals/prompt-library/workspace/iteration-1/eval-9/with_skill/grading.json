@@ -1,0 +1,36 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The record has origin web and a source_ref with the URL and a retrieved_on date",
+      "passed": true,
+      "evidence": "Record review__missing-error-handling has origin web, source_ref.url https://example.com/tips/review-prompt and retrieved_on 2026-10-04"
+    },
+    {
+      "text": "An import review was done (inline) in addition to the quality review",
+      "passed": true,
+      "evidence": "Import review done inline in addition to the quality review (no injection content, provenance complete)"
+    },
+    {
+      "text": "record-verification was run for both --kind quality and --kind import with --expect-sha256",
+      "passed": true,
+      "evidence": "record-verification ran with --kind quality and --kind import, both with --expect-sha256"
+    },
+    {
+      "text": "Activation happened only after both verifications and after an approval question",
+      "passed": true,
+      "evidence": "Activation followed both verifications and an approval question"
+    },
+    {
+      "text": "Final catalog validates with one active web-origin record",
+      "passed": true,
+      "evidence": "Fixture validate ok with one active web-origin record, verified true"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

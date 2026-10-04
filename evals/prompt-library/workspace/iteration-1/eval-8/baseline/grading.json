@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies review__missing-tests as similar and offers to revise it before any new record is created",
+      "passed": false,
+      "evidence": "Baseline noticed the near-duplicate but saved a separate prompt without offering a revision"
+    },
+    {
+      "text": "The successor draft has previous_id equal to the predecessor's internal_id and version 2",
+      "passed": false,
+      "evidence": "No successor: it created review__missing-tests-with-test-names with no previous_id"
+    },
+    {
+      "text": "The predecessor stays active and unchanged until the finalize step",
+      "passed": false,
+      "evidence": "Vacuous: no revision flow; the predecessor was left active and untouched"
+    },
+    {
+      "text": "Finalize ran with --expect-sha256 after the user approved the exact text and the status change",
+      "passed": false,
+      "evidence": "No finalize and no hash binding"
+    },
+    {
+      "text": "Final catalog validates; review__missing-tests has an active version 2 and version 1 is historical",
+      "passed": false,
+      "evidence": "review__missing-tests is still version 1 active; no version 2"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

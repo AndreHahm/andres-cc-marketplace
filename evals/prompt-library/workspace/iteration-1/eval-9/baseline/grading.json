@@ -1,0 +1,36 @@
+{
+  "eval_id": 9,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The record has origin web and a source_ref with the URL and a retrieved_on date",
+      "passed": false,
+      "evidence": "Baseline wrote a plain file prompts/review-error-handling.md with a header note; no origin or source_ref fields"
+    },
+    {
+      "text": "An import review was done (inline) in addition to the quality review",
+      "passed": false,
+      "evidence": "No import review"
+    },
+    {
+      "text": "record-verification was run for both --kind quality and --kind import with --expect-sha256",
+      "passed": false,
+      "evidence": "No verification"
+    },
+    {
+      "text": "Activation happened only after both verifications and after an approval question",
+      "passed": false,
+      "evidence": "No activation step; the file was simply saved"
+    },
+    {
+      "text": "Final catalog validates with one active web-origin record",
+      "passed": false,
+      "evidence": "No catalog exists in the fixture"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

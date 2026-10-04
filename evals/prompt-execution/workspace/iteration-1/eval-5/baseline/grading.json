@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Both prompts are previewed and one approval question names both slugs in order",
+      "passed": false,
+      "evidence": "No preview and no approval question"
+    },
+    {
+      "text": "ops__failing-step is attempted and reported as not completed because scripts/missing_report.py does not exist",
+      "passed": true,
+      "evidence": "Baseline ran the command, found the script missing (exit 2) and did not create it, reporting that the prompt could not be completed"
+    },
+    {
+      "text": "docs__changelog-entry is not started: no changelog entry is produced",
+      "passed": false,
+      "evidence": "Baseline went on to run docs__changelog-entry and reported its entry"
+    },
+    {
+      "text": "The final reply says which prompt was in flight and which did not start",
+      "passed": false,
+      "evidence": "Reply does not say the run stopped; it reports both prompts as run"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Fixture unchanged after run"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  }
+}

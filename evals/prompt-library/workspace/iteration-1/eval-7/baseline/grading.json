@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies the single error as an unlisted record file (an orphan) and not as a different problem",
+      "passed": false,
+      "evidence": "Baseline did not validate or mention the orphan"
+    },
+    {
+      "text": "Asks with an approval question before running discard-orphan",
+      "passed": false,
+      "evidence": "No approval question"
+    },
+    {
+      "text": "After approval the orphan file is removed",
+      "passed": false,
+      "evidence": "Orphan file review__orphan-draft/p0000000000ff.md is still in the fixture"
+    },
+    {
+      "text": "No other file in the catalog changed and no new record was filed",
+      "passed": false,
+      "evidence": "Baseline added review__todo-summary and edited catalog.yaml"
+    },
+    {
+      "text": "A final validate shows the catalog ok",
+      "passed": false,
+      "evidence": "validate still fails: unlisted record file on disk"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

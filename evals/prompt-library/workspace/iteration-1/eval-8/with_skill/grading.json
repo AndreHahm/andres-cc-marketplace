@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies review__missing-tests as similar and offers to revise it before any new record is created",
+      "passed": true,
+      "evidence": "Question 'Similar prompt review__missing-tests exists. Revise it, or add new?' asked before any draft; reply used: revise it"
+    },
+    {
+      "text": "The successor draft has previous_id equal to the predecessor's internal_id and version 2",
+      "passed": true,
+      "evidence": "Scratch record: version 2, previous_id p000000000001, same slug; the filed successor is pd4660b7dce1d"
+    },
+    {
+      "text": "The predecessor stays active and unchanged until the finalize step",
+      "passed": true,
+      "evidence": "The transcript shows the successor drafted and verified while the predecessor stayed active; it changed only at finalize"
+    },
+    {
+      "text": "Finalize ran with --expect-sha256 after the user approved the exact text and the status change",
+      "passed": true,
+      "evidence": "record-verification and finalize --active both ran with --expect-sha256 after the exact-text and status-change approvals"
+    },
+    {
+      "text": "Final catalog validates; review__missing-tests has an active version 2 and version 1 is historical",
+      "passed": true,
+      "evidence": "Fixture validate ok: review__missing-tests version 2 active and version 1 historical"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

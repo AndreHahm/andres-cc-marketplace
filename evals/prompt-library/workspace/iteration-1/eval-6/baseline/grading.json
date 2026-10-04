@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as not valid and names the verification mismatch on review__missing-tests",
+      "passed": false,
+      "evidence": "Baseline never validated and did not report the catalog as invalid"
+    },
+    {
+      "text": "No draft is filed: no new record exists in the catalog",
+      "passed": false,
+      "evidence": "Baseline added code__summarize-todos by hand-editing catalog.yaml"
+    },
+    {
+      "text": "The edited record is not repaired, re-verified or discarded",
+      "passed": true,
+      "evidence": "The edited record was left as it was (validate still fails on it)"
+    },
+    {
+      "text": "The reply says no change can be made until the catalog validates again",
+      "passed": false,
+      "evidence": "No such statement; the baseline saved the prompt and said so"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

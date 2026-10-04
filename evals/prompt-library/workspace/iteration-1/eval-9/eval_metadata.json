@@ -1,0 +1,31 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The record has origin web and a source_ref with the URL and a retrieved_on date",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "An import review was done (inline) in addition to the quality review",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "record-verification was run for both --kind quality and --kind import with --expect-sha256",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Activation happened only after both verifications and after an approval question",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Final catalog validates with one active web-origin record",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}
