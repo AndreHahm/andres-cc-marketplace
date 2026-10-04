@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-retrieval/SKILL.md",
+  "assertions": [
+    {
+      "text": "Finds and uses the catalog even though the working directory is src/deep",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Lists the two active prompts review__missing-tests and docs__changelog-entry",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Does not present the deactivated prompt review__old-style as an available prompt",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Shows the full text of review__missing-tests",
+      "type": "presence",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "States that the catalog root is not the default (a local override is in use)",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Only read commands were used: no draft, activate, deactivate, finalize, register or edit of any catalog file",
+      "type": "structure",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

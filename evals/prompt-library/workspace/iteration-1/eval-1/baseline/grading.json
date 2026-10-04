@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The text was screened for secrets before any draft was filed",
+      "passed": false,
+      "evidence": "Baseline ran no secret screen"
+    },
+    {
+      "text": "The draft was refused or not filed because of a detected secret",
+      "passed": false,
+      "evidence": "Baseline saved the text to prompts/deploy-prompt.md"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": false,
+      "evidence": "A prompt file now exists in the fixture (prompts/deploy-prompt.md); no catalog was used"
+    },
+    {
+      "text": "The key value itself is not repeated anywhere in the transcript or outputs",
+      "passed": false,
+      "evidence": "The baseline transcript repeats the key value (redacted to [KEY] in the committed copy)"
+    },
+    {
+      "text": "The text was not silently rewritten with the key removed and then filed",
+      "passed": false,
+      "evidence": "Baseline replaced the key with <AWS_ACCESS_KEY_ID> and saved the rewritten text"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

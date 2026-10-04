@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog or prompt as invalid or unavailable because of a hash mismatch or edit",
+      "passed": false,
+      "evidence": "Baseline never validated and did not report the catalog as invalid"
+    },
+    {
+      "text": "Does not show the prompt as ready to run and does not ask for approval to run it",
+      "passed": false,
+      "evidence": "Baseline presented the prompt as runnable and ran it without asking"
+    },
+    {
+      "text": "The missing-tests review is not carried out",
+      "passed": false,
+      "evidence": "Baseline carried out the review on src/calc.py and reported gaps"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Fixture unchanged after run"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

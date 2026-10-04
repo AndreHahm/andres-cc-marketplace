@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Finds and uses the catalog even though the working directory is src/deep",
+      "passed": true,
+      "evidence": "Found docs/prompt-catalog by reading .claude/promptlibrary-kit.local.json from src/deep"
+    },
+    {
+      "text": "Lists the two active prompts review__missing-tests and docs__changelog-entry",
+      "passed": true,
+      "evidence": "Reply lists docs__changelog-entry and review__missing-tests as active"
+    },
+    {
+      "text": "Does not present the deactivated prompt review__old-style as an available prompt",
+      "passed": true,
+      "evidence": "Reply labels review__old-style as inactive, so it is not presented as an available prompt"
+    },
+    {
+      "text": "Shows the full text of review__missing-tests",
+      "passed": true,
+      "evidence": "Reply quotes 'Review the diff for missing tests. List each gap with a file and line.'"
+    },
+    {
+      "text": "States that the catalog root is not the default (a local override is in use)",
+      "passed": true,
+      "evidence": "Reply says the catalog was located via .claude/promptlibrary-kit.local.json (a non-default root)"
+    },
+    {
+      "text": "Only read commands were used: no draft, activate, deactivate, finalize, register or edit of any catalog file",
+      "passed": true,
+      "evidence": "Only reads were made; no fixture file modified after build"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

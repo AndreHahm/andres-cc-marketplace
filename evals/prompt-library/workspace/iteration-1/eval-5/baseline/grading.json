@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Says the content needs a script or code and is better as a skill than a prompt",
+      "passed": false,
+      "evidence": "Baseline saved the text as-is and did not suggest a skill"
+    },
+    {
+      "text": "Points the user to skill-development",
+      "passed": false,
+      "evidence": "No pointer to skill-development"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": false,
+      "evidence": "A prompt file now exists in the fixture (prompts/gen-report-totals.md)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

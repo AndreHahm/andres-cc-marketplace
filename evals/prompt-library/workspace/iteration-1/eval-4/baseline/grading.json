@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The rejected override is reported to the user (a warning that the configured path was refused)",
+      "passed": false,
+      "evidence": "Baseline followed the override and reported nothing about it being unsafe"
+    },
+    {
+      "text": "Nothing was created under .claude/rules in the project",
+      "passed": false,
+      "evidence": "Created .claude/rules/prompts/summarize-open-todos.md under the forbidden folder"
+    },
+    {
+      "text": "The catalog exists at the default root .claude/prompts",
+      "passed": false,
+      "evidence": "No catalog exists at .claude/prompts"
+    },
+    {
+      "text": "The prompt was not saved to the rejected location",
+      "passed": false,
+      "evidence": "The prompt was written to the rejected location"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

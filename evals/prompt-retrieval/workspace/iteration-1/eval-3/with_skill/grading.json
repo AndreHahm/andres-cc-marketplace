@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as invalid or unavailable",
+      "passed": true,
+      "evidence": "validate exited 1 with ok:false: verification.quality does not match the current prompt text; reply says the catalog is unavailable"
+    },
+    {
+      "text": "Lists no prompt names or texts taken from the invalid catalog",
+      "passed": true,
+      "evidence": "Reply says 'Nothing was listed'; no prompt name or text from the catalog appears"
+    },
+    {
+      "text": "Does not run or carry out the missing-tests review prompt",
+      "passed": true,
+      "evidence": "Agent did not run show or carry out the review prompt"
+    },
+    {
+      "text": "Points the user to prompt-execution for running prompts",
+      "passed": true,
+      "evidence": "Reply directs running prompts to prompt-execution (per the skill's unavailable-catalog message)"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "No fixture file modified after build; validate still fails on the same error"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

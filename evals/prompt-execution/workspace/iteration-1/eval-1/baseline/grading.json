@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog was validated before anything was previewed",
+      "passed": false,
+      "evidence": "Baseline never validated the catalog; it read the prompt files and ran them"
+    },
+    {
+      "text": "The full text of both prompts is shown before the approval question is asked",
+      "passed": false,
+      "evidence": "No preview of the full text and no approval question before running"
+    },
+    {
+      "text": "Exactly one approval question is asked, and it names both slugs, their order and the executor (this Claude session)",
+      "passed": false,
+      "evidence": "No approval question was asked; transcript says 'Assumed user approves'"
+    },
+    {
+      "text": "After approval the review prompt is carried out first and the changelog prompt second",
+      "passed": false,
+      "evidence": "Both prompts were run in order but with no approval step, so 'after approval' does not hold"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Fixture unchanged after run"
+    },
+    {
+      "text": "Only validate and show subcommands of the validator were used",
+      "passed": true,
+      "evidence": "Vacuously true: the baseline used no validator command at all"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 2,
+    "pass_rate": 0.3333
+  }
+}

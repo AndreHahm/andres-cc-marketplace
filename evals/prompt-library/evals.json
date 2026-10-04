@@ -1,0 +1,53 @@
+{
+  "skill_name": "prompt-library",
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "description": "Adds, reviews, revises, activates and deactivates prompts in the project's catalog.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "web-text-with-a-key-is-blocked",
+      "prompt": "/prompt-library add\n\nI copied this from https://example.com/tips/deploy-prompt and want it saved as a prompt:\n\nDeploy the service. Use the credentials {{FAKE_AWS_KEY}} when calling the API.\nReport each step you ran.",
+      "expected_output": "The secret screen blocks the web-origin text; nothing is filed; the key is not echoed or redacted into a draft.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "codex-text-with-a-key-is-blocked",
+      "prompt": "/prompt-library add\n\nThis text came from a Codex session, please save it as a prompt:\n\nRun the integration checks. Authenticate with {{FAKE_AWS_KEY}} and list any failures.",
+      "expected_output": "Codex-origin text is screened like session, web and claude text: blocked, nothing filed, key not echoed.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "clean-prompt-saved-and-activated-after-approval",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
+      "expected_output": "Checks skill-vs-prompt and duplicates, files a draft after approval, reviews it, asks the user to approve the exact text, activates it bound to the approved hash.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "forbidden-catalog-root-override-is-refused",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
+      "expected_output": "The project's local override points at .claude/rules/prompts, which the validator rejects; the catalog is created at the default root instead and nothing is written under .claude/rules.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "script-needing-content-is-routed-to-a-skill",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week`, parse the JSON it prints with the parser below, and post the totals.\n\ndef parse(raw):\n    data = json.loads(raw)\n    return {k: sum(v) for k, v in data.items()}\"",
+      "expected_output": "Recognizes the content needs a script and code, recommends a skill (skill-development) instead, and creates no prompt record.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "A catalog that fails validation blocks every change; only an orphan file can be discarded.",
+      "A near-duplicate is offered as a revision before a new record is created.",
+      "A session or web record cannot be activated without an import hash.",
+      "A file edited after the user approved its text is refused by --expect-sha256.",
+      "A revision produces a successor with previous_id and version + 1."
+    ]
+  }
+}
