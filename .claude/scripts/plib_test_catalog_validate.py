@@ -14,7 +14,7 @@ import io
 import json
 import os
 import stat
-import subprocess
+import subprocess  # nosec B404 - test helper, fixed argument lists, no shell
 import sys
 import tempfile
 import time
@@ -25,7 +25,7 @@ from unittest import mock
 _SPEC = importlib.util.spec_from_file_location(
     "plib_catalog_validate", Path(__file__).with_name("plib_catalog_validate.py")
 )
-assert _SPEC is not None and _SPEC.loader is not None
+assert _SPEC is not None and _SPEC.loader is not None  # nosec B101 - test module
 V = importlib.util.module_from_spec(_SPEC)
 sys.modules["plib_catalog_validate"] = V
 _SPEC.loader.exec_module(V)
@@ -55,7 +55,9 @@ class Base(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.proj = Path(os.path.realpath(self._tmp.name))
-        subprocess.run(["git", "init", "-q"], cwd=self.proj, check=True)
+        subprocess.run(  # nosec B603 B607
+            ["git", "init", "-q"], cwd=self.proj, check=True
+        )
         self._cwd = os.getcwd()
         os.chdir(self.proj)
         self.addCleanup(self._cleanup)
@@ -293,7 +295,9 @@ class PathBoundary(Base):
         info = V.resolve_root(None)
         self.assertEqual(info["root_source"], "local override")
         self.assertTrue(info["catalog_root"].endswith(os.path.join("custom", "prompts")))
-        subprocess.run(["git", "add", "-f", str(local)], cwd=self.proj, check=True)
+        subprocess.run(  # nosec B603 B607
+            ["git", "add", "-f", str(local)], cwd=self.proj, check=True
+        )
         info = V.resolve_root(None)
         self.assertEqual(info["root_source"], "default")
         self.assertTrue(any("tracked" in w for w in info["warnings"]))
@@ -325,7 +329,9 @@ class PathBoundary(Base):
         local = self.proj / ".claude" / "promptlibrary-kit.local.json"
         local.parent.mkdir(parents=True)
         local.write_text(json.dumps({"catalog_root": "custom/prompts"}), encoding="utf-8")
-        subprocess.run(["git", "add", "-f", str(local)], cwd=self.proj, check=True)
+        subprocess.run(  # nosec B603 B607
+            ["git", "add", "-f", str(local)], cwd=self.proj, check=True
+        )
         recased = Path(".claude/PromptLibrary-Kit.LOCAL.json")
         self.assertTrue(V._is_tracked(self.proj, recased))
         done = subprocess.CompletedProcess([], 1, "", "")
@@ -1213,7 +1219,7 @@ class Robustness(Base):
     def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
         self.make_active(_body="Do the → thing")
         env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
-        proc = subprocess.run(
+        proc = subprocess.run(  # nosec B603
             [
                 sys.executable,
                 str(Path(__file__).with_name("plib_catalog_validate.py")),

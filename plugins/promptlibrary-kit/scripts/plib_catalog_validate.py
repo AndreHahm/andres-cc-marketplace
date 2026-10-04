@@ -23,7 +23,7 @@ import os
 import re
 import shutil
 import stat
-import subprocess
+import subprocess  # nosec B404 - git runs with fixed argument lists, no shell
 import sys
 import tempfile
 from collections.abc import Callable
@@ -486,8 +486,8 @@ def _git_toplevel(cwd: Path) -> Path | None:
     if not git:
         return None
     try:
-        out = subprocess.run(
-            [git, "rev-parse", "--show-toplevel"],
+        out = subprocess.run(  # nosec B603 # nosemgrep
+            [git, "rev-parse", "--show-toplevel"],  # nosemgrep
             cwd=str(cwd),
             env=_git_env(),
             capture_output=True,
@@ -527,9 +527,10 @@ def _is_tracked(project_root: Path, rel: Path) -> bool:
     if not git:
         return True
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 # nosemgrep
             # icase: on a case-insensitive filesystem the override file is found under any casing,
             # so a tracked copy committed under another casing must still count as tracked.
+            # nosemgrep
             [git, "ls-files", "--error-unmatch", "--", ":(icase,literal)" + rel.as_posix()],
             cwd=str(project_root),
             # An inherited GIT_LITERAL_PATHSPECS would make git read the icase magic as part of the
