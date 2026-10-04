@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The user approved the exact text before the harness edit",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "record-verification was refused because the text changed since it was approved",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The agent did not retry with the new hash or otherwise get the changed text verified without a new approval",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The record was not activated and its status is still draft",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The user is told the text changed and must be reviewed and approved again",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

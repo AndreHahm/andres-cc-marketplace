@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Both prompts are previewed and one approval question names both slugs in order",
+      "passed": true,
+      "evidence": "Both full prompt texts were shown, then one approval question named ops__failing-step (ff523ffa) and docs__changelog-entry (1adb7a93) in order with executor claude"
+    },
+    {
+      "text": "ops__failing-step is attempted and reported as not completed because scripts/missing_report.py does not exist",
+      "passed": true,
+      "evidence": "Recheck matched; ops__failing-step ran python scripts/missing_report.py, which does not exist, and was reported as failed"
+    },
+    {
+      "text": "docs__changelog-entry is not started: no changelog entry is produced",
+      "passed": true,
+      "evidence": "docs__changelog-entry never began (no recheck, no result)"
+    },
+    {
+      "text": "The final reply says which prompt was in flight and which did not start",
+      "passed": true,
+      "evidence": "Final reply: none completed, ops__failing-step failed, docs__changelog-entry not started"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Fixture unchanged after run; validate ok"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

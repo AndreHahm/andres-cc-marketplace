@@ -37,17 +37,46 @@
       "prompt": "/prompt-library add\n\nSave this as a prompt: \"Run `python scripts/gen_report.py --since last-week`, parse the JSON it prints with the parser below, and post the totals.\n\ndef parse(raw):\n    data = json.loads(raw)\n    return {k: sum(v) for k, v in data.items()}\"",
       "expected_output": "Recognizes the content needs a script and code, recommends a skill (skill-development) instead, and creates no prompt record.",
       "files": []
+    },
+    {
+      "id": 6,
+      "name": "invalid-catalog-blocks-every-change",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
+      "expected_output": "The existing catalog fails validation because a stored prompt was edited after its verification; the skill reports the error, refuses every change, repairs nothing, and files no draft.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "orphan-file-is-removed-only-with-consent",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
+      "expected_output": "The catalog fails validation with one unlisted record file left by an interrupted draft; the skill offers to remove it, removes it only after approval, confirms the catalog validates, and stops there (the user declines the rest).",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "near-duplicate-is-offered-as-a-revision",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Review the diff for missing tests. List each gap with a file and line, and name the test that should cover it.\"",
+      "expected_output": "Finds the existing review__missing-tests prompt as a near-duplicate, offers to revise it instead of creating a new record, and (on the user's yes) creates a version 2 successor linked to the predecessor, leaving the predecessor active until finalize.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "web-record-needs-an-import-verification-before-activation",
+      "prompt": "/prompt-library add\n\nI fetched this from https://example.com/tips/review-prompt and want it saved as a prompt:\n\nReview this pull request for missing error handling. List each unhandled error path with a file and line.",
+      "expected_output": "Records origin web with a source URL, runs both the quality and the import verification with the approved hash, and activates only after both.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "edit-after-approval-is-refused-by-the-hash",
+      "prompt": "/prompt-library add\n\nSave this as a prompt: \"Summarize the open TODO comments in the repository as a table with file, line and a one-line description. Do not change any file.\"",
+      "expected_output": "Harness event (not part of the skill): right after the exact-text approval answer and before the verification command, one line is appended to the filed draft record, simulating a concurrent edit. record-verification must refuse because the text changed since approval; the record is not activated.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 8,
-    "declared_scenarios_covered": 3,
-    "uncovered": [
-      "A catalog that fails validation blocks every change; only an orphan file can be discarded.",
-      "A near-duplicate is offered as a revision before a new record is created.",
-      "A session or web record cannot be activated without an import hash.",
-      "A file edited after the user approved its text is refused by --expect-sha256.",
-      "A revision produces a successor with previous_id and version + 1."
-    ]
+    "declared_scenarios_covered": 8,
+    "uncovered": []
   }
 }

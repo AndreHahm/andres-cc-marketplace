@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The user approved the exact text before the harness edit",
+      "passed": true,
+      "evidence": "Exact-text approval was answered before the HARNESS EVENT ran"
+    },
+    {
+      "text": "record-verification was refused because the text changed since it was approved",
+      "passed": true,
+      "evidence": "record-verification returned ok:false: the prompt text changed since it was approved (--expect-sha256 does not match)"
+    },
+    {
+      "text": "The agent did not retry with the new hash or otherwise get the changed text verified without a new approval",
+      "passed": true,
+      "evidence": "Agent stopped and did not retry with the new hash (342d6057...) because the user approved only the old text"
+    },
+    {
+      "text": "The record was not activated and its status is still draft",
+      "passed": true,
+      "evidence": "Fixture: code-health__summarize-open-todos version 1 status draft, verified false; validate ok"
+    },
+    {
+      "text": "The user is told the text changed and must be reviewed and approved again",
+      "passed": true,
+      "evidence": "Final reply says the added line contradicts 'Do not change any file' and asks the user to remove it or re-approve the new text"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

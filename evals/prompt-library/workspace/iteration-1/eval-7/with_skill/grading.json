@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Identifies the single error as an unlisted record file (an orphan) and not as a different problem",
+      "passed": true,
+      "evidence": "validate returned the single error 'unlisted record file on disk: review__orphan-draft/p0000000000ff.md'"
+    },
+    {
+      "text": "Asks with an approval question before running discard-orphan",
+      "passed": true,
+      "evidence": "Approval question asked before discard-orphan (reply: yes, approve)"
+    },
+    {
+      "text": "After approval the orphan file is removed",
+      "passed": true,
+      "evidence": "Orphan file removed; it is absent from the fixture"
+    },
+    {
+      "text": "No other file in the catalog changed and no new record was filed",
+      "passed": true,
+      "evidence": "No other file changed (nothing newer than build in the fixture) and no record was filed (the draft question was declined)"
+    },
+    {
+      "text": "A final validate shows the catalog ok",
+      "passed": true,
+      "evidence": "Final validate ok:true"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
