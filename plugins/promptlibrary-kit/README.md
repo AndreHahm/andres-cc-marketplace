@@ -24,7 +24,8 @@ claude --plugin-dir /path/to/andres-cc-marketplace/plugins/promptlibrary-kit
 
 The first time you add a prompt, the skill offers to create the catalog in your project.
 
-- **Save a prompt:** run `/prompt-library add` and paste the text, point it at turns from the current
+- **Save a prompt:** type `/prompt-library add` yourself (a plain request such as "save this as a
+  prompt" does not start it, because only you may start a skill that writes to the catalog), then paste the text, point it at turns from the current
   session, or give it a URL. It screens the text for secrets, asks whether the content should be a skill
   instead, files a draft, has `prompt-reviewer` review it, and asks you to approve the exact final text
   before activating it. `/prompt-library revise <slug>` creates a new version without touching the active

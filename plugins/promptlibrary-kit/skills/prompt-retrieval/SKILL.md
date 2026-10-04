@@ -5,7 +5,8 @@ description: >-
   Use when the user asks to "show my stored prompt", "find the saved prompt about X", "list versions of
   prompt Y", or "what prompts are in the prompt catalog". Read-only: it pre-approves only the validator's
   read commands, so nothing here lets a prompt's text change the catalog without a permission prompt. To run stored
-  prompts use prompt-execution; to add, revise, activate or deactivate one use prompt-library.
+  prompts use prompt-execution; to add, revise, activate or deactivate one use prompt-library, which
+  only the user can start by typing /prompt-library (a plain request does not start it).
 allowed-tools: Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" validate:*), Bash(uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py" show:*)
 ---
 
