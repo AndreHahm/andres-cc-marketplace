@@ -53,14 +53,18 @@ content to the user.
 ## Instructions
 
 `<CLI>` below means `uv run --isolated --no-project --no-config python "${CLAUDE_PLUGIN_ROOT}/scripts/plib_catalog_validate.py"`.
+The `references/` and `assets/` paths named below are relative to this skill's own folder,
+`${CLAUDE_PLUGIN_ROOT}/skills/prompt-library/`, not to the plugin root.
 Every `<CLI>` call returns JSON and exits non-zero when `ok` is false; the JSON on stdout is the result to
 read, and a non-zero exit is not a tool failure. If it returns `ok: false` (or only an `error` key), stop,
 report the message, and take no further step that depends on it. The one exception is `screen`: its
 `ok: false` is the expected report of matches, so carry on to the user's decision in step 4. Scratch files
-go in the session scratchpad directory, never the repo root or the catalog; write them with the `Write`
-tool (it asks permission), and when a line in the pasted text looks like a secret, never repeat it in your
-own messages or commands. The validator reads scratch files only from inside the catalog or the system
-temp directory; if the scratchpad is somewhere else, it refuses the file and you must say so.
+go in the session scratchpad directory, never the repo root, the catalog or an outputs folder; write them
+with the `Write` tool (it asks permission), and when a line in the pasted text looks like a secret, never
+repeat it in your own messages or commands. The validator reads scratch files only from inside the catalog
+or the system temp directory, so use the scratchpad only when it is under the system temp directory;
+otherwise write the scratch file directly in the system temp directory. If the validator still refuses the
+file, say so instead of moving a secret-bearing file somewhere less safe.
 
 1. **Preflight.** `<CLI> validate`. If the catalog is missing, offer `<CLI> init` via `AskUserQuestion`,
    showing the resolved `catalog_root` and `root_source`. If it exists but is not `ok`, report the errors
@@ -193,7 +197,7 @@ it without echoing it, and `draft` refused it with nothing filed. That run was n
 questions were simulated, and the review, verify and status steps were not exercised, so the skill has
 had no live run yet.
 
-**Why no `evals.json`:** the enforcement that matters (screening, hash binding, containment, lifecycle
-moves) is deterministic code covered by the fixture tests. The skill's own multi-step flow, including the
-reviewer dispatch and the approval questions, needs a live, installed session, so persisted behavioral
-evals are deferred until then. This is a recorded gap, not a claim that evals are unnecessary.
+**Evals:** `evals/prompt-library/` holds with-skill versus baseline scenarios run by dry-run agents that
+follow this SKILL.md by hand against throwaway projects (approval questions scripted, the reviewer step done
+inline). Its `evals.json` records which quality gates the scenarios cover. These are not a live run in an
+installed session, which is still outstanding.

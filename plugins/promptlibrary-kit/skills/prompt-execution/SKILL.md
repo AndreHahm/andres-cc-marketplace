@@ -134,7 +134,7 @@ metacharacter slug was refused with no command run, a valid prompt was previewed
 the approval question without running anything, and the tampered catalog was reported unavailable. That
 run was not persisted and the approval question could not be asked, so the skill has had no live run yet.
 
-**Why no `evals.json`:** the gate's security-relevant logic (hash binding, refusal of an edited prompt,
-containment) lives in the validator and is covered by the fixture tests. The skill's own flow needs a
-live, installed session to exercise the approval question and the step 6 recheck, so persisted behavioral
-evals are deferred until then. This is a recorded gap, not a claim that evals are unnecessary.
+**Evals:** `evals/prompt-execution/` holds with-skill versus baseline scenarios run by dry-run agents that
+follow this SKILL.md by hand against throwaway projects (the approval question scripted). Its `evals.json`
+records which quality gates the scenarios cover. These are not a live run in an installed session, which is
+still outstanding.
