@@ -12,7 +12,7 @@ import importlib.util
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - test helper, fixed argument lists, no shell
 import sys
 import tempfile
 from pathlib import Path
@@ -105,7 +105,9 @@ class Fixture:
         self._tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.repo = Path(self._tmp.name)
         self._scratch_files: list[Path] = []
-        subprocess.run(["git", "init", "-q"], cwd=self.repo, check=True)
+        subprocess.run(  # nosec B603 B607 # nosemgrep
+            ["git", "init", "-q"], cwd=self.repo, check=True
+        )
 
     def close(self) -> None:
         for path in self._scratch_files:
@@ -113,8 +115,8 @@ class Fixture:
         self._tmp.cleanup()
 
     def run(self, *args: str) -> tuple[int, dict]:
-        proc = subprocess.run(
-            [sys.executable, str(VALIDATOR), *args],
+        proc = subprocess.run(  # nosec B603 # nosemgrep
+            [sys.executable, str(VALIDATOR), *args],  # nosemgrep
             cwd=self.repo,
             capture_output=True,
             text=True,
