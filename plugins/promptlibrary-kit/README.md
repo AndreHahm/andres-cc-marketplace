@@ -75,26 +75,31 @@ text is data everywhere except an explicitly approved run.
   pre-approves commands that change the catalog, and only through the validator.
 - `origin` is a claim recorded at intake, not an attestation: a hand-edited `origin` skips the import
   screen and the import hash.
-- The validator blocks secrets in `session`, `web` and `claude` text itself (detect and block, never
-  rewrite, never echoed), not just in the skill's step order. `user` and `codex` text is only warned.
+- The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
+  never rewrite, never echoed), not just in the skill's step order. `user` text is only warned.
 - `record-verification`, `activate` and `finalize` take `--expect-sha256`, the hash the user was shown,
   and refuse if the text changed.
 - Every call uses `uv run --isolated --no-project --no-config python`, so a project's own `pyproject.toml`,
   `uv.toml` and `.venv` are not used. Checked against uv 0.9.5: plain `--no-project` was not reliably safe
   (it picked up a repository `.venv` once), and the isolated form always ran in an ephemeral environment.
 - `git` is looked up outside the working directory. The catalog root must resolve inside the project
-  root and never at or under `.git`, `.github` or Claude Code's configuration folders under `.claude/`
-  (rules, commands, agents, skills, hooks and similar; the full list is `FORBIDDEN_ROOTS` in the
-  validator), so stored prompt text is never loaded as project instructions.
+  root and never at, under or below (at any depth) `.git`, `.github` or Claude Code's configuration
+  folders under `.claude/` (rules, commands, agents, skills, hooks and similar; the full list is
+  `FORBIDDEN_ROOTS` in the validator), so stored prompt text is never loaded as project instructions.
+  The name is checked as written as well as after links are resolved, and a path part that ends in a
+  dot or space or contains a colon is refused.
 - Outside a git repository the working directory is the project root, and the local override is ignored
   with a warning, because there is no way to check whether git tracks it. The override is also ignored
-  when git tracks it or fails with anything other than "not tracked".
+  when git tracks it, when it is reached through a link, or when git fails with anything other than
+  "not tracked".
 - Records and `catalog.yaml` are written through a randomly named temp file that then replaces the
   target, and a status move that fails partway is rolled back, as are earlier moves of the same command
   if a later move or the `catalog.yaml` write fails, so an interrupted write does not truncate a
-  record or leave the catalog out of step with the files. A rollback step that itself fails is skipped;
-  `validate` then reports the mismatch. An `internal_id` cannot be one of the layout's own names (`active`, `catalog`), a name an agent
-  may load as instructions (`claude`, `agents`, `gemini`) or a Windows device name.
+  record or leave the catalog out of step with the files. If a rollback step itself fails, the rollback
+  stops and `validate` reports the mismatch. Rewritten files keep their file mode (a new file gets the
+  umask default), and `validate` warns about temp files a killed write left behind. An `internal_id` cannot be one of the layout's own
+  names (`active`, `catalog`), a name an agent may load as instructions (`claude`, `agents`, `gemini`)
+  or a Windows device name.
 
 ## Configuration
 
@@ -116,14 +121,13 @@ verification hashes that cover prompt text only.
 
 ## Known limitations
 
-- The catalog-path tests have run on Windows only. Linux and macOS behavior is designed for but unverified.
+- The catalog-path tests have run on Windows only. Linux and macOS behavior is designed for but unverified,
+  and the three file-mode tests are skipped on Windows, so they have not run at all yet.
 - Skill flows were checked by following each `SKILL.md` by hand against throwaway catalogs, not by a live
   installed run. There are no persisted behavioral evals yet.
 - In this repository the skills are also mirrored into `.claude/` as project-level skills. A project-level
   skill cannot resolve the plugin-root variable its validator path uses, so those mirror copies' validator
   calls are untested; the plugin installed normally is not affected.
-- The forbidden-folder check on the catalog root applies at the project root only; a copy of those
-  folders nested deeper is not rejected.
 - Importing a session by ID works only when `session-kit` is installed, and relies on its
   `session-detail` skill being listed under that name; pasting the turns always works.
 - `prompt-reviewer`'s trigger check has not run: the repository's trigger-test script crashed on this and

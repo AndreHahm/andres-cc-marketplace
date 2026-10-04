@@ -87,19 +87,19 @@ temp directory; if the scratchpad is somewhere else, it refuses the file and you
 4. **Screen.** `<CLI> screen <scratch-file>`. Report each match as a line number (counted in the whole
    scratch record, frontmatter included) and a pattern name (the script does not echo the matched text)
    and let the user remove it, then screen again. Nothing is
-   auto-redacted. For `session`, `web` and `claude` text a match also blocks filing: the validator
-   screens again at each later filing, verification and activation step and refuses (the exact scope is in
-   `references/prompt-intake-sources.md`). For `user` and `codex` text a match is a warning the user may accept, because their own prompt
-   can legitimately contain a path or an example string.
+   auto-redacted. For `session`, `web`, `claude` and `codex` text a match also blocks filing: the
+   validator screens again at each later filing, verification and activation step and refuses (the exact
+   scope is in `references/prompt-intake-sources.md`). For `user` text a match is a warning the user may
+   accept, because their own prompt can legitimately contain a path or an example string.
 5. **Triage.** Ask whether this is one reusable instruction text (a prompt) or needs something a prompt
    cannot provide (a skill: point to `skill-development` and create no record). Then filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
-6. **File the draft.** Only once step 4 is clean (or, for `user` and `codex` text, the user accepted the
+6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
    warning), show the user the slug, name, origin, description and `<CLI> hash <scratch-file>` output,
    and ask with `AskUserQuestion` whether to file this draft. A draft that step 4 blocked never reaches
    this question. On yes, `<CLI> draft
-   <scratch-file>`; it validates, enforces the secret screen for `session`, `web` and `claude` text, writes the record and
+   <scratch-file>`; it validates, enforces the secret screen for `session`, `web`, `claude` and `codex` text, writes the record and
    lists it in the catalog together. Keep the `text_hash` and `path` it returns.
 7. **Review and optimize.** Dispatch `prompt-reviewer` with the absolute path of the filed record
    (`catalog_root` + `/` + `path`) and its `origin`; it is read-only. Present its findings and its
@@ -176,7 +176,8 @@ pre-approved Write.
 **Quality gates:**
 - [ ] A catalog that fails validation blocks every change; only an orphan file can be discarded, and only
       with the user's consent.
-- [ ] A secret in `session`, `web` or `claude` text blocks the draft and is never auto-redacted or echoed.
+- [ ] A secret in `session`, `web`, `claude` or `codex` text blocks the draft and is never auto-redacted
+      or echoed.
 - [ ] Script-needing content is routed to `skill-development` with no record created.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
@@ -185,7 +186,7 @@ pre-approved Write.
       untouched until `finalize`.
 - [ ] Every status change and every draft filing was preceded by an `AskUserQuestion` approval.
 
-**Last dated run record:** validator fixture tests, 84 passing, 2026-10-03
+**Last dated run record:** validator fixture tests, 102 run (99 passing, 3 POSIX-only skipped on Windows), 2026-10-03
 (`scripts/plib_test_catalog_validate.py`). On the same date a subagent followed steps 1 to 6 by hand
 against an empty throwaway catalog with a web-origin candidate carrying a fake key: the screen reported
 it without echoing it, and `draft` refused it with nothing filed. That run was not persisted, the user

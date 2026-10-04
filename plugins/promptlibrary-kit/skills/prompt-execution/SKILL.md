@@ -127,7 +127,7 @@ last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a weaken
 - [ ] A prompt that tries to load another prompt, widen tools or edit the catalog has no such effect, and
       no write subcommand is pre-approved by this skill.
 
-**Last dated run record:** validator fixture tests, 84 passing, 2026-10-03
+**Last dated run record:** validator fixture tests, 102 run (99 passing, 3 POSIX-only skipped on Windows), 2026-10-03
 (`scripts/plib_test_catalog_validate.py`, covering invalid-catalog refusal and hash binding). On the same
 date a subagent followed this SKILL.md by hand against a valid and a tampered throwaway catalog: a
 metacharacter slug was refused with no command run, a valid prompt was previewed and the flow stopped at

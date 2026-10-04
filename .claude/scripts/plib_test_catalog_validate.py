@@ -13,6 +13,7 @@ import importlib.util
 import io
 import json
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -275,6 +276,117 @@ class PathBoundary(Base):
             info = V.resolve_root(None)
         self.assertEqual(info["root_source"], "default")
         self.assertTrue(any("cannot be checked against git" in w for w in info["warnings"]))
+
+    def test_tracking_check_matches_the_override_path_case_insensitively(self):
+        local = self.proj / ".claude" / "promptlibrary-kit.local.json"
+        local.parent.mkdir(parents=True)
+        local.write_text(json.dumps({"catalog_root": "custom/prompts"}), encoding="utf-8")
+        subprocess.run(["git", "add", "-f", str(local)], cwd=self.proj, check=True)
+        recased = Path(".claude/PromptLibrary-Kit.LOCAL.json")
+        self.assertTrue(V._is_tracked(self.proj, recased))
+        done = subprocess.CompletedProcess([], 1, "", "")
+        with (
+            mock.patch.object(V, "_find_git", return_value="git"),
+            mock.patch.object(V.subprocess, "run", return_value=done) as run,
+        ):
+            V._is_tracked(self.proj, Path(".claude/promptlibrary-kit.local.json"))
+        pathspec = run.call_args.args[0][-1]
+        self.assertTrue(pathspec.startswith(":(icase"), pathspec)
+
+    def test_forbidden_folders_are_rejected_at_any_depth(self):
+        for value in (
+            "sub/.claude/rules/x",
+            "docs/.github/prompts",
+            "a/b/.git/p",
+            "pkg/.claude/agents",
+        ):
+            path, reason = V.check_catalog_path(value, self.proj)
+            self.assertIsNone(path, value)
+            self.assertIn("below the project root", reason or "", value)
+
+    def test_nested_forbidden_folders_are_rejected_in_any_case_and_with_backslashes(self):
+        for value in ("sub/.CLAUDE/Rules/x", "sub\\.claude\\rules\\x", "A/.Git/p"):
+            path, reason = V.check_catalog_path(value, self.proj)
+            self.assertIsNone(path, value)
+            self.assertIn("below the project root", reason or "", value)
+        absolute = str(self.proj / "sub" / ".claude" / "rules" / "x")
+        path, reason = V.check_catalog_path(absolute, self.proj)
+        self.assertIsNone(path, absolute)
+
+    def test_dot_dot_that_leaves_a_forbidden_folder_is_allowed(self):
+        path, reason = V.check_catalog_path("a/.claude/../prompts", self.proj)
+        self.assertIsNotNone(path, reason)
+
+    def test_path_parts_with_a_trailing_dot_or_space_or_a_colon_are_rejected(self):
+        for value in ("sub/.claude./rules/x", "sub/.git /x", "sub/.claude::$INDEX_ALLOCATION/x"):
+            path, reason = V.check_catalog_path(value, self.proj)
+            self.assertIsNone(path, value)
+            self.assertIn("dot or space", reason or "", value)
+
+    def test_a_link_named_like_a_forbidden_folder_is_rejected(self):
+        (self.proj / "docs" / "prompts").mkdir(parents=True)
+        (self.proj / "sub").mkdir()
+        try:
+            os.symlink(self.proj / "docs" / "prompts", self.proj / "sub" / ".claude", True)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        path, reason = V.check_catalog_path("sub/.claude/rules", self.proj)
+        self.assertIsNone(path, reason)
+        self.assertIn("below the project root", reason or "")
+
+    def test_tracking_check_runs_git_without_inherited_pathspec_switches(self):
+        done = subprocess.CompletedProcess([], 1, "", "")
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"GIT_LITERAL_PATHSPECS": "1", "GIT_ICASE_PATHSPECS": "0", "GIT_DIR": "elsewhere"},
+            ),
+            mock.patch.object(V, "_find_git", return_value="git"),
+            mock.patch.object(V.subprocess, "run", return_value=done) as run,
+        ):
+            V._is_tracked(self.proj, Path(".claude/promptlibrary-kit.local.json"))
+        env = run.call_args.kwargs["env"]
+        self.assertNotIn("GIT_LITERAL_PATHSPECS", env)
+        self.assertNotIn("GIT_ICASE_PATHSPECS", env)
+        self.assertNotIn("GIT_DIR", env)
+        self.assertIn("PATH", env)
+
+    def test_project_root_reached_through_a_link_into_a_dot_github_ancestor_is_usable(self):
+        real = self.proj / ".github" / "work"
+        real.mkdir(parents=True)
+        link = self.proj / "lnk"
+        try:
+            os.symlink(real, link, True)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        path, reason = V.check_catalog_path("prompts", link)
+        self.assertIsNotNone(path, reason)
+
+    def test_override_reached_through_a_link_is_ignored(self):
+        real = self.proj / "cfg"
+        real.mkdir()
+        (real / "promptlibrary-kit.local.json").write_text(
+            json.dumps({"catalog_root": "custom/prompts"}), encoding="utf-8"
+        )
+        try:
+            os.symlink(real, self.proj / ".claude", True)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        info = V.resolve_root(None)
+        self.assertEqual(info["root_source"], "default")
+        self.assertTrue(any("reached through a link" in w for w in info["warnings"]))
+
+    def test_untracked_override_not_behind_a_link_is_still_honored(self):
+        local = self.proj / ".claude" / "promptlibrary-kit.local.json"
+        local.parent.mkdir(parents=True)
+        local.write_text(json.dumps({"catalog_root": "custom/prompts"}), encoding="utf-8")
+        info = V.resolve_root(None)
+        self.assertEqual(info["root_source"], "local override", info)
+
+    def test_folders_beside_a_forbidden_one_are_still_allowed(self):
+        for value in (".claude/prompts", ".claude/worktrees/wt/.claude/prompts", "docs/prompts"):
+            path, reason = V.check_catalog_path(value, self.proj)
+            self.assertIsNotNone(path, f"{value}: {reason}")
 
     def test_git_binary_inside_the_working_directory_is_never_used(self):
         for name in ("git.bat", "git.cmd", "git.exe", "git"):
@@ -647,18 +759,21 @@ class Hardening(Base):
             errs = V.validate_record(parsed, 1)
             self.assertTrue(any("internal_id must be text" in e for e in errs), bad)
 
-    def test_claude_origin_text_is_screened_but_user_and_codex_are_not(self):
+    def test_claude_and_codex_origin_text_is_screened_but_user_text_is_not(self):
         self.assertEqual(self.run_cli("init")[0], 0)
-        code, res = self.run_cli("draft", self.scratch(origin="claude", _body=f"key {FAKE_KEY}"))
-        self.assertEqual(code, 1)
-        self.assertIn("aws_access_key", res["error"])
+        for origin in ("claude", "codex"):
+            code, res = self.run_cli("draft", self.scratch(origin=origin, _body=f"key {FAKE_KEY}"))
+            self.assertEqual(code, 1, origin)
+            self.assertIn("aws_access_key", res["error"], origin)
+            self.assertNotIn(FAKE_KEY, json.dumps(res), origin)
+        self.assertEqual(list(self.root.glob("*/*.md")), [])  # neither blocked draft was filed
         self.assertEqual(
             self.run_cli(
                 "draft",
                 self.scratch(
                     internal_id="p000000000002",
                     slug="a__b",
-                    origin="codex",
+                    origin="user",
                     _body=f"key {FAKE_KEY}",
                 ),
             )[0],
@@ -935,6 +1050,78 @@ class Robustness(Base):
             code, res = self.run_cli("screen", "-")
         self.assertEqual(code, 1)
         self.assertEqual(res["matches"][0]["pattern"], "dotenv_secret_line")
+
+    @unittest.skipIf(sys.platform == "win32", "Windows has no permission bits beyond read-only")
+    def test_rewriting_a_record_keeps_the_targets_file_mode(self):
+        self.make_active()
+        path = self.root / SLUG / "active.md"
+        os.chmod(path, 0o640)
+        V.write_record(path, V.read_record(path))
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
+
+    @unittest.skipIf(sys.platform == "win32", "Windows has no permission bits beyond read-only")
+    def test_a_new_file_gets_the_umask_default_not_the_temp_files_0600(self):
+        target = self.proj / "fresh.md"
+        old = os.umask(0o022)
+        try:
+            V._write_atomic(target, "text")
+        finally:
+            os.umask(old)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o644)
+        self.assertEqual(target.read_text(encoding="utf-8"), "text")
+
+    def test_target_mode_reads_the_file_itself_and_defaults_for_a_new_one(self):
+        existing = self.proj / "existing.md"
+        existing.write_text("x", encoding="utf-8")
+        self.assertEqual(V._target_mode(existing), stat.S_IMODE(existing.stat().st_mode) & 0o777)
+        if sys.platform == "win32":  # the Windows umask only affects the read-only bit
+            return
+        old = os.umask(0o027)
+        try:
+            self.assertEqual(V._target_mode(self.proj / "missing.md"), 0o666 & ~0o027)
+        finally:
+            os.umask(old)
+
+    @unittest.skipIf(sys.platform == "win32", "Windows has no umask beyond the read-only bit")
+    def test_target_mode_ignores_a_link_and_the_special_bits(self):
+        target = self.proj / "real.md"
+        target.write_text("x", encoding="utf-8")
+        link = self.proj / "link.md"
+        try:
+            os.symlink(target, link)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are not permitted here")
+        old = os.umask(0o022)
+        try:
+            self.assertEqual(V._target_mode(link), 0o666 & ~0o022)
+        finally:
+            os.umask(old)
+        self.assertEqual(V._target_mode(target) & ~0o777, 0)
+
+    def test_a_failing_chmod_does_not_fail_the_write(self):
+        target = self.proj / "fresh.md"
+        with mock.patch.object(V.os, "chmod", side_effect=PermissionError("no chmod here")):
+            V._write_atomic(target, "text")
+        self.assertEqual(target.read_text(encoding="utf-8"), "text")
+
+    def test_stray_temp_scan_ignores_files_this_tool_did_not_create(self):
+        self.make_active()
+        (self.root / "notes.tmp").write_text("mine", encoding="utf-8")
+        (self.root / SLUG / "scratch.tmp").write_text("mine", encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        self.assertFalse(any("stray temp file" in w for w in res["warnings"]), res["warnings"])
+
+    def test_validate_warns_about_stray_temp_files_without_failing(self):
+        self.make_active()
+        stray = [self.root / SLUG / "active.md.abc123.tmp", self.root / "catalog.yaml.def456.tmp"]
+        for path in stray:
+            path.write_text("half written", encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 0, res)
+        warnings = " | ".join(res["warnings"])
+        self.assertIn(f"stray temp file {SLUG}/active.md.abc123.tmp", warnings)
+        self.assertIn("stray temp file catalog.yaml.def456.tmp", warnings)
 
     def test_output_is_utf8_even_when_the_console_encoding_is_not(self):
         self.make_active(_body="Do the → thing")

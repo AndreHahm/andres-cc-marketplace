@@ -14,13 +14,13 @@ an attestation; a hand-edited `origin` is outside this plugin's guarantees (the 
 ## Rules for every source
 
 - Screen the candidate (written to the session scratchpad, never the repo or catalog) with the
-  validator's `screen` command before filing it. The validator screens `session`, `web` and `claude` text
-  again in `draft`, `update-draft`, `register`, `record-verification`, `activate` and `finalize`, so a
+  validator's `screen` command before filing it. The validator screens `session`, `web`, `claude` and
+  `codex` text again in `draft`, `update-draft`, `register`, `record-verification`, `activate` and `finalize`, so a
   secret added later is still blocked; this is the one statement of that scope, which other files point
   to. Session transcripts can hold secrets and private data, and text Claude drafts is
-  built from that same context, so screening is not optional for those origins. Text of `user` and
-  `codex` origin is not blocked, because a user's own prompt may legitimately contain a path or an
-  example string; the screen output is still shown as an early warning.
+  built from that same context, and `codex` text arrives by paste from a session, so screening is not
+  optional for those origins. Text of `user` origin is not blocked, because a user's own prompt may
+  legitimately contain a path or an example string; the screen output is still shown as an early warning.
 - A consolidated multi-turn draft must still fit the 50-nonblank-line limit; if it does not, ask the user
   to condense it. Do not truncate silently.
 - Keep a license or attribution note for imported text in `references`.

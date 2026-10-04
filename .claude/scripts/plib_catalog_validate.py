@@ -16,11 +16,13 @@ orphan,
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -95,8 +97,9 @@ RESERVED_IDS = {
     *(f"lpt{n}" for n in range(10)),
 }
 # Origins whose text must pass the secret screen before it is filed or approved. session and web are
-# imports; claude text is built from session context, which can hold secrets.
-SCREENED_ORIGINS = ("session", "web", "claude")
+# imports; claude and codex text is built from session context, which can hold secrets. Only user
+# text is warn-only, because a person's own prompt may legitimately contain a path or example.
+SCREENED_ORIGINS = ("session", "web", "claude", "codex")
 # Folders Claude Code or git treat as configuration or instructions: a catalog root must never sit
 # at or
 # under one, or filed prompt text would be loaded with project-instruction authority.
@@ -298,6 +301,19 @@ def read_record(path: Path) -> dict:
     return meta
 
 
+def _target_mode(path: Path) -> int:
+    """Permission bits for a rewritten file: the regular file's own, else the umask default."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        st = None
+    if st is not None and stat.S_ISREG(st.st_mode):
+        return stat.S_IMODE(st.st_mode) & 0o777
+    umask = os.umask(0)
+    os.umask(umask)
+    return 0o666 & ~umask
+
+
 def _write_atomic(path: Path, text: str) -> None:
     """Write text to a temp file beside path, then replace path, so a failed write (an unencodable
     character, a full disk) never truncates the file that was already there. The temp file has a
@@ -306,11 +322,26 @@ def _write_atomic(path: Path, text: str) -> None:
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
     tmp = Path(tmp_name)
     try:
+        mode = _target_mode(path)
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
+            # mkstemp creates the file as 0600; give it the target's own permission bits (read from
+            # the file itself, never through a link, and without setuid/setgid/sticky), or the
+            # umask default for a new file, so rewriting a record does not change who can read it.
+            # Set on the open descriptor where the platform allows, so a swapped-in link at the
+            # temp name is never followed. A filesystem that rejects chmod keeps the temp file's
+            # own mode rather than failing the write.
+            with contextlib.suppress(OSError):
+                if hasattr(os, "fchmod"):
+                    handle.flush()
+                    os.fchmod(handle.fileno(), mode)
+                else:
+                    os.chmod(tmp, mode)
         os.replace(tmp, path)
     except BaseException:
         try:
+            with contextlib.suppress(OSError):
+                os.chmod(tmp, 0o600)  # a read-only temp file cannot be unlinked on Windows
             tmp.unlink(missing_ok=True)
         except OSError:
             pass  # the original error is the one worth reporting
@@ -451,6 +482,7 @@ def _git_toplevel(cwd: Path) -> Path | None:
         out = subprocess.run(
             [git, "rev-parse", "--show-toplevel"],
             cwd=str(cwd),
+            env=_git_env(),
             capture_output=True,
             encoding="utf-8",
             errors="replace",
@@ -462,6 +494,24 @@ def _git_toplevel(cwd: Path) -> Path | None:
     return Path(top) if out.returncode == 0 and top else None
 
 
+_GIT_ENV_DROPPED = (
+    "GIT_LITERAL_PATHSPECS",
+    "GIT_GLOB_PATHSPECS",
+    "GIT_NOGLOB_PATHSPECS",
+    "GIT_ICASE_PATHSPECS",
+    "GIT_INDEX_FILE",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+)
+
+
+def _git_env() -> dict[str, str]:
+    """The environment git runs in: inherited switches that redirect which repository or index it
+    reads, or how it reads a pathspec, would change its answer about the project."""
+    return {k: v for k, v in os.environ.items() if k not in _GIT_ENV_DROPPED}
+
+
 def _is_tracked(project_root: Path, rel: Path) -> bool:
     """True when git tracks rel. Fails closed: any doubt counts as tracked, so the override is
     ignored. Only git's exit code 1 (the path is not known to git) counts as untracked; any other
@@ -471,8 +521,13 @@ def _is_tracked(project_root: Path, rel: Path) -> bool:
         return True
     try:
         out = subprocess.run(
-            [git, "ls-files", "--error-unmatch", "--", rel.as_posix()],
+            # icase: on a case-insensitive filesystem the override file is found under any casing,
+            # so a tracked copy committed under another casing must still count as tracked.
+            [git, "ls-files", "--error-unmatch", "--", ":(icase,literal)" + rel.as_posix()],
             cwd=str(project_root),
+            # An inherited GIT_LITERAL_PATHSPECS would make git read the icase magic as part of the
+            # file name and report "untracked".
+            env=_git_env(),
             capture_output=True,
             encoding="utf-8",
             errors="replace",
@@ -502,6 +557,12 @@ def _norm(path: Path, fold: bool) -> str:
     return text.casefold() if fold else text
 
 
+def _norm_lexical(path: Path, fold: bool) -> str:
+    """Like _norm but without following symlinks."""
+    text = os.path.normcase(os.path.abspath(str(path)))
+    return text.casefold() if fold else text
+
+
 def contained(child: Path, parent: Path) -> bool:
     """True when child resolves strictly inside parent (resolved paths, never string prefixes)."""
     fold = _case_insensitive(parent)
@@ -527,6 +588,11 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
     # containment fails.
     if text.replace("/", "\\").startswith("\\\\"):
         return None, "UNC paths are not allowed"
+    # Windows drops a trailing dot or space from a folder name and reads ':' as a stream marker, so
+    # ".claude./rules" can create the real .claude folder while escaping the name match below.
+    for segment in re.split(r"[\\/]", os.path.splitdrive(text)[1]):
+        if segment not in ("", ".", "..") and (segment != segment.rstrip(". ") or ":" in segment):
+            return None, "a path part ends in a dot or space, or contains a colon"
     candidate = Path(text)
     if not candidate.is_absolute():
         candidate = project_root / candidate
@@ -537,7 +603,31 @@ def check_catalog_path(value, project_root: Path) -> tuple[Path | None, str | No
         target = project_root / forbidden
         if _norm(candidate, fold) == _norm(target, fold) or contained(candidate, target):
             return None, f"resolves inside {forbidden}, which holds configuration or instructions"
+    # The same folders nested deeper (sub/.claude/rules) can be loaded as instructions too. Match
+    # the resolved path and the path as written: a symlink named .claude/rules is read under that
+    # name, whatever it points at.
+    # Each form is measured against the project root in the same form, never a mix.
+    for norm in (_norm, _norm_lexical):
+        try:
+            rel = os.path.relpath(norm(candidate, fold), norm(project_root, fold))
+        except ValueError:  # different drives: cannot be placed under the root, so refuse
+            return None, "cannot be compared with the project root"
+        parts = rel.replace("\\", "/").split("/")
+        for forbidden in FORBIDDEN_ROOTS:
+            seq = forbidden.split("/")
+            if any(parts[i : i + len(seq)] == seq for i in range(len(parts) - len(seq) + 1)):
+                return (
+                    None,
+                    f"contains {forbidden} below the project root, which holds instructions",
+                )
     return Path(os.path.realpath(str(candidate))), None
+
+
+def _via_link(project_root: Path, local: Path) -> bool:
+    """True when the override file is reached through a link. git does not look through a tracked
+    folder symlink, so its "not tracked" answer cannot be trusted for such a path."""
+    expected = os.path.join(os.path.realpath(str(project_root)), *LOCAL_OVERRIDE.parts)
+    return os.path.normcase(os.path.realpath(str(local))) != os.path.normcase(expected)
 
 
 def _settings_dir() -> Path:
@@ -581,9 +671,10 @@ def resolve_root(cli_root: str | None, cwd: Path | None = None) -> dict:
                 f"{LOCAL_OVERRIDE.as_posix()} cannot be checked against git here; its path value "
                 "is ignored"
             )
-        elif _is_tracked(project_root, LOCAL_OVERRIDE):
+        elif _via_link(project_root, local) or _is_tracked(project_root, LOCAL_OVERRIDE):
             info["warnings"].append(
-                f"{LOCAL_OVERRIDE.as_posix()} is tracked by git; its path value is ignored"
+                f"{LOCAL_OVERRIDE.as_posix()} is tracked by git or reached through a link; "
+                "its path value is ignored"
             )
         else:
             data = _read_json(local)
@@ -735,8 +826,21 @@ def _need_ok(info: dict) -> None:
         raise CatalogError("catalog is not valid: " + "; ".join(info["errors"][:3]))
 
 
+def _stray_temp_files(root: Path) -> list[str]:
+    """Temp files a killed write left behind (not records, so validation never lists them)."""
+    if not root.is_dir():
+        return []
+    patterns = ("catalog.yaml.*.tmp", "*/*.md.*.tmp")  # the shapes _write_atomic creates
+    found = {p for pat in patterns for p in root.glob(pat) if p.is_symlink() or p.is_file()}
+    return sorted(p.relative_to(root).as_posix() for p in found)
+
+
 def cmd_validate(args) -> dict:
-    info, _, cat, records = _load(args)
+    info, root, cat, records = _load(args)
+    for rel in _stray_temp_files(root):
+        info["warnings"].append(
+            f"stray temp file {rel} (appears left by an interrupted write; check, then delete)"
+        )
     info["ok"] = not info["errors"]
     info["catalog_version"] = cat.get("catalog_version")
     info["records"] = [summarize(m) for m in records.values()]
@@ -845,8 +949,8 @@ def screen_blob(meta: dict) -> str:
 
 
 def _assert_clean(meta: dict) -> None:
-    """Enforce detect-and-block for session, web and claude text (SCREENED_ORIGINS), not just in
-    the skill's step order."""
+    """Enforce detect-and-block for session, web, claude and codex text (SCREENED_ORIGINS), not
+    just in the skill's step order."""
     if meta.get("origin") in SCREENED_ORIGINS:
         hits = screen_text(screen_blob(meta))
         if hits:
