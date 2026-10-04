@@ -17,6 +17,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -154,6 +155,31 @@ class TextAndYaml(unittest.TestCase):
             "npm_" + "c" * 32,
         ):
             self.assertTrue(V.screen_text(text), text)
+
+    def test_bare_credential_assignments_are_screened(self):
+        # Pieces are joined so no assignment-shaped literal sits in this source file.
+        word = "hunter2" + "abcdef"
+        for text in (
+            "PASS" + "WORD=" + word,
+            "pass" + "word = " + word,
+            "TO" + "KEN=" + word,
+            "SEC" + "RET=" + word,
+            "export K" + "EY=" + word,
+            "  API_" + "KEY=" + word,
+            "run it with pass" + "word=" + word + " set",
+        ):
+            self.assertTrue(V.screen_text(text), text)
+
+    def test_ordinary_equals_lines_are_not_screened(self):
+        for text in ("name = value", "# keys are listed below", "x = 3", "version = 2"):
+            self.assertEqual(V.screen_text(text), [], text)
+
+    def test_screening_a_long_pathological_line_stays_fast(self):
+        # The old pattern backtracked quadratically: a 24k line of repeated "key" took seconds.
+        for line in ("key" * 90000, "a" * 270000, "\n" * 200000 + "token"):
+            started = time.perf_counter()
+            V.screen_text(line)
+            self.assertLess(time.perf_counter() - started, 5.0)
 
     def test_screen_blob_covers_metadata(self):
         meta = {
@@ -794,6 +820,42 @@ class Hardening(Base):
         self.assertEqual(code, 1)
         self.assertIn("cannot read the draft file", res["error"])
         self.assertNotIn("hunter2", json.dumps(res))
+
+    def test_lineage_check_survives_wrongly_typed_fields(self):
+        base = {"internal_id": "p000000000001", "slug": SLUG, "status": "inactive", "version": 1}
+        for bad in (
+            {"previous_id": ["p000000000001"], "version": 2},  # list-valued previous_id
+            {"previous_id": "p000000000001", "version": "2"},  # quoted version
+        ):
+            second = {**base, "internal_id": "p000000000002", "status": "draft", **bad}
+            records = {
+                f"{SLUG}/p000000000001.md": {**base, "_path": f"{SLUG}/p000000000001.md"},
+                f"{SLUG}/p000000000002.md": {**second, "_path": f"{SLUG}/p000000000002.md"},
+            }
+            errs = V.check_lineages(self.root, records)  # must not raise
+            self.assertIsInstance(errs, list)
+
+    def test_validate_reports_a_wrongly_typed_record_as_json_not_a_traceback(self):
+        self.make_active()
+        self.add_draft(
+            "p000000000002", version=2, previous_id="p000000000001", _body=BODY + "\nBe terse."
+        )
+        path = self.root / SLUG / "p000000000002.md"
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("version: 2", 'version: "2"'), encoding="utf-8")
+        code, res = self.run_cli("validate")
+        self.assertEqual(code, 1)
+        self.assertFalse(res["ok"])
+
+    def test_register_reports_a_draft_missing_its_id_as_json(self):
+        self.assertEqual(self.run_cli("init")[0], 0)
+        (self.root / SLUG).mkdir(parents=True)
+        lines = record().splitlines(keepends=True)
+        text = "".join(ln for ln in lines if not ln.startswith("internal_id:"))
+        (self.root / SLUG / "p000000000009.md").write_text(text, encoding="utf-8")
+        code, res = self.run_cli("register", f"{SLUG}/p000000000009.md")
+        self.assertEqual(code, 1)
+        self.assertIn("internal_id", res["error"])
 
     def test_register_drops_prefilled_verification(self):
         self.assertEqual(self.run_cli("init")[0], 0)

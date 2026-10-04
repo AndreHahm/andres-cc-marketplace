@@ -126,9 +126,13 @@ SECRET_PATTERNS = (
     ("authorization_header", re.compile(r"(?im)\bauthorization\s*[:=]\s*\S+")),
     ("bearer_token", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}")),
     (
+        # A bare PASSWORD=..., TOKEN=... or export KEY=... line counts, not only a longer
+        # identifier. The name parts are bounded and the whitespace is [ \t], never \s, so a long
+        # line of repeated keywords or a run of blank lines cannot make the match quadratic.
         "dotenv_secret_line",
         re.compile(
-            r"(?im)^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*\S+"
+            r"(?im)^[ \t]*(?:export[ \t]+)?[A-Za-z0-9_]{0,64}(?:TOKEN|KEY|SECRET|PASSWORD|API)"
+            r"[A-Za-z0-9_]{0,64}[ \t]*=[ \t]*\S+"
         ),
     ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
@@ -143,7 +147,7 @@ SECRET_PATTERNS = (
     (
         "key_value_secret",
         re.compile(
-            r"(?i)[\"']?\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)[\"']?\s*:\s*[\"']?[^\s\"',]{6,}"
+            r"(?i)[\"']?\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)[\"']?\s*[:=]\s*[\"']?[^\s\"',]{6,}"
         ),
     ),
     (
@@ -779,10 +783,15 @@ def check_lineages(root: Path, records: dict) -> list[str]:
         for m in group:
             prev = m.get("previous_id")
             if prev:
+                if not isinstance(prev, str):
+                    errs.append(f"{m['_path']}: previous_id must be text")
+                    continue
                 target = by_id.get(prev)
                 if target is None or target.get("slug") != slug:
                     errs.append(f"{m['_path']}: previous_id {prev} not found in the same lineage")
-                elif target.get("version") != m.get("version", 0) - 1:
+                elif isinstance(m.get("version"), int) and target.get("version") != (
+                    m["version"] - 1
+                ):
                     errs.append(
                         f"{m['_path']}: previous_id is not the immediately preceding version"
                     )
@@ -1142,6 +1151,8 @@ def cmd_register(args) -> dict:
     path = _inside(root, root / parts[0] / parts[1])
     meta = read_record(path)
     problems = validate_record(meta, cat.get("catalog_version", 1))
+    if problems:  # a malformed draft may lack the fields the checks below read
+        raise CatalogError("; ".join(problems[:4]))
     if meta.get("status") != "draft":
         problems.append("only a draft record can be registered")
     elif parts[1] != f"{meta['internal_id']}.md" or parts[0] != meta["slug"]:
@@ -1385,8 +1396,11 @@ def main(argv=None) -> int:
         result = {"ok": False, "error": str(exc)}
     except OSError as exc:
         result = {"ok": False, "error": f"filesystem error: {exc}"}
-    except ValueError as exc:  # includes UnicodeError, e.g. a value that cannot be encoded as UTF-8
-        result = {"ok": False, "error": f"invalid content: {exc}"}
+    except (ValueError, TypeError, KeyError) as exc:
+        # ValueError includes UnicodeError (a value that cannot be encoded as UTF-8). TypeError and
+        # KeyError come from a hand-edited record with a wrongly typed or missing field that the
+        # checks did not guard: still a JSON error, never a traceback.
+        result = {"ok": False, "error": f"invalid content: {type(exc).__name__}: {exc}"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
 
