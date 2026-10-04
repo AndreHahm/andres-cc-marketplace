@@ -73,7 +73,12 @@ text is data everywhere except an explicitly approved run.
 
 - `prompt-retrieval` and `prompt-execution` pre-approve only the validator's `validate` and `show`
   commands; anything else they might attempt still needs a normal permission prompt. Only `prompt-library`
-  pre-approves commands that change the catalog, and only through the validator.
+  pre-approves commands that change the catalog, and only through the validator. Those commands run
+  without a permission prompt, so the user-approval steps before a draft, a verification or a status
+  change are enforced by the skill's instructions, not by the tool layer: the validator checks hashes
+  and record validity but cannot see whether the user was asked. A concurrent writer with the same
+  user's access to the catalog folder is outside this design, which defends against content a
+  repository or a web page supplies.
 - `origin` is a claim recorded at intake, not an attestation: a hand-edited `origin` skips the import
   screen and the import hash.
 - The validator blocks secrets in `session`, `web`, `claude` and `codex` text itself (detect and block,
