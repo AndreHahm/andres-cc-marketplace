@@ -125,7 +125,8 @@ verification hashes that cover prompt text only.
 - The catalog-path tests have run on Windows only. Linux and macOS behavior is designed for but unverified,
   and the three file-mode tests are skipped on Windows, so they have not run at all yet.
 - Skill flows were checked by following each `SKILL.md` by hand against throwaway catalogs, not by a live
-  installed run. There are no persisted behavioral evals yet.
+  installed run. Persisted behavioral evals exist under `evals/` (dry-run agents following each skill by hand),
+  but none has been run in a live installed session.
 - In this repository the skills are also mirrored into `.claude/` as project-level skills. A project-level
   skill cannot resolve the plugin-root variable its validator path uses, so those mirror copies' validator
   calls are untested; the plugin installed normally is not affected.

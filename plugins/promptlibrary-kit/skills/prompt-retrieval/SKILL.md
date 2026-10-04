@@ -116,7 +116,6 @@ except that the `root_source` wording in the second gate was corrected afterward
 wording was not part of that run. The run was not persisted and the skill was not installed, so it is a
 manual walkthrough, not a live run.
 
-**Why no `evals.json`:** this skill is a thin, read-only procedure over two validator subcommands. The
-logic that matters (root resolution, validation, hashing, containment) is deterministic code covered by
-the fixture tests, and persisted behavioral evals are deferred until the plugin is installed and can be
-exercised live. This is a recorded gap, not a claim that evals are unnecessary.
+**Evals:** `evals/prompt-retrieval/` holds with-skill versus baseline scenarios run by dry-run agents that
+follow this SKILL.md by hand against throwaway projects. Its `evals.json` records which quality gates the
+scenarios cover. These are not a live run in an installed session, which is still outstanding.
