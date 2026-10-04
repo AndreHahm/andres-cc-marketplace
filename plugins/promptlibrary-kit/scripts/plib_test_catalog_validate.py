@@ -170,6 +170,23 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), text)
 
+    def test_a_long_variable_name_does_not_hide_the_credential_word(self):
+        word = "hunter2" + "abcdef"
+        for pad in (63, 64, 65, 200, 5000):
+            self.assertTrue(V.screen_text("A" * pad + "TO" + "KEN=" + word), pad)
+            self.assertTrue(V.screen_text("SEC" + "RET" + "b" * pad + "=" + word), pad)
+            self.assertTrue(V.screen_text("export " + "z" * pad + "_PASS" + "WORD = " + word), pad)
+
+    def test_unicode_padding_does_not_hide_an_assignment(self):
+        word = "hunter2" + "abcdef"
+        for text in (
+            "\xa0MY_TO" + "KEN=" + word,  # no-break space before the name
+            "\x0cMY_K" + "EY=" + word,  # form feed before the name
+            "MY_K" + "EY=\xa0" + word,  # no-break space after the equals sign
+            "MY_K" + "EY\xa0=" + word,  # no-break space before the equals sign
+        ):
+            self.assertTrue(V.screen_text(text), repr(text))
+
     def test_ordinary_equals_lines_are_not_screened(self):
         for text in ("name = value", "# keys are listed below", "x = 3", "version = 2"):
             self.assertEqual(V.screen_text(text), [], text)
