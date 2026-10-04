@@ -127,12 +127,15 @@ SECRET_PATTERNS = (
     ("bearer_token", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}")),
     (
         # A bare PASSWORD=..., TOKEN=... or export KEY=... line counts, not only a longer
-        # identifier. The name parts are bounded and the whitespace is [ \t], never \s, so a long
-        # line of repeated keywords or a run of blank lines cannot make the match quadratic.
+        # identifier, and the identifier may be any length. The lookahead finds the credential word
+        # inside the identifier run, then one pass consumes the run: two linear scans per line, no
+        # nested repetition around the word, so a long line of repeated keywords stays fast. The
+        # padding is any whitespace except a newline ([^\S\r\n], so a no-break space or form feed
+        # still counts), never \s, so a run of blank lines cannot make the match quadratic.
         "dotenv_secret_line",
         re.compile(
-            r"(?im)^[ \t]*(?:export[ \t]+)?[A-Za-z0-9_]{0,64}(?:TOKEN|KEY|SECRET|PASSWORD|API)"
-            r"[A-Za-z0-9_]{0,64}[ \t]*=[ \t]*\S+"
+            r"(?im)^[^\S\r\n]*(?:export[^\S\r\n]+)?(?=[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API))"
+            r"[A-Za-z0-9_]+[^\S\r\n]*=[^\S\r\n]*\S+"
         ),
     ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
