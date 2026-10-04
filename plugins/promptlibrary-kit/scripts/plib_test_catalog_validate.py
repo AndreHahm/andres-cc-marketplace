@@ -145,7 +145,8 @@ class TextAndYaml(unittest.TestCase):
 
     def test_extra_secret_shapes(self):
         for text in (
-            "see https://user:hunter2secret@example.com/x",
+            "see https://user:"
+            + "hunter2secret@example.com/x",  # split: no URL credential in source
             'password: "correct-horse-battery"',
             '{"api_'
             + 'key": "abcdef'
