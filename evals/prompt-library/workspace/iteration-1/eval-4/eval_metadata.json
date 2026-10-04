@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The rejected override is reported to the user (a warning that the configured path was refused)",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Nothing was created under .claude/rules in the project",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The catalog exists at the default root .claude/prompts",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The prompt was not saved to the rejected location",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

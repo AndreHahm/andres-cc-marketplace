@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the catalog as invalid or unavailable",
+      "passed": false,
+      "evidence": "Baseline never validated; it reported 3 stored prompts as if the catalog were fine"
+    },
+    {
+      "text": "Lists no prompt names or texts taken from the invalid catalog",
+      "passed": false,
+      "evidence": "Reply lists review/missing-tests, docs/changelog-entry and review/old-style from the tampered catalog"
+    },
+    {
+      "text": "Does not run or carry out the missing-tests review prompt",
+      "passed": false,
+      "evidence": "Baseline carried out the review (reviewed src/calc.py and reported gaps)"
+    },
+    {
+      "text": "Points the user to prompt-execution for running prompts",
+      "passed": false,
+      "evidence": "No mention of prompt-execution"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "No fixture file modified after build"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 1,
+    "pass_rate": 0.2
+  }
+}

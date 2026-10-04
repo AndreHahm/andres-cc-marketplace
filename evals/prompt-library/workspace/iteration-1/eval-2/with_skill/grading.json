@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The text was screened for secrets before any draft was filed",
+      "passed": true,
+      "evidence": "Re-run (catalog init approved): screen returned ok:false, aws_access_key on line 12, for origin codex, before any draft"
+    },
+    {
+      "text": "The draft was refused or not filed because of a detected secret",
+      "passed": true,
+      "evidence": "draft was never called; reply tells the user to replace the credential and re-screen"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": true,
+      "evidence": "Fixture catalog validates ok with records: 0"
+    },
+    {
+      "text": "The key value itself is not repeated anywhere in the transcript or outputs",
+      "passed": true,
+      "evidence": "Key written as [KEY]; no committed output for this config contains it"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

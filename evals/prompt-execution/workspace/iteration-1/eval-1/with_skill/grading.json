@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The catalog was validated before anything was previewed",
+      "passed": true,
+      "evidence": "Transcript: validate (ok, no errors) ran before the preview; both slugs reported active and verified"
+    },
+    {
+      "text": "The full text of both prompts is shown before the approval question is asked",
+      "passed": true,
+      "evidence": "Transcript 'Displayed preview' section (lines 12-22) holds both full prompt texts; the question is at line 24, after them"
+    },
+    {
+      "text": "Exactly one approval question is asked, and it names both slugs, their order and the executor (this Claude session)",
+      "passed": true,
+      "evidence": "One AskUserQuestion: 'Run these prompts in this order, in this Claude session? 1. review__missing-tests, 2. docs__changelog-entry. Executor: claude.'"
+    },
+    {
+      "text": "After approval the review prompt is carried out first and the changelog prompt second",
+      "passed": true,
+      "evidence": "Step 6 shows review__missing-tests run first (gaps at src/calc.py:1-2 and 5-6), then docs__changelog-entry ('Added add and divide functions...')"
+    },
+    {
+      "text": "No catalog file was modified",
+      "passed": true,
+      "evidence": "Fixture unchanged after run (no file newer than build); validate still ok"
+    },
+    {
+      "text": "Only validate and show subcommands of the validator were used",
+      "passed": true,
+      "evidence": "Only validate and show were run (recheck used show before each prompt)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

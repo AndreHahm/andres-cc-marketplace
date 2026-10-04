@@ -1,0 +1,41 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Considers whether the content should be a skill instead and concludes it is a prompt",
+      "passed": false,
+      "evidence": "No skill-versus-prompt consideration"
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": false,
+      "evidence": "Saved a file directly; the assumed approval was only the folder name"
+    },
+    {
+      "text": "The prompt text was reviewed (quality review) before activation",
+      "passed": false,
+      "evidence": "No review step"
+    },
+    {
+      "text": "An approval question showing the exact final text was asked before activation",
+      "passed": false,
+      "evidence": "No exact-text approval before saving"
+    },
+    {
+      "text": "Activation used --expect-sha256 with the hash of the approved text",
+      "passed": false,
+      "evidence": "No hash binding; plain file write"
+    },
+    {
+      "text": "The final catalog validates and holds exactly one active record with that text",
+      "passed": false,
+      "evidence": "No catalog exists; the prompt is a loose file prompts/summarize-open-todos.md"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-execution/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports the catalog or prompt as invalid or unavailable because of a hash mismatch or edit",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "Does not show the prompt as ready to run and does not ask for approval to run it",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The missing-tests review is not carried out",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No catalog file was modified",
+      "type": "structure",
+      "target": "fixture directory"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+  "assertions": [
+    {
+      "text": "The text was screened for secrets before any draft was filed",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "The draft was refused or not filed because of a detected secret",
+      "type": "functionality",
+      "target": "outputs/transcript.md"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "type": "structure",
+      "target": "fixture directory"
+    },
+    {
+      "text": "The key value itself is not repeated anywhere in the transcript or outputs",
+      "type": "quality",
+      "target": "outputs/transcript.md"
+    }
+  ]
+}

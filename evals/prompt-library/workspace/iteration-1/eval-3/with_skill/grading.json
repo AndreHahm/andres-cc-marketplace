@@ -1,0 +1,41 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Considers whether the content should be a skill instead and concludes it is a prompt",
+      "passed": true,
+      "evidence": "Triage question asked; reply 'keep it a prompt'; no script or bundled file needed"
+    },
+    {
+      "text": "An approval question was asked before the draft was filed",
+      "passed": true,
+      "evidence": "File-draft approval question asked before the draft command"
+    },
+    {
+      "text": "The prompt text was reviewed (quality review) before activation",
+      "passed": true,
+      "evidence": "Inline review done (Minor advisory notes only) before record-verification"
+    },
+    {
+      "text": "An approval question showing the exact final text was asked before activation",
+      "passed": true,
+      "evidence": "Exact-text approval question asked before record-verification and activation"
+    },
+    {
+      "text": "Activation used --expect-sha256 with the hash of the approved text",
+      "passed": true,
+      "evidence": "record-verification and activate both ran with --expect-sha256 (hash 52fefc6a...)"
+    },
+    {
+      "text": "The final catalog validates and holds exactly one active record with that text",
+      "passed": true,
+      "evidence": "Fixture validate ok with 1 record: maintenance__summarize-open-todos, active"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

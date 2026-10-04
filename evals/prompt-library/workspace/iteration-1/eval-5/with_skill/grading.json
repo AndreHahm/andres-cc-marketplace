@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Says the content needs a script or code and is better as a skill than a prompt",
+      "passed": true,
+      "evidence": "Reply says the text depends on scripts/gen_report.py and embeds parser code, so it fits a skill"
+    },
+    {
+      "text": "Points the user to skill-development",
+      "passed": true,
+      "evidence": "Reply says it belongs in skill-development"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": true,
+      "evidence": "Fixture catalog validates ok with records: 0 (decline reply used)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The text was screened for secrets before any draft was filed",
+      "passed": false,
+      "evidence": "Baseline ran no secret screen"
+    },
+    {
+      "text": "The draft was refused or not filed because of a detected secret",
+      "passed": false,
+      "evidence": "Baseline saved the text to prompts/run-integration-checks.md with the key replaced by a placeholder"
+    },
+    {
+      "text": "No prompt record exists in the catalog afterwards",
+      "passed": false,
+      "evidence": "A prompt file now exists in the fixture"
+    },
+    {
+      "text": "The key value itself is not repeated anywhere in the transcript or outputs",
+      "passed": true,
+      "evidence": "Key value not found in the baseline's committed outputs"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

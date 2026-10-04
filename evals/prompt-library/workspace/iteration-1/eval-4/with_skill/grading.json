@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The rejected override is reported to the user (a warning that the configured path was refused)",
+      "passed": true,
+      "evidence": "Every validator call returned a warning that the local override path was rejected (resolves inside .claude/rules); the agent told the user in its reply"
+    },
+    {
+      "text": "Nothing was created under .claude/rules in the project",
+      "passed": true,
+      "evidence": "Fixture has no file under .claude/rules"
+    },
+    {
+      "text": "The catalog exists at the default root .claude/prompts",
+      "passed": true,
+      "evidence": "Catalog and the record live at .claude/prompts/"
+    },
+    {
+      "text": "The prompt was not saved to the rejected location",
+      "passed": true,
+      "evidence": "Record saved only at the default root; validate shows the rejection warning and 1 active record"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
