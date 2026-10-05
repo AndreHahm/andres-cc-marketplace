@@ -124,11 +124,11 @@ Run with_skill AND baseline simultaneously in same Agent call
 **Question:** What model/config should agents use?
 
 **Recommendation:**
-- Model: `claude-opus-4-6` (latest, most capable)
+- Model: the session's model (`<model-id>`), the same for both agents
 - Temperature: default (consistency with normal Claude behavior)
 - Max tokens: appropriate to task (typically 8000–16000 for skill creation evals)
 
-**Why Opus?** Skill-creator is complex; Haiku might struggle. Opus best demonstrates skill effectiveness or weakness.
+**Why the same model for both?** It keeps with_skill and baseline comparable. Pick a model capable enough for the target skill's task: a model that is too weak understates what the skill adds.
 
 ### Decision Point 3.3: Output Capture
 
@@ -163,7 +163,7 @@ eval-1/with_skill/outputs/
 {
   "total_tokens": 2847,
   "duration_ms": 8234,
-  "model": "claude-opus-4-6"
+  "model": "<model-id>"
 }
 ```
 

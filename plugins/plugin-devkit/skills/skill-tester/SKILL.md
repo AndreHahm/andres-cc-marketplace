@@ -6,7 +6,7 @@ description: >-
   performance, running benchmarks with timing/token metrics, or iterating on skill improvements
   based on empirical data. Supports both a fast pass/fail check and a full baseline-comparison
   benchmark with timing/token metrics.
-allowed-tools: Read Write Edit Glob Grep Agent Bash(python:*) Skill
+allowed-tools: Read Write Edit Agent Bash(python:*) Skill
 ---
 
 # Skill Tester
