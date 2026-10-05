@@ -123,7 +123,7 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
 {
   "total_tokens": "integer (required) — total tokens consumed (input + output)",
   "duration_ms": "integer (required) — wall-clock execution time in milliseconds",
-  "model": "string (required) — model used (e.g., 'claude-opus-4-6')",
+  "model": "string (required) — model used (e.g., '<model-id>')",
   "timestamp": "string (optional) — ISO 8601 timestamp when eval ran"
 }
 ```
@@ -134,7 +134,7 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
 {
   "total_tokens": 2847,
   "duration_ms": 8234,
-  "model": "claude-opus-4-6",
+  "model": "<model-id>",
   "timestamp": "2026-03-04T10:35:22Z"
 }
 ```
@@ -285,7 +285,7 @@ After completing the task, save all outputs (code, files, notes) to:
 ./evals/<skill-name>/workspace/iteration-N/eval-M/with_skill/outputs/
 
 Then create ./evals/<skill-name>/workspace/iteration-N/eval-M/with_skill/timing.json:
-{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "claude-opus-4-6" }
+{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }
 "
 ```
 
@@ -304,7 +304,7 @@ After completing the task, save all outputs (code, files, notes) to:
 ./evals/<skill-name>/workspace/iteration-N/eval-M/baseline/outputs/
 
 Then create ./evals/<skill-name>/workspace/iteration-N/eval-M/baseline/timing.json:
-{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "claude-opus-4-6" }
+{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }
 "
 ```
 

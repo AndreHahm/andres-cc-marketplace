@@ -11,7 +11,9 @@ description: >-
   skilldir-reviewer instead — both may legitimately run together when a
   whole skill directory changes. For rule compliance (R1-R37 naming,
   language, formatting, tool-scoping) rather than skill quality scoring,
-  use plugin-rulebook instead.
+  use plugin-rulebook instead. For empirical benchmarking against a
+  baseline (pass rates, tokens, timing) rather than a single-pass
+  structural review, use skill-tester instead.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]
