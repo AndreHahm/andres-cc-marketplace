@@ -256,6 +256,41 @@ def check_aggregate_fixture():
     return True, "fixture run matches known-good benchmark.json values and ruby_round boundaries"
 
 
+def check_negative_improvement_output():
+    """A skill that scores below baseline must print a signed '-', never '+-'."""
+    assets = SKILL_DIR / "assets"
+    with_example = json.loads(
+        (assets / "grading-with-skill-example.json").read_text(encoding="utf-8")
+    )
+    base_example = json.loads(
+        (assets / "grading-baseline-example.json").read_text(encoding="utf-8")
+    )
+    with_example["summary"]["pass_rate"] = 0.25
+    base_example["summary"]["pass_rate"] = 0.75
+    with tempfile.TemporaryDirectory() as tmp:
+        iteration = pathlib.Path(tmp) / "evals" / "fixture-skill" / "workspace" / "iteration-1"
+        for config, example in (("with_skill", with_example), ("baseline", base_example)):
+            _write_json(iteration / "eval-1" / config / "grading.json", example)
+            _write_json(
+                iteration / "eval-1" / config / "timing.json",
+                {"total_tokens": 1000, "duration_ms": 1000, "model": "<model-id>"},
+            )
+        result = subprocess.run(
+            [sys.executable, str(AGGREGATE), str(iteration)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=60,
+        )
+    if result.returncode != 0:
+        return False, f"aggregate_benchmark.py exited {result.returncode}"
+    if "Improvement: -50.0 percentage points" not in result.stdout:
+        return False, f"negative improvement not printed as '-50.0': {result.stdout[-160:]!r}"
+    if "+-" in result.stdout:
+        return False, "output contains '+-'"
+    return True, "negative improvement prints as -50.0 percentage points"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -263,6 +298,7 @@ CHECKS = [
     check_bash_grants,
     check_declared_tools_used,
     check_aggregate_fixture,
+    check_negative_improvement_output,
 ]
 
 

@@ -463,7 +463,7 @@ After a test run, verify:
 3. **Mode selection** — Quick Workflow and Full Pipeline branches both produce correctly structured output directories
 4. **Schema integrity** — all JSON files (`evals.json`, `grading.json`, `benchmark.json`, `timing.json`, `eval_metadata.json`) validate against `references/eval-schema.md` schemas
 5. **Baseline parity** — baseline agent receives no SKILL.md content; with_skill agent receives full SKILL.md content
-6. **Smoke test** — `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` passes (structure, grants, tool usage, and a known-good `aggregate_benchmark.py` fixture run); last run 2026-10-05, 6/6 checks pass, and 7 deliberate breakages of the skill were each caught
+6. **Smoke test** — `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` passes (structure, grants, tool usage, and a known-good `aggregate_benchmark.py` fixture run); last run 2026-10-05, 7/7 checks pass, and 8 deliberate breakages of the skill were each caught
 
 **Verified 2026-07-11:** items 1 and 2 checked directly against the current frontmatter description — each of the 5 trigger phrases maps to specific description language ("running evals", "validating a skill's effectiveness", "comparing skill vs. baseline performance", "running benchmarks"), and none of the 3 non-trigger phrases share that vocabulary (they map to `skill-reviewer`'s and `skill-development`'s domains instead). `aggregate_benchmark.py`'s new guard/sort behavior (items covering script robustness) was verified with synthetic fixtures — see the script's own commit history. A live end-to-end pipeline run (spawning real with_skill/baseline agents) has not been performed — that remains the one unverified item.
 
