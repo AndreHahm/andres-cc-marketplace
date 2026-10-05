@@ -189,7 +189,7 @@ Example: "Yes — the validation scenario should be re-run with a 'you have 5 mi
 
 ⏸️ **Collect responses.** Store in memory.
 
-If Question 4 is answered yes, this pipeline's quantitative pass rates don't cover that axis — run `skill-development`'s Phase 3.5 compliance testing (`references/compliance-testing.md`) before or alongside this pipeline; see "Integration with skill-development, skill-refiner-interactive" in `references/workflow.md`.
+If Question 4 is answered yes, this pipeline's quantitative pass rates don't cover that axis — run `skill-development`'s Phase 3.5 compliance testing (`${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`) before or alongside this pipeline; see "Integration with skill-development, skill-refiner-interactive" in `references/workflow.md`.
 
 ### Step 2.1b: Cross-Check Against the Target's Own Testing & Validation Section
 
