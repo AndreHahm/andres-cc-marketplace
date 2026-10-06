@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Format raw changelog bullets into the project's release-note line format",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Mixed types grouped in documented order",
+      "prompt": "Format these changelog bullets as release notes:\n- bug: crash when saving an empty note (#12)\n- docs: update install guide (#15)\n- feature: add dark mode (#7)\n- refactor: split the parser module (#20)\n- feature: export notes to PDF (#9)\n- bug: wrong date shown in footer (#14)",
+      "expected_output": "One line per bullet in the form '- [TYPE] Summary (#id)', grouped FEAT, FIX, DOCS, CHORE, with input order kept inside each group: the two FEAT lines (#7, #9), then the two FIX lines (#12, #14), then DOCS (#15), then CHORE (#20). Summaries are sentence case with no trailing period.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Bullet without issue number gets (#none)",
+      "prompt": "Format these changelog bullets as release notes:\n- feature: add keyboard shortcuts (#31)\n- bug: fix tooltip flicker\n- docs: clarify the config options (#33)",
+      "expected_output": "Three lines in FEAT, FIX, DOCS order; the bug bullet without an issue number is rendered as '- [FIX] Fix tooltip flicker (#none)'. No invented issue number.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

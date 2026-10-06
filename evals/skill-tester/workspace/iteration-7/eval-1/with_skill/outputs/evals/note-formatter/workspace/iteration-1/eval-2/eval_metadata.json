@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet without an issue number is rendered with '(#none)'", "type": "presence", "target": "outputs/ release-note text"},
+    {"text": "No issue number is invented for the bullet that had none", "type": "quality", "target": "outputs/ release-note text"},
+    {"text": "Output has exactly three lines in the order FEAT, FIX, DOCS, each matching '- [<TYPE>] <Summary> (#<id>)'", "type": "structure", "target": "outputs/ release-note text"},
+    {"text": "Issue numbers #31 and #33 are preserved on their own lines", "type": "functionality", "target": "outputs/ release-note text"}
+  ]
+}
