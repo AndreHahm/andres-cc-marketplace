@@ -7,7 +7,7 @@ description: >-
   status/closure on accepted work. Reads and status checks need no approval; material
   priority/owner/scope/date/status/closure changes require the plugin's live approval gate, and
   refinement never derives priority from Notion or other external content without it.
-allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__claude_ai_Linear__get_issue, mcp__claude_ai_Linear__save_issue, mcp__claude_ai_Linear__list_issues, mcp__claude_ai_Linear__get_project, mcp__claude_ai_Linear__save_project, mcp__claude_ai_Linear__list_projects, mcp__claude_ai_Linear__get_milestone, mcp__claude_ai_Linear__save_milestone, mcp__claude_ai_Linear__list_milestones, mcp__claude_ai_Linear__get_team, mcp__claude_ai_Linear__list_teams, mcp__claude_ai_Linear__get_issue_status, mcp__claude_ai_Linear__list_issue_statuses, mcp__claude_ai_Linear__list_cycles, mcp__claude_ai_Linear__list_issue_labels, mcp__claude_ai_Linear__create_issue_label
+allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__claude_ai_Linear__get_issue, mcp__claude_ai_Linear__save_issue, mcp__claude_ai_Linear__list_issues, mcp__claude_ai_Linear__get_project, mcp__claude_ai_Linear__save_project, mcp__claude_ai_Linear__list_projects, mcp__claude_ai_Linear__get_milestone, mcp__claude_ai_Linear__save_milestone, mcp__claude_ai_Linear__list_milestones, mcp__claude_ai_Linear__get_team, mcp__claude_ai_Linear__list_teams, mcp__claude_ai_Linear__get_issue_status, mcp__claude_ai_Linear__list_issue_statuses, mcp__claude_ai_Linear__list_cycles, mcp__claude_ai_Linear__list_issue_labels, mcp__claude_ai_Linear__create_issue_label, mcp__claude_ai_Linear__save_issue_label, mcp__claude_ai_Linear__retire_issue_label, mcp__claude_ai_Linear__list_custom_views, mcp__mcp-linear__linear_getInitiatives, mcp__mcp-linear__linear_getInitiativeById, mcp__mcp-linear__linear_getInitiativeProjects
 ---
 
 # Linear Work Management
@@ -48,6 +48,19 @@ This file's own `allowed-tools` names the real, currently-installed Linear conne
 Status section. This grant is coupled to this specific connector's tool names — a future
 installation using a different Linear MCP connector would need this list re-resolved against that
 connector's own tool surface, not assumed portable.
+
+**Label, view and Initiative tools.** `save_issue_label` and `retire_issue_label` maintain the
+team-scoped labels a repository's team needs (renaming or retiring one; creating one stays
+`create_issue_label`). Both are writes and take the live approval gate like any other material
+change. `list_custom_views` reads a team's saved views so a setup check can confirm they exist; this
+skill never creates or edits a view, because the connector has no tool for it. The three
+`mcp__mcp-linear__linear_*` tools (`getInitiatives`, `getInitiativeById`, `getInitiativeProjects`)
+are read-only Initiative reads on a second, separately installed Linear connector, because the
+`claude_ai_Linear` connector above cannot list Initiatives. A session without that second connector
+simply lacks those tools, and an Initiative read is then a structured handoff, never a substitute
+through another tool. An Initiative read follows the same host-profile check as any other read (see
+Resolving the connector); how the profile names a second read connector is settled in the
+configuration work, not here.
 
 **Known connector gap — Goal and Roadmap have no direct tool backing.** The real connector exposes
 Issue (`get_issue`/`save_issue`/`list_issues`), Project (`get_project`/`save_project`/
@@ -110,7 +123,7 @@ yet, or the name doesn't match) — never silently create a new entity to fill t
   the evidence field, not the entity's actual content, and the write it confirms was already
   approved.
 - **Approval required:** any material priority, owner, scope, date, status, or closure change; any
-  Goal/Roadmap/Project/Milestone/Issue creation; any refinement whose derived priority or scope came from Notion
+  Goal/Roadmap/Project/Milestone/Issue creation; any label rename or retirement; any refinement whose derived priority or scope came from Notion
   or other external content rather than the user's own direct instruction — even when the
   suggestion looks obviously right, it still needs the same live approval a direct request would.
   Approval is obtained via `AskUserQuestion`, presenting the previewed change for confirmation
