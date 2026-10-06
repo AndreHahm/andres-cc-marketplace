@@ -1,0 +1,7 @@
+Execute this task:
+- Skill path: evals/skill-tester/fixtures/note-formatter/SKILL.md (read it first and follow it)
+- Task: Format this bullet: 'docs: update install guide'.
+- Input files: release-notes.md (listed in the eval definition; use it if present, otherwise note that it is absent)
+- Save all outputs to: evals/skill-tester/workspace/iteration-1/eval-2/with_skill/outputs (create it; use repo-relative paths only)
+- Save the final answer as evals/skill-tester/workspace/iteration-1/eval-2/with_skill/outputs/result.md and a step log as evals/skill-tester/workspace/iteration-1/eval-2/with_skill/outputs/transcript.md
+- Record timing: when finished, write evals/skill-tester/workspace/iteration-1/eval-2/with_skill/outputs/../timing.json with total_tokens and duration_ms taken from your task-completion data

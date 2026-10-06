@@ -1,0 +1,46 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the aggregation script was actually run (a python command naming aggregate_benchmark.py and its printed summary), not benchmark.json written by hand",
+      "passed": true,
+      "evidence": "transcript.md shows `python scripts/aggregate_benchmark.py ./evals/note-formatter/workspace/iteration-1` and the figures it printed; benchmark.json has the script's own keys including timestamp."
+    },
+    {
+      "text": "benchmark.json summary has with_skill_avg_pass_rate 0.875, baseline_avg_pass_rate 0.375 and improvement 0.5",
+      "passed": true,
+      "evidence": "summary: with_skill_avg_pass_rate 0.875, baseline_avg_pass_rate 0.375, improvement 0.5."
+    },
+    {
+      "text": "benchmark.json summary has token_cost 450 and duration_cost_ms 3000",
+      "passed": true,
+      "evidence": "summary: token_cost 450, duration_cost_ms 3000."
+    },
+    {
+      "text": "summary.txt shows WITH SKILL, BASELINE and DELTA lines for each of the two evals plus an overall summary block",
+      "passed": true,
+      "evidence": "summary.txt has WITH SKILL, BASELINE and DELTA lines for both evals and a SUMMARY block."
+    },
+    {
+      "text": "result.json has mode 'full_pipeline', source 'skill-tester', iteration 1, improvement_points 50.0 and one results entry per eval with with_skill and baseline passed/total/tokens/duration_s",
+      "passed": true,
+      "evidence": "result.json: mode full_pipeline, source skill-tester, iteration 1, improvement_points 50.0, two results entries with passed/total/tokens/duration_s per configuration."
+    },
+    {
+      "text": "result.json coverage equals evals.json's testing_validation_coverage (2 declared, 2 covered) and was read from it, not recomputed",
+      "passed": true,
+      "evidence": "coverage is {declared_scenarios_total: 2, declared_scenarios_covered: 2}, and transcript.md says it came from evals.json."
+    },
+    {
+      "text": "transcript.md shows the next-steps question was posed with iterate, stop and refine options before the 'Stop' answer was applied",
+      "passed": true,
+      "evidence": "Step 6.2 records the question with Iterate, Stop and Refine evals options before applying Stop."
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

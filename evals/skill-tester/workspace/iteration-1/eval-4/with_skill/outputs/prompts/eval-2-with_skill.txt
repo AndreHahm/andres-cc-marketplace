@@ -1,0 +1,33 @@
+You are testing a Claude Code skill. Your job: HELP THE USER ACCOMPLISH THEIR TASK
+using the skill provided below.
+
+SKILL TO USE:
+---
+name: note-formatter
+description: Format raw changelog bullets into the project's release-note line format. Use when asked to format release notes or tidy changelog bullets.
+---
+
+# Note Formatter
+
+## Rules
+
+1. One output line per input bullet: `- [<TYPE>] <Summary> (#<id>)`.
+2. `<TYPE>` is one of FEAT, FIX, DOCS, CHORE. Map "feature" to FEAT, "bug" to FIX, "docs" to DOCS,
+   anything else to CHORE.
+3. `<Summary>` is sentence case, has no trailing period, and is at most 60 characters.
+4. A bullet without an issue number gets `(#none)`.
+5. Group lines in the order FEAT, FIX, DOCS, CHORE, keeping input order inside a group.
+
+## Testing & Validation
+
+1. Mixed types are grouped in the documented order.
+2. A bullet without an issue number is rendered with `(#none)`.
+
+USER TASK:
+Format this bullet: 'docs: update install guide'.
+
+After completing the task, save all outputs (code, files, notes) to:
+./evals/note-formatter/workspace/iteration-1/eval-2/with_skill/outputs/
+
+Then create ./evals/note-formatter/workspace/iteration-1/eval-2/with_skill/timing.json:
+{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }

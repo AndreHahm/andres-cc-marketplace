@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {
+      "text": "every output line has the form '- [TYPE] Summary (#id)'",
+      "type": "structure",
+      "target": "release-notes.md"
+    },
+    {
+      "text": "every TYPE tag is one of FEAT, FIX, DOCS, CHORE",
+      "type": "presence",
+      "target": "release-notes.md"
+    },
+    {
+      "text": "lines are grouped in the order FEAT, FIX, DOCS, CHORE",
+      "type": "structure",
+      "target": "release-notes.md"
+    },
+    {
+      "text": "a bullet without an issue number is rendered with (#none)",
+      "type": "functionality",
+      "target": "release-notes.md"
+    }
+  ]
+}

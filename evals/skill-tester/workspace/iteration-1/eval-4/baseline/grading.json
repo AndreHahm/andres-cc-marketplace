@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "exactly four prompt files exist, one per eval and configuration",
+      "passed": true,
+      "evidence": "Four prompt files with the required names."
+    },
+    {
+      "text": "each with_skill prompt includes the skill's full content (the note-formatter rules) and the eval's own prompt text",
+      "passed": false,
+      "evidence": "The with_skill prompts give the skill's path and say 'read it first'; they do not include the skill's content."
+    },
+    {
+      "text": "no baseline prompt includes any of the skill's rules text or names the skill's SKILL.md path, and each states that no skill is available",
+      "passed": false,
+      "evidence": "Each baseline prompt names the skill's SKILL.md path (in a do-not-read instruction)."
+    },
+    {
+      "text": "dispatch.md says each eval's with_skill and baseline agents are launched simultaneously in one launch call, not sequentially",
+      "passed": true,
+      "evidence": "dispatch.md plans a single launch call holding all four agents, so each eval's pair starts together."
+    },
+    {
+      "text": "every prompt tells the agent to save outputs under evals/note-formatter/workspace/iteration-1/eval-N/<configuration>/outputs/ and to write a timing.json there with total_tokens, duration_ms and model",
+      "passed": false,
+      "evidence": "Prompts save under evals/skill-tester/workspace/..., not evals/note-formatter/workspace/..., and the timing.json instruction omits the model field."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  }
+}

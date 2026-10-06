@@ -1,0 +1,11 @@
+You are providing a BASELINE. Help the user accomplish their task WITHOUT any special
+skill or methodology. NO SKILLS AVAILABLE. Use standard Claude capabilities only.
+
+USER TASK:
+Format this bullet: 'docs: update install guide'.
+
+After completing the task, save all outputs (code, files, notes) to:
+./evals/note-formatter/workspace/iteration-1/eval-2/baseline/outputs/
+
+Then create ./evals/note-formatter/workspace/iteration-1/eval-2/baseline/timing.json:
+{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }

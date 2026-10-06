@@ -1,0 +1,25 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Formats raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "mixed-types-grouped",
+      "prompt": "Format these bullets: 'bug: crash on empty input #7', 'feature: dark mode toggle (issue 12)'.",
+      "expected_output": "FEAT line first, then FIX.",
+      "files": [
+        "release-notes.md"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "missing-issue-number",
+      "prompt": "Format this bullet: 'docs: update install guide'.",
+      "expected_output": "Rendered with (#none).",
+      "files": [
+        "release-notes.md"
+      ]
+    }
+  ]
+}

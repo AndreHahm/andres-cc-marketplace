@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "every output line has the form '- [TYPE] Summary (#id)'", "passed": true, "evidence": "All 4 lines match: '- [FEAT] Dark mode toggle (#12)', '- [FIX] Crash on empty input (#7)', '- [DOCS] Update install guide (#none)', '- [CHORE] Cleanup of logging (#none)'."},
+    {"text": "every TYPE tag is one of FEAT, FIX, DOCS, CHORE", "passed": true, "evidence": "Tags used are FEAT, FIX, DOCS, CHORE; no other tag appears."},
+    {"text": "lines are grouped in the order FEAT, FIX, DOCS, CHORE", "passed": true, "evidence": "Line order is FEAT, FIX, DOCS, CHORE, matching rule 5."},
+    {"text": "a bullet without an issue number is rendered with (#none)", "passed": true, "evidence": "'update install guide' -> '(#none)'; 'refactor cleanup of logging' -> '(#none)'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

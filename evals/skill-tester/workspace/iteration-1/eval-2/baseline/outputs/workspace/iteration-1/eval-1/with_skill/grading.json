@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "expectations": [
+    {"text": "every output line has the form '- [TYPE] Summary (#id)'", "passed": true, "evidence": "All 4 lines match '- [TYPE] Summary (#id)'."},
+    {"text": "every TYPE tag is one of FEAT, FIX, DOCS, CHORE", "passed": true, "evidence": "Tags are FEAT, FIX, DOCS, CHORE."},
+    {"text": "lines are grouped in the order FEAT, FIX, DOCS, CHORE", "passed": true, "evidence": "Output order is FEAT, FIX, DOCS, CHORE."},
+    {"text": "a bullet without an issue number is rendered with (#none)", "passed": true, "evidence": "'Update install guide (#none)' and 'Cleanup of logging (#none)'."}
+  ],
+  "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}
+}

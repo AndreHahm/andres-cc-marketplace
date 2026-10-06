@@ -1,0 +1,34 @@
+{
+  "skill_name": "note-formatter",
+  "evals": [
+    {
+      "id": 1,
+      "name": "mixed-types-grouped-in-order",
+      "prompt": "Use the note-formatter skill to format the release-note bullets in files/mixed-list.txt.",
+      "expected_output": "Six lines, grouped FEAT, FIX, DOCS, CHORE, with input order kept inside each group.",
+      "files": ["files/mixed-list.txt"],
+      "assertions": [
+        "Output has exactly one line per input bullet (6 lines)",
+        "Every line matches the format '- [<TYPE>] <Summary> (#<id>)'",
+        "Both FEAT lines come first, in input order: dark mode, then markdown export",
+        "Both FIX lines come next, in input order: empty input crash, then summary total",
+        "The DOCS line comes after the FIX lines",
+        "The CHORE line (refactor) comes last",
+        "Each summary is sentence case with no trailing period and at most 60 characters"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "missing-issue-number-renders-none",
+      "prompt": "Use the note-formatter skill to format the release-note bullet in files/no-issue.txt.",
+      "expected_output": "One line: - [FIX] Typo in the error message for missing files (#none)",
+      "files": ["files/no-issue.txt"],
+      "assertions": [
+        "Output is exactly one line",
+        "The line starts with '- [FIX] '",
+        "The line ends with '(#none)'",
+        "The summary is sentence case with no trailing period"
+      ]
+    }
+  ]
+}

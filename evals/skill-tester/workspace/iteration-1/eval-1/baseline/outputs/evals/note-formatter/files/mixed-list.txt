@@ -1,0 +1,6 @@
+- refactor: simplify the config loader (#31)
+- bug: crash when the input file is empty (#12)
+- docs: add install instructions to the readme (#20)
+- feature: support dark mode in the viewer (#7)
+- bug: wrong total on the summary page (#15)
+- feature: export notes as markdown (#9)
