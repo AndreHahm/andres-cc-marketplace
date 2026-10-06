@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Format raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Mixed types grouped in documented order",
+      "prompt": "Format these release notes:\n- feature: add dark mode toggle (#101)\n- bug: fix crash on empty note (#102)\n- docs: update install guide (#103)\n- refactor: split parser module (#104)\n- feature: export notes as PDF (#105)\n- bug: stop duplicate saves (#106)",
+      "expected_output": "Six lines in the form '- [TYPE] Summary (#id)', grouped FEAT, FIX, DOCS, CHORE, with input order kept inside each group: #101, #105, #102, #106, #103, #104. The refactor bullet maps to CHORE.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Bullet without issue number gets (#none)",
+      "prompt": "Format these release notes:\n- bug: handle null note title\n- feature: add tag filter (#210)",
+      "expected_output": "Two lines: '- [FEAT] Add tag filter (#210)' first, then '- [FIX] Handle null note title (#none)'. The bullet with no issue number ends in (#none).",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}
