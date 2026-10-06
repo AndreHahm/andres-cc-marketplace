@@ -840,6 +840,11 @@ DISPATCH_BUDGET_SECONDS = 42 * 60
 # bridge-invoke.mjs's own default so the "does one more call fit" check never
 # assumes a shorter call than the bridge will actually allow.
 _DEFAULT_CALL_SECONDS = 240
+# Extra time past the bridge's own timeout before the dispatcher itself kills
+# the bridge process, so a hung process (teardown after SIGTERM, a stuck node
+# startup) can never run past the dispatch budget. Counted in every "does one
+# more call fit" check below, so the budget stays an honest upper bound.
+_PROCESS_SLACK_SECONDS = 60
 
 
 def _per_call_seconds() -> float:
@@ -863,6 +868,29 @@ def _is_bridge_timeout(stderr: str) -> bool:
     except json.JSONDecodeError:
         return False
     return isinstance(parsed, dict) and parsed.get("category") == "timeout"
+
+
+def _inspected_nothing(output: object) -> str | None:
+    """A reviewer that could not read any target (e.g. its command bridge
+    failed before returning file contents) still returns a schema-valid
+    envelope: no findings and an `Inconclusive` verdict. Counting that as a
+    completed review would pass the gate with zero coverage. The envelope has
+    no structured field for this, so this keys on the verdict's own prefix --
+    a deliberately narrow, fail-closed heuristic that can miss a differently
+    worded empty pass but never fails a review that raised findings. Returns
+    the reviewer's own first inspection limit (for the failure message) when
+    it matches, else None. Data only: the text is never acted on."""
+    if not isinstance(output, dict) or output.get("findings"):
+        return None
+    verdict = output.get("verdict")
+    if not isinstance(verdict, str) or not verdict.strip().lower().startswith("inconclusive"):
+        return None
+    limits = output.get("inspection_limits")
+    first = limits[0] if isinstance(limits, list) and limits and isinstance(limits[0], str) else ""
+    # Model-generated text that flows into CI logs: drop newlines and other
+    # control characters so it can't forge a log line or a workflow command.
+    first = " ".join("".join(c if c.isprintable() else " " for c in first).split())
+    return first[:200] or "no inspection limit given"
 
 
 def _dispatch_one(
@@ -912,7 +940,7 @@ def _dispatch_one(
         "--dispatch-id",
         dispatch_id,
     ]
-    call_seconds = _per_call_seconds()
+    call_seconds = _per_call_seconds() + _PROCESS_SLACK_SECONDS
     attempts = 0
     while True:
         if time.monotonic() + call_seconds > deadline:
@@ -928,7 +956,17 @@ def _dispatch_one(
                 attempts=attempts,
             )
         attempts += 1
-        result = subprocess.run(argv, cwd=repo, capture_output=True)
+        try:
+            result = subprocess.run(argv, cwd=repo, capture_output=True, timeout=call_seconds)
+        except subprocess.TimeoutExpired:
+            # Never retried: a process that outlived its own timeout plus
+            # slack is a hang, not the bridge's structured `timeout` outcome.
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=f"bridge process killed after {call_seconds:.0f}s (outlived its own timeout)",
+                attempts=attempts,
+            )
         if result.returncode == 0:
             break
         stderr = result.stderr.decode("utf-8", errors="replace")
@@ -945,6 +983,14 @@ def _dispatch_one(
     except json.JSONDecodeError:
         return ReviewerReport(
             reviewer=name, status="failed", error="malformed bridge output", attempts=attempts
+        )
+    empty_reason = _inspected_nothing(output)
+    if empty_reason is not None:
+        return ReviewerReport(
+            reviewer=name,
+            status="failed",
+            error=f"reviewer returned an inconclusive verdict with no findings: {empty_reason}",
+            attempts=attempts,
         )
     return ReviewerReport(reviewer=name, status="completed", output=output, attempts=attempts)
 
