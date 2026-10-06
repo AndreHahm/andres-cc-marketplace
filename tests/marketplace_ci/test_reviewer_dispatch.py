@@ -520,3 +520,111 @@ def test_the_codex_review_job_timeout_stays_above_the_dispatch_budget():
     minutes = int(timeout.group(1))
     # Leave room for checkout, npm install and the post-dispatch steps.
     assert minutes * 60 >= review.DISPATCH_BUDGET_SECONDS + 120
+
+
+def test_dispatch_bounds_each_bridge_process_by_its_timeout_plus_slack(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", "600000")
+    seen = []
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            seen.append(kw.get("timeout"))
+            return _ok(argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_FAKE_TOML_CONTENT, stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    scope = _skill_scope(change, dependency_index)
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert seen and set(seen) == {600.0 + review._PROCESS_SLACK_SECONDS}
+
+
+def test_dispatch_reports_a_hung_bridge_process_as_failed_and_does_not_retry_it(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        raise subprocess.TimeoutExpired(argv, 660)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.attempts == 1 for r in reports)
+    assert all("killed" in (r.error or "") for r in reports)
+    assert set(calls.values()) == {1}
+
+
+def _envelope(verdict, findings=(), limits=()):
+    import json
+
+    return json.dumps(
+        {"findings": list(findings), "verdict": verdict, "inspection_limits": list(limits)}
+    ).encode()
+
+
+@pytest.mark.parametrize("verdict", ["Inconclusive: nothing read", "  inconclusive - no access"])
+def test_dispatch_fails_a_reviewer_that_inspected_nothing(
+    monkeypatch, repo, change, dependency_index, verdict
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope(verdict, limits=["The command-execution bridge failed"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" for r in reports)
+    assert all("command-execution bridge failed" in (r.error or "") for r in reports)
+    assert set(calls.values()) == {1}  # never retried
+
+
+@pytest.mark.parametrize(
+    ("verdict", "findings", "limits"),
+    [
+        ("Pass", [], []),
+        (
+            "Pass - static review only",
+            [],
+            ["No script was executed"],
+        ),  # a real pass may disclose limits
+        ("Inconclusive: partial", [{"id": "F1"}], []),  # raised findings: never failed by this rule
+        ("Reject", [{"id": "F1"}], []),
+    ],
+)
+def test_dispatch_keeps_real_passes_and_reviews_with_findings_completed(
+    monkeypatch, repo, change, dependency_index, verdict, findings, limits
+):
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope(verdict, findings, limits), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "completed" for r in reports)
+
+
+def test_inspected_nothing_message_has_no_newlines_or_control_characters():
+    out = review._inspected_nothing(
+        {
+            "findings": [],
+            "verdict": "Inconclusive",
+            "inspection_limits": ["bridge failed\nrun-codex-review: forged\x1b[31m ::error::x\r"],
+        }
+    )
+    assert out is not None
+    assert "\n" not in out and "\r" not in out and "\x1b" not in out
+    assert out.startswith("bridge failed run-codex-review: forged")

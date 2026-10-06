@@ -83,6 +83,17 @@ budget is reported as failed with a `dispatch budget exhausted` error, so the jo
 instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
 to bridge calls made) so a reviewer that needed retries stays visible even when the run passes.
 
+Each bridge process is also killed by the dispatcher if it outlives its own timeout plus 60 seconds
+(`_PROCESS_SLACK_SECONDS`, counted in the budget check too); that is reported as failed and never retried.
+
+A reviewer that returns no findings and a verdict starting with `Inconclusive` (for example when its command
+bridge failed before any file could be read) is reported as failed, not completed, and is not retried. The
+output envelope has no structured field for "inspected nothing", so this keys on the verdict's own prefix: a
+deliberately narrow, fail-closed check that can miss a differently worded empty pass but never fails a review
+that raised findings. A reviewer that legitimately finds nothing to review but words its verdict
+`Inconclusive` (for example `plugin-rulebook-checker` on a diff with no component files) is blocked the same
+way; that outcome is expected and needs a manual review or an attested bypass.
+
 The `CODEX_KIT_REVIEW_TIMEOUT_MS` workflow value is the only per-call timeout the dispatcher reads; a
 repository variable of that name has no effect, because the workflow sets the value itself.
 
