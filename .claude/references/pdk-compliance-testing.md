@@ -2,6 +2,8 @@
 
 **Purpose:** Verify that a skill enforces compliance under adversarial conditions — agents resisting, rationalizing, or finding loopholes. Complements quantitative eval benchmarking (Phase 3) by testing behavioral compliance rather than output quality.
 
+**Owner and consumers:** owned by the `skill-development` skill (Phase 3.5) and also used by `skill-tester`, which defers compliance and pressure testing to it. The Pressure Types table below is the canonical pressure-type list for both skills. In this file, "Phase 3" means `skill-development`'s Phase 3 evals or the `skill-tester` pipeline.
+
 ## When to Use
 
 Test skills that:
