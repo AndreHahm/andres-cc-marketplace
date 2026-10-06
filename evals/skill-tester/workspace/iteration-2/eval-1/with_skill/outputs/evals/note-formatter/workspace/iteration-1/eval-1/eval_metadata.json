@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "Output has exactly one line per input bullet (6 lines), each matching '- [TYPE] Summary (#id)'", "type": "structure", "target": "outputs/ release-notes text"},
+    {"text": "Types are mapped correctly: feature to FEAT, bug to FIX, docs to DOCS, refactor to CHORE", "type": "functionality", "target": "outputs/ release-notes text"},
+    {"text": "Lines are grouped in the order FEAT, FIX, DOCS, CHORE", "type": "structure", "target": "outputs/ release-notes text"},
+    {"text": "Input order is kept inside each group (dark mode before CSV export; crash before timezone)", "type": "functionality", "target": "outputs/ release-notes text"},
+    {"text": "Each summary is sentence case, has no trailing period, and is at most 60 characters", "type": "quality", "target": "outputs/ release-notes text"}
+  ]
+}

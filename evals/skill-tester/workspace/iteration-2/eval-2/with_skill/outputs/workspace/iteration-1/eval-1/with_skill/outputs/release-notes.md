@@ -1,0 +1,4 @@
+- [FEAT] Dark mode toggle (#12)
+- [FIX] Crash on empty input (#7)
+- [DOCS] Update install guide (#none)
+- [CHORE] Cleanup of logging (#none)
