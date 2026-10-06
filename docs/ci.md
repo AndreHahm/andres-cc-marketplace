@@ -76,7 +76,7 @@ A reviewer whose bridge call fails with the bridge's structured `timeout` error 
 is retried — a non-zero exit for any other reason, or malformed bridge output, fails immediately so a real
 bridge or validation fault is never masked by a retry.
 
-The whole dispatch has a 42-minute budget (`DISPATCH_BUDGET_SECONDS`), kept under the job's own 45-minute
+The whole dispatch has a 40-minute budget (`DISPATCH_BUDGET_SECONDS`), kept under the job's own 45-minute
 `timeout-minutes`. No bridge call starts, first attempt or retry, unless a full per-call timeout
 (`CODEX_KIT_REVIEW_TIMEOUT_MS`) still fits in what is left. A reviewer that cannot start or retry within the
 budget is reported as failed with a `dispatch budget exhausted` error, so the job exits with a clear result

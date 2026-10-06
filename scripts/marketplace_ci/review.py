@@ -834,8 +834,10 @@ DISPATCH_MAX_WORKERS = 2
 DISPATCH_MAX_TIMEOUT_RETRIES = 2
 # Overall dispatch budget, kept under the codex-review job's own 45-minute
 # `timeout-minutes` so retries can never run the job into GitHub's kill: no
-# bridge call starts unless a full per-call budget still fits.
-DISPATCH_BUDGET_SECONDS = 42 * 60
+# bridge call starts unless a full per-call budget still fits. The 5 minute
+# margin covers work outside the dispatch: pre-dispatch setup measured 20-25 s
+# in real CI runs (job start to this step), plus artifact upload afterward.
+DISPATCH_BUDGET_SECONDS = 40 * 60
 # Used only when CODEX_KIT_REVIEW_TIMEOUT_MS is unset; matches
 # bridge-invoke.mjs's own default so the "does one more call fit" check never
 # assumes a shorter call than the bridge will actually allow.
