@@ -77,14 +77,17 @@ is retried — a non-zero exit for any other reason, or malformed bridge output,
 bridge or validation fault is never masked by a retry.
 
 The whole dispatch has a 40-minute budget (`DISPATCH_BUDGET_SECONDS`), kept under the job's own 45-minute
-`timeout-minutes`. No bridge call starts, first attempt or retry, unless a full per-call timeout
-(`CODEX_KIT_REVIEW_TIMEOUT_MS`) still fits in what is left. A reviewer that cannot start or retry within the
+`timeout-minutes`. No bridge call starts, first attempt or retry, unless the per-call timeout
+(`CODEX_KIT_REVIEW_TIMEOUT_MS`) plus 60 seconds of process slack still fits in what is left. A reviewer that cannot start or retry within the
 budget is reported as failed with a `dispatch budget exhausted` error, so the job exits with a clear result
 instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
 to bridge calls made) so a reviewer that needed retries stays visible even when the run passes.
 
-Each bridge process is also killed by the dispatcher if it outlives its own timeout plus 60 seconds
-(`_PROCESS_SLACK_SECONDS`, counted in the budget check too); that is reported as failed and never retried.
+Each bridge process runs in its own session and is killed, together with its whole process group on POSIX runners (the bridge
+spawns a `codex` child; elsewhere only the direct process is killed), if it outlives its own timeout plus 60 seconds (`_PROCESS_SLACK_SECONDS`, counted in
+the budget check too); that is reported as failed and never retried. The failed reviewer's stderr text is
+stripped of control characters before it reaches the CI log. An `OSError` while dispatching one reviewer (for
+example a missing `node` binary) fails only that reviewer; any other exception is a defect and propagates.
 
 A reviewer that returns no findings and a verdict starting with `Inconclusive` (for example when its command
 bridge failed before any file could be read) is reported as failed, not completed, and is not retried. The
