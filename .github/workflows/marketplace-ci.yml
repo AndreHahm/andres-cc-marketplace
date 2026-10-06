@@ -904,7 +904,7 @@ jobs:
           # delta caused a timeout). This job's own 45-minute budget above
           # has headroom for a longer per-reviewer budget across the several
           # reviewers dispatched in one run (two at a time, with timeout
-          # retries inside a 42-minute dispatch budget). See docs/ci.md.
+          # retries inside a 40-minute dispatch budget). See docs/ci.md.
           CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
