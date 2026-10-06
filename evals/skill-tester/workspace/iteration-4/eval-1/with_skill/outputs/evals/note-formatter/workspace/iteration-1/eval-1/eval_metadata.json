@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "Output has exactly one line per input bullet (6 lines), each matching `- [<TYPE>] <Summary> (#<id>)`", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Lines appear grouped in the order FEAT, FIX, DOCS, CHORE", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Input order is kept inside each group (#40 before #41, #12 before #15)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The refactor bullet is typed CHORE and is the last line", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Summaries are sentence case, have no trailing period and are at most 60 characters", "type": "quality", "target": "outputs/ directory"}
+  ]
+}
