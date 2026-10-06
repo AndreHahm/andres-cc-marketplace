@@ -3,11 +3,13 @@
 existence, Bash-scope grant consistency, declared-tool usage, and a fixture run
 of scripts/aggregate_benchmark.py against known-good numbers."""
 
+import contextlib
 import importlib.util
+import io
 import json
 import pathlib
 import re
-import subprocess
+import runpy
 import sys
 import tempfile
 
@@ -176,6 +178,22 @@ def _write_json(path, data):
     path.write_text(json.dumps(data), encoding="utf-8")
 
 
+def _run_aggregate(path):
+    """Run aggregate_benchmark.py in-process as __main__; return (exit code, stdout)."""
+    stdout = io.StringIO()
+    saved_argv = sys.argv
+    sys.argv = [str(AGGREGATE), str(path)]
+    code = 0
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+            runpy.run_path(str(AGGREGATE), run_name="__main__")
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+    finally:
+        sys.argv = saved_argv
+    return code, stdout.getvalue()
+
+
 def check_aggregate_fixture():
     """Known-good run: two evals whose averages are exact in binary floating point."""
     assets = SKILL_DIR / "assets"
@@ -219,27 +237,11 @@ def check_aggregate_fixture():
                     {"total_tokens": tokens, "duration_ms": duration, "model": "<model-id>"},
                 )
         (iteration / "eval-backup").mkdir()  # stray sibling the script must skip
-        result = subprocess.run(
-            [sys.executable, str(AGGREGATE), str(iteration)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=60,
-        )
-        if result.returncode != 0:
-            return (
-                False,
-                f"aggregate_benchmark.py exited {result.returncode}: "
-                f"{result.stdout[-200:]}{result.stderr[-200:]}",
-            )
+        code, output = _run_aggregate(iteration)
+        if code != 0:
+            return False, f"aggregate_benchmark.py exited {code}: {output[-200:]}"
         benchmark = json.loads((iteration / "benchmark.json").read_text(encoding="utf-8"))
-        missing_dir = subprocess.run(
-            [sys.executable, str(AGGREGATE), str(pathlib.Path(tmp) / "does-not-exist")],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=60,
-        )
+        missing_code, _ = _run_aggregate(pathlib.Path(tmp) / "does-not-exist")
 
     problems = []
     if [e["eval_id"] for e in benchmark["evals"]] != [2, 10]:
@@ -248,24 +250,29 @@ def check_aggregate_fixture():
         )
     if benchmark["skill_name"] != "fixture-skill":
         problems.append(f"skill_name {benchmark['skill_name']!r}")
-    expected_summary = {
-        "with_skill_avg_pass_rate": 0.875,
-        "baseline_avg_pass_rate": 0.375,
-        "improvement": 0.5,
-        "avg_tokens_with_skill": 2300,
-        "avg_tokens_baseline": 1850,
-        "token_cost": 450,
-        "avg_duration_ms_with_skill": 7500,
-        "avg_duration_ms_baseline": 4500,
-        "duration_cost_ms": 3000,
-    }
+    expected_summary = json.loads(
+        """
+        {
+            "with_skill_avg_pass_rate": 0.875,
+            "baseline_avg_pass_rate": 0.375,
+            "improvement": 0.5,
+            "avg_tokens_with_skill": 2300,
+            "avg_tokens_baseline": 1850,
+            "token_cost": 450,
+            "avg_duration_ms_with_skill": 7500,
+            "avg_duration_ms_baseline": 4500,
+            "duration_cost_ms": 3000
+        }
+        """
+    )
     for key, want in expected_summary.items():
         if benchmark["summary"].get(key) != want:
             problems.append(f"summary.{key}={benchmark['summary'].get(key)!r} (want {want!r})")
-    if benchmark["evals"][0]["delta"] != {"pass_rate": 0.5, "tokens": 700, "duration_ms": 3000}:
+    expected_delta = json.loads('{"pass_rate": 0.5, "tokens": 700, "duration_ms": 3000}')
+    if benchmark["evals"][0]["delta"] != expected_delta:
         problems.append(f"eval-2 delta {benchmark['evals'][0]['delta']!r}")
-    if missing_dir.returncode != 1:
-        problems.append(f"nonexistent iteration path exited {missing_dir.returncode} (want 1)")
+    if missing_code != 1:
+        problems.append(f"nonexistent iteration path exited {missing_code} (want 1)")
 
     spec = importlib.util.spec_from_file_location("aggregate_benchmark", AGGREGATE)
     if spec is None or spec.loader is None:
@@ -299,18 +306,12 @@ def check_negative_improvement_output():
                 iteration / "eval-1" / config / "timing.json",
                 {"total_tokens": 1000, "duration_ms": 1000, "model": "<model-id>"},
             )
-        result = subprocess.run(
-            [sys.executable, str(AGGREGATE), str(iteration)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=60,
-        )
-    if result.returncode != 0:
-        return False, f"aggregate_benchmark.py exited {result.returncode}"
-    if "Improvement: -50.0 percentage points" not in result.stdout:
-        return False, f"negative improvement not printed as '-50.0': {result.stdout[-160:]!r}"
-    if "+-" in result.stdout:
+        code, output = _run_aggregate(iteration)
+    if code != 0:
+        return False, f"aggregate_benchmark.py exited {code}"
+    if "Improvement: -50.0 percentage points" not in output:
+        return False, f"negative improvement not printed as '-50.0': {output[-160:]!r}"
+    if "+-" in output:
         return False, "output contains '+-'"
     return True, "negative improvement prints as -50.0 percentage points"
 
