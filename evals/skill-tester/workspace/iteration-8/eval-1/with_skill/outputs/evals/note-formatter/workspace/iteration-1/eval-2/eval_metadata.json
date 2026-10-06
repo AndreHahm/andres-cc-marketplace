@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet with no issue number is rendered ending in (#none)", "type": "presence", "target": "outputs/ directory"},
+    {"text": "The bullet that has an issue number keeps (#210) and does not get (#none)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The FEAT line appears before the FIX line", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Every output line matches the format '- [<TYPE>] <Summary> (#<id>)'", "type": "structure", "target": "outputs/ directory"}
+  ]
+}
