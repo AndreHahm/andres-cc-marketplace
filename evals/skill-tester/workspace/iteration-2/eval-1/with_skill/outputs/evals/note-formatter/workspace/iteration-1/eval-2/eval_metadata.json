@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The feature bullet without an issue number is rendered '- [FEAT] Add keyboard shortcuts (#none)'", "type": "presence", "target": "outputs/ release-notes text"},
+    {"text": "The docs bullet without an issue number is rendered '- [DOCS] Clarify config options (#none)'", "type": "presence", "target": "outputs/ release-notes text"},
+    {"text": "The bullet that has an issue number keeps its id (#21) and is not rendered with (#none)", "type": "functionality", "target": "outputs/ release-notes text"},
+    {"text": "Lines are grouped in the order FEAT, FIX, DOCS and there is one line per input bullet (3 lines)", "type": "structure", "target": "outputs/ release-notes text"}
+  ]
+}
