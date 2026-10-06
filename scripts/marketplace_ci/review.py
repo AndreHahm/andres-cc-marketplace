@@ -848,6 +848,10 @@ _DEFAULT_CALL_SECONDS = 240
 # startup) can never run past the dispatch budget. Counted in every "does one
 # more call fit" check below, so the budget stays an honest upper bound.
 _PROCESS_SLACK_SECONDS = 60
+# Longest failed-reviewer error kept in a report (and so in the CI log); the
+# bridge's own error line is a few hundred characters, so this only ever trims
+# a runaway one.
+_MAX_ERROR_CHARS = 2000
 
 
 def _per_call_seconds() -> float:
@@ -1000,6 +1004,18 @@ def _dispatch_one(
         attempts += 1
         try:
             result = _run_bridge(argv, cwd=repo, timeout=call_seconds)
+        except OSError as exc:
+            # The bridge could not be started (e.g. no `node` binary). Report it
+            # here, with the attempts already made, so a retry that happened
+            # earlier is not hidden behind attempts=0.
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=_sanitize_log_text(f"bridge could not be run: {type(exc).__name__}: {exc}")[
+                    :_MAX_ERROR_CHARS
+                ],
+                attempts=attempts,
+            )
         except subprocess.TimeoutExpired:
             # Never retried: a process that outlived its own timeout plus
             # slack is a hang, not the bridge's structured `timeout` outcome.
@@ -1021,7 +1037,7 @@ def _dispatch_one(
         return ReviewerReport(
             reviewer=name,
             status="failed",
-            error=_sanitize_log_text(stderr),
+            error=_sanitize_log_text(stderr)[:_MAX_ERROR_CHARS],
             attempts=attempts,
         )
 
@@ -1101,7 +1117,9 @@ def dispatch_reviewers(
                     ReviewerReport(
                         reviewer=name,
                         status="failed",
-                        error=f"dispatch raised {type(exc).__name__}: {exc}",
+                        error=_sanitize_log_text(f"dispatch raised {type(exc).__name__}: {exc}")[
+                            :_MAX_ERROR_CHARS
+                        ],
                         attempts=0,
                     )
                 )

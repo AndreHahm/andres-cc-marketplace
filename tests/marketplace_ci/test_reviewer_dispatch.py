@@ -668,7 +668,9 @@ def test_run_bridge_timeout_kills_the_whole_process_group(tmp_path):
         "time.sleep(60)\n"
     )
     with pytest.raises(subprocess.TimeoutExpired):
-        _REAL_RUN_BRIDGE([sys.executable, "-c", parent], cwd=tmp_path, timeout=3)
+        # Generous: if a loaded machine delays the parent's fork of its child until
+        # the instant of the kill, the child would escape the group signal.
+        _REAL_RUN_BRIDGE([sys.executable, "-c", parent], cwd=tmp_path, timeout=8)
     child_pid = int(pidfile.read_text())
     deadline = time.monotonic() + 5
     while _pid_is_running(child_pid) and time.monotonic() < deadline:
@@ -735,3 +737,89 @@ def test_dispatch_does_not_start_queued_reviewers_after_an_unexpected_exception(
     with pytest.raises(RuntimeError):
         dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, max_workers=1)
     assert sum(started.values()) < len({*scope.validate, *scope.audit})
+
+
+def test_dispatch_caps_the_length_of_a_failed_reviewers_error(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv, returncode=1, stdout=b"", stderr=b"x" * 50_000
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(len(r.error or "") == review._MAX_ERROR_CHARS for r in reports)
+
+
+def test_dispatch_keeps_the_attempt_count_when_the_bridge_cannot_be_started_on_a_retry(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "security-reviewer" and calls[reviewer] == 2:
+            raise FileNotFoundError("node")
+        return subprocess.CompletedProcess(
+            args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {r.reviewer: r for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)}
+    sec = reports["security-reviewer"]
+    assert sec.status == "failed" and sec.attempts == 2  # one timeout, then the failed launch
+    assert "FileNotFoundError" in (sec.error or "")
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX-only")
+@pytest.mark.parametrize("exc", [ProcessLookupError("gone"), PermissionError("denied")])
+def test_run_bridge_survives_either_group_kill_failure(monkeypatch, tmp_path, exc):
+    def refuse(pid, sig):
+        raise exc
+
+    monkeypatch.setattr(os, "killpg", refuse)
+    with pytest.raises(subprocess.TimeoutExpired):
+        _REAL_RUN_BRIDGE(
+            [sys.executable, "-c", "import time; time.sleep(60)"], cwd=tmp_path, timeout=1
+        )
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX-only")
+def test_run_bridge_does_not_block_on_a_descendant_that_escaped_the_group(tmp_path):
+    pidfile = tmp_path / "escaped.pid"
+    parent = (
+        "import subprocess, sys, time\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'],\n"
+        "                         start_new_session=True)\n"  # inherits stdout, own group
+        f"open({str(pidfile)!r}, 'w').write(str(child.pid))\n"
+        "time.sleep(60)\n"
+    )
+    started = time.monotonic()
+    try:
+        with pytest.raises(subprocess.TimeoutExpired):
+            _REAL_RUN_BRIDGE([sys.executable, "-c", parent], cwd=tmp_path, timeout=2)
+        assert time.monotonic() - started < 30  # the bounded drain, not the 60 s sleep
+    finally:
+        if pidfile.exists():
+            try:
+                os.kill(int(pidfile.read_text()), 9)
+            except ProcessLookupError:
+                pass
+
+
+def test_run_bridge_without_process_groups_kills_only_the_direct_process(monkeypatch, tmp_path):
+    import types
+
+    killed_groups = []
+    fake_os = types.SimpleNamespace(
+        name="nt", killpg=lambda pid, sig: killed_groups.append(pid), getpid=os.getpid
+    )
+    monkeypatch.setattr(review, "os", fake_os)
+    with pytest.raises(subprocess.TimeoutExpired):
+        _REAL_RUN_BRIDGE(
+            [sys.executable, "-c", "import time; time.sleep(60)"], cwd=tmp_path, timeout=1
+        )
+    assert killed_groups == []  # the group kill is never attempted off POSIX
