@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet without an issue number is rendered ending with the literal '(#none)'", "type": "presence", "target": "outputs/ directory"},
+    {"text": "That line is typed FIX, in the form '- [FIX] <Summary> (#none)'", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The two bullets that have issue numbers keep them (#31, #33) and do not receive (#none)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Lines are grouped in the order FEAT, FIX, DOCS with one line per input bullet", "type": "structure", "target": "outputs/ directory"}
+  ]
+}
