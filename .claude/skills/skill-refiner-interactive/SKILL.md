@@ -6,7 +6,9 @@ description: >-
   80% rule to cut token usage, audits tool scoping, and fixes reviewer findings. Not for creating
   new skills — use skill-development instead. For a one-shot quality report with no fixes, use the
   skill-reviewer agent instead. For automated fix-review loops with no user checkpoints, use
-  skill-improver-loop instead.
+  skill-improver-loop instead. To measure a skill empirically against a baseline without
+  editing it, use skill-tester instead. For authoring or repairing a broken skill, use
+  skill-development instead.
 when_to_use: >-
   Use when refining skills, improving skill structure, validating against best practices,
   reducing token usage, consolidating references, checking production readiness, applying the

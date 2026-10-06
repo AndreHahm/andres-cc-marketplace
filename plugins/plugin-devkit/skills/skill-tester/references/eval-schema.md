@@ -200,7 +200,34 @@ names for the same numbers:
 
 ---
 
-## Display Templates (Quick Phase 4, Step 7.4)
+## Display Templates (Step 2.4, Quick Phase 3 and 4, Step 7.4)
+
+**Step 2.4** — invoke `plugin-rulebook` for the active rule set, then add each rule as its own assertion:
+
+```
+Skill: plugin-rulebook
+→ Returns active rules with descriptions, examples, and enforcement levels
+```
+
+Add rule-compliance assertions to `eval_metadata.json` alongside functional assertions:
+
+```json
+{"text": "allowed-tools uses space-separated format (R6)", "type": "structure", "target": "SKILL.md frontmatter"}
+```
+
+**Quick Phase 3** — display this pass/fail summary (no benchmark.json):
+
+```
+QUICK VALIDATION RESULTS: <skill-name>
+====================================
+
+Eval 1: <Scenario>  ✓ PASS (5/5 assertions)
+Eval 2: <Scenario>  ✓ PASS (4/5 assertions)
+Eval 3: <Scenario>  ✗ FAIL (2/5 assertions)
+
+Summary: 11/15 assertions passed (73%)
+Status: Ready to refine or deploy
+```
 
 **Quick Phase 4** — ask the operator:
 
@@ -315,6 +342,7 @@ Agent type: general-purpose
 Prompt: "
 You are providing a BASELINE. Help the user accomplish their task WITHOUT any special
 skill or methodology. NO SKILLS AVAILABLE. Use standard Claude capabilities only.
+Do not use the Skill tool and do not read any skill folder or SKILL.md file.
 
 USER TASK:
 <eval-N prompt from evals.json>
@@ -326,6 +354,8 @@ Then create ./evals/<skill-name>/workspace/iteration-N/eval-M/baseline/timing.js
 { "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }
 "
 ```
+
+**Baseline isolation note:** isolation is by instruction only — a `general-purpose` agent can still reach installed skills. Treat a baseline output that quotes or reproduces the skill under test as contaminated: record that in the grading `evidence` and do not count it as a clean baseline.
 
 ### WITH_SKILL_ONLY Template (Quick Workflow)
 

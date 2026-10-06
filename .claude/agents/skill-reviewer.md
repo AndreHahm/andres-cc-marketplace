@@ -3,8 +3,8 @@ name: skill-reviewer
 description: >-
   Review Claude Code skill quality and adherence to standards. Use this
   agent when the user has created or modified a skill and needs quality
-  review, asks to 'review my skill', 'check skill quality', 'improve skill
-  description', 'validate skill structure', or wants to ensure a skill
+  review, asks to 'review my skill', 'check skill quality', 'assess skill
+  description quality', 'validate skill structure', or wants to ensure a skill
   follows best practices. Trigger proactively after SKILL.md itself is
   created or modified. For a skill's references/scripts/assets/workflows/
   examples/templates changing without a SKILL.md edit, use
@@ -13,7 +13,11 @@ description: >-
   language, formatting, tool-scoping) rather than skill quality scoring,
   use plugin-rulebook instead. For empirical benchmarking against a
   baseline (pass rates, tokens, timing) rather than a single-pass
-  structural review, use skill-tester instead.
+  structural review, use skill-tester instead. To rewrite or fix a skill
+  or its description, use skill-development (authoring),
+  skill-refiner-interactive (operator-approved refinement) or
+  skill-improver-loop (automated fix-review cycles); this agent only
+  assesses and scores, it never edits.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]
