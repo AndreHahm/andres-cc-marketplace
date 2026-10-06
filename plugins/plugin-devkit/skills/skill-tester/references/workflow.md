@@ -254,7 +254,7 @@ python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py ./evals/<skill-name>/w
 |--------|---|
 | `with_skill_avg_pass_rate` | How well does skill help? (stored as 0.0–1.0) |
 | `baseline_avg_pass_rate` | How well does Claude do without skill? (stored as 0.0–1.0) |
-| `improvement` | How much does the skill improve the pass rate? (stored as a 0.0–1.0 difference; the CLI prints it as percentage points) |
+| `improvement` | How much does the skill improve the pass rate? (stored as a -1.0 to 1.0 difference, negative when the skill scores below baseline; the CLI prints it as percentage points) |
 | `token_cost` | How many extra tokens does skill consume? |
 | `duration_cost_ms` | How much slower is skill? |
 

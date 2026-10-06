@@ -29,15 +29,22 @@ def _split_frontmatter(text):
     return text[4:end], text[end + 5 :]
 
 
+def _frontmatter_value(frontmatter, key):
+    """Value of a top-level frontmatter key, with any block-scalar indicator removed."""
+    match = re.search(rf"^{key}:[ \t]*(.*(?:\n[ \t]+.*)*)", frontmatter, re.MULTILINE)
+    if not match:
+        return None
+    return re.sub(r"^[>|][+-]?\s*", "", match.group(1).strip()).strip()
+
+
 def check_frontmatter():
     frontmatter, _ = _split_frontmatter(SKILL_MD.read_text(encoding="utf-8"))
     if frontmatter is None:
         return False, "SKILL.md has no frontmatter block, or it is never closed"
-    if not re.search(r"^name:", frontmatter, re.MULTILINE) or not re.search(
-        r"^description:", frontmatter, re.MULTILINE
-    ):
-        return False, "missing required frontmatter field ('name' or 'description')"
-    return True, "frontmatter present and closed"
+    for key in ("name", "description"):
+        if not _frontmatter_value(frontmatter, key):
+            return False, f"required frontmatter field '{key}' is missing or empty"
+    return True, "frontmatter present and closed, name and description non-empty"
 
 
 def check_referenced_files():

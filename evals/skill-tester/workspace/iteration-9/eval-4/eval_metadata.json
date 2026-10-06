@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/skill-tester/SKILL.md",
+  "assertions": [
+    {
+      "text": "exactly four prompt files exist, one per eval and configuration",
+      "type": "presence",
+      "target": "OUTDIR/prompts"
+    },
+    {
+      "text": "each with_skill prompt includes the skill's full content (the note-formatter rules) and the eval's own prompt text",
+      "type": "functionality",
+      "target": "prompts/*-with_skill.txt"
+    },
+    {
+      "text": "no baseline prompt includes any of the skill's rules text or names the skill's SKILL.md path, and each states that no skill is available",
+      "type": "functionality",
+      "target": "prompts/*-baseline.txt"
+    },
+    {
+      "text": "dispatch.md says each eval's with_skill and baseline agents are launched simultaneously in one launch call, not sequentially",
+      "type": "functionality",
+      "target": "dispatch.md"
+    },
+    {
+      "text": "every prompt tells the agent to save outputs under evals/note-formatter/workspace/iteration-1/eval-N/<configuration>/outputs/ and to write a timing.json there with total_tokens, duration_ms and model",
+      "type": "structure",
+      "target": "prompts/*.txt"
+    }
+  ]
+}
