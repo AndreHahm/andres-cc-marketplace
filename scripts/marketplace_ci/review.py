@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import signal
 import subprocess
 import sys
 import time
@@ -860,6 +861,48 @@ def _per_call_seconds() -> float:
     return ms / 1000 if ms > 0 and ms.is_integer() else _DEFAULT_CALL_SECONDS
 
 
+def _sanitize_log_text(text: str) -> str:
+    """Model- or tool-generated text that flows into CI logs: replace newlines
+    and other non-printable characters with spaces and collapse whitespace, so
+    it can't forge a log line or a workflow command."""
+    return " ".join("".join(c if c.isprintable() else " " for c in text).split())
+
+
+def _run_bridge(
+    argv: list[str], *, cwd: Path, timeout: float
+) -> subprocess.CompletedProcess[bytes]:
+    """`subprocess.run(..., capture_output=True, timeout=...)`, except the
+    bridge starts in its own session (POSIX) so a timeout kills its whole
+    process group. bridge-invoke.mjs spawns a `codex` child; killing only the
+    `node` parent would orphan that child, which keeps running (and spending
+    quota) until the runner is torn down. Raises `subprocess.TimeoutExpired`
+    exactly as `subprocess.run` does."""
+    posix = os.name == "posix"
+    with subprocess.Popen(
+        argv,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=posix,
+    ) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            if posix:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except OSError:
+                    pass  # group already gone or not signalable; the direct kill below still runs
+            # The direct child too, so a missed group kill can never leave wait() blocking.
+            proc.kill()
+            try:
+                proc.communicate(timeout=5)  # drain and reap; never block on a stray pipe holder
+            except subprocess.TimeoutExpired:
+                pass
+            raise
+        return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
+
+
 def _is_bridge_timeout(stderr: str) -> bool:
     """True only for bridge-invoke.mjs's own structured timeout error
     (`{"ok":false,"category":"timeout",...}`). Any other failure -- a
@@ -889,10 +932,7 @@ def _inspected_nothing(output: object) -> str | None:
         return None
     limits = output.get("inspection_limits")
     first = limits[0] if isinstance(limits, list) and limits and isinstance(limits[0], str) else ""
-    # Model-generated text that flows into CI logs: drop newlines and other
-    # control characters so it can't forge a log line or a workflow command.
-    first = " ".join("".join(c if c.isprintable() else " " for c in first).split())
-    return first[:200] or "no inspection limit given"
+    return _sanitize_log_text(first)[:200] or "no inspection limit given"
 
 
 def _dispatch_one(
@@ -959,7 +999,7 @@ def _dispatch_one(
             )
         attempts += 1
         try:
-            result = subprocess.run(argv, cwd=repo, capture_output=True, timeout=call_seconds)
+            result = _run_bridge(argv, cwd=repo, timeout=call_seconds)
         except subprocess.TimeoutExpired:
             # Never retried: a process that outlived its own timeout plus
             # slack is a hang, not the bridge's structured `timeout` outcome.
@@ -978,7 +1018,12 @@ def _dispatch_one(
                 file=sys.stderr,
             )
             continue
-        return ReviewerReport(reviewer=name, status="failed", error=stderr, attempts=attempts)
+        return ReviewerReport(
+            reviewer=name,
+            status="failed",
+            error=_sanitize_log_text(stderr),
+            attempts=attempts,
+        )
 
     try:
         output = json.loads(result.stdout)
@@ -1045,7 +1090,13 @@ def dispatch_reviewers(
         for name, future in zip(names, futures, strict=True):
             try:
                 reports.append(future.result())
-            except Exception as exc:  # one reviewer's crash must not drop the others' reports
+            except OSError as exc:
+                # An infrastructure fault (the `node` binary missing, an
+                # unwritable instruction file) must not drop the other
+                # reviewers' reports. Anything else is a defect in this code
+                # and propagates with its traceback -- a broad except here
+                # would hide it (AGENTS.md: a broad except in
+                # scripts/marketplace_ci is a regression).
                 reports.append(
                     ReviewerReport(
                         reviewer=name,
@@ -1054,6 +1105,12 @@ def dispatch_reviewers(
                         attempts=0,
                     )
                 )
+            except BaseException:
+                # An unexpected defect: don't start reviewers still queued (and
+                # spend quota on results that will be thrown away) before the
+                # traceback surfaces.
+                pool.shutdown(wait=False, cancel_futures=True)
+                raise
         return tuple(reports)
 
 

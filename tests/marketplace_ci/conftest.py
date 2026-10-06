@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.marketplace_ci import review
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.registry import Registry
 
@@ -121,3 +122,19 @@ def completed():
         )
 
     return _factory
+
+
+@pytest.fixture(autouse=True)
+def _route_bridge_through_subprocess_run(monkeypatch):
+    """Tests fake the Codex bridge by patching `subprocess.run`. Production
+    runs the bridge through `review._run_bridge` (Popen in its own session, so a
+    timeout can kill the whole process group); this routes it back through
+    `subprocess.run` for every test. `_run_bridge` itself is exercised for real
+    in test_reviewer_dispatch.py via a reference captured at import time."""
+    monkeypatch.setattr(
+        review,
+        "_run_bridge",
+        lambda argv, *, cwd, timeout: subprocess.run(
+            argv, cwd=cwd, capture_output=True, timeout=timeout
+        ),
+    )

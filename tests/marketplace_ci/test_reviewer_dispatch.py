@@ -1,4 +1,6 @@
+import os
 import subprocess
+import sys
 import threading
 import time
 from collections import Counter
@@ -21,6 +23,9 @@ from scripts.marketplace_ci.review import (
 # own mocks have to be realistic, not just the bridge dispatch they're
 # actually testing).
 _FAKE_TOML_CONTENT = b'developer_instructions = """\nreview this\n"""\n'
+
+# The real implementation, captured before conftest's autouse fixture replaces it.
+_REAL_RUN_BRIDGE = review._run_bridge
 
 
 def test_dispatch_calls_bridge_once_per_reviewer_with_instruction_file(
@@ -628,3 +633,105 @@ def test_inspected_nothing_message_has_no_newlines_or_control_characters():
     assert out is not None
     assert "\n" not in out and "\r" not in out and "\x1b" not in out
     assert out.startswith("bridge failed run-codex-review: forged")
+
+
+def test_run_bridge_returns_a_completed_process_with_captured_output():
+    result = _REAL_RUN_BRIDGE(
+        [sys.executable, "-c", "import sys; print('out'); sys.stderr.write('err'); sys.exit(3)"],
+        cwd=Path.cwd(),
+        timeout=30,
+    )
+    assert result.returncode == 3
+    assert result.stdout.strip() == b"out"
+    assert result.stderr == b"err"
+
+
+def _pid_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    try:  # a zombie is already dead; os.kill(pid, 0) still succeeds on it
+        stat = Path(f"/proc/{pid}/stat").read_text()
+        return stat.rsplit(")", 1)[1].split()[0] != "Z"
+    except OSError:
+        return True
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX-only")
+def test_run_bridge_timeout_kills_the_whole_process_group(tmp_path):
+    pidfile = tmp_path / "child.pid"
+    parent = (
+        "import subprocess, sys, time\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        f"open({str(pidfile)!r}, 'w').write(str(child.pid))\n"
+        "time.sleep(60)\n"
+    )
+    with pytest.raises(subprocess.TimeoutExpired):
+        _REAL_RUN_BRIDGE([sys.executable, "-c", parent], cwd=tmp_path, timeout=3)
+    child_pid = int(pidfile.read_text())
+    deadline = time.monotonic() + 5
+    while _pid_is_running(child_pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not _pid_is_running(child_pid), "the bridge's child process survived the timeout kill"
+
+
+def test_dispatch_lets_an_unexpected_exception_propagate_with_its_traceback(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        raise RuntimeError("a defect in the dispatcher, not an infrastructure fault")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    with pytest.raises(RuntimeError, match="a defect in the dispatcher"):
+        dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+
+
+def test_dispatch_strips_control_characters_from_a_failed_reviewers_stderr(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv, returncode=1, stdout=b"", stderr=b"boom\n::error::forged\x1b[31m\r\n"
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" for r in reports)
+    assert all("\n" not in (r.error or "") and "\x1b" not in (r.error or "") for r in reports)
+    assert all((r.error or "").startswith("boom ::error::forged") for r in reports)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX-only")
+def test_run_bridge_still_kills_the_process_when_the_group_kill_fails(monkeypatch, tmp_path):
+    def refuse(pid, sig):
+        raise PermissionError("not signalable")
+
+    monkeypatch.setattr(os, "killpg", refuse)
+    started = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        _REAL_RUN_BRIDGE(
+            [sys.executable, "-c", "import time; time.sleep(60)"], cwd=tmp_path, timeout=1
+        )
+    assert time.monotonic() - started < 20  # returned promptly, did not wait out the sleep
+
+
+def test_dispatch_does_not_start_queued_reviewers_after_an_unexpected_exception(
+    monkeypatch, repo, change, dependency_index
+):
+    started = Counter()
+    lock = threading.Lock()
+
+    def on_call(reviewer, argv):
+        with lock:
+            started[reviewer] += 1
+        time.sleep(0.05)
+        raise RuntimeError("defect")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    with pytest.raises(RuntimeError):
+        dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, max_workers=1)
+    assert sum(started.values()) < len({*scope.validate, *scope.audit})
