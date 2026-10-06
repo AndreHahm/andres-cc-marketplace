@@ -379,7 +379,7 @@ iteration-3/ — pass rate 98% ("added examples")
 
 **skill-development workflow:**
 1. Create skill with skill-development
-2. Test immediately with skill-tester (Phase 1–6, no iteration needed for new skills)
+2. Once creation is complete, test with skill-tester (Phase 1–6, no iteration needed for new skills)
 3. Review results
 4. If pass rate <80%, use skill-refiner-interactive to improve → skill-tester again
 
@@ -389,7 +389,7 @@ iteration-3/ — pass rate 98% ("added examples")
 3. Compare iteration-N vs. iteration-N-1 results
 4. If improvement achieved, keep changes; else revert
 
-**Adversarial/compliance testing:** This pipeline measures whether a skill improves output quality (pass rate, tokens, timing) on cooperative scenarios — it does not test whether a skill's instructions survive an agent incentivized to skip them. For skills that enforce discipline or have compliance costs (`skill-development`'s Phase 3.5 scoping in `${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`, its "When to Use" and "Don't test" lists, says what qualifies), run `skill-development` Phase 3.5 pressure testing before or alongside this pipeline's quantitative benchmarking. The two measure different axes and neither substitutes for the other — a skill can score well here while still failing under time/sunk-cost/exhaustion/authority pressure.
+**Adversarial/compliance testing:** This pipeline measures whether a skill improves output quality (pass rate, tokens, timing) on cooperative scenarios — it does not test whether a skill's instructions survive an agent incentivized to skip them. For skills that enforce discipline or have compliance costs (`skill-development`'s Phase 3.5 scoping in `${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`, its "When to Use" and "Don't test" lists, says what qualifies), run `skill-development` Phase 3.5 pressure testing after or alongside this pipeline's quantitative benchmarking. The two measure different axes and neither substitutes for the other — a skill can score well here while still failing under time/sunk-cost/exhaustion/authority pressure.
 
 **Example workflow (recommended):**
 

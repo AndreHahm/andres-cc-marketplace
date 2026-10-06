@@ -2,13 +2,15 @@
 name: skill-development
 description: >-
   Create, test, evaluate, improve, repair, and consolidate Claude Code skills. Use when the user
-  asks to "create a skill", "add a skill to plugin", "write a new skill", "improve a skill",
+  asks to "create a skill", "add a skill to plugin", "write a new skill", "improve a skill you are authoring",
   "make a skill for X", "turn this into a skill", "convert a slash command to a skill", "apply a
-  skill template", "improve skill description", "organize
+  skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "find duplicate
   skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
   Also covers skill structure, progressive disclosure, skill categories, testing, compliance
-  testing, and slash-command conversion for Claude Code plugins.
+  testing, and slash-command conversion for Claude Code plugins. Not for refining a working skill
+  with operator checkpoints (skill-refiner-interactive) or unattended review-fix cycles
+  (skill-improver-loop): this skill authors and repairs, those two refine.
 allowed-tools: Read Write Edit Glob Grep Agent Skill Bash(python:*) Bash(mkdir:*)
 ---
 
@@ -36,9 +38,9 @@ Identify the entry path and jump in:
 ## When NOT to Use
 
 - **Refining an existing skill only** → use `/skill-refiner-interactive`
-- **Reviewing skill quality** → use the `skill-reviewer` agent
+- **Reviewing skill quality** (assessing and scoring only, with no edits) → use the `skill-reviewer` agent; this skill edits
 - **Quick standalone repair (issue already diagnosed)** → run `scripts/repair_skill.py` directly; skip the full skill workflow
-- **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass.
+- **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass. Phase 3.5 compliance testing is the compatible exception: it measures a different axis and can run after or alongside either.
 - **A skill with multi-step phases, sub-agent orchestration, decision trees, or progressive disclosure across `references/`/`workflows/`** → use `workflow-skill-development` instead. This skill covers single-purpose skills with no multi-step workflow (just guidance); `workflow-skill-development` covers workflow/orchestration architecture — sequential pipelines, routing patterns, safety gates, task tracking, or phased execution.
 
 ## Finding-ID Fix Mode
