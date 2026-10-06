@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Format raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Mixed types grouped in documented order",
+      "prompt": "Format these changelog bullets as release notes:\n- feature: add dark mode toggle (#12)\n- bug: fix crash on empty note (#15)\n- docs: update install guide (#20)\n- refactor: split parser module (#22)\n- feature: export notes as PDF (#30)\n- bug: handle unicode titles (#31)",
+      "expected_output": "Six lines in the format '- [<TYPE>] <Summary> (#<id>)', grouped FEAT, FIX, DOCS, CHORE, with input order kept inside each group (FEAT 12 then 30, FIX 15 then 31, DOCS 20, CHORE 22).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Bullet without an issue number gets (#none)",
+      "prompt": "Format these changelog bullets as release notes:\n- feature: add search filter (#40)\n- bug: fix typo in settings label",
+      "expected_output": "Two lines: '- [FEAT] Add search filter (#40)' then '- [FIX] Fix typo in settings label (#none)'.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}
