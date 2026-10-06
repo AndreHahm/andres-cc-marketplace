@@ -143,7 +143,7 @@ def check_declared_tools_used():
     evidence = {
         "Read": r"\bRead\b",
         "Write": r"\bWrite\b",
-        "Edit": r"\bedits?\b|\bEdit\b",
+        "Edit": r"or direct edits",
         "Agent": r"\bAgent tool\b",
         "Skill": r"^Skill: ",
         "Bash": r"```bash",
@@ -155,7 +155,7 @@ def check_declared_tools_used():
         pattern = evidence.get(tool)
         if pattern is None:
             return False, f"declared tool {tool!r} has no usage pattern in this smoke test; add one"
-        if not re.search(pattern, body, re.MULTILINE | (re.IGNORECASE if tool == "Edit" else 0)):
+        if not re.search(pattern, body, re.MULTILINE):
             unused.append(tool)
     if not declared:
         return False, "allowed-tools declares no tools (extraction matched nothing)"

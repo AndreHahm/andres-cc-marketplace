@@ -50,8 +50,9 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 6,
-    "declared_scenarios_covered": 3,
+    "declared_scenarios_covered": 2,
     "uncovered": [
+      "Mode selection, Full Pipeline branch: no eval runs Full Pipeline's own setup (Step 1.3 workspace creation and Phase 3 outputs); eval 3 aggregates a prebuilt workspace and eval 4 only plans dispatch paths. The Quick branch is covered by eval 1.",
       "Trigger phrases: confirm skill activates on 'run evals on skill-X', 'benchmark this skill', 'validate skill performance', 'compare skill vs. baseline', 'test skill effectiveness'",
       "Non-triggers: confirm skill does NOT activate on 'review my skill structure', 'create a new skill', 'fix this PR'",
       "Smoke test: scripts/smoke_test.py passes (covered by the persisted smoke test, not by these evals)"
