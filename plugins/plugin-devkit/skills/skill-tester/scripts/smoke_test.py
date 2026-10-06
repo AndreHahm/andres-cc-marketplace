@@ -11,6 +11,10 @@ import subprocess
 import sys
 import tempfile
 
+sys.dont_write_bytecode = (
+    True  # importing the aggregation script must not write a .pyc into the skill folder
+)
+
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 AGGREGATE = SKILL_DIR / "scripts" / "aggregate_benchmark.py"
@@ -29,7 +33,9 @@ def check_frontmatter():
     frontmatter, _ = _split_frontmatter(SKILL_MD.read_text(encoding="utf-8"))
     if frontmatter is None:
         return False, "SKILL.md has no frontmatter block, or it is never closed"
-    if "name:" not in frontmatter or "description:" not in frontmatter:
+    if not re.search(r"^name:", frontmatter, re.MULTILINE) or not re.search(
+        r"^description:", frontmatter, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 
@@ -76,20 +82,31 @@ def check_no_orphans():
     return True, "every references/ and scripts/ file is referenced from SKILL.md"
 
 
-def _granted_bash_prefixes(frontmatter):
-    line = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not line:
+def _allowed_tools(frontmatter):
+    """Tool tokens from `allowed-tools` (space, comma, block-scalar and indented-list forms)."""
+    match = re.search(r"^allowed-tools:[ \t]*(.*(?:\n[ \t]+.*)*)", frontmatter or "", re.MULTILINE)
+    if not match:
         return None
-    return [g.rsplit(":", 1)[0].strip() for g in re.findall(r"Bash\(([^)]*)\)", line.group(1))]
+    return re.findall(r"[A-Za-z]\w*(?:\([^)]*\))?", match.group(1))
+
+
+def _granted_bash_commands(tools):
+    """First token of every `Bash(<command>:*)` grant, e.g. `python` for `Bash(python:*)`."""
+    granted = []
+    for tool in tools:
+        if tool.startswith("Bash(") and tool.endswith(")"):
+            scope = tool[len("Bash(") : -1].rsplit(":", 1)[0].split()
+            if scope:
+                granted.append(scope[0])
+    return granted
 
 
 def check_bash_grants():
     frontmatter, body = _split_frontmatter(SKILL_MD.read_text(encoding="utf-8"))
-    if frontmatter is None:
-        return False, "no frontmatter to read allowed-tools from"
-    granted = _granted_bash_prefixes(frontmatter)
-    if granted is None:
+    tools = _allowed_tools(frontmatter)
+    if tools is None:
         return False, "no allowed-tools line in frontmatter"
+    granted = _granted_bash_commands(tools)
     invoked = set()
     for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
         # Join trailing-backslash continuations so a wrapped command is one command.
@@ -106,7 +123,7 @@ def check_bash_grants():
             invoked.add(line.split()[0])
     if not invoked:
         return False, "no commands found in fenced bash blocks (extraction matched nothing)"
-    uncovered = [cmd for cmd in invoked if not any(cmd == p or cmd.startswith(p) for p in granted)]
+    uncovered = [cmd for cmd in invoked if cmd not in granted]
     if uncovered:
         return False, "body invokes command(s) not covered by any granted Bash scope: " + ", ".join(
             sorted(uncovered)
@@ -119,10 +136,10 @@ def check_bash_grants():
 
 def check_declared_tools_used():
     frontmatter, body = _split_frontmatter(SKILL_MD.read_text(encoding="utf-8"))
-    line = re.search(r"^allowed-tools:\s*(.+)$", frontmatter or "", re.MULTILINE)
-    if not line:
+    tools = _allowed_tools(frontmatter)
+    if tools is None:
         return False, "no allowed-tools line in frontmatter"
-    declared = re.findall(r"[A-Za-z]+(?=\(|\s|$)", re.sub(r"\([^)]*\)", "", line.group(1)))
+    declared = list(dict.fromkeys(tool.split("(")[0] for tool in tools))
     evidence = {
         "Read": r"\bRead\b",
         "Write": r"\bWrite\b",
@@ -305,7 +322,10 @@ CHECKS = [
 def main():
     failed = False
     for check in CHECKS:
-        ok, message = check()
+        try:
+            ok, message = check()
+        except Exception as exc:  # a crashing check is a failing check, not an aborted run
+            ok, message = False, f"check raised {type(exc).__name__}: {exc}"
         print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
         failed = failed or not ok
     sys.exit(1 if failed else 0)

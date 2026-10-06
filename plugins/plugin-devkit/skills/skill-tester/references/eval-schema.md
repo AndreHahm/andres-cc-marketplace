@@ -59,7 +59,7 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
       "text": "string (required) — assertion to verify (e.g., 'Output includes a clear skill name')",
       "type": "string (required) — assertion category: 'presence', 'quality', 'structure', 'functionality'",
       "target": "string (required) — where to look for this assertion (e.g., 'SKILL.md frontmatter', 'references/ directory', 'outputs/ directory')",
-      "pressure_condition": "string (optional) — name of a pressure type from skill-development's Pressure Types table (`${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`) if this assertion was verified under adversarial pressure framing rather than a cooperative baseline; omit for standard assertions"
+      "pressure_condition": "string (optional) — name of a pressure type from the Pressure Types table in the shared compliance-testing reference (`${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`) if this assertion was verified under adversarial pressure framing rather than a cooperative baseline; omit for standard assertions"
     }
   ]
 }
@@ -72,7 +72,7 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
 - `structure` — Directory layout, file organization, nesting levels match requirements
 - `functionality` — Skill performs expected action, produces expected behavior
 
-**`pressure_condition` (optional):** this pipeline's own agent dispatch doesn't apply adversarial framing — it runs cooperative with_skill/baseline scenarios. Set this field only to record that a given assertion's evidence came from a `skill-development` Phase 3.5 compliance-testing run (`${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`) rather than this pipeline, so a reader of `grading.json` can tell which methodology produced which result. Deliberately not a closed enum here — the pressure-type list is owned by `compliance-testing.md`'s Pressure Types table; duplicating it as a hardcoded list here would drift if that table changes.
+**`pressure_condition` (optional):** this pipeline's own agent dispatch doesn't apply adversarial framing — it runs cooperative with_skill/baseline scenarios. Set this field only to record that a given assertion's evidence came from a `skill-development` Phase 3.5 compliance-testing run (`${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md`) rather than this pipeline, so a reader of `grading.json` can tell which methodology produced which result. Deliberately not a closed enum here — the pressure-type list is owned by `pdk-compliance-testing.md`'s Pressure Types table; duplicating it as a hardcoded list here would drift if that table changes.
 
 **Example:** see `assets/eval-metadata-example.json`.
 
@@ -200,15 +200,34 @@ names for the same numbers:
 
 ---
 
+## Display Templates (Quick Phase 4, Step 7.4)
+
+**Quick Phase 4** — ask the operator:
+
+```
+question: "What would you like to do?"
+header: "Next Steps"
+options: [
+  {label: "Run full pipeline", description: "Move to complete benchmarking with baseline comparison"},
+  {label: "Refine skill", description: "Update skill based on failed assertions"},
+  {label: "Done", description: "Quick validation complete"}
+]
+```
+
+**Step 7.4** — Show delta between iteration-1 benchmark and iteration-2 benchmark:
+
+```
+ITERATION COMPARISON
+====================
+Iteration 1 pass rate: 67%  → Iteration 2: 95% (+28 points)
+Iteration 1 tokens:   1900  → Iteration 2: 2100 (+200, acceptable)
+```
+
+---
+
 ## Workspace Directory Structure (Standardized)
 
 All evaluation artifacts live in a **centralized `./evals/` directory at project root**, not inside skill directories — see `SKILL.md`'s own "Artifact Location (Standardized)" section for the full directory tree; not restated here to avoid drift.
-
-**Advantages:**
-- Easy to compare multiple skills' test results in one place
-- Keeps skill directories clean (no `/evals/` subdirs inside skills/)
-- Natural location for project-wide evaluation data
-- Simplifies path references in automation and scripts
 
 ---
 
