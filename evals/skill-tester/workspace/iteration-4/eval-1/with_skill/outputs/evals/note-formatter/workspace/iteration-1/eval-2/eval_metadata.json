@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet without an issue number is rendered with the literal suffix `(#none)`", "type": "presence", "target": "outputs/ directory"},
+    {"text": "The bullets that have an issue number keep it (#52, #53) and do not get (#none)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Lines are typed FEAT, FIX, DOCS and appear in that order", "type": "structure", "target": "outputs/ directory"},
+    {"text": "No invented issue number appears for the bullet that had none", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

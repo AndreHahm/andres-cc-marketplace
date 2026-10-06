@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Format raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Mixed types grouped in documented order",
+      "prompt": "Format these changelog bullets as release notes:\n- refactor: split the parser into two modules (#31)\n- bug: crash when the config file is empty (#12)\n- docs: explain the retry settings (#27)\n- feature: add dark mode toggle (#40)\n- bug: wrong total on empty cart (#15)\n- feature: export report as CSV (#41)",
+      "expected_output": "One line per bullet in the form `- [<TYPE>] <Summary> (#<id>)`, grouped FEAT, FIX, DOCS, CHORE with input order kept inside each group (refactor maps to CHORE). FEAT: dark mode toggle (#40), export report as CSV (#41); FIX: crash when the config file is empty (#12), wrong total on empty cart (#15); DOCS: explain the retry settings (#27); CHORE: split the parser into two modules (#31). Summaries are sentence case, no trailing period, at most 60 characters.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Bullet without issue number gets (#none)",
+      "prompt": "Format these changelog bullets as release notes:\n- feature: add keyboard shortcuts (#52)\n- bug: tooltip flickers on hover\n- docs: fix typo in install guide (#53)",
+      "expected_output": "Three lines grouped FEAT, FIX, DOCS. The bug bullet has no issue number and is rendered `- [FIX] Tooltip flickers on hover (#none)`; the other two keep their numbers (#52, #53).",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}
