@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/skill-tester/SKILL.md",
+  "assertions": [
+    {
+      "text": "transcript.md shows the fast no-baseline mode was chosen and records that baseline runs, aggregation and comparison tables are skipped",
+      "type": "functionality",
+      "target": "transcript.md"
+    },
+    {
+      "text": "evals/note-formatter/evals.json exists and each eval has id, name, prompt, expected_output and files",
+      "type": "structure",
+      "target": "evals.json"
+    },
+    {
+      "text": "evals.json carries testing_validation_coverage with declared_scenarios_total 2, declared_scenarios_covered 2 and an empty uncovered list",
+      "type": "presence",
+      "target": "evals.json"
+    },
+    {
+      "text": "an eval_metadata.json exists for every eval under workspace/iteration-1/eval-N/ and every assertion type is one of presence, quality, structure, functionality",
+      "type": "structure",
+      "target": "OUTDIR/evals/note-formatter/workspace/iteration-1"
+    },
+    {
+      "text": "no baseline directory and no benchmark.json was created",
+      "type": "presence",
+      "target": "OUTDIR/evals/note-formatter/workspace"
+    },
+    {
+      "text": "transcript.md records that the target skill's own Testing & Validation section was read and cross-checked before evals.json was written",
+      "type": "functionality",
+      "target": "transcript.md"
+    }
+  ]
+}
