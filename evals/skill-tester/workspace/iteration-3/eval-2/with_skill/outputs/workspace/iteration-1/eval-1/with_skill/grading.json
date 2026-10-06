@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "every output line has the form '- [TYPE] Summary (#id)'",
+      "passed": true,
+      "evidence": "All four lines match '- [TYPE] Summary (#id)', e.g. '- [FEAT] Dark mode toggle (#12)'; summaries are sentence case, no trailing period, under 60 chars."
+    },
+    {
+      "text": "every TYPE tag is one of FEAT, FIX, DOCS, CHORE",
+      "passed": true,
+      "evidence": "Tags used: FEAT, FIX, DOCS, CHORE; 'refactor' correctly mapped to CHORE per rule 2."
+    },
+    {
+      "text": "lines are grouped in the order FEAT, FIX, DOCS, CHORE",
+      "passed": true,
+      "evidence": "Order is FEAT, FIX, DOCS, CHORE."
+    },
+    {
+      "text": "a bullet without an issue number is rendered with (#none)",
+      "passed": true,
+      "evidence": "'- [DOCS] Update install guide (#none)' and '- [CHORE] Cleanup of logging (#none)'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

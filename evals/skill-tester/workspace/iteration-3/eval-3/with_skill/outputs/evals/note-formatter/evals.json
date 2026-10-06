@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Formats raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "mixed-types-grouped",
+      "prompt": "Format a mixed list of bullets.",
+      "expected_output": "Grouped FEAT, FIX, DOCS, CHORE.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "missing-issue-number",
+      "prompt": "Format a bullet with no issue number.",
+      "expected_output": "Rendered with (#none).",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

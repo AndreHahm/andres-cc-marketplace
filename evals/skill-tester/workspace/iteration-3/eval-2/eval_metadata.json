@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/skill-tester/SKILL.md",
+  "assertions": [
+    {
+      "text": "both grading.json files exist with eval_id, configuration ('with_skill' or 'baseline'), assertions_evaluated and summary",
+      "type": "structure",
+      "target": "grading.json files"
+    },
+    {
+      "text": "every entry in assertions_evaluated has text, a boolean passed and a non-empty evidence string quoting or citing the output",
+      "type": "structure",
+      "target": "grading.json files"
+    },
+    {
+      "text": "each summary is arithmetically consistent: assertions_total equals the entry count, assertions_passed equals the passed count and pass_rate equals passed divided by total",
+      "type": "functionality",
+      "target": "grading.json files"
+    },
+    {
+      "text": "with_skill is graded 4 of 4 passed",
+      "type": "functionality",
+      "target": "with_skill/grading.json"
+    },
+    {
+      "text": "baseline is graded as failing the line-format, tag and (#none) assertions (the grouping assertion may be graded either way, since the baseline lines have no tags)",
+      "type": "functionality",
+      "target": "baseline/grading.json"
+    },
+    {
+      "text": "assertion texts in the grading files match eval_metadata.json verbatim",
+      "type": "presence",
+      "target": "grading.json files"
+    }
+  ]
+}
