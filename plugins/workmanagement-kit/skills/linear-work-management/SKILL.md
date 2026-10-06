@@ -49,18 +49,21 @@ Status section. This grant is coupled to this specific connector's tool names �
 installation using a different Linear MCP connector would need this list re-resolved against that
 connector's own tool surface, not assumed portable.
 
-**Label, view and Initiative tools.** `save_issue_label` and `retire_issue_label` maintain the
-team-scoped labels a repository's team needs (renaming or retiring one; creating one stays
-`create_issue_label`). Both are writes and take the live approval gate like any other material
-change. `list_custom_views` reads a team's saved views so a setup check can confirm they exist; this
+**Label, view and Initiative tools.** `save_issue_label` creates or updates a label: with no `id` it
+creates one, workspace-wide when no team is given, and it can also create label groups.
+`retire_issue_label` retires one, and retiring a group also retires its child labels.
+`create_issue_label` is the older create-only tool. All of these are writes: any label creation,
+update or retirement takes the live approval gate, and the preview names the label's team scope and,
+for a group, the child labels a retirement would also retire. `list_custom_views` reads a team's saved views so a setup check can confirm they exist; this
 skill never creates or edits a view, because the connector has no tool for it. The three
 `mcp__mcp-linear__linear_*` tools (`getInitiatives`, `getInitiativeById`, `getInitiativeProjects`)
 are read-only Initiative reads on a second, separately installed Linear connector, because the
 `claude_ai_Linear` connector above cannot list Initiatives. A session without that second connector
 simply lacks those tools, and an Initiative read is then a structured handoff, never a substitute
 through another tool. An Initiative read follows the same host-profile check as any other read (see
-Resolving the connector); how the profile names a second read connector is settled in the
-configuration work, not here.
+Resolving the connector). Until the host profile can name that second connector, the check cannot
+pass for it, so treat the read as unsanctioned and make it a structured handoff even when the tools
+are present; the configuration work defines how the profile names a second read connector.
 
 **Known connector gap — Goal and Roadmap have no direct tool backing.** The real connector exposes
 Issue (`get_issue`/`save_issue`/`list_issues`), Project (`get_project`/`save_project`/
@@ -123,7 +126,8 @@ yet, or the name doesn't match) — never silently create a new entity to fill t
   the evidence field, not the entity's actual content, and the write it confirms was already
   approved.
 - **Approval required:** any material priority, owner, scope, date, status, or closure change; any
-  Goal/Roadmap/Project/Milestone/Issue creation; any label rename or retirement; any refinement whose derived priority or scope came from Notion
+  Goal/Roadmap/Project/Milestone/Issue creation; any label creation, update or retirement; any
+  refinement whose derived priority or scope came from Notion
   or other external content rather than the user's own direct instruction — even when the
   suggestion looks obviously right, it still needs the same live approval a direct request would.
   Approval is obtained via `AskUserQuestion`, presenting the previewed change for confirmation
