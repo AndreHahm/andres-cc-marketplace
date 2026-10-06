@@ -64,8 +64,27 @@ that to complete against its full scope — confirmed live: a 100-changed-path P
 hard timeout on retry. The `codex-review` job sets `CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"` (10 min)
 directly in the workflow (not a repository variable, unlike the model override above — this is a
 self-contained workflow default, not something a maintainer needs to configure separately), giving every
-dispatched reviewer more headroom within the job's own 20-minute budget. Invalid values (non-numeric or
+dispatched reviewer more headroom within the job's own 45-minute budget. Invalid values (non-numeric or
 non-positive) fail the job with a clear message, same as the model override.
+
+### Concurrency, timeout retries and the dispatch budget
+
+`dispatch_reviewers` (`scripts/marketplace_ci/review.py`) runs reviewers on a pool of two workers
+(`DISPATCH_MAX_WORKERS`) rather than one after another; the result keeps the scope's own reviewer order.
+A reviewer whose bridge call fails with the bridge's structured `timeout` error is retried up to twice
+(`DISPATCH_MAX_TIMEOUT_RETRIES`), so a reviewer can make up to three calls. Only that `timeout` category
+is retried — a non-zero exit for any other reason, or malformed bridge output, fails immediately so a real
+bridge or validation fault is never masked by a retry.
+
+The whole dispatch has a 42-minute budget (`DISPATCH_BUDGET_SECONDS`), kept under the job's own 45-minute
+`timeout-minutes`. No bridge call starts, first attempt or retry, unless a full per-call timeout
+(`CODEX_KIT_REVIEW_TIMEOUT_MS`) still fits in what is left. A reviewer that cannot start or retry within the
+budget is reported as failed with a `dispatch budget exhausted` error, so the job exits with a clear result
+instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
+to bridge calls made) so a reviewer that needed retries stays visible even when the run passes.
+
+The `CODEX_KIT_REVIEW_TIMEOUT_MS` workflow value is the only per-call timeout the dispatcher reads; a
+repository variable of that name has no effect, because the workflow sets the value itself.
 
 ## Fork PR limitation
 

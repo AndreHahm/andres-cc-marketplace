@@ -9,11 +9,14 @@ or trust reviewer prose beyond that envelope's own typed fields.
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 import subprocess
 import sys
+import time
 from collections.abc import Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -819,80 +822,191 @@ class ReviewerReport:
     status: str  # "completed" | "failed"
     output: dict | None = None
     error: str | None = None
+    attempts: int = 1
+
+
+# At most this many reviewers run at once. Two keeps the burst on the Codex
+# account small while still roughly halving the serial wall time.
+DISPATCH_MAX_WORKERS = 2
+# A timed-out reviewer is retried up to this many more times (so up to three
+# bridge calls in total). Only a bridge `timeout` is retried -- see
+# _is_bridge_timeout.
+DISPATCH_MAX_TIMEOUT_RETRIES = 2
+# Overall dispatch budget, kept under the codex-review job's own 45-minute
+# `timeout-minutes` so retries can never run the job into GitHub's kill: no
+# bridge call starts unless a full per-call budget still fits.
+DISPATCH_BUDGET_SECONDS = 42 * 60
+# Used only when CODEX_KIT_REVIEW_TIMEOUT_MS is unset; matches
+# bridge-invoke.mjs's own default so the "does one more call fit" check never
+# assumes a shorter call than the bridge will actually allow.
+_DEFAULT_CALL_SECONDS = 240
+
+
+def _per_call_seconds() -> float:
+    # Parse the way bridge-invoke.mjs does (`Number()` then an integer check),
+    # so a value the bridge accepts (e.g. "6e5") is never read here as unset.
+    raw = os.environ.get("CODEX_KIT_REVIEW_TIMEOUT_MS")
+    try:
+        ms = float(raw) if raw else 0.0
+    except ValueError:
+        ms = 0.0
+    return ms / 1000 if ms > 0 and ms.is_integer() else _DEFAULT_CALL_SECONDS
+
+
+def _is_bridge_timeout(stderr: str) -> bool:
+    """True only for bridge-invoke.mjs's own structured timeout error
+    (`{"ok":false,"category":"timeout",...}`). Any other failure -- a
+    non-zero exit for another reason, an invalid-argument error -- is never
+    retried, so a real bridge or validation fault can't be masked by a retry."""
+    try:
+        parsed = json.loads(stderr)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(parsed, dict) and parsed.get("category") == "timeout"
+
+
+def _dispatch_one(
+    name: str,
+    scope: ReviewScope,
+    *,
+    base_sha: str,
+    repo: Path,
+    instructions_dir: Path,
+    bridge_script: Path,
+    dispatch_id: str,
+    deadline: float,
+    max_timeout_retries: int,
+) -> ReviewerReport:
+    reviewer_scope = scope.paths
+    if name == "plugin-rulebook-checker":
+        # Narrow to only what R1-R27 actually reviews -- see
+        # _is_rulebook_scoped_path's own comment for why. Fall back to
+        # the full scope if filtering would leave nothing: a caller
+        # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
+        # baseline regardless of whether any in-scope file happens to
+        # remain, and an empty --target-paths is worse than a widened
+        # (but real) one.
+        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
+        reviewer_scope = scoped or scope.paths
+    target_paths = ",".join(reviewer_scope)
+
+    instruction_path = instructions_dir / f"{name}.txt"
+    try:
+        prepare_reviewer_instruction(name, base_sha=base_sha, out=instruction_path, repo=repo)
+    except SystemExit:
+        return ReviewerReport(
+            reviewer=name, status="failed", error="instruction preparation failed", attempts=0
+        )
+
+    argv = [
+        "node",
+        str(bridge_script),
+        "--reviewer-type",
+        name,
+        "--instruction-file",
+        str(instruction_path),
+        "--target-paths",
+        target_paths,
+        "--execution-profile",
+        "read-only",
+        "--dispatch-id",
+        dispatch_id,
+    ]
+    call_seconds = _per_call_seconds()
+    attempts = 0
+    while True:
+        if time.monotonic() + call_seconds > deadline:
+            # Fail loudly rather than start a call the job budget can't
+            # finish: the job would otherwise be killed mid-call with no result.
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=(
+                    "dispatch budget exhausted before this reviewer could "
+                    f"{'retry' if attempts else 'start'} (attempts so far: {attempts})"
+                ),
+                attempts=attempts,
+            )
+        attempts += 1
+        result = subprocess.run(argv, cwd=repo, capture_output=True)
+        if result.returncode == 0:
+            break
+        stderr = result.stderr.decode("utf-8", errors="replace")
+        if _is_bridge_timeout(stderr) and attempts <= max_timeout_retries:
+            print(
+                f"run-codex-review: {name} timed out (attempt {attempts}); retrying",
+                file=sys.stderr,
+            )
+            continue
+        return ReviewerReport(reviewer=name, status="failed", error=stderr, attempts=attempts)
+
+    try:
+        output = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return ReviewerReport(
+            reviewer=name, status="failed", error="malformed bridge output", attempts=attempts
+        )
+    return ReviewerReport(reviewer=name, status="completed", output=output, attempts=attempts)
 
 
 def dispatch_reviewers(
-    scope: ReviewScope, *, base_sha: str, repo: Path, instructions_dir: Path | None = None
+    scope: ReviewScope,
+    *,
+    base_sha: str,
+    repo: Path,
+    instructions_dir: Path | None = None,
+    max_workers: int = DISPATCH_MAX_WORKERS,
+    max_timeout_retries: int = DISPATCH_MAX_TIMEOUT_RETRIES,
+    budget_seconds: float = DISPATCH_BUDGET_SECONDS,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
-    `scope.validate` then `scope.audit` (in order), extract its instruction
-    from the base SHA, then invoke `codex-review-bridge`'s `bridge-invoke.mjs`
-    directly as a subprocess. There is no outer Codex-executed skill and no
-    second `codex` CLI layer above this one call per reviewer."""
+    `scope.validate` then `scope.audit`, extract its instruction from the base
+    SHA, then invoke `codex-review-bridge`'s `bridge-invoke.mjs` directly as a
+    subprocess. There is no outer Codex-executed skill and no second `codex`
+    CLI layer above this one call per reviewer.
+
+    Reviewers run on a small worker pool (`max_workers`) but the returned
+    reports keep the scope's own order. A reviewer whose bridge call times out
+    is retried up to `max_timeout_retries` times; no call starts unless a full
+    per-call budget still fits inside `budget_seconds` overall."""
     instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
+    deadline = time.monotonic() + budget_seconds
 
-    reports: list[ReviewerReport] = []
-    for name in (*scope.validate, *scope.audit):
-        reviewer_scope = scope.paths
-        if name == "plugin-rulebook-checker":
-            # Narrow to only what R1-R27 actually reviews -- see
-            # _is_rulebook_scoped_path's own comment for why. Fall back to
-            # the full scope if filtering would leave nothing: a caller
-            # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
-            # baseline regardless of whether any in-scope file happens to
-            # remain, and an empty --target-paths is worse than a widened
-            # (but real) one.
-            scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
-            reviewer_scope = scoped or scope.paths
-        target_paths = ",".join(reviewer_scope)
-
-        instruction_path = instructions_dir / f"{name}.txt"
-        try:
-            prepare_reviewer_instruction(name, base_sha=base_sha, out=instruction_path, repo=repo)
-        except SystemExit:
-            reports.append(
-                ReviewerReport(
-                    reviewer=name, status="failed", error="instruction preparation failed"
-                )
+    # Deduplicated, order kept: two workers must never write the same
+    # per-reviewer instruction file at once.
+    names = tuple(dict.fromkeys((*scope.validate, *scope.audit)))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [
+            pool.submit(
+                _dispatch_one,
+                name,
+                scope,
+                base_sha=base_sha,
+                repo=repo,
+                instructions_dir=instructions_dir,
+                bridge_script=bridge_script,
+                dispatch_id=dispatch_id,
+                deadline=deadline,
+                max_timeout_retries=max_timeout_retries,
             )
-            continue
-
-        argv = [
-            "node",
-            str(bridge_script),
-            "--reviewer-type",
-            name,
-            "--instruction-file",
-            str(instruction_path),
-            "--target-paths",
-            target_paths,
-            "--execution-profile",
-            "read-only",
-            "--dispatch-id",
-            dispatch_id,
+            for name in names
         ]
-        result = subprocess.run(argv, cwd=repo, capture_output=True)
-        if result.returncode != 0:
-            reports.append(
-                ReviewerReport(
-                    reviewer=name,
-                    status="failed",
-                    error=result.stderr.decode("utf-8", errors="replace"),
+        reports: list[ReviewerReport] = []
+        for name, future in zip(names, futures, strict=True):
+            try:
+                reports.append(future.result())
+            except Exception as exc:  # one reviewer's crash must not drop the others' reports
+                reports.append(
+                    ReviewerReport(
+                        reviewer=name,
+                        status="failed",
+                        error=f"dispatch raised {type(exc).__name__}: {exc}",
+                        attempts=0,
+                    )
                 )
-            )
-            continue
-        try:
-            output = json.loads(result.stdout)
-        except json.JSONDecodeError:
-            reports.append(
-                ReviewerReport(reviewer=name, status="failed", error="malformed bridge output")
-            )
-            continue
-        reports.append(ReviewerReport(reviewer=name, status="completed", output=output))
-
-    return tuple(reports)
+        return tuple(reports)
 
 
 # --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---

@@ -686,7 +686,7 @@ jobs:
     needs: [hygiene, python-quality, marketplace-parity, prefix-permanence, compute-scope]
     if: github.event.pull_request.head.repo.fork == false && needs.compute-scope.outputs.bypass_eligible != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -901,9 +901,10 @@ jobs:
           # (4 min) default every other codex-review-bridge caller uses.
           # A large delta PR can legitimately push one reviewer's single-call
           # review past that default (confirmed live, PR #41: a 100-path
-          # delta caused a timeout). This job's own 20-minute budget above
+          # delta caused a timeout). This job's own 45-minute budget above
           # has headroom for a longer per-reviewer budget across the several
-          # reviewers dispatched sequentially in one run. See docs/ci.md.
+          # reviewers dispatched in one run (two at a time, with timeout
+          # retries inside a 42-minute dispatch budget). See docs/ci.md.
           CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
