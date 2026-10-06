@@ -1,8 +1,12 @@
 import subprocess
+import threading
+import time
+from collections import Counter
 from pathlib import Path
 
 import pytest
 
+from scripts.marketplace_ci import review
 from scripts.marketplace_ci.review import (
     derive_review_scope,
     dispatch_reviewers,
@@ -229,3 +233,290 @@ def test_every_routing_table_reviewer_has_extractable_instructions():
             f"{name}: .codex/agents/{name}.toml has no extractable developer_instructions "
             "-- this reviewer would dispatch with an empty instruction body"
         )
+
+
+# --- concurrency, timeout retry, and dispatch budget ---
+
+_TIMEOUT_STDERR = b'{"ok":false,"category":"timeout","detail":"codex exec exceeded 600000ms"}'
+
+
+def _reviewer_of(argv):
+    return argv[argv.index("--reviewer-type") + 1]
+
+
+def _bridge_aware_run(on_bridge_call):
+    """A `subprocess.run` stand-in: the git-show instruction extraction always
+    succeeds; every bridge call is handed to `on_bridge_call(reviewer, argv)`."""
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            return on_bridge_call(_reviewer_of(argv), argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_FAKE_TOML_CONTENT, stderr=b""
+        )
+
+    return fake_run
+
+
+def _ok(argv):
+    return subprocess.CompletedProcess(args=argv, returncode=0, stdout=b'{"ok": true}', stderr=b"")
+
+
+def _skill_scope(change, dependency_index):
+    return derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+
+
+def test_dispatch_runs_reviewers_concurrently_up_to_the_worker_limit(
+    monkeypatch, repo, change, dependency_index
+):
+    lock = threading.Lock()
+    running = 0
+    peak = 0
+
+    def on_call(reviewer, argv):
+        nonlocal running, peak
+        with lock:
+            running += 1
+            peak = max(peak, running)
+        time.sleep(0.05)
+        with lock:
+            running -= 1
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, max_workers=2)
+    assert peak == 2
+
+
+def test_dispatch_returns_reports_in_scope_order_regardless_of_finish_order(
+    monkeypatch, repo, change, dependency_index
+):
+    scope = _skill_scope(change, dependency_index)
+    expected = [*scope.validate, *scope.audit]
+
+    def on_call(reviewer, argv):
+        # The first reviewer in scope order finishes last.
+        time.sleep(0.1 if reviewer == expected[0] else 0)
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, max_workers=2)
+    assert [r.reviewer for r in reports] == expected
+
+
+def test_dispatch_retries_a_timed_out_reviewer_and_records_the_attempts(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "security-reviewer" and calls[reviewer] <= 2:
+            return subprocess.CompletedProcess(
+                args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+            )
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {r.reviewer: r for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)}
+    assert reports["security-reviewer"].status == "completed"
+    assert reports["security-reviewer"].attempts == 3
+    assert calls["security-reviewer"] == 3
+    assert all(r.attempts == 1 for n, r in reports.items() if n != "security-reviewer")
+
+
+def test_dispatch_gives_up_after_the_retry_limit_and_reports_the_timeout(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(
+            args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.attempts == 3 for r in reports)
+    assert all('"category":"timeout"' in (r.error or "") for r in reports)
+    assert set(calls.values()) == {3}
+
+
+def test_dispatch_never_retries_a_non_timeout_failure(monkeypatch, repo, change, dependency_index):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=b"boom")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.attempts == 1 and r.error == "boom" for r in reports)
+    assert set(calls.values()) == {1}
+
+
+def test_dispatch_never_retries_malformed_bridge_output(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(args=argv, returncode=0, stdout=b"not json", stderr=b"")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.error == "malformed bridge output" for r in reports)
+    assert set(calls.values()) == {1}
+
+
+def test_dispatch_starts_no_bridge_call_when_the_budget_is_already_spent(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", "600000")
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, budget_seconds=599)
+    assert not calls
+    assert all(r.status == "failed" and r.attempts == 0 for r in reports)
+    assert all("budget exhausted" in (r.error or "") for r in reports)
+
+
+def test_dispatch_skips_a_retry_that_would_not_fit_in_the_remaining_budget(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", "600000")
+    now = [0.0]
+    monkeypatch.setattr(review.time, "monotonic", lambda: now[0])
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "dependency-reviewer":
+            now[0] += 600  # the timed-out call used its whole per-call budget
+            return subprocess.CompletedProcess(
+                args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+            )
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {
+        r.reviewer: r
+        for r in dispatch_reviewers(
+            scope, base_sha="deadbeef", repo=repo, max_workers=1, budget_seconds=1020
+        )
+    }
+    dep = reports["dependency-reviewer"]
+    assert dep.status == "failed" and dep.attempts == 1
+    assert "budget exhausted" in (dep.error or "") and "retry" in (dep.error or "")
+    assert calls["dependency-reviewer"] == 1
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("600000", 600.0),
+        ("6e5", 600.0),  # bridge-invoke.mjs's Number() accepts this
+        ("600000.0", 600.0),
+        ("600000.5", 240.0),  # not an integer: the bridge rejects it
+        ("abc", 240.0),
+        ("-5", 240.0),
+        ("", 240.0),
+    ],
+)
+def test_per_call_seconds_parses_the_timeout_like_the_bridge(monkeypatch, raw, expected):
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", raw)
+    assert review._per_call_seconds() == expected
+
+
+def test_dispatch_turns_a_worker_exception_into_a_failed_report_and_keeps_the_rest(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        if reviewer == "security-reviewer":
+            raise FileNotFoundError("node")
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    by_name = {r.reviewer: r for r in reports}
+    assert len(reports) == len([*scope.validate, *scope.audit])
+    assert by_name["security-reviewer"].status == "failed"
+    assert "FileNotFoundError" in (by_name["security-reviewer"].error or "")
+    assert all(r.status == "completed" for n, r in by_name.items() if n != "security-reviewer")
+
+
+def test_dispatch_runs_a_reviewer_listed_twice_only_once(
+    monkeypatch, repo, change, dependency_index
+):
+    from dataclasses import replace
+
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    overlapping = replace(scope, audit=(*scope.audit, scope.validate[0]))
+    reports = dispatch_reviewers(overlapping, base_sha="deadbeef", repo=repo)
+    assert set(calls.values()) == {1}
+    assert len({r.reviewer for r in reports}) == len(reports)
+
+
+def test_a_timed_out_call_can_still_be_retried_at_the_shipped_ci_numbers(
+    monkeypatch, repo, change, dependency_index
+):
+    # M1 regression: with a 600 s call timeout, the default budget must leave
+    # room for a retry after a call that used its whole timeout.
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", "600000")
+    now = [0.0]
+    monkeypatch.setattr(review.time, "monotonic", lambda: now[0])
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "dependency-reviewer" and calls[reviewer] == 1:
+            now[0] += 600
+            return subprocess.CompletedProcess(
+                args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+            )
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {
+        r.reviewer: r
+        for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, max_workers=1)
+    }
+    assert reports["dependency-reviewer"].status == "completed"
+    assert reports["dependency-reviewer"].attempts == 2
+
+
+def test_the_codex_review_job_timeout_stays_above_the_dispatch_budget():
+    import re
+
+    workflow = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "marketplace-ci.yml"
+    text = workflow.read_text(encoding="utf-8")
+    job = re.search(r"\n  codex-review:\n(.*?)(?=\n  [A-Za-z0-9_-]+:\n)", text, re.DOTALL)
+    assert job, "codex-review job not found in marketplace-ci.yml"
+    timeout = re.search(r"timeout-minutes:\s*(\d+)", job.group(1))
+    assert timeout, "codex-review job has no timeout-minutes"
+    minutes = int(timeout.group(1))
+    # Leave room for checkout, npm install and the post-dispatch steps.
+    assert minutes * 60 >= review.DISPATCH_BUDGET_SECONDS + 120

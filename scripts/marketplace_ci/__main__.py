@@ -949,7 +949,10 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         for r in failed_reports:
-            print(f"run-codex-review:   {r.reviewer}: {r.error}", file=sys.stderr)
+            print(
+                f"run-codex-review:   {r.reviewer} (attempts: {r.attempts}): {r.error}",
+                file=sys.stderr,
+            )
         return 2
 
     validated = []
@@ -974,6 +977,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "mode": scope.mode,
         "reviewed_paths": list(scope.paths),
         "reviewers": [r.reviewer for r in reports],
+        "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
         "structural_findings": [
             {"path": f.path, "operation": f.operation, "reason": f.reason}
             for f in structural_findings
