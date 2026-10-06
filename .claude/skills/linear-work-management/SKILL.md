@@ -54,9 +54,11 @@ creates one, workspace-wide when no team is given, and it can also create label 
 `retire_issue_label` retires one, and retiring a group also retires its child labels.
 `create_issue_label` is the older create-only tool. All of these are writes: any label creation,
 update or retirement takes the live approval gate, and the preview names the label's team scope and,
-for a group, the child labels a retirement would also retire. `list_custom_views` reads a team's saved views so a setup check can confirm they exist; this
-skill never creates or edits a view, because the connector has no tool for it. The three
-`mcp__mcp-linear__linear_*` tools (`getInitiatives`, `getInitiativeById`, `getInitiativeProjects`)
+for a group, the child labels a retirement would also retire. A label with no team is
+organization-wide and is in scope only when the verified `linear.write` scope covers the
+organization, not just selected `team_ids`. `list_custom_views` reads a team's saved views so a
+setup check can confirm they exist; this skill never creates or edits a view, because the connector
+has no tool for it. The three `mcp__mcp-linear__linear_*` tools (`getInitiatives`, `getInitiativeById`, `getInitiativeProjects`)
 are read-only Initiative reads on a second, separately installed Linear connector, because the
 `claude_ai_Linear` connector above cannot list Initiatives. A session without that second connector
 simply lacks those tools, and an Initiative read is then a structured handoff, never a substitute
