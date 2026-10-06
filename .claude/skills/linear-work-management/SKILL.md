@@ -51,15 +51,18 @@ connector's own tool surface, not assumed portable.
 
 **Label, view and Initiative tools.** `save_issue_label` creates or updates a label: with no `id` it
 creates one, workspace-wide when no team is given, and it can also create label groups.
-`retire_issue_label` retires one, and retiring a group also retires its child labels.
+`retire_issue_label` retires one, and retiring a group also retires its child labels. To read a
+retirement back, call `list_issue_labels` with `includeArchived: true` (and `includeGroups: true`
+for a group) and check the label's archived state: the tool description names that field
+`retiredAt`, but live reads return `archivedAt`, so confirm which one is set on first use.
 `create_issue_label` is the older create-only tool. All of these are writes: any label creation,
 update or retirement takes the live approval gate, and the preview names the label's team scope and,
 for a group, the child labels a retirement would also retire. A label with no team is
 organization-wide and is in scope only when the verified `linear.write` scope covers the
 organization, not just selected `team_ids`. `list_custom_views` reads a team's saved views so a
 setup check can confirm they exist; this skill never creates or edits a view, because the connector
-has no tool for it. The three `mcp__mcp-linear__linear_*` tools (`getInitiatives`, `getInitiativeById`, `getInitiativeProjects`)
-are read-only Initiative reads on a second, separately installed Linear connector, because the
+has no tool for it. The three `mcp__mcp-linear__linear_*` tools (`getInitiatives`,
+`getInitiativeById`, `getInitiativeProjects`) are read-only Initiative reads on a second, separately installed Linear connector, because the
 `claude_ai_Linear` connector above cannot list Initiatives. A session without that second connector
 simply lacks those tools, and an Initiative read is then a structured handoff, never a substitute
 through another tool. An Initiative read follows the same host-profile check as any other read (see
