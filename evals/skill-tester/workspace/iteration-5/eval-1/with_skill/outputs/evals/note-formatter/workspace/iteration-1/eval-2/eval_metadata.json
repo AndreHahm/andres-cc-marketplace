@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet without an issue number is rendered ending in `(#none)`", "type": "presence", "target": "outputs/ directory (formatted notes)"},
+    {"text": "The bullet with issue number 21 keeps `(#21)` and does not get `(#none)`", "type": "functionality", "target": "outputs/ directory (formatted notes)"},
+    {"text": "Output has one line per bullet in the form `- [<TYPE>] <Summary> (#<id>)` with FEAT before FIX", "type": "structure", "target": "outputs/ directory (formatted notes)"},
+    {"text": "Summaries are sentence case with no trailing period", "type": "quality", "target": "outputs/ directory (formatted notes)"}
+  ]
+}
