@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "source": "skill-tester",
+  "mode": "full_pipeline",
+  "skill_name": "note-formatter",
+  "iteration": 1,
+  "summary": {"with_skill_pass_rate": 0.875, "baseline_pass_rate": 0.375, "improvement_points": 50.0},
+  "results": [
+    {"eval_id": 1, "name": "mixed-types-grouped",
+     "with_skill": {"passed": 4, "total": 4, "tokens": 2500, "duration_s": 8},
+     "baseline": {"passed": 2, "total": 4, "tokens": 1800, "duration_s": 5}},
+    {"eval_id": 2, "name": "missing-issue-number",
+     "with_skill": {"passed": 3, "total": 4, "tokens": 2100, "duration_s": 7},
+     "baseline": {"passed": 1, "total": 4, "tokens": 1900, "duration_s": 4}}
+  ],
+  "coverage": {"declared_scenarios_total": 2, "declared_scenarios_covered": 2}
+}

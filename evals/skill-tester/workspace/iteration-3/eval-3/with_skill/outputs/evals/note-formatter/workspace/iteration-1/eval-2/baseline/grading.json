@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "assertion 1",
+      "passed": true,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 2",
+      "passed": false,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 3",
+      "passed": false,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 4",
+      "passed": false,
+      "evidence": "fixture"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

@@ -1,0 +1,12 @@
+You are providing a BASELINE. Help the user accomplish their task WITHOUT any special
+skill or methodology. NO SKILLS AVAILABLE. Use standard Claude capabilities only.
+Do not use the Skill tool and do not read any skill folder or SKILL.md file.
+
+USER TASK:
+Format these bullets: 'bug: crash on empty input #7', 'feature: dark mode toggle (issue 12)'.
+
+After completing the task, save all outputs (code, files, notes) to:
+./evals/note-formatter/workspace/iteration-1/eval-1/baseline/outputs/
+
+Then create ./evals/note-formatter/workspace/iteration-1/eval-1/baseline/timing.json:
+{ "total_tokens": <count>, "duration_ms": <milliseconds>, "model": "<model-id>" }
