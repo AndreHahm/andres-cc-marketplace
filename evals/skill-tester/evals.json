@@ -1,0 +1,60 @@
+{
+  "skill_name": "skill-tester",
+  "skill_path": "plugins/plugin-devkit/skills/skill-tester/SKILL.md",
+  "description": "Tests and benchmarks Claude Code skills empirically with a fast pass/fail mode and a full baseline-comparison pipeline.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "quick-mode-setup",
+      "prompt": "Paths are relative to the repository root, and every file you write must use only repo-relative paths (no absolute paths, no home directories). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion and you cannot launch sub-agents. Every time the procedure would ask the operator something, write the question and the option labels into OUTDIR/transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Record in transcript.md which numbered step you are executing. Never modify any file under evals/skill-tester/fixtures or outside OUTDIR; copy what you need into OUTDIR first. OUTDIR is supplied by the dispatcher. The operator says: 'Quickly check my note-formatter skill, it lives in evals/skill-tester/fixtures/note-formatter.' Simulated operator answers: the skill is already located; testing mode is the fast pass/fail one with no baseline; two scenarios: (1) a mixed list of feature/bug/docs/refactor bullets gets grouped in the documented order, (2) a bullet without an issue number is rendered with (#none); a good response follows the skill's rules exactly; no pressure testing is wanted. Carry the work through creating the eval files only, stop before running any agent, and describe in transcript.md what the next phase would do. Work under OUTDIR/evals/note-formatter/ using the standard evals directory layout.",
+      "expected_output": "evals.json with the required fields and a testing_validation_coverage block (2 declared, 2 covered), one eval_metadata.json per eval with valid assertion types, workspace/iteration-1 created, and no baseline directories or benchmark.json.",
+      "files": [
+        "transcript.md",
+        "evals/note-formatter/evals.json"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "grading-against-assertions",
+      "prompt": "Paths are relative to the repository root, and every file you write must use only repo-relative paths (no absolute paths, no home directories). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion and you cannot launch sub-agents. Every time the procedure would ask the operator something, write the question and the option labels into OUTDIR/transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Record in transcript.md which numbered step you are executing. Never modify any file under evals/skill-tester/fixtures or outside OUTDIR; copy what you need into OUTDIR first. OUTDIR is supplied by the dispatcher. Two agents have already run for eval 1 of note-formatter; their outputs and the eval's assertions are in evals/skill-tester/fixtures/graded/eval-1/ (eval_metadata.json, prompt.txt, with_skill/outputs, baseline/outputs). You are at the grading step of a full benchmark: copy that directory to OUTDIR/workspace/iteration-1/eval-1/ and produce a grading.json for the with_skill configuration and one for the baseline configuration, judged only against the assertions in eval_metadata.json and the rules in evals/skill-tester/fixtures/note-formatter/SKILL.md. Simulated operator answers: none needed.",
+      "expected_output": "with_skill/grading.json passes 4 of 4 and baseline/grading.json fails the line-format, tag and (#none) assertions (grouping may go either way), each with evidence and a consistent summary block.",
+      "files": [
+        "workspace/iteration-1/eval-1/with_skill/grading.json",
+        "workspace/iteration-1/eval-1/baseline/grading.json"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "aggregate-and-report",
+      "prompt": "Paths are relative to the repository root, and every file you write must use only repo-relative paths (no absolute paths, no home directories). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion and you cannot launch sub-agents. Every time the procedure would ask the operator something, write the question and the option labels into OUTDIR/transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Record in transcript.md which numbered step you are executing. Never modify any file under evals/skill-tester/fixtures or outside OUTDIR; copy what you need into OUTDIR first. OUTDIR is supplied by the dispatcher. A full benchmark for note-formatter iteration 1 has run and been graded; the graded workspace is evals/skill-tester/fixtures/aggregate/evals/note-formatter/ (evals.json plus workspace/iteration-1 with grading.json and timing.json for two evals). Copy that evals/ tree into OUTDIR/evals/ and continue from the aggregation step: produce benchmark.json for the iteration, then present the results to the operator by writing the human-readable comparison to OUTDIR/summary.txt and the machine-readable result document to OUTDIR/result.json. Simulated operator answers: next steps is 'Stop (satisfied with results)'.",
+      "expected_output": "benchmark.json produced by running the aggregation script with summary 0.875 / 0.375 / +0.5 / 450 tokens / 3000 ms, a per-eval comparison table, and a full_pipeline result document that copies coverage from evals.json.",
+      "files": [
+        "summary.txt",
+        "result.json",
+        "evals/note-formatter/workspace/iteration-1/benchmark.json"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "parallel-dispatch-parity",
+      "prompt": "Paths are relative to the repository root, and every file you write must use only repo-relative paths (no absolute paths, no home directories). DRY-RUN SIMULATION RULES: you cannot call AskUserQuestion and you cannot launch sub-agents. Every time the procedure would ask the operator something, write the question and the option labels into OUTDIR/transcript.md, then use the simulated operator answer given below (if none is given, choose the first option). Record in transcript.md which numbered step you are executing. Never modify any file under evals/skill-tester/fixtures or outside OUTDIR; copy what you need into OUTDIR first. OUTDIR is supplied by the dispatcher. A full benchmark iteration is about to start for note-formatter. Its eval definitions are in evals/skill-tester/fixtures/dispatch/evals/note-formatter/evals.json and the skill under test is evals/skill-tester/fixtures/note-formatter/SKILL.md. Do NOT run any evaluation agent. Instead write, as separate files under OUTDIR/prompts/, the exact prompt text you would send to each of the evaluation agents for iteration 1 (one file per agent, named eval-N-with_skill.txt and eval-N-baseline.txt), and write OUTDIR/dispatch.md describing how many agent-launch calls you would make, which agents go in each call, and where each agent saves its outputs and timing data. Simulated operator answers: none needed.",
+      "expected_output": "Four prompt files, a with_skill prompt that embeds the skill content and a baseline prompt that contains no skill content, two launch calls with each eval's pair launched together, and standard outputs/timing paths.",
+      "files": [
+        "prompts/eval-1-with_skill.txt",
+        "prompts/eval-1-baseline.txt",
+        "prompts/eval-2-with_skill.txt",
+        "prompts/eval-2-baseline.txt",
+        "dispatch.md"
+      ]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 6,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "Trigger phrases: confirm skill activates on 'run evals on skill-X', 'benchmark this skill', 'validate skill performance', 'compare skill vs. baseline', 'test skill effectiveness'",
+      "Non-triggers: confirm skill does NOT activate on 'review my skill structure', 'create a new skill', 'fix this PR'",
+      "Smoke test: scripts/smoke_test.py passes (covered by the persisted smoke test, not by these evals)"
+    ]
+  }
+}

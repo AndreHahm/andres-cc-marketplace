@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "every output line has the form '- [TYPE] Summary (#id)'", "passed": false, "evidence": "Lines use '* ' bullets, no [TYPE] tag, and some lack an id, e.g. '* Added a dark mode toggle (issue 12)'."},
+    {"text": "every TYPE tag is one of FEAT, FIX, DOCS, CHORE", "passed": false, "evidence": "No TYPE tags appear in any line, so the condition is not met."},
+    {"text": "lines are grouped in the order FEAT, FIX, DOCS, CHORE", "passed": false, "evidence": "No type tags exist, so grouping in the required order cannot be shown; lines just follow input order."},
+    {"text": "a bullet without an issue number is rendered with (#none)", "passed": false, "evidence": "'* Updated the install guide' and '* Refactored logging' have no '(#none)'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 0, "pass_rate": 0.0}
+}

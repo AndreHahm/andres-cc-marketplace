@@ -1,0 +1,26 @@
+{
+  "skill_name": "note-formatter",
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "description": "Format raw changelog bullets into the project's release-note line format.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "mixed-types-grouped-in-order",
+      "prompt": "Format these release notes:\n- feature: Add dark mode toggle (#12)\n- bug: Fix crash on empty input (#7)\n- docs: Update install guide (#20)\n- refactor: Split parser module (#31)\n- bug: Fix typo in error message (#8)\n- feature: Add CSV export (#15)",
+      "expected_output": "Lines grouped FEAT, FIX, DOCS, CHORE, keeping input order within each group, each formatted as '- [TYPE] Summary (#id)': two FEAT lines (dark mode, CSV export), two FIX lines (empty input crash, typo), one DOCS line, one CHORE line (refactor mapped to CHORE).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "missing-issue-number-renders-none",
+      "prompt": "Format these release notes:\n- feature: Add search filter (#42)\n- bug: Fix flaky login test",
+      "expected_output": "'- [FEAT] Add search filter (#42)' followed by '- [FIX] Fix flaky login test (#none)'; the bullet without an issue number gets (#none).",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

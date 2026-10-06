@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the fast no-baseline mode was chosen and records that baseline runs, aggregation and comparison tables are skipped",
+      "passed": true,
+      "evidence": "Step 1.2b records the fast mode and its consequence: only with_skill agents later, no Phase 5 aggregation, no benchmark.json, no timing.json, no comparison tables."
+    },
+    {
+      "text": "evals/note-formatter/evals.json exists and each eval has id, name, prompt, expected_output and files",
+      "passed": true,
+      "evidence": "evals.json has skill_name, skill_path, description and two evals, each with id, name, prompt, expected_output and files."
+    },
+    {
+      "text": "evals.json carries testing_validation_coverage with declared_scenarios_total 2, declared_scenarios_covered 2 and an empty uncovered list",
+      "passed": true,
+      "evidence": "testing_validation_coverage is {declared_scenarios_total: 2, declared_scenarios_covered: 2, uncovered: []}."
+    },
+    {
+      "text": "an eval_metadata.json exists for every eval under workspace/iteration-1/eval-N/ and every assertion type is one of presence, quality, structure, functionality",
+      "passed": true,
+      "evidence": "eval_metadata.json exists under workspace/iteration-1/eval-1 and eval-2; assertion types used are presence, functionality, structure and quality."
+    },
+    {
+      "text": "no baseline directory and no benchmark.json was created",
+      "passed": true,
+      "evidence": "The output tree has no baseline directory and no benchmark.json."
+    },
+    {
+      "text": "transcript.md records that the target skill's own Testing & Validation section was read and cross-checked before evals.json was written",
+      "passed": true,
+      "evidence": "Step 2.1b precedes Step 2.2 in transcript.md and reports the target's 2 declared scenarios mapped to eval 1 and eval 2."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

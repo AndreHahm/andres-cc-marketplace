@@ -1,0 +1,5 @@
+Format these changelog bullets:
+feature: dark mode toggle (issue 12)
+bug: crash on empty input #7
+docs: update install guide
+refactor cleanup of logging

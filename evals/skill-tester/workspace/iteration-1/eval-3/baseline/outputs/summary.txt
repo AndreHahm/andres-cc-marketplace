@@ -1,0 +1,16 @@
+note-formatter - iteration 1 benchmark (2 evals, 1 run each)
+
+Config       Pass rate (mean +/- sd)   Time s (mean)   Tokens (mean)
+with_skill   87.5% +/- 17.7%        7.5             2300
+baseline     37.5% +/- 17.7%        4.5             1850
+delta        +50.0 pts                  +3.0             +450
+
+Per eval:
+  eval-1 mixed-types-grouped:   with_skill 4/4 (100%), baseline 2/4 (50%)
+  eval-2 missing-issue-number:  with_skill 3/4 (75%),  baseline 1/4 (25%)
+
+Skill beats baseline on both evals (+50 pts pass rate) at ~+3s and ~+450 tokens per run.
+Eval-2 assertion 4 failed in both configurations - worth reviewing.
+Note: sample size is tiny (2 evals, 1 run each); stddev is across evals.
+
+Next steps chosen: Stop (satisfied with results)

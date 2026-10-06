@@ -1,0 +1,7 @@
+Execute this task WITHOUT using any skill:
+- Skill path: none (do not read or use evals/skill-tester/fixtures/note-formatter/SKILL.md)
+- Task: Format these bullets: 'bug: crash on empty input #7', 'feature: dark mode toggle (issue 12)'.
+- Input files: release-notes.md (listed in the eval definition; use it if present, otherwise note that it is absent)
+- Save all outputs to: evals/skill-tester/workspace/iteration-1/eval-1/baseline/outputs (create it; use repo-relative paths only)
+- Save the final answer as evals/skill-tester/workspace/iteration-1/eval-1/baseline/outputs/result.md and a step log as evals/skill-tester/workspace/iteration-1/eval-1/baseline/outputs/transcript.md
+- Record timing: when finished, write evals/skill-tester/workspace/iteration-1/eval-1/baseline/outputs/../timing.json with total_tokens and duration_ms taken from your task-completion data

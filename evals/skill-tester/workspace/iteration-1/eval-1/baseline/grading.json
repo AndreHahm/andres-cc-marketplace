@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "transcript.md shows the fast no-baseline mode was chosen and records that baseline runs, aggregation and comparison tables are skipped",
+      "passed": false,
+      "evidence": "transcript.md says 'No baseline run, since fast mode was chosen' but never records that aggregation and comparison tables are skipped."
+    },
+    {
+      "text": "evals/note-formatter/evals.json exists and each eval has id, name, prompt, expected_output and files",
+      "passed": true,
+      "evidence": "evals.json has id, name, prompt, expected_output and files on both evals (plus an inline assertions list)."
+    },
+    {
+      "text": "evals.json carries testing_validation_coverage with declared_scenarios_total 2, declared_scenarios_covered 2 and an empty uncovered list",
+      "passed": false,
+      "evidence": "evals.json has only skill_name and evals; no testing_validation_coverage block."
+    },
+    {
+      "text": "an eval_metadata.json exists for every eval under workspace/iteration-1/eval-N/ and every assertion type is one of presence, quality, structure, functionality",
+      "passed": false,
+      "evidence": "No eval_metadata.json or workspace/iteration-1 directory was created; assertions are inlined in evals.json."
+    },
+    {
+      "text": "no baseline directory and no benchmark.json was created",
+      "passed": true,
+      "evidence": "No baseline directory and no benchmark.json exist in the output tree."
+    },
+    {
+      "text": "transcript.md records that the target skill's own Testing & Validation section was read and cross-checked before evals.json was written",
+      "passed": false,
+      "evidence": "transcript.md notes the fixture has '2 documented validation cases' but records no cross-check against the eval scenarios."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 2,
+    "pass_rate": 0.3333
+  }
+}

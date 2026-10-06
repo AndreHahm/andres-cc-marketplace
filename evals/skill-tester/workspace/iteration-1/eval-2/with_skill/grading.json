@@ -1,0 +1,41 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "both grading.json files exist with eval_id, configuration ('with_skill' or 'baseline'), assertions_evaluated and summary",
+      "passed": true,
+      "evidence": "Both grading.json files carry eval_id, configuration, assertions_evaluated and summary."
+    },
+    {
+      "text": "every entry in assertions_evaluated has text, a boolean passed and a non-empty evidence string quoting or citing the output",
+      "passed": true,
+      "evidence": "Every entry has text, a boolean passed and an evidence string citing the output lines."
+    },
+    {
+      "text": "each summary is arithmetically consistent: assertions_total equals the entry count, assertions_passed equals the passed count and pass_rate equals passed divided by total",
+      "passed": true,
+      "evidence": "with_skill 4/4 = 1.0 and baseline 0/4 = 0.0; totals match entry counts."
+    },
+    {
+      "text": "with_skill is graded 4 of 4 passed",
+      "passed": true,
+      "evidence": "with_skill graded 4 of 4 passed."
+    },
+    {
+      "text": "baseline is graded as failing the line-format, tag and (#none) assertions (the grouping assertion may be graded either way, since the baseline lines have no tags)",
+      "passed": true,
+      "evidence": "Baseline graded 0 of 4: format, tag and (#none) assertions fail, as required; grouping also fails, which the revised assertion allows."
+    },
+    {
+      "text": "assertion texts in the grading files match eval_metadata.json verbatim",
+      "passed": true,
+      "evidence": "Assertion texts match eval_metadata.json verbatim."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

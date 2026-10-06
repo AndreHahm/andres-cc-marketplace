@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "The bullet without an issue number is rendered ending in '(#none)'", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The bullet with issue #42 keeps '(#42)' and is not changed to (#none)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Every output line matches the format '- [<TYPE>] <Summary> (#<id>)'", "type": "structure", "target": "outputs/ directory"},
+    {"text": "The FEAT line precedes the FIX line", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Exactly one output line per input bullet (2 lines)", "type": "presence", "target": "outputs/ directory"}
+  ]
+}
