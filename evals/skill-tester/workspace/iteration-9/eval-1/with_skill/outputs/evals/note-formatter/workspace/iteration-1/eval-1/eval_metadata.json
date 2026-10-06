@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "evals/skill-tester/fixtures/note-formatter/SKILL.md",
+  "assertions": [
+    {"text": "Every output line matches the format '- [<TYPE>] <Summary> (#<id>)' with exactly one line per input bullet (6 lines)", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Lines are grouped in the order FEAT, FIX, DOCS, CHORE", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Input order is kept inside each group (dark mode before CSV export; empty-input crash before sync timeout)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The refactor bullet is typed CHORE and the docs bullet is typed DOCS", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Each summary is sentence case, has no trailing period, and is at most 60 characters", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

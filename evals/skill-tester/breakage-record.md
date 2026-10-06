@@ -1,6 +1,6 @@
 # skill-tester smoke test: breakage record
 
-Run date: 2026-10-06 (supersedes the 2026-10-05 run of 9 breakages). Smoke test under test: `plugins/plugin-devkit/skills/skill-tester/scripts/smoke_test.py` (7 checks, with the `Edit` check anchored to Step 7.2's own instruction).
+Run date: 2026-10-06 (supersedes the earlier runs of 9 and 10 breakages). Smoke test under test: `plugins/plugin-devkit/skills/skill-tester/scripts/smoke_test.py` (7 checks; the `Edit` check is anchored to Step 7.2's own instruction and the frontmatter check rejects empty required values).
 
 Method: for each breakage, a copy of the skill folder (plus the plugin-root `references/` folder, so `${CLAUDE_SKILL_DIR}/../../references/` still resolves) was made in a temporary directory,
 one deliberate defect was applied to the copy, and `scripts/smoke_test.py` was run inside it. A breakage counts as caught when the run exits 1 and at least one check prints FAIL.
@@ -18,5 +18,6 @@ The real skill folder was never modified by these runs.
 | 8 | unsigned negative improvement print | CAUGHT | `check_negative_improvement_output` | negative improvement not printed as '-50.0': 'ry:\n  Evals processed: 1\n  With Skill pass rate: 25.0%\n  Bas |
 | 9 | python3 invoked under a python grant | CAUGHT | `check_bash_grants` | body invokes command(s) not covered by any granted Bash scope: python3 |
 | 10 | remove Step 7.2 direct-edit instruction (Edit unused) | CAUGHT | `check_declared_tools_used` | declared but never used in the body: Edit |
+| 11 | empty required frontmatter name value | CAUGHT | `check_frontmatter` | required frontmatter field 'name' is missing or empty |
 
-Result: 10 of 10 breakages caught.
+Result: 11 of 11 breakages caught.

@@ -222,11 +222,11 @@ QUICK VALIDATION RESULTS: <skill-name>
 ====================================
 
 Eval 1: <Scenario>  ✓ PASS (5/5 assertions)
-Eval 2: <Scenario>  ✓ PASS (4/5 assertions)
+Eval 2: <Scenario>  ✗ FAIL (4/5 assertions)
 Eval 3: <Scenario>  ✗ FAIL (2/5 assertions)
 
 Summary: 11/15 assertions passed (73%)
-Status: Ready to refine or deploy
+Status: Needs refinement: 2 of 3 evals have failed assertions
 ```
 
 **Quick Phase 4** — ask the operator:

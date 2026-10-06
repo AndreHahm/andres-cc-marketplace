@@ -29,7 +29,7 @@
   "summary": {
     "with_skill_avg_pass_rate": "float - average pass rate across all evals with skill",
     "baseline_avg_pass_rate": "float - average pass rate across all evals without skill",
-    "improvement": "float - with_skill - baseline (0.0-1.0 difference; the CLI prints it as percentage points)",
+    "improvement": "float - with_skill - baseline (-1.0 to 1.0 difference, negative when the skill scores below baseline; the CLI prints it as percentage points)",
     "avg_tokens_with_skill": "integer - average tokens with skill",
     "avg_tokens_baseline": "integer - average tokens without skill",
     "token_cost": "integer - with_skill - baseline (positive = more expensive)",
