@@ -231,6 +231,10 @@ See `references/eval-schema.md` for full schema and annotated examples.
 
 When evaluating a skill for plugin-rule compliance (naming, tool-scoping, language, formatting), invoke `plugin-rulebook` before writing `eval_metadata.json` and use each enabled rule as a separate assertion alongside the functional ones; see `references/eval-schema.md` — "Display Templates" for the invocation and an example assertion.
 
+### Step 2.5: Approve Eval Prompts Before Any Dispatch (Quick and Full)
+
+Before the first agent is launched in either mode (Quick Phase 1 or Phase 3), and again on every re-dispatch from Phase 7 or Refine evals: if `evals.json` existed before this run, or `git status` shows it changed since Step 2.2 wrote it, show its prompts and get `AskUserQuestion` approval first — each prompt reaches a full-tool agent as the user's own task. Check the file, not session memory.
+
 ---
 
 ## QUICK WORKFLOW (Alternative Path)
@@ -275,7 +279,7 @@ Ask with `AskUserQuestion` whether to run the full pipeline, refine the skill, o
 
 ### Step 3.1: Spawn Agents (Parallel Execution)
 
-**Before dispatching** (also on every re-dispatch from Phase 7 or Refine evals): if `evals.json` existed before this run, or differs from what Step 2.2 wrote, show its prompts and get `AskUserQuestion` approval first — each prompt reaches a full-tool agent as the user's own task. Baseline isolation is by instruction only (see the BASELINE template notes in `references/eval-schema.md`).
+Step 2.5's prompt approval applies before this dispatch too, including on every re-dispatch from Phase 7 or Refine evals. Baseline isolation is by instruction only (see the BASELINE template notes in `references/eval-schema.md`).
 
 For EACH eval, launch 2 agents SIMULTANEOUSLY in one Agent tool call:
 
@@ -441,11 +445,11 @@ After a test run, verify:
 3. **Mode selection** — Quick Workflow and Full Pipeline branches both produce correctly structured output directories
 4. **Schema integrity** — all JSON files (`evals.json`, `grading.json`, `benchmark.json`, `timing.json`, `eval_metadata.json`) validate against `references/eval-schema.md` schemas
 5. **Baseline parity** — baseline agent receives no SKILL.md content; with_skill agent receives full SKILL.md content
-6. **Smoke test** — `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` passes (structure, grants, tool usage, and a known-good `aggregate_benchmark.py` fixture run); last run 2026-10-05, 7/7 checks pass, and 9 deliberate breakages of the skill were each caught (record: `evals/skill-tester/breakage-record.md`)
+6. **Smoke test** — `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` passes (structure, grants, tool usage, and a known-good `aggregate_benchmark.py` fixture run); last run 2026-10-05, 7/7 checks pass, and 10 deliberate breakages of the skill were each caught (record: `evals/skill-tester/breakage-record.md`)
 
 **Verified 2026-07-11:** items 1 and 2 checked directly against the current frontmatter description — each of the 5 trigger phrases maps to specific description language ("running evals", "validating a skill's effectiveness", "comparing skill vs. baseline performance", "running benchmarks"), and none of the 3 non-trigger phrases share that vocabulary (they map to `skill-reviewer`'s and `skill-development`'s domains instead). `aggregate_benchmark.py`'s new guard/sort behavior (items covering script robustness) was verified with synthetic fixtures — see the script's own commit history. A live end-to-end run in which skill-tester itself spawns the with_skill/baseline agents has still not been performed (a dry-run agent cannot spawn sub-agents); the 2026-10-05 battery below simulates the same phases instead.
 
-**Last dated run record:** `2026-10-05, evals/skill-tester/` — 4 scenarios (Quick-mode setup, grading, aggregation and reporting, Phase 3 dispatch parity) run as dry-run simulations against a small fixture skill, each with a with_skill and a baseline agent: with_skill passed 24/24 assertions and baseline 8/24; the mean per-eval pass rate is 100% vs 34.4%, +65.6 points (see `evals/skill-tester/workspace/iteration-1/benchmark.json`). Coverage is 3 of 6 Testing & Validation items: mode selection, schema integrity and baseline parity. Schema integrity covers `evals.json`, `eval_metadata.json`, `grading.json`, `benchmark.json` and the result document, not `timing.json` (supplied by fixtures). Trigger phrases and non-triggers are not exercised by these evals, and item 6 is covered by the smoke test. Iteration 2 (2026-10-06) re-ran only the `with_skill` agents after the audit fixes (the baseline never reads the skill): 24/24 assertions again, graded against the same assertions, with no baseline and no `benchmark.json`. Iteration 3 (2026-10-06) did the same after the overlap and trust-step fixes: 24/24 again.
+**Last dated run record:** `2026-10-05, evals/skill-tester/` — 4 scenarios (Quick-mode setup, grading, aggregation and reporting, Phase 3 dispatch parity) run as dry-run simulations against a small fixture skill, each with a with_skill and a baseline agent: with_skill passed 24/24 assertions and baseline 8/24; the mean per-eval pass rate is 100% vs 34.4%, +65.6 points (see `evals/skill-tester/workspace/iteration-1/benchmark.json`). Coverage is 2 of 6 Testing & Validation items: schema integrity and baseline parity. Mode selection is only partly covered: Quick setup is exercised, but no eval runs Full Pipeline's own setup. Schema integrity covers `evals.json`, `eval_metadata.json`, `grading.json`, `benchmark.json` and the result document, not `timing.json` (supplied by fixtures). Trigger phrases and non-triggers are not exercised by these evals, and item 6 is covered by the smoke test. Iteration 2 (2026-10-06) re-ran only the `with_skill` agents after the audit fixes (the baseline never reads the skill): 24/24 assertions again, graded against the same assertions, with no baseline and no `benchmark.json`. Iteration 3 (2026-10-06) did the same after the overlap and trust-step fixes: 24/24 again.
 
 **Quality gates:**
 - [ ] WITH_SKILL and BASELINE agents launched simultaneously (not sequentially) in Full Pipeline
