@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "repos": [],
+  "digest": {
+    "output_dir": ".temp/workledger-digest"
+  },
+  "intake_capabilities": {
+    "batch": false,
+    "query": false,
+    "update": false,
+    "classify": false
+  }
+}
