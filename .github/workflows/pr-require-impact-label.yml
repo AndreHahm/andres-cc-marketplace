@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
   issues: read
 
@@ -55,8 +56,30 @@ jobs:
             // Fetch live labels to avoid stale payload when labeled/unlabeled
             // events fire concurrently with the autofix workflow.
             // On "opened", pr-auto-label.yml runs concurrently and adds the
-            // size-derived impact label a couple of seconds later, so retry a
-            // few times before treating "no label" as a failure (issue #300).
+            // size-derived impact label shortly after this job first looks, so
+            // when no label is found, wait for that workflow's run on this
+            // head commit to finish and look again (issue #300) instead of
+            // guessing a fixed delay. A missing run (workflow disabled or
+            // never triggered) stops the wait after 30s.
+            const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const waitForAutoLabel = async () => {
+              const started = Date.now();
+              while (Date.now() - started < 120000) {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: "pr-auto-label.yml",
+                  head_sha: pr.head.sha,
+                  event: "pull_request_target",
+                  per_page: 10
+                });
+                const runs = data.workflow_runs;
+                if (runs.length > 0 && runs.every(r => r.status === "completed")) return;
+                if (runs.length === 0 && Date.now() - started >= 30000) return;
+                await sleep(5000);
+              }
+              core.warning("Timed out waiting for pr-auto-label.yml to finish.");
+            };
             const fetchFound = async () => {
               const { data: issue } = await github.rest.issues.get({
                 owner: context.repo.owner,
@@ -68,9 +91,9 @@ jobs:
                 .filter(n => allowed.has(n));
             };
             let found = await fetchFound();
-            for (let attempt = 1; attempt <= 5 && found.length === 0; attempt++) {
-              core.info(`No impact label yet; retry ${attempt}/5 in 5s.`);
-              await new Promise(resolve => setTimeout(resolve, 5000));
+            if (found.length === 0) {
+              core.info("No impact label yet; waiting for pr-auto-label.yml.");
+              await waitForAutoLabel();
               found = await fetchFound();
             }
 
