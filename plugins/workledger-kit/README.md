@@ -75,6 +75,9 @@ Tests: `python scripts/wlgr_test_core.py`, `python scripts/wlgr_test_collect.py`
 - Unresolved review threads are not collected (GraphQL is a POST; this plugin never writes to GitHub).
 - Inferred PR links and ambiguous follow-ups need intake's classification capability; until then ambiguous
   follow-ups are shown as "needs your decision" and inferred PR links are not produced.
+- With several repositories, `open-item-digest` writes one digest per repository, and a digest's file name and
+  title do not name the repository. Its "first run" notice appears only when the shared `seen-keys.json` did not
+  exist yet, so a repository added later lists everything as new without that notice.
 - Creating a repository's Linear labels is a manual step; intake has no label operation.
 - `Write` is pre-approved, without a path scope, in `syncing-open-items`, `reporting-roadmap` and
   `onboarding-repositories`, so the trusted local config file is not protected against a prompt-injected run;
