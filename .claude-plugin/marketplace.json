@@ -150,6 +150,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "workledger-kit",
+      "source": "./plugins/workledger-kit",
+      "description": "Keep one deduplicated, approved open-item list and a navigable PR history for a repository: collect open items from .claude/output reports, open GitHub issues (read-only) and pull-request follow-ups; normalize and dedup them against Linear by an exact first-line key; plan them as per-source, hash-bound batches; assemble dated PR timeline and roadmap reports; produce a read-only digest of what is new; and verify a further repository's setup. Collects and plans only: every Linear or Notion write goes through workmanagement-kit's plugin-integration-intake approval gate, and GitHub is never written to.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }
