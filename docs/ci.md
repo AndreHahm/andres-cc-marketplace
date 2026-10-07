@@ -157,6 +157,23 @@ terminal in `check_merge_rights`, never falling through to the collaborator-perm
 PR after the one that added it, and no such file exists in this repo today, so this is a live gap, not a
 hypothetical.
 
+`check-pr` has one narrow exemption: a PR opened by the exact login `dependabot[bot]` (`TRUSTED_BOT_LOGINS`
+in `pr_policy.py`) passes the author-privilege check, and passes the merge-privilege check only when every
+changed path is a root manifest/lockfile (`uv.lock`, `pyproject.toml`, `package.json`); the diff runs with
+`--no-renames` so a rename onto one of those names can't hide the deleted source file.
+The login is the PR opener and never changes, so the merge-privilege exemption also requires every commit
+on the PR (`gh api .../pulls/<n>/commits`) to be authored by `dependabot[bot]`, committed by `web-flow`
+and carry a verified signature (`commits_verified_from_trusted_bot`). Any API error or unexpected shape
+fails closed (that includes the commit count or last commit SHA disagreeing with the event payload). The
+`hygiene` step needs `GH_TOKEN` and `pull-requests: read` for these `gh api` calls. Otherwise the normal CODEOWNERS check applies — that is what stops a write-access
+collaborator pushing other changes, or hand-edited manifest content, onto a dependabot branch. The
+author-privilege check stays opener-only.
+
+Residual, unverified: whether a write-access collaborator can mint a web-flow-signed commit with a spoofed
+`dependabot[bot]` author through the contents or git-commits REST API was not tested live (it needs a
+scratch PR on the real repository). If it is possible, that collaborator could edit manifest content on a
+dependabot branch and pass merge-privilege; the owner's review and merge remain the backstop.
+
 **Trust boundary, stated plainly, not just narrowed further:** `compute-scope` restores
 `scripts/`+`pyproject.toml`+`uv.lock` from the **trusted base SHA** — never the PR's own copy — before
 computing the scope decision or installing dependencies for it (same principle

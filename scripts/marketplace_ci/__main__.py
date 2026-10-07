@@ -500,7 +500,12 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
 
 
 def _handle_check_pr(args: argparse.Namespace) -> int:
-    from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
+    from scripts.marketplace_ci.pr_policy import (
+        TRUSTED_BOT_LOGINS,
+        RealGitHubApi,
+        commits_verified_from_trusted_bot,
+        evaluate_pr_policy,
+    )
 
     repo = Path.cwd()
     event_path = Path(args.event)
@@ -528,7 +533,7 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     template = template_path.read_text(encoding="utf-8") if template_path.is_file() else ""
 
     diff = subprocess.run(
-        ["git", "diff", "-z", "--name-only", f"{base_sha}...{head_sha}"],
+        ["git", "diff", "-z", "--name-only", "--no-renames", f"{base_sha}...{head_sha}"],
         cwd=repo,
         capture_output=True,
     )
@@ -544,8 +549,16 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     changed_paths = _split_nul_delimited_paths(diff.stdout)
 
     api = RealGitHubApi(owner=owner, user=user, full_name=full_name, repo=repo)
+    bot_commits_verified = user.lower() in TRUSTED_BOT_LOGINS and commits_verified_from_trusted_bot(
+        full_name, pr.get("number"), head_sha, pr.get("commits")
+    )
     result = evaluate_pr_policy(
-        api, title=title, body=body, template=template, changed_paths=changed_paths
+        api,
+        title=title,
+        body=body,
+        template=template,
+        changed_paths=changed_paths,
+        bot_commits_verified=bot_commits_verified,
     )
 
     for label, check in (("title", result.title), ("template", result.template)):

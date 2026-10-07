@@ -1,3 +1,6 @@
+import json
+import subprocess
+
 import pytest
 
 from scripts.marketplace_ci.pr_policy import (
@@ -5,6 +8,7 @@ from scripts.marketplace_ci.pr_policy import (
     check_pr_rights,
     check_pr_title,
     check_template,
+    commits_verified_from_trusted_bot,
     evaluate_pr_policy,
 )
 
@@ -189,3 +193,129 @@ def test_evaluate_pr_policy_fails_when_any_check_fails():
         changed_paths=["scripts/marketplace_ci/pr_policy.py"],
     )
     assert result.passed is False
+
+
+def test_trusted_bot_passes_pr_rights_without_api_lookup():
+    api = FakeApi(user="dependabot[bot]", owner="andre")
+    assert check_pr_rights(api).allowed is True
+    assert api.collaborator_calls == 0
+
+
+@pytest.mark.parametrize("login", ["dependabot[bot]", "Dependabot[bot]"])
+def test_trusted_bot_merge_rights_for_manifest_paths_only(login):
+    api = FakeApi(user=login, owner="andre", codeowners=(("*", ("@andre",)),))
+    assert (
+        check_merge_rights(api, ["uv.lock", "pyproject.toml"], bot_commits_verified=True).allowed
+        is True
+    )
+    assert api.collaborator_calls == 0
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ["uv.lock", "scripts/marketplace_ci/pr_policy.py"],
+        [".github/workflows/x.yml"],
+        ["sub/uv.lock"],
+        [".github/security-tools/package.json"],
+        ["UV.lock"],
+        ["package-lock.json"],
+        [],
+    ],
+)
+def test_trusted_bot_denied_when_any_path_outside_manifests(paths):
+    # permission="write" proves the denial comes from the CODEOWNERS branch
+    # (or the empty-list guard), not from a None collaborator lookup.
+    api = FakeApi(
+        user="dependabot[bot]",
+        owner="andre",
+        permission="write" if not paths else None,
+        codeowners=(("*", ("@andre",)),),
+    )
+    result = check_merge_rights(api, paths, bot_commits_verified=True)
+    if paths:
+        assert result.allowed is False
+        assert result.reason is not None and "CODEOWNERS" in result.reason
+    else:
+        # No exemption for an empty path list: falls through to the normal
+        # branches rather than being waved through as "manifests only".
+        assert result.reason != "trusted automation account, manifest paths only"
+
+
+@pytest.mark.parametrize(
+    "login", ["dependabot", "app/dependabot", "evil-dependabot[bot]", "other[bot]"]
+)
+def test_lookalike_bot_logins_are_not_trusted(login):
+    api = FakeApi(user=login, owner="andre", permission=None)
+    assert check_pr_rights(api).allowed is False
+    assert check_merge_rights(api, ["uv.lock"]).allowed is False
+
+
+def test_trusted_bot_denied_without_verified_bot_commits():
+    api = FakeApi(user="dependabot[bot]", owner="andre", codeowners=(("*", ("@andre",)),))
+    result = check_merge_rights(api, ["uv.lock"])
+    assert result.allowed is False
+    assert result.reason is not None and "CODEOWNERS" in result.reason
+
+
+def _fake_gh(monkeypatch, stdout="", returncode=0):
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, returncode, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+
+def _commit_line(a="dependabot[bot]", c="web-flow", v=True, sha="head"):
+    return json.dumps({"s": sha, "a": a, "c": c, "v": v})
+
+
+def test_commits_verified_accepts_genuine_dependabot_commits(monkeypatch):
+    _fake_gh(monkeypatch, _commit_line() + "\n" + _commit_line() + "\n")
+    assert commits_verified_from_trusted_bot("o/r", 1, "head", 2) is True
+
+
+@pytest.mark.parametrize(
+    "stdout",
+    [
+        "",
+        _commit_line() + "\n" + _commit_line(a="collaborator") + "\n",
+        _commit_line(c="collaborator"),
+        _commit_line(v=False),
+        _commit_line(v="true"),
+        '{"s": "head", "a": null, "c": "web-flow", "v": true}',
+        "not json",
+    ],
+)
+def test_commits_verified_fails_closed(monkeypatch, stdout):
+    _fake_gh(monkeypatch, stdout)
+    assert commits_verified_from_trusted_bot("o/r", 1, "head", 2) is False
+
+
+def test_commits_verified_fails_closed_on_api_error_or_missing_number(monkeypatch):
+    _fake_gh(monkeypatch, _commit_line(), returncode=1)
+    assert commits_verified_from_trusted_bot("o/r", 1, "head", 2) is False
+    _fake_gh(monkeypatch, _commit_line())
+    assert commits_verified_from_trusted_bot("o/r", None, "head", 1) is False
+
+
+@pytest.mark.parametrize("count", [None, 0, 1, 3, 250, "2"])
+def test_commits_verified_fails_closed_on_count_mismatch_or_cap(monkeypatch, count):
+    _fake_gh(monkeypatch, _commit_line() + "\n" + _commit_line() + "\n")
+    assert commits_verified_from_trusted_bot("o/r", 1, "head", count) is False
+
+
+def test_commits_verified_fails_closed_when_head_sha_differs(monkeypatch):
+    _fake_gh(monkeypatch, _commit_line(sha="old") + "\n" + _commit_line(sha="old") + "\n")
+    assert commits_verified_from_trusted_bot("o/r", 1, "head", 2) is False
+
+
+def test_commits_verified_gh_argv(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout=_commit_line() + "\n", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert commits_verified_from_trusted_bot("o/r", 7, "head", 1) is True
+    assert seen["cmd"][:4] == ["gh", "api", "--paginate", "repos/o/r/pulls/7/commits"]

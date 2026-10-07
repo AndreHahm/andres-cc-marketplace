@@ -8,6 +8,7 @@ prose is Codex's job (Phase 4), not this module's.
 from __future__ import annotations
 
 import fnmatch
+import json
 import re
 import subprocess
 from dataclasses import dataclass
@@ -21,6 +22,21 @@ _CODEOWNERS_CANDIDATES = ("CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS")
 DEFAULT_ALLOWED_TYPES = ("feat", "fix", "docs", "refactor", "perf", "test", "chore", "experiment")
 
 MERGE_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
+
+# Exact (case-insensitive) logins of automation accounts exempt from the
+# collaborator/CODEOWNERS author checks. GitHub reserves the `[bot]` suffix,
+# so no human account can claim one of these logins; the match must stay an
+# exact-string compare, never a suffix or prefix match.
+# The login is the PR's opener and stays fixed for the PR's life, so the merge
+# check below also requires every changed path to be a root dependency
+# manifest/lockfile: a later commit pushed to the branch touching anything
+# else falls back to the normal CODEOWNERS check.
+TRUSTED_BOT_LOGINS = ("dependabot[bot]",)
+TRUSTED_BOT_PATHS = frozenset({"uv.lock", "pyproject.toml", "package.json"})
+# GitHub signs dependabot's commits itself: author dependabot[bot], committer
+# web-flow, signature verified. A forged author email alone fails the committer
+# and signature checks, and a collaborator's web-UI edit is authored by them.
+TRUSTED_BOT_COMMITTER = "web-flow"
 
 _EMOJI_PATTERN = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]")
 # GitHub-flavored markdown renders `:sparkles:`-style shortcodes as emoji too;
@@ -111,6 +127,8 @@ class GitHubApi(Protocol):
 def check_pr_rights(api: GitHubApi) -> RightsResult:
     if api.user.lower() == api.owner.lower():
         return RightsResult(allowed=True, reason="repository owner")
+    if api.user.lower() in TRUSTED_BOT_LOGINS:
+        return RightsResult(allowed=True, reason="trusted automation account")
     permission = api.collaborator_permission(api.user)
     if permission in MERGE_CAPABLE_PERMISSIONS:
         return RightsResult(allowed=True, reason=f"collaborator permission: {permission}")
@@ -119,9 +137,21 @@ def check_pr_rights(api: GitHubApi) -> RightsResult:
     )
 
 
-def check_merge_rights(api: GitHubApi, changed_paths: list[str]) -> RightsResult:
+def check_merge_rights(
+    api: GitHubApi, changed_paths: list[str], *, bot_commits_verified: bool = False
+) -> RightsResult:
     if api.user.lower() == api.owner.lower():
         return RightsResult(allowed=True, reason="repository owner")
+    if (
+        api.user.lower() in TRUSTED_BOT_LOGINS
+        and bot_commits_verified
+        and changed_paths
+        and all(path in TRUSTED_BOT_PATHS for path in changed_paths)
+    ):
+        return RightsResult(
+            allowed=True,
+            reason="trusted automation account, verified bot commits, manifest paths only",
+        )
 
     matched_owners: tuple[str, ...] | None = None
     for pattern, owners in api.codeowners():
@@ -156,12 +186,15 @@ def evaluate_pr_policy(
     template: str,
     changed_paths: list[str],
     allowed_types: tuple[str, ...] = DEFAULT_ALLOWED_TYPES,
+    bot_commits_verified: bool = False,
 ) -> PrPolicyResult:
     return PrPolicyResult(
         title=check_pr_title(title, allowed_types),
         template=check_template(template, body),
         pr_privilege=check_pr_rights(api),
-        merge_privilege=check_merge_rights(api, changed_paths),
+        merge_privilege=check_merge_rights(
+            api, changed_paths, bot_commits_verified=bot_commits_verified
+        ),
     )
 
 
@@ -212,3 +245,46 @@ class RealGitHubApi:
             if path.is_file():
                 return _parse_codeowners(path.read_text(encoding="utf-8"))
         return ()
+
+
+def commits_verified_from_trusted_bot(
+    full_name: str, number: int | None, head_sha: str, expected_count: int | None
+) -> bool:
+    """True only if the PR's commit list is exactly the event's commits (count
+    and head SHA both match, below the API's 250-commit cap) and every commit
+    is authored by a trusted bot, committed by `web-flow`, with a verified
+    signature. Any API error, malformed output or missing field returns False
+    (fail closed, so the caller falls back to the normal CODEOWNERS check)."""
+    if number is None or not isinstance(expected_count, int) or not 0 < expected_count < 250:
+        return False
+    result = subprocess.run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            f"repos/{full_name}/pulls/{number}/commits",
+            "--jq",
+            ".[] | {s: .sha, a: .author.login, c: .committer.login,"
+            " v: .commit.verification.verified}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return False
+    try:
+        commits = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+    except json.JSONDecodeError:
+        return False
+    return (
+        len(commits) == expected_count
+        and all(isinstance(c, dict) for c in commits)
+        and commits[-1].get("s") == head_sha
+        and all(
+            isinstance(c.get("a"), str)
+            and c["a"].lower() in TRUSTED_BOT_LOGINS
+            and c.get("c") == TRUSTED_BOT_COMMITTER
+            and c.get("v") is True
+            for c in commits
+        )
+    )

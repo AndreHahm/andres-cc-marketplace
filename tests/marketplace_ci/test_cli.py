@@ -333,6 +333,112 @@ def test_check_pr_handles_non_ascii_changed_path(monkeypatch, git_repo, tmp_path
     assert main(["check-pr", "--event", str(event_path)]) == 0
 
 
+def test_check_pr_bot_rename_onto_manifest_does_not_hide_deleted_source(
+    monkeypatch, git_repo, tmp_path
+):
+    """Security-review regression: with git's default rename detection,
+    `--name-only` lists only the destination of a rename, so a push renaming
+    `.github/x.yml` to `uv.lock` onto a dependabot branch looked like a
+    manifest-only change. `--no-renames` makes the deletion show up too."""
+    import subprocess
+
+    base_sha = _commit_and_sha(git_repo, ".github/x.yml", "name: x\non: push\njobs: {}\n", "init")
+    subprocess.run(["git", "config", "diff.renames", "true"], cwd=git_repo.root, check=True)
+    git_repo.write("uv.lock", "name: x\non: push\njobs: {}\n")
+    subprocess.run(["git", "rm", "-q", ".github/x.yml"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "add", "uv.lock"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "rename"], cwd=git_repo.root, check=True)
+    head_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    template = git_repo.root / ".github" / "pull_request_template.md"
+    template.parent.mkdir(parents=True, exist_ok=True)
+    template.write_text("## Summary\n\n## Checklist\n", encoding="utf-8")
+
+    event = {
+        "pull_request": {
+            "title": "chore(deps): bump x",
+            "body": "## Summary\n\nBump.\n",
+            "user": {"login": "dependabot[bot]"},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": base_sha,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.pr_policy.commits_verified_from_trusted_bot", lambda *a: True
+    )
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 1
+
+
+def _check_pr_event(git_repo, tmp_path, *, user, base_sha, head_sha):
+    template = git_repo.root / ".github" / "pull_request_template.md"
+    template.parent.mkdir(parents=True, exist_ok=True)
+    template.write_text("## Summary\n\n## Checklist\n", encoding="utf-8")
+    event = {
+        "pull_request": {
+            "title": "chore(deps): bump x",
+            "body": "## Summary\n\nBump.\n",
+            "number": 5,
+            "commits": 1,
+            "user": {"login": user},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": base_sha,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+    return event_path
+
+
+@pytest.mark.parametrize(("verified", "expected"), [(True, 0), (False, 1)])
+def test_check_pr_bot_manifest_only_depends_on_commit_verification(
+    monkeypatch, git_repo, tmp_path, verified, expected
+):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = _commit_and_sha(git_repo, "uv.lock", "lock", "bump")
+    event_path = _check_pr_event(
+        git_repo, tmp_path, user="dependabot[bot]", base_sha=base_sha, head_sha=head_sha
+    )
+    calls = []
+
+    def fake_verified(*args):
+        calls.append(args)
+        return verified
+
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.pr_policy.commits_verified_from_trusted_bot", fake_verified
+    )
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == expected
+    assert calls == [("andre/repo", 5, head_sha, 1)]
+
+
+def test_check_pr_does_not_query_commits_for_non_bot_opener(monkeypatch, git_repo, tmp_path):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = _commit_and_sha(git_repo, "uv.lock", "lock", "bump")
+    event_path = _check_pr_event(
+        git_repo, tmp_path, user="andre", base_sha=base_sha, head_sha=head_sha
+    )
+
+    def boom(*args):
+        raise AssertionError("commit lookup must only run for trusted bot openers")
+
+    monkeypatch.setattr("scripts.marketplace_ci.pr_policy.commits_verified_from_trusted_bot", boom)
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 0
+
+
 def test_check_pr_unresolvable_diff_returns_2(monkeypatch, git_repo, tmp_path):
     """Security-review regression (m2): a failed diff must never silently
     substitute an empty changed_paths list -- that fails open on
