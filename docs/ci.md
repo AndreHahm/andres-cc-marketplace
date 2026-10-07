@@ -85,7 +85,10 @@ instead of being killed mid-call. `codex-review-result.json` carries a `reviewer
 to bridge calls made) so a reviewer that needed retries stays visible even when the run passes. When a
 reviewer fails, the file is still written, with a `dispatch_failed` list (reviewer, attempts, error) and
 `blocking: true`, so the uploaded `codex-review-result` artifact holds a machine-readable copy of the error
-(the same text the log line carries); the job still exits 2.
+(the same text the log line carries); the job still exits 2. Every other exit-2 path of `run-codex-review`
+(unresolvable base SHA, failed `git diff`, an undefined full-mode dispatch, a reviewer with no or invalid
+output) writes `{"blocking": true, "error": ...}` the same way, which also overwrites a stale
+`codex-review-result.json` a PR might have committed, so the artifact always reflects this run.
 
 Each bridge process runs in its own session and is killed, together with its whole process group on POSIX runners (the bridge
 spawns a `codex` child; elsewhere only the direct process is killed), if it outlives its own timeout plus 60 seconds (`_PROCESS_SLACK_SECONDS`, counted in
