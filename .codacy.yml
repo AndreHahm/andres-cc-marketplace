@@ -124,6 +124,21 @@
 # required check blocking every marketplace_ci test addition is a worse
 # practical outcome than losing this one directory's own secret-scan
 # coverage.
+#
+# plugins/workledger-kit/scripts/wlgr_test_*.py are that plugin's three persisted unit-test
+# scripts. They live in scripts/ (the plugin's declared layout, run as
+# `python scripts/wlgr_test_*.py`), not in a directory named tests/, so the
+# plugins/**/tests/** glob above never reaches them. Verified per file before excluding (PR #481):
+# a local `bandit -r` over the plugin reported only LOW findings in these three files, every one
+# B101 (bare `assert`, used as type narrowing and as the test mechanism), B105 (two synthetic
+# placeholder strings, SECRET-BODY-TEXT-12345 and SECRET-ITEM-TEXT, that exist to prove redaction
+# works), or B404/B603/B607 (subprocess.run with a list argument and no shell, where the program
+# is a literal "git" or sys.executable plus the script under test, and the arguments come from
+# the test itself, never external input). The plugin's production scripts are NOT excluded: the
+# same rules there are handled with inline justified suppressions (or a code fix) instead. Same
+# whole-path/whole-engine tradeoff as every entry above: this also silences secret-detection
+# for these three files, accepted for the same reason -- they contain no real secrets, and the
+# placeholder strings are obviously synthetic.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/**/tests/**"
@@ -138,3 +153,4 @@ exclude_paths:
   - ".claude/references/**"
   - ".claude/assets/**"
   - "plugins/context-kit/skills/*/scripts/smoke_test.py"
+  - "plugins/workledger-kit/scripts/wlgr_test_*.py"

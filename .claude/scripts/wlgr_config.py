@@ -46,7 +46,7 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 -- list-form calls only, never a shell
 import sys
 import unicodedata
 from collections.abc import Callable
@@ -88,7 +88,11 @@ def _git(
     if exe is None:
         return None
     try:
-        return subprocess.run([exe, "-C", str(cwd or repo_root), *args], capture_output=True)
+        # List-form call, no shell: exe is an absolute PATH entry found by find_exe, and every
+        # caller passes a fixed git subcommand (a path argument follows a "--" separator).
+        return subprocess.run(  # nosec B603  # nosemgrep
+            [exe, "-C", str(cwd or repo_root), *args], capture_output=True
+        )
     except OSError:
         return None
 
@@ -144,7 +148,7 @@ def is_tracked(path: Path, repo_root: Path) -> bool:
 
 def is_ignored(rel_path: str, repo_root: Path) -> bool:
     """True only if git definitely reports the path as ignored (exit 0); fail closed otherwise."""
-    result = _git(repo_root, "check-ignore", "-q", rel_path)
+    result = _git(repo_root, "check-ignore", "-q", "--", rel_path)
     return result is not None and result.returncode == 0
 
 
