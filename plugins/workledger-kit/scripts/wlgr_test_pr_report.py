@@ -103,6 +103,9 @@ class CliTests(unittest.TestCase):
             self.assertIn("| git-kit | 1 | 0 |", (work / "r.md").read_text(encoding="utf-8"))
             self.assertEqual(run("../f.json", "r.md").returncode, 1)  # path-like name refused
             self.assertEqual(run("f.json", "r.md", "--since", "yesterday").returncode, 2)
+            self.assertEqual(run("f.json", "r.md", "--since", "2026-99-99").returncode, 2)
+            self.assertEqual(run("f.json", "r.md", "--since", "2026-02-30").returncode, 2)
+            self.assertEqual(run("f.json", "r.md", "--since", "2026-10-01").returncode, 0)
             # a repository with no PRs: unnamed unless --repo says which one it is
             (work / "e.json").write_text("[]", encoding="utf-8")
             self.assertEqual(run("e.json", "empty.md").returncode, 0)
@@ -131,6 +134,15 @@ class ReportTests(unittest.TestCase):
         self.assertIn("#10: 1 unchecked task(s)", out)
         self.assertIn("| git-kit | 2 | 1 |", out)
         self.assertIn("Inferred links are not shown", out)
+
+    def test_title_cannot_form_an_image_or_break_the_table_row(self):
+        out = rep.build_report(
+            [pr(1, "feat(a): ![x](http://evil/p.png)\n| injected <b>")], REPO, "2026-10-06"
+        )
+        row = [ln for ln in out.splitlines() if ln.startswith("| 20") and "#1 " in ln]
+        self.assertEqual(len(row), 1, out)
+        self.assertNotIn("![x](", row[0])
+        self.assertIn(r"!\[x\](http://evil/p.png)", row[0])
 
     def test_template_boxes_are_not_follow_ups_but_unique_boxes_are(self):
         prs = [pr(n, "feat(a): x", "- [ ] Tests added") for n in (1, 2, 3)] + [

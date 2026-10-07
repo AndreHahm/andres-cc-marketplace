@@ -65,13 +65,19 @@ ALLOWED_KEYS = ("version", "repos", "digest", "intake_capabilities")
 TRUST_GATED_FIELDS = ("repos", "digest", "intake_capabilities")
 CAPABILITY_KEYS = ("batch", "query", "update", "classify")
 _SLUG_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+# Every working file is named `<owner>--<repo>-<name>` (slug plus 2 characters), and
+# wlgr_paths.work_name caps a name at 128. The longest documented <name> is 41 characters, so a
+# longer slug could make a documented file name that the scripts then refuse.
+MAX_SLUG_LENGTH = 80
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 
 
 def valid_slug(slug: object) -> bool:
-    """owner/repo; neither half may be all dots (`../..` would reach other API paths)."""
+    """owner/repo, at most MAX_SLUG_LENGTH characters; neither half may be all dots (`../..` would
+    reach other API paths)."""
     return (
         isinstance(slug, str)
+        and len(slug) <= MAX_SLUG_LENGTH
         and bool(_SLUG_RE.fullmatch(slug))
         and not any(set(part) <= {"."} for part in slug.split("/"))
     )
@@ -91,9 +97,9 @@ def _git(
         # List-form call, no shell: exe is an absolute PATH entry found by find_exe, and every
         # caller passes a fixed git subcommand (a path argument follows a "--" separator).
         return subprocess.run(  # nosec B603  # nosemgrep
-            [exe, "-C", str(cwd or repo_root), *args], capture_output=True
+            [exe, "-C", str(cwd or repo_root), *args], capture_output=True, timeout=60
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
 
 

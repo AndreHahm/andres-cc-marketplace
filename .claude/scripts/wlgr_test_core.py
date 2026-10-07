@@ -605,6 +605,23 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(cfg.valid_slug(bad), bad)
         self.assertTrue(cfg.valid_slug(REPO))
 
+    def test_a_stalled_git_call_is_treated_as_git_unavailable(self):
+        stalled = subprocess.TimeoutExpired(cmd="git", timeout=60)
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(cfg.subprocess, "run", side_effect=stalled):
+                with mock.patch.object(cfg.wlgr_paths, "find_exe", return_value="git"):
+                    self.assertIsNone(cfg._git(Path(tmp), "status"))
+
+    def test_slug_length_leaves_room_for_the_file_name_prefix(self):
+        longest_suffix = "pr-report-2026-10-07-baseline-chunks.json"  # longest documented <name>
+        ok = "o/" + "r" * (cfg.MAX_SLUG_LENGTH - 2)
+        self.assertTrue(cfg.valid_slug(ok))
+        self.assertFalse(cfg.valid_slug(ok + "r"))
+        self.assertEqual(
+            paths.work_name(ok.replace("/", "--") + "-" + longest_suffix),
+            ok.replace("/", "--") + "-" + longest_suffix,
+        )
+
     def test_digest_dir_must_be_gitignored(self):
         root = make_repo(self, ignore="")
         base = json.loads((PLUGIN_ROOT / cfg.SETTINGS_NAME).read_text(encoding="utf-8"))
@@ -722,6 +739,17 @@ class SelectionAndFolderTests(unittest.TestCase):
         self.assertEqual(
             oi.folder_counts(cands), {".claude/output/big": 3, ".claude/output/small": 1}
         )
+
+    def test_folder_counts_never_name_the_file_for_a_shallow_report_dir(self):
+        """A report directly under a one-component report dir must group under that dir, and the
+        group must survive the folder filter it is later fed to."""
+        cands = [
+            cand("reports/a.md#1", "t", source="report"),
+            cand("reports/sub/deep/er/b.md#1", "t", source="report"),
+        ]
+        counts = oi.folder_counts(cands)
+        self.assertEqual(counts, {"reports": 1, "reports/sub/deep": 1})
+        self.assertEqual(oi.filter_report_folders(cands, ["reports"]), cands)
 
     def test_cli_flow_classify_then_apply_then_describe_excludes_the_duplicate(self):
         repo = make_repo(self)
@@ -1044,6 +1072,21 @@ class DigestEscapingTests(unittest.TestCase):
         self.assertIn("`a'b/c.md#1`", text)
         self.assertNotIn("\nINJECT", text)
 
+    def test_title_cannot_form_an_image_or_link(self):
+        a = [
+            {
+                "source": "report",
+                "source_ref": "a.md#1",
+                "title": "![x](http://evil/p.png) [l](http://evil) <img src=x>",
+                "ambiguous": False,
+                "extra": {},
+            }
+        ]
+        text = dig.build_digest(a, a, "2026-10-07", False, [])
+        self.assertNotIn("![x](", text)
+        self.assertIn(r"!\[x\](http://evil/p.png)", text)
+        self.assertIn(r"\<img src=x\>", text)
+
 
 class SmokeCheckTests(unittest.TestCase):
     """The shared structural check must be able to fail, not only pass."""
@@ -1102,6 +1145,11 @@ class SmokeCheckTests(unittest.TestCase):
             )
         )
         self.assertTrue(any("bare Bash" in f for f in smoke.check(self._skill(tools="Read, Bash"))))
+
+    def test_parenthesized_unscoped_bash_grants_fail(self):
+        for grant in ("Bash(*)", "Bash(git:*)", "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wlgr_x.py)"):
+            failures = smoke.check(self._skill(tools=f"Read, {grant}", body="wlgr_x.py"))
+            self.assertTrue(any("Bash" in f and "scoped" in f for f in failures), (grant, failures))
 
     def test_broken_relative_path_in_a_workflow_file_is_caught(self):
         """The reviewers' Critical: a workflow file used the SKILL.md-relative prefix."""

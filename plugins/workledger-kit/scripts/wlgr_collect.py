@@ -53,7 +53,7 @@ MAX_LINE = 4000  # characters considered per line
 # matching is linear: there is no run of whitespace the engine can re-split.
 _UNCHECKED_RE = re.compile(r"^[ \t]*[-*][ \t]+\[ \][ \t]+(\S.*)$")
 _BULLET_RE = re.compile(r"^[ \t]*[-*][ \t]+(?!\[[xX]\])(?:\[ \][ \t]+)?(\S.*)$")
-_HEADING_RE = re.compile(r"^#{1,6}[ \t]+(\S.*)$")
+_HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(\S.*)$")
 _FOLLOWUP_HEADING_RE = re.compile(
     r"\b(open items?|follow-?ups?|todo|remaining|next steps|deferred)\b", re.I
 )
@@ -105,16 +105,20 @@ def extract_open_items(markdown: str) -> list[tuple[str, bool]]:
     bullet under a heading that names open items, follow-ups, TODO and the like is also collected,
     but ambiguous: it may be a note, so a person decides at the approval preview."""
     items: list[tuple[str, bool]] = []
-    in_followup_section = False
+    followup_level = 0  # heading level that opened the current follow-up section; 0 = none
     for line in capped_lines(markdown):
         heading = _HEADING_RE.match(line)
         if heading:
-            in_followup_section = bool(_FOLLOWUP_HEADING_RE.search(heading.group(1)))
+            level = len(heading.group(1))
+            if _FOLLOWUP_HEADING_RE.search(heading.group(2)):
+                followup_level = level
+            elif level <= followup_level:  # same or higher level closes it; a subsection stays
+                followup_level = 0
             continue
         box = _UNCHECKED_RE.match(line)
         if box:
             items.append((box.group(1).strip(), False))
-        elif in_followup_section:
+        elif followup_level:
             bullet = _BULLET_RE.match(line)
             if bullet:
                 items.append((bullet.group(1).strip(), True))
@@ -281,12 +285,16 @@ def drop_boilerplate(candidates: list[dict], min_sources: int = 3) -> tuple[list
 def _gh(endpoint: str, jq: str) -> list[dict]:
     # List-form call, no shell: the interpreter and wrapper script are fixed, and the wrapper
     # validates the endpoint and refuses every flag except --paginate and --jq.
-    result = subprocess.run(  # nosec B603  # nosemgrep
-        [sys.executable, str(WRAPPER), endpoint, "--paginate", "--jq", jq],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    )
+    try:
+        result = subprocess.run(  # nosec B603  # nosemgrep
+            [sys.executable, str(WRAPPER), endpoint, "--paginate", "--jq", jq],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"gh read timed out: {endpoint}") from None
     if result.returncode != 0:
         raise RuntimeError(f"gh read failed ({result.returncode}): {result.stderr.strip()[:300]}")
     return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]

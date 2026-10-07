@@ -56,6 +56,13 @@ def utf8_stdio() -> None:
             stream.reconfigure(encoding="utf-8")
 
 
+def md_text(text: object) -> str:
+    """Collected text for one markdown line: whitespace collapsed to single spaces, and `[`, `]`,
+    `<` and `>` backslash-escaped so untrusted text cannot form an image, a link or an HTML tag
+    that a viewer would load when the report is opened."""
+    return re.sub(r"([\[\]<>])", r"\\\1", " ".join(str(text).split()))
+
+
 def _bad_segment(part: str) -> str | None:
     """Reason a single path segment is unsafe on Windows or POSIX, or None."""
     if ":" in part:
