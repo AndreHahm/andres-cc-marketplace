@@ -600,6 +600,19 @@ class ConfigTests(unittest.TestCase):
         }
         self.assertEqual(len(cfg.validate(bad, root, ignored=lambda *_: True)), 4)
 
+    def test_a_rule_for_one_sentinel_path_does_not_count_as_ignored(self):
+        root = self._repo(None)
+        settings, _ = cfg.load_settings(PLUGIN_ROOT, root)
+        settings["repos"] = [{"slug": REPO}]
+        sentinel_only = lambda p, _root: p.endswith("/x")  # noqa: E731
+        problems = cfg.validate(settings, root, ignored=sentinel_only)
+        self.assertTrue(any("not gitignored" in p for p in problems), problems)
+        self.assertFalse(
+            any(
+                "not gitignored" in p for p in cfg.validate(settings, root, ignored=lambda *_: True)
+            )
+        )
+
     def test_slug_validation_rejects_dot_segments(self):
         for bad in ("../..", "./.", "a/..", "owner", "a/b/c", "", None, "a b/c"):
             self.assertFalse(cfg.valid_slug(bad), bad)

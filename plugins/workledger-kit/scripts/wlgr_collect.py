@@ -132,6 +132,7 @@ def collect_reports(repo_root: Path, repo: str, dirs: list[str]) -> list[dict]:
     report folder that is itself a symlink or junction is refused."""
     out: list[dict] = []
     root = repo_root.resolve()
+    visited: set[Path] = set()  # overlapping report_dirs must not list one file twice
     for d in dirs:
         # confine() rejects a path that escapes the repo AND a symlink or junction anywhere in the
         # spelled path, the last component included; resolve() alone would silently follow it.
@@ -142,6 +143,9 @@ def collect_reports(repo_root: Path, repo: str, dirs: list[str]) -> list[dict]:
         for path in sorted(base.rglob("*.md")):
             if path.is_symlink() or base not in path.resolve().parents:
                 continue
+            if path.resolve() in visited:
+                continue
+            visited.add(path.resolve())
             rel = path.relative_to(root).as_posix()
             with open(path, "rb") as fh:  # bounded read: never load a huge file just to cut it
                 text = fh.read(MAX_BODY * 4).decode("utf-8", errors="replace")[:MAX_BODY]

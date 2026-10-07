@@ -226,7 +226,10 @@ def validate(
         except ValueError as exc:
             problems.append(f"digest.output_dir {out!r} is unsafe: {exc}")
         else:
-            if not ignored(rel.rstrip("/") + "/x", repo_root):
+            # Probe several names, not one: a rule for a single sentinel path must not pass.
+            if not all(
+                ignored(f"{rel.rstrip('/')}/{n}", repo_root) for n in ("x", "x.json", "x.md")
+            ):
                 problems.append(
                     f"digest.output_dir {out!r} is not gitignored; working files must never land "
                     f"in a tracked folder"
