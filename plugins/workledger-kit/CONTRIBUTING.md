@@ -26,7 +26,7 @@ Each skill also has a structural smoke test at `skills/<skill>/scripts/smoke_tes
 2. Make your change; keep the plugin read-only toward GitHub and never add a Linear or Notion
    connector call here. Every write goes through `workmanagement-kit`'s `plugin-integration-intake`.
 3. If the change alters a skill's or script's actual behavior, test it (the scripts above, or the
-   skill's own Testing & Validation section and its `references/test-scenarios.md`) before committing.
+   skill's own Testing & Validation section and its `skills/<skill>/references/test-scenarios.md`) before committing.
 4. A change to the intake payloads, the open-item format or the config trust boundary needs a
    `security-reviewer` pass before it ships.
 5. Run `plugin-rulebook` against any new or modified component before finalizing.
