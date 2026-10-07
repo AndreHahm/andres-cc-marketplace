@@ -23,6 +23,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`antigravity-kit`](./plugins/antigravity-kit) | Run the Antigravity CLI (Gemini) as a collaborating sub-agent inside Claude Code, with intelligent model routing across the SDLC. |
 | [`github-actions-kit`](./plugins/github-actions-kit) | Generate, validate, and audit GitHub Actions workflows and custom actions. |
 | [`promptlibrary-kit`](./plugins/promptlibrary-kit) | Project-local prompt library: store, verify and optimize reusable prompts, look them up read-only, and run approved prompts in Claude. |
+| [`workledger-kit`](./plugins/workledger-kit) | Open-item ledger and PR history for a repository: collect, dedup and plan open items; every Linear/Notion write goes through `workmanagement-kit`'s approval gate. |
 
 See each plugin's own README for details.
 
