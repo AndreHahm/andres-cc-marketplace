@@ -627,6 +627,33 @@ def test_dispatch_retries_an_empty_review_and_completes_when_the_retry_reads_fil
     assert all(r.attempts == 1 for n, r in reports.items() if n != "dependency-reviewer")
 
 
+def test_the_empty_review_retry_log_line_keeps_the_first_inspection_limit(
+    monkeypatch, repo, change, dependency_index, capsys
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "dependency-reviewer" and calls[reviewer] == 1:
+            return subprocess.CompletedProcess(
+                args=argv,
+                returncode=0,
+                stdout=_envelope("Inconclusive", limits=["bwrap: loopback failed\nforged"]),
+                stderr=b"",
+            )
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {r.reviewer: r for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)}
+    assert reports["dependency-reviewer"].status == "completed"
+    retry_lines = [line for line in capsys.readouterr().err.splitlines() if "empty review" in line]
+    assert len(retry_lines) == 1
+    assert "bwrap: loopback failed forged" in retry_lines[0]  # newline stripped, text kept
+
+
 def test_dispatch_never_retries_a_review_that_raised_findings_or_passed(
     monkeypatch, repo, change, dependency_index
 ):
