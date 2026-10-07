@@ -592,7 +592,133 @@ def test_dispatch_fails_a_reviewer_that_inspected_nothing(
     reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
     assert all(r.status == "failed" for r in reports)
     assert all("command-execution bridge failed" in (r.error or "") for r in reports)
-    assert set(calls.values()) == {1}  # never retried
+    # Retried once (the shipped allowance), then failed closed.
+    assert all(r.attempts == 2 for r in reports)
+    assert set(calls.values()) == {2}
+
+
+def _empty_review(argv):
+    return subprocess.CompletedProcess(
+        args=argv,
+        returncode=0,
+        stdout=_envelope("Inconclusive: nothing read", limits=["sandbox could not start"]),
+        stderr=b"",
+    )
+
+
+def test_dispatch_retries_an_empty_review_and_completes_when_the_retry_reads_files(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "dependency-reviewer" and calls[reviewer] == 1:
+            return _empty_review(argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {r.reviewer: r for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)}
+    assert reports["dependency-reviewer"].status == "completed"
+    assert reports["dependency-reviewer"].attempts == 2
+    assert all(r.attempts == 1 for n, r in reports.items() if n != "dependency-reviewer")
+
+
+def test_dispatch_never_retries_a_review_that_raised_findings_or_passed(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Inconclusive: partial", [{"id": "F1"}]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "completed" and r.attempts == 1 for r in reports)
+    assert set(calls.values()) == {1}
+
+
+def test_dispatch_skips_an_empty_review_retry_that_would_not_fit_in_the_budget(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setenv("CODEX_KIT_REVIEW_TIMEOUT_MS", "600000")
+    now = [0.0]
+    monkeypatch.setattr(review.time, "monotonic", lambda: now[0])
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer == "dependency-reviewer":
+            now[0] += 600  # the empty call used its whole per-call budget
+            return _empty_review(argv)
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {
+        r.reviewer: r
+        for r in dispatch_reviewers(
+            scope, base_sha="deadbeef", repo=repo, max_workers=1, budget_seconds=1020
+        )
+    }
+    dep = reports["dependency-reviewer"]
+    assert dep.status == "failed" and dep.attempts == 1
+    assert "budget exhausted" in (dep.error or "") and "retry" in (dep.error or "")
+    assert calls["dependency-reviewer"] == 1
+
+
+def test_empty_review_and_timeout_retries_are_counted_separately(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        if reviewer != "dependency-reviewer":
+            return _ok(argv)
+        if calls[reviewer] == 1:
+            return _empty_review(argv)
+        if calls[reviewer] <= 3:
+            return subprocess.CompletedProcess(
+                args=argv, returncode=1, stdout=b"", stderr=_TIMEOUT_STDERR
+            )
+        return _ok(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = {r.reviewer: r for r in dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)}
+    # One empty retry plus two timeout retries = four calls, none starving the other.
+    assert reports["dependency-reviewer"].status == "completed"
+    assert reports["dependency-reviewer"].attempts == 4
+
+
+def test_empty_review_failure_keeps_the_full_inspection_limit_not_a_200_char_cut(
+    monkeypatch, repo, change, dependency_index
+):
+    limit = "bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted " + "x" * 400 + " END"
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Inconclusive", limits=[limit]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and (r.error or "").endswith(" END") for r in reports)
 
 
 @pytest.mark.parametrize(
