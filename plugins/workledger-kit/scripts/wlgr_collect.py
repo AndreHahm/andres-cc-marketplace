@@ -124,13 +124,17 @@ def extract_open_items(markdown: str) -> list[tuple[str, bool]]:
 def collect_reports(repo_root: Path, repo: str, dirs: list[str]) -> list[dict]:
     """Candidates from markdown reports. source_ref is `<relative path>#<ordinal>`: an inserted item
     shifts later ordinals, which surfaces as a candidate-match for a person to confirm, never an
-    automatic merge. Symlinked files and directories are skipped."""
+    automatic merge. Symlinked files and directories inside a report folder are skipped, and a
+    report folder that is itself a symlink or junction is refused."""
     out: list[dict] = []
     root = repo_root.resolve()
     for d in dirs:
-        base = (root / d).resolve()
-        if root not in base.parents and base != root:
-            raise ValueError(f"report dir escapes the repo root: {d!r}")
+        # confine() rejects a path that escapes the repo AND a symlink or junction anywhere in the
+        # spelled path, the last component included; resolve() alone would silently follow it.
+        try:
+            base = wlgr_paths.confine(root / d, root)
+        except ValueError as exc:
+            raise ValueError(f"report dir {d!r} is not usable: {exc}") from None
         for path in sorted(base.rglob("*.md")):
             if path.is_symlink() or base not in path.resolve().parents:
                 continue

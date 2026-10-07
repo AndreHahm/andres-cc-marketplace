@@ -41,6 +41,11 @@ Two JSON tiers:
 - `.claude/workledger-kit.local.json` (gitignored override per project). Only those keys are accepted;
   unknown keys are dropped with a warning.
 
+This marketplace repository also keeps a hand-maintained twin of the defaults at
+`.claude/workledger-kit.settings.json`, because its dogfooding copy of the scripts in `.claude/scripts/`
+looks for them next to itself. A test in `scripts/wlgr_test_core.py` fails if the pair drifts apart; edit
+both in the same commit.
+
 A local file that is **tracked** by git cannot change `repos`, `digest` or `intake_capabilities`: the loader
 refuses those fields with a warning, because a tracked copy could have been committed by anyone with repo
 write access. Tracked-ness is decided case-insensitively, and a file under a submodule or another work tree counts as
