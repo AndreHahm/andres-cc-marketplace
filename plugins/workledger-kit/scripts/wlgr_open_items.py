@@ -183,14 +183,13 @@ def select_for_plan(
 
 
 def folder_counts(candidates: list[dict], depth: int = 3) -> dict[str, int]:
-    """Report candidates per folder (the first `depth` path components of the file the item came
-    from),
-    most numerous first. Counts only: lets a person choose real report folders without reading the
-    text."""
+    """Report candidates per folder (the first `depth` components of the folder holding the file
+    the item came from, never the file name itself), most numerous first. Counts only: lets a
+    person choose real report folders without reading the text."""
     counts: dict[str, int] = {}
     for c in candidates:
         if c["source"] == "report":
-            folder = "/".join(c["source_ref"].rsplit("#", 1)[0].split("/")[:depth])
+            folder = "/".join(c["source_ref"].rsplit("#", 1)[0].split("/")[:-1][:depth])
             counts[folder] = counts.get(folder, 0) + 1
     return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
 

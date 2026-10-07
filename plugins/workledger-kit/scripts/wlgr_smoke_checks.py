@@ -103,6 +103,9 @@ def check(skill_dir: Path) -> list[str]:
     tools = fm.get("allowed-tools", "")
     if re.search(r"(?<![\w(])Bash(?!\()", tools):
         failures.append("bare Bash grant (must be scoped)")
+    for m in re.finditer(r"Bash\([^)]*\)", tools):
+        if not _GRANT_RE.fullmatch(m.group(0)):
+            failures.append(f"unsupported Bash grant (must be scoped to a script): {m.group(0)}")
     for m in _GRANT_RE.finditer(tools):
         script = m.group(1)
         if not (plugin_root / "scripts" / script).is_file():

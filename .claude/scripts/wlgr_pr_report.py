@@ -27,6 +27,7 @@ import json
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -123,7 +124,8 @@ def build_report(prs: list[dict], repo: str, today: str, since: str | None = Non
     out += ["## Timeline", "", "| Date | PR | State | Title |", "|---|---|---|---|"]
     for p in chosen:
         out.append(
-            f"| {_date(p) or '-'} | #{p['number']} | {_state(p)} | {p['title'].replace('|', '/')} |"
+            f"| {_date(p) or '-'} | #{p['number']} | {_state(p)} | "
+            f"{wlgr_paths.md_text(p['title'].replace('|', '/'))} |"
         )
 
     refs = {
@@ -212,9 +214,14 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     since = opts.get("--since")
-    if since and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", since):
-        print("wlgr_pr_report.py: --since must be YYYY-MM-DD", file=sys.stderr)
-        return 2
+    if since:
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", since):
+                raise ValueError(since)
+            date.fromisoformat(since)  # rejects an impossible date such as 2026-99-99
+        except ValueError:
+            print("wlgr_pr_report.py: --since must be a real date, YYYY-MM-DD", file=sys.stderr)
+            return 2
     try:
         import wlgr_config
 
@@ -230,8 +237,6 @@ def main(argv: list[str]) -> int:
             repo = prs[0].get("html_url", "").split("/pull/")[0].split("github.com/")[-1]
         else:
             repo = "unknown"
-        from datetime import date
-
         text = build_report(prs, repo, date.today().isoformat(), since)
         wlgr_config.write_work(args[1], text)
     except (ValueError, OSError, json.JSONDecodeError, KeyError) as exc:

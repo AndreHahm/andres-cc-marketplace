@@ -66,7 +66,8 @@ def build_digest(
         out += ["", f"### {label}"]
         items = [c for c in new if c["source"] == k]
         out += [
-            f"- `{_line(c['source_ref']).replace('`', "'")}`: {_line(c['title'])} "
+            f"- `{_line(c['source_ref']).replace('`', "'")}`: "
+            f"{wlgr_paths.md_text(str(c['title']).replace('|', '/'))[:200]} "
             f"({'needs a person' if c.get('ambiguous') else 'clear'})"
             + (f" <{_line(c['extra']['url'])}>" if (c.get("extra") or {}).get("url") else "")
             for c in items

@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -50,8 +51,27 @@ class ExtractTests(unittest.TestCase):
             ],
         )
 
+    def test_subsection_inside_a_followup_section_keeps_its_bullets(self):
+        md = (
+            "## Follow-ups\n### Documentation\n- update docs\n"
+            "#### Deeper\n- deeper note\n## Notes\n- not an item\n### Sub\n- still not\n"
+        )
+        self.assertEqual(col.extract_open_items(md), [("update docs", True), ("deeper note", True)])
+
+    def test_a_same_level_followup_heading_replaces_the_previous_section(self):
+        md = "### Follow-ups\n- a\n### Notes\n- b\n### TODO\n- c\n"
+        self.assertEqual(col.extract_open_items(md), [("a", True), ("c", True)])
+
     def test_checked_boxes_and_other_sections_ignored(self):
         self.assertEqual(col.extract_open_items("- [x] done\n## Notes\n- note\n"), [])
+
+
+class GhTimeoutTests(unittest.TestCase):
+    def test_a_stalled_gh_read_becomes_the_per_source_failure(self):
+        stalled = subprocess.TimeoutExpired(cmd="gh", timeout=300)
+        with mock.patch.object(col.subprocess, "run", side_effect=stalled):
+            with self.assertRaisesRegex(RuntimeError, "timed out: repos/o/r/issues"):
+                col._gh("repos/o/r/issues", ".[]")
 
 
 class ReportCollectionTests(unittest.TestCase):
