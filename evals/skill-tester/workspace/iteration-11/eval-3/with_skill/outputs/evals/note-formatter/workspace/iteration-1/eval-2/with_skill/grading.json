@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "assertion 1",
+      "passed": true,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 2",
+      "passed": true,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 3",
+      "passed": true,
+      "evidence": "fixture"
+    },
+    {
+      "text": "assertion 4",
+      "passed": false,
+      "evidence": "fixture"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

@@ -136,6 +136,16 @@ def main():
         baseline_grading = load_json(baseline_grading_path)
         baseline_timing = load_json(baseline_timing_path)
 
+        # A contaminated or ungraded baseline must never reach the averages: a
+        # missing grading file would otherwise count as a 0.0 pass rate and
+        # inflate the improvement.
+        if baseline_grading.get("contaminated") is True:
+            print(f"Error: eval-{eval_id} baseline is marked contaminated; re-run and re-grade it")
+            sys.exit(1)
+        if os.path.isdir(os.path.join(eval_dir, "baseline")) and not baseline_grading:
+            print(f"Error: eval-{eval_id} has a baseline/ directory but no baseline/grading.json")
+            sys.exit(1)
+
         # Extract metrics
         with_skill_pass_rate = dig(with_skill_grading, "summary", "pass_rate") or 0.0
         baseline_pass_rate = dig(baseline_grading, "summary", "pass_rate") or 0.0

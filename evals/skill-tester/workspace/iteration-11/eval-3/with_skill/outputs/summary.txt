@@ -1,0 +1,20 @@
+EVALUATION RESULTS: note-formatter iteration-1
+==============================================
+
+Eval 1: mixed-types-grouped
+  WITH SKILL:  4/4 (100%) | 2500 tokens | 8s
+  BASELINE:    2/4 (50%)  | 1800 tokens | 5s
+  DELTA:       +50% better | +700 tokens | +3s
+
+Eval 2: missing-issue-number
+  WITH SKILL:  3/4 (75%)  | 2100 tokens | 7s
+  BASELINE:    1/4 (25%)  | 1900 tokens | 4s
+  DELTA:       +50% better | +200 tokens | +3s
+
+SUMMARY
+-------
+With Skill Avg:    87.5% pass rate | 2300 avg tokens
+Baseline Avg:      37.5% pass rate | 1850 avg tokens
+IMPROVEMENT:       +50.0 percentage points
+
+Coverage: 2 of 2 declared Testing & Validation scenarios covered.
