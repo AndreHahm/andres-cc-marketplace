@@ -99,7 +99,9 @@ example a missing `node` binary) fails only that reviewer; any other exception i
 A reviewer that returns no findings and a verdict starting with `Inconclusive` (for example when its command
 bridge failed before any file could be read) is retried once (`DISPATCH_MAX_EMPTY_RETRIES`, counted apart
 from the timeout retries and bound by the same budget check), because a sandbox that fails to start can be
-transient. If the retry is also empty it is reported as failed, not completed, with the reviewer's full first
+transient. The retry log line carries the first attempt's inspection limit, so a failure that a retry then
+clears stays visible in the log. The check cannot tell a transient failure from a legitimate `Inconclusive`
+verdict, so the latter also spends one extra call before it fails the same way. If the retry is also empty it is reported as failed, not completed, with the reviewer's full first
 inspection limit in the error (up to 2000 characters, control characters stripped). The
 output envelope has no structured field for "inspected nothing", so this keys on the verdict's own prefix: a
 deliberately narrow, fail-closed check that can miss a differently worded empty pass but never fails a review

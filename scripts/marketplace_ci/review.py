@@ -1063,7 +1063,8 @@ def _dispatch_one(
         if empty_retries < max_empty_retries:
             empty_retries += 1
             print(
-                f"run-codex-review: {name} returned an empty review (attempt {attempts}); retrying",
+                f"run-codex-review: {name} returned an empty review (attempt {attempts}): "
+                f"{empty_reason}; retrying",
                 file=sys.stderr,
             )
             continue
