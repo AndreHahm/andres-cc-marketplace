@@ -27,11 +27,11 @@ MERGE_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
 # collaborator/CODEOWNERS author checks. GitHub reserves the `[bot]` suffix,
 # so no human account can claim one of these logins; the match must stay an
 # exact-string compare, never a suffix or prefix match.
+TRUSTED_BOT_LOGINS = ("dependabot[bot]",)
 # The login is the PR's opener and stays fixed for the PR's life, so the merge
-# check below also requires every changed path to be a root dependency
+# check also requires every changed path to be a root dependency
 # manifest/lockfile: a later commit pushed to the branch touching anything
 # else falls back to the normal CODEOWNERS check.
-TRUSTED_BOT_LOGINS = ("dependabot[bot]",)
 TRUSTED_BOT_PATHS = frozenset({"uv.lock", "pyproject.toml", "package.json"})
 # GitHub signs dependabot's commits itself: author dependabot[bot], committer
 # web-flow, signature verified. A forged author email alone fails the committer
@@ -255,6 +255,8 @@ def commits_verified_from_trusted_bot(
     is authored by a trusted bot, committed by `web-flow`, with a verified
     signature. Any API error, malformed output or missing field returns False
     (fail closed, so the caller falls back to the normal CODEOWNERS check)."""
+    # The commits endpoint returns at most 250, so a count of exactly 250 can't
+    # be told apart from a truncated list: fail closed rather than trust it.
     if number is None or not isinstance(expected_count, int) or not 0 < expected_count < 250:
         return False
     result = subprocess.run(
