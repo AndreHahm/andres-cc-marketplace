@@ -90,7 +90,9 @@ dedup results cover exactly the set that will be planned.
    ambiguous flag), a sample of full descriptions, and the counts of new, confirmed-match, dropped
    duplicate, dropped unconfirmed match, drift, skipped and dropped boilerplate, plus the number of confirmed
    keys in `P-confirmed.json` and of existing issues in `P-existing.json`. Name each unconfirmed match
-   that was held back by its reference, so the person can still decide on it. A very large batch is
+   that was held back by its reference (the `candidate-match` rows in `P-issues-k.json`, likewise
+   `reports`, `prs`). If the person wants one proposed after all, return to Phase 5 step 2: add its key to
+   `P-confirmed.json`, re-run `apply-classification` and `describe`, then re-hash and re-preview. A very large batch is
    shown by counts and a sample, not row by row.
 3. Mark every ambiguous candidate "needs your decision" with its source reference and its evidence (the text
    and where it was found). While the `classify` **capability** is off, nothing is classified automatically.
