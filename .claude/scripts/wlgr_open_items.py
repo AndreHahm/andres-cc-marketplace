@@ -260,6 +260,16 @@ def new_since(annotated: list[dict], seen_keys: set[str]) -> list[dict]:
     return [c for c in annotated if c["dedup_key"] not in seen_keys]
 
 
+def is_first_run(annotated: list[dict], seen_keys: set[str]) -> bool:
+    """True when no seen key belongs to a repository of these candidates (a missing or empty file,
+    or one that only holds other repositories' keys). With no candidates, true only when nothing
+    at all is recorded."""
+    repos = {c["repo"] for c in annotated}
+    if not repos:
+        return not seen_keys
+    return not any(key.split("|", 1)[0] in repos for key in seen_keys)
+
+
 def build_description(
     dedup_key: str, summary: str, context: str, done_when: list[str], tracking: dict
 ) -> str:
@@ -387,14 +397,17 @@ def _save(name: str, data) -> None:
     wlgr_config.write_work(name, json.dumps(data, ensure_ascii=False, indent=1))
 
 
-def _seen(name: str) -> tuple[set[str], bool]:
-    """(keys, existed). A missing seen-keys file is a first run."""
+def _seen(name: str) -> set[str]:
+    """The recorded keys; a missing seen-keys file is an empty set."""
     import wlgr_config
 
     path = wlgr_config.work_file(name)
     if not path.is_file():
-        return set(), False
-    return set(json.loads(wlgr_config.read_work(name))), True
+        return set()
+    keys = json.loads(wlgr_config.read_work(name))
+    if not isinstance(keys, list) or not all(isinstance(k, str) for k in keys):
+        raise ValueError(f"{name} must be a JSON list of strings")
+    return set(keys)
 
 
 def main(argv: list[str]) -> int:
@@ -460,15 +473,15 @@ def main(argv: list[str]) -> int:
                 )
             )
         elif cmd == "new-since" and len(a) == 3:
-            seen, existed = _seen(a[1])
-            fresh = new_since(_load(a[0])["candidates"], seen)
+            seen = _seen(a[1])
+            candidates = _load(a[0])["candidates"]
+            fresh = new_since(candidates, seen)
             _save(a[2], fresh)
-            print(json.dumps({"new": len(fresh), "first_run": not existed}))
+            print(json.dumps({"new": len(fresh), "first_run": is_first_run(candidates, seen)}))
         elif cmd == "mark-seen" and len(a) == 2:
             import wlgr_config
 
-            seen, _ = _seen(a[1])
-            keys = seen | {c["dedup_key"] for c in _load(a[0])["candidates"]}
+            keys = _seen(a[1]) | {c["dedup_key"] for c in _load(a[0])["candidates"]}
             wlgr_config.write_work(a[1], json.dumps(sorted(keys)))
             print(json.dumps({"seen": len(keys)}))
         else:

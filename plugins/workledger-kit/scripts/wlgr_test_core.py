@@ -18,6 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, cast
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -309,6 +310,33 @@ class CliFlowTests(unittest.TestCase):
         r = run_cli("wlgr_open_items.py", self.repo, "new-since", "a.json", "seen.json", "n.json")
         self.assertEqual(json.loads(r.stdout), {"new": 0, "first_run": False})
 
+    def test_first_run_is_per_repository(self):
+        self.put("c.json", [cand("#1", "first item")])
+        run_cli("wlgr_open_items.py", self.repo, "annotate", "c.json", "a.json")
+
+        def first_run():
+            args = ("wlgr_open_items.py", self.repo, "new-since", "a.json", "seen.json", "n.json")
+            return json.loads(run_cli(*args).stdout)["first_run"]
+
+        self.assertTrue(first_run())  # no seen-keys file
+        self.put("seen.json", [])
+        self.assertTrue(first_run())  # an empty file
+        self.put("seen.json", ["other/repo|#1|abcd1234"])
+        self.assertTrue(first_run())  # only another repository's keys
+        self.put("seen.json", [f"{REPO}|#9|abcd1234"])
+        self.assertFalse(first_run())  # this repository already has keys
+
+    def test_malformed_seen_keys_file_is_a_clean_error(self):
+        self.put("c.json", [cand("#1", "first item")])
+        run_cli("wlgr_open_items.py", self.repo, "annotate", "c.json", "a.json")
+        for bad in ({"a": 1}, [1, 2], [["x"]], "abc"):
+            self.put("seen.json", bad)
+            for cmd in ("new-since", "mark-seen"):
+                args = ("wlgr_open_items.py", self.repo, cmd, "a.json", "seen.json")
+                r = run_cli(*args, *(("n.json",) if cmd == "new-since" else ()))
+                self.assertNotEqual(r.returncode, 0, (cmd, bad))
+                self.assertNotIn("Traceback", r.stderr, (cmd, bad))
+
     def test_path_like_names_are_refused(self):
         self.put("c.json", [cand("#1", "x")])
         for bad in (
@@ -446,6 +474,18 @@ class ReadOnlyWrapperTests(unittest.TestCase):
             ["https://evil.example/x"],
             ["graphql"],
             ["GraphQL?query=1"],
+            ["graphql/"],
+            ["/graphql/"],
+            ["GraphQL/?query=1"],
+            ["repos/o/r/../../x"],
+            ["repos/../user"],
+            ["../user"],
+            ["repos/./o"],
+            ["repos/o/r/.."],
+            ["repos/o/r/../issues?state=all"],
+            ["repos/%2e%2e/user"],
+            ["%2E%2E/graphql"],
+            ["%67raphql"],
             ["{owner}/x"],
             ["repos/o/r;id"],
             ["repos/o r"],
@@ -455,10 +495,22 @@ class ReadOnlyWrapperTests(unittest.TestCase):
             self.assertIsNone(cmd, argv)
             self.assertIn(code, (1, 2))
 
+    def test_dots_inside_names_and_colons_in_queries_stay_allowed(self):
+        for endpoint in (
+            "repos/o/r.js/issues",
+            "repos/o/r/issues?since=2026-01-01T00:00:00Z",
+            "repos/o/r/issues?since=2026-01-01T00%3A00%3A00Z",  # '%' is fine in the query part
+        ):
+            cmd, err, code = gh.build_command([endpoint])
+            self.assertEqual((err, code), (None, 0), endpoint)
+            assert cmd is not None
+            self.assertEqual(cmd[-1], endpoint)
+
 
 class PathSafetyTests(unittest.TestCase):
     def test_work_name(self):
         self.assertEqual(paths.work_name("cands-1.json"), "cands-1.json")
+        self.assertEqual(paths.work_name("o--r-issues.json"), "o--r-issues.json")
         for bad in ("a/b", "a\\b", "..", ".x", "", "con", "NUL.json", "x.", "x ", "a" * 200, None):
             with self.assertRaises(ValueError, msg=str(bad)):
                 paths.work_name(cast(Any, bad))  # the None entry checks the type guard on purpose
@@ -592,6 +644,17 @@ class ConfigTests(unittest.TestCase):
             settings, warnings = cfg.load_settings(PLUGIN_ROOT, root)
             self.assertEqual(settings["digest"]["output_dir"], ".temp/workledger-digest")
             self.assertEqual(len(warnings), 1)
+
+    def test_local_override_is_read_through_the_shared_no_follow_reader(self):
+        root = self._repo({"digest": {"output_dir": ".temp/other"}})
+        with mock.patch.object(paths, "read_text", wraps=paths.read_text) as reader:
+            settings, warnings = cfg.load_settings(PLUGIN_ROOT, root)
+        self.assertEqual((settings["digest"]["output_dir"], warnings), (".temp/other", []))
+        reader.assert_called_once()
+        with mock.patch.object(paths, "read_text", side_effect=OSError("refused")):
+            settings, warnings = cfg.load_settings(PLUGIN_ROOT, root)
+        self.assertEqual(settings["digest"]["output_dir"], ".temp/workledger-digest")
+        self.assertTrue(warnings and "not readable JSON" in warnings[0])
 
     def test_symlinked_local_file_is_ignored(self):
         root = make_repo(self, repos=False)

@@ -49,15 +49,18 @@ def build_command(argv: list[str]) -> tuple[list[str] | None, str | None, int]:
     endpoint, rest = argv[0], argv[1:]
     if endpoint.startswith("-"):
         return None, f"rejected endpoint {endpoint!r} -- endpoint must not look like a flag", 1
+    path = endpoint.split("?", 1)[0]
     if (
         not _ENDPOINT_RE.fullmatch(endpoint)
         or "://" in endpoint
-        or endpoint.lstrip("/").split("?", 1)[0].lower() == "graphql"
+        or "%" in path
+        or path.strip("/").lower() == "graphql"
+        or any(segment in {".", ".."} for segment in path.split("/"))
     ):
         return (
             None,
             f"rejected endpoint {endpoint!r} -- only plain REST paths are permitted (no URL, "
-            f"host, graphql or placeholder)",
+            f"host, graphql, placeholder, percent-encoding in the path or '.'/'..' segment)",
             1,
         )
 
