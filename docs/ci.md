@@ -159,7 +159,7 @@ hypothetical.
 
 `check-pr` has one narrow exemption: a PR opened by the exact login `dependabot[bot]` (`TRUSTED_BOT_LOGINS`
 in `pr_policy.py`) passes the author-privilege check, and passes the merge-privilege check only when every
-changed path is a root manifest/lockfile (`uv.lock`, `pyproject.toml`, `package.json`); the diff runs with
+changed path is a root manifest/lockfile (`uv.lock`, `pyproject.toml`, `package.json`, `pnpm-lock.yaml`); the diff runs with
 `--no-renames` so a rename onto one of those names can't hide the deleted source file.
 The login is the PR opener and never changes, so the merge-privilege exemption also requires every commit
 on the PR (`gh api .../pulls/<n>/commits`) to be authored by `dependabot[bot]`, committed by `web-flow`
