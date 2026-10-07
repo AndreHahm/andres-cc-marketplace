@@ -96,8 +96,8 @@ dedup results cover exactly the set that will be planned.
    shown by counts and a sample, not row by row.
 3. Mark every ambiguous candidate "needs your decision" with its source reference and its evidence (the text
    and where it was found). While the `classify` **capability** is off, nothing is classified automatically.
-4. Compute the batch hash: `wlgr_open_items.py plan-hash P-issues-p.json` (the hash covers the exact set in
-   that file). Show it in the preview.
+4. Compute each batch's hash: `wlgr_open_items.py plan-hash P-issues-p.json` (likewise `P-reports-p.json`,
+   `P-prs-p.json`; each hash covers the exact set in its own file). Show it in that batch's preview.
 5. Ask per batch with `AskUserQuestion`, one at a time: include as previewed, change the set, or skip this
    batch. A changed set means rewriting the proposals file, a new hash and a new preview.
 

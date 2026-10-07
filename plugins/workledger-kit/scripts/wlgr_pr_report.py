@@ -190,7 +190,7 @@ def build_report(prs: list[dict], repo: str, today: str, since: str | None = Non
             prs_per[s] += 1
             follow_per[s] += p["number"] in followed
     out += [
-        f"| {s} | {n} | {follow_per[s]} |"
+        f"| {wlgr_paths.md_text(s)} | {n} | {follow_per[s]} |"
         for s, n in sorted(prs_per.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
     return "\n".join(out) + "\n"

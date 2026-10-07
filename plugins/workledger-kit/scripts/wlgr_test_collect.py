@@ -87,6 +87,17 @@ class ReportCollectionTests(unittest.TestCase):
         )
         self.assertTrue(all(c["source"] == "report" and c["repo"] == REPO for c in got))
 
+    def test_overlapping_report_dirs_list_each_file_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "reports" / "team").mkdir(parents=True)
+            (root / "reports" / "team" / "r.md").write_text("- [ ] one\n", encoding="utf-8")
+            (root / "reports" / "top.md").write_text("- [ ] two\n", encoding="utf-8")
+            got = col.collect_reports(root, REPO, ["reports", "reports/team", "reports"])
+        self.assertEqual(
+            sorted(c["source_ref"] for c in got), ["reports/team/r.md#1", "reports/top.md#1"]
+        )
+
     def test_dir_escaping_repo_root_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):

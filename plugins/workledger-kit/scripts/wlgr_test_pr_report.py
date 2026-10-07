@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -143,6 +144,12 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(len(row), 1, out)
         self.assertNotIn("![x](", row[0])
         self.assertIn(r"!\[x\](http://evil/p.png)", row[0])
+
+    def test_plugin_scope_cannot_render_html_in_the_per_plugin_table(self):
+        out = rep.build_report([pr(1, "feat(<img src=x>): a")], REPO, "2026-10-06")
+        table = out.split("## Per plugin")[1]
+        self.assertIsNone(re.search(r"(?<!\\)<", table))  # no unescaped angle bracket
+        self.assertIn(r"\<img src=x\>", table)
 
     def test_template_boxes_are_not_follow_ups_but_unique_boxes_are(self):
         prs = [pr(n, "feat(a): x", "- [ ] Tests added") for n in (1, 2, 3)] + [

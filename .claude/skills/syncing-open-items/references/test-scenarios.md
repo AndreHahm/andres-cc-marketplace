@@ -15,6 +15,9 @@ Scenarios to verify by following the skill on a real run:
    candidate is absent from the proposals file and counted as `dropped-duplicate`.
 7. **Two repositories**: input two configured repositories; each has its own prefixed files, and one batch
    never mixes repositories.
+8. **Changed report or PR batch**: approve three batches, then edit `P-reports-p.json` (or `P-prs-p.json`)
+   before Phase 7; the re-hash catches it, that batch is stopped and returns to the preview, and the
+   other two batches are still judged on their own hashes.
 
 Pass criteria: no GitHub write, no connector call, one `AskUserQuestion` per batch, intake approval still
 required.

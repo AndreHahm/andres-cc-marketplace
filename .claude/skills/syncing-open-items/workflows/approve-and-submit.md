@@ -14,8 +14,10 @@ nothing was submitted" below.
 1. **Re-check the state you are about to act on.** Run `${CLAUDE_PLUGIN_ROOT}/scripts/wlgr_config.py` again.
    If `problems` is non-empty, or `repos` or `intake_capabilities` differ from what Phase 1 showed, stop and
    report the difference: the local config can change during a long run, and it is trusted only because it
-   is untracked. Then run `wlgr_open_items.py plan-hash P-issues-p.json` and require it to equal the approved
-   hash; if it differs, stop that batch and return to the Phase 6 preview.
+   is untracked. Then re-hash **every** approved batch from its own proposals file (`P-issues-p.json`,
+   `P-reports-p.json`, `P-prs-p.json`) with `wlgr_open_items.py plan-hash <file>` and require each to equal
+   that batch's own approved hash. A batch that differs is stopped and goes back to the Phase 6 preview; the
+   other batches are judged on their own hashes.
 2. **Build the intake payload** from the proposals file: for each proposal, `content` is `title`,
    `description`, `status`, `labels` and `priority` (omit `priority` when null). Do not send `dedup_key`
    (it is already the first line of `description`) or `ambiguous` (intake rejects unrecognized fields). Set
