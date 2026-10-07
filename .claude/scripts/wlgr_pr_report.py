@@ -16,7 +16,9 @@ Four views plus a per-plugin breakdown:
     e.g. `feat(git-kit): ...`. A PR with no scope is counted under `(no scope)`.
 
 Usage (run inside the repository; names are plain files in the working folder):
-  wlgr_pr_report.py <facts.json> <report.md> [--since YYYY-MM-DD]
+  wlgr_pr_report.py <facts.json> <report.md> [--since YYYY-MM-DD] [--repo owner/repo]
+  --repo names the repository in the report title; without it the name is read from the first PR,
+  so pass it whenever the repository may have no pull requests yet.
 """
 
 from __future__ import annotations
@@ -194,26 +196,40 @@ def build_report(prs: list[dict], repo: str, today: str, since: str | None = Non
 
 def main(argv: list[str]) -> int:
     wlgr_paths.utf8_stdio()
-    since = None
-    args = list(argv)
-    if len(args) == 4 and args[2] == "--since":
-        since = args[3]
-        args = args[:2]
+    args: list[str] = []
+    opts: dict[str, str] = {}
+    it = iter(argv)
+    for arg in it:
+        if arg in ("--since", "--repo"):
+            value = next(it, None)
+            if value is None or arg in opts:
+                print(__doc__, file=sys.stderr)
+                return 2
+            opts[arg] = value
+        else:
+            args.append(arg)
     if len(args) != 2:
         print(__doc__, file=sys.stderr)
         return 2
+    since = opts.get("--since")
     if since and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", since):
         print("wlgr_pr_report.py: --since must be YYYY-MM-DD", file=sys.stderr)
         return 2
     try:
         import wlgr_config
 
+        if "--repo" in opts and not wlgr_config.valid_slug(opts["--repo"]):
+            print("wlgr_pr_report.py: --repo must be owner/repo", file=sys.stderr)
+            return 2
         prs = json.loads(wlgr_config.read_work(args[0]))
-        repo = (
-            (prs[0].get("html_url", "").split("/pull/")[0].split("github.com/")[-1])
-            if prs
-            else "unknown"
-        )
+        # An explicit --repo names the report even when the repository has no PRs; otherwise the
+        # name comes from the first PR's URL.
+        if "--repo" in opts:
+            repo = opts["--repo"]
+        elif prs:
+            repo = prs[0].get("html_url", "").split("/pull/")[0].split("github.com/")[-1]
+        else:
+            repo = "unknown"
         from datetime import date
 
         text = build_report(prs, repo, date.today().isoformat(), since)

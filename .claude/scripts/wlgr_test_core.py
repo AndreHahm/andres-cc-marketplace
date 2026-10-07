@@ -1148,5 +1148,17 @@ class SmokeCheckTests(unittest.TestCase):
             self.assertEqual(smoke.check(skill), [], skill.name)
 
 
+class DevRepoTwinTests(unittest.TestCase):
+    def test_dogfooding_copy_of_the_defaults_matches_the_shipped_file(self):
+        # This marketplace repository mirrors the plugin's scripts into .claude/, where the loader
+        # looks for the defaults next to them. The copy is kept by hand; nothing else checks the
+        # pair. Only meaningful inside that repository, so skip when the copy is absent.
+        twin = PLUGIN_ROOT.parent.parent / ".claude" / cfg.SETTINGS_NAME
+        if not twin.is_file():
+            self.skipTest("not inside the marketplace repository")
+        shipped = PLUGIN_ROOT / cfg.SETTINGS_NAME
+        self.assertEqual(twin.read_bytes(), shipped.read_bytes())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

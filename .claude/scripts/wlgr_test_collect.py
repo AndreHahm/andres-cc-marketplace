@@ -228,6 +228,27 @@ class AdversarialInputTests(unittest.TestCase):
             got = col.collect_reports(root, REPO, ["out"])
         self.assertEqual([c["text"] for c in got], ["real item"])
 
+    def test_report_folder_that_is_itself_a_symlink_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "approved").mkdir()
+            (root / "approved" / "a.md").write_text("- [ ] approved item\n", encoding="utf-8")
+            (root / "other").mkdir()
+            (root / "other" / "b.md").write_text("- [ ] item from elsewhere\n", encoding="utf-8")
+            try:
+                os.symlink(root / "other", root / "linked", target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks not permitted on this machine")
+            with self.assertRaisesRegex(ValueError, "symlink or junction"):
+                col.collect_reports(root, REPO, ["linked"])
+            got = col.collect_reports(root, REPO, ["approved"])
+        self.assertEqual([c["text"] for c in got], ["approved item"])
+
+    def test_report_folder_outside_the_repo_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                col.collect_reports(Path(tmp), REPO, ["../elsewhere"])
+
 
 class CollectorCliTests(unittest.TestCase):
     def test_unconfigured_repository_is_refused_before_any_network_call(self):

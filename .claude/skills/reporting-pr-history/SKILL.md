@@ -63,7 +63,8 @@ being overwritten (a second run on the same day replaces that day's file).
    report's date; the user supplies it (the plugin does not read Notion). Name the kind `baseline` or `delta`.
 3. **Read PR facts.** `wlgr_collect.py pr-facts <owner/repo> P-pr-facts-<date>.json` (GET-only; `<owner/repo>`
    must be a configured repository).
-4. **Assemble.** `wlgr_pr_report.py P-pr-facts-<date>.json P-pr-report-<date>-<kind>.md` (add
+4. **Assemble.** `wlgr_pr_report.py P-pr-facts-<date>.json P-pr-report-<date>-<kind>.md --repo <owner/repo>`
+   (the repository chosen in step 2, so a repository with no PRs yet is still named; add
    `--since YYYY-MM-DD` for a delta). The layout and its rules are in `references/report-layout.md`.
 5. **Preview.** `Read` the report and show the section counts and the first part of each section (a full
    report is large; do not paste all of it). State what the report cannot say: links are explicit references

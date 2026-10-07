@@ -103,6 +103,15 @@ class CliTests(unittest.TestCase):
             self.assertIn("| git-kit | 1 | 0 |", (work / "r.md").read_text(encoding="utf-8"))
             self.assertEqual(run("../f.json", "r.md").returncode, 1)  # path-like name refused
             self.assertEqual(run("f.json", "r.md", "--since", "yesterday").returncode, 2)
+            # a repository with no PRs: unnamed unless --repo says which one it is
+            (work / "e.json").write_text("[]", encoding="utf-8")
+            self.assertEqual(run("e.json", "empty.md").returncode, 0)
+            self.assertIn("unknown", (work / "empty.md").read_text(encoding="utf-8"))
+            named = run("e.json", "named.md", "--repo", "someone/else")
+            self.assertEqual(named.returncode, 0, named.stderr)
+            self.assertIn("someone/else", (work / "named.md").read_text(encoding="utf-8"))
+            self.assertEqual(run("e.json", "bad.md", "--repo", "not a slug").returncode, 2)
+            self.assertEqual(run("e.json", "bad.md", "--repo").returncode, 2)  # value missing
 
 
 class ReportTests(unittest.TestCase):
