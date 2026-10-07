@@ -101,7 +101,8 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
     "assertions_total": "integer — total assertions evaluated",
     "assertions_passed": "integer — count of passed assertions",
     "pass_rate": "float (0.0–1.0) — assertions_passed / assertions_total"
-  }
+  },
+  "contaminated": "boolean (optional, baseline only) — true when the baseline output quotes or reproduces the skill under test"
 }
 ```
 
@@ -295,7 +296,7 @@ Summary:
 1. Discover all `eval-N/` directories
 2. For each eval:
    - Read `with_skill/grading.json` → extract pass_rate
-   - Read `baseline/grading.json` → extract pass_rate
+   - Read `baseline/grading.json` → extract pass_rate; stop with an error if it sets `contaminated: true`, or if a `baseline/` directory exists without it
    - Read `with_skill/timing.json` → extract total_tokens, duration_ms
    - Read `baseline/timing.json` → extract total_tokens, duration_ms
    - Calculate delta (with_skill - baseline)
@@ -355,7 +356,7 @@ Then create ./evals/<skill-name>/workspace/iteration-N/eval-M/baseline/timing.js
 "
 ```
 
-**Baseline isolation note:** isolation is by instruction only — a `general-purpose` agent can still reach installed skills. Treat a baseline output that quotes or reproduces the skill under test as contaminated: record that in the grading `evidence` and do not count it as a clean baseline.
+**Baseline isolation note:** isolation is by instruction only — a `general-purpose` agent can still reach installed skills. Treat a baseline output that quotes or reproduces the skill under test as contaminated: set `"contaminated": true` in that baseline's `grading.json` (and say why in `evidence`). `aggregate_benchmark.py` then stops with an error naming the eval, so the baseline has to be re-run and re-graded; deleting the grading file does not help, because the script also rejects a `baseline/` directory with no `grading.json`.
 
 ### WITH_SKILL_ONLY Template (Quick Workflow)
 

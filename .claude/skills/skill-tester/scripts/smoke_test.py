@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Persisted smoke test for skill-tester: frontmatter validity, referenced-file
 existence, Bash-scope grant consistency, declared-tool usage, and a fixture run
-of scripts/aggregate_benchmark.py against known-good numbers."""
+of scripts/aggregate_benchmark.py against known-good numbers, plus its rejection of a
+contaminated or ungraded baseline."""
 
 import contextlib
 import importlib.util
@@ -316,6 +317,33 @@ def check_negative_improvement_output():
     return True, "negative improvement prints as -50.0 percentage points"
 
 
+def check_unusable_baseline_rejected():
+    """A contaminated baseline, or a baseline directory with no grading, must stop aggregation."""
+    example = json.loads(
+        (SKILL_DIR / "assets" / "grading-baseline-example.json").read_text(encoding="utf-8")
+    )
+    timing = {"total_tokens": 1000, "duration_ms": 1000, "model": "<model-id>"}
+    problems = []
+    for label, graded_baseline in (
+        ("contaminated", {**example, "contaminated": True}),
+        ("ungraded", None),
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            iteration = pathlib.Path(tmp) / "evals" / "fixture-skill" / "workspace" / "iteration-1"
+            eval_dir = iteration / "eval-1"
+            _write_json(eval_dir / "with_skill" / "grading.json", example)
+            _write_json(eval_dir / "with_skill" / "timing.json", timing)
+            _write_json(eval_dir / "baseline" / "timing.json", timing)
+            if graded_baseline is not None:
+                _write_json(eval_dir / "baseline" / "grading.json", graded_baseline)
+            code, _ = _run_aggregate(iteration)
+            if code != 1:
+                problems.append(f"{label} baseline exited {code} (want 1)")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "a contaminated or ungraded baseline stops aggregation with exit 1"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -324,6 +352,7 @@ CHECKS = [
     check_declared_tools_used,
     check_aggregate_fixture,
     check_negative_improvement_output,
+    check_unusable_baseline_rejected,
 ]
 
 
