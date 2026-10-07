@@ -24,4 +24,4 @@ Rules:
 - Keep each text block or property at most 2,000 characters; split the report with
   `wlgr_open_items.py chunk <report.md> <chunks.json>` (file names in the working folder). Intake has no page-content field yet, so the
   chunks stay in the working folder until it does.
-- Name the snapshot date in the title so history stays ordered; each run is a new record.
+- Name the snapshot date in the title so history stays ordered; each submitted run is a new Report; a same-day rerun replaces the local file.

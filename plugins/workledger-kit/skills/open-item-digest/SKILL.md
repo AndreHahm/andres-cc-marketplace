@@ -27,7 +27,9 @@ line, stdin or a heredoc.
 ## Quick Start
 
 1. Check the config, then collect the three sources and annotate them (steps 1-3).
-2. Find what is new since the last run and write one dated digest file (steps 4-5).
+2. Find what is new since the last run and write one dated digest file per repository (steps 4-5). The
+   digest's name and title do not contain the repository; only the link on an issue line or a PR-record line
+   does (report and PR follow-up lines have no link).
 3. Only after the file exists, mark the keys as seen (step 6).
 
 ## Why it does not consult Linear
@@ -52,7 +54,9 @@ Linear is therefore not reported here.
 ## Steps
 
 Run the scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` from inside the repository. Run steps 2-7 once per
-configured repository and prefix every file name with `<owner>-<repo>-` (written `P-` below).
+configured repository and prefix every collected and intermediate file name with `<owner>--<repo>-` (written `P-` below). Two files
+are deliberately not prefixed: `seen-keys.json` (shared; every key already contains its repository) and
+`digest-<date>.md` (named by `wlgr_digest.py`, which never overwrites and adds `-2`, `-3`).
 
 1. Run `wlgr_config.py`. Stop on any `problems` (an empty `repos` means no repository is onboarded yet: use
    `onboarding-repositories`); show `warnings`. The working folder (`workdir`) is validated as relative,
@@ -65,19 +69,23 @@ configured repository and prefix every file name with `<owner>-<repo>-` (written
    (likewise `issues`, `prs`).
 4. For each annotated file, find what is new: `wlgr_open_items.py new-since P-reports-a.json seen-keys.json
    P-reports-new.json` (likewise `issues`, `prs`). The count line includes `first_run`.
-5. Write one digest from the sources that succeeded: `wlgr_digest.py
+5. Write one digest for this repository from the sources that succeeded: `wlgr_digest.py
    P-reports-a.json,P-issues-a.json,P-prs-a.json P-reports-new.json,P-issues-new.json,P-prs-new.json`, adding
    `--first-run` when any `first_run` was true and `--failed <names>` for failed sources. It writes one new
-   `digest-<date>.md` (an existing file is never overwritten; a `-2`, `-3` suffix is used).
+   `digest-<date>.md` (an existing file is never overwritten; a `-2`, `-3` suffix is used). With several
+   repositories the files cannot be told apart by name or title, so tell the person which repository each run
+   covered.
 6. **Only after the digest file exists**, record the keys as seen, for each annotated file:
    `wlgr_open_items.py mark-seen P-reports-a.json seen-keys.json` (likewise `issues`, `prs`). If writing the
    digest failed, do not mark anything seen, so nothing is lost from the next run. The seen-keys file is
    shared across repositories because every key contains its repository.
-7. Report the digest file name, the counts per source and any failed source. Do not post the digest anywhere.
+7. Report the digest file name, the repository it covers, the counts per source and any failed source. Do not
+   post the digest anywhere.
 
 ## Gotchas
 
-- **The first run is large.** Every candidate is new; the digest says so at the top.
+- **The first run is large.** Every candidate is new. The digest says so at the top only when the shared
+  `seen-keys.json` did not exist yet, so a repository added later lists everything as new without that notice.
 - **Ambiguous is not an item yet.** The digest marks those "needs a person"; they are never classified.
 - **The folder comes only from the validated config.** Never from collected text or an argument.
 - **The digest lists every report folder.** Generated working folders under `.claude/output/` are included,
@@ -102,7 +110,7 @@ Run from the plugin root: `python scripts/wlgr_test_core.py` (covers `new-since`
 Scenarios to verify by following the skill on a real run, and their pass criteria:
 `references/test-scenarios.md`.
 
-**Why no `evals.json`:** a thin procedure over tested scripts. Its decision logic lives in `scripts/` and is covered by `wlgr_test_*.py`, and its write path cannot run until Wave 3a ships, so a behavioral eval would exercise plan mode only. Open item: add behavioral checks once Wave 3a ships.
+**Why no `evals.json`:** a thin read-only procedure over tested scripts. Its decision logic lives in `scripts/` and is covered by `wlgr_test_*.py`, and it never submits anything, so a behavioral eval would add little. Open item: add a behavioral check of the unattended run.
 
 **Last dated run record:** 2026-10-07: structural smoke test (`scripts/smoke_test.py`) and the scripts' tests pass; no behavioral skill check yet (Phase 7 of the build covered `syncing-open-items` only; see `evals/syncing-open-items/phase7-smoke-2026-10-07.md`).
 

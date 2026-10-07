@@ -29,7 +29,12 @@ line of `description`) and `ambiguous` fields are **not** sent, because intake r
   has no repository-to-team resolution, so it treats that value as an ambiguous target and returns a
   structured hand-off. Resolution (and rejection of an unknown repository) is future Wave 3a work in the kit's
   multi-team configuration.
-- A report payload uses `target_system: "notion"` with `content` `{title, summary, body}`. A long report **cannot** be
+- A report payload uses `target_system: "notion"` with `content` `{title, summary, body}` and
+  `suggested_mapping: {"notion_database": "<database>", "rationale": "..."}` (intake requires exactly one of
+  `notion_database` or `linear_target`, matching `target_system`). The plugin holds no Notion database id, so
+  the value is a display-name guess, which departs from intake's stable-id convention until Wave 3a. Intake
+  today treats a mapping that does not clearly resolve to one database as an ambiguous target and returns a
+  structured hand-off; the guess could pass only if exactly one matching database is configured. A long report **cannot** be
   submitted today: intake has no page-content field and each text value is limited to 2,000 characters
   (user-stated; see `wlgr-kit-dependencies.md`).
 
