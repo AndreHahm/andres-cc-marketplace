@@ -22,9 +22,15 @@ skill that would write runs in plan mode today (see `references/wlgr-kit-depende
 
 ## Install and use
 
-Install `workmanagement-kit` first (this plugin depends on it), then this plugin, for example with
-`claude --plugin-dir plugins/workledger-kit` during local development. Run `syncing-open-items` for the
-periodic review; it starts in plan mode.
+Install `workmanagement-kit` first (this plugin depends on it), then this plugin:
+
+```text
+/plugin install workmanagement-kit@andres-cc-marketplace
+/plugin install workledger-kit@andres-cc-marketplace
+```
+
+During local development, `claude --plugin-dir plugins/workledger-kit` loads it from a checkout instead. Run
+`syncing-open-items` for the periodic review; it starts in plan mode.
 
 ## Configuration
 
@@ -77,4 +83,8 @@ Tests: `python scripts/wlgr_test_core.py`, `python scripts/wlgr_test_collect.py`
   no GitHub write" rule is backed by the scripts but is not mechanically enforced (see
   `references/wlgr-kit-dependencies.md`).
 
-See `CONTRIBUTING.md` for the preferred language (Python) and the change process.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the preferred language (Python) and the change process.
+
+## License
+
+Licensed under Apache 2.0 — see `LICENSE`.
