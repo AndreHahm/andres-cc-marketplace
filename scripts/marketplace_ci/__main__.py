@@ -953,6 +953,21 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 f"run-codex-review:   {r.reviewer} (attempts: {r.attempts}): {r.error}",
                 file=sys.stderr,
             )
+        if args.output:
+            # A machine-readable copy of the failure for the uploaded artifact
+            # (the log line carries the same text); nothing else reads this file.
+            failure_payload = {
+                "mode": scope.mode,
+                "dispatch_failed": [
+                    {"reviewer": r.reviewer, "attempts": r.attempts, "error": r.error}
+                    for r in failed_reports
+                ],
+                "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
+                "blocking": True,
+            }
+            Path(args.output).write_text(
+                json.dumps(failure_payload, indent=2) + "\n", encoding="utf-8"
+            )
         return 2
 
     validated = []

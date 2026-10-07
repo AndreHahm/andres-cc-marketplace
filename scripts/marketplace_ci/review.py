@@ -833,6 +833,11 @@ DISPATCH_MAX_WORKERS = 2
 # bridge calls in total). Only a bridge `timeout` is retried -- see
 # _is_bridge_timeout.
 DISPATCH_MAX_TIMEOUT_RETRIES = 2
+# A reviewer that returns an empty inconclusive review (its sandbox could not
+# read anything -- see _inspected_nothing) is retried this many more times.
+# Counted apart from the timeout retries so one kind of fault can't use up the
+# other's allowance.
+DISPATCH_MAX_EMPTY_RETRIES = 1
 # Overall dispatch budget, kept under the codex-review job's own 45-minute
 # `timeout-minutes` so retries can never run the job into GitHub's kill: no
 # bridge call starts unless a full per-call budget still fits. The 5 minute
@@ -936,7 +941,7 @@ def _inspected_nothing(output: object) -> str | None:
         return None
     limits = output.get("inspection_limits")
     first = limits[0] if isinstance(limits, list) and limits and isinstance(limits[0], str) else ""
-    return _sanitize_log_text(first)[:200] or "no inspection limit given"
+    return _sanitize_log_text(first)[:_MAX_ERROR_CHARS] or "no inspection limit given"
 
 
 def _dispatch_one(
@@ -950,6 +955,7 @@ def _dispatch_one(
     dispatch_id: str,
     deadline: float,
     max_timeout_retries: int,
+    max_empty_retries: int,
 ) -> ReviewerReport:
     reviewer_scope = scope.paths
     if name == "plugin-rulebook-checker":
@@ -988,6 +994,8 @@ def _dispatch_one(
     ]
     call_seconds = _per_call_seconds() + _PROCESS_SLACK_SECONDS
     attempts = 0
+    timeout_retries = 0
+    empty_retries = 0
     while True:
         if time.monotonic() + call_seconds > deadline:
             # Fail loudly rather than start a call the job budget can't
@@ -1025,37 +1033,47 @@ def _dispatch_one(
                 error=f"bridge process killed after {call_seconds:.0f}s (outlived its own timeout)",
                 attempts=attempts,
             )
-        if result.returncode == 0:
-            break
-        stderr = result.stderr.decode("utf-8", errors="replace")
-        if _is_bridge_timeout(stderr) and attempts <= max_timeout_retries:
+        if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", errors="replace")
+            if _is_bridge_timeout(stderr) and timeout_retries < max_timeout_retries:
+                timeout_retries += 1
+                print(
+                    f"run-codex-review: {name} timed out (attempt {attempts}); retrying",
+                    file=sys.stderr,
+                )
+                continue
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=_sanitize_log_text(stderr)[:_MAX_ERROR_CHARS],
+                attempts=attempts,
+            )
+
+        try:
+            output = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return ReviewerReport(
+                reviewer=name, status="failed", error="malformed bridge output", attempts=attempts
+            )
+        empty_reason = _inspected_nothing(output)
+        if empty_reason is None:
+            return ReviewerReport(
+                reviewer=name, status="completed", output=output, attempts=attempts
+            )
+        if empty_retries < max_empty_retries:
+            empty_retries += 1
             print(
-                f"run-codex-review: {name} timed out (attempt {attempts}); retrying",
+                f"run-codex-review: {name} returned an empty review (attempt {attempts}); retrying",
                 file=sys.stderr,
             )
             continue
-        return ReviewerReport(
-            reviewer=name,
-            status="failed",
-            error=_sanitize_log_text(stderr)[:_MAX_ERROR_CHARS],
-            attempts=attempts,
-        )
-
-    try:
-        output = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return ReviewerReport(
-            reviewer=name, status="failed", error="malformed bridge output", attempts=attempts
-        )
-    empty_reason = _inspected_nothing(output)
-    if empty_reason is not None:
+        # Still empty after the retries: fail closed, never pass with zero coverage.
         return ReviewerReport(
             reviewer=name,
             status="failed",
             error=f"reviewer returned an inconclusive verdict with no findings: {empty_reason}",
             attempts=attempts,
         )
-    return ReviewerReport(reviewer=name, status="completed", output=output, attempts=attempts)
 
 
 def dispatch_reviewers(
@@ -1066,6 +1084,7 @@ def dispatch_reviewers(
     instructions_dir: Path | None = None,
     max_workers: int = DISPATCH_MAX_WORKERS,
     max_timeout_retries: int = DISPATCH_MAX_TIMEOUT_RETRIES,
+    max_empty_retries: int = DISPATCH_MAX_EMPTY_RETRIES,
     budget_seconds: float = DISPATCH_BUDGET_SECONDS,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
@@ -1076,8 +1095,9 @@ def dispatch_reviewers(
 
     Reviewers run on a small worker pool (`max_workers`) but the returned
     reports keep the scope's own order. A reviewer whose bridge call times out
-    is retried up to `max_timeout_retries` times; no call starts unless a full
-    per-call budget still fits inside `budget_seconds` overall."""
+    is retried up to `max_timeout_retries` times, and one that returns an empty
+    inconclusive review up to `max_empty_retries` times; no call starts unless
+    a full per-call budget still fits inside `budget_seconds` overall."""
     instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
@@ -1099,6 +1119,7 @@ def dispatch_reviewers(
                 dispatch_id=dispatch_id,
                 deadline=deadline,
                 max_timeout_retries=max_timeout_retries,
+                max_empty_retries=max_empty_retries,
             )
             for name in names
         ]

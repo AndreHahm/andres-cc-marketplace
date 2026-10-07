@@ -73,15 +73,19 @@ non-positive) fail the job with a clear message, same as the model override.
 (`DISPATCH_MAX_WORKERS`) rather than one after another; the result keeps the scope's own reviewer order.
 A reviewer whose bridge call fails with the bridge's structured `timeout` error is retried up to twice
 (`DISPATCH_MAX_TIMEOUT_RETRIES`), so a reviewer can make up to three calls. Only that `timeout` category
-is retried — a non-zero exit for any other reason, or malformed bridge output, fails immediately so a real
-bridge or validation fault is never masked by a retry.
+is retried among failed bridge calls — a non-zero exit for any other reason, or malformed bridge output, fails
+immediately so a real bridge or validation fault is never masked by a retry. (A successful call that returns
+an empty review has its own single retry, described below.)
 
 The whole dispatch has a 40-minute budget (`DISPATCH_BUDGET_SECONDS`), kept under the job's own 45-minute
 `timeout-minutes`. No bridge call starts, first attempt or retry, unless the per-call timeout
 (`CODEX_KIT_REVIEW_TIMEOUT_MS`) plus 60 seconds of process slack still fits in what is left. A reviewer that cannot start or retry within the
 budget is reported as failed with a `dispatch budget exhausted` error, so the job exits with a clear result
 instead of being killed mid-call. `codex-review-result.json` carries a `reviewer_attempts` map (reviewer name
-to bridge calls made) so a reviewer that needed retries stays visible even when the run passes.
+to bridge calls made) so a reviewer that needed retries stays visible even when the run passes. When a
+reviewer fails, the file is still written, with a `dispatch_failed` list (reviewer, attempts, error) and
+`blocking: true`, so the uploaded `codex-review-result` artifact holds a machine-readable copy of the error
+(the same text the log line carries); the job still exits 2.
 
 Each bridge process runs in its own session and is killed, together with its whole process group on POSIX runners (the bridge
 spawns a `codex` child; elsewhere only the direct process is killed), if it outlives its own timeout plus 60 seconds (`_PROCESS_SLACK_SECONDS`, counted in
@@ -90,7 +94,10 @@ stripped of control characters before it reaches the CI log. An `OSError` while 
 example a missing `node` binary) fails only that reviewer; any other exception is a defect and propagates.
 
 A reviewer that returns no findings and a verdict starting with `Inconclusive` (for example when its command
-bridge failed before any file could be read) is reported as failed, not completed, and is not retried. The
+bridge failed before any file could be read) is retried once (`DISPATCH_MAX_EMPTY_RETRIES`, counted apart
+from the timeout retries and bound by the same budget check), because a sandbox that fails to start can be
+transient. If the retry is also empty it is reported as failed, not completed, with the reviewer's full first
+inspection limit in the error (up to 2000 characters, control characters stripped). The
 output envelope has no structured field for "inspected nothing", so this keys on the verdict's own prefix: a
 deliberately narrow, fail-closed check that can miss a differently worded empty pass but never fails a review
 that raised findings. A reviewer that legitimately finds nothing to review but words its verdict

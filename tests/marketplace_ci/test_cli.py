@@ -1171,6 +1171,43 @@ def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     assert rc == 1
 
 
+def test_run_codex_review_writes_the_output_file_when_a_reviewer_dispatch_fails(
+    monkeypatch, git_repo, tmp_path
+):
+    import subprocess as subprocess_module
+
+    for name in ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer"):
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    git_repo.write("README.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/hooks/hooks.json", "{}")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess_module.CompletedProcess(
+                argv, returncode=1, stdout=b"", stderr=b"bridge exploded"
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "result.json"
+    rc = main(["run-codex-review", "--base-sha", base_sha, "--output", str(out)])
+    assert rc == 2
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["blocking"] is True
+    assert payload["dispatch_failed"]
+    assert all(f["error"] == "bridge exploded" for f in payload["dispatch_failed"])
+
+
 def test_run_codex_review_full_mode_governance_trigger_actually_dispatches(monkeypatch, git_repo):
     """Full mode is no longer an unconditional fail-closed dead end: a
     governance-path trigger now dispatches DELTA_VALIDATE's own baseline
