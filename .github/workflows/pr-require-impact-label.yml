@@ -54,14 +54,25 @@ jobs:
 
             // Fetch live labels to avoid stale payload when labeled/unlabeled
             // events fire concurrently with the autofix workflow.
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number
-            });
-            const labels = (issue.labels || [])
-              .map(l => (typeof l === "string" ? l : l.name || "").toLowerCase());
-            const found = labels.filter(n => allowed.has(n));
+            // On "opened", pr-auto-label.yml runs concurrently and adds the
+            // size-derived impact label a couple of seconds later, so retry a
+            // few times before treating "no label" as a failure (issue #300).
+            const fetchFound = async () => {
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number
+              });
+              return (issue.labels || [])
+                .map(l => (typeof l === "string" ? l : l.name || "").toLowerCase())
+                .filter(n => allowed.has(n));
+            };
+            let found = await fetchFound();
+            for (let attempt = 1; attempt <= 5 && found.length === 0; attempt++) {
+              core.info(`No impact label yet; retry ${attempt}/5 in 5s.`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              found = await fetchFound();
+            }
 
             if (found.length === 1) {
               core.info(`Impact label OK: ${found[0]}`);
