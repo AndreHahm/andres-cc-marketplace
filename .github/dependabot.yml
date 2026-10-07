@@ -9,10 +9,7 @@ updates:
       include: scope
 
   - package-ecosystem: npm
-    directories:
-      - /
-      - /.github/commitlint-tools
-      - /.github/security-tools
+    directory: /
     schedule:
       interval: weekly
     commit-message:
