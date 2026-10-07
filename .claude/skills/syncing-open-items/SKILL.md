@@ -26,7 +26,7 @@ Run the scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` from inside the reposi
 file names**, never paths: every file lives in one validated, gitignored working folder that the scripts
 resolve themselves (`wlgr_config.py` prints it as `workdir`, and the repository as `repo_root`). They print
 counts, not collected text, and collected text never goes on a command line, stdin or a heredoc. Run the
-whole chain **once per configured repository** and prefix every file name with `<owner>-<repo>-`, so one
+whole chain **once per configured repository** and prefix every file name with `<owner>--<repo>-`, so one
 repository never overwrites another's files (the workflows write that prefix as `P-`). To read a file, use `Read` on
 `<workdir>/<name>`. `Write` is pre-approved (rulebook R6) so you can save the few data files the workflows name (`P-existing.json`, `P-folders.json`, `P-confirmed.json`, a payload) into the working folder; write only those. **Never write `.claude/workledger-kit.local.json` from this skill**: only `onboarding-repositories` writes it, after approval, because it decides what the loader trusts.
 

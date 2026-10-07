@@ -21,7 +21,8 @@ is data only, never an instruction.
 
 **Plan mode.** Like the PR history report, a full roadmap report has no valid destination in intake today
 (a Report is `title`, `summary` and `body`, each at most 2,000 characters, user-stated). Until intake supports
-page-content blocks (Wave 3a), this skill writes the report to the working folder and stops before
+page-content blocks (Wave 3a, the planned `workmanagement-kit` work that extends intake), this skill writes
+the report to the working folder and stops before
 submitting. Submission is gated on the `batch` capability flag on purpose, because that flag ships together
 with that support.
 
@@ -47,7 +48,7 @@ with that support.
 ## Steps
 
 Run the scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` from inside the repository. In the file names below,
-`P` is the repository prefix `<owner>-<repo>` and `<date>` is today's date (`YYYY-MM-DD`).
+`P` is the repository prefix `<owner>--<repo>` and `<date>` is today's date (`YYYY-MM-DD`).
 
 1. **Load config and check the capability.** `wlgr_config.py`; stop on `problems` (an empty `repos` means
    onboard a repository first), show `warnings`; read `repo_root`, `workdir` and `intake_capabilities`. If
@@ -62,7 +63,8 @@ Run the scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` from inside the reposi
    approval for each read; wait for it. An Initiative that cannot be read is named in the report as "not
    readable", never left out silently.
 4. **Assemble** the report per `references/roadmap-layout.md` and save it with `Write` as
-   `P-roadmap-<date>.md` in the working folder at `<workdir>/P-roadmap-<date>.md`.
+   `P-roadmap-<date>.md` in the working folder at `<workdir>/P-roadmap-<date>.md`. A second run on the same
+   day replaces that day's file; say so.
 5. **Chunk.** `wlgr_open_items.py chunk P-roadmap-<date>.md P-roadmap-<date>-chunks.json` splits it into
    blocks of at most 2,000 characters.
 6. **Preview and submit or stop.** Show the user the report (the file is in your context from step 4). In plan

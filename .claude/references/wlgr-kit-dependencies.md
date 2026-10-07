@@ -3,7 +3,8 @@
 "Wave 3a" is the planned `workmanagement-kit` work that extends `plugin-integration-intake`. workledger-kit
 needs capabilities that intake does not have today. Until they ship, every skill that would write runs in
 **plan mode**: it collects, annotates, plans and writes its files into the local working folder, and stops
-before submitting.
+before submitting. This file is the canonical list of the intake capabilities workledger-kit needs but intake
+lacks, and of the flags that gate each one; other files point here instead of restating it.
 
 ## Capability flags
 
@@ -15,7 +16,7 @@ override must list **all four** keys (the loader validates the exact key set and
 | `batch` | Intake accepts a batch with one approval per source batch, and Report page-content blocks | Submitting any source batch or any report |
 | `query` | Intake can read existing Linear issues and the roadmap | Dedup against Linear; the roadmap report; onboarding verification |
 | `update` | Intake can update an existing issue | Reserved: no skill step reads it yet (drift correction and status writes are future work) |
-| `classify` | A caller can request classification of ambiguous source text | Reserved: no skill step reads it yet (ambiguous follow-ups and inferred PR links stay "needs your decision") |
+| `classify` | A caller can request classification of ambiguous source text | Reserved: no skill step reads it yet (ambiguous follow-ups stay "needs your decision"; inferred PR links are not produced) |
 
 A person sets a flag in `.claude/workledger-kit.local.json` once the matching Wave 3a work has shipped. The
 config loader refuses `intake_capabilities` from a **tracked** copy of that file (decided case-insensitively,

@@ -32,8 +32,8 @@ A `#N` can name an issue or a PR; GitHub shares the number space, so the report 
 
 ## What the report does not contain
 
-- **Inferred links.** They need the classification capability; when available they are marked inferred, with
-  their evidence, and never presented as fact.
+- **Inferred links.** They are not produced today (the `classify` flag is reserved); a future classification
+  step would mark them inferred, with their evidence, and never present them as fact.
 - **Review-thread state**, **Linear status** and **archived Linear items**: it reads GitHub only.
 
 ## Notion size handling
