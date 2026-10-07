@@ -868,6 +868,20 @@ def _finding_to_dict(finding) -> dict:
     }
 
 
+def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
+    """Report an infrastructure failure of `run-codex-review` (exit 2): the log
+    line, plus a machine-readable copy in `--output` so the uploaded artifact
+    always reflects this run (a stale file from the PR checkout is overwritten,
+    never published as if it were this run's result). Nothing else reads it."""
+    print(f"run-codex-review: {message}", file=sys.stderr)
+    if args.output:
+        from scripts.marketplace_ci.review import _MAX_ERROR_CHARS
+
+        failure = {"blocking": True, "error": message[:_MAX_ERROR_CHARS]}
+        Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
+    return 2
+
+
 def _handle_run_codex_review(args: argparse.Namespace) -> int:
     """The single entry point the Codex GitHub Actions workflow calls: scope
     the diff since `base_sha`, run the deterministic structural check
@@ -895,8 +909,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"], cwd=repo, capture_output=True
     )
     if resolved.returncode != 0:
-        print(f"run-codex-review: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
-        return 2
+        return _fail_run_codex_review(args, f"cannot resolve base SHA {base_sha!r}")
 
     diff = subprocess.run(
         ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
@@ -904,8 +917,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         capture_output=True,
     )
     if diff.returncode != 0:
-        print(f"run-codex-review: git diff against {base_sha!r} failed", file=sys.stderr)
-        return 2
+        return _fail_run_codex_review(args, f"git diff against {base_sha!r} failed")
     changed = parse_name_status_z(diff.stdout)
 
     scope = derive_review_scope(changed, {})
@@ -930,13 +942,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             if triggering_paths
             else f"dependency closure ({len(scope.paths)} affected paths, over the limit)"
         )
-        print(
-            "run-codex-review: mode=full escalation has no defined reviewer "
+        return _fail_run_codex_review(
+            args,
+            "mode=full escalation has no defined reviewer "
             "dispatch for this trigger -- this requires human review, not an "
             f"automated pass. Trigger: {reason}",
-            file=sys.stderr,
         )
-        return 2
 
     structural_findings = run_delta_structural_checks(repo, changed)
     reports = dispatch_reviewers(scope, base_sha=base_sha, repo=repo)
@@ -973,16 +984,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     validated = []
     for report in reports:
         if report.output is None:
-            print(f"run-codex-review: {report.reviewer} completed with no output", file=sys.stderr)
-            return 2
+            return _fail_run_codex_review(args, f"{report.reviewer} completed with no output")
         try:
             validated.append(validate_review_output(report.output))
         except ReviewOutputError as exc:
-            print(
-                f"run-codex-review: {report.reviewer} returned invalid output: {exc}",
-                file=sys.stderr,
-            )
-            return 2
+            return _fail_run_codex_review(args, f"{report.reviewer} returned invalid output: {exc}")
 
     findings = aggregate_findings(validated)
     blocking = any(f.severity in ("Critical", "Major") for f in findings)

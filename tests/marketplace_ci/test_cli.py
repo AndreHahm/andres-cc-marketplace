@@ -963,6 +963,21 @@ def test_run_codex_review_unresolvable_base_sha_returns_2(monkeypatch, git_repo)
     assert main(["run-codex-review", "--base-sha", "0" * 40]) == 2
 
 
+def test_run_codex_review_infrastructure_failure_overwrites_a_stale_output_file(
+    monkeypatch, git_repo, tmp_path
+):
+    # A PR can commit its own result file; an exit-2 path must never leave it to be
+    # uploaded as if it were this run's result.
+    out = tmp_path / "result.json"
+    out.write_text(json.dumps({"blocking": False, "findings": []}), encoding="utf-8")
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", "0" * 40, "--output", str(out)])
+    assert rc == 2
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["blocking"] is True
+    assert "cannot resolve base SHA" in payload["error"]
+
+
 def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     import subprocess as subprocess_module
 
@@ -1169,6 +1184,18 @@ def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     monkeypatch.chdir(git_repo.root)
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 1
+
+
+def test_fail_run_codex_review_caps_the_error_text_written_to_the_output_file(tmp_path):
+    import argparse
+
+    from scripts.marketplace_ci.__main__ import _fail_run_codex_review
+    from scripts.marketplace_ci.review import _MAX_ERROR_CHARS
+
+    out = tmp_path / "result.json"
+    args = argparse.Namespace(output=str(out))
+    assert _fail_run_codex_review(args, "x" * (_MAX_ERROR_CHARS * 3)) == 2
+    assert len(json.loads(out.read_text(encoding="utf-8"))["error"]) == _MAX_ERROR_CHARS
 
 
 def test_run_codex_review_writes_the_output_file_when_a_reviewer_dispatch_fails(
