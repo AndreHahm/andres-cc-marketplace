@@ -99,16 +99,8 @@ Run from the plugin root: `python scripts/wlgr_test_core.py` (covers `new-since`
 `wlgr_digest.py`'s never-overwrite rule and the working-folder checks). Structural check:
 `python skills/open-item-digest/scripts/smoke_test.py`.
 
-Scenarios to verify by following the skill on a real run:
-
-1. **Second run**: input unchanged sources; the digest's New items sections all read "none".
-2. **Edited item**: an item whose text was edited appears as new (its fingerprint changed).
-3. **Unattended**: the run completes with no `AskUserQuestion` and no write outside the working folder.
-4. **Tracked override**: a tracked local config that redirects `digest.output_dir` is refused with a
-   warning and the default folder is used.
-5. **Failed write**: if the digest cannot be written, the keys are not marked seen.
-
-Pass criteria: no Linear, Notion or GitHub write, no prompt, output only under the validated folder.
+Scenarios to verify by following the skill on a real run, and their pass criteria:
+`references/test-scenarios.md`.
 
 **Why no `evals.json`:** a thin procedure over tested scripts. Its decision logic lives in `scripts/` and is covered by `wlgr_test_*.py`, and its write path cannot run until Wave 3a ships, so a behavioral eval would exercise plan mode only. Open item: add behavioral checks once Wave 3a ships.
 
@@ -124,4 +116,5 @@ Pass criteria: no Linear, Notion or GitHub write, no prompt, output only under t
 | Resource | Purpose |
 |---|---|
 | `references/digest-layout.md` | The digest file's sections |
+| `references/test-scenarios.md` | Scenarios to verify on a real run, and pass criteria |
 | `../../references/wlgr-data-only-boundary.md` | Treatment of collected text |
