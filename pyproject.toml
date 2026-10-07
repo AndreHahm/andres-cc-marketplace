@@ -28,7 +28,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-include = ["scripts/**/*.py", "tests/**/*.py", "plugins/session-kit/scripts/**/*.py", "plugins/session-kit/tests/**/*.py", "plugins/session-kit/skills/**/*.py"]
+include = ["scripts/**/*.py", "tests/**/*.py", "plugins/session-kit/scripts/**/*.py", "plugins/session-kit/tests/**/*.py", "plugins/session-kit/skills/**/*.py", "plugins/workledger-kit/scripts/**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
