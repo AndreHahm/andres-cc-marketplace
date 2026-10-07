@@ -40,5 +40,15 @@ module.exports = {
     'scope-case': [2, 'always', 'kebab-case'],
     'body-leading-blank': [2, 'always'],
     'footer-leading-blank': [1, 'always']
-  }
+  },
+  // Dependabot embeds release-note and compare URLs in the commit body,
+  // which routinely exceed body-max-line-length and cannot be reformatted.
+  // Requires both its generated header and its sign-off trailer, so an
+  // arbitrary commit mentioning one of the two is still linted. This is a
+  // format convenience, not proof of authorship: the trailer is plain text.
+  ignores: [
+    (message) =>
+      /^(chore|build)\(deps(-dev)?\): /.test(message) &&
+      /^Signed-off-by: dependabot\[bot\] /m.test(message)
+  ]
 };
