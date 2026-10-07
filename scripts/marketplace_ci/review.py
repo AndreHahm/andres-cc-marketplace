@@ -996,6 +996,7 @@ def _dispatch_one(
     attempts = 0
     timeout_retries = 0
     empty_retries = 0
+    first_empty_reason: str | None = None
     while True:
         if time.monotonic() + call_seconds > deadline:
             # Fail loudly rather than start a call the job budget can't
@@ -1060,6 +1061,8 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name, status="completed", output=output, attempts=attempts
             )
+        if first_empty_reason is None:
+            first_empty_reason = empty_reason  # the original failure, kept past any retry
         if empty_retries < max_empty_retries:
             empty_retries += 1
             print(
@@ -1072,7 +1075,9 @@ def _dispatch_one(
         return ReviewerReport(
             reviewer=name,
             status="failed",
-            error=f"reviewer returned an inconclusive verdict with no findings: {empty_reason}",
+            error=(
+                f"reviewer returned an inconclusive verdict with no findings: {first_empty_reason}"
+            ),
             attempts=attempts,
         )
 
