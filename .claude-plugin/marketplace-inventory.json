@@ -510,8 +510,47 @@
           "valid_to": null
         }
       ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domain_prefix": "workledger",
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_f725b019",
+      "name": "workledger-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "workledger-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "prefix": "wlgr",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/workledger-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ]
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-10-03"
+  "updated_on": "2026-10-07"
 }

@@ -1,0 +1,216 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_71396211",
+      "name": "onboarding-repositories",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/onboarding-repositories"
+          ],
+          "name": "onboarding-repositories",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/onboarding-repositories",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/onboarding-repositories"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_f146fa65",
+      "name": "open-item-digest",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/open-item-digest"
+          ],
+          "name": "open-item-digest",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/open-item-digest",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/open-item-digest"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_263376df",
+      "name": "reporting-pr-history",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/reporting-pr-history"
+          ],
+          "name": "reporting-pr-history",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/reporting-pr-history",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/reporting-pr-history"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1f43a598",
+      "name": "reporting-roadmap",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/reporting-roadmap"
+          ],
+          "name": "reporting-roadmap",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/reporting-roadmap",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/reporting-roadmap"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_11bef653",
+      "name": "syncing-open-items",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/syncing-open-items"
+          ],
+          "name": "syncing-open-items",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/syncing-open-items",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/syncing-open-items"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-07",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "domain_prefix": "workledger",
+  "extensions": {},
+  "plugin_id": "plugin_f725b019",
+  "plugin_name": "workledger-kit",
+  "prefix": "wlgr",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-10-07"
+}
