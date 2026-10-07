@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.13"
 # dependencies = []
 # ///
 """Config loader for workledger-kit: a git-tracked defaults file plus an optional gitignored local

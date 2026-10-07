@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.13"
 # dependencies = []
 # ///
 """Read-only collectors for workledger-kit: turn the three v1 sources into candidate records.
@@ -57,7 +57,11 @@ _HEADING_RE = re.compile(r"^#{1,6}[ \t]+(\S.*)$")
 _FOLLOWUP_HEADING_RE = re.compile(
     r"\b(open items?|follow-?ups?|todo|remaining|next steps|deferred)\b", re.I
 )
-_LINEAR_ID_RE = re.compile(r"\b[A-Z]{2,5}-\d+\b")
+# A Linear identifier looks like `CCM-5`. Common standard and algorithm names have the same shape
+# (UTF-8, SHA-256, CVE-2024-1234, PEP-723) and must not mark a PR as already tracked in Linear.
+_LINEAR_ID_RE = re.compile(
+    r"\b(?!(?:UTF|SHA|CVE|PEP|RFC|ISO|CRC|AES|RSA|TLS|SSL|ECMA)-)[A-Z]{2,5}-\d+\b"
+)
 _FOLLOWUP_CUE_RE = re.compile(r"\b(follow-?up|todo|left for later|out of scope)\b", re.I)
 
 _PR_JQ = (

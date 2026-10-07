@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.13"
 # dependencies = []
 # ///
 """Persisted tests for wlgr_collect.py's pure parsers (no network).
@@ -127,6 +127,19 @@ class PrTests(unittest.TestCase):
         ]
         refs = [c["source_ref"] for c in col.pr_candidates(REPO, prs) if c["kind"] == "pr-record"]
         self.assertEqual(refs, ["PR#10"])
+
+    def test_standard_names_are_not_mistaken_for_linear_identifiers(self):
+        def records(prs):
+            return [
+                c["source_ref"] for c in col.pr_candidates(REPO, prs) if c["kind"] == "pr-record"
+            ]
+
+        for text in ("use UTF-8", "switch to SHA-256", "fixes CVE-2024-1234", "see PEP-723"):
+            pr = {"number": 12, "title": text, "body": "", "state": "closed", "merged_at": "x"}
+            self.assertEqual(records([pr]), ["PR#12"], text)
+        # a real identifier next to such a name still counts as linked
+        linked = {"number": 13, "title": "CCM-5 use UTF-8", "body": "", "state": "closed"}
+        self.assertEqual(records([linked]), [])
 
     def test_state_mapping(self):
         base = {"title": "t", "body": ""}

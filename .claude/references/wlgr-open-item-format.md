@@ -57,7 +57,7 @@ never proof of identity.
 | Outcome | Meaning | Action |
 |---|---|---|
 | duplicate | existing key equals the candidate key | skip |
-| candidate-match | same repo and source ref, different fingerprint | a person confirms; never an automatic merge or update |
+| candidate-match | same repo and source ref, different fingerprint | a person says whether it is a new item to propose; left unconfirmed it is held back, never an automatic merge or update |
 | new | no existing key shares repo and ref | propose creation |
 
 An inserted report item shifts later ordinals, which shows up as candidate-matches for a person to

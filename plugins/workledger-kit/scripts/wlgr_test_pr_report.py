@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.13"
 # dependencies = []
 # ///
 """Persisted tests for wlgr_pr_report.py. Run: python wlgr_test_pr_report.py"""

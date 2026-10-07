@@ -36,8 +36,9 @@ nothing was submitted" below.
 
 1. Read the issues back through intake's query operation into a fresh `P-existing.json` (`Write`), and run
    `wlgr_open_items.py classify P-issues-a.json P-existing.json P-issues-k.json` (likewise the other
-   sources). Every submitted key must now be `duplicate`. Report any submitted key that is not (missing), or
-   that matches more than one issue; do not retry silently.
+   sources). Every submitted key must now be `duplicate`. Report any submitted key that is not (missing); do
+   not retry silently. `classify` keeps only the first issue it finds for a key, so it cannot show a key that
+   matches several issues.
 2. Report per batch: submitted, declined, pending and drift found, and name the working-folder files.
 
 **Exit:** a per-batch report naming every key not confirmed.
