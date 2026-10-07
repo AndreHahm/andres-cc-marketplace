@@ -32,7 +32,7 @@ TRUSTED_BOT_LOGINS = ("dependabot[bot]",)
 # check also requires every changed path to be a root dependency
 # manifest/lockfile: a later commit pushed to the branch touching anything
 # else falls back to the normal CODEOWNERS check.
-TRUSTED_BOT_PATHS = frozenset({"uv.lock", "pyproject.toml", "package.json"})
+TRUSTED_BOT_PATHS = frozenset({"uv.lock", "pyproject.toml", "package.json", "pnpm-lock.yaml"})
 # GitHub signs dependabot's commits itself: author dependabot[bot], committer
 # web-flow, signature verified. A forged author email alone fails the committer
 # and signature checks, and a collaborator's web-UI edit is authored by them.

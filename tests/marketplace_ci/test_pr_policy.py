@@ -208,6 +208,13 @@ def test_trusted_bot_merge_rights_for_manifest_paths_only(login):
         check_merge_rights(api, ["uv.lock", "pyproject.toml"], bot_commits_verified=True).allowed
         is True
     )
+    # A dependabot npm bump changes package.json and the pnpm lockfile together.
+    assert (
+        check_merge_rights(
+            api, ["package.json", "pnpm-lock.yaml"], bot_commits_verified=True
+        ).allowed
+        is True
+    )
     assert api.collaborator_calls == 0
 
 
@@ -220,6 +227,7 @@ def test_trusted_bot_merge_rights_for_manifest_paths_only(login):
         [".github/security-tools/package.json"],
         ["UV.lock"],
         ["package-lock.json"],
+        ["sub/pnpm-lock.yaml"],
         [],
     ],
 )
