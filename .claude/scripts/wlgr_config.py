@@ -255,7 +255,7 @@ def load_settings(
     except ValueError as exc:
         return settings, [f"{LOCAL_RELATIVE} ignored: {exc}"]
     try:
-        local = json.loads(local_path.read_text(encoding="utf-8"))
+        local = json.loads(wlgr_paths.read_text(local_path))
     except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
         return settings, [f"{LOCAL_RELATIVE} is not readable JSON ({exc}); ignored"]
     if not isinstance(local, dict):

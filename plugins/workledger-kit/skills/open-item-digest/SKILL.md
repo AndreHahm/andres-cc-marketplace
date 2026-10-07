@@ -68,7 +68,8 @@ are deliberately not prefixed: `seen-keys.json` (shared; every key already conta
 3. For **each source that succeeded**, annotate: `wlgr_open_items.py annotate P-reports.json P-reports-a.json`
    (likewise `issues`, `prs`).
 4. For each annotated file, find what is new: `wlgr_open_items.py new-since P-reports-a.json seen-keys.json
-   P-reports-new.json` (likewise `issues`, `prs`). The count line includes `first_run`.
+   P-reports-new.json` (likewise `issues`, `prs`). The count line includes `first_run`, true when
+   `seen-keys.json` holds no key for this repository yet.
 5. Write one digest for this repository from the sources that succeeded: `wlgr_digest.py
    P-reports-a.json,P-issues-a.json,P-prs-a.json P-reports-new.json,P-issues-new.json,P-prs-new.json`, adding
    `--first-run` when any `first_run` was true and `--failed <names>` for failed sources. It writes one new
@@ -84,8 +85,9 @@ are deliberately not prefixed: `seen-keys.json` (shared; every key already conta
 
 ## Gotchas
 
-- **The first run is large.** Every candidate is new. The digest says so at the top only when the shared
-  `seen-keys.json` did not exist yet, so a repository added later lists everything as new without that notice.
+- **The first run is large.** Every candidate is new. The digest says so at the top whenever the shared
+  `seen-keys.json` holds no key for the repository being digested (a missing or empty file, or one that only
+  holds other repositories' keys), so a repository added later gets the notice too.
 - **Ambiguous is not an item yet.** The digest marks those "needs a person"; they are never classified.
 - **The folder comes only from the validated config.** Never from collected text or an argument.
 - **The digest lists every report folder.** Generated working folders under `.claude/output/` are included,
