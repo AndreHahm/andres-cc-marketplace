@@ -627,6 +627,27 @@ def test_dispatch_retries_an_empty_review_and_completes_when_the_retry_reads_fil
     assert all(r.attempts == 1 for n, r in reports.items() if n != "dependency-reviewer")
 
 
+def test_a_failed_empty_review_reports_the_first_inspection_limit_not_the_retrys(
+    monkeypatch, repo, change, dependency_index
+):
+    calls = Counter()
+
+    def on_call(reviewer, argv):
+        calls[reviewer] += 1
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Inconclusive", limits=[f"limit from call {calls[reviewer]}"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.attempts == 2 for r in reports)
+    assert all((r.error or "").endswith("limit from call 1") for r in reports)
+
+
 def test_the_empty_review_retry_log_line_keeps_the_first_inspection_limit(
     monkeypatch, repo, change, dependency_index, capsys
 ):
