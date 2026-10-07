@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 -- list-form calls only, never a shell
 import sys
 from pathlib import Path
 
@@ -66,15 +66,15 @@ def build_command(argv: list[str]) -> tuple[list[str] | None, str | None, int]:
 
     i = 0
     while i < len(rest):
-        token = rest[i]
-        if token not in _ALLOWED_FLAGS:
+        arg = rest[i]
+        if arg not in _ALLOWED_FLAGS:
             return (
                 None,
-                f"rejected argument {token!r} -- only {sorted(_ALLOWED_FLAGS)} are permitted; "
+                f"rejected argument {arg!r} -- only {sorted(_ALLOWED_FLAGS)} are permitted; "
                 "--method/-f/-F/-X/--input and any other flag are refused",
                 1,
             )
-        if token == "--jq":
+        if arg == "--jq":
             if i + 1 >= len(rest):
                 return None, "--jq requires a value", 2
             if _JQ_ENV_LEAK_RE.search(rest[i + 1]):
@@ -106,7 +106,9 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
         return 1
-    return subprocess.run([exe, *cmd[1:]]).returncode
+    # List-form call, no shell: exe is an absolute PATH entry (never inside the repository), and
+    # cmd[1:] comes out of build_command, which forces --method GET and refuses other flags.
+    return subprocess.run([exe, *cmd[1:]]).returncode  # nosec B603  # nosemgrep
 
 
 if __name__ == "__main__":

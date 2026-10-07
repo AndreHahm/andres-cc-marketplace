@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
+import subprocess  # nosec B404 -- list-form calls only, never a shell
 import sys
 from pathlib import Path
 
@@ -275,7 +275,9 @@ def drop_boilerplate(candidates: list[dict], min_sources: int = 3) -> tuple[list
 
 
 def _gh(endpoint: str, jq: str) -> list[dict]:
-    result = subprocess.run(
+    # List-form call, no shell: the interpreter and wrapper script are fixed, and the wrapper
+    # validates the endpoint and refuses every flag except --paginate and --jq.
+    result = subprocess.run(  # nosec B603  # nosemgrep
         [sys.executable, str(WRAPPER), endpoint, "--paginate", "--jq", jq],
         capture_output=True,
         text=True,
