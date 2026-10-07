@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # check-pr's gh api calls (collaborator permission, PR commit list).
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -101,6 +103,8 @@ jobs:
           PR_EVENT_JSON: ${{ toJson(github.event) }}
         run: echo "$PR_EVENT_JSON" > /tmp/pr-event.json
       - name: Validate PR title, template, and author privilege
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
 
   python-quality:
