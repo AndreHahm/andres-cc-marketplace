@@ -61,9 +61,12 @@ dedup results cover exactly the set that will be planned.
    `reports`, `prs`). It compares each candidate's key with each existing issue's **first-line** key by exact
    equality and prints counts of `duplicate`, `candidate-match` (same repo and reference, changed text) and
    `new`, plus `drift` (existing issues with no valid first-line key; masters are skipped).
-2. Show the `candidate-match` items to the person (their reference and old versus new text) and ask with
-   `AskUserQuestion` which, if any, are the same item to carry forward. Write the confirmed keys as a JSON
-   list in `P-confirmed.json` (`Write`; an empty list `[]` if none).
+2. Show the `candidate-match` items to the person (their reference and old versus new text). A match is
+   either the same item with edited text, which Linear already tracks, or a different item that took over
+   the reference (for example a report item shifted by an insertion). Ask with `AskUserQuestion` which, if
+   any, are genuinely **new** items to propose as new issues. Write those keys as a JSON list in
+   `P-confirmed.json` (`Write`; an empty list `[]` if none). A match left out is not proposed, never
+   silently lost: step 3 counts it and Phase 6 names it by reference.
 3. Drop what must not be proposed: `wlgr_open_items.py apply-classification P-issues-a.json P-issues-k.json
    P-confirmed.json P-issues-sel.json` (likewise `reports`, `prs`). It keeps every `new` candidate and only
    the confirmed matches, and prints the counts it dropped (`dropped-duplicate`,
@@ -80,12 +83,14 @@ dedup results cover exactly the set that will be planned.
 **Entry:** Phase 5 complete.
 
 1. Build the proposed Linear issues per source: `wlgr_open_items.py describe P-issues-sel.json
-   P-issues-p.json` (likewise `reports`, `prs`; first-line key, human sections, tracking block last; imports
+   P-issues-p.json` (when `query` is false there is no `P-issues-sel.json`: pass the annotated
+   `P-issues-a.json` instead, as Phase 5 step 4 says; likewise `reports`, `prs`; first-line key, human sections, tracking block last; imports
    get status `Triaged`).
 2. One batch per source. For each, `Read` the proposals file and show: a table (reference, title,
    ambiguous flag), a sample of full descriptions, and the counts of new, confirmed-match, dropped
    duplicate, dropped unconfirmed match, drift, skipped and dropped boilerplate, plus the number of confirmed
-   keys in `P-confirmed.json` and of existing issues in `P-existing.json`. A very large batch is
+   keys in `P-confirmed.json` and of existing issues in `P-existing.json`. Name each unconfirmed match
+   that was held back by its reference, so the person can still decide on it. A very large batch is
    shown by counts and a sample, not row by row.
 3. Mark every ambiguous candidate "needs your decision" with its source reference and its evidence (the text
    and where it was found). While the `classify` **capability** is off, nothing is classified automatically.

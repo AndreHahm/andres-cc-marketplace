@@ -3,7 +3,7 @@
 ## Preferred Language
 
 This plugin's preferred scripting language is **Python**: collectors, the dedup and plan-hash core,
-the config loader and the report chunker are Python 3.11+ scripts with PEP 723 inline dependency
+the config loader and the report chunker are Python 3.13+ scripts with PEP 723 inline dependency
 blocks (no third-party dependencies today). New scripts added to this plugin stay in Python rather
 than mixing in JavaScript/TypeScript.
 

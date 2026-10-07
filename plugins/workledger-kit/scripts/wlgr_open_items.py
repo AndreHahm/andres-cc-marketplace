@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.13"
 # dependencies = []
 # ///
 """Deterministic core for workledger-kit: open-item identity, dedup, plan hashing, issue proposals,

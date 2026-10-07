@@ -49,11 +49,13 @@ not who wrote it, so a skill re-reads the config right before it submits. The re
 
 `digest.output_dir` is the plugin's one **working folder** (default `.temp/workledger-digest`): it must be
 relative, inside the repository, free of symlinks and gitignored, and every script reads and writes only
-plain file names inside it. Its files hold full issue, PR and report text; review or redact before sharing.
+plain file names inside it. The loader stops with a problem if the folder is not gitignored, so a
+repository that does not already ignore `.temp/` must add that folder to its `.gitignore` before the first
+run. Its files hold full issue, PR and report text; review or redact before sharing.
 
 ## Scripts
 
-All in `scripts/`, with the `wlgr_` file prefix (Python 3.11+, no third-party dependencies). The scripts take
+All in `scripts/`, with the `wlgr_` file prefix (Python 3.13+, no third-party dependencies). The scripts take
 plain file names inside the working folder, never paths, and print counts, never collected text.
 
 | Script | Purpose |

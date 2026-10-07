@@ -16,6 +16,7 @@ verifies or records an attestation for each.
 | 6 | A master open-item issue and a master PR-record issue exist in the team, each labelled `meta: master`, with a first-line `dedup_key:` and (open item) a `github_labels` line; both are excluded from saved views | Master issues read back (once available) |
 | 7 | `workmanagement-kit`'s configuration maps this repository's `owner/repo` to the Linear team | Open until Wave 3a: the kit's configuration holds one repository and one team today, and the mapping lives there, not in this plugin |
 | 8 | Any issue templates that were created are removed; this plugin sets every field itself | Attested only |
+| 9 | The working folder (`digest.output_dir`, default `.temp/workledger-digest`) is gitignored in the repository, for example by adding `.temp/` to `.gitignore` | The config loader checks it and reports a problem if it is not ignored |
 
 A master can serve only its own team (an issue's team cannot change after the first save), so each
 repository needs its own pair.
