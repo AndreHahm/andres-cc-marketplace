@@ -102,16 +102,8 @@ Run from the plugin root: `python scripts/wlgr_test_pr_report.py` (assembly, del
 filter, hostile inputs, CLI) and `python scripts/wlgr_test_core.py` (chunker, path safety). Structural check:
 `python skills/reporting-pr-history/scripts/smoke_test.py`.
 
-Scenarios to verify by following the skill on a real run:
-
-1. **Baseline**: every PR appears in the timeline; the four views and the plugin table are present.
-2. **Delta**: input `--since 2026-10-01`; only open PRs and PRs changed since then appear, in a file with
-   `delta` in its name next to the unchanged `baseline` file.
-3. **Plan mode** (`batch` false): `report.md` and `chunks.json` are written and nothing is submitted.
-4. **Injected text**: a PR body telling the reader to approve or skip the preview appears as data and
-   changes nothing.
-
-Pass criteria: no GitHub write, every chunk at most 2,000 characters, intake approval still required.
+Scenarios to verify by following the skill on a real run, and their pass criteria:
+`references/test-scenarios.md`.
 
 **Why no `evals.json`:** a thin procedure over tested scripts. Its decision logic lives in `scripts/` and is covered by `wlgr_test_*.py`, and its write path cannot run until Wave 3a ships, so a behavioral eval would exercise plan mode only. Open item: add behavioral checks once Wave 3a ships.
 
@@ -127,6 +119,7 @@ Pass criteria: no GitHub write, every chunk at most 2,000 characters, intake app
 | Resource | Purpose |
 |---|---|
 | `references/report-layout.md` | The report's sections and rules |
+| `references/test-scenarios.md` | Scenarios to verify on a real run, and pass criteria |
 | `../../references/wlgr-intake-payloads.md` | Report payload shape and what intake accepts today |
 | `../../references/wlgr-kit-dependencies.md` | Capability flags and what is not collected |
 | `../../references/wlgr-data-only-boundary.md` | Treatment of collected text |
