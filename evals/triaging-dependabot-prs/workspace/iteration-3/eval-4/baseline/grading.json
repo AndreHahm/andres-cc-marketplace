@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch",
+      "passed": true,
+      "evidence": "'I do not run /git-sync-branch... no manual rebase or force-push on the dependabot branch'"
+    },
+    {
+      "text": "The PR is treated as needing a rebase even though mergeStateStatus is BLOCKED, by returning to the branch-freshness step",
+      "passed": false,
+      "evidence": "Argues the 2-behind status 'probably does not explain the block'; does not return to a branch-freshness step or treat it as needing a rebase"
+    },
+    {
+      "text": "The answer asks the user and then posts `@dependabot rebase` through the marker-then-comment sequence",
+      "passed": false,
+      "evidence": "Offers a second rebase only on explicit user approval; no marker-then-comment sequence"
+    },
+    {
+      "text": "The answer notes this would be the second and last allowed rebase comment for the PR (cap of two), after which it is skipped with the reason",
+      "passed": false,
+      "evidence": "No mention of a cap of two rebase comments or skipping after it"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  },
+  "contaminated": false
+}
