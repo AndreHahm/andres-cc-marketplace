@@ -2,9 +2,9 @@
 
 ## When this applies
 
-Running a command that a skill, reference or rule documents with a `${CLAUDE_PLUGIN_ROOT}/...` path, in a
-session working on this repository itself, when `CLAUDE_PLUGIN_ROOT` is empty or unset (skills load from the
-byte-identical `.claude/` mirror there, not from an installed plugin).
+Running a command that a skill, slash command, agent, reference or rule documents with a
+`${CLAUDE_PLUGIN_ROOT}/...` path, in a session working on this repository itself, when `CLAUDE_PLUGIN_ROOT` is
+empty or unset (skills load from the byte-identical `.claude/` mirror there, not from an installed plugin).
 
 ## Rule
 
@@ -19,8 +19,9 @@ session's primary working directory):
 
 `$PWD` is right only while the shell's cwd is that root; otherwise write the root out explicitly.
 
-Substitute the path only while executing a step of an already-dispatched skill or rule. Never run a marker-writing
-helper such as `git-write-marker.sh` on its own to satisfy a guard outside the skill that owns it.
+Substitute the path only while executing a step of an already-dispatched skill, slash command, agent or rule.
+Never run a marker-writing helper such as `git-write-marker.sh` on its own to satisfy a guard outside the skill
+that owns it.
 
 Confirm the mirrored file exists first. Stop and report in either of two cases: the file is missing, or the
 substituted command is still denied. Never fall back to a different command or endpoint.
