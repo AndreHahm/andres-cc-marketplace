@@ -15,7 +15,7 @@ make the plain-command-grant check vacuous -- see check_bash_grants).
 Also checks the shipped plugin-root defaults this skill's gating depends on:
 host-profile.json ships every operation unconfigured with no connector (and carries
 linear.initiatives.read, which SKILL.md must name), and versioned-configuration.json ships no
-real IDs and an empty linear.repositories map."""
+real IDs, an empty linear.repositories map, and unconfigured github/repository_policy blocks."""
 
 import json
 import pathlib
@@ -378,12 +378,14 @@ def check_shipped_defaults():
             or op.get("verified_at") is not None
         ):
             return False, f"shipped operation {name!r} must be unconfigured with no connector"
-        if (
-            op.get("workspace_id") is not None
-            or op.get("organization_id") is not None
-            or op.get("team_ids", []) != []
-        ):
-            return False, f"shipped operation {name!r} must carry no scope IDs"
+        extra = [
+            key
+            for key, value in op.items()
+            if key not in ("support_status", "connector", "verified_at")
+            and value not in (None, [], {})
+        ]
+        if extra:
+            return False, f"shipped operation {name!r} must carry no scope IDs (found {extra})"
         if name == "linear.initiatives.read" and "team_ids" in op:
             return (
                 False,

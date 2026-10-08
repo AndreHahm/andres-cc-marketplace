@@ -1,11 +1,12 @@
 # Linear Entity Fields
 
 Six entity types this skill covers: five it can read and write (Goal, Roadmap, Project, Milestone,
-Issue) and Initiative, which it can only read (see the Initiative section below). Each row below lists the fields beyond the shared identity
+Issue; Goal and Roadmap are currently handoff-only, see SKILL.md's Known connector gap) and
+Initiative, which it can only read (see the Initiative section below). Each row below lists the fields beyond the shared identity
 (stable ID, `transition-id`) that this specific entity type carries — `notion-link` is not a
 shared field; only Goal, Project, and Issue carry it (see their own tables below),
 since those are the entity types `idea-to-implementation`'s own promotion mapping actually
-targets (see `promotion-hierarchy-mapping.md`'s Typical Mappings table — an Idea typically
+targets (see `../../idea-to-implementation/references/promotion-hierarchy-mapping.md`'s Typical Mappings table — an Idea typically
 promotes to an Issue or a small Project, not a Goal; a proposed Goal promotes to a Goal). Roadmap
 and Milestone are never promotion targets in their own right — they're intermediate hierarchy
 placements a promotion may also touch, not something Notion knowledge is promoted *into* — so
