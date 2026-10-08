@@ -68,6 +68,13 @@ actually read and its triggered-cycle-count procedure (8a) still computes correc
 passed (`evals/handling-review-findings/workspace/iteration-5/`). No baseline comparison was run, same
 reason as Iteration 3.
 
+**Iteration 7 (2026-09-26, Quick Workflow, with_skill only):** evals 23 and 24, written for the step 8b
+reconciliation of the one-survivor-below-`min_rounds` exception against the general omission rule —
+eval 23 (the exception applies) 4/4 and eval 24 (the general rule still applies with two or more
+surviving reviewers) 3/3 assertions passed
+(`evals/handling-review-findings/workspace/iteration-7/`). No baseline comparison was run, same reason
+as Iteration 3.
+
 ## Security review passes
 
 The `git-guard-raw-pr-review.sh` hook extension this skill required historically (two new `gh api` guard
