@@ -354,3 +354,21 @@ unchanged, so this skill's own text did not need an edit. `scripts/smoke_test.py
 `commit --bypass-codex-review`, so the marker handshake with the guard on a real attestation comment has not
 been exercised end to end. The protocol now also requires the attestation marker to be the last thing in the
 comment body (CI ignores a comment with text after it); this skill posts the marker alone, so it is unaffected.
+
+## Step 13 — no literal bot-trigger mentions (moved from SKILL.md, R13 extraction)
+
+**Step 13 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see the matching
+Best Practice above for the full incident narrative (a commit message/PR title spelling out the trigger
+phrase caused Codex's connector to misread the PR as a task addressed to it and self-retrigger the
+target workflow) — not restated here to avoid the exact content-drift risk a second full copy would
+create. Verified by re-observing the real GitHub Actions run history for PR #257 after retitling; no
+fresh `skill-tester` eval re-run (prose guidance, no executable logic to simulate). **Round 2, same
+date:** an independent Codex fresh-eyes pass (via `cross-model-review`) caught the first version of this
+fix banning *any* `@<word>` mention outright, which would also have blocked an ordinary
+`@username`/`@team` mention notifying a human collaborator — narrowed to bot-trigger-shaped mentions
+specifically, with the carve-out stated above. **Round 3, PR #258, 2026-08-31:** Devin's automated
+review of this exact change flagged the incident narrative being restated at nearly every touch point
+across these three skills as a simplicity/drift risk (per this repo's own `AGENTS.md`/`CLAUDE.md`
+guidance) — this entry was trimmed in response, keeping one canonical narrative (the Best Practice
+above) and letting every other reference here and in `create-pr`/`github-issue-lifecycle` point back to
+it instead of re-narrating.
