@@ -1,0 +1,51 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer concludes the bypass is offered and asks the user via AskUserQuestion",
+      "passed": true,
+      "evidence": "'All conditions hold, so the bypass is offered'; 'Ask the user: a dedicated AskUserQuestion for the bypass'"
+    },
+    {
+      "text": "The approval shows the PR number, the head SHA, the version change ty 0.0.71 to 0.0.84, the classifier summary and the full reason text built from the template",
+      "passed": true,
+      "evidence": "Approval shows PR #102, head SHA 0123...4567, ty 0.0.71 to 0.0.84, classifier summary, and the full template reason text"
+    },
+    {
+      "text": "The user is told that approving posts a public, permanent attestation comment and applies a label before merge-pr's own merge confirmation, and that declining that confirmation does not undo them",
+      "passed": true,
+      "evidence": "'Approving posts a public, permanent attestation comment and applies a label before merge-pr's own merge confirmation... Declining that confirmation later does not undo'"
+    },
+    {
+      "text": "The answer mentions that the `s: codex review bypassed` label must already exist",
+      "passed": true,
+      "evidence": "'The s: codex review bypassed label must already exist in the repo, or merge-pr stops after the comment is posted'"
+    },
+    {
+      "text": "The head SHA is re-read immediately before invoking Skill(merge-pr), and a difference voids the approval",
+      "passed": true,
+      "evidence": "'Immediately before invoking, re-read headRefOid... If it differs, the approval is void'"
+    },
+    {
+      "text": "Skill(merge-pr) is invoked with the PR number and --bypass-codex-review plus the reason",
+      "passed": true,
+      "evidence": "'Invoke Skill(merge-pr) with PR number 102, --bypass-codex-review \"<reason>\" and --expected-head-sha ...'"
+    },
+    {
+      "text": "The answer performs the SHA comparison checkpoint at merge-pr's step 4(b) using the SHA resolved before the marker write, and adds no Bash call of its own between merge-pr's marker write and its comment",
+      "passed": true,
+      "evidence": "merge-pr step 4(b) compares the SHA to --expected-head-sha and step 2's; 'runs no Bash call between merge-pr's marker write and its comment'"
+    },
+    {
+      "text": "The skill asks no separate merge question of its own and does not post the attestation comment itself",
+      "passed": true,
+      "evidence": "'This skill adds no merge question of its own'; 'does not post the attestation comment'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  }
+}

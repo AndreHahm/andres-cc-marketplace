@@ -1,0 +1,172 @@
+{
+  "skill_name": "triaging-dependabot-prs",
+  "iteration": 3,
+  "timestamp": "2026-10-08T13:37:44+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 6,
+        "assertions_total": 6,
+        "avg_tokens": 103753,
+        "avg_duration_ms": 21676
+      },
+      "baseline": {
+        "pass_rate": 0.3333,
+        "assertions_passed": 2,
+        "assertions_total": 6,
+        "avg_tokens": 88479,
+        "avg_duration_ms": 15103
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 15274,
+        "duration_ms": 6573
+      }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 8,
+        "assertions_total": 8,
+        "avg_tokens": 110604,
+        "avg_duration_ms": 39127
+      },
+      "baseline": {
+        "pass_rate": 0.0,
+        "assertions_passed": 0,
+        "assertions_total": 8,
+        "avg_tokens": 90784,
+        "avg_duration_ms": 30629
+      },
+      "delta": {
+        "pass_rate": 1.0,
+        "tokens": 19820,
+        "duration_ms": 8498
+      }
+    },
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 5,
+        "assertions_total": 5,
+        "avg_tokens": 107782,
+        "avg_duration_ms": 33118
+      },
+      "baseline": {
+        "pass_rate": 0.8,
+        "assertions_passed": 4,
+        "assertions_total": 5,
+        "avg_tokens": 89120,
+        "avg_duration_ms": 22590
+      },
+      "delta": {
+        "pass_rate": 0.2,
+        "tokens": 18662,
+        "duration_ms": 10528
+      }
+    },
+    {
+      "eval_id": 4,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 104329,
+        "avg_duration_ms": 28311
+      },
+      "baseline": {
+        "pass_rate": 0.25,
+        "assertions_passed": 1,
+        "assertions_total": 4,
+        "avg_tokens": 88931,
+        "avg_duration_ms": 22213
+      },
+      "delta": {
+        "pass_rate": 0.75,
+        "tokens": 15398,
+        "duration_ms": 6098
+      }
+    },
+    {
+      "eval_id": 5,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 5,
+        "assertions_total": 5,
+        "avg_tokens": 105455,
+        "avg_duration_ms": 35896
+      },
+      "baseline": {
+        "pass_rate": 0.8,
+        "assertions_passed": 4,
+        "assertions_total": 5,
+        "avg_tokens": 88866,
+        "avg_duration_ms": 21518
+      },
+      "delta": {
+        "pass_rate": 0.2,
+        "tokens": 16589,
+        "duration_ms": 14378
+      }
+    },
+    {
+      "eval_id": 6,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 5,
+        "assertions_total": 5,
+        "avg_tokens": 103669,
+        "avg_duration_ms": 20605
+      },
+      "baseline": {
+        "pass_rate": 0.2,
+        "assertions_passed": 1,
+        "assertions_total": 5,
+        "avg_tokens": 88565,
+        "avg_duration_ms": 23932
+      },
+      "delta": {
+        "pass_rate": 0.8,
+        "tokens": 15104,
+        "duration_ms": -3327
+      }
+    },
+    {
+      "eval_id": 7,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 103580,
+        "avg_duration_ms": 21794
+      },
+      "baseline": {
+        "pass_rate": 0.75,
+        "assertions_passed": 3,
+        "assertions_total": 4,
+        "avg_tokens": 88664,
+        "avg_duration_ms": 31745
+      },
+      "delta": {
+        "pass_rate": 0.25,
+        "tokens": 14916,
+        "duration_ms": -9951
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.4476,
+    "improvement": 0.5524,
+    "avg_tokens_with_skill": 105596,
+    "avg_tokens_baseline": 89058,
+    "token_cost": 16538,
+    "avg_duration_ms_with_skill": 28647,
+    "avg_duration_ms_baseline": 23961,
+    "duration_cost_ms": 4686
+  }
+}

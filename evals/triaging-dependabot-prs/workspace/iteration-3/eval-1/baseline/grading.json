@@ -1,0 +1,42 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The first Bash call described is the git-write-marker.sh script with the gh-pr-review guard type",
+      "passed": false,
+      "evidence": "Call 1 is `printf ... > pr101-rebase.txt`, no git-write-marker.sh / gh-pr-review marker call"
+    },
+    {
+      "text": "The second Bash call is `gh pr comment 101 --body \"@dependabot rebase\"` and it is the very next Bash call, with no other command in between",
+      "passed": false,
+      "evidence": "Call 2 is `gh pr comment 101 --body-file <file>` with a file-write call before it, not `--body \"@dependabot rebase\"`"
+    },
+    {
+      "text": "The two calls are described as sequential (wait for the marker call to return), never in one parallel batch",
+      "passed": false,
+      "evidence": "Calls are listed 'in order' but never described as sequential/wait-for-return, nor as never parallel"
+    },
+    {
+      "text": "If the marker script fails or the comment is denied, the answer says to stop and report, without retrying through another command or endpoint",
+      "passed": true,
+      "evidence": "'I do not retry blindly... another route such as gh api, an inline --body, or a raw git rebase'; reports the error"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "passed": true,
+      "evidence": "'I do not rebase the branch locally with git. Dependabot performs the rebase itself.'"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "passed": false,
+      "evidence": "No post-comment question about re-check now / skip / stop; asks only on failure"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 2,
+    "pass_rate": 0.3333
+  },
+  "contaminated": false
+}

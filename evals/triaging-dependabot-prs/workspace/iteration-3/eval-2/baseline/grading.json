@@ -1,0 +1,52 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The answer concludes the bypass is offered and asks the user via AskUserQuestion",
+      "passed": false,
+      "evidence": "Concludes 'I would not merge it' because the required check fails; no bypass is offered"
+    },
+    {
+      "text": "The approval shows the PR number, the head SHA, the version change ty 0.0.71 to 0.0.84, the classifier summary and the full reason text built from the template",
+      "passed": false,
+      "evidence": "No bypass approval content (no classifier summary, no reason text)"
+    },
+    {
+      "text": "The user is told that approving posts a public, permanent attestation comment and applies a label before merge-pr's own merge confirmation, and that declining that confirmation does not undo them",
+      "passed": false,
+      "evidence": "No statement about a public attestation comment and label applied before the merge confirmation"
+    },
+    {
+      "text": "The answer mentions that the `s: codex review bypassed` label must already exist",
+      "passed": false,
+      "evidence": "No mention of the s: codex review bypassed label"
+    },
+    {
+      "text": "The head SHA is re-read immediately before invoking Skill(merge-pr), and a difference voids the approval",
+      "passed": false,
+      "evidence": "Re-reads the SHA only after checks go green and does not say a difference voids an approval"
+    },
+    {
+      "text": "Skill(merge-pr) is invoked with the PR number and --bypass-codex-review plus the reason",
+      "passed": false,
+      "evidence": "No Skill(merge-pr) invocation with --bypass-codex-review and the reason"
+    },
+    {
+      "text": "The answer performs the SHA comparison checkpoint at merge-pr's step 4(b) using the SHA resolved before the marker write, and adds no Bash call of its own between merge-pr's marker write and its comment",
+      "passed": false,
+      "evidence": "No step 4(b) checkpoint; merge-pr only mentioned generically"
+    },
+    {
+      "text": "The skill asks no separate merge question of its own and does not post the attestation comment itself",
+      "passed": false,
+      "evidence": "Asks its own 'final merge confirmation' and offers an admin/bypass merge as an option"
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "contaminated": false
+}

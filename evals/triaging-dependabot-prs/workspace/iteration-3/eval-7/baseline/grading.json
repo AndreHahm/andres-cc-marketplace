@@ -1,0 +1,32 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot rebase` again",
+      "passed": true,
+      "evidence": "'Not post a second @dependabot rebase straight away'"
+    },
+    {
+      "text": "The answer offers wait, skip or stop via AskUserQuestion",
+      "passed": true,
+      "evidence": "Asks a question with options: wait and re-check, post one more, skip or defer, update manually"
+    },
+    {
+      "text": "The answer states that only a posted comment counts toward the cap, so this re-check consumes no round",
+      "passed": true,
+      "evidence": "'A comment that produced no new SHA still counts... The re-check does not refund it or reset the count'"
+    },
+    {
+      "text": "The answer states the cap is two posted rebase comments per PR, after which the PR is skipped with the reason",
+      "passed": false,
+      "evidence": "'I do not know the exact cap number'; does not state a cap of two or skip-with-reason"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  },
+  "contaminated": false
+}

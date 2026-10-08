@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The first Bash call described is the git-write-marker.sh script with the gh-pr-review guard type",
+      "passed": true,
+      "evidence": "Call 1: `git-write-marker.sh gh-pr-review triaging-dependabot-prs`"
+    },
+    {
+      "text": "The second Bash call is `gh pr comment 101 --body \"@dependabot rebase\"` and it is the very next Bash call, with no other command in between",
+      "passed": true,
+      "evidence": "Call 2: `gh pr comment 101 --body \"@dependabot rebase\"`, 'the very next Bash call, with no other Bash command in between'"
+    },
+    {
+      "text": "The two calls are described as sequential (wait for the marker call to return), never in one parallel batch",
+      "passed": true,
+      "evidence": "'Two sequential Bash calls. Never run them as a parallel batch'; 'Wait for it to return'"
+    },
+    {
+      "text": "If the marker script fails or the comment is denied, the answer says to stop and report, without retrying through another command or endpoint",
+      "passed": true,
+      "evidence": "'Stop and report the failure'; 'Do not retry with a different command, a different endpoint, `gh api`, `--body-file`'"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "passed": true,
+      "evidence": "'or a manual push or rebase' listed under what is not done"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "passed": true,
+      "evidence": "'I would ask via AskUserQuestion whether to re-check now, skip this PR for now, or stop'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}
