@@ -35,8 +35,8 @@ gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies \
 reference (`gh api --help`: `-F, --field key=value` — "use `@<path>` or `@-` to read value from file or
 stdin"; `-f, --raw-field key=value` carries no such behavior). `-f body=@<path>` silently posts the
 literal string `@<path>` as the comment body — no error, no file read. Use `-F body=@<path>` as above,
-never `-f body=@<path>`. Don't substitute `-f body="$(cat <path>)"`: the worktree guard refuses command
-substitution in that position (reported on issue #312, 2026-10-07).
+never `-f body=@<path>`. Don't substitute `-f body="$(cat <path>)"`: it was reported to be refused by the
+worktree guard (issue #312 comment, 2026-10-07; not independently re-verified here).
 
 ## Resolving a review thread
 
@@ -85,9 +85,10 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
 Pass `$cursor` as a GraphQL variable: `-F cursor=null` on the first call, then each response's
 `pageInfo.endCursor` on the next via `-f cursor="<endCursor>"`, replacing `-F cursor=null` once a next page
 exists. The first call must use `-F`/`--field`, never `-f`/`--raw-field`: `-f` always sends a string, so
-`-f cursor=null` sends the literal four-character string `"null"` rather than a GraphQL `null`. GitHub
-accepts it as a bogus `after` cursor and silently returns a truncated page with `hasNextPage: false` —
-zero threads, or the first one or more skipped — instead of an error (issue #312). `-F` converts the
+`-f cursor=null` sends the literal four-character string `"null"` rather than a GraphQL `null`. That has
+been observed to return a silently truncated page with `hasNextPage: false` — zero threads, or the first
+one or more skipped — instead of an error (issue #312), presumably because the string is treated as a
+bogus `after` cursor. `-F` converts the
 bare literal `null` to a real JSON null. Keep querying while `pageInfo.hasNextPage` is `true` before
 treating the accumulated thread list as complete.
 `-F owner=`/`-F name=`/`-F number=` are typed GraphQL variables (`gh api`'s `-F` flag), distinct from

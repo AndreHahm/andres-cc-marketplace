@@ -444,7 +444,8 @@ frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow st
 **Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals (iteration 2's 17
 scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
 with_skill-only; iteration 4's eval 21 at 100%, with_skill-only; iteration 5's eval 22 at 100%,
-with_skill-only; iteration 7's evals 23-24 at 100%, with_skill-only). Full run history, the security-review
+with_skill-only; iteration 7's evals 23-24 at 100%, with_skill-only; eval 21's expected output was later
+narrowed to `-F body=@<path>` only, and its saved iteration-4 run predates that change). Full run history, the security-review
 passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
