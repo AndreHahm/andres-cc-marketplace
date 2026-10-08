@@ -3,15 +3,22 @@
 # two equivalent inline-review-thread `gh api` write actions (a reply to a
 # review comment, or the GraphQL `resolveReviewThread` mutation) when the
 # call wasn't immediately preceded by collaborating-on-a-pr's,
-# explain-pr-changes's, codex-review-recovery's, or
-# handling-review-findings's marker handshake. Same mechanism as
+# explain-pr-changes's, codex-review-recovery's,
+# handling-review-findings's, or triaging-dependabot-prs's marker handshake
+# (the last only for its two fixed `@dependabot rebase`/`@dependabot close`
+# `gh pr comment` calls -- enforced by that skill's own SKILL.md instructions,
+# not by this script, which cannot tell). Same mechanism as
 # git-guard-raw-pr-ops.sh (see that script's header comment for the full
 # marker-handshake rationale). merge-pr also writes this marker (issue #160),
-# but only ever for the read-only `reviewThreads` lookup its own step 2 uses
-# to count unresolved threads -- it never calls the reply endpoint or the
-# `resolveReviewThread` mutation. This guard can't tell a read-only query
+# for the read-only `reviewThreads` lookup its own step 2 uses to count
+# unresolved threads and, together with create-pr (step 5) and commit
+# (step 16.5), for the SHA-bound Codex-bypass attestation `gh pr comment
+# --body-file` (shared protocol: references/git-bypass-attestation-protocol.md
+# step 3(c)). This guard has no exemption for that comment, so each of those
+# callers writes the marker right before it. None of them calls the reply
+# endpoint or the `resolveReviewThread` mutation. This guard can't tell a read-only query
 # from a mutation once the marker is present (same accepted limitation as
-# the other four skills; see this file's own header further below on why a
+# the other callers; see this file's own header further below on why a
 # query/mutation carve-out was tried and abandoned) -- the narrowing is
 # enforced by merge-pr's own SKILL.md instructions, not by this script.
 #
@@ -1261,7 +1268,7 @@ if [ "$allowed" = true ]; then
   exit 0
 fi
 
-REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, \`handling-review-findings\`, or \`merge-pr\` (its step 2 unresolved-review-thread check only) matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
+REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, \`handling-review-findings\`, \`triaging-dependabot-prs\` (its @dependabot rebase/close comments only), \`merge-pr\` (its step 2 unresolved-review-thread check and step 4(b) bypass-attestation comment), or \`create-pr\`/\`commit\` (their bypass-attestation comment only) matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
 
 jq -n --arg reason "$REASON" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'

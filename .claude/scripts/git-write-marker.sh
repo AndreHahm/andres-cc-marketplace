@@ -10,7 +10,7 @@
 #
 # Called by the allowlisted skills (commit, standalone-commits, create-pr,
 # merge-pr, starting-work, collaborating-on-a-pr, explain-pr-changes, git-cleanup,
-# codex-review-recovery, handling-review-findings)
+# codex-review-recovery, handling-review-findings, triaging-dependabot-prs)
 # immediately before they run the guarded command themselves --
 # the marker must be fresh (<=60s old, checked by the hook) and is consumed
 # on first use, so writing it any earlier than "right before the guarded

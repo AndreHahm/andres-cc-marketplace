@@ -41,6 +41,8 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - Step 3 (merge-rights) fails even though step 2's bypass exception applied → stop at step 3, exactly like the non-bypass path; a bypass never grants merge rights
 - Step 4's re-triggered check comes back failing (bad attestation, actor/SHA mismatch server-side) → step 4(e)'s rerun of step 2 reports not-ready and stops; never proceeds to step 5 on an assumption that the bypass "should" have worked
 - `s: codex review bypassed` label missing from the repo → step 4(c) stops and reports failure; the skill never creates the label itself
+- Step 4(b) writes the `gh-pr-review` marker in its own `Bash` call as the last step before the attestation comment, and posts the comment as the very next call → the PR-review guard accepts it; without that marker (the pre-fix behavior) `git-guard-raw-pr-review.sh` denies the comment after the user already approved the bypass. If it is still denied, the skill stops and reports the bypass was not attested
+- Steps 4(c) and 4(d) read the Codex-policy check from `gh pr view --json statusCheckRollup` (baseline `startedAt`, then a `CheckRun` entry with a strictly later `startedAt` and `status` `COMPLETED`), never `gh pr checks --json` — verify on a `gh` release whose `gh pr checks` has no `--json` flag (2.45.0)
 
 **Verify step 4(a)'s reason screening covers the shared protocol's full step 1, not just the bot-trigger check (cross-model-review round, 2026-09-21 — Codex's fresh-eyes full-diff pass found step 4(a) previously named only the bot-trigger-mention check):**
 - Reason contains a literal bot-trigger mention (e.g. `@codex full review`) → step 4(a) rejects the flag and reports why; never proceeds to (b)

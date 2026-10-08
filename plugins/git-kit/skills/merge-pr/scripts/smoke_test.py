@@ -422,14 +422,62 @@ def check_bypass_poll_uses_started_at_baseline():
             "step 4(d)'s poll no longer requires a startedAt strictly later than (c)'s baseline -- "
             "it could accept the pre-label run's own already-terminal result",
         )
-    if "bucket" not in step4:
-        return False, "step 4(d)'s poll no longer classifies via the bucket field (pass/fail)"
+    # `gh pr checks --json` is rejected by older gh releases (2.45.0 is one); the poll reads
+    # statusCheckRollup instead, the same source step 2 classifies from.
+    if re.search(r"gh pr checks \$ARGUMENTS --json", step4):
+        return (
+            False,
+            "step 4 uses `gh pr checks --json`, which older gh releases reject -- poll "
+            "`gh pr view --json statusCheckRollup` instead",
+        )
+    if "bucket" in step4:
+        return (
+            False,
+            "step 4 still refers to the `gh pr checks` bucket field -- the poll classifies from "
+            "statusCheckRollup status/conclusion instead",
+        )
+    if "statusCheckRollup" not in step4 or "`COMPLETED`" not in step4:
+        return (
+            False,
+            "step 4(d)'s poll no longer reads statusCheckRollup and waits for a COMPLETED "
+            "CheckRun entry",
+        )
     if "bound is exhausted" not in step4:
         return False, "step 4(d)'s poll is no longer bounded to a fixed number of attempts"
     return (
         True,
-        "step 4(c) captures a pre-label startedAt baseline and step 4(d)'s poll requires a "
-        "strictly-later startedAt plus a terminal bucket, bounded, before accepting the result",
+        "step 4(c) captures a pre-label startedAt baseline from statusCheckRollup and step "
+        "4(d)'s poll requires a strictly-later startedAt plus a COMPLETED entry, bounded, "
+        "before accepting the result",
+    )
+
+
+def check_bypass_comment_writes_gh_pr_review_marker():
+    # git-guard-raw-pr-review.sh hard-blocks every raw `gh pr comment` absent a fresh
+    # gh-pr-review marker and has no exemption for the attestation comment, so step 4(b) must
+    # write the marker as the call right before the comment (own Bash call, nothing between).
+    step4 = _get_step_text(4)
+    if step4 is None:
+        return False, "step 4 ('## Instructions') not found"
+    marker = 'git-write-marker.sh" gh-pr-review merge-pr'
+    comment = "gh pr comment $ARGUMENTS --body-file"
+    if marker not in step4 or comment not in step4:
+        return (
+            False,
+            "step 4(b) no longer writes the gh-pr-review marker before the attestation comment "
+            "-- the PR-review guard would deny the comment after the user approved the bypass",
+        )
+    if step4.index(marker) > step4.index(comment):
+        return False, "step 4(b) writes the gh-pr-review marker after the attestation comment"
+    if "nothing else may run between the two" not in step4:
+        return (
+            False,
+            "step 4(b) no longer says nothing may run between the marker call and the comment",
+        )
+    return (
+        True,
+        "step 4(b) writes the gh-pr-review marker in its own call immediately before the "
+        "attestation comment",
     )
 
 
@@ -963,6 +1011,7 @@ CHECKS = [
     check_bypass_exception_single_use,
     check_step2_rerun_enumeration_includes_7b,
     check_bypass_poll_uses_started_at_baseline,
+    check_bypass_comment_writes_gh_pr_review_marker,
     check_merge_binds_to_verified_head_sha,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,

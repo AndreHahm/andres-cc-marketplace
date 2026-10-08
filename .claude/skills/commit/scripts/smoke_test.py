@@ -128,7 +128,37 @@ def check_step_sequence():
     return True, "step headers sequential"
 
 
-CHECKS = [check_frontmatter, check_bash_grants, check_step_sequence]
+def check_shared_protocol_writes_marker():
+    # Step 16.5's attestation comment follows the shared protocol; the PR-review guard
+    # hard-blocks every raw `gh pr comment` without a fresh gh-pr-review marker and has no
+    # exemption for the attestation comment, so the protocol's step 3(c) must write that marker
+    # right before the comment, and this skill must hold the marker-script grant.
+    protocol = SKILL_DIR.parent.parent / "references" / "git-bypass-attestation-protocol.md"
+    if not protocol.exists():
+        return False, "shared git-bypass-attestation-protocol.md not found"
+    text = protocol.read_text(encoding="utf-8")
+    marker = 'git-write-marker.sh" gh-pr-review'
+    comment = "gh pr comment <number> --body-file"
+    if marker not in text or comment not in text or text.index(marker) > text.index(comment):
+        return (
+            False,
+            "protocol step 3(c) no longer writes the gh-pr-review marker before the attestation "
+            "comment -- the PR-review guard would deny the comment",
+        )
+    if "git-write-marker.sh" not in SKILL_MD.read_text(encoding="utf-8").split("\n---\n", 1)[0]:
+        return False, "allowed-tools no longer grants the marker script"
+    return (
+        True,
+        "protocol step 3(c) writes the gh-pr-review marker before the comment; grant present",
+    )
+
+
+CHECKS = [
+    check_frontmatter,
+    check_bash_grants,
+    check_step_sequence,
+    check_shared_protocol_writes_marker,
+]
 
 
 def main():

@@ -80,6 +80,9 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - `--bypass-codex-review "<non-empty reason>"` given, actor has live `write`/`maintain`/`admin`
   permission → attestation comment posted (built via `jq -n --arg`, never raw shell interpolation of the
   reason text), `s: codex review bypassed` label applied, success reported
+- The attestation comment is preceded by a `gh-pr-review` marker written in its own `Bash` call, with the
+  comment as the very next call (shared protocol step 3(c)); without the marker `git-guard-raw-pr-review.sh`
+  denies the comment, in which case the skill stops and reports the bypass was not attested
 - `--bypass-codex-review` given with an empty or missing reason → rejected before posting any comment or
   applying any label; the already-created PR is unaffected
 - `--bypass-codex-review` given a reason containing a literal bot-trigger mention (e.g. `@codex review`)

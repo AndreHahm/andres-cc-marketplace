@@ -110,3 +110,21 @@ be overridden by `GH_REPO`/`gh repo set-default` — a real fork-contributor set
 what `git push origin HEAD` actually targets, fixed by comparing the real `origin` remote URL instead.
 No fresh `skill-tester` eval re-run for any of these — each was verified directly (a live reproduction,
 or a check against `git`'s/`gh`'s own documented behavior) rather than end-to-end blind comparison.
+
+**Bypass attestation fixes (2026-10-08, found while building `triaging-dependabot-prs`):** two defects
+stopped the bypass path from completing. (Critical) step 4(b)'s attestation `gh pr comment` was posted
+with no `gh-pr-review` marker written first; `git-guard-raw-pr-review.sh` hard-blocks every raw
+`gh pr comment` and has no exemption for the attestation comment (its denial text listed `merge-pr` for
+the step-2 thread check only), so the comment was denied after the user had approved the bypass. The
+same gap existed in `create-pr` step 5 and `commit` step 16.5, which follow the shared protocol; fixed
+once in `../../references/git-bypass-attestation-protocol.md` step 3(c) and here in step 4(b). (Major)
+steps 4(c) and 4(d) polled `gh pr checks --json name,startedAt[,bucket]`, which `gh` 2.45.0 rejects
+(unknown flag), so the flow would have died after the attestation comment was posted; fixed by reading
+the `Publish Codex policy result` `CheckRun` from `statusCheckRollup` (the source step 2 already
+classifies from), keeping the `startedAt` baseline and the strictly-later requirement, and waiting for
+`status` `COMPLETED`; the now-unused `Bash(gh pr checks:*)` grant was removed. Verified by reading the
+guard and the skill text, by running `gh pr checks 489 --json name,bucket` on `gh` 2.45.0 (result:
+`unknown flag: --json`; `gh pr checks 489 --required` runs and prints tab-separated name, bucket, elapsed
+and link), and by reading live `statusCheckRollup` data (one `CheckRun` entry named
+`Publish Codex policy result` with `status`, `conclusion` and `startedAt`); the bypass flow itself was
+not run live, because it posts real comments and applies a real label.
