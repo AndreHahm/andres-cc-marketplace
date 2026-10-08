@@ -16,6 +16,11 @@ on:
         required: true
         default: '100'
         type: 'string'
+      max_number:
+        description: 'Only process PRs numbered at or below this (0 = no cap). `limit` then applies to the newest matches within that range'
+        required: true
+        default: '0'
+        type: 'string'
       dry_run:
         description: 'Dry run (log what would change without applying labels)'
         required: true
@@ -63,6 +68,7 @@ jobs:
           # pre-existing PROCESS_ALL/LIMIT direct-interpolation lines below
           # are left as-is -- out of scope for this change.
           DRY_RUN: '${{ github.event.inputs.dry_run }}'
+          MAX_NUMBER: '${{ github.event.inputs.max_number }}'
         run: |
           # Determine the state filter
           STATE="open"
@@ -71,10 +77,24 @@ jobs:
           fi
 
           LIMIT="${{ github.event.inputs.limit }}"
+          if ! [[ "$MAX_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::max_number must be a non-negative integer (0 = no cap) -- got '$MAX_NUMBER'."
+            exit 1
+          fi
           if [ "$DRY_RUN" = "true" ]; then
             echo "🔍 Dry run: no labels will actually be added or removed."
           fi
-          echo "Batch labeling up to $LIMIT $STATE PRs..."
+          # With a max_number cap, `limit` must apply AFTER the range
+          # filter -- gh pr list returns newest-first with no number
+          # filter, so fetch a large window, filter, then slice to `limit`
+          # (see issue #329).
+          FETCH_LIMIT="$LIMIT"
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            FETCH_LIMIT=10000
+            echo "Batch labeling up to $LIMIT $STATE PRs numbered <= $MAX_NUMBER..."
+          else
+            echo "Batch labeling up to $LIMIT $STATE PRs..."
+          fi
 
           # The 5 "size: *" labels are declared in .github/labels.yml (single
           # source of truth, synced to GitHub by sync-labels.yml) -- this step
@@ -86,9 +106,12 @@ jobs:
           # otherwise be indistinguishable from a legitimate "no PRs found"
           # and get silently treated as a no-op success (Codex + CodeRabbit
           # finding, PR #294 review).
-          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$LIMIT" --json number,additions,deletions,labels); then
+          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number,additions,deletions,labels); then
             echo "::error::gh pr list failed -- could not fetch the PR list."
             exit 1
+          fi
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            PR_LIST=$(echo "$PR_LIST" | jq -c --argjson max "$MAX_NUMBER" --argjson n "$LIMIT" '[.[] | select(.number <= $max)] | .[:$n]')
           fi
           if [ -z "$PR_LIST" ] || [ "$PR_LIST" = "[]" ]; then
             echo "ℹ️ No PRs found matching the criteria."

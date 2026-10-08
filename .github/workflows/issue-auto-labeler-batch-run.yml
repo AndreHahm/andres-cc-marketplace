@@ -35,12 +35,13 @@
 #     CANCELS the whole run if exceeded (validated explicitly in the
 #     "List issues" step below, with a clear error message). The default
 #     limit input (100) is well within range.
-#   - No way to advance past the first `limit` matching issues across
-#     multiple runs -- gh issue list always returns the newest matching
-#     issues first, with no cursor/exclusion mechanism, so a rerun with
-#     the same inputs re-selects the same set. Tracked as issue #329
-#     rather than fixed here -- implementing real pagination is a design
-#     decision (which field to page on), not a quick fix.
+#   - Advancing past the first `limit` matching issues is manual: gh issue
+#     list returns newest-first, so a rerun with the same inputs
+#     re-selects the same set. Use the `max_number` input (issue number
+#     upper bound, inclusive) and lower it between runs to walk back
+#     through older issues (issue #329). No automatic cursor.
+#     `max_number` can't select closed-only: `process_all` is still
+#     open-only or open+closed.
 #   - Per-job overhead: each matrix job does its own checkout + killswitch
 #     check, plus one issues.get call for the priority-label step below.
 #     For 100 issues that's 100 checkouts and 100 extra API reads --
@@ -81,6 +82,11 @@ on:
         description: 'Max number of issues to fetch and label'
         required: true
         default: '100'
+        type: 'string'
+      max_number:
+        description: 'Only process issues numbered at or below this (0 = no cap). `limit` then applies to the newest matches within that range'
+        required: true
+        default: '0'
         type: 'string'
       dry_run:
         description: 'Dry run (log what would change without applying labels)'
@@ -140,6 +146,7 @@ jobs:
           # cross-model-review finding, round 3: Codex Phase 1).
           PROCESS_ALL: ${{ github.event.inputs.process_all }}
           LIMIT: ${{ github.event.inputs.limit }}
+          MAX_NUMBER: ${{ github.event.inputs.max_number }}
         run: |
           # GitHub Actions caps a matrix at 256 jobs and CANCELS the whole
           # workflow run if exceeded -- it does not silently drop the
@@ -157,19 +164,41 @@ jobs:
             exit 1
           fi
 
+          if ! [[ "$MAX_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::max_number must be a non-negative integer (0 = no cap) -- got '$MAX_NUMBER'."
+            exit 1
+          fi
+
           STATE="open"
           if [ "$PROCESS_ALL" = "true" ]; then
             STATE="all"
           fi
-          echo "Fetching up to $LIMIT $STATE issues..."
+
+          # With a max_number cap, `limit` must apply AFTER the range
+          # filter -- gh issue list returns newest-first with no number
+          # filter, so a plain --limit would fetch only the newest items
+          # and the cap would leave nothing (or too little) behind. Fetch
+          # a large window instead, filter, then slice to `limit`. This
+          # also lets repeated runs with a lowered max_number walk back
+          # through older issues (issue #329).
+          FETCH_LIMIT="$LIMIT"
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            FETCH_LIMIT=10000
+            echo "Fetching up to $LIMIT $STATE issues numbered <= $MAX_NUMBER..."
+          else
+            echo "Fetching up to $LIMIT $STATE issues..."
+          fi
 
           # Check the command's own exit status separately from an empty
           # result -- a failed gh issue list (auth/rate-limit/API error)
           # would otherwise be indistinguishable from "no issues found"
           # (same guard as pr-size-labeler-batch-run.yml).
-          if ! ISSUE_LIST=$(gh issue list --state "$STATE" --limit "$LIMIT" --json number); then
+          if ! ISSUE_LIST=$(gh issue list --state "$STATE" --limit "$FETCH_LIMIT" --json number); then
             echo "::error::gh issue list failed -- could not fetch the issue list."
             exit 1
+          fi
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            ISSUE_LIST=$(echo "$ISSUE_LIST" | jq -c --argjson max "$MAX_NUMBER" --argjson n "$LIMIT" '[.[] | select(.number <= $max)] | .[:$n]')
           fi
 
           # Build a JSON array of issue numbers for the matrix

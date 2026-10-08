@@ -51,13 +51,12 @@
 #     (a pulls.get fetch per PR for real additions/deletions, plus
 #     addLabels + removeLabel per PR for the title step, plus the labeler
 #     action's own per-PR file fetch).
-#   - No way to advance past the first `limit` matching PRs across
-#     multiple runs -- gh pr list always returns the newest matching PRs
-#     first, with no cursor/exclusion mechanism, so a rerun with the same
-#     inputs re-selects the same set (a lower `limit` doesn't help reach
-#     older PRs either, it just re-fetches a smaller slice of the same
-#     newest ones). Tracked as issue #329 rather than fixed here --
-#     implementing real pagination is a design decision, not a quick fix.
+#   - Advancing past the first `limit` matching PRs is manual: gh pr list
+#     returns newest-first, so a rerun with the same inputs re-selects the
+#     same set. Use the `max_number` input (PR number upper bound,
+#     inclusive) and lower it between runs to walk back through older PRs
+#     (issue #329). No automatic cursor. `max_number` can't select
+#     closed-only: `process_all` is still open-only or open+closed.
 #   - Priority-tier detection is deliberately narrow: it only recognizes a
 #     "critical" keyword pattern (mirroring issue-opened-labeler.yml's own,
 #     the closest existing precedent since no PR-side automation defines
@@ -81,6 +80,11 @@ on:
         description: 'Max number of PRs to fetch and check'
         required: true
         default: '100'
+        type: 'string'
+      max_number:
+        description: 'Only process PRs numbered at or below this (0 = no cap). `limit` then applies to the newest matches within that range'
+        required: true
+        default: '0'
         type: 'string'
       dry_run:
         description: 'Dry run (log what would change without applying labels)'
@@ -141,20 +145,40 @@ jobs:
           # cross-model-review finding, round 3: Codex Phase 1).
           PROCESS_ALL: ${{ github.event.inputs.process_all }}
           LIMIT: ${{ github.event.inputs.limit }}
+          MAX_NUMBER: ${{ github.event.inputs.max_number }}
         run: |
+          if ! [[ "$MAX_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::max_number must be a non-negative integer (0 = no cap) -- got '$MAX_NUMBER'."
+            exit 1
+          fi
+
           STATE="open"
           if [ "$PROCESS_ALL" = "true" ]; then
             STATE="all"
           fi
-          echo "Fetching up to $LIMIT $STATE PRs..."
+
+          # With a max_number cap, `limit` must apply AFTER the range
+          # filter -- gh pr list returns newest-first with no number
+          # filter, so fetch a large window, filter, then slice to `limit`
+          # (see issue #329).
+          FETCH_LIMIT="$LIMIT"
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            FETCH_LIMIT=10000
+            echo "Fetching up to $LIMIT $STATE PRs numbered <= $MAX_NUMBER..."
+          else
+            echo "Fetching up to $LIMIT $STATE PRs..."
+          fi
 
           # Check the command's own exit status separately from an empty
           # result -- a failed gh pr list (auth/rate-limit/API error) would
           # otherwise be indistinguishable from "no PRs found" (same guard
           # as pr-size-labeler-batch-run.yml).
-          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$LIMIT" --json number); then
+          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number); then
             echo "::error::gh pr list failed -- could not fetch the PR list."
             exit 1
+          fi
+          if [ "$MAX_NUMBER" -gt 0 ]; then
+            PR_LIST=$(echo "$PR_LIST" | jq -c --argjson max "$MAX_NUMBER" --argjson n "$LIMIT" '[.[] | select(.number <= $max)] | .[:$n]')
           fi
 
           PR_NUMBERS=$(echo "$PR_LIST" | jq -r '.[].number')
