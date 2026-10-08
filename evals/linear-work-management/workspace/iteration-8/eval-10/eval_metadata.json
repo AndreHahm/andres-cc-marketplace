@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output discards the getInitiativeProjects result and does not show or summarize Alpha's projects",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output states that the second response's organization (org-B) does not match the operation's organization_id (org-A)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output gives a structured handoff and makes no further call or substitute read",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
