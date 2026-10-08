@@ -36,7 +36,7 @@ FAIL_COUNT=0
 # wrapper (best-effort only) if unavailable, e.g. on a bare macOS host without coreutils.
 E2E_TIMEOUT_CMD=()
 if command -v timeout >/dev/null 2>&1; then
-  E2E_TIMEOUT_CMD=(timeout 20)
+  E2E_TIMEOUT_CMD=(timeout 14)
 fi
 
 # --- Layer 1: unit-level, sourced from the real script -----------------
@@ -947,6 +947,202 @@ e2e_check "403 Gap 2 -- 'graphql' inside an unrelated REST search-query value --
 e2e_check "403 Gap 2 control -- same REST search call with no 'graphql' substring -- allows" \
   'gh api search/issues -f q="repo:o/r is:issue guard allowlist" -X GET' \
   "ALLOW"
+
+# Repo-override flags between `gh`, `pr` and the subcommand (found 2026-10-08, live-verified on gh
+# 2.45.0): `gh -R o/r pr comment`, `gh pr -R o/r comment`, `gh --repo=o/r pr review` and the glued
+# `-Ro/r` form all run, and the old `pr <subcommand>`-must-be-contiguous patterns let every one of
+# them through with no marker check. Each deny case below was an allow before this fix.
+e2e_check "repo flag -- root '-R o/r' before pr comment -- must deny" \
+  'gh -R o/r pr comment 5 --body-file /tmp/x' "deny"
+e2e_check "repo flag -- 'pr -R o/r' before comment -- must deny" \
+  'gh pr -R o/r comment 5 --body-file /tmp/x' "deny"
+e2e_check "repo flag -- root '--repo o/r' before pr review -- must deny" \
+  'gh --repo o/r pr review 5 --approve' "deny"
+e2e_check "repo flag -- 'pr --repo=o/r' before review -- must deny" \
+  'gh pr --repo=o/r review 5 --approve' "deny"
+e2e_check "repo flag -- glued '-Ro/r' before comment -- must deny" \
+  'gh pr -Ro/r comment 5 --body x' "deny"
+e2e_check "repo flag -- flags at both positions -- must deny" \
+  'gh -R o/r pr -R p/q comment 5 --body x' "deny"
+e2e_check "repo flag -- gh.exe form -- must deny" \
+  'gh.exe -R o/r pr comment 5 --body x' "deny"
+e2e_check "repo flag -- double-quoted repo value -- must deny" \
+  'gh -R "o/r" pr comment 5 --body x' "deny"
+e2e_check "repo flag -- chained after another command -- must deny" \
+  'echo hi && gh -R o/r pr review 5 --comment' "deny"
+e2e_check "repo flag control -- plain gh pr comment still denies" \
+  'gh pr comment 5 --body x' "deny"
+e2e_check "repo flag control -- gh pr view with -R is not guarded -- must allow" \
+  'gh pr view 5 -R o/r --json number' "ALLOW"
+e2e_check "repo flag control -- root -R before pr view -- must allow" \
+  'gh -R o/r pr view 5 --json number' "ALLOW"
+e2e_check "repo flag control -- word 'comment' only as a search term -- must allow" \
+  'gh pr list -R o/r --search comment' "ALLOW"
+e2e_check "repo flag control -- gh issue comment is a different guard's concern -- must allow" \
+  'gh -R o/r issue comment 5 --body x' "ALLOW"
+# A very long run of flags must neither hang the matcher nor change the verdict (E2E_TIMEOUT_CMD
+# turns a hang into a named FAIL instead of stalling the suite).
+long_flags=$(printf ' -R o/r%.0s' $(seq 1 1500))
+e2e_check "repo flag stress -- 1500 repeated flags then pr comment -- must deny" \
+  "gh${long_flags} pr comment 5 --body x" "deny"
+e2e_check "repo flag stress -- 1500 repeated flags then pr view -- must allow, no hang" \
+  "gh pr${long_flags} view 5" "ALLOW"
+
+# Non-repo flags valid on the final command also sit before the subcommand words (cobra; live-verified
+# on gh 2.45.0: `gh --json=number pr view 1`, `gh pr --body x comment --help`). Each deny was an allow.
+e2e_check "generic flag -- 'pr --body x' before comment -- must deny" \
+  'gh pr --body x comment 5' "deny"
+e2e_check "generic flag -- glued 'pr -bx' before comment -- must deny" \
+  'gh pr -bx comment 5' "deny"
+e2e_check "generic flag -- root '--approve=true' before pr review -- must deny" \
+  'gh --approve=true pr review 5' "deny"
+e2e_check "generic flag -- 'pr -a=true' before review -- must deny" \
+  'gh pr -a=true review 5' "deny"
+e2e_check "generic flag -- bare 'pr --web' before comment -- must deny" \
+  'gh pr --web comment 5' "deny"
+e2e_check "generic flag -- repo and other flags in both positions -- must deny" \
+  'gh -R o/r --body=x pr -b y --approve review 5' "deny"
+e2e_check "generic flag control -- other flags before pr view -- must allow" \
+  'gh --json=number pr view 1 -R o/r' "ALLOW"
+e2e_check "generic flag control -- pr view then a flag value named comment -- must allow" \
+  'gh pr view 5 --json comments' "ALLOW"
+
+# The same mechanism for `gh api` (live-verified: `gh --method=GET api repos/cli/cli`,
+# `gh -XGET api ...` and `gh -f x=y api ...` all run; only -R/--repo are rejected there). The old
+# API_SPAN_PREFIX_RE required `gh` + whitespace + `api`, so each deny below was an allow.
+e2e_check "api prefix -- root '--method=POST' before api, reviews endpoint -- must deny" \
+  'gh --method=POST api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "api prefix -- glued '-XPOST' before api, reviews endpoint -- must deny" \
+  'gh -XPOST api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "api prefix -- root '-f event=APPROVE' before api, reviews endpoint -- must deny" \
+  'gh -f event=APPROVE api repos/o/r/pulls/5/reviews' "deny"
+e2e_check "api prefix -- root flag before api, graphql endpoint -- must deny" \
+  'gh --method=POST api graphql -f query=x' "deny"
+e2e_check "api prefix -- root '--hostname' flag before api, replies endpoint -- must deny" \
+  'gh --hostname github.com api repos/o/r/pulls/1/comments/2/replies -f body=x' "deny"
+e2e_check "api prefix -- benign call chained before a flagged dangerous one -- must deny" \
+  'gh --method=GET api repos/o/r/issues && gh --method=POST api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "api prefix control -- flag before api, benign REST endpoint -- must allow" \
+  'gh --method=GET api repos/o/r/issues' "ALLOW"
+e2e_check "api prefix control -- flag before api, benign POST endpoint -- must allow" \
+  'gh --method=POST api repos/o/r/issues -f title=x' "ALLOW"
+e2e_check "api prefix control -- plain dangerous call still denies" \
+  'gh api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+
+# Stress: other flag shapes, and the adversarial near-miss that never reaches a guarded command at all
+# (the shape a backtracking matcher would be slowest on).
+mixed_flags=$(printf ' --x=1 -y z -w%.0s' $(seq 1 1500))
+e2e_check "generic flag stress -- 1500 mixed flag/value groups then pr comment -- must deny" \
+  "gh pr${mixed_flags} comment 5 --body x" "deny"
+e2e_check "generic flag stress -- 1500 mixed flag/value groups then pr view -- must allow, no hang" \
+  "gh pr${mixed_flags} view 5" "ALLOW"
+no_pr_flags=$(printf ' -R o/r --x=1 -y z%.0s' $(seq 1 3000))
+e2e_check "generic flag stress -- 3000 flag groups with no pr word and no api word -- must allow, no hang" \
+  "gh${no_pr_flags} issue list" "ALLOW"
+huge_flags=$(printf ' -R o/r%.0s' $(seq 1 20000))
+e2e_check "generic flag stress -- roughly 140KB of repeated flags, no guarded command -- must allow, no hang" \
+  "gh pr${huge_flags} view 5" "ALLOW"
+
+# b3r-1 (security re-audit of this change, reproduced before the fix): GNU grep -o returns the LONGEST
+# match, so a flag's optional value token can swallow a LATER `api` word. The span then starts at the end
+# of the string and the real endpoint sits inside the matched prefix, where no span scan looks. Each deny
+# below was an ALLOW before the caller-loop check on the matched prefix text existed.
+e2e_check "b3r-1 overshoot -- dash token before the endpoint, trailing '-p api' swallowed as a value -- must deny" \
+  'gh -XPOST api -i repos/o/r/pulls/5/reviews -f event=APPROVE -p api' "deny"
+e2e_check "b3r-1 overshoot -- same with graphql as the endpoint -- must deny" \
+  'gh -XPOST api -i graphql -f query=x -p api' "deny"
+e2e_check "b3r-1 overshoot -- same with a replies endpoint -- must deny" \
+  'gh -XPOST api -i repos/o/r/pulls/1/comments/2/replies -f body=x -t api' "deny"
+e2e_check "b3r-1 overshoot -- glued ';' inside a value word hiding a second invocation -- must deny" \
+  'gh -XPOST api -t x;gh -XPOST api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "b3r-1 control -- same overshoot shape with a benign endpoint -- must allow" \
+  'gh -XPOST api -i repos/o/r/issues -f title=x -p api' "ALLOW"
+
+# b3r-2: a flag value that is quoted and contains whitespace (bash keeps it as ONE argument). Each deny
+# was an ALLOW before the quote-aware value alternatives were added to the flag group.
+e2e_check "b3r-2 quoted value -- double-quoted '--body \"looks good\"' before comment -- must deny" \
+  'gh pr --body "looks good" comment 5' "deny"
+e2e_check "b3r-2 quoted value -- single-quoted title before comment -- must deny" \
+  "gh pr --title 'fix bug' comment 5" "deny"
+e2e_check "b3r-2 quoted value -- quoted header with a space before api and a reviews endpoint -- must deny" \
+  'gh -H "Accept: application/json" api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "b3r-2 quoted value -- quoted value then repo flag then review -- must deny" \
+  'gh pr --body "a b c" -R o/r review 5' "deny"
+e2e_check "b3r-2 control -- quoted value before pr view is not guarded -- must allow" \
+  'gh pr --body "looks good" view 5' "ALLOW"
+e2e_check "b3r-2 control -- quoted header AFTER api on a benign endpoint -- must allow" \
+  'gh api -H "Accept: application/json" repos/o/r/issues' "ALLOW"
+
+# b3r-4, disclosed false positive: a flag placed before the subcommand whose VALUE equals a guarded word
+# can be read as the subcommand (gh runs these as `pr list`). Fail-safe direction, accepted next to the
+# existing over-match note in the guard; this case pins it so it cannot change silently.
+e2e_check "b3r-4 disclosed over-match -- flag value 'review' before pr list -- denies (accepted false positive)" \
+  'gh pr --label review list' "deny"
+
+# b3r-5: the stress inputs above contain no `api` word, so the DFA rejects them before the regex path
+# that computes match offsets (grep -bo) runs. These reach a real `gh api` after a long chain of `gh`
+# words, which is the shape that exercises API_SPAN_PREFIX_RE's cost (measured ~0.8s at 32KB on Linux;
+# Git Bash on Windows is not measured here).
+chain_gh=$(printf 'gh -a %.0s' $(seq 1 3500))
+e2e_check "b3r-5 stress -- 3500 chained 'gh -a' words then a benign gh api, ~21KB -- must allow, no hang" \
+  "${chain_gh} -a ; gh api user" "ALLOW"
+e2e_check "b3r-5 stress -- 3500 chained 'gh -a' words then a dangerous gh api, ~21KB -- must deny, no hang" \
+  "${chain_gh} -a ; gh api repos/o/r/pulls/5/reviews -f event=APPROVE" "deny"
+
+# b3f-1 (security recheck of the b3r fixes): the strict endpoint regexes need a space-free segment between
+# `pulls/` and `/reviews`, and the swallowed-prefix text is not collapsed the way a span is, so an endpoint
+# written with a substitution containing a space slipped past the prefix-text check. The prefix text now
+# also gets region-wide loose endpoint forms.
+e2e_check "b3f-1 -- swallowed endpoint with a space inside a \$(...) substitution -- must deny" \
+  'gh -XPOST api -i "repos/o/r/pulls/$(echo 5)/reviews" -f event=APPROVE -p api' "deny"
+e2e_check "b3f-1 -- swallowed replies endpoint with a space inside a \$(...) substitution -- must deny" \
+  'gh -XPOST api -i "repos/o/r/pulls/$(echo 5)/comments/$(echo 7)/replies" -f body=x -p api' "deny"
+e2e_check "b3f-1 control -- swallowed value with a space-bearing substitution but no guarded endpoint -- must allow" \
+  'gh -XPOST api -i "repos/o/r/issues/$(echo 5)/comments" -f body=x -p api' "ALLOW"
+
+# b3f-2: a flag and its value are shell WORDS -- plain characters mixed with double- and single-quoted
+# segments -- so an EMBEDDED quote (`--body="a b c"`, `-H"X: a b"`) or adjacent quoted segments with 2+
+# spaces must not break the flag group. Each deny below was an ALLOW with the whole-token-quote form.
+e2e_check "b3f-2 -- embedded double quote, value with 3 words, before pr comment -- must deny" \
+  'gh pr --body="looks good to me" comment 5' "deny"
+e2e_check "b3f-2 -- embedded double quote on a root flag before api and a reviews endpoint -- must deny" \
+  'gh -f body="LGTM thanks a lot" -f event=APPROVE api repos/o/r/pulls/5/reviews' "deny"
+e2e_check "b3f-2 -- quote glued to the flag letter before api and a reviews endpoint -- must deny" \
+  'gh -H"X: a b c" api repos/o/r/pulls/5/reviews -f event=APPROVE' "deny"
+e2e_check "b3f-2 -- adjacent double- and single-quoted segments as one value -- must deny" \
+  "gh pr --body \"a b\"'c d' comment 5" "deny"
+e2e_check "b3f-2 -- single-quoted embedded value before pr review -- must deny" \
+  "gh pr --body='ship it now' review 5" "deny"
+e2e_check "b3f-2 control -- embedded quoted value before pr view -- must allow" \
+  'gh pr --title="ship it now" view 5' "ALLOW"
+e2e_check "b3f-2 control -- embedded quoted value AFTER api on a benign endpoint -- must allow" \
+  'gh api -f body="LGTM thanks a lot" repos/o/r/issues/1/comments' "ALLOW"
+
+# The marker handshake must still authorize a flagged invocation exactly as it does a plain one.
+e2e_marker_flag_check() {
+  local tmp_git input out
+  tmp_git=$(mktemp -d)
+  trap 'rm -rf "$tmp_git"' RETURN
+  (
+    cd "$tmp_git"
+    git init -q
+    printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
+    input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh pr -R o/r comment 5 --body-file /tmp/x"}}')
+    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): repo flag + fresh marker -- guard exited non-zero: $out"; exit 0; }
+    if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
+      echo "PASS (e2e): repo flag + fresh marker -- allowed and marker consumed"
+    else
+      echo "FAIL (e2e): repo flag + fresh marker -- out=[$out] marker_remains=$([ -f .git/git-kit-marker.txt ] && echo yes || echo no)"
+    fi
+  )
+}
+flag_marker_result=$(e2e_marker_flag_check)
+echo "$flag_marker_result"
+if grep -q PASS <<< "$flag_marker_result"; then
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
 
 echo ""
 echo "=== $PASS_COUNT passed, $FAIL_COUNT failed ==="

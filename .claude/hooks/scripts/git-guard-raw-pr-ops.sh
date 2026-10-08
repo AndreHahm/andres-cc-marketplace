@@ -195,12 +195,47 @@ SKILL_HANDLES=""
 # subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
 # didn't recognize as a boundary -- both are valid, real invocations with
 # no required arguments.
-if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+create([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
+# Flag tokens tolerated between `gh`, `pr` and the subcommand (live-verified on gh 2.45.0,
+# 2026-10-08). cobra lets any flag valid on the FINAL command sit before the subcommand words, not
+# only `-R`/`--repo`: `gh -R o/r pr merge`, `gh pr -R o/r merge`, `gh --repo=o/r pr create`,
+# `gh --squash=true pr merge` and `gh --json=number pr view` all run, so a pattern requiring
+# `pr <subcommand>` to be contiguous let each of them through with no marker check -- including the
+# irreversible `gh pr merge`. GH_FLAGS is zero or more dash-prefixed tokens, each optionally followed
+# by ONE value token that does not itself start with a dash (`--x=v`, `-xV`, `-x v` and a bare
+# `--flag` all fit). It over-matches on purpose (it also accepts a nonsense `gh -x foo pr merge`) and
+# over-matching only adds denies; a command without any dash-prefixed token before the subcommand
+# matches exactly as before. Kept byte-identical to GH_FLAGS in git-guard-raw-pr-review.sh (the two
+# guards are standalone scripts); tests/git-test-guard-raw-pr-ops.sh fails if the copies drift.
+#
+# `gh pr create` also has a built-in alias, `gh pr new` (verified: `gh pr new --help` prints the
+# create help), so the create matcher accepts `create` or `new`. `merge` has no alias.
+#
+# Known residuals this does NOT close: (1) this guard matches the raw $COMMAND only, line by line --
+# unlike git-guard-raw-pr-review.sh it has no COMMAND_FLAT continuation flattening and no
+# COMMAND_DEQUOTED fallback, so quoted/escaped command words (`gh "pr" merge 5`, `gh \pr merge`) and
+# backslash-newline continuations still evade it; porting that normalization is tracked as a
+# follow-up (security review of this change, finding b3-3, which also exists for the old pattern);
+# (2) a flag value whose source text contains whitespace that bash removes at expansion
+# (`-R "$(echo o/r)"`), a value with a backslash-escaped or PowerShell backtick-escaped space,
+# variable- or eval-built command words, user-defined `gh alias set` aliases and shell
+# aliases/functions, and PowerShell's `--%`; also an escaped or doubled quote inside a quoted segment
+# (`--body "say \"hi\" now"`, PowerShell `'it''s a b'`), an ANSI-C `$'a b'` value and an unbalanced
+# quote. These sit outside a text pattern's reach and are covered only by this guard's
+# policy-guardrail status. Flag and value tokens ARE modeled as shell words -- plain characters mixed
+# with double- or single-quoted segments -- so `--subject "Release v2"`, `--subject="ship it now"`,
+# `-b"two words"` and adjacent segments are each one word, as bash sees them, with exactly one parse
+# per word.
+# Accepted over-match (fail-safe): a flag placed before the subcommand whose VALUE equals a guarded
+# word is read as the subcommand (`gh pr --search merge list` is denied although gh runs `pr list`).
+GH_FLAGS='([[:space:]]+-([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*([[:space:]]+([^-[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*)?)*'
+PR_CREATE_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?'"$GH_FLAGS"'[[:space:]]+pr'"$GH_FLAGS"'[[:space:]]+(create|new)([^[:alnum:]_.-]|$)'
+PR_MERGE_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?'"$GH_FLAGS"'[[:space:]]+pr'"$GH_FLAGS"'[[:space:]]+merge([^[:alnum:]_.-]|$)'
+if grep -qE "$PR_CREATE_RE" <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-create"
   SKILL_NAME="create-pr"
   GH_SUBCOMMAND="gh pr create"
   SKILL_HANDLES="template resolution, draft-vs-ready confirmation, and pre-flight commit checks"
-elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+merge([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
+elif grep -qE "$PR_MERGE_RE" <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-merge"
   SKILL_NAME="merge-pr"
   GH_SUBCOMMAND="gh pr merge"

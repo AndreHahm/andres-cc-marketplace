@@ -555,14 +555,22 @@ GH_SUBCOMMAND=""
 # after `gh`. A single combined regex expecting the endpoint immediately
 # after `api` misses all of those, letting a perfectly ordinary
 # `gh api -X POST repos/.../replies` invocation fall through unguarded.
-# `api` DOES have to sit immediately after `gh` -- verified against `gh --help`/`gh api --help`
-# (2026-08-21): `gh`'s root command has no persistent flags besides `--help`/`--version`, and `gh
-# api` itself has no `-R`/`--repo` flag either, so there is no real `gh <flag> api ...` invocation
-# for a widened prefix to defend against. A prior revision of this line widened the prefix to
-# tolerate flags there anyway, on an unverified assumption about `gh`'s flag placement -- that
-# widening was itself a regression (it dropped bare-whitespace/`env`-prefixed/indented `gh api ...`
-# as valid prefixes) fixing a bypass that didn't actually exist. Reverted to the original,
-# narrower form, which API_SPAN_PREFIX_RE below still uses as its own leading boundary.
+# Flag tokens ARE tolerated between `gh` and `api` (re-verified live on gh 2.45.0, 2026-10-08):
+# cobra lets a flag valid on the FINAL command sit before the subcommand words, so
+# `gh --method=POST api repos/...`, `gh -XPOST api ...` and `gh -f event=APPROVE api ...` all run, and
+# the old prefix (`gh` + whitespace + `api`) never saw any of them. `-R`/`--repo` specifically ARE
+# rejected before `api` (it does not define them) -- the 2026-08-21 revision of this comment tested
+# only those two flags and wrongly concluded no `gh <flag> api ...` invocation exists. An even earlier
+# revision widened this prefix on an unverified assumption and regressed its leading boundary (it
+# dropped bare-whitespace/`env`-prefixed/indented `gh api ...` as valid prefixes); this widening keeps
+# the original leading boundary `(^|[^[:alnum:]_.-])gh` untouched and only inserts the flag group
+# (the same one as GH_FLAGS below, written out literally because the unit tests extract this line
+# verbatim) between `gh` and `api`. `grep -bo`'s match END is where extract_api_span starts reading the
+# argument span. It is NOT guaranteed to be the end of this invocation's own `api`: grep -o returns the
+# LONGEST match, so a flag's optional value token can swallow a later `api` word and push the match
+# end past the real endpoint (`gh -XPOST api -i repos/o/r/pulls/5/reviews ... -p api`). The caller loop
+# therefore also checks each matched prefix's own text against the endpoint regexes (b3r-1) -- see the
+# loop just above the span loop.
 #
 # Deliberately NOT widened to recognize a quoted/escaped `api` word directly (issue #386, M1) --
 # two attempts at that were each defeated by a security-reviewer pass:
@@ -592,7 +600,7 @@ GH_SUBCOMMAND=""
 # never depends on relative counts, so a decoy can no longer cancel anything out. See that check's
 # own comment, at this regex's own point of use further below, for the full detail and why this also
 # avoids attempt 1's span-corruption problem (it never runs extract_api_span on dequoted text at all).
-API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
+API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?([[:space:]]+-([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*([[:space:]]+([^-[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*)?)*[[:space:]]+api'
 # Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
 # (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
 # (`gh api "repos/.../replies"`, single-quoted, or the trailing `)`/backtick of a `$(...)`/
@@ -680,8 +688,51 @@ REVIEWS_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/reviews([^[
 # review` ``/`$(gh pr comment)` left a `` ` ``/`)` immediately after the
 # subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
 # didn't recognize as a boundary.
-PR_REVIEW_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)'
-PR_COMMENT_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)'
+# Flag tokens tolerated between `gh`, `pr` and the subcommand (live-verified on gh 2.45.0,
+# 2026-10-08). cobra lets any flag valid on the FINAL command sit before the subcommand words, not
+# only `-R`/`--repo`: `gh -R o/r pr comment`, `gh pr -R o/r comment`, `gh --repo=o/r pr review`,
+# `gh pr --body x comment`, `gh --squash=true pr merge` and `gh --json=number pr view` all run, so a
+# pattern requiring `pr <subcommand>` to be contiguous let each of them through with no marker check.
+# GH_FLAGS is zero or more dash-prefixed tokens, each optionally followed by ONE value token that does
+# not itself start with a dash (`--x=v`, `-xV`, `-x v` and a bare `--flag` all fit). It over-matches
+# on purpose -- e.g. it also accepts a nonsense `gh -x foo pr merge` -- and over-matching only adds
+# denies; a command without any dash-prefixed token before the subcommand matches exactly as before.
+# Kept byte-identical to GH_FLAGS in git-guard-raw-pr-ops.sh and to the group written out inside
+# API_SPAN_PREFIX_RE above (the guards are standalone scripts);
+# tests/git-test-guard-raw-pr-ops.sh fails if the copies drift.
+#
+# A flag token and its value token are modeled as shell WORDS: a mix of plain characters and
+# double- or single-quoted segments, so `--body "looks good"`, `--body="looks good to me"`, `-H"X: a b"`
+# and adjacent segments like `"a b"'c d'` are each ONE word, as bash sees them. A plain character
+# excludes quotes and a quoted segment must start with its own quote, so every word has exactly one
+# parse (no ambiguity for a backtracking grep on another platform). The group is written out
+# literally inside API_SPAN_PREFIX_RE above; in the unit tests' verbatim extraction of that line the
+# single-quote splices stay unevaluated, which only affects single-quoted segments (the unit cases
+# have none) -- the end-to-end tests run the real, bash-parsed pattern.
+#
+# Known residuals this does NOT close, all out of reach of a text pattern and covered only by this
+# guard's policy-guardrail status: a flag value whose source text contains whitespace that bash
+# removes at expansion (`-R "$(echo o/r)"`), a value with a backslash-escaped or PowerShell
+# backtick-escaped space (`--body a\ b`), an escaped or doubled quote inside a quoted segment
+# (`--body "say \"hi\" now"`, PowerShell `'it''s a b'`), an ANSI-C `$'a b'` value, an unbalanced
+# quote, variable- or eval-built command words (`gh pr $sub`), user-defined `gh alias set` aliases and
+# shell aliases/functions, and PowerShell's `--%`. The older dequoted-fallback check further down still
+# misses `gh a''pi "repos/o/r/pulls/$(echo 5)/reviews"` (strict endpoint regexes, no `$(...)`
+# collapse; pre-existing, tracked as a follow-up). Also missed, confirmed live (security re-audit
+# b3g-1, same follow-up): a quoted flag value containing whitespace COMBINED with a quoted or split
+# command word -- `gh pr --body "a b" re''view 5`, `gh -f "body=a b" a''pi repos/.../reviews` -- because
+# the flat rendering has no literal subcommand/api word and the dequoted rendering strips the quotes
+# but leaves the value's spaces as separate words the flag group cannot join; the same commands
+# without the spaced value ARE denied. It needs two obfuscations stacked, so it is not reachable by
+# accident. The fix is a second dequoted rendering that keeps word boundaries (replace whitespace
+# inside each quoted segment with a placeholder before stripping the quotes). Accepted
+# over-match (fail-safe): a flag placed before the subcommand whose VALUE equals a guarded word is read
+# as the subcommand (`gh pr --label review list` is denied although gh runs `pr list`). Timing was
+# measured on Linux only (about 0.8s at the 32KB command cap); Git Bash on Windows, where the span
+# scan was already measured superlinear, is not measured for the new prefix.
+GH_FLAGS='([[:space:]]+-([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*([[:space:]]+([^-[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')([^[:space:]"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*)?)*'
+PR_REVIEW_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?'"$GH_FLAGS"'[[:space:]]+pr'"$GH_FLAGS"'[[:space:]]+review([^[:alnum:]_.-]|$)'
+PR_COMMENT_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?'"$GH_FLAGS"'[[:space:]]+pr'"$GH_FLAGS"'[[:space:]]+comment([^[:alnum:]_.-]|$)'
 # Checked against both COMMAND_FLAT and COMMAND_DEQUOTED (issue #386, M1 -- see that variable's own
 # comment above) so a quoted/escaped subcommand word (`gh "pr" "review"`, `gh \pr \review`) is caught
 # the same way the plain form already is.
@@ -1211,6 +1262,34 @@ else
         printf '\n'
       done < <(grep -boE "$prefix_re" <<< "$text" || true)
     }
+    # The prefix now includes a flag group, and GNU grep -o returns the LONGEST match, so a flag's
+    # optional value token can swallow a later `api` word (`gh -XPOST api -i repos/o/r/pulls/5/reviews
+    # -f event=APPROVE -p api` matches all the way to the trailing `api`): find_api_spans then starts
+    # the span at the end of the string, and the real endpoint sits INSIDE the matched prefix text,
+    # where no span scan looks (security review of this change, b3r-1; reproduced before this check
+    # existed). So check each matched prefix itself -- the region the span skips -- against the same
+    # endpoint regexes, raw and quote/backslash-removed. This only adds denies, and a plain
+    # `gh api ...` prefix match contains no endpoint, so it stays silent there. It is a separate loop,
+    # not extra output from find_api_spans, because the unit tests parse that function's output as-is.
+    # The strict endpoint regexes need a space-free path segment between `pulls/` and `/reviews`, and
+    # the prefix text is NOT collapsed the way extract_api_span collapses a `$(...)`, so an endpoint
+    # written with a substitution containing a space (`pulls/$(echo 5)/reviews`) would slip past them
+    # here (security re-audit b3f-1). Region-wide loose forms are used on the prefix text only -- it is
+    # the part of the command that should hold nothing but `gh` and flags, so a false deny is rare and
+    # in the accepted direction (e.g. `gh --hostname graphql.example api user` is denied because a flag
+    # value before `api` contains the word graphql).
+    API_PREFIX_LOOSE_RE='pulls/.*(reviews|comments/.*replies)|graphql'
+    while IFS= read -r api_prefix_line; do
+      api_prefix_matched="${api_prefix_line#*:}"
+      api_prefix_dequoted="${api_prefix_matched//\'/}"
+      api_prefix_dequoted="${api_prefix_dequoted//\"/}"
+      api_prefix_dequoted="${api_prefix_dequoted//\\/}"
+      if grep -qE "$REPLIES_RE|$REVIEWS_RE|$GRAPHQL_RE|$API_PREFIX_LOOSE_RE" <<< "$api_prefix_matched
+$api_prefix_dequoted"; then
+        GH_SUBCOMMAND="gh api (dangerous endpoint inside the flags before api)"
+        break
+      fi
+    done < <(grep -boE "$API_SPAN_PREFIX_RE" <<< "$API_SCAN_TEXT" || true)
     while IFS= read -r api_span_combined; do
       if [ -z "$api_span_combined" ]; then continue; fi
       api_span_collapsed="${api_span_combined%%$'\x1e'*}"
