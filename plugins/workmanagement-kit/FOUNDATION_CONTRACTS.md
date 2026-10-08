@@ -112,7 +112,17 @@ shippable default and edits to it would be lost on plugin update and visible to 
   `getInitiativeProjects`), which the main Linear connector cannot serve. It exists as its own
   operation so it can name a second connector (`connector` differs from `linear.read`'s) without
   changing the one-connector-per-operation rule. It carries `organization_id` only, no `team_ids`,
-  because Initiatives are organization-level. Sanctioning `linear.read` never sanctions it.
+  because Initiatives are organization-level. Sanctioning `linear.read` never sanctions it. Its
+  `connector` must be exactly `mcp-linear` (the server name in the granted tool prefix); any other
+  value counts as `unconfigured`; that check is a name match only and does not prove who runs the
+  server, an accepted residual risk bounded by the read-only grants. A read proceeds only when the
+  organization the second connector reports matches this operation's `organization_id`. The
+  organization must come from a structured organization or ID field of the tool response, never
+  from an Initiative's name, description or other content; a missing organization, or one found only
+  in free text, counts as a mismatch, and the result is discarded. The first Initiative read is
+  therefore a probe whose output is not used unless that check passes. The operation is additive within host-profile
+  schema v1 (`version` stays 1): an older local override that never mentions it simply inherits the
+  shipped `unconfigured` default through the per-operation merge below.
 
 ## Versioned Configuration (`versioned-configuration.json`)
 
@@ -164,12 +174,25 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
 - `linear.repositories` — a map from a repository slug (`owner/repo`) to that repository's Linear
   team: `{"owner/repo": {"production_team_id": "...", "test_team_id": "..."}}`. A caller such as
   `workledger-kit` sends only the `owner/repo` slug (as `linear_target`) and never holds team IDs;
-  this kit resolves the slug to a team here. A slug that is not a key in this map is an **unknown
-  repository and must be rejected**, never guessed or defaulted to `production_team_id` — the single
-  `production_team_id`/`test_team_id` pair stays as the installation's own default team for work that
-  names no repository. Each mapped team must also appear in `host_profile`'s `linear.read`/
-  `linear.write` `team_ids`, since the host profile's approved scope still bounds every call. Real
-  team IDs belong only in the local override, never in this shipped file.
+  this kit is meant to resolve the slug to a team here. **Not yet implemented:**
+  `plugin-integration-intake` does not resolve against this map today, so until it does, a slug
+  `linear_target` is an ambiguous-target structured handoff, and `wiring-a-caller.md` still says a
+  real `linear_target` is always a stable ID (`intake-payload-schema.md` calls it the calling
+  plugin's own guess at the entity). When the lookup ships:
+  - A slug is matched exactly after normalization (lowercase, no trailing `.git`, no glob or prefix
+    matching). Map keys must be stored in that normalized form, and two keys that normalize to the
+    same value are rejected. A slug that is not a key in this map is an **unknown repository and
+    must be rejected**, never guessed, never defaulted to `production_team_id`, and never re-tried as
+    a stable ID or display name. The single `production_team_id`/`test_team_id` pair stays as the
+    installation's own default team for work that names no repository.
+  - A mapped repository's work goes to its `production_team_id` by default, and to its
+    `test_team_id` only on an explicit test-run signal from the caller.
+  - Each mapped team must also appear in the `team_ids` of the host-profile operation being used
+    (`linear.read` for a read, `linear.write` for a write), since the host profile's approved scope
+    still bounds every call. A mapped team outside that operation's `team_ids` is rejected as out
+    of scope, never silently used. The rejection is per team: an out-of-scope `test_team_id`
+    rejects that repository's test-run work, not its production work, and the reverse.
+  - Real team IDs belong only in the local override, never in this shipped file.
 
 - `notion.databases` — an object with exactly two keys, `test` and `prod`, each itself a map from
   Notion record type (`idea`, `decision`, `proposed-goal`, `note`, `research`, `report`,
@@ -201,7 +224,9 @@ already uses for `git-kit`'s own settings — **the merge is deep at the operati
 that sets only `notion.read` must not cause `notion.write`/`linear.read`/`linear.write`/`linear.initiatives.read` to
 disappear from the merged result — each is merged independently, key by key, and any operation the
 override doesn't mention keeps the shipped file's own `unconfigured` default untouched. The same
-per-key merge applies to `versioned_configuration`'s nested objects (`notion.databases`, etc.).
+per-key merge applies to `versioned_configuration`'s nested objects (`notion.databases`, etc.). An
+array-valued field such as `team_ids` that an override sets replaces the shipped array wholesale; it
+is never unioned with it.
 
 ```json
 {
@@ -212,8 +237,10 @@ per-key merge applies to `versioned_configuration`'s nested objects (`notion.dat
 
 **A tracked copy of this file must be treated with the same trust-boundary discipline
 `git-kit.local.json`'s own security-relevant fields already require, not exempted from it.** This
-file's `support_status`/`workspace_id`/`organization_id`/`team_ids`/`connector` fields are exactly
-the kind of trust-relevant claim that pattern exists for: `support_status: "verified"` is the
+file's `support_status`/`workspace_id`/`organization_id`/`team_ids`/`connector` fields, and the
+`versioned_configuration` fields that choose a Linear team (`linear.repositories`,
+`production_team_id`, `test_team_id`), are exactly the kind of trust-relevant claim that pattern
+exists for: `support_status: "verified"` is the
 precondition every skill's "Resolving the connector" step checks before it will even attempt a
 connector call at all (see e.g. `notion-knowledge-management/SKILL.md`'s own section) — a tracked
 copy committed by anyone with repo write access (this file is gitignored by convention, but a
@@ -521,6 +548,18 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-10-08 — Wave 3a work package 2 (multi-team configuration). Host profile gained a fifth
+  operation, `linear.initiatives.read` (organization-scoped, read-only Initiative reads on a second
+  Linear connector, shipped `unconfigured` with no connector); additive within host-profile schema v1.
+  `versioned-configuration.json` gained `linear.repositories`, an empty owner/repo-to-Linear-team map,
+  additive within schema v2. The slug lookup is documented as not yet implemented by
+  `plugin-integration-intake`; the rules for when it ships (exact normalized matching, reject unknown
+  slugs, production-by-default team choice, mapped teams bounded by the operation's `team_ids`, an
+  override's array fields replace rather than union) are recorded in the Versioned Configuration and
+  Local Override sections. The local-override trust paragraph now names the team-choosing fields too.
+  The Initiative gate requires the organization from a structured response field, treats a missing
+  one as a mismatch and discards the result, and records the name-only `mcp-linear` connector check
+  as an accepted residual risk.
 - 2026-09-10 — Fixed 4 findings and disclosed 1 from GitHub's own Codex connector review on the PR
   (`chatgpt-codex-connector`, distinct from the local `cross-model-review` passes above). (1,
   disclosed) `git-github-evidence` is the same shape of custom array-valued Linear Issue property as

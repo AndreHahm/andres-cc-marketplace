@@ -34,6 +34,8 @@ of work completes — this skill is the front door for outcome/learning capture,
   idea") → `notion-knowledge-management` directly.
 - Dispositioning open follow-up items from a completed piece of work → `open-item-management`.
 - Changing Linear state itself (not just reading it for a summary) → `linear-work-management`.
+- A live, in-chat read of Linear project, issue or Initiative status with no Notion write →
+  `linear-work-management` (this skill writes a dated Notion snapshot).
 - A live or automated trigger from GitHub itself (a webhook, an Actions step, a native integration
   event) — this skill only accepts already-verified evidence as deliberate input from another Wave 2
   skill's own read-back; it never listens for or reacts to a GitHub event directly.

@@ -1,8 +1,9 @@
 # Linear Entity Fields
 
-Five entity types this skill owns. Each row below lists the fields beyond the shared identity
+Six entity types this skill covers: five it can read and write (Goal, Roadmap, Project, Milestone,
+Issue) and Initiative, which it can only read (see the Initiative section below). Each row below lists the fields beyond the shared identity
 (stable ID, `transition-id`) that this specific entity type carries — `notion-link` is not a
-shared field; only Goal, Project/Initiative, and Issue carry it (see their own tables below),
+shared field; only Goal, Project, and Issue carry it (see their own tables below),
 since those are the entity types `idea-to-implementation`'s own promotion mapping actually
 targets (see `promotion-hierarchy-mapping.md`'s Typical Mappings table — an Idea typically
 promotes to an Issue or a small Project, not a Goal; a proposed Goal promotes to a Goal). Roadmap
@@ -28,7 +29,7 @@ neither carries `notion-link`.
 | `timeframe` | Yes | The planning horizon this Roadmap covers |
 | `contained-projects` | No | Stable IDs of Projects placed on this Roadmap |
 
-## Project / Initiative
+## Project
 
 | Field | Required | Notes |
 |---|---|---|
@@ -38,6 +39,16 @@ neither carries `notion-link`.
 | `target-date` | No | Expected completion |
 | `contained-milestones` | No | Stable IDs of Milestones under this Project |
 | `notion-link` | No | The Idea or accepted Decision record this was promoted from, if promoted via `idea-to-implementation` |
+
+## Initiative (read-only)
+
+Initiatives are organization-level, so they have no owning `team`, and this skill has no tool to
+create or change one: a request to create or change an Initiative is a structured handoff, and the
+Project table's field rules do not carry over. Reads go through the host-profile operation
+`linear.initiatives.read`, not `linear.read`, and proceed only when that operation passes the gate
+in SKILL.md's "Resolving the connector"; otherwise they are a structured handoff too. The
+fields the second connector returns for an Initiative have not been checked against its live schema,
+so none are listed here.
 
 ## Milestone
 
