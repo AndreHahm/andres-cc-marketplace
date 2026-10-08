@@ -11,7 +11,10 @@ local-reproduction guidance before pointing at resolving-merge-conflicts
 (including its isCrossRepository fork-PR branch), step 2's not-behind-base
 fork-PR handling via mergeStateStatus rather than an unconditional pass,
 and step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
-fallback -- structural checks only, since this is a conversational,
+fallback, and the bypass path: the step-2 exception being single-use, the statusCheckRollup
+poll's started-at baseline, the gh-pr-review marker written before the attestation comment,
+--expected-head-sha being validated and compared before anything is attested, and the merge
+being bound to the verified head SHA -- structural checks only, since this is a conversational,
 AskUserQuestion-driven skill with no executable logic of its own to
 simulate."""
 
