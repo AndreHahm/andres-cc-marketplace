@@ -1,0 +1,10 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline (SKILL.md at 47716a6f, before the verified_at fix)",
+  "assertions_evaluated": [
+    {"text": "Output makes no Initiative read call, not even a probe call", "passed": false, "evidence": "'Would make one mcp__mcp-linear__linear_getInitiatives call'."},
+    {"text": "Output explains that a null verified_at means the operation was never verified, so it is unsanctioned despite support_status verified", "passed": false, "evidence": "Treated null verified_at only as 'a loose end', not as unsanctioned."},
+    {"text": "Output gives a structured handoff and substitutes no other tool such as list_projects", "passed": false, "evidence": "No handoff; proceeds to list Initiatives if the organization matches (no substitute tool used)."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

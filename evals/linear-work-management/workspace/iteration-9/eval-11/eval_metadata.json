@@ -1,0 +1,21 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output makes no Initiative read call, not even a probe call",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output explains that a null verified_at means the operation was never verified, so it is unsanctioned despite support_status verified",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output gives a structured handoff and substitutes no other tool such as list_projects",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
