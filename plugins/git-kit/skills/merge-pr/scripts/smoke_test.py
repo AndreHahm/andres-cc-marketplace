@@ -427,7 +427,7 @@ def check_bypass_poll_uses_started_at_baseline():
         )
     # `gh pr checks --json` is rejected by older gh releases (2.45.0 is one); the poll reads
     # statusCheckRollup instead, the same source step 2 classifies from.
-    if re.search(r"gh pr checks \$ARGUMENTS --json", step4):
+    if re.search(r"gh pr checks\b[^\n`]*--json", step4):
         return (
             False,
             "step 4 uses `gh pr checks --json`, which older gh releases reject -- poll "

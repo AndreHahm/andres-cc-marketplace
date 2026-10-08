@@ -220,6 +220,25 @@ def check_shared_protocol_writes_marker():
             "protocol step 3(c) no longer writes the gh-pr-review marker before the attestation "
             "comment -- the PR-review guard would deny the comment",
         )
+    # First-occurrence order alone does not prove the call sequence: require the marker in its
+    # own call, the comment as the very next call, and no other command between the two.
+    between = text[text.index(marker) : text.index(comment)]
+    other_calls = [
+        span
+        for span in re.findall(r"`([^`]+)`", between)
+        if re.match(r"(gh|git|uv|python3?|bash)\b", span) and "git-write-marker.sh" not in span
+    ]
+    if (
+        "in its own `Bash` call" not in text
+        or "very next call" not in text
+        or "same parallel batch" not in text
+        or other_calls
+    ):
+        return (
+            False,
+            "protocol step 3(c) no longer requires the marker and the comment as separate, "
+            "consecutive calls -- an intervening call would let the marker expire or be consumed",
+        )
     if "git-write-marker.sh" not in SKILL_MD.read_text(encoding="utf-8").split("\n---\n", 1)[0]:
         return False, "allowed-tools no longer grants the marker script"
     return (

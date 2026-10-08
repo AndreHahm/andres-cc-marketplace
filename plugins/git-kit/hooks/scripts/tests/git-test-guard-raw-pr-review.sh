@@ -606,7 +606,7 @@ e2e_marker_allow_check() {
     git init -q
     printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
     input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/comments/1/replies -f body=x"}}')
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): marker-handshake allow path + consumption -- guard exited non-zero: $out"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): marker-handshake allow path + consumption -- guard exited non-zero: $out"; exit 0; }
     if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
       echo "PASS (e2e): marker-handshake allow path + consumption"
     else
@@ -685,7 +685,7 @@ e2e_marker_cr_still_denies_check() {
     printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
     cmd="gh api -H \\$(printf '\r')'x;y' repos/o/r/pulls/5/reviews -f event=APPROVE"
     input=$(jq -n --arg cmd "$cmd" '{tool_name: "Bash", tool_input: {command: $cmd}}')
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): lone-CR check still denies despite a valid marker -- guard exited non-zero: $out"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): lone-CR check still denies despite a valid marker -- guard exited non-zero: $out"; exit 0; }
     if grep -q "carriage-return" <<< "$out"; then
       echo "PASS (e2e): lone-CR check still denies despite a valid marker"
     else
@@ -713,7 +713,7 @@ e2e_diagnostics_check() {
     cd "$tmp_git"
     git init -q
     input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): diagnostics -- guard exited non-zero: $out"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): diagnostics -- guard exited non-zero: $out"; exit 0; }
     if ! jq -e '.hookSpecificOutput.permissionDecision == "deny"' <<< "$out" >/dev/null 2>&1; then
       echo "FAIL (e2e): diagnostics -- stdout was not the expected pure deny JSON: [$out]"
       exit 0
@@ -763,7 +763,7 @@ e2e_diag_log_open_failure_check() {
     # ungrouped form let this exact check pass while real stderr still leaked (CodeRabbit, PR #380
     # round 7).
     err_file=$(mktemp)
-    out=$(printf '%s' "$input" | bash "$GUARD" 2>"$err_file") || { echo "FAIL (e2e): diagnostics log-open failure -- guard exited non-zero: $out"; rm -f "$err_file"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD" 2>"$err_file") || { echo "FAIL (e2e): diagnostics log-open failure -- guard exited non-zero: $out"; rm -f "$err_file"; exit 0; }
     err=$(cat "$err_file"); rm -f "$err_file"
     if [ -n "$err" ]; then
       echo "FAIL (e2e): diagnostics log-open failure -- guard wrote to stderr: [$err]"
@@ -842,7 +842,7 @@ e2e_diag_log_symlink_check() {
     git init -q
     ln -s "$target" .git/git-kit-guard-diagnostics.log
     input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh api repos/o/r/pulls/1/reviews"}}')
-    printf '%s' "$input" | bash "$GUARD" >/dev/null 2>&1
+    printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD" >/dev/null 2>&1
     if [ -s "$target" ]; then
       echo "FAIL (e2e): diagnostics symlink -- guard wrote through the symlink to an external file: $(cat "$target")"
     else
@@ -920,7 +920,7 @@ e2e_nul_byte_check() {
     cd "$tmp_git"
     git init -q
     input='{"tool_name":"Bash","tool_input":{"command":"gh api ab\u0000cd repos/o/r/pulls/5/reviews -f event=APPROVE"}}'
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- guard exited non-zero: $out"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- guard exited non-zero: $out"; exit 0; }
     if grep -q "deny" <<< "$out"; then
       echo "PASS (e2e): NUL byte (#386) -- escaped \\u0000 mid-command, dangerous endpoint follows -- must deny"
     else
@@ -1128,7 +1128,7 @@ e2e_marker_flag_check() {
     git init -q
     printf 'gh-pr-review %s test-suite\n' "$(date +%s)" > .git/git-kit-marker.txt
     input=$(jq -n '{tool_name: "Bash", tool_input: {command: "gh pr -R o/r comment 5 --body-file /tmp/x"}}')
-    out=$(printf '%s' "$input" | bash "$GUARD") || { echo "FAIL (e2e): repo flag + fresh marker -- guard exited non-zero: $out"; exit 0; }
+    out=$(printf '%s' "$input" | ${E2E_TIMEOUT_CMD[@]+"${E2E_TIMEOUT_CMD[@]}"} bash "$GUARD") || { echo "FAIL (e2e): repo flag + fresh marker -- guard exited non-zero (rc=$?): $out"; exit 0; }
     if [ -z "$out" ] && [ ! -f .git/git-kit-marker.txt ]; then
       echo "PASS (e2e): repo flag + fresh marker -- allowed and marker consumed"
     else
