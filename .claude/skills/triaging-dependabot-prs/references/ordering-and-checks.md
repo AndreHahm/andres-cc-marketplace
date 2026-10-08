@@ -2,13 +2,13 @@
 
 ## Expected files and blockers per ecosystem
 
-A dependabot PR whose changed paths fall outside its ecosystem's set is suspicious (stop and report; do not rebase or merge it).
+A dependabot PR whose changed paths fall outside its ecosystem's set is suspicious (skip it, report it, and continue with the other PRs; do not rebase or merge it).
 
 | Branch segment | Expected changed paths | Expected blockers |
 |---|---|---|
 | `uv` | root `pyproject.toml`, `uv.lock` | `Publish Codex policy result` fails by design; see `codex-bypass.md`, which offers a bypass only when `uv.lock` is the sole changed file. All uv PRs share `uv.lock` |
 | `npm_and_yarn` | `package.json`, `pnpm-lock.yaml` (this repository's root pnpm lockfile) | None expected. A PR that also changes any other lockfile (`package-lock.json`, `yarn.lock`) is suspicious per the rule above; it would also fall outside the CI merge-privilege exemption in `docs/ci.md` and fail `Hygiene (PR contract)` |
-| `github_actions` | `.github/workflows/*` | Expected: the merge-privilege exemption covers only root manifests and lockfiles, so `Hygiene (PR contract)` is expected to fail; `.github/` is also not eligible for the automatic Codex scope bypass, and `Codex delta review` needs `Hygiene` to pass first (`docs/ci.md`), so `Publish Codex policy result` will fail too, and no Codex bypass is offered for this ecosystem. Recommend skip or manual handling unless the user says otherwise. Read the change for permission edits |
+| `github_actions` | `.github/workflows/*` | Expected: the merge-privilege exemption covers only root manifests and lockfiles, so `Hygiene (PR contract)` is expected to fail; `.github/` is also not eligible for the automatic Codex scope bypass, and `Codex delta review` needs `Hygiene` to pass first (`docs/ci.md`), so `Publish Codex policy result` will fail too, and no Codex bypass is offered for this ecosystem. Recommend skip; if the user wants it merged, that is manual handling outside this skill, because step 6.4 reports and skips a PR with a failing required check. Read the change for permission edits |
 
 ## Merge order
 

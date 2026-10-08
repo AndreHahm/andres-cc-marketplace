@@ -1222,12 +1222,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-10-08",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_590d9982",
       "name": "triaging-dependabot-prs",
       "naming_history": [

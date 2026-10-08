@@ -9,7 +9,7 @@ Conversational, `AskUserQuestion`-driven skill: scenarios are checked by reading
 3. **Argument validation** — a non-digit `$ARGUMENTS` value is rejected; digit-only values limit the run, and a named PR that is not an open dependabot PR is reported.
 4. **Mixed list, plan approval** — a table of PR, class, recommendation and order appears, with the expected `merge-pr` prompts listed, and is approved before any write. Declining the plan stops the run with no writes.
 5. **Excluded PR** — a fork PR, or a non-`dependabot/` branch by the dependabot author, is listed as excluded with a reason and never touched.
-6. **Suspicious PR** — a changed path outside the ecosystem's expected set, a commit author other than `dependabot[bot]`, or exactly 100 files or commits (truncated): the run stops on that PR and reports it. An npm PR that also changes `package-lock.json` or `yarn.lock` is one example.
+6. **Suspicious PR** — a changed path outside the ecosystem's expected set, a commit author other than `dependabot[bot]`, or exactly 100 files or commits (truncated): the skill skips that PR, reports it, and continues with the others (it neither rebases nor merges it). An npm PR that also changes `package-lock.json` or `yarn.lock` is one example.
 7. **Unlisted ecosystem** — an ecosystem not in `ordering-and-checks.md` is reported and asked about; never rebased or merged.
 8. **Workflow-file PR** — a `github_actions` PR is expected to fail `Hygiene (PR contract)` and `Publish Codex policy result`; no bypass is offered and it is recommended for skip or manual handling.
 9. **Major bump** — release-note headings are shown, labeled as quoted upstream text, and the user's breaking-change confirmation is requested before it is planned for merge.

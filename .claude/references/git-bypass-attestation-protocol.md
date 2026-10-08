@@ -14,8 +14,9 @@ never here. This file covers only the steps that are genuinely identical once a 
 number, owner/repo, and reason text in hand.
 
 **`create-pr` and `commit` follow this protocol's steps 1-5 in full.** `merge-pr` follows only steps 1
-(bot-trigger-mention check — a real gap it lacked until this file's own addition closed it) and 3 (marker
-construction) directly; its own step 4(c) interleaves the label-verify/apply/re-apply logic with capturing
+(bot-trigger-mention check — a real gap it lacked until this file's own addition closed it), 2 (actor and
+permission, re-resolved and re-verified in its own step 4(b) rather than reusing step 3's login) and 3
+(marker construction) directly; its own step 4(c) interleaves the label-verify/apply/re-apply logic with capturing
 a pre-label `startedAt` baseline its step 4(d) needs for polling, so that interleaved version stays
 written out in `merge-pr`'s own SKILL.md rather than following step 4 here literally — see "What stays
 caller-specific" below.
@@ -50,8 +51,9 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
 2. **Resolve the actor and verify permission.** Resolve the current authenticated actor:
    `gh api user --jq '.login'` — unless the caller already resolved and verified this same actor's
    permission moments earlier for an unrelated reason (`merge-pr`'s own merge-rights check, step 3, is the
-   one caller that does this today); in that case reuse the already-resolved login rather than re-querying
-   `gh api user`, but still re-verify permission fresh in this same step, not by trusting the earlier
+   one caller in that position); such a caller may reuse the already-resolved login rather than
+   re-querying `gh api user` (`merge-pr`'s step 4(b) currently re-queries it anyway, which is harmless),
+   but must still re-verify permission fresh in this same step, not by trusting the earlier
    result — the two checks exist for different questions asked at different points. Verify live
    merge-capable permission (`write`, `maintain`, or `admin`) for that actor on this repo:
    `gh api repos/{owner}/{repo}/collaborators/{actor}/permission --jq '.permission'`. If insufficient, stop

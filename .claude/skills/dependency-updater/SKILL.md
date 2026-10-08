@@ -1,7 +1,7 @@
 ---
 name: dependency-updater
 description: >-
-  Scan a project's package manifests across ecosystems (Python, JavaScript/npm, Rust, Go) for outdated dependencies, detect version conflicts across a monorepo, and propose updates with explicit confirmation before applying any change. Use when checking for outdated dependencies, planning a dependency bump, auditing dependency freshness, or asked to update packages across a repo or monorepo.
+  Scan a project's package manifests across ecosystems (Python, JavaScript/npm, Rust, Go) for outdated dependencies, detect version conflicts across a monorepo, and propose updates with explicit confirmation before applying any change. Use when checking for outdated dependencies, planning a dependency bump, auditing dependency freshness, or asked to update packages across a repo or monorepo. Not for working through dependabot pull requests that are already open (merge, close or rebase them) — that is `triaging-dependabot-prs`; this skill scans and edits the local checkout's manifests and never touches PRs.
 allowed-tools: Glob, Read, Edit, Bash(uv pip list:*), Bash(uv lock:*), Bash(pip list:*), Bash(pip-audit:*), Bash(npm outdated:*), Bash(npm audit:*), Bash(npm install:*), Bash(cargo outdated:*), Bash(cargo update:*), Bash(go list:*), Bash(go mod tidy:*), Bash(git diff:*), Bash(git status:*)
 ---
 
@@ -10,6 +10,16 @@ allowed-tools: Glob, Read, Edit, Bash(uv pip list:*), Bash(uv lock:*), Bash(pip 
 Discover a project's package manifests, check each ecosystem for outdated dependencies, flag version conflicts across a monorepo, and propose specific updates — never applying anything without confirmation.
 
 This skill has no dependency on any other plugin. The optional security-advisory step (step 5) is self-contained: it only runs an ecosystem's own advisory tool if one is available, and is skipped entirely otherwise.
+
+## Quick Start
+
+1. Find every package manifest in the repo (step 1) and check each ecosystem for outdated dependencies (step 2).
+2. Present the findings grouped by ecosystem, with major bumps and cross-manifest conflicts called out (steps 3-6).
+3. Ask which updates to apply (step 7); edit the manifests only for what was approved (step 8), and ask again before regenerating any lockfile (step 9).
+
+## When to Use
+
+Checking for outdated dependencies, planning a dependency bump, auditing dependency freshness, or updating packages across a repo or monorepo from its local manifests. For dependabot pull requests that are already open, use `triaging-dependabot-prs` instead (see "When NOT to Use").
 
 ## Instructions
 
@@ -33,14 +43,21 @@ This skill has no dependency on any other plugin. The optional security-advisory
 
 When the same dependency is bumped across multiple manifests in one pass, keep every occurrence on the same resolved version — don't leave some manifests updated and others on the old pin. If a conflict (step 4) can't be resolved to one compatible version across all manifests that need it, surface that explicitly rather than picking one silently.
 
-## What This Skill Does NOT Do
+## When NOT to Use
+
+What this skill does not do:
 
 - Does not install *new* dependencies — it only updates versions of dependencies already present in a manifest.
 - Does not migrate code for breaking API changes introduced by a major bump — it reports the bump, the user (or a separate coding pass) handles the migration.
 - Does not run the project's test suite or CI checks.
+- Does not merge, close or rebase open dependabot pull requests — that is `triaging-dependabot-prs`. The criterion: a bump that already exists as an open PR goes there; a bump not yet proposed (found by scanning the local manifests) stays here.
 - Does not depend on any other plugin, agent, or hook — every step above uses only this repo's own manifests and each ecosystem's own CLI tooling.
 
 ## Testing & Validation
+
+**Eval coverage:** this skill has no eval suite (no `evals.json`). Its steps run each ecosystem's own CLI tooling (`npm outdated`, `uv pip list`, `cargo outdated`, `go list`) against a real manifest tree, which a simulated-agent eval cannot exercise faithfully. Its structure is checked by `scripts/smoke_test.py` (frontmatter, referenced files, Bash grants, step sequence), and the quality gates below are checked by re-reading the skill against any change.
+
+**Last dated run record:** 2026-10-08 — `scripts/smoke_test.py` (4 structural checks) passes after the Quick Start, When to Use and When NOT to Use sections and the `triaging-dependabot-prs` exclusion were added. No earlier dated run is recorded, and there has been no live run of the manifest scan itself.
 
 **Verify this skill activates on:**
 - "check for outdated dependencies"

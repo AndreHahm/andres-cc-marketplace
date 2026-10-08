@@ -78,15 +78,15 @@ PR #364, 2026-09-21 — `commit`'s sibling step 16.5(b) had the identical exposu
 - `mergeable` resolves to `CONFLICTING`, `isCrossRepository` is `false`, `$ARGUMENTS` names a PR in this
   same repository → step 2 tells the user how to reproduce the conflict locally, fetching from an
   explicit `https://github.com/{owner}/{repo}.git` URL (step 1's resolved `{owner}/{repo}`) into local
-  branches — `git fetch https://github.com/{owner}/{repo}.git <headRefName>:pr-head
-  <baseRefName>:pr-base`, check out `pr-head`, then `git merge pr-base` — before pointing at
+  branches — `git fetch https://github.com/{owner}/{repo}.git <headRefName>:pr-<number>-head
+  <baseRefName>:pr-<number>-base`, check out `pr-<number>-head`, then `git merge pr-<number>-base` — before pointing at
   `resolving-merge-conflicts` — never points at that skill bare, since its own precondition
   (`git status` showing unmerged paths) doesn't exist yet from a remote-only signal alone (skill-reviewer
   M2, 2026-08-31)
 - `mergeable` resolves to `CONFLICTING`, `isCrossRepository` is `true` (a fork PR) → step 2 uses
   GitHub's synthetic `pull/<number>/head` ref instead of `<headRefName>`, still from the same explicit
   `{owner}/{repo}` URL (`git fetch https://github.com/{owner}/{repo}.git
-  pull/<number>/head:pr-head <baseRefName>:pr-base`, checkout `pr-head`, then `git merge pr-base`) —
+  pull/<number>/head:pr-<number>-head <baseRefName>:pr-<number>-base`, checkout `pr-<number>-head`, then `git merge pr-<number>-base`) —
   never the same-repository `git fetch origin <headRefName>` form, which fails since a fork's branch
   isn't on this repository's own `origin` remote (cross-model-review, 2026-08-31 round 2 — found
   independently by both Claude and Codex)
@@ -154,11 +154,15 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
 
 **Verify step 1.5 (session open-issues check):**
-- `isCrossRepository: false`, the current checkout's repository (`gh repo view`) matches step 1's
-  resolved `{owner}/{repo}`, its branch matches `headRefName`, and `git rev-parse HEAD` matches step
-  1's `headRefOid` — all four pass, so step 1.5 proceeds to scan
+- `isCrossRepository: false`, the `origin` remote's `owner/repo` (from `git remote get-url origin`,
+  never `gh repo view`) matches step 1's resolved `{owner}/{repo}`, its branch matches `headRefName`,
+  and `git rev-parse HEAD` matches step 1's `headRefOid` — all four pass, so step 1.5 proceeds to scan
+- `GH_REPO` is set (or a local `gh repo set-default` exists) so `gh repo view` would report step 1's
+  `{owner}/{repo}` while `origin` actually points at a different repository → step 1.5 is still skipped,
+  because the comparison reads `origin` directly and never `gh repo view` (Codex's automated review,
+  PR #301, 2026-09-08, round 3)
 - `isCrossRepository: true` (a genuine fork PR), checked out via `gh pr checkout <N>` from a clone of
-  the *base* repository → `gh repo view` reports the base repository (matching step 1's resolved
+  the *base* repository → `origin` points at the base repository (matching step 1's resolved
   `{owner}/{repo}`, since that field is also the base repo) and the local branch name matches
   `headRefName` (`gh pr checkout`'s own default naming) — two of the other three checks pass, but
   `isCrossRepository: true` alone must still skip the entire step, since `git push origin HEAD` would
@@ -171,11 +175,11 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   review, round 2, PR #301, 2026-09-08)
 - Same setup, but local `HEAD` is behind or diverged from `headRefOid` → same result: skipped entirely,
   rather than letting the fix path's push fail non-fast-forward or silently diverge further
-- The current checkout's repository does *not* match step 1's resolved `{owner}/{repo}`, even with
+- The `origin` remote's repository does *not* match step 1's resolved `{owner}/{repo}`, even with
   `isCrossRepository: false` and a coincidentally matching branch name (a same-repo-shaped but
   different repository) → step 1.5 is skipped entirely — no scan, no fix, no file — and the flow
   proceeds straight to step 2; the user is told to `gh pr checkout $ARGUMENTS` first
-- The current checkout's repository matches but its branch doesn't match `headRefName` → same result:
+- The `origin` remote's repository matches but the checkout's branch doesn't match `headRefName` → same result:
   step 1.5 is skipped entirely, never partially (e.g. never files an issue against the matched
   repository while skipping only the fix)
 - Session has no open issues (checkout check passed) → step 1.5 states this plainly and proceeds
