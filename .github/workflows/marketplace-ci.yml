@@ -1217,6 +1217,16 @@ jobs:
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Same shape check the variable path applies to each candidate: the
+          # login goes into a URL path below, so anything outside a plain
+          # GitHub user login (a "[bot]" suffix included, which check-bypass
+          # rejects anyway) is treated as no bypass.
+          case "$ACTOR" in
+            *[!A-Za-z0-9-]*)
+              echo "bypassed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
           PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
           # Same $comments[0]-truncation gap as the variable path above --
           # merge pages before writing this file. Keep only comments whose
