@@ -28,8 +28,8 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
 - **`notion-knowledge-management`** — capture and manage Ideas, Decisions (with
   proposed/accepted/superseded/reversed states), proposed Goals, Notes, Research, Reports,
   Outcomes, and Learning in Notion.
-- **`linear-work-management`** — read and update accepted Goals, Roadmaps, Projects, Milestones,
-  and Issues in Linear under Linear's own authority. It also reads Initiatives, read-only, through
+- **`linear-work-management`** — read and update accepted Projects, Milestones, and Issues in
+  Linear under Linear's own authority (Goals and Roadmaps are handoff-only today). It also reads Initiatives, read-only, through
   an optional second, separately installed Linear connector; that read is gated by its own
   `linear.initiatives.read` host-profile operation, which ships `unconfigured`.
 - **`idea-to-implementation`** — deliberate, approval-gated promotion from Notion knowledge into
