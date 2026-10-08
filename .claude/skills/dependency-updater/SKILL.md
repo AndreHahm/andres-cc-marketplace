@@ -69,6 +69,8 @@ What this skill does not do:
 - "migrate this code for the breaking changes in the new major version" → not this skill; it reports the
   bump, a separate coding pass handles the migration
 - "run the test suite" → not this skill; it reminds the user to test but never runs tests itself
+- "merge the open dependabot PRs" / "triage the dependabot PRs" → `triaging-dependabot-prs`; this skill only
+  scans local manifests and has no PR, CI or merge awareness
 
 **Quality gates:**
 - [ ] Step 1 collects every manifest match across the monorepo (root and nested package/plugin
@@ -85,3 +87,9 @@ What this skill does not do:
       one pass never ends up on mismatched versions, and an unresolvable conflict is always surfaced rather
       than resolved silently
 - [ ] Step 11 never runs the project's test suite automatically — only reminds the user to run it
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `scripts/smoke_test.py` | Persisted structural smoke test — re-run after any `SKILL.md` edit |
