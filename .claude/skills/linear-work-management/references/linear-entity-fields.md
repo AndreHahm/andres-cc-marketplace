@@ -1,8 +1,8 @@
 # Linear Entity Fields
 
-Six entity types this skill covers: five it can read and write (Goal, Roadmap, Project, Milestone,
-Issue; Goal and Roadmap are currently handoff-only, see SKILL.md's Known connector gap) and
-Initiative, which it can only read (see the Initiative section below). Each row below lists the fields beyond the shared identity
+Six entity types this skill covers: three it can read and write (Project, Milestone, Issue), two it
+can only hand off today (Goal, Roadmap; see SKILL.md's Known connector gap) and Initiative, which it
+can only read (see the Initiative section below). Each row below lists the fields beyond the shared identity
 (stable ID, `transition-id`) that this specific entity type carries — `notion-link` is not a
 shared field; only Goal, Project, and Issue carry it (see their own tables below),
 since those are the entity types `idea-to-implementation`'s own promotion mapping actually
