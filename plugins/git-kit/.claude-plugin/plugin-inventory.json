@@ -1219,6 +1219,47 @@
         }
       ],
       "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_590d9982",
+      "name": "triaging-dependabot-prs",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/triaging-dependabot-prs"
+          ],
+          "name": "triaging-dependabot-prs",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-08",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/triaging-dependabot-prs",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/triaging-dependabot-prs"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-08",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "domain_prefix": "git",
@@ -1227,5 +1268,5 @@
   "plugin_name": "git-kit",
   "prefix": "git",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-27"
+  "updated_on": "2026-10-08"
 }
