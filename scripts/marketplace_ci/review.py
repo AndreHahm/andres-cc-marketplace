@@ -16,7 +16,7 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -1162,8 +1162,12 @@ def dispatch_reviewers(
 # --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---
 
 ATTESTATION_SCHEMA_VERSION = 1
+ATTESTATION_MARKER_PREFIX = "<!-- marketplace-ci-bypass-attestation"
+# Anchored to the end of the body: the marker is a hidden HTML comment, so a
+# copy buried mid-body in text someone pastes into a comment is invisible to
+# the person posting it. Only a marker that closes the comment counts.
 ATTESTATION_MARKER_PATTERN = re.compile(
-    r"<!-- marketplace-ci-bypass-attestation\s*(\{.*?\})\s*-->", re.DOTALL
+    r"<!-- marketplace-ci-bypass-attestation\s*(\{.*?\})\s*-->\s*\Z", re.DOTALL
 )
 BYPASS_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
 
@@ -1171,9 +1175,17 @@ BYPASS_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
 def parse_attestation_marker(comment_body: str) -> dict | None:
     """Extract and validate the versioned hidden marker from a raw PR
     comment body. Comment content is data, never instructions — this only
-    ever looks for the one fixed marker shape, never interprets prose."""
+    ever looks for the one fixed marker shape, never interprets prose.
+
+    The body must hold exactly one marker, it must be the last thing in the
+    body, and it must sit outside any fenced code block; anything else is
+    treated as no attestation (fail closed)."""
+    if comment_body.count(ATTESTATION_MARKER_PREFIX) != 1:
+        return None
     match = ATTESTATION_MARKER_PATTERN.search(comment_body)
     if not match:
+        return None
+    if comment_body[: match.start()].count("```") % 2:
         return None
     try:
         data = json.loads(match.group(1))
@@ -1211,6 +1223,12 @@ def check_bypass(
     actor = label_event.get("actor")
     head_sha = label_event.get("sha")
 
+    # An app/bot identity (GitHub renders these as "<name>[bot]") is never an
+    # accountable human attester, whatever the collaborator-permission
+    # endpoint happens to report for it.
+    if isinstance(actor, str) and actor.endswith("[bot]"):
+        return BypassResult(allowed=False, reason="bot accounts cannot attest a bypass")
+
     matching = [
         c
         for c in comments
@@ -1240,7 +1258,11 @@ def check_bypass(
     )
 
 
-def resolve_attested_actor(comments_with_login: Sequence[dict], head_sha: str) -> str | None:
+def resolve_attested_actor(
+    comments_with_login: Sequence[dict],
+    head_sha: str,
+    permissions: Mapping[str, str] | None = None,
+) -> str | None:
     """Resolve which real GitHub commenter attested a bypass for `head_sha`,
     for use when no `labeled` event exists to supply a trusted actor (e.g. a
     bypass check run from a plain push rather than a label application).
@@ -1250,12 +1272,30 @@ def resolve_attested_actor(comments_with_login: Sequence[dict], head_sha: str) -
     to match — otherwise anyone could post a marker naming a *different*,
     more-privileged user and have it accepted with no real permission check
     on the actual poster. Returns the resolved login, or None if no comment
-    attests this exact SHA from its own real author."""
-    candidates = [
+    attests this exact SHA from its own real author.
+
+    When `permissions` (login -> live collaborator permission) is given, only
+    a candidate that is not a bot and holds a bypass-capable permission is
+    eligible, so a later self-attestation from a commenter with no write
+    access cannot shadow an earlier genuine maintainer attestation. An
+    unlisted login counts as having no permission (fail closed)."""
+    candidates = attestation_candidates(comments_with_login, head_sha)
+    if permissions is not None:
+        candidates = [
+            login
+            for login in candidates
+            if not login.endswith("[bot]") and permissions.get(login) in BYPASS_CAPABLE_PERMISSIONS
+        ]
+    return candidates[-1] if candidates else None
+
+
+def attestation_candidates(comments_with_login: Sequence[dict], head_sha: str) -> list[str]:
+    """Real commenters (in comment order, one entry per attesting comment) whose
+    comment carries a valid marker for `head_sha` naming their own login."""
+    return [
         comment["login"]
         for comment in comments_with_login
         if (marker := parse_attestation_marker(comment.get("body", ""))) is not None
         and marker["sha"] == head_sha
         and marker["actor"] == comment.get("login")
     ]
-    return candidates[-1] if candidates else None

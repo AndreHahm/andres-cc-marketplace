@@ -1,5 +1,6 @@
 from scripts.marketplace_ci.review import (
     ATTESTATION_SCHEMA_VERSION,
+    attestation_candidates,
     check_bypass,
     parse_attestation_marker,
     resolve_attested_actor,
@@ -158,3 +159,88 @@ def test_resolve_attested_actor_no_comments_returns_none():
 def test_resolve_attested_actor_ignores_prose_without_marker():
     comments = [{"login": "andre", "body": "Just a regular comment, no marker here."}]
     assert resolve_attested_actor(comments, "abc") is None
+
+
+def test_bot_actor_cannot_attest_even_with_write_permission(label_event, attestation):
+    result = check_bypass(
+        label_event(actor="some-app[bot]", sha="abc"),
+        comments=[attestation("some-app[bot]", "abc", "incident")],
+        permission="admin",
+    )
+    assert result.allowed is False  # nosec B101
+    assert result.reason == "bot accounts cannot attest a bypass"  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_followed_by_more_text():
+    body = _marker_body("andre", "abc", "incident") + "\n\nPlease also look at the retry logic."
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_inside_code_fence():
+    body = "Example of the format:\n```\n" + _marker_body("andre", "abc", "incident") + "\n```"
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_buried_mid_body():
+    body = "Quoted from a log:\n" + _marker_body("andre", "abc", "incident") + "\nend of log"
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_two_markers_in_one_body():
+    body = _marker_body("andre", "old", "first") + "\n" + _marker_body("andre", "abc", "second")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_accepts_prose_then_trailing_marker():
+    body = "Attesting a bypass for this PR.\n\n" + _marker_body("andre", "abc", "incident") + "\n"
+    parsed = parse_attestation_marker(body)
+    assert parsed is not None  # nosec B101
+    assert parsed["sha"] == "abc"  # nosec B101
+
+
+def test_parse_attestation_marker_accepts_marker_after_closed_code_fence():
+    body = "```\nsome output\n```\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is not None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_after_unclosed_code_fence():
+    # The fence opens before the marker and never closes, so the end-anchored
+    # regex matches and only the fence-parity check can reject this body.
+    body = "Example of the format:\n```\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def _attesting(login: str, sha: str = "abc") -> dict:
+    return {"login": login, "body": _marker_body(login, sha, "incident")}
+
+
+def test_resolve_attested_actor_permissions_skip_a_later_commenter_without_write():
+    # The maintainer attested first; a later commenter with no write access
+    # self-attests the same SHA. Without permissions the later one shadows the
+    # maintainer; with permissions the maintainer is still resolved.
+    comments = [_attesting("maintainer"), _attesting("drive-by")]
+    assert resolve_attested_actor(comments, "abc") == "drive-by"  # nosec B101
+    permissions = {"maintainer": "write", "drive-by": "read"}
+    assert resolve_attested_actor(comments, "abc", permissions) == "maintainer"  # nosec B101
+
+
+def test_resolve_attested_actor_permissions_skip_bot_even_with_write():
+    comments = [_attesting("maintainer"), _attesting("some-app[bot]")]
+    permissions = {"maintainer": "maintain", "some-app[bot]": "admin"}
+    assert resolve_attested_actor(comments, "abc", permissions) == "maintainer"  # nosec B101
+
+
+def test_resolve_attested_actor_permissions_unlisted_login_fails_closed():
+    comments = [_attesting("maintainer")]
+    assert resolve_attested_actor(comments, "abc", {}) is None  # nosec B101
+
+
+def test_resolve_attested_actor_permissions_returns_most_recent_eligible():
+    comments = [_attesting("first-admin"), _attesting("second-writer"), _attesting("outsider")]
+    permissions = {"first-admin": "admin", "second-writer": "write", "outsider": "none"}
+    assert resolve_attested_actor(comments, "abc", permissions) == "second-writer"  # nosec B101
+
+
+def test_attestation_candidates_lists_each_attesting_comment_in_order():
+    comments = [_attesting("a"), {"login": "b", "body": "prose"}, _attesting("c", sha="other")]
+    assert attestation_candidates(comments, "abc") == ["a"]  # nosec B101

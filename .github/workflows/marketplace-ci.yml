@@ -1111,9 +1111,39 @@ jobs:
                 # infrastructure section names directly (Codex cross-model-
                 # review finding). Disable errexit only for this one call so
                 # its real exit code can be inspected before deciding.
+                # A later commenter with no write access (or a bot) can post a
+                # valid self-attestation for the same SHA; picking the most
+                # recent attester outright would let it shadow the real
+                # maintainer's earlier one and fail this emergency path
+                # closed. List the distinct attesting logins, look up each
+                # one's live permission, and let resolve-attested-actor pick
+                # the most recent bypass-capable non-bot one. Logins come
+                # from the API but are still shape-checked before they are
+                # used in a URL path.
+                set +e
+                CANDIDATES=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
+                  --comments-with-login "$SCRATCH/comments-with-login.json" --head-sha "$HEAD_SHA" \
+                  --list-candidates)
+                cand_exit=$?
+                set -e
+                if [ "$cand_exit" -eq 2 ]; then
+                  echo "::error::resolve-attested-actor --list-candidates exited 2 (infrastructure/configuration failure, not a normal no-match) -- see stderr above. Refusing to silently report bypassed=false for this."
+                  exit 1
+                fi
+                echo '{}' > "$SCRATCH/candidate-permissions.json"
+                while IFS= read -r CANDIDATE; do
+                  [ -n "$CANDIDATE" ] || continue
+                  case "$CANDIDATE" in *[!A-Za-z0-9-]*) continue ;; esac
+                  CAND_PERMISSION=$(gh api "repos/$REPO/collaborators/$CANDIDATE/permission" --jq '.permission' 2>/dev/null </dev/null || echo "none")
+                  jq --arg login "$CANDIDATE" --arg permission "$CAND_PERMISSION" \
+                    '. + {($login): $permission}' "$SCRATCH/candidate-permissions.json" \
+                    > "$SCRATCH/candidate-permissions.next.json"
+                  mv "$SCRATCH/candidate-permissions.next.json" "$SCRATCH/candidate-permissions.json"
+                done <<< "$CANDIDATES"
                 set +e
                 ACTOR=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
-                  --comments-with-login "$SCRATCH/comments-with-login.json" --head-sha "$HEAD_SHA")
+                  --comments-with-login "$SCRATCH/comments-with-login.json" --head-sha "$HEAD_SHA" \
+                  --permissions "$SCRATCH/candidate-permissions.json")
                 actor_exit=$?
                 set -e
                 if [ "$actor_exit" -eq 2 ]; then

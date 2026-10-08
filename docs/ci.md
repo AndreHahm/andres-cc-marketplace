@@ -276,6 +276,11 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
 
 1. Post a PR comment containing a hidden marker:
    `<!-- marketplace-ci-bypass-attestation {"schema_version":1,"actor":"<login>","head_sha":"<sha>","reason":"<reason>","created_at":"<ISO-8601 UTC>"} -->`
+   The comment must hold exactly one marker, it must be the last thing in the comment (prose may come
+   before it, nothing after), and it must sit outside any fenced code block — a marker that fails any of
+   these is ignored. The marker is a hidden HTML comment, so a copy buried mid-comment in pasted text
+   would otherwise be invisible to the person posting it. A bot account (a login ending in `[bot]`)
+   can never attest.
 2. Apply the `s: codex review bypassed` label (must already exist in the repo — nothing creates it
    automatically; create it once via `gh label create "s: codex review bypassed"`).
 3. Applying the label re-triggers the workflow (`labeled` is in the `pull_request` trigger types);
@@ -311,7 +316,10 @@ that wasn't triggered by applying the label (e.g. a plain push/`synchronize` eve
 is no `labeled` timeline event to resolve a trusted actor from. When set to `1`, `publish` instead
 resolves the attesting actor from the **real GitHub author** of a matching comment (`user.login` from
 the Comments API — never the marker's own self-declared `actor` field, which is attacker-controllable
-comment text) via `resolve-attested-actor`, then runs the exact same `check_bypass` attestation check
+comment text) via `resolve-attested-actor` — among the real authors of matching comments it picks the
+most recent one that is not a bot and holds a live `write`/`maintain`/`admin` permission, so a later
+self-attestation from someone without write access cannot shadow a maintainer's earlier one — then runs
+the exact same `check_bypass` attestation check
 as the label path: exact head-SHA match, non-empty reason, live `write`/`maintain`/`admin` permission
 on that real author. A PR with no matching attestation comment is unaffected by this variable
 regardless of its value — every PR still needs its own SHA-bound attestation; this only changes how

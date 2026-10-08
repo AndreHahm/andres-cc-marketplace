@@ -1720,3 +1720,155 @@ def test_check_prefix_permanence_whole_file_deletion_rejected(monkeypatch, git_r
     _commit_all(git_repo, "delete the whole inventory file")
     monkeypatch.chdir(git_repo.root)
     assert main(["check-prefix-permanence", "--base-sha", base_sha]) == 1
+
+
+def _attestation_comments(*logins: str) -> list[dict]:
+    return [
+        {
+            "login": login,
+            "body": (
+                "<!-- marketplace-ci-bypass-attestation "
+                f'{{"schema_version": 1, "actor": "{login}", "head_sha": "abc123", '
+                '"reason": "incident", "created_at": "2026-08-13T00:00:00Z"} -->'
+            ),
+        }
+        for login in logins
+    ]
+
+
+def test_resolve_attested_actor_list_candidates_prints_distinct_logins(
+    monkeypatch, repo, tmp_path, capsys
+):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(
+        json.dumps(_attestation_comments("andre", "other", "andre")), encoding="utf-8"
+    )
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+            "--list-candidates",
+        ]
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out.split() == ["andre", "other"]
+
+
+def test_resolve_attested_actor_list_candidates_returns_1_when_none(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps([]), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert (
+        main(
+            [
+                "resolve-attested-actor",
+                "--comments-with-login",
+                str(comments_path),
+                "--head-sha",
+                "abc123",
+                "--list-candidates",
+            ]
+        )
+        == 1
+    )
+
+
+def test_resolve_attested_actor_permissions_picks_latest_writer(
+    monkeypatch, repo, tmp_path, capsys
+):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(
+        json.dumps(_attestation_comments("maintainer", "drive-by")), encoding="utf-8"
+    )
+    permissions_path = tmp_path / "permissions.json"
+    permissions_path.write_text(
+        json.dumps({"maintainer": "write", "drive-by": "read"}), encoding="utf-8"
+    )
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+            "--permissions",
+            str(permissions_path),
+        ]
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out.strip() == "maintainer"
+
+
+def test_resolve_attested_actor_permissions_with_no_eligible_login_returns_1(
+    monkeypatch, repo, tmp_path
+):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps(_attestation_comments("drive-by")), encoding="utf-8")
+    permissions_path = tmp_path / "permissions.json"
+    permissions_path.write_text(json.dumps({"drive-by": "read"}), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert (
+        main(
+            [
+                "resolve-attested-actor",
+                "--comments-with-login",
+                str(comments_path),
+                "--head-sha",
+                "abc123",
+                "--permissions",
+                str(permissions_path),
+            ]
+        )
+        == 1
+    )
+
+
+def test_resolve_attested_actor_malformed_permissions_returns_2(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps(_attestation_comments("andre")), encoding="utf-8")
+    permissions_path = tmp_path / "permissions.json"
+    permissions_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert (
+        main(
+            [
+                "resolve-attested-actor",
+                "--comments-with-login",
+                str(comments_path),
+                "--head-sha",
+                "abc123",
+                "--permissions",
+                str(permissions_path),
+            ]
+        )
+        == 2
+    )
+
+
+def test_resolve_attested_actor_list_candidates_and_permissions_are_mutually_exclusive(
+    monkeypatch, repo, tmp_path
+):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps([]), encoding="utf-8")
+    permissions_path = tmp_path / "permissions.json"
+    permissions_path.write_text(json.dumps({}), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "resolve-attested-actor",
+                "--comments-with-login",
+                str(comments_path),
+                "--head-sha",
+                "abc123",
+                "--list-candidates",
+                "--permissions",
+                str(permissions_path),
+            ]
+        )
+    assert excinfo.value.code == 2
