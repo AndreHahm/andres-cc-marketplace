@@ -65,10 +65,11 @@ has no tool for it. The three `mcp__mcp-linear__linear_*` tools (`getInitiatives
 `getInitiativeById`, `getInitiativeProjects`) are read-only Initiative reads on a second, separately installed Linear connector, because the
 `claude_ai_Linear` connector above cannot list Initiatives. A session without that second connector
 simply lacks those tools, and an Initiative read is then a structured handoff, never a substitute
-through another tool. An Initiative read follows the same host-profile check as any other read (see
-Resolving the connector). Until the host profile can name that second connector, the check cannot
-pass for it, so treat the read as unsanctioned and make it a structured handoff even when the tools
-are present; the configuration work defines how the profile names a second read connector.
+through another tool. An Initiative read resolves through its own host-profile operation,
+`linear.initiatives.read` (see Resolving the connector), not through `linear.read`: it may proceed
+only when that operation's `support_status` is `verified` and its `connector` names the second
+connector. While it is `unconfigured` or `revoked`, treat the read as unsanctioned and make it a
+structured handoff even when the tools are present.
 
 **Known connector gap — Goal and Roadmap have no direct tool backing.** The real connector exposes
 Issue (`get_issue`/`save_issue`/`list_issues`), Project (`get_project`/`save_project`/
@@ -94,7 +95,8 @@ repository) reads and changes Linear state only through here.
 
 Before any read or write, resolve the logical operation through the plugin's shared, versioned
 host profile (`host-profile.json` at the plugin root, schema documented in
-`FOUNDATION_CONTRACTS.md`) — it maps `linear.read`/`linear.write` to the installed connector, the
+`FOUNDATION_CONTRACTS.md`) — it maps `linear.read`/`linear.write` (and `linear.initiatives.read`
+for the Initiative reads on the second connector) to the installed connector, the
 active service identity, and the approved organization/workspace/team/project scope. As with the
 Notion side, **tool presence is never proof of permission** — check the host profile's own
 `support_status`/`verified_at` fields before acting, even when the connector call itself would
@@ -194,7 +196,7 @@ updated risks a duplicate or conflicting change.
 - "create a Linear issue based on/from this idea/decision/goal" — a Notion source is named as the
   request's origin, so this is a promotion, not a direct ask → `idea-to-implementation`
 
-**Last dated run record:** evals/linear-work-management/workspace/iteration-1/eval-3/ (2026-09-11)
+**Last dated run record:** evals/linear-work-management/workspace/iteration-3/eval-5/ and eval-6/ (2026-10-08, Initiative-read gating, `with_skill` only, simulated, 6/6 assertions). Earlier: iteration-1/eval-3/ (2026-09-11)
 
 **Quality gates:**
 - [ ] Every material change is preceded by a preview and live approval.

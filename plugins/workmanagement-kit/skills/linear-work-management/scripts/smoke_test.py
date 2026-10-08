@@ -312,7 +312,43 @@ def check_step_sequence():
     return True, "step headers sequential in every found section/subsection"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_step_sequence]
+def check_initiative_read_operation():
+    # The Initiative reads resolve through their own host-profile operation so they can name a
+    # second connector. Fail closed: the shipped profile must carry it unconfigured with no
+    # connector, and this skill must name it rather than falling back to linear.read.
+    import json
+
+    body = SKILL_MD.read_text(encoding="utf-8")
+    if "linear.initiatives.read" not in body:
+        return False, "SKILL.md does not name the 'linear.initiatives.read' operation"
+    repo_root = _find_repo_root(SKILL_DIR)
+    for candidate in _skill_dir_candidates(repo_root):
+        profile_path = candidate.parent.parent / "host-profile.json"
+        if not profile_path.is_file():
+            continue
+        op = (
+            json.loads(profile_path.read_text(encoding="utf-8"))
+            .get("operations", {})
+            .get("linear.initiatives.read")
+        )
+        if op is None:
+            return False, "host-profile.json has no 'linear.initiatives.read' operation"
+        if op.get("support_status") != "unconfigured" or op.get("connector") is not None:
+            return False, "shipped 'linear.initiatives.read' must be unconfigured with no connector"
+        return (
+            True,
+            "host-profile.json ships 'linear.initiatives.read' unconfigured, and SKILL.md names it",
+        )
+    return False, "could not locate the plugin's host-profile.json"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_step_sequence,
+    check_initiative_read_operation,
+]
 
 
 def main():
