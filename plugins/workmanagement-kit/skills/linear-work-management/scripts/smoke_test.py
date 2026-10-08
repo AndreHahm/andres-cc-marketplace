@@ -10,8 +10,14 @@ cross-skill (`../<skill>/references/...`) and plugin-root
 references, and to treat a plugin-root shared contract file named in the
 body as valid evidence of a script-path Bash grant's usage without
 folding that file into the general command-usage search text (which would
-make the plain-command-grant check vacuous -- see check_bash_grants)."""
+make the plain-command-grant check vacuous -- see check_bash_grants).
 
+Also checks the shipped plugin-root defaults this skill's gating depends on:
+host-profile.json ships every operation unconfigured with no connector (and carries
+linear.initiatives.read, which SKILL.md must name), and versioned-configuration.json ships no
+real IDs and an empty linear.repositories map."""
+
+import json
 import pathlib
 import re
 import sys
@@ -312,34 +318,107 @@ def check_step_sequence():
     return True, "step headers sequential in every found section/subsection"
 
 
+def _load_plugin_json(name):
+    # Returns (data, None) or (None, error message). Locates <plugin root>/<name> through the same
+    # candidate skill directories the other checks use, and reports an unreadable or malformed file
+    # as a failure message instead of letting the exception escape.
+    repo_root = _find_repo_root(SKILL_DIR)
+    for candidate in _skill_dir_candidates(repo_root):
+        path = candidate.parent.parent / name
+        if not path.is_file():
+            continue
+        try:
+            return json.loads(path.read_text(encoding="utf-8")), None
+        except (OSError, ValueError) as exc:
+            return None, f"{name} is unreadable or malformed: {exc}"
+    return None, f"could not locate the plugin's {name}"
+
+
 def check_initiative_read_operation():
     # The Initiative reads resolve through their own host-profile operation so they can name a
     # second connector. Fail closed: the shipped profile must carry it unconfigured with no
     # connector, and this skill must name it rather than falling back to linear.read.
-    import json
-
     body = SKILL_MD.read_text(encoding="utf-8")
     if "linear.initiatives.read" not in body:
         return False, "SKILL.md does not name the 'linear.initiatives.read' operation"
-    repo_root = _find_repo_root(SKILL_DIR)
-    for candidate in _skill_dir_candidates(repo_root):
-        profile_path = candidate.parent.parent / "host-profile.json"
-        if not profile_path.is_file():
-            continue
-        op = (
-            json.loads(profile_path.read_text(encoding="utf-8"))
-            .get("operations", {})
-            .get("linear.initiatives.read")
-        )
-        if op is None:
-            return False, "host-profile.json has no 'linear.initiatives.read' operation"
-        if op.get("support_status") != "unconfigured" or op.get("connector") is not None:
-            return False, "shipped 'linear.initiatives.read' must be unconfigured with no connector"
-        return (
-            True,
-            "host-profile.json ships 'linear.initiatives.read' unconfigured, and SKILL.md names it",
-        )
-    return False, "could not locate the plugin's host-profile.json"
+    profile, error = _load_plugin_json("host-profile.json")
+    if error:
+        return False, error
+    operations = profile.get("operations") if isinstance(profile, dict) else None
+    op = operations.get("linear.initiatives.read") if isinstance(operations, dict) else None
+    if not isinstance(op, dict):
+        return False, "host-profile.json has no 'linear.initiatives.read' operation"
+    if op.get("support_status") != "unconfigured" or op.get("connector") is not None:
+        return False, "shipped 'linear.initiatives.read' must be unconfigured with no connector"
+    return (
+        True,
+        "host-profile.json ships 'linear.initiatives.read' unconfigured, and SKILL.md names it",
+    )
+
+
+def check_shipped_defaults():
+    # The shipped files skip the local-override trust check entirely, so a real ID or a 'verified'
+    # status committed into them would be honored on every checkout. Everything must ship empty.
+    profile, error = _load_plugin_json("host-profile.json")
+    if error:
+        return False, error
+    operations = profile.get("operations") if isinstance(profile, dict) else None
+    if not isinstance(operations, dict) or not operations:
+        return False, "host-profile.json has no 'operations' object"
+    for name, op in operations.items():
+        if not isinstance(op, dict):
+            return False, f"shipped operation {name!r} is not an object"
+        if (
+            op.get("support_status") != "unconfigured"
+            or op.get("connector") is not None
+            or op.get("verified_at") is not None
+        ):
+            return False, f"shipped operation {name!r} must be unconfigured with no connector"
+        if (
+            op.get("workspace_id") is not None
+            or op.get("organization_id") is not None
+            or op.get("team_ids", []) != []
+        ):
+            return False, f"shipped operation {name!r} must carry no scope IDs"
+        if name == "linear.initiatives.read" and "team_ids" in op:
+            return (
+                False,
+                "shipped 'linear.initiatives.read' is organization-level and carries no team_ids",
+            )
+    config, error = _load_plugin_json("versioned-configuration.json")
+    if error:
+        return False, error
+    if not isinstance(config, dict):
+        return False, "versioned-configuration.json is not an object"
+    notion = config.get("notion")
+    linear = config.get("linear")
+    if not isinstance(notion, dict) or not isinstance(linear, dict):
+        return False, "versioned-configuration.json has no 'notion' or 'linear' object"
+    if notion.get("databases") != {"test": {}, "prod": {}}:
+        return False, "shipped notion.databases must be empty for both environments"
+    for key in ("production_workspace_id", "test_workspace_id"):
+        if notion.get(key) is not None:
+            return False, f"shipped notion.{key} must be null"
+    for key in ("organization_id", "production_team_id", "test_team_id"):
+        if linear.get(key) is not None:
+            return False, f"shipped linear.{key} must be null"
+    if linear.get("repositories") != {}:
+        return False, "shipped linear.repositories must be an empty map"
+    github = config.get("github")
+    policy = config.get("repository_policy")
+    if not isinstance(github, dict) or not isinstance(policy, dict):
+        return False, "versioned-configuration.json has no 'github' or 'repository_policy' object"
+    for key in ("repository_slug", "canonical_url", "default_branch"):
+        if github.get(key) is not None:
+            return False, f"shipped github.{key} must be null"
+    if github.get("native_automation") != "unconfigured":
+        return False, "shipped github.native_automation must be 'unconfigured'"
+    if policy.get("provider_profile") is not None or policy.get("gate_discovery") != "unconfigured":
+        return False, "shipped repository_policy must be null / 'unconfigured'"
+    return (
+        True,
+        "host-profile.json and versioned-configuration.json ship no IDs, nothing configured",
+    )
 
 
 CHECKS = [
@@ -348,6 +427,7 @@ CHECKS = [
     check_bash_grants,
     check_step_sequence,
     check_initiative_read_operation,
+    check_shipped_defaults,
 ]
 
 
