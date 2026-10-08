@@ -65,3 +65,13 @@ it didn't match the specific assertion as written.
 50% (2/4) — baseline correctly omitted a label in the no-taxonomy repo but, without the tightened
 wording, explicitly resolved `p: low` for the unframed refactor ("absent any such signal, 'low' is
 the best-fit choice") — the exact anti-pattern the fix targets, confirming the fix's own necessity.
+
+## 2026-10-08 — step 5 attestation follows the shared protocol's marker-before-comment ordering
+
+`plugin-lifecycle-downstream` QA on the `triaging-dependabot-prs` branch changed the shared protocol
+(`../../references/git-bypass-attestation-protocol.md` step 3(c)) so the `gh-pr-review` marker is written
+in its own `Bash` call immediately before the attestation comment; step 5 follows that protocol, so only
+`references/test-scenarios.md` and `scripts/smoke_test.py` changed (5 checks pass, run by `smoke-tester` on
+2026-10-08). Not run: any live `create-pr --bypass-codex-review`; the marker handshake with the guard on a
+real attestation comment has not been exercised end to end. The protocol now also requires the attestation
+marker to be the last thing in the comment body; this skill posts the marker alone, so it is unaffected.

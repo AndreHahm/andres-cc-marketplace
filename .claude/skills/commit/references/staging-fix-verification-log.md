@@ -343,3 +343,14 @@ than clean — which the new, stricter safety check correctly treats as unsafe, 
 commits every fixture file first, matching the realistic case where unrelated plugins are already part
 of history. All 18 `tests/marketplace_ci/test_sync.py` tests (234-test full suite) pass after this
 round.
+
+## 2026-10-08 — step 16.5 attestation follows the shared protocol's marker-before-comment ordering
+
+`plugin-lifecycle-downstream` QA on the `triaging-dependabot-prs` branch changed the shared protocol
+(`../../references/git-bypass-attestation-protocol.md` step 3(c)) so the `gh-pr-review` marker is written
+in its own `Bash` call immediately before the attestation comment; step 16.5(c-g) follows that step
+unchanged, so this skill's own text did not need an edit. `scripts/smoke_test.py` gained
+`check_shared_protocol_writes_marker` (4 checks pass, run by `smoke-tester` on 2026-10-08). Not run: any live
+`commit --bypass-codex-review`, so the marker handshake with the guard on a real attestation comment has not
+been exercised end to end. The protocol now also requires the attestation marker to be the last thing in the
+comment body (CI ignores a comment with text after it); this skill posts the marker alone, so it is unaffected.

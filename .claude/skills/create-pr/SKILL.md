@@ -385,6 +385,7 @@ loop.
 - "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
 - "merge this PR" / "is this ready to merge" → `merge-pr`
 
+**Last dated run record:** 2026-10-08, `scripts/smoke_test.py` (5 checks pass; structural only, no live bypass run) — see `references/verification-log.md`.
 See `references/test-scenarios.md` for detailed verification scenarios covering the Pre-flight Checks
 step 4 cross-model-review gate, step 3.5's session open-issues check, and `--bypass-codex-review`
 behavior (R30 extraction — kept out of this file to stay under R13's line budget).

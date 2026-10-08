@@ -224,8 +224,9 @@ for that skill's own `disable-model-invocation` field) catches this class of def
 the next expensive full re-grade.
 
 **Mirror sync covers all 3 tracked copies, not 2.** `git-kit` skills are mirrored at `plugins/git-kit/`,
-`.claude/skills/`, and `.agents/skills/` (the last one is a live mirror for Codex CLI compatibility, added
-2026-08-06 — not a frozen snapshot). When a fix is fragmented across multiple agent dispatches, make
+`.claude/skills/`, and `.agents/skills/` (the last one is a hand-maintained copy for Codex CLI compatibility, added
+2026-08-06; `sync-plugin-mirrors` and `check-all` do not cover it, so it lags — as of 2026-10-08 it has no
+`triaging-dependabot-prs` and its `merge-pr` copy predates that skill's changes). When a fix is fragmented across multiple agent dispatches, make
 syncing all 3 copies an explicit, individually-verified step in each dispatch — or prefer a single direct
 pass with one mirror-sync step at the end covering all 3. The 2026-08-11 fix batch synced only `.claude/`
 and `plugins/git-kit/`, missing `.agents/` entirely; the drift went unnoticed for a full session until a

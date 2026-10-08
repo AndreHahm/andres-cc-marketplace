@@ -376,12 +376,14 @@ pattern/examples, never as a separate source of truth):**
   not to make `commit` a second entry point for a request to split in the first place
 
 **Last dated run record:** `2026-09-21, evals/commit/` — 8 scenarios (step 16.5's own bypass-attestation
-behavior, including eval 8's injection-payload scenario added after cross-model-review round 2), 36/36
+behavior, including eval 8's injection-payload scenario added after cross-model-review round 2; a ninth, the
+`GH_REPO` origin-binding scenario, was added later), 36/36
 assertions passed via `skill-tester` Quick Workflow dry-run agents (see
 `evals/commit/evals.json` and its `workspace/iteration-1/` grading files) — plus the per-step dated
 entries below and in `references/staging-fix-verification-log.md` for the rest of this skill's steps.
-`scripts/smoke_test.py` covers frontmatter validity, `allowed-tools`-grant usage, and step-header
-sequencing only (structural checks).
+`scripts/smoke_test.py` covers frontmatter validity, `allowed-tools`-grant usage, step-header
+sequencing and, since 2026-10-08, the shared protocol's marker-before-attestation ordering (structural
+checks only; the 2026-10-08 entry in `references/staging-fix-verification-log.md` says what was not run live).
 
 **Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final commit of that session's second fix batch (`2160f56`) — the test-behavior-change check (now step 10, renumbered from step 9 by step 8's later targeted-repair insertion) fired correctly on every behavior-changing commit in that run. That live run confirmed the check fires and gates correctly in real use; it did not walk each item below individually, so the checkboxes stay unchecked pending a full manual pass — re-run this checklist (and check off what it confirms) after the next behavior-changing invocation, rather than treating this date as a permanent guarantee:
 
