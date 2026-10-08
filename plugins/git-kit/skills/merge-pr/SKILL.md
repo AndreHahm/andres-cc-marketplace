@@ -310,7 +310,7 @@ them.
   `.claude/rules/require-tests-for-behavior-changes.md`.
 - Never invokes `finishing-work` without asking first (step 8) — a successful merge alone is not implicit consent to switch the current checkout to `main`.
 - **`--bypass-codex-review` never substitutes for any other gate.** It affects only the `Publish Codex policy result` status check, and only when it is the *sole* failing required check. It never skips the not-draft check, never skips any other required status check, never skips the no-outstanding-change-requests check, never skips the no-merge-conflicts check, never skips the not-behind-base check, never skips or weakens the merge-rights check (step 3 always runs first, unconditionally), and never skips the explicit merge confirmation (step 5). A non-empty `<reason>` is required — an empty or missing reason means the flag is ignored and this skill behaves exactly as if it were never passed.
-- `Bash(gh pr comment:*)` permits any body against any PR, another repository (`-R`) and `--body-file` of any local file at the permission layer. This skill uses it only for step 4(b)'s `--body-file` attestation comment against the PR resolved at step 1, immediately after the `gh-pr-review` marker write; the narrowing rests on those instructions, not on the grant.
+- `Bash(gh pr comment:*)` permits any body against any PR, another repository (`-R`) and `--body-file` of any local file at the permission layer, which would publish that file's contents (a token or key file, for example) as a public comment. This skill uses it only for step 4(b)'s `--body-file` attestation comment against the PR resolved at step 1, immediately after the `gh-pr-review` marker write; the narrowing rests on those instructions, not on the grant.
 - `Bash(gh api graphql:*)` grants the entire GraphQL surface (including mutations this skill never
   intends, like `mergePullRequest`/`deleteRef`) — the narrowest form this repo's `allowed-tools` grammar
   can express, since it can't limit *which* query/mutation document is sent (same accepted limitation
@@ -323,8 +323,10 @@ them.
   `Bash(gh api repos/*/pulls/*/commits:*)`, `Bash(gh api repos/*/labels/*:*)`, and
   `Bash(gh api repos/*/collaborators/*/permission:*)` are all method-unrestricted, same reasoning as the
   `graphql` grant above — `gh api`'s scoping syntax can't separate a GET from a PUT/DELETE on the same
-  endpoint path. The actual bound is the documented step that uses each one (all five are only ever
-  invoked with a bare GET in this skill's own instructions), not the grant itself.
+  endpoint path. Their interior `*` also spans other repository paths: the permissions docs say a `*`
+  "matches any text, including spaces" and only the words before the first `*` limit a rule. The actual
+  bound is the documented step that uses each one (all five are only ever invoked with a bare GET in this
+  skill's own instructions), not the grant itself.
 
 ## Testing & Validation
 
