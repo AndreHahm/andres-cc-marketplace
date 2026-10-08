@@ -35,7 +35,8 @@ Verified with two `skill-tester` Quick Workflow evals — 6 new scenarios (ids 1
 `evals/merge-pr/evals.json`, `workspace/iteration-6/` and `iteration-7/`): 23/23 assertions passed, but
 evals 10 and 14's own prompt/expected_output text were subsequently updated to match the
 explicit-URL fix above *after* that grading ran — their recorded PASS results reflect the pre-fix
-wording, not this final version; a re-grade is still owed (see `evals.json`'s own
+wording, not this final version; re-graded 2026-10-08 against the current SKILL.md
+(`workspace/iteration-8/`, 5/5 assertions each for evals 10 and 14; see `evals.json`'s own
 `testing_validation_coverage` note). No open PR existed in this repository at any point to exercise any
 of this end-to-end; see `references/test-scenarios.md` for further walkthroughs and `evals.json`'s own
 `testing_validation_coverage` field for what else remains uncovered (mostly the bypass-attestation

@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops and reports the PR has merge conflicts with main",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not point bare at resolving-merge-conflicts; states its precondition is a local tree already showing unmerged paths (git status)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Fetches from the explicit https://github.com/acme-org/acme-repo.git URL (step 1's owner/repo), not a bare origin",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Tells the user to check out the head ref and attempt git merge of the base ref",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Only points at resolving-merge-conflicts once git status shows unmerged paths",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

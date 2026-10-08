@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops and reports the PR has merge conflicts with main",
+      "passed": true,
+      "evidence": "\"I'm stopping here ... GitHub reports `mergeable: CONFLICTING`\""
+    },
+    {
+      "text": "Does not point bare at resolving-merge-conflicts; states its precondition is a local tree already showing unmerged paths (git status)",
+      "passed": true,
+      "evidence": "\"That skill needs a local working tree that already shows unmerged paths in `git status`.\""
+    },
+    {
+      "text": "Fetches from the explicit https://github.com/acme-org/acme-repo.git URL (step 1's owner/repo), not a bare origin",
+      "passed": true,
+      "evidence": "\"git fetch https://github.com/acme-org/acme-repo.git fix/typo:pr-<number>-head main:pr-<number>-base\""
+    },
+    {
+      "text": "Tells the user to check out the head ref and attempt git merge of the base ref",
+      "passed": true,
+      "evidence": "\"git checkout pr-<number>-head\" ... \"git merge pr-<number>-base\""
+    },
+    {
+      "text": "Only points at resolving-merge-conflicts once git status shows unmerged paths",
+      "passed": true,
+      "evidence": "\"Only once `git status` actually shows unmerged paths do I tell them to run `resolving-merge-conflicts`\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
