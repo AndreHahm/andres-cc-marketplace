@@ -1,0 +1,31 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does NOT tell the user to run git fetch origin contributor-branch",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States why it is wrong: fork branch not on this repo's origin AND origin may not be the PR's repository",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Fetches from the explicit https://github.com/acme-org/acme-repo.git URL using the pull/88/head synthetic ref",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Checks out the fetched head, then attempts git merge of the base ref",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Only points at resolving-merge-conflicts once git status shows unmerged paths",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
