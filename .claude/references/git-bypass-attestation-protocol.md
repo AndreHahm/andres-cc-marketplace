@@ -8,10 +8,10 @@ directory, since its whole purpose is to be read by more than one skill — same
 `analysis-kit/references/` already established for this repo.
 
 Each caller resolves its own PR/number/SHA differently (`create-pr` already has the PR it just created;
-`merge-pr` resolves the PR from its own `$ARGUMENTS`; `commit` resolves it from ambient branch state, with
+`merge-pr` resolves the PR from its own `$ARGUMENTS` (or step 1's `number` when none was given) and checks the head SHA itself at its step 4(b); `commit` resolves it from ambient branch state, with
 its own SHA/cross-repository verification) — that resolution stays entirely in each caller's own SKILL.md,
 never here. This file covers only the steps that are genuinely identical once a caller has a validated PR
-number, owner/repo, and reason text in hand.
+reference (a number, or for `merge-pr` possibly a PR URL), owner/repo, and reason text in hand.
 
 **`create-pr` and `commit` follow this protocol's steps 1-5 in full.** `merge-pr` follows only steps 1
 (bot-trigger-mention check — a real gap it lacked until this file's own addition closed it), 2 (actor and
@@ -95,8 +95,11 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       the user already approved the bypass. The guard accepts the marker for about a minute and deletes it on
       the next `Bash`/PowerShell call of any kind, so issue the comment as the very next call, only after the
       marker call has returned and never in the same parallel batch. Then post it against the caller's own
-      resolved PR number: `gh pr comment <number> --body-file <scratchpad-path>` — never the argument-less
-      form, now that the caller has already resolved and validated exactly which PR this run targets. If the
+      validated PR reference: `gh pr comment <number> --body-file <scratchpad-path>` — never the
+      argument-less form, now that the caller has already resolved and validated exactly which PR this run
+      targets. A caller whose PR may live in a different repository than the checkout (`merge-pr`, given a
+      PR URL) passes that validated URL in place of `<number>`: a bare number resolves against the
+      checkout's repository (or `GH_REPO`) and could address an unrelated same-numbered PR. If the
       comment is still denied, stop and report that the bypass was not attested; do not retry with a different
       command or endpoint.
 4. **Verify the label exists, then apply or re-apply it.** Verify the `s: codex review bypassed` label
@@ -143,7 +146,8 @@ push`/similar broad grants:
 ## What stays caller-specific, never lives here
 
 - **PR/SHA resolution.** How the caller identifies which PR and which head SHA this run targets —
-  `create-pr` already has both from the PR it just created; `merge-pr` resolves them from `$ARGUMENTS`;
+  `create-pr` already has both from the PR it just created; `merge-pr` resolves them from `$ARGUMENTS`'s PR reference (step 1's `number` when none was given) and
+  checks the head SHA at its step 4(b);
   `commit` resolves them from ambient branch state plus its own SHA-match and `isCrossRepository` checks
   (step 16.5(b)) — this protocol has no opinion on any of that.
 - **Empty/missing-reason handling.** `create-pr` and `commit` both reject the flag and report why;
