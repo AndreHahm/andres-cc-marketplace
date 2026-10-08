@@ -29,7 +29,9 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   proposed/accepted/superseded/reversed states), proposed Goals, Notes, Research, Reports,
   Outcomes, and Learning in Notion.
 - **`linear-work-management`** — read and update accepted Goals, Roadmaps, Projects, Milestones,
-  and Issues in Linear under Linear's own authority.
+  and Issues in Linear under Linear's own authority. It also reads Initiatives, read-only, through
+  an optional second, separately installed Linear connector; that read is gated by its own
+  `linear.initiatives.read` host-profile operation, which ships `unconfigured`.
 - **`idea-to-implementation`** — deliberate, approval-gated promotion from Notion knowledge into
   an accepted Linear hierarchy.
 - **`status-and-learning`** — deliberate, dated, explicitly non-live Linear-to-Notion progress
@@ -91,7 +93,10 @@ only works when both plugins are installed as part of this monorepo's own checko
 shared monorepo layout, and returns a typed failure rather than dispatching when installed as two
 independent marketplace plugins outside that layout (see Status). `git-kit` must be installed for any Wave 2
 skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
-a manual handoff rather than falling back to a raw `git`/`gh` command.
+a manual handoff rather than falling back to a raw `git`/`gh` command. Initiative reads in
+`linear-work-management` additionally need an optional second Linear connector (`mcp-linear`),
+installed separately from the main Linear connector; without it, the Initiative tools are absent and
+an Initiative read is a structured handoff.
 
 ## Status
 
@@ -146,7 +151,9 @@ Items still open from Wave 1:
   Foundational Setup (`.draft/prompts/workmanagement-kit/_done/foundation-setup-wave1.md`): all
   four `notion.read`/`notion.write`/`linear.read`/`linear.write` operations are `verified` in this
   repo's own local override, with real resolved Notion workspace/database IDs and a real Linear
-  organization/team ID. The transition contract and disposition record (both documented in
+  organization/team ID. That statement does not cover the fifth operation, `linear.initiatives.read`
+  (the optional second-connector Initiative read), which ships `unconfigured` like every other
+  shipped default. The transition contract and disposition record (both documented in
   `FOUNDATION_CONTRACTS.md`) are per-record write shapes, not standalone files — they became live
   the same moment the host profile did, since every write they describe already goes through that
   same sanctioning check.
@@ -169,8 +176,8 @@ Items still open from Wave 1:
   before treating a failure as final. `linear-work-management`'s own SKILL.md separately documents
   a **connector-coverage gap**, found while wiring this script: the real Linear connector exposes
   Issue/Project/Milestone as real entities but has no `get_goal`/`save_goal` or
-  `get_roadmap`/`save_roadmap` tool — Goal and Roadmap (two of `linear-entity-fields.md`'s five
-  entity types) have no direct write path today.
+  `get_roadmap`/`save_roadmap` tool — Goal and Roadmap (two of `linear-entity-fields.md`'s
+  read/write entity types) have no direct read or write path today.
 - `plugin-integration-intake`'s trust-boundary gate had its first `security-reviewer` pass during
   this plugin's `plugin-lifecycle-downstream` QA run (2026-08-30); the Critical and Major findings
   from that pass are fixed in that skill's own file. Re-run the pass again before this gate is
