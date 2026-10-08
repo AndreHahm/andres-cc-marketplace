@@ -438,8 +438,9 @@ triggered-cycle-count gate is still computed correctly from the extracted proced
 
 **Structural smoke test:** `scripts/smoke_test.py` — re-run after any `SKILL.md` edit; checks
 frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow step-header sequencing,
-`evals.json` presence, and the `gh api -f`/`-F` @-path warning callout in
-`references/github-api-mechanics.md`.
+`evals.json` presence, the `gh api -f`/`-F` @-path warning callout in
+`references/github-api-mechanics.md`, and that file's `reviewThreads` example sending a typed
+`-F cursor=null` (never `-f`).
 
 **Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals, **except that eval
 21 has not been re-run since its expected output was narrowed to `-F body=@<path>` only** (its saved

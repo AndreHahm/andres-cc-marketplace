@@ -3,8 +3,9 @@
 referenced-file existence, Bash-scope grant usage (searching SKILL.md's own
 body plus every references/*.md file, since some grants are only used inside
 an extracted reference), step-header sequencing (the "## Workflow" section),
-evals.json presence, and the gh api -f/-F warning in
-references/github-api-mechanics.md (6 checks total) -- structural checks
+evals.json presence, the gh api -f/-F warning in
+references/github-api-mechanics.md, and the reviewThreads example's typed
+-F cursor=null (7 checks total) -- structural checks
 only, since this is a conversational, gh-CLI-orchestration skill with no
 executable logic of its own to simulate. Adapted from codex-review-recovery's
 own smoke_test.py (same shape and check set)."""
@@ -167,6 +168,30 @@ def check_github_api_mechanics_fF_warning():
     return True, "references/github-api-mechanics.md carries the -f/-F @-path warning"
 
 
+def check_review_threads_cursor_typed(path=None):
+    """The reviewThreads first-page example must send a typed null (-F), not the string "null"."""
+    path = path or SKILL_DIR / "references" / "github-api-mechanics.md"
+    if not path.is_file():
+        return False, f"references/github-api-mechanics.md not found at {path}"
+    text = path.read_text(encoding="utf-8")
+    blocks = [
+        b
+        for b in re.findall(r"```[^\n]*\n(.*?)```", text, flags=re.DOTALL)
+        if "gh api graphql" in b and "$cursor" in b
+    ]
+    if not blocks:
+        return False, "no fenced reviewThreads example using $cursor found (issue #312)"
+    for block in blocks:
+        if re.search(r"(?<![A-Za-z])-f\s+cursor=null\b", block):
+            return (
+                False,
+                "reviewThreads example sends -f cursor=null (the string 'null'; issue #312)",
+            )
+        if not re.search(r"-F\s+cursor=null\b", block):
+            return False, "reviewThreads example does not send -F cursor=null on the first call"
+    return True, "reviewThreads first-page example sends a typed null (-F cursor=null)"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -174,6 +199,7 @@ CHECKS = [
     check_step_sequence,
     check_evals_json_exists,
     check_github_api_mechanics_fF_warning,
+    check_review_threads_cursor_typed,
 ]
 
 
