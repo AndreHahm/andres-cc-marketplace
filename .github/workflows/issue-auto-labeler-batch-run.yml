@@ -198,6 +198,11 @@ jobs:
             exit 1
           fi
           if [ "$MAX_NUMBER" -gt 0 ]; then
+            # The window is a fixed newest-first slice, not a cursor: if it
+            # came back full, items at or below max_number may lie beyond it.
+            if [ "$(echo "$ISSUE_LIST" | jq 'length')" -ge "$FETCH_LIMIT" ]; then
+              echo "::warning::max_number lookup filled the $FETCH_LIMIT-item window; issues numbered <= $MAX_NUMBER may be missing from this run."
+            fi
             ISSUE_LIST=$(echo "$ISSUE_LIST" | jq -c --argjson max "$MAX_NUMBER" --argjson n "$LIMIT" '[.[] | select(.number <= $max)] | .[:$n]')
           fi
 
