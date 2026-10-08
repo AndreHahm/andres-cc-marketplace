@@ -1,0 +1,42 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The first Bash call described is the git-write-marker.sh script with the gh-pr-review guard type",
+      "passed": true,
+      "evidence": "Call 1: `\"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh\" gh-pr-review triaging-dependabot-prs`, 'Wait for it to return.'"
+    },
+    {
+      "text": "The second Bash call is `gh pr comment 101 --body \"@dependabot rebase\"` and it is the very next Bash call, with no other command in between",
+      "passed": true,
+      "evidence": "Call 2, 'as the very next Bash call': `gh pr comment 101 --body \"@dependabot rebase\"`; 'no other Bash command goes between them'"
+    },
+    {
+      "text": "The two calls are described as sequential (wait for the marker call to return), never in one parallel batch",
+      "passed": true,
+      "evidence": "'two separate, sequential Bash calls. They are never run in a parallel batch'"
+    },
+    {
+      "text": "If the marker script fails or the comment is denied, the answer says to stop and report, without retrying through another command or endpoint",
+      "passed": true,
+      "evidence": "'Call 1 fails ... I stop and report. I do not post the comment anyway'; 'Call 2 is denied ... I stop and report. I do not retry with a different command or endpoint'"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "passed": true,
+      "evidence": "'I do not fall back to a manual push, `gh api`, `--body-file`, or any other route'; no manual push or conflict resolution is described"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "passed": true,
+      "evidence": "'I ask via `AskUserQuestion` whether to re-check now, skip this PR for now, or stop.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "note": "Non-blind run: subject agents were allowed to read references/test-scenarios.md, which documents expected behavior for these situations; evals 4, 5 and 6 cite its scenario numbers. Eval 4's agent also ran one read-only ls against the Read/Write-only rule (disclosed in its answer). All agents read only lines 1-325 of merge-pr/SKILL.md."
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {"text": "The first Bash call described is the git-write-marker.sh script with the gh-pr-review guard type", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The second Bash call is `gh pr comment 101 --body \"@dependabot rebase\"` and it is the very next Bash call, with no other command in between", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The two calls are described as sequential (wait for the marker call to return), never in one parallel batch", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "If the marker script fails or the comment is denied, the answer says to stop and report, without retrying through another command or endpoint", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The answer does not use a manual push or hand-resolve conflicts", "type": "quality", "target": "outputs/answer.md"},
+    {"text": "After posting, the answer asks whether to re-check now, skip or stop", "type": "presence", "target": "outputs/answer.md"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {"text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The PR is treated as needing a rebase even though mergeStateStatus is BLOCKED, by returning to the branch-freshness step", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The answer asks the user and then posts `@dependabot rebase` through the marker-then-comment sequence", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The answer notes this would be the second and last allowed rebase comment for the PR (cap of two), after which it is skipped with the reason", "type": "quality", "target": "outputs/answer.md"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {"text": "The answer does not post `@dependabot rebase` again", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The answer offers wait, skip or stop via AskUserQuestion", "type": "functionality", "target": "outputs/answer.md"},
+    {"text": "The answer states that only a posted comment counts toward the cap, so this re-check consumes no round", "type": "quality", "target": "outputs/answer.md"},
+    {"text": "The answer states the cap is two posted rebase comments per PR, after which the PR is skipped with the reason", "type": "quality", "target": "outputs/answer.md"}
+  ]
+}

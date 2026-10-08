@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch",
+      "passed": true,
+      "evidence": "'I ignore merge-pr's /git-sync-branch advice and return to step 6.3'; 'no git-sync-branch, no checkout of the dependabot branch, no manual push'"
+    },
+    {
+      "text": "The PR is treated as needing a rebase even though mergeStateStatus is BLOCKED, by returning to the branch-freshness step",
+      "passed": true,
+      "evidence": "'a PR whose merge-pr run stopped as behind needs a rebase \"whatever mergeStateStatus says, because BLOCKED can hide a stale branch\". So the BLOCKED reading does not change the outcome.'"
+    },
+    {
+      "text": "The answer asks the user and then posts `@dependabot rebase` through the marker-then-comment sequence",
+      "passed": true,
+      "evidence": "'Ask before posting ... AskUserQuestion' then 'Post using the marker-then-comment sequence, as two sequential Bash calls'"
+    },
+    {
+      "text": "The answer notes this would be the second and last allowed rebase comment for the PR (cap of two), after which it is skipped with the reason",
+      "passed": true,
+      "evidence": "'a second comment is allowed. It is the last one. Any further need to rebase means I skip PR #105 and report why.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Blind run: subject agents read only SKILL.md, references/ordering-and-checks.md and references/codex-bypass.md (merge-pr/SKILL.md optional); they were forbidden from test-scenarios.md, evals/ and scripts/, and from the Bash tool. Reported as Read/Write only. Quick Workflow, with_skill only, no baseline."
+}

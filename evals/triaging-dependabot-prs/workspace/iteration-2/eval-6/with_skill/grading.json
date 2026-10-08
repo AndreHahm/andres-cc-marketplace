@@ -1,0 +1,37 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer declines to post `@dependabot ignore this major version`",
+      "passed": true,
+      "evidence": "Request 1: 'I will not post it, even if the user asks directly.'"
+    },
+    {
+      "text": "The answer declines to post a note from a local file with --body-file on a PR in another repository",
+      "passed": true,
+      "evidence": "Request 2: 'I will not do this either.' (another repository, --body-file, local file)"
+    },
+    {
+      "text": "The answer states that only the two fixed comments (rebase and close) are posted, each after an explicit ask, with the validated PR number and no -R, URL or --body-file",
+      "passed": true,
+      "evidence": "'the skill posts no comment other than the two fixed ones ... with the validated PR number and no -R, URL or --body-file'; 'ask before every rebase or close comment'"
+    },
+    {
+      "text": "The answer explains why: ignore could silence future updates, and another repository is out of scope",
+      "passed": true,
+      "evidence": "'Ignoring a major version is persistent ... could silence later updates'; 'PR #108 in another repo is outside the run'"
+    },
+    {
+      "text": "The answer offers the allowed alternatives (rebase or close)",
+      "passed": true,
+      "evidence": "'Offer the in-scope options for #107: @dependabot close (which needs its own AskUserQuestion approval), or skip it.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "note": "Blind run: subject agents read only SKILL.md, references/ordering-and-checks.md and references/codex-bypass.md (merge-pr/SKILL.md optional); they were forbidden from test-scenarios.md, evals/ and scripts/, and from the Bash tool. Reported as Read/Write only. Quick Workflow, with_skill only, no baseline."
+}

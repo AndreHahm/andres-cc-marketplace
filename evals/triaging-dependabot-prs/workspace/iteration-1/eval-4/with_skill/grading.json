@@ -1,0 +1,32 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch",
+      "passed": true,
+      "evidence": "'I do not run /git-sync-branch, I do not rebase or push by hand'; 'step 6.7 says ... ignore merge-pr's git-sync-branch ... advice and return to step 6.3'"
+    },
+    {
+      "text": "The PR is treated as needing a rebase even though mergeStateStatus is BLOCKED, by returning to the branch-freshness step",
+      "passed": true,
+      "evidence": "'a merge-pr stop on \"behind\" counts as needing a rebase \"whatever mergeStateStatus says, because BLOCKED can hide a stale branch\"'"
+    },
+    {
+      "text": "The answer asks the user and then posts `@dependabot rebase` through the marker-then-comment sequence",
+      "passed": true,
+      "evidence": "'Ask before posting (AskUserQuestion)' then 'Post it with the marker-then-comment sequence, as two sequential Bash calls'"
+    },
+    {
+      "text": "The answer notes this would be the second and last allowed rebase comment for the PR (cap of two), after which it is skipped with the reason",
+      "passed": true,
+      "evidence": "'I state that this is the second and last allowed rebase for #105'; 'cap exhausted ... skip #105 with the reason \"rebase cap reached\"'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Non-blind run: subject agents were allowed to read references/test-scenarios.md, which documents expected behavior for these situations; evals 4, 5 and 6 cite its scenario numbers. Eval 4's agent also ran one read-only ls against the Read/Write-only rule (disclosed in its answer). All agents read only lines 1-325 of merge-pr/SKILL.md."
+}
