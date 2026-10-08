@@ -86,9 +86,17 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       timestamp) and stay safe via ordinary `--arg` — but only once substituted as literal text, not a
       variable reference.
    c. Write the comment body (marker wrapped in `<!-- marketplace-ci-bypass-attestation {...} -->`) to a
-      second scratchpad file, then post it against the caller's own resolved PR number:
-      `gh pr comment <number> --body-file <scratchpad-path>` — never the argument-less form, now that the
-      caller has already resolved and validated exactly which PR this run targets.
+      second scratchpad file. Then, as the last step before the comment and in its own `Bash` call, run
+      `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review <caller-skill-name>` —
+      `git-guard-raw-pr-review.sh` hard-blocks every `gh pr comment` absent a fresh `gh-pr-review` marker,
+      and the attestation comment has no exemption, so a caller that skips this has its comment denied after
+      the user already approved the bypass. The guard accepts the marker for about a minute and deletes it on
+      the next `Bash`/PowerShell call of any kind, so issue the comment as the very next call, only after the
+      marker call has returned and never in the same parallel batch. Then post it against the caller's own
+      resolved PR number: `gh pr comment <number> --body-file <scratchpad-path>` — never the argument-less
+      form, now that the caller has already resolved and validated exactly which PR this run targets. If the
+      comment is still denied, stop and report that the bypass was not attested; do not retry with a different
+      command or endpoint.
 4. **Verify the label exists, then apply or re-apply it.** Verify the `s: codex review bypassed` label
    exists in the repo (`gh api "repos/{owner}/{repo}/labels/s%3A%20codex%20review%20bypassed"`); if it
    doesn't, stop and report the bypass as failed — no caller ever creates this label; it's a one-time
@@ -121,6 +129,10 @@ push`/similar broad grants:
 
 - `gh pr comment` permits an inline `--body` with arbitrary text against any PR number — this protocol
   never posts anything but the `--body-file` marker comment, against the caller's own resolved PR only.
+- `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)` accepts any guard type, and while a
+  `gh-pr-review` marker is fresh the guard would allow any guarded review or comment command, not just
+  step 3(c)'s comment — this protocol writes it only immediately before that one comment, and keeping to
+  that rests on these instructions, not on the guard.
 - `gh pr edit` permits `--base`, `--title`, `--body`, `--add-reviewer`, `--milestone` at the permission
   layer — this protocol never edits a PR's base, title, body, reviewers, or milestone, only the one label.
 - `gh api repos/*/labels/*` is read-only *by convention* only — this protocol never issues a
