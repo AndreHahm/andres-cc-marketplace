@@ -113,7 +113,18 @@ jobs:
           # otherwise be indistinguishable from a legitimate "no PRs found"
           # and get silently treated as a no-op success (Codex + CodeRabbit
           # finding, PR #294 review).
-          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number,additions,deletions,labels); then
+          # Retried a few times: GitHub's GraphQL API intermittently answers
+          # a heavy listing with a 502 that succeeds on an immediate re-run.
+          FETCHED=false
+          for ATTEMPT in 1 2 3; do
+            if PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number,additions,deletions,labels); then
+              FETCHED=true
+              break
+            fi
+            echo "::warning::gh pr list failed (attempt $ATTEMPT of 3)."
+            [ "$ATTEMPT" -lt 3 ] && sleep $((ATTEMPT * 10))
+          done
+          if [ "$FETCHED" != "true" ]; then
             echo "::error::gh pr list failed -- could not fetch the PR list."
             exit 1
           fi
