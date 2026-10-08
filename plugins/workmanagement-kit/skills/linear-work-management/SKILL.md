@@ -153,9 +153,9 @@ Sanctioning `linear.read` never sanctions this operation.
 
 ## Entity Model
 
-Six entity types, each with its own field set: five this skill can read and write (Goals, Roadmaps,
-Projects, Milestones, Issues; Goals and Roadmaps are currently handoff-only, see the Known connector
-gap above) and Initiatives, which it can only read. See
+Six entity types, each with its own field set: three this skill can read and write (Projects,
+Milestones, Issues), two it can only hand off today (Goals, Roadmaps; see the Known connector gap
+above) and Initiatives, which it can only read. See
 `references/linear-entity-fields.md` for the full field table per type
 (owners, priorities, dependencies, cycles/dates, statuses, labels, transition IDs, and a Notion
 link on Goal, Project, and Issue only — not a field shared by all types) — load it
