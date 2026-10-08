@@ -147,6 +147,14 @@ jobs:
           LIMIT: ${{ github.event.inputs.limit }}
           MAX_NUMBER: ${{ github.event.inputs.max_number }}
         run: |
+          # limit reaches jq's `.[:$n]` below when max_number is set; a
+          # negative value there would select all but the last item
+          # instead of failing the way `gh pr list --limit` does.
+          if ! [[ "$LIMIT" =~ ^[0-9]+$ ]] || [ "$LIMIT" -lt 1 ]; then
+            echo "::error::limit must be a positive integer -- got '$LIMIT'."
+            exit 1
+          fi
+
           if ! [[ "$MAX_NUMBER" =~ ^[0-9]+$ ]]; then
             echo "::error::max_number must be a non-negative integer (0 = no cap) -- got '$MAX_NUMBER'."
             exit 1
