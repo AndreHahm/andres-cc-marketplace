@@ -72,8 +72,8 @@ and follows this exact procedure rather than restating it:
 
 ## Host Profile (`host-profile.json`)
 
-Maps a logical operation (`notion.read`, `notion.write`, `linear.read`, `linear.write`) to whether
-it is currently sanctioned for use, and to what scope. **Tool presence in a session is never proof
+Maps a logical operation (`notion.read`, `notion.write`, `linear.read`, `linear.write`,
+`linear.initiatives.read`) to whether it is currently sanctioned for use, and to what scope. **Tool presence in a session is never proof
 of permission** — a skill's `allowed-tools` grant can name an MCP tool that exists, while the host
 profile still says that operation is `unconfigured`. Every skill that reads or writes Notion/Linear
 must check this file's `support_status`/`verified_at` fields for the specific operation before
@@ -94,7 +94,8 @@ shippable default and edits to it would be lost on plugin update and visible to 
     "notion.read":   {"support_status": "unconfigured", "verified_at": null, "connector": null, "workspace_id": null},
     "notion.write":  {"support_status": "unconfigured", "verified_at": null, "connector": null, "workspace_id": null},
     "linear.read":   {"support_status": "unconfigured", "verified_at": null, "connector": null, "organization_id": null, "team_ids": []},
-    "linear.write":  {"support_status": "unconfigured", "verified_at": null, "connector": null, "organization_id": null, "team_ids": []}
+    "linear.write":  {"support_status": "unconfigured", "verified_at": null, "connector": null, "organization_id": null, "team_ids": []},
+    "linear.initiatives.read": {"support_status": "unconfigured", "verified_at": null, "connector": null, "organization_id": null}
   }
 }
 ```
@@ -107,6 +108,11 @@ shippable default and edits to it would be lost on plugin update and visible to 
 - `connector` — the installed MCP connector's own identifier (e.g. `claude_ai_Notion`), or `null`.
 - `workspace_id` (Notion) / `organization_id`+`team_ids` (Linear) — the approved scope. A skill
   must never act outside the scope named here, even when the connector tool itself would allow it.
+- `linear.initiatives.read` — the read-only Initiative reads (`getInitiatives`, `getInitiativeById`,
+  `getInitiativeProjects`), which the main Linear connector cannot serve. It exists as its own
+  operation so it can name a second connector (`connector` differs from `linear.read`'s) without
+  changing the one-connector-per-operation rule. It carries `organization_id` only, no `team_ids`,
+  because Initiatives are organization-level. Sanctioning `linear.read` never sanctions it.
 
 ## Versioned Configuration (`versioned-configuration.json`)
 
@@ -124,7 +130,7 @@ specific, not a fact about the plugin).
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
@@ -136,10 +142,34 @@ specific, not a fact about the plugin).
   "linear": {
     "organization_id": null,
     "production_team_id": null,
-    "test_team_id": null
+    "test_team_id": null,
+    "repositories": {}
+  },
+  "github": {
+    "repository_slug": null,
+    "canonical_url": null,
+    "default_branch": null,
+    "native_automation": "unconfigured"
+  },
+  "repository_policy": {
+    "provider_profile": null,
+    "gate_discovery": "unconfigured"
   }
 }
 ```
+
+The `github` and `repository_policy` blocks were added by Wave 2 (see "Repository Policy Profile"
+below). `linear.repositories` is additive within schema v2 and ships empty.
+
+- `linear.repositories` — a map from a repository slug (`owner/repo`) to that repository's Linear
+  team: `{"owner/repo": {"production_team_id": "...", "test_team_id": "..."}}`. A caller such as
+  `workledger-kit` sends only the `owner/repo` slug (as `linear_target`) and never holds team IDs;
+  this kit resolves the slug to a team here. A slug that is not a key in this map is an **unknown
+  repository and must be rejected**, never guessed or defaulted to `production_team_id` — the single
+  `production_team_id`/`test_team_id` pair stays as the installation's own default team for work that
+  names no repository. Each mapped team must also appear in `host_profile`'s `linear.read`/
+  `linear.write` `team_ids`, since the host profile's approved scope still bounds every call. Real
+  team IDs belong only in the local override, never in this shipped file.
 
 - `notion.databases` — an object with exactly two keys, `test` and `prod`, each itself a map from
   Notion record type (`idea`, `decision`, `proposed-goal`, `note`, `research`, `report`,
@@ -168,7 +198,7 @@ plugin and not created by this repository's own build. Merges over both files ab
 key (`host_profile`, `versioned_configuration`), the same override model `.claude/git-kit.local.json`
 already uses for `git-kit`'s own settings — **the merge is deep at the operation level within
 `host_profile.operations`, never a wholesale replacement of the `operations` object**: an override
-that sets only `notion.read` must not cause `notion.write`/`linear.read`/`linear.write` to
+that sets only `notion.read` must not cause `notion.write`/`linear.read`/`linear.write`/`linear.initiatives.read` to
 disappear from the merged result — each is merged independently, key by key, and any operation the
 override doesn't mention keeps the shipped file's own `unconfigured` default untouched. The same
 per-key merge applies to `versioned_configuration`'s nested objects (`notion.databases`, etc.).

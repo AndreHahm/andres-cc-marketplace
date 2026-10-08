@@ -11,7 +11,8 @@
   "linear": {
     "organization_id": null,
     "production_team_id": null,
-    "test_team_id": null
+    "test_team_id": null,
+    "repositories": {}
   },
   "github": {
     "repository_slug": null,

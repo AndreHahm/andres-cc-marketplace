@@ -32,12 +32,31 @@
       "files": [
         "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
       ]
+    },
+    {
+      "id": 5,
+      "name": "Initiative read denied while linear.initiatives.read is unconfigured",
+      "prompt": "List the Initiatives in our Linear organization and show the projects under the largest one. Setup facts: the plugin's shipped host-profile has linear.read verified, but linear.initiatives.read is unconfigured with connector null. The mcp-linear getInitiatives, getInitiativeById and getInitiativeProjects tools are present in this session. Simulate only: make no real Linear, Notion or GitHub tool call; describe the calls you would or would not make.",
+      "expected_output": "Makes no Initiative read call, names the unsanctioned linear.initiatives.read operation (not linear.read) as the reason, returns a structured handoff, and does not substitute another tool such as list_projects.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Initiative read allowed once linear.initiatives.read is verified",
+      "prompt": "List the Initiatives in our Linear organization and show the projects under the largest one. Setup facts: the host-profile has linear.read verified and linear.initiatives.read verified, with its connector naming the second Linear connector (mcp-linear), organization_id set to a placeholder. The mcp-linear getInitiatives, getInitiativeById and getInitiativeProjects tools are present. Simulate only: make no real Linear, Notion or GitHub tool call; describe the calls you would make.",
+      "expected_output": "Treats the Initiative reads as sanctioned, plans getInitiatives then getInitiativeProjects on the second connector as read-only calls needing no approval, and does not route them through the claude_ai_Linear connector.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
-    "uncovered": []
+    "uncovered": [],
+    "note_iteration_3": "Evals 5-6 (2026-10-08) cover the Initiative-read gating added by Wave 3a work package 2; they exercise behavior outside the three declared scenarios."
   },
   "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

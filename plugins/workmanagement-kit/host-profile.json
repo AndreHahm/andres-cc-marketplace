@@ -26,6 +26,12 @@
       "connector": null,
       "organization_id": null,
       "team_ids": []
+    },
+    "linear.initiatives.read": {
+      "support_status": "unconfigured",
+      "verified_at": null,
+      "connector": null,
+      "organization_id": null
     }
   }
 }
