@@ -28,14 +28,15 @@ quoting — avoids shell-escaping failures on backtick- or quote-heavy finding t
 
 ```
 gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies \
-  -f body="$(cat "<scratchpad-path>/reply.txt")" --silent
+  -F body=@"<scratchpad-path>/reply.txt" --silent
 ```
 
 **`-f`/`--raw-field` never interprets a leading `@`.** Only `-F`/`--field` reads `@<path>` as a file
 reference (`gh api --help`: `-F, --field key=value` — "use `@<path>` or `@-` to read value from file or
 stdin"; `-f, --raw-field key=value` carries no such behavior). `-f body=@<path>` silently posts the
-literal string `@<path>` as the comment body — no error, no file read. Use the `$(cat ...)` form above
-with `-f`, or switch to `-F body=@<path>` — never `-f body=@<path>`.
+literal string `@<path>` as the comment body — no error, no file read. Use `-F body=@<path>` as above,
+never `-f body=@<path>`. Don't substitute `-f body="$(cat <path>)"`: the worktree guard refuses command
+substitution in that position (reported on issue #312, 2026-10-07).
 
 ## Resolving a review thread
 

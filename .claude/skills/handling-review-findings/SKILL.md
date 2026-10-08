@@ -424,25 +424,27 @@ before each one.
 See `references/testing-scenarios.md`'s own `## Quality gates` section for the full checklist (more
 items than fit here).
 
-**Test suite:** `evals/handling-review-findings/evals.json` defines 22 scenarios and carries its own
-`testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (11 gates still
+**Test suite:** `evals/handling-review-findings/evals.json` defines 24 scenarios and carries its own
+`testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (10 gates still
 without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
 quality-gates checklist text those fields map against. Eval 21 (the `gh api -f`/`-F` mechanics warning in
 `references/github-api-mechanics.md`) isn't one of `testing-scenarios.md`'s round-budget/dedup scenarios
 and doesn't count against `testing_validation_coverage`'s declared totals — it's a standalone mechanical
 check, tracked separately in `workspace/iteration-4/`. Eval 22 (the step 8 extraction into
 `references/next-round-trigger.md`, tracked separately in `workspace/iteration-5/`) verifies the
-triggered-cycle-count gate is still computed correctly from the extracted procedure.
+triggered-cycle-count gate is still computed correctly from the extracted procedure. Evals 23 and 24
+(step 8b's one-survivor-below-`min_rounds` exception vs. the general omission rule, tracked separately in
+`workspace/iteration-7/`) verify the two rules reconcile.
 
 **Structural smoke test:** `scripts/smoke_test.py` — re-run after any `SKILL.md` edit; checks
 frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow step-header sequencing,
 `evals.json` presence, and the `gh api -f`/`-F` @-path warning callout in
 `references/github-api-mechanics.md`.
 
-**Last dated run record:** 2026-08-25 — 100% with_skill pass rate across all 22 evals (iteration 2's 17
+**Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals (iteration 2's 17
 scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
 with_skill-only; iteration 4's eval 21 at 100%, with_skill-only; iteration 5's eval 22 at 100%,
-with_skill-only). Full run history, the security-review
+with_skill-only; iteration 7's evals 23-24 at 100%, with_skill-only). Full run history, the security-review
 passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
@@ -481,4 +483,4 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
 | `references/development-history.md` | Build-time audit trail: eval run records, security-review passes, and dated fix narratives for issues found in live GitHub review (PR #101, #407) |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 22 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 24 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate |
