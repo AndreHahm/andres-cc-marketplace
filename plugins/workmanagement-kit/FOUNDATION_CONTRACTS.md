@@ -120,7 +120,8 @@ shippable default and edits to it would be lost on plugin update and visible to 
   organization must come from a structured organization or ID field of the tool response, never
   from an Initiative's name, description or other content; a missing organization, or one found only
   in free text, counts as a mismatch, and the result is discarded. The first Initiative read is
-  therefore a probe whose output is not used unless that check passes. The operation is additive within host-profile
+  therefore a probe whose output is not used unless that check passes, and the same check applies to
+  every later Initiative response in the session. The operation is additive within host-profile
   schema v1 (`version` stays 1): an older local override that never mentions it simply inherits the
   shipped `unconfigured` default through the per-operation merge below.
 

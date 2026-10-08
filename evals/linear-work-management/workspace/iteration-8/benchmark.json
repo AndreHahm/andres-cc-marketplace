@@ -1,0 +1,40 @@
+{
+  "skill_name": "linear-work-management",
+  "iteration": 8,
+  "timestamp": "2026-10-08T18:20:05+02:00",
+  "evals": [
+    {
+      "eval_id": 10,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 42000,
+        "avg_duration_ms": 60000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 22000,
+        "avg_duration_ms": 30000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 20000,
+        "duration_ms": 30000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 1.0,
+    "improvement": 0.0,
+    "avg_tokens_with_skill": 42000,
+    "avg_tokens_baseline": 22000,
+    "token_cost": 20000,
+    "avg_duration_ms_with_skill": 60000,
+    "avg_duration_ms_baseline": 30000,
+    "duration_cost_ms": 30000
+  }
+}

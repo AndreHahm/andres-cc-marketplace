@@ -324,6 +324,10 @@ def _load_plugin_json(name):
     # as a failure message instead of letting the exception escape.
     repo_root = _find_repo_root(SKILL_DIR)
     for candidate in _skill_dir_candidates(repo_root):
+        # From the .claude/ mirror, candidate.parent.parent is .claude/ itself, never the plugin
+        # root; reading a same-named file there would validate the wrong file.
+        if candidate.parent.parent.name == ".claude":
+            continue
         path = candidate.parent.parent / name
         if not path.is_file():
             continue
