@@ -1,7 +1,8 @@
 #!/bin/bash
 # PreToolUse guard: hard-blocks a raw `gh pr review`, `gh pr comment`, or the
-# two equivalent inline-review-thread `gh api` write actions (a reply to a
-# review comment, or the GraphQL `resolveReviewThread` mutation) when the
+# equivalent `gh api` actions (a reply to a review comment, the REST
+# `pulls/*/reviews` endpoint, or any GraphQL call such as the
+# `resolveReviewThread` mutation) when the
 # call wasn't immediately preceded by collaborating-on-a-pr's,
 # explain-pr-changes's, codex-review-recovery's,
 # handling-review-findings's, or triaging-dependabot-prs's marker handshake
