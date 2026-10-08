@@ -12,11 +12,15 @@ An empty `CLAUDE_PLUGIN_ROOT` makes a documented `"${CLAUDE_PLUGIN_ROOT}/scripts
 which fails with exit 127. You MUST substitute the mirror root, `.claude/`, under the repo or worktree root (the
 session's primary working directory):
 
+- `${CLAUDE_PLUGIN_ROOT}/<dir>/...` → `"$PWD/.claude/<dir>/..."` for a mirrored component dir: `skills`, `agents`,
+  `commands`, `hooks`, `rules`, `references` or `assets` (when the plugin has it).
 - `${CLAUDE_PLUGIN_ROOT}/scripts/<file>` → `"$PWD/.claude/scripts/<file>"`. Shared scripts are mirrored only for the
   plugins listed under `scripts_mirrors` in `.claude/marketplace-sync.json` (git-kit is one).
-- `${CLAUDE_PLUGIN_ROOT}/skills/<name>/...` → `"$PWD/.claude/skills/<name>/..."`
 
 `$PWD` is right only while the shell's cwd is that root; otherwise write the root out explicitly.
+
+Substitute the path only while executing a step of an already-dispatched skill or rule. Never run a marker-writing
+helper such as `git-write-marker.sh` on its own to satisfy a guard outside the skill that owns it.
 
 Confirm the mirrored file exists first. Stop and report in either of two cases: the file is missing, or the
 substituted command is still denied. Never fall back to a different command or endpoint.
