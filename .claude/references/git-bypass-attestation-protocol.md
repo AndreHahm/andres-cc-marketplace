@@ -88,7 +88,8 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
       timestamp) and stay safe via ordinary `--arg` — but only once substituted as literal text, not a
       variable reference.
    c. Write the comment body (marker wrapped in `<!-- marketplace-ci-bypass-attestation {...} -->`) to a
-      second scratchpad file. Then, as the last step before the comment and in its own `Bash` call, run
+      second scratchpad file. The marker must be the last thing in the body — CI ignores a comment with
+      any text after it — so write the marker alone and add no footer. Then, as the last step before the comment and in its own `Bash` call, run
       `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review <caller-skill-name>` —
       `git-guard-raw-pr-review.sh` hard-blocks every `gh pr comment` absent a fresh `gh-pr-review` marker,
       and the attestation comment has no exemption, so a caller that skips this has its comment denied after

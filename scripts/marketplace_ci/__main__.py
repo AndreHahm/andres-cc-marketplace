@@ -718,7 +718,7 @@ def _handle_check_bypass(args: argparse.Namespace) -> int:
 
 
 def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
-    from scripts.marketplace_ci.review import resolve_attested_actor
+    from scripts.marketplace_ci.review import attestation_candidates, resolve_attested_actor
 
     path = Path(args.comments_with_login)
     try:
@@ -736,7 +736,34 @@ def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
         )
         return 2
 
-    actor = resolve_attested_actor(comments, args.head_sha)
+    if args.list_candidates:
+        # Distinct attesting logins in first-seen order, one per line, so the
+        # caller can look up each one's live permission before resolving.
+        logins = list(dict.fromkeys(attestation_candidates(comments, args.head_sha)))
+        if not logins:
+            return 1
+        print("\n".join(logins))
+        return 0
+
+    permissions = None
+    if args.permissions is not None:
+        permissions_path = Path(args.permissions)
+        try:
+            permissions = json.loads(permissions_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            print(f"resolve-attested-actor: cannot read {permissions_path}: {exc}", file=sys.stderr)
+            return 2
+        if not isinstance(permissions, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in permissions.items()
+        ):
+            print(
+                f"resolve-attested-actor: {permissions_path} must contain a JSON object of "
+                "login -> permission strings",
+                file=sys.stderr,
+            )
+            return 2
+
+    actor = resolve_attested_actor(comments, args.head_sha, permissions)
     if actor is None:
         return 1
     print(actor)
@@ -1137,6 +1164,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     resolve_actor_parser.add_argument("--comments-with-login", required=True, metavar="PATH")
     resolve_actor_parser.add_argument("--head-sha", required=True, metavar="SHA")
+    resolve_mode = resolve_actor_parser.add_mutually_exclusive_group()
+    resolve_mode.add_argument(
+        "--list-candidates",
+        action="store_true",
+        help="print the distinct attesting logins (one per line) instead of resolving one",
+    )
+    resolve_mode.add_argument(
+        "--permissions",
+        metavar="PATH",
+        help="JSON object of login -> permission; only bypass-capable non-bot logins are eligible",
+    )
     resolve_actor_parser.set_defaults(handler=_handle_resolve_attested_actor)
 
     check_scope_bypass = subparsers.add_parser(
