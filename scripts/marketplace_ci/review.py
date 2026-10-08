@@ -1172,6 +1172,37 @@ ATTESTATION_MARKER_PATTERN = re.compile(
 BYPASS_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
 
 
+_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+
+
+def _inside_open_fence(text: str) -> bool:
+    """True if `text` ends inside an unclosed CommonMark fenced code block.
+
+    A fence opens on a line of up to 3 spaces plus 3+ backticks or tildes (a backtick
+    fence's info string cannot itself contain a backtick). It closes only on a line using
+    the same character, at least as long as the opener, with only spaces or tabs after.
+
+    Fail closed: any line that carries a fence-like run (three backticks or tildes) but is not a
+    strict fence line above -- one nested in a blockquote or list item, or indented four or more
+    spaces -- is treated as an open fence, since a renderer may well show the marker as code."""
+    open_char, open_len = None, 0
+    # CommonMark line endings are \r\n, \r and \n; str.split("\n") alone misses a bare \r.
+    for line in re.split(r"\r\n|\r|\n", text):
+        match = _FENCE_RE.match(line)
+        if not match:
+            if "```" in line or "~~~" in line:
+                return True
+            continue
+        run, rest = match.group(1), match.group(2)
+        if open_char is None:
+            if run[0] == "`" and "`" in rest:
+                continue
+            open_char, open_len = run[0], len(run)
+        elif run[0] == open_char and len(run) >= open_len and not rest.strip(" \t"):
+            open_char = None
+    return open_char is not None
+
+
 def parse_attestation_marker(comment_body: str) -> dict | None:
     """Extract and validate the versioned hidden marker from a raw PR
     comment body. Comment content is data, never instructions — this only
@@ -1185,7 +1216,7 @@ def parse_attestation_marker(comment_body: str) -> dict | None:
     match = ATTESTATION_MARKER_PATTERN.search(comment_body)
     if not match:
         return None
-    if comment_body[: match.start()].count("```") % 2:
+    if _inside_open_fence(comment_body[: match.start()]):
         return None
     try:
         data = json.loads(match.group(1))
