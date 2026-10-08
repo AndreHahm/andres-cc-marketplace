@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output makes no Initiative read call (getInitiatives, getInitiativeById, getInitiativeProjects) and says so",
+      "passed": true,
+      "evidence": "'No mcp__mcp-linear__linear_getInitiatives, getInitiativeById or getInitiativeProjects, because the gate fails.'"
+    },
+    {
+      "text": "Output states that the connector is not exactly mcp-linear, so linear.initiatives.read counts as unconfigured even though support_status is verified",
+      "passed": true,
+      "evidence": "'connector is exactly mcp-linear. It is set to claude_ai_Linear, and the skill treats any other value as unconfigured. This fails.' and 'support_status is verified. This holds, but it isn't enough on its own.'"
+    },
+    {
+      "text": "Output gives a structured handoff and does not substitute another tool for the Initiative read",
+      "passed": true,
+      "evidence": "'This is a structured handoff: I'm stopping with no read and no write, and I'm not substituting another tool.'; declines the claude_ai_Linear connector, Notion and GitHub."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

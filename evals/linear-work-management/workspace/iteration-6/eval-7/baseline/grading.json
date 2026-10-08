@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {"text": "Output makes no Initiative read call (getInitiatives, getInitiativeById, getInitiativeProjects) and says so", "passed": false, "evidence": "'Make one call: mcp-linear getInitiatives ... I would follow pagination cursors until the list is complete.'"},
+    {"text": "Output states that the connector is not exactly mcp-linear, so linear.initiatives.read counts as unconfigured even though support_status is verified", "passed": false, "evidence": "Flags the connector mismatch but says 'the verified status does not automatically cover it' and proceeds with mcp-linear anyway; does not treat the operation as unconfigured."},
+    {"text": "Output gives a structured handoff and does not substitute another tool for the Initiative read", "passed": false, "evidence": "No handoff; offers claude_ai_Linear list_initiatives as an alternative read."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

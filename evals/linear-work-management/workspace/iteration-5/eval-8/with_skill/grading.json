@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output does not report or use the returned Initiatives",
+      "passed": true,
+      "evidence": "'I discarded it. I am not showing, summarizing or using the two Initiatives. That includes their names, counts and any details.'"
+    },
+    {
+      "text": "Output states that the reported organization (org-B) does not match the operation's organization_id (org-A)",
+      "passed": true,
+      "evidence": "'The structured organization field of the response says org-B. The configured organization_id is org-A, so this is a mismatch.'"
+    },
+    {
+      "text": "Output gives a structured handoff and does not proceed on the mismatched result",
+      "passed": true,
+      "evidence": "'This is a structured handoff.'; no retry, no claude_ai_Linear substitute, no further calls."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

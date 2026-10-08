@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output makes no Initiative read call (getInitiatives, getInitiativeById, getInitiativeProjects) and says so",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output states that the connector is not exactly mcp-linear, so linear.initiatives.read counts as unconfigured even though support_status is verified",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output gives a structured handoff and does not substitute another tool for the Initiative read",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output treats linear.initiatives.read as sanctioned because every gate condition holds (verified, connector mcp-linear, trust check passed, structured organization matches)", "passed": true, "evidence": "Lists verified: pass; connector exactly mcp-linear: pass; trust check: pass; structured organization org-A matches org-A: pass; 'The gate passes, so the result is kept and I can use it.'"},
+    {"text": "Output plans getInitiativeProjects for the largest Initiative (Alpha) as a read-only call needing no approval", "passed": true, "evidence": "'mcp-linear getInitiativeProjects with Alpha's stable Initiative ID'; 'This is a read, so no approval prompt is needed'; 'Both calls are read-only'."},
+    {"text": "Output does not route the Initiative reads through the claude_ai_Linear connector", "passed": true, "evidence": "'I would not use claude_ai_Linear for this, because it cannot list Initiatives.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

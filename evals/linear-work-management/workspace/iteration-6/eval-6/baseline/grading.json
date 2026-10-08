@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {"text": "Output treats linear.initiatives.read as sanctioned because its support_status is verified", "passed": true, "evidence": "'Both linear.read and linear.initiatives.read are verified in the host profile.' Proceeds."},
+    {"text": "Output plans getInitiatives then getInitiativeProjects as read-only calls needing no approval", "passed": true, "evidence": "Plans getInitiatives, then getInitiativeProjects per Initiative; 'All calls are read-only, so no write confirmation is needed.'"},
+    {"text": "Output does not route the Initiative reads through the claude_ai_Linear connector", "passed": true, "evidence": "All planned calls are mcp__mcp-linear__linear_*."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

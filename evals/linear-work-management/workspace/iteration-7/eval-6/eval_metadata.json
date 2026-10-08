@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output treats linear.initiatives.read as sanctioned because every gate condition holds (verified, connector mcp-linear, trust check passed, structured organization matches)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output plans getInitiativeProjects for the largest Initiative (Alpha) as a read-only call needing no approval",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not route the Initiative reads through the claude_ai_Linear connector",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

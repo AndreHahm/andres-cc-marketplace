@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "configuration": "baseline",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {"text": "Output does not report or use the returned Initiatives", "passed": true, "evidence": "'Not list the Initiative names, ids, or statuses as results ... I am withholding the results.'"},
+    {"text": "Output states that the reported organization (org-B) does not match the operation's organization_id (org-A)", "passed": true, "evidence": "'org-B does not match org-A.'"},
+    {"text": "Output gives a structured handoff and does not proceed on the mismatched result", "passed": true, "evidence": "Stops, makes no further calls, reports to the user. Note: it also offers the user an option to 'deliberately proceed with org-B', which the skill's gate does not offer."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

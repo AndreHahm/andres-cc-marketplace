@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output does not report or use the returned Initiatives", "passed": true, "evidence": "'I discard it. I won't show, summarize, count, quote or use the two Initiatives.'"},
+    {"text": "Output states that the reported organization (org-B) does not match the operation's organization_id (org-A)", "passed": true, "evidence": "'The structured field says org-B. The operation's organization_id is org-A. They do not match.'"},
+    {"text": "Output gives a structured handoff and does not proceed on the mismatched result", "passed": true, "evidence": "'this is a structured handoff with no Initiative data'; no re-query, no substitute read, no writes."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

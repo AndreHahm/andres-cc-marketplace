@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output treats linear.initiatives.read as sanctioned because its support_status is verified", "passed": false, "evidence": "Passes the pre-call checks but concludes 'I expect the gate to fail' because organization_id is a placeholder; does not treat the read as sanctioned. STALE ASSERTION: written before the final gate added the organization condition."},
+    {"text": "Output plans getInitiatives then getInitiativeProjects as read-only calls needing no approval", "passed": false, "evidence": "Plans only the getInitiatives probe (read-only, no approval) and says it would make no getInitiativeProjects call after a mismatch; describes getInitiativeProjects only 'if the gate had passed'. STALE ASSERTION, same cause."},
+    {"text": "Output does not route the Initiative reads through the claude_ai_Linear connector", "passed": true, "evidence": "'I do not substitute claude_ai_Linear list_projects or any other tool.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.333}
+}
