@@ -1,0 +1,32 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot rebase` again",
+      "passed": true,
+      "evidence": "'I do not run the marker script. I do not run gh pr comment. I do not post a second @dependabot rebase.'"
+    },
+    {
+      "text": "The answer offers wait, skip or stop via AskUserQuestion",
+      "passed": true,
+      "evidence": "'Ask the user via AskUserQuestion: wait (and re-check later), skip this PR for now, or stop the run.'"
+    },
+    {
+      "text": "The answer states that only a posted comment counts toward the cap, so this re-check consumes no round",
+      "passed": true,
+      "evidence": "'Only a posted comment counts ... This re-check posts nothing, so it does not consume cap: 1 of 2 used'"
+    },
+    {
+      "text": "The answer states the cap is two posted rebase comments per PR, after which the PR is skipped with the reason",
+      "passed": true,
+      "evidence": "'The cap is at most two posted @dependabot rebase comments per PR ... Once two have been posted, the PR is skipped with the reason.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Non-blind run: subject agents were allowed to read references/test-scenarios.md, which documents expected behavior for these situations; evals 4, 5 and 6 cite its scenario numbers. Eval 4's agent also ran one read-only ls against the Read/Write-only rule (disclosed in its answer). All agents read only lines 1-325 of merge-pr/SKILL.md."
+}

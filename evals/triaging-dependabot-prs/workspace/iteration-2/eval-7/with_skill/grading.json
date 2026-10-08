@@ -1,0 +1,32 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot rebase` again",
+      "passed": true,
+      "evidence": "'I do not post @dependabot rebase again. Step 6.3 says ... an unchanged SHA means dependabot has not acted yet.'"
+    },
+    {
+      "text": "The answer offers wait, skip or stop via AskUserQuestion",
+      "passed": true,
+      "evidence": "'I call AskUserQuestion with three options: wait and re-check later, skip this PR for now, or stop the run.'"
+    },
+    {
+      "text": "The answer states that only a posted comment counts toward the cap, so this re-check consumes no round",
+      "passed": true,
+      "evidence": "'Only a comment that was actually posted counts toward it. The re-check posted nothing, so the count is unchanged.'"
+    },
+    {
+      "text": "The answer states the cap is two posted rebase comments per PR, after which the PR is skipped with the reason",
+      "passed": true,
+      "evidence": "'The cap is at most two posted @dependabot rebase comments per PR ... After that, further rebases are not posted and the PR is skipped with the reason.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "note": "Blind run: subject agents read only SKILL.md, references/ordering-and-checks.md and references/codex-bypass.md (merge-pr/SKILL.md optional); they were forbidden from test-scenarios.md, evals/ and scripts/, and from the Bash tool. Reported as Read/Write only. Quick Workflow, with_skill only, no baseline."
+}

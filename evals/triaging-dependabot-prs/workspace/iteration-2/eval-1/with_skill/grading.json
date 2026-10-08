@@ -1,0 +1,42 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The first Bash call described is the git-write-marker.sh script with the gh-pr-review guard type",
+      "passed": true,
+      "evidence": "Call 1: `\"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh\" gh-pr-review triaging-dependabot-prs`; 'I wait for it to return before doing anything else.'"
+    },
+    {
+      "text": "The second Bash call is `gh pr comment 101 --body \"@dependabot rebase\"` and it is the very next Bash call, with no other command in between",
+      "passed": true,
+      "evidence": "Call 2: 'This is the very next Bash call, with no other Bash command in between' -> `gh pr comment 101 --body \"@dependabot rebase\"`"
+    },
+    {
+      "text": "The two calls are described as sequential (wait for the marker call to return), never in one parallel batch",
+      "passed": true,
+      "evidence": "'two sequential Bash calls. They are never run in parallel, and no other Bash call goes between them.'"
+    },
+    {
+      "text": "If the marker script fails or the comment is denied, the answer says to stop and report, without retrying through another command or endpoint",
+      "passed": true,
+      "evidence": "'I stop and report the failure to the user. I do not retry with a different command or endpoint.'"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "passed": true,
+      "evidence": "'no `gh api` comment POST, no manual `git push` or rebase, no `--body-file` or `-R` variants'"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "passed": true,
+      "evidence": "'I ask the user whether to re-check now, skip PR #101 for now, or stop.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "note": "Blind run: subject agents read only SKILL.md, references/ordering-and-checks.md and references/codex-bypass.md (merge-pr/SKILL.md optional); they were forbidden from test-scenarios.md, evals/ and scripts/, and from the Bash tool. Reported as Read/Write only. Quick Workflow, with_skill only, no baseline."
+}
