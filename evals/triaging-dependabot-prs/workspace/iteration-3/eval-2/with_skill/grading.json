@@ -28,14 +28,14 @@
       "evidence": "'Immediately before invoking, re-read headRefOid... If it differs, the approval is void'"
     },
     {
-      "text": "Skill(merge-pr) is invoked with the PR number and --bypass-codex-review plus the reason",
+      "text": "Skill(merge-pr) is invoked with the PR number, --bypass-codex-review plus the reason, and --expected-head-sha set to the SHA the user approved",
       "passed": true,
-      "evidence": "'Invoke Skill(merge-pr) with PR number 102, --bypass-codex-review \"<reason>\" and --expected-head-sha ...'"
+      "evidence": "'Invoke Skill(merge-pr) with PR number 102, --bypass-codex-review \"<the validated reason above>\" and --expected-head-sha 0123456789abcdef0123456789abcdef01234567'"
     },
     {
-      "text": "The answer performs the SHA comparison checkpoint at merge-pr's step 4(b) using the SHA resolved before the marker write, and adds no Bash call of its own between merge-pr's marker write and its comment",
+      "text": "The skill relies on merge-pr's own step 4(b) to compare the SHA it resolves with --expected-head-sha (and with the head step 2 classified), and adds no Bash call of its own between merge-pr's marker write and its comment",
       "passed": true,
-      "evidence": "merge-pr step 4(b) compares the SHA to --expected-head-sha and step 2's; 'runs no Bash call between merge-pr's marker write and its comment'"
+      "evidence": "'At its step 4(b) it resolves the head SHA itself and compares it to --expected-head-sha and to the head it classified at its step 2'; 'This skill runs no Bash call between merge-pr's marker write and its comment'"
     },
     {
       "text": "The skill asks no separate merge question of its own and does not post the attestation comment itself",
@@ -47,5 +47,6 @@
     "assertions_total": 8,
     "assertions_passed": 8,
     "pass_rate": 1.0
-  }
+  },
+  "regraded": "assertions 6-7 rewritten and re-graded from the existing answer after the run (completeness-reviewer M2)"
 }

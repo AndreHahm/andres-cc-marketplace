@@ -68,7 +68,7 @@ Coverage of the skill's own scenario list (`references/test-scenarios.md`, 42 en
 these evals (`testing_validation_coverage` in `evals.json`). The collection and planning scenarios, CI-state
 handling, the close path, wrap-up, and most bypass-denial conditions are not covered by an eval.
 
-Limits of this evidence: Quick Workflow has no baseline, so it shows the text can be followed, not that it
+Limits of this evidence (superseded in part by section 7, which adds a blind baseline): Quick Workflow has no baseline, so it shows the text can be followed, not that it
 beats an agent without it; all 37 passed in both rounds, so it does not discriminate between weaker and
 stronger versions of the skill; and the evals read the skill as a procedure, they do not run it.
 
@@ -107,3 +107,31 @@ scripts are run through `python3`).
   prompt.
 - A `skill-tester` eval of the changes to `merge-pr`, `create-pr` and `commit`; they are covered by their
   smoke tests, updated written scenarios and the shared-protocol check only.
+
+## 7. Later rounds on this branch (downstream QA, same date)
+
+Sections 1-6 above record the build-time test. These later rounds ran after the guard hooks, `merge-pr` and
+the CI bypass code changed (`plugin-lifecycle-downstream`, run `qa-20261008-triaging-dependabot-prs`).
+
+- **`skill-tester` Full Pipeline, iteration 3** (`workspace/iteration-3/`): the same 7 evals, one with-skill
+  and one blind baseline agent each (the baseline prompt does not name the skill and forbids reading plugin
+  files). With skill 37/37; baseline 15/37 (mean per-eval pass rate 100% against 44.8%, +55.2 points). No
+  baseline answer quoted the skill. Eval 2's expected output had been rewritten for the `--expected-head-sha`
+  contract after iterations 1-2, so iteration 3 is the first round that re-ran it; its assertions 6-7 were
+  rewritten for that contract after the run and re-graded from the existing answers (scores unchanged: 8/8
+  with skill, 0/8 baseline). The baseline separates from the skill on the marker-then-comment sequence,
+  the bypass offer and hand-off, the rebase cap and out-of-bound comment requests; evals 3 and 5 are
+  largely passed by general judgment alone. The evals still read the skill as a procedure; they do not run it.
+- **Smoke tests** (`smoke-tester`): `triaging-dependabot-prs` 11 checks, `merge-pr` 37 checks, `create-pr`
+  and `commit` pass; 4/4 skills, no failures. (`merge-pr` was 35 checks at section 3's time.)
+- **Final verification reviewers**: `plugin-validator` Pass; `security-reviewer` Pass (no Critical or Major;
+  five minors, three fixed); `plugin-rulebook-checker` one R6 FAIL (an unused `Bash(gh repo view:*)` grant in
+  `merge-pr`, present in the baseline commit; removed); Codex-routed `activation-`, `authority-` and
+  `consistency-reviewer` Pass. Two Codex findings were verified false and not acted on: five "critical"
+  oversized-marker-timestamp claims (all five guards deny a 25-digit timestamp, run live) and a request to
+  add `AskUserQuestion` to `allowed-tools` (the rulebook treats it as a no-op).
+- **Resolved since section 5**: the R36 advisory is closed (`dependency-updater` and `merge-pr` now name this
+  skill back). `merge-pr` is 456 lines (soft warning tier), up from the 429 recorded above.
+- **Still not run**: everything in section 6 (bypass flow and posting run live, grant matching), plus a
+  `skill-tester` eval of the `merge-pr`/`create-pr`/`commit` changes. `merge-pr`'s evals 10 and 14 still
+  owe a re-grade from 2026-08-31 (pre-existing, deferred).

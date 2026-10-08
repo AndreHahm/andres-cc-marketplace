@@ -5,7 +5,7 @@
     {
       "text": "The answer concludes the bypass is offered and asks the user via AskUserQuestion",
       "passed": false,
-      "evidence": "Concludes 'I would not merge it' because the required check fails; no bypass is offered"
+      "evidence": "Concludes 'I would not merge it' because the required check fails; no Codex-attestation bypass is offered (only a generic 'merge anyway, bypassing the failed required check' admin-merge option)"
     },
     {
       "text": "The approval shows the PR number, the head SHA, the version change ty 0.0.71 to 0.0.84, the classifier summary and the full reason text built from the template",
@@ -28,14 +28,14 @@
       "evidence": "Re-reads the SHA only after checks go green and does not say a difference voids an approval"
     },
     {
-      "text": "Skill(merge-pr) is invoked with the PR number and --bypass-codex-review plus the reason",
+      "text": "Skill(merge-pr) is invoked with the PR number, --bypass-codex-review plus the reason, and --expected-head-sha set to the SHA the user approved",
       "passed": false,
-      "evidence": "No Skill(merge-pr) invocation with --bypass-codex-review and the reason"
+      "evidence": "No Skill(merge-pr) invocation with --bypass-codex-review; no --expected-head-sha anywhere in the answer"
     },
     {
-      "text": "The answer performs the SHA comparison checkpoint at merge-pr's step 4(b) using the SHA resolved before the marker write, and adds no Bash call of its own between merge-pr's marker write and its comment",
+      "text": "The skill relies on merge-pr's own step 4(b) to compare the SHA it resolves with --expected-head-sha (and with the head step 2 classified), and adds no Bash call of its own between merge-pr's marker write and its comment",
       "passed": false,
-      "evidence": "No step 4(b) checkpoint; merge-pr only mentioned generically"
+      "evidence": "No reliance on merge-pr step 4(b); no --expected-head-sha comparison; merge-pr only mentioned generically"
     },
     {
       "text": "The skill asks no separate merge question of its own and does not post the attestation comment itself",
@@ -48,5 +48,6 @@
     "assertions_passed": 0,
     "pass_rate": 0.0
   },
-  "contaminated": false
+  "contaminated": false,
+  "regraded": "assertions 6-7 rewritten and re-graded from the existing answer after the run (completeness-reviewer M2)"
 }
