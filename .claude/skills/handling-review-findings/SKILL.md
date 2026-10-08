@@ -456,18 +456,11 @@ criterion: the returned Workflow text is corrupted (if at all) only at the singl
 every other step's text reads normally, so the mismatch is immediately visible as a validation failure
 rather than an unreadable wall of text.
 
-**Fixed 2026-09-26 (PR #407, CodeRabbit round 1):** Workflow step 1's checkout-identity check compared
-against the PR's `headRepositoryOwner`/`headRepository` instead of its base repository, incorrectly
-rejecting the legitimate, common case of reviewing a fork PR checked out from the base repository's own
-clone. Now parses `<owner>/<repo>` from the PR's own `url` field instead (always the base repository,
-regardless of fork status) — full narrative in `references/development-history.md`'s "PR #407" entry.
-**Round 2 (same PR, CodeRabbit follow-up):** round 1 didn't yet validate the Fix path's own push
-destination for a fork PR — step 4 now checks `origin` against the fork's identity before invoking
-`Skill(commit) --push`, stopping rather than silently pushing to the wrong repository. **Round 3 (same
-PR, CodeRabbit's own next pass):** round 2's check only queried `origin`'s fetch URL — a
-`remote.origin.pushurl` override or an additional push URL bypasses it entirely; now queries every
-actual push URL (`--push --all`) and requires each one to match the PR's head repository, uniformly
-for both same-repo and fork PRs; same reference entry.
+**Fixed 2026-09-26 (PR #407, CodeRabbit rounds 1-3):** Workflow step 1's checkout-identity check now
+compares against the PR's base repository (parsed from its `url`) instead of `headRepositoryOwner`/
+`headRepository`, and step 4 checks every actual push URL (`--push --all`) against the PR's head
+repository before `Skill(commit) --push` — full narrative of all three rounds in
+`references/development-history.md`'s "PR #407" entry.
 
 **Fixed 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception severity
 definition had no fallback for a finding with no reviewer-stated severity label — full narrative in
