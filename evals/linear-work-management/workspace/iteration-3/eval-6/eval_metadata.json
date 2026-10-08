@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output treats linear.initiatives.read as sanctioned because its support_status is verified",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output plans getInitiatives then getInitiativeProjects as read-only calls needing no approval",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not route the Initiative reads through the claude_ai_Linear connector",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
