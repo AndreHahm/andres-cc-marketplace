@@ -181,7 +181,18 @@ jobs:
           # result -- a failed gh pr list (auth/rate-limit/API error) would
           # otherwise be indistinguishable from "no PRs found" (same guard
           # as pr-size-labeler-batch-run.yml).
-          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number); then
+          # Retried a few times: GitHub's GraphQL API intermittently answers
+          # a listing with a 502 that succeeds on an immediate re-run.
+          FETCHED=false
+          for ATTEMPT in 1 2 3; do
+            if PR_LIST=$(gh pr list --state "$STATE" --limit "$FETCH_LIMIT" --json number); then
+              FETCHED=true
+              break
+            fi
+            echo "::warning::gh pr list failed (attempt $ATTEMPT of 3)."
+            [ "$ATTEMPT" -lt 3 ] && sleep $((ATTEMPT * 10))
+          done
+          if [ "$FETCHED" != "true" ]; then
             echo "::error::gh pr list failed -- could not fetch the PR list."
             exit 1
           fi
