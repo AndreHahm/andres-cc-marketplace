@@ -280,7 +280,8 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
    automatically; create it once via `gh label create "s: codex review bypassed"`).
 3. Applying the label re-triggers the workflow (`labeled` is in the `pull_request` trigger types);
    `publish` re-checks the attestation via `scripts/marketplace_ci/review.py`'s `check_bypass` — exact
-   actor + exact head SHA match, plus a live permission check — and reports `Publish Codex policy result`
+   actor + exact head SHA match, plus a live permission check, counting only comments whose **real GitHub
+   author** is the labeler, so a marker forged by anyone else never counts — and reports `Publish Codex policy result`
    as passing, explicitly annotated as bypassed, never as a clean review. Applying a label that's
    **already present** on the PR is a GitHub Actions no-op and does not fire a fresh `labeled` event — a
    re-attestation after a superseded bypass attempt must remove the label first (`gh pr edit --remove-label

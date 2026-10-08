@@ -1130,8 +1130,12 @@ jobs:
                 # with $comments as an array of per-page arrays, so
                 # $comments[0] below would silently drop every page after the
                 # first. Merge pages the same way before writing this file.
+                # Only the resolved actor's own comments count, same as the
+                # label path below (a forged marker from another author must
+                # never supply the attestation metadata).
                 gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-                  | jq -s '[.[] | .[].body]' > "$SCRATCH/comment-bodies.json"
+                  | jq -s --arg actor "$ACTOR" '[.[] | .[] | select((.user.login // "") == $actor) | .body]' \
+                  > "$SCRATCH/comment-bodies.json"
                 jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
                   --slurpfile comments "$SCRATCH/comment-bodies.json" \
                   '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
@@ -1185,9 +1189,15 @@ jobs:
           fi
           PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
           # Same $comments[0]-truncation gap as the variable path above --
-          # merge pages before writing this file.
+          # merge pages before writing this file. Keep only comments whose
+          # REAL author (.user.login) is the labeler: check-bypass matches
+          # the marker's self-declared "actor" against $ACTOR, so without
+          # this filter anyone able to comment could forge a marker naming a
+          # privileged labeler for a later head SHA while the label from an
+          # earlier attestation still persists (security-reviewer finding).
           gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            | jq -s '[.[] | .[].body]' > "$SCRATCH/comment-bodies.json"
+            | jq -s --arg actor "$ACTOR" '[.[] | .[] | select((.user.login // "") == $actor) | .body]' \
+            > "$SCRATCH/comment-bodies.json"
           jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
             --slurpfile comments "$SCRATCH/comment-bodies.json" \
             '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
