@@ -59,7 +59,7 @@ back to the REST `comment_id` the reply endpoint above requires, and pagination 
 review threads than that, so loop on `hasNextPage` rather than treating one page as the complete set:
 
 ```
-gh api graphql -F owner="{owner}" -F name="{repo}" -F number={pull_number} -f cursor=null -f query='
+gh api graphql -F owner="{owner}" -F name="{repo}" -F number={pull_number} -F cursor=null -f query='
 query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
@@ -81,9 +81,14 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
 '
 ```
 
-Pass `$cursor` as a GraphQL variable (`null` on the first call, then each response's `pageInfo.endCursor`
-on the next — set via `-f cursor="<endCursor>"`, not `-f cursor=null`, once a next page exists), and keep
-querying while `pageInfo.hasNextPage` is `true` before treating the accumulated thread list as complete.
+Pass `$cursor` as a GraphQL variable: `-F cursor=null` on the first call, then each response's
+`pageInfo.endCursor` on the next via `-f cursor="<endCursor>"`, replacing `-F cursor=null` once a next page
+exists. The first call must use `-F`/`--field`, never `-f`/`--raw-field`: `-f` always sends a string, so
+`-f cursor=null` sends the literal four-character string `"null"` rather than a GraphQL `null`. GitHub
+accepts it as a bogus `after` cursor and silently returns a truncated page with `hasNextPage: false` —
+zero threads, or the first one or more skipped — instead of an error (issue #312). `-F` converts the
+bare literal `null` to a real JSON null. Keep querying while `pageInfo.hasNextPage` is `true` before
+treating the accumulated thread list as complete.
 `-F owner=`/`-F name=`/`-F number=` are typed GraphQL variables (`gh api`'s `-F` flag), distinct from
 `-f query=`'s plain string; get `{owner}`/`{repo}` the same way the REST endpoints above do.
 
