@@ -133,7 +133,8 @@ override's claims.
 one probe call. Any failure makes the read a structured handoff, even when the tools are present.
 
 - Before any call: the operation's `support_status` is `verified` (`unconfigured` and `revoked` both
-  count as unsanctioned); its `connector` is exactly `mcp-linear` (any other value counts as
+  count as unsanctioned) and its `verified_at` is a non-null timestamp (null means never verified, so
+  `verified` with a null `verified_at` is unsanctioned too); its `connector` is exactly `mcp-linear` (any other value counts as
   `unconfigured`); and the local override passed the trust check above. The connector check is a name
   match only, so it does not prove who runs that server. That is an accepted residual risk, bounded by
   the read-only grants; a server registered under that name could also forge the structured
@@ -264,8 +265,8 @@ updated risks a duplicate or conflicting change.
 - [ ] No priority/owner/scope derived from Notion content without explicit approval for that
       specific change.
 - [ ] Target resolution never infers from a display name when more than one match exists.
-- [ ] An Initiative read never proceeds unless `linear.initiatives.read` is `verified`, its
-      `connector` is exactly `mcp-linear`, the local override passed the trust check, and the
+- [ ] An Initiative read never proceeds unless `linear.initiatives.read` is `verified` with a
+      non-null `verified_at`, its `connector` is exactly `mcp-linear`, the local override passed the trust check, and the
       organization in a structured response field matches; otherwise the result is discarded and it
       is a structured handoff.
 - [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing, and the shipped host-profile/versioned-configuration defaults).

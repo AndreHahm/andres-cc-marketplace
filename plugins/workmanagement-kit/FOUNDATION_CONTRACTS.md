@@ -112,7 +112,9 @@ shippable default and edits to it would be lost on plugin update and visible to 
   `getInitiativeProjects`), which the main Linear connector cannot serve. It exists as its own
   operation so it can name a second connector (`connector` differs from `linear.read`'s) without
   changing the one-connector-per-operation rule. It carries `organization_id` only, no `team_ids`,
-  because Initiatives are organization-level. Sanctioning `linear.read` never sanctions it. Its
+  because Initiatives are organization-level. Sanctioning `linear.read` never sanctions it. Like every
+  operation it needs `support_status` `verified` with a non-null `verified_at`; `verified` with a null
+  `verified_at` counts as never verified. Its
   `connector` must be exactly `mcp-linear` (the server name in the granted tool prefix); any other
   value counts as `unconfigured`; that check is a name match only and does not prove who runs the
   server, an accepted residual risk bounded by the read-only grants (a server registered under that

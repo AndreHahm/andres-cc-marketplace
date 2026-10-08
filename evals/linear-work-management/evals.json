@@ -86,6 +86,15 @@
       "files": [
         "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
       ]
+    },
+    {
+      "id": 11,
+      "name": "Initiative read denied when linear.initiatives.read is verified but verified_at is null",
+      "prompt": "List the Initiatives in our Linear organization. Setup facts: the host-profile has linear.read verified. linear.initiatives.read has support_status verified, connector mcp-linear and organization_id org-A, but verified_at is null; the local override passed the tracked-vs-untracked trust check. The mcp-linear getInitiatives, getInitiativeById and getInitiativeProjects tools are present in this session. Simulate only: make no real Linear, Notion or GitHub tool call; describe the calls you would or would not make.",
+      "expected_output": "Makes no Initiative read call, not even a probe, explains that a null verified_at means the operation was never verified so it is unsanctioned despite support_status verified, and returns a structured handoff without substituting another tool.",
+      "files": [
+        "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -96,6 +105,7 @@
     "note_iteration_4": "Evals 7-8 (2026-10-08) cover the two gate conditions added after the Phase 5 audit (connector must be exactly mcp-linear; reported organization must match organization_id); also outside the three declared scenarios. Superseded by iteration-5, which re-ran 7-8 against the final SKILL.md text and added eval 9.",
     "note_iteration_6": "Scoped Deep Test (baseline comparison) of evals 5-9, 2026-10-08: with_skill 14/16 (86.7% mean), baseline 7/16 (45.0%). Eval 6 scored 1/3 with_skill because its original setup (placeholder organization_id, no probe result) predates the final gate's organization condition; it was fixed in iteration-7 (re-run: with_skill 3/3, baseline 3/3), and the iteration-6 eval-6 record is superseded, not rewritten. Combined result with the iteration-7 eval 6: with_skill 16/16, baseline 7/16.",
     "note_iteration_8": "Eval 10 (2026-10-08) covers the rule added after the pre-PR cross-model review: the organization check applies to every later Initiative response, not only the probe. with_skill 3/3 and baseline 3/3 (a tie: a careful baseline also withholds an explicit mismatch); simulated, single run.",
+    "note_iteration_9": "Eval 11 (2026-10-08) covers the Codex review finding on PR 500: a null verified_at must make linear.initiatives.read unsanctioned. with_skill 3/3; baseline (SKILL.md at 47716a6f, before the fix) 0/3, since it made the probe call. Simulated, single run, graded by the orchestrator.",
     "note_iteration_5": "Evals 7-9 (2026-10-08, final SKILL.md): connector must be exactly mcp-linear; a mismatched organization in a structured field discards the result; an organization found only in free text counts as absent. declared_scenarios_total stays 3 because it counts the original three scenarios; SKILL.md now declares a fourth positive trigger (list our Initiatives), exercised by evals 5-9."
   },
   "methodology_note_eval_4": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."

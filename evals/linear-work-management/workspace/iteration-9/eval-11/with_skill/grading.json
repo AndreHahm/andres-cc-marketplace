@@ -1,0 +1,10 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output makes no Initiative read call, not even a probe call", "passed": true, "evidence": "'no Linear call at all'; 'no probe is made. No getInitiatives, getInitiativeById or getInitiativeProjects'."},
+    {"text": "Output explains that a null verified_at means the operation was never verified, so it is unsanctioned despite support_status verified", "passed": true, "evidence": "'Null means never verified, so \"verified with a null verified_at is unsanctioned too\"'."},
+    {"text": "Output gives a structured handoff and substitutes no other tool such as list_projects", "passed": true, "evidence": "'Structured handoff: Initiatives were requested; the read is blocked...'; 'listing Projects would be a substitute'."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
