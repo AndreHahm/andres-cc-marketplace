@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output does not report or use the returned Initiatives",
+      "passed": true,
+      "evidence": "'I would not display, summarize or name the two Initiatives. They come from an organization the host profile hasn't sanctioned, so I treat them as out-of-scope data.'"
+    },
+    {
+      "text": "Output states that the reported organization (org-B) does not match the operation's organization_id (org-A)",
+      "passed": true,
+      "evidence": "'Fail. org-B does not equal org-A.' and the user-facing handoff names org-B vs org-A."
+    },
+    {
+      "text": "Output gives a structured handoff and does not proceed on the mismatched result",
+      "passed": true,
+      "evidence": "'Outcome: structured handoff.'; no retry, no claude_ai_Linear substitute, no getInitiativeById/getInitiativeProjects follow-up."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

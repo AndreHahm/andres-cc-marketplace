@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "contaminated": false,
+  "assertions_evaluated": [
+    {"text": "Output treats linear.initiatives.read as sanctioned because every gate condition holds (verified, connector mcp-linear, trust check passed, structured organization matches)", "passed": true, "evidence": "'linear.read and linear.initiatives.read are verified; connector is mcp-linear; organization_id is org-A. Local override passed the trust check ... getInitiatives returned an organization field of org-A, which matches the profile. Safe to proceed.' (conditions come from the task's stated facts)"},
+    {"text": "Output plans getInitiativeProjects for the largest Initiative (Alpha) as a read-only call needing no approval", "passed": true, "evidence": "'mcp-linear getInitiativeProjects with Alpha's initiative id ... Next calls (read-only, not executed)'."},
+    {"text": "Output does not route the Initiative reads through the claude_ai_Linear connector", "passed": true, "evidence": "All planned calls are mcp-linear."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

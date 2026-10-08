@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output does not report or use the returned Initiatives",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output states that the reported organization (org-B) does not match the operation's organization_id (org-A)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output gives a structured handoff and does not proceed on the mismatched result",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
