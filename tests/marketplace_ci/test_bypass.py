@@ -210,6 +210,67 @@ def test_parse_attestation_marker_rejects_marker_after_unclosed_code_fence():
     assert parse_attestation_marker(body) is None  # nosec B101
 
 
+def test_parse_attestation_marker_rejects_marker_inside_tilde_fence():
+    body = "Example of the format:\n~~~\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_inside_longer_backtick_fence():
+    # A shorter ``` line inside a ```` fence does not close it, so the marker is still inside.
+    body = "````\n```\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_inside_indented_fence():
+    body = "   ```\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_accepts_marker_after_closed_tilde_fence():
+    body = "~~~\nsome output\n~~~\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is not None  # nosec B101
+
+
+def test_parse_attestation_marker_accepts_marker_after_longer_closing_fence():
+    # The closing fence may be longer than the opener.
+    body = "```\nsome output\n`````\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is not None  # nosec B101
+
+
+def test_parse_attestation_marker_ignores_backtick_fence_with_backtick_in_info_string():
+    # CommonMark: an opening backtick fence's info string cannot contain a backtick, so
+    # "``` a`b" is not a fence and the marker is not inside one.
+    body = "``` a`b\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is not None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_in_fence_inside_blockquote():
+    body = "> ```\n> " + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_marker_in_fence_inside_list_item():
+    body = "- ```\n  " + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_closing_fence_followed_by_non_ascii_whitespace():
+    # CommonMark allows only spaces or tabs after a closing fence, so a no-break space
+    # leaves the fence open and the marker inside it.
+    body = "```\nexample\n```\xa0\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_rejects_fence_split_by_a_bare_carriage_return():
+    body = "x\r```\r" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is None  # nosec B101
+
+
+def test_parse_attestation_marker_accepts_closed_fence_with_crlf_line_endings():
+    body = "```\r\nsome output\r\n```\r\n" + _marker_body("andre", "abc", "incident")
+    assert parse_attestation_marker(body) is not None  # nosec B101
+
+
 def _attesting(login: str, sha: str = "abc") -> dict:
     return {"login": login, "body": _marker_body(login, sha, "incident")}
 
