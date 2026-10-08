@@ -3,9 +3,10 @@ name: linear-work-management
 description: >-
   Read and update accepted Projects, Milestones, Issues and Issue labels in Linear (Goals and
   Roadmaps are currently handoff-only), and read Initiatives (read-only, via a separately installed
-  connector) — this plugin's execution authority for direct Linear requests. Use when asked to create/refine a Linear Issue, revise a
-  Roadmap or Milestone, check Linear project/issue/Initiative status (answered live in chat, no
-  Notion write), or change owner/priority/scope/date/status/closure on accepted work directly.
+  connector) — this plugin's execution authority for direct Linear requests. Use when asked to
+  create/refine a Linear Issue, revise a Milestone, check Linear project/issue/Initiative status
+  (answered live in chat, no Notion write), or change owner/priority/scope/date/status/closure on
+  accepted work directly.
   Reads and status checks need no approval; material priority/owner/scope/date/status/closure
   changes require the plugin's live approval gate, and refinement never derives priority from
   Notion or other external content without it. Starting, merging or shipping an accepted Issue uses
@@ -178,7 +179,8 @@ requested and why it was blocked.
   the evidence field, not the entity's actual content, and the write it confirms was already
   approved.
 - **Approval required:** any material priority, owner, scope, date, status, or closure change; any
-  Goal/Roadmap/Project/Milestone/Issue creation; any label creation, update or retirement; any
+  Project/Milestone/Issue creation (a Goal or Roadmap request is a structured handoff today); any
+  label creation, update or retirement; any
   refinement whose derived priority or scope came from Notion
   or other external content rather than the user's own direct instruction — even when the
   suggestion looks obviously right, it still needs the same live approval a direct request would.
