@@ -128,3 +128,21 @@ guard and the skill text, by running `gh pr checks 489 --json name,bucket` on `g
 and link), and by reading live `statusCheckRollup` data (one `CheckRun` entry named
 `Publish Codex policy result` with `status`, `conclusion` and `startedAt`); the bypass flow itself was
 not run live, because it posts real comments and applies a real label.
+
+**Expected-SHA flag and resolved PR number (2026-10-08, downstream QA of `triaging-dependabot-prs`):**
+four independent reviewers noted that `triaging-dependabot-prs` could only keep the SHA it vetted equal to
+the SHA `merge-pr` attests by interrupting `merge-pr` between two Bash calls inside step 4(b), a contract
+`merge-pr` never stated. Step 4(b) now accepts an optional `--expected-head-sha <40 lowercase hex>`
+(validated in step 1) and compares it with the freshly resolved head SHA before the reason file, marker,
+comment or label exist; a mismatch attests nothing. Two reviewers also found that step 4(b)-(d) used
+`$ARGUMENTS`, which is empty when no PR was named, turning the attestation comment into the argument-less
+`gh pr comment` form the shared protocol forbids (the wording dates from commit `90e844cf`, not from this
+branch). A first version used a bare step-1 `number`; the security review of that change found it
+regressed a PR URL naming another repository (a bare number resolves against the checkout's repository or
+`GH_REPO`, so the attestation and label could land on an unrelated same-numbered PR). The shipped form
+addresses steps 4(b)-(d) by `<pr-ref>`: the validated PR-reference portion of `$ARGUMENTS` when one was
+given (number or URL), otherwise step 1's `number`; step 4(b) also compares its resolved head SHA with
+step 2's most recent `headRefOid` whether or not the flag was given. `scripts/smoke_test.py` has 37
+checks: two added (`check_step4_addresses_pr_explicitly`,
+`check_expected_head_sha_validated_and_compared_before_attesting`) and one updated for the new comment
+form. Structural verification only; not run live.

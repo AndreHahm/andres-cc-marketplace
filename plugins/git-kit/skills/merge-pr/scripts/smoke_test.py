@@ -460,7 +460,7 @@ def check_bypass_comment_writes_gh_pr_review_marker():
     if step4 is None:
         return False, "step 4 ('## Instructions') not found"
     marker = 'git-write-marker.sh" gh-pr-review merge-pr'
-    comment = "gh pr comment $ARGUMENTS --body-file"
+    comment = "gh pr comment <pr-ref> --body-file"
     if marker not in step4 or comment not in step4:
         return (
             False,
@@ -478,6 +478,85 @@ def check_bypass_comment_writes_gh_pr_review_marker():
         True,
         "step 4(b) writes the gh-pr-review marker in its own call immediately before the "
         "attestation comment",
+    )
+
+
+def check_step4_addresses_pr_explicitly():
+    # The shared attestation protocol forbids the argument-less `gh pr comment` form, and $ARGUMENTS
+    # is empty when no PR was named, so steps 4(b)-(d) address the PR by <pr-ref>: the validated
+    # PR-reference portion when one was given (a number or a URL, so a PR in another repository
+    # stays explicit) or, only when it was empty, step 1's resolved number. A bare number must not
+    # replace a URL: it would resolve against the checkout's repository (security review,
+    # 2026-10-08).
+    step4 = _get_step_text(4)
+    if step4 is None:
+        return False, "step 4 ('## Instructions') not found"
+    if re.search(r"gh [^\n`]*\$\{?\"?ARGUMENTS", step4):
+        return (
+            False,
+            "step 4 still passes $ARGUMENTS to a gh command -- it is empty when no PR was named, "
+            "which turns the attestation comment into the argument-less form the protocol forbids",
+        )
+    required = (
+        "gh pr view <pr-ref> --json headRefOid",
+        "gh pr comment <pr-ref> --body-file",
+        "gh pr view <pr-ref> --json statusCheckRollup",
+        "gh pr view <pr-ref> --json labels",
+        'gh pr edit <pr-ref> --remove-label "s: codex review bypassed"',
+        'gh pr edit <pr-ref> --add-label "s: codex review bypassed"',
+    )
+    missing = [command for command in required if command not in step4]
+    if missing:
+        return False, "step 4(b)-(d) no longer address the PR by <pr-ref> in: " + "; ".join(missing)
+    if step4.count("gh pr view <pr-ref> --json statusCheckRollup") < 2:
+        return False, "step 4(c) and 4(d) must both read statusCheckRollup through <pr-ref>"
+    if "<pr-ref>` is the validated PR-reference portion" not in step4:
+        return False, "step 4(b) no longer defines <pr-ref> as the validated PR-reference portion"
+    return (
+        True,
+        "step 4(b)-(d) address the PR by <pr-ref> (number or URL), never an empty $ARGUMENTS",
+    )
+
+
+def check_expected_head_sha_validated_and_compared_before_attesting():
+    # A caller that vetted one specific head (triaging-dependabot-prs) passes
+    # --expected-head-sha; step 1 must validate it and step 4(b) must compare it with the freshly
+    # resolved head SHA before anything is written or posted, so a later push is never attested.
+    step1 = _get_step_text(1)
+    step4 = _get_step_text(4)
+    if step1 is None or step4 is None:
+        return False, "step 1 or step 4 ('## Instructions') not found"
+    if "--expected-head-sha" not in step1 or "[0-9a-f]{40}" not in step1:
+        return (
+            False,
+            "step 1 no longer validates --expected-head-sha as exactly 40 lowercase hex characters",
+        )
+    # Anchor on the comparison sentences themselves, not on the first mention of the flag.
+    expected_compare = step4.find("compare the SHA just resolved against it")
+    step2_compare = step4.find("with the `headRefOid` step 2 last classified against")
+    reason_write = step4.find("Write the `reason` text")
+    marker = step4.find("git-write-marker.sh")
+    if expected_compare < 0 or step2_compare < 0 or reason_write < 0 or marker < 0:
+        return (
+            False,
+            "step 4(b) no longer compares the resolved head SHA with --expected-head-sha and with "
+            "step 2's most recent headRefOid",
+        )
+    if not max(expected_compare, step2_compare) < reason_write < marker:
+        return (
+            False,
+            "step 4(b) compares the head SHA after writing the reason file or the marker "
+            "-- the comparisons must come first so a mismatch attests nothing",
+        )
+    if (
+        "mismatch stop and report both SHAs" not in step4
+        or "stop and report both SHAs" not in (step4[step2_compare:])
+    ):
+        return False, "step 4(b) no longer says a mismatch stops without attesting anything"
+    return (
+        True,
+        "--expected-head-sha is validated at step 1; step 4(b) compares the resolved head SHA with "
+        "it and with step 2's last fetch before the reason file, marker, comment or label",
     )
 
 
@@ -1012,6 +1091,8 @@ CHECKS = [
     check_step2_rerun_enumeration_includes_7b,
     check_bypass_poll_uses_started_at_baseline,
     check_bypass_comment_writes_gh_pr_review_marker,
+    check_step4_addresses_pr_explicitly,
+    check_expected_head_sha_validated_and_compared_before_attesting,
     check_merge_binds_to_verified_head_sha,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
