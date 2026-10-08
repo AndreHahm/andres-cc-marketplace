@@ -319,9 +319,12 @@ def check_step_sequence():
 
 
 def _load_plugin_json(name):
-    # Returns (data, None) or (None, error message). Locates <plugin root>/<name> through the same
-    # candidate skill directories the other checks use, and reports an unreadable or malformed file
-    # as a failure message instead of letting the exception escape.
+    """Return (data, None) or (None, error message).
+
+    Locates <plugin root>/<name> through the same candidate skill directories the other checks
+    use, and reports an unreadable or malformed file as a failure message instead of letting the
+    exception escape.
+    """
     repo_root = _find_repo_root(SKILL_DIR)
     for candidate in _skill_dir_candidates(repo_root):
         # From the .claude/ mirror, candidate.parent.parent is .claude/ itself, never the plugin
@@ -339,9 +342,12 @@ def _load_plugin_json(name):
 
 
 def check_initiative_read_operation():
-    # The Initiative reads resolve through their own host-profile operation so they can name a
-    # second connector. Fail closed: the shipped profile must carry it unconfigured with no
-    # connector, and this skill must name it rather than falling back to linear.read.
+    """Check the shipped host profile and SKILL.md for the Initiative read operation.
+
+    The Initiative reads resolve through their own host-profile operation so they can name a
+    second connector. Fail closed: the shipped profile must carry it unconfigured with no
+    connector, and this skill must name it rather than falling back to linear.read.
+    """
     body = SKILL_MD.read_text(encoding="utf-8")
     if "linear.initiatives.read" not in body:
         return False, "SKILL.md does not name the 'linear.initiatives.read' operation"
@@ -361,8 +367,11 @@ def check_initiative_read_operation():
 
 
 def check_shipped_defaults():
-    # The shipped files skip the local-override trust check entirely, so a real ID or a 'verified'
-    # status committed into them would be honored on every checkout. Everything must ship empty.
+    """Check that the shipped host profile and versioned configuration carry no IDs.
+
+    The shipped files skip the local-override trust check entirely, so a real ID or a 'verified'
+    status committed into them would be honored on every checkout. Everything must ship empty.
+    """
     profile, error = _load_plugin_json("host-profile.json")
     if error:
         return False, error
