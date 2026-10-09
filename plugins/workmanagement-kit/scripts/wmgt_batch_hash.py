@@ -95,10 +95,12 @@ class HashError(Exception):
 
 
 def _reject_constant(name):
+    """Reject NaN and Infinity at parse time so no output can be non-standard JSON."""
     raise HashError(f"non-finite number {name} is not allowed")
 
 
 def _no_duplicate_keys(pairs):
+    """Build a JSON object, refusing any duplicate key."""
     seen = {}
     for key, value in pairs:
         if key in seen:
@@ -108,6 +110,7 @@ def _no_duplicate_keys(pairs):
 
 
 def _check_value(where: str, field: str, value, allow_none: bool = False) -> None:
+    """Check one record field's type; ``allow_none`` lets an unset ``before`` field be null."""
     if value is None and allow_none:
         return
     if field in _STRING_FIELDS:
@@ -126,6 +129,7 @@ def _check_value(where: str, field: str, value, allow_none: bool = False) -> Non
 
 
 def _check_records(operation: str, records: list) -> None:
+    """Check every record against the per-operation field allowlist and value types."""
     for index, record in enumerate(records):
         where = f"record {index}"
         if not isinstance(record, dict) or not record:
@@ -169,6 +173,7 @@ def _check_records(operation: str, records: list) -> None:
 
 
 def load_submission(path_str: str) -> dict:
+    """Read and validate a submission file; return the parsed object or raise HashError."""
     if os.path.islink(path_str):
         raise HashError("symlinks are refused")
     try:
@@ -232,6 +237,7 @@ def load_submission(path_str: str) -> dict:
 
 
 def digest_of(data: dict) -> str:
+    """Return the SHA-256 of the canonical (sorted, compact, ASCII) JSON form of ``data``."""
     canonical = json.dumps(
         data, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
     )
@@ -239,11 +245,13 @@ def digest_of(data: dict) -> str:
 
 
 def _require_hash(expected: str) -> None:
+    """Refuse an expected hash that is not 64 lowercase hex characters."""
     if not _SHA256_RE.fullmatch(expected):
         raise HashError("expected hash is not 64 lowercase hex characters")
 
 
 def _range(args, total: int, limit: int, label: str) -> None:
+    """Check that ``[start, end)`` is inside the records and no longer than ``limit``."""
     if not (0 <= args.start < args.end <= total):
         raise HashError(f"{label} range is outside the records array")
     if args.end - args.start > limit:
@@ -251,11 +259,13 @@ def _range(args, total: int, limit: int, label: str) -> None:
 
 
 def _excerpt(value) -> str:
+    """Return ``value`` as text, cut to EXCERPT_CHARS characters with an ellipsis if longer."""
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=True)
     return text if len(text) <= EXCERPT_CHARS else text[:EXCERPT_CHARS] + "..."
 
 
 def _row(index: int, record: dict, operation: str) -> dict:
+    """Build one compact preview row for a record."""
     if operation == "create":
         return {
             "index": index,
@@ -274,9 +284,12 @@ def _row(index: int, record: dict, operation: str) -> dict:
     }
 
 
-def _sized(result: dict) -> dict:
-    # "bytes" is the size of the printed JSON including the bytes field itself, found by
-    # fixed-point iteration so the figure the model sees is the figure it received.
+def _sized(result: dict) -> int:
+    """Add a ``bytes`` field holding the final size of the printed JSON, itself included.
+
+    Returns that size. It is found by fixed-point iteration so the figure the model sees is
+    the figure it received.
+    """
     size = 0
     for _ in range(5):
         result["bytes"] = size
@@ -284,10 +297,11 @@ def _sized(result: dict) -> dict:
         if new_size == size:
             break
         size = new_size
-    return result
+    return size
 
 
 def run(args) -> dict:
+    """Run hash, verify, show, preview or chunk and return the result object."""
     data = load_submission(args.file)
     digest = digest_of(data)
     records = data["records"]
@@ -317,9 +331,9 @@ def run(args) -> dict:
         result["start"] = args.start
         result["records"] = records[args.start : args.end]
     if args.command in ("preview", "chunk"):
-        if len(json.dumps(result).encode("utf-8")) > MAX_OUTPUT_BYTES:
+        # Size first, then enforce the cap on the final output, "bytes" field included.
+        if _sized(result) > MAX_OUTPUT_BYTES:
             raise HashError(f"output exceeds {MAX_OUTPUT_BYTES} bytes; request a smaller range")
-        _sized(result)
     return result
 
 
@@ -353,6 +367,7 @@ def _unlink_in_dir(directory: str, name: str) -> None:
 
 
 def purge(scratch_root: str, path_str: str) -> dict:
+    """Delete one intake-generated scratch file, only inside ``<scratch_root>/wmgt-intake``."""
     expected_dir = os.path.realpath(os.path.join(scratch_root, SCRATCH_DIR_NAME))
     path = os.path.abspath(path_str)
     if os.path.realpath(os.path.dirname(path)) != expected_dir:
@@ -368,6 +383,7 @@ def purge(scratch_root: str, path_str: str) -> dict:
 
 
 def main(argv=None) -> int:
+    """Parse arguments, run the command and print exactly one JSON object; return the exit code."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("hash").add_argument("file")
