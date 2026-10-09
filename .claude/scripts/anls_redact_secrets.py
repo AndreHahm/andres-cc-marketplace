@@ -19,17 +19,27 @@ for why it did more harm than good in this specific plugin.
 from __future__ import annotations
 
 import argparse
+import io
 import re
 import sys
+import typing
 from pathlib import Path
 
+# A sibling list, SECRET_PATTERNS in plugins/promptlibrary-kit/scripts/plib_catalog_validate.py,
+# was seeded from these shapes and diverges on purpose (extra shapes; it detects and blocks,
+# never rewrites). When changing a pattern here, check whether the sibling needs the same change.
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     # "authorization" alone is common English prose -- only treat it as a header when
     # followed by an explicit separator. "bearer" is rare enough outside real tokens
     # that it's caught even without one (defensive default: over-redact, not under-).
     ("authorization_header", re.compile(r"(?im)\bauthorization\s*[:=]\s*.+$")),
     ("bearer_token", re.compile(r"(?im)\bbearer\b\s*[:=]?\s*.+$")),
-    ("dotenv_secret_line", re.compile(r"(?im)^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$")),
+    (
+        "dotenv_secret_line",
+        re.compile(
+            r"(?im)^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$"
+        ),
+    ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
     ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]+\b")),
@@ -40,14 +50,22 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("generic_sk_token", re.compile(r"\bsk-[A-Za-z0-9-]{20,}\b")),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
     ("jwt_token", re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b")),
-    ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL)),
+    (
+        "pem_private_key_block",
+        re.compile(
+            r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL
+        ),
+    ),
     # Matches only the drive/home-root-plus-username prefix (e.g. "C:\Users\andre",
     # "C:/Users/andre", "/home/andre", "/Users/andre") -- the character class excludes
     # both path separators, so it stops at the username and never consumes the trailing
     # repo-relative segment, which stays intact as citable evidence (per
     # anls-report-evidence-convention.md's "never a bare absolute path that reveals the OS
     # username" rule -- this is the mechanical backstop that rule already claimed to have).
-    ("home_directory_path", re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/]+|/home/[^/]+|/Users/[^/]+)")),
+    (
+        "home_directory_path",
+        re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/]+|/home/[^/]+|/Users/[^/]+)"),
+    ),
 ]
 
 # A generic "long mixed-alphanumeric string" entropy heuristic was tried and
@@ -66,9 +84,11 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     counts: dict[str, int] = {}
     result = text
     for name, pattern in _PATTERNS:
+
         def _sub(match: re.Match, _name=name) -> str:
             counts[_name] = counts.get(_name, 0) + 1
             return "[REDACTED]"
+
         result = pattern.sub(_sub, result)
     return result, counts
 
@@ -78,11 +98,15 @@ def main() -> int:
     # analysis-kit "written:" confirmation line). Windows' default console
     # encoding (cp1252) can't represent those -- force UTF-8 on stdio so this
     # script doesn't crash on the exact kind of text it's meant to process.
-    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
-    sys.stdin.reconfigure(encoding="utf-8")
+    typing.cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8", newline="\n")
+    typing.cast(io.TextIOWrapper, sys.stdin).reconfigure(encoding="utf-8")
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-file", default=None, help="Path to the drafted report text (default: read from stdin)")
+    parser.add_argument(
+        "--input-file",
+        default=None,
+        help="Path to the drafted report text (default: read from stdin)",
+    )
     args = parser.parse_args()
 
     if args.input_file:
