@@ -148,6 +148,13 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
@@ -484,6 +491,13 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
@@ -768,6 +782,13 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
@@ -1043,6 +1064,13 @@ jobs:
           # a package directory named after one (scripts/marketplace_ci/review/__init__.py),
           # a compiled extension or sourceless bytecode (review.so, review.pyc), or a cached
           # __pycache__ entry (loaded without checking the source when it is hash-based).
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-added-files.z"
           rc=0
@@ -1065,6 +1093,13 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
@@ -1275,6 +1310,13 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
+          # The checked-out tree must BE the event's PR head (HEAD itself, or the second parent of a
+          # merge checkout): a newer push landing after this run started would otherwise put files on
+          # disk that the diff below never examines.
+          if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && [ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then
+            echo "::error::the checked-out tree is not the event's PR head (a newer push landed after this run started) -- re-run this job"
+            exit 1
+          fi
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0

@@ -206,7 +206,11 @@ step): those are deterministic gates, so a PR that legitimately needs a new top-
 or symlink requires a maintainer to change this check first, or an admin merge. "Added by the PR"
 means the diff from `merge-base($BASE_SHA, PR head)` to the PR head, not `$BASE_SHA` to the merge
 checkout: `$BASE_SHA` can lag the base branch, and the latter would blame the PR for a file the base
-branch gained in the meantime, a refusal the bypass cannot clear. Because `hygiene` restores
+branch gained in the meantime, a refusal the bypass cannot clear. Each of those steps first checks
+that the checked-out tree is the event's PR head (or its merge checkout's second parent) and stops
+with a "re-run this job" error otherwise, because the event payload is frozen when the workflow fires
+while the checkout is fetched when the job starts: a newer push in between would put files on disk
+that the diff never examined. Because `hygiene` restores
 `.github/pull_request_template.md` from the base too, a PR that edits the template (for example by
 adding or renaming a required section) is validated against the base template, so its own body may
 need to keep the old headings until the PR merges. The five hand-copied blocks are kept identical by

@@ -224,6 +224,28 @@ def test_the_pr_additions_are_taken_from_the_pr_head_not_from_the_merge_ref():
         assert '--diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA"' in text, name
 
 
+SKEW_GUARD = (
+    'if [ "$(git rev-parse HEAD)" != "$PR_HEAD_SHA" ] && '
+    '[ "$(git rev-parse --verify -q HEAD^2 || true)" != "$PR_HEAD_SHA" ]; then'
+)
+
+
+def test_every_copy_fails_closed_when_the_checkout_is_not_the_events_pr_head():
+    """The event payload's head SHA is frozen when the workflow fires, but the job's checkout is
+    fetched when it starts. If a newer push lands in between, the diff below the guard would
+    examine the old head while a newer, unexamined tree sits on disk next to the token or key.
+    HEAD must be the PR head or, for a merge checkout, its second parent -- else the job stops."""
+    assert TEXT.count(SKEW_GUARD) == 6  # 5 shared blocks + the codex scripts/ prelude
+    for name, block in _all_blocks().items():
+        text = "\n".join(block)
+        guard = text.index(SKEW_GUARD)
+        assert guard < text.index('PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")'), name
+        assert "re-run this job" in text, name
+    # In codex-review the guard also precedes the scripts/-specific diffs, which run first.
+    codex = "\n".join(_run_block(REFUSE_STEP_NAME))
+    assert codex.index(SKEW_GUARD) < codex.index("scripts-added-files.z")
+
+
 def test_the_node_chain_codex_review_runs_stays_inside_the_tier1_set():
     """bridge-invoke.mjs -> codex-exec.mjs -> cdx-process.mjs run with OPENAI_API_KEY; a
     relative import that leaves TIER1_FILES would be code the gate does not guard."""
