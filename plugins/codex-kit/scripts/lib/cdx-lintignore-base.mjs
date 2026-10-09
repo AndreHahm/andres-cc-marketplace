@@ -102,7 +102,11 @@ function canonicalLower(p) {
 
 function withinRoot(dirNorm, rootNorm) {
   const rel = path.relative(rootNorm, dirNorm);
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+  if (rel === "") return true;
+  if (path.isAbsolute(rel)) return false;
+  // Parent traversal is a whole path SEGMENT (exactly '..', or '..' followed by a separator); a child folder
+  // that merely starts with two dots (e.g. "..bin") is inside the root.
+  return rel !== ".." && !rel.startsWith(".." + path.sep);
 }
 
 // Inside the root by EITHER its lexical or its canonical spelling, so a

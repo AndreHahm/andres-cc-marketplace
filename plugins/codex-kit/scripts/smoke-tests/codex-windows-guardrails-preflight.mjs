@@ -1227,6 +1227,12 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
     passedScan(f.run()),
     JSON.stringify(f.last)
   );
+  // Pins the pattern's `i` flag (cross-model-review pass 2): lowercase and
+  // mixed-case spellings are just as much a hard-coded secret.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "api_key: str = \"hunter2-not-a-real-key\"\n");
+  check("a LOWERCASE annotated literal (api_key) is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "Db_Auth_Value: str = \"hunter2\"\n");
+  check("a MIXED-case annotated literal (Db_Auth_Value) is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
 }
 
 console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through a directory junction never supplies git ===");
@@ -1261,6 +1267,37 @@ console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through
     JSON.stringify(result)
   );
   fs.rmdirSync(link); // removes the junction itself, never its target
+  fs.rmSync(f.root, { recursive: true, force: true });
+}
+
+console.log("\n=== cross-model-review pass 2: an in-repo PATH folder whose NAME starts with two dots (..bin) is still inside the repo ===");
+{
+  // path.relative(root, root/..bin) is "..bin"; a bare startsWith("..") test
+  // misread that child folder as a parent traversal and let its git.exe through.
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase();
+  const binDir = path.join(f.root, "..bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  fs.copyFileSync(process.execPath, path.join(binDir, "git.exe"));
+  const env = { ...process.env, PATH: `${binDir}${path.delimiter}${process.env.PATH}` };
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  let result;
+  try {
+    const stdout = execFileSync(
+      "node",
+      [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+      { encoding: "utf8", env }
+    );
+    result = JSON.parse(stdout);
+  } catch (e) {
+    result = JSON.parse(e.stdout.toString());
+  }
+  check(
+    "with a planted git.exe in <repo>/..bin on PATH, the scan still reaches the instruction-containment gate (the real git is used)",
+    passedScan(result),
+    JSON.stringify(result)
+  );
   fs.rmSync(f.root, { recursive: true, force: true });
 }
 
