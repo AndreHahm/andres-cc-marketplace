@@ -1144,6 +1144,18 @@ jobs:
           printenv OPENAI_API_KEY | codex login --with-api-key
           codex --version
 
+      # ubuntu-24.04 restricts unprivileged user namespaces through AppArmor,
+      # which stops Codex's bwrap sandbox from setting up its loopback
+      # ("bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted") and
+      # leaves every reviewer with an empty, inconclusive review. Relaxing the
+      # restriction on this ephemeral runner keeps the sandbox on; see
+      # openai/codex issue 15057. The probe only reports (warning, not
+      # failure) so a runner image change shows up in the log.
+      - name: Allow Codex's bwrap sandbox on the hosted runner
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          codex sandbox /bin/true || echo "::warning::Codex sandbox probe failed; reviewers may return empty reviews"
+
       - name: Dispatch reviewers directly, validate output, aggregate findings
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
