@@ -1233,6 +1233,13 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
   check("a LOWERCASE annotated literal (api_key) is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "Db_Auth_Value: str = \"hunter2\"\n");
   check("a MIXED-case annotated literal (Db_Auth_Value) is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  // Cross-model-review pass 3: richer annotations, string prefixes and triple quotes.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: Annotated[str, \"meta\"] = \"hard-coded-value\"\n");
+  check("a richer annotation (Annotated[str, \"meta\"]) does not hide a quoted literal", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "api_key: str = f\"hard-{1}\"\n");
+  check("an f-string literal is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: str = \"\"\"hard-coded-value\"\"\"\n");
+  check("a triple-quoted literal is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
 }
 
 console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through a directory junction never supplies git ===");
