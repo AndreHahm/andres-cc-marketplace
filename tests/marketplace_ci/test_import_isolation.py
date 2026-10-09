@@ -13,8 +13,9 @@ PR implementing this split).
 
 pr_policy.py is intentionally excluded from TIER1_MODULES (the dynamic
 allowlist) but included in TIER1_FILES (the workflow gate's own pathspec) --
-it's gated for a distinct reason (merge-privilege code with no base-SHA
-restore in its own consuming job, `hygiene`), not because it's part of
+it's gated for a distinct reason (merge-privilege code evaluated by the
+`hygiene` job, which now restores it from the base SHA but stays gated until
+a separate decision says otherwise), not because it's part of
 run-codex-review's own import closure. See review.py's and the workflow's
 own comments for the full rationale.
 """
