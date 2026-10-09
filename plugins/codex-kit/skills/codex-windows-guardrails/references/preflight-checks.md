@@ -140,7 +140,8 @@ no longer caught by this check, and unsandboxed Codex can read it. A *tracked* f
 even when a `.gitignore` pattern also matches it (a force-added `.env` is still scanned).
 
 **The skip is only honored while every tracked `.gitignore` (root or nested) is unchanged from the
-trusted merge base** (security review M1). The ignore rules are the checkout's own, so without this a
+trusted merge base** (security review M1; compared case-insensitively, because on NTFS git reads a
+tracked `dir/.GITIGNORE` as an ignore file). The ignore rules are the checkout's own, so without this a
 branch under review could add a single `*` line and hide every untracked file on the reviewer's disk
 from the scan. If any tracked `.gitignore` differs from the base (committed, added, deleted or
 uncommitted), or no base can be resolved, nothing is skipped and the whole tree is scanned. Untracked
@@ -148,7 +149,8 @@ uncommitted), or no base can be resolved, nothing is skipped and the whole tree 
 not compared. If `git` fails, nothing is skipped either.
 
 **Git is resolved from `PATH` only** (security review C1). Every git call uses an absolute `git.exe`
-found on `PATH`, never a bare `git`: on Windows, libuv resolves a bare program name against the
+found on `PATH` outside the repo (a `PATH` folder that is the repo root or inside it, such as an activated
+`.venv/Scripts` or `node_modules/.bin`, is skipped), never a bare `git`: on Windows, libuv resolves a bare program name against the
 child's working directory first (live-verified with a stand-in `git.exe` while
 `NoDefaultCurrentDirectoryInExePath` was unset), so a branch could otherwise commit its own `git.exe`
 at the repo root and have it run before any guard. Other `codex-kit` scripts that call a bare `git`

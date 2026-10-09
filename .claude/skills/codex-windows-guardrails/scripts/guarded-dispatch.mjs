@@ -89,7 +89,7 @@ function resolveConfig(repoRoot) {
     // gitExecutable(): an absolute git resolved from PATH only. A bare "git"
     // would let libuv run a git.exe committed at the repo root (cwd) by the
     // branch under review -- see cdx-lintignore-base.mjs's header.
-    execFileSync(gitExecutable(), ["ls-files", "--error-unmatch", "--", localPath], {
+    execFileSync(gitExecutable(repoRoot), ["ls-files", "--error-unmatch", "--", localPath], {
       cwd: repoRoot,
       stdio: ["ignore", "ignore", "pipe"],
       env: gitEnv({ LC_ALL: "C" })
@@ -186,7 +186,7 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
 function verifyRepoRootIsGitToplevel(repoRoot) {
   let actualToplevel;
   try {
-    actualToplevel = execFileSync(gitExecutable(), ["rev-parse", "--show-toplevel"], {
+    actualToplevel = execFileSync(gitExecutable(repoRoot), ["rev-parse", "--show-toplevel"], {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
       env: gitEnv(),
@@ -427,7 +427,7 @@ function listGitIgnoredEntries(canonicalRoot) {
   if (!gitignoreUnchangedSinceBase(canonicalRoot)) return [];
   try {
     const out = execFileSync(
-      gitExecutable(),
+      gitExecutable(canonicalRoot),
       ["-c", "core.excludesFile=", "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"],
       {
         cwd: canonicalRoot,

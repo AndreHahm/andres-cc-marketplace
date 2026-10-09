@@ -1139,5 +1139,63 @@ console.log("\n=== security review C1: a git.exe committed at the repo root is n
   );
 }
 
+console.log("\n=== security re-review M-2: an uncommitted edit, or a tracked upper-case .GITIGNORE, also switches the skip off ===");
+{
+  // Verified live on NTFS: git reads a tracked `config/.GITIGNORE` as an
+  // ignore file (it hid an untracked credentials.json), while a plain
+  // `:(glob)**/.gitignore` pathspec does not match that name.
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", ".venv/\n");
+  writeFixtureFile(path.join(f.root, "config"), "keep.txt", "x");
+  f.commit("init");
+  f.markBase();
+  writeFixtureFile(path.join(f.root, ".venv", "lib"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  check("control: the base-defined skip is active before any change", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(f.root, ".gitignore", ".venv/\n*.tmp\n");
+  check("an UNCOMMITTED edit to the root .gitignore switches the skip off", blockedBy(f.run(), /cacert\.pem/), JSON.stringify(f.last));
+  git(["checkout", "--", ".gitignore"], f.root);
+  check("control: reverting the edit restores the skip", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "config"), ".GITIGNORE", "*\n");
+  git(["add", "-f", "config/.GITIGNORE"], f.root);
+  f.commit("branch adds an upper-case catch-all ignore in a folder with no .gitignore");
+  writeFixtureFile(path.join(f.root, "config"), "credentials.json", "{}");
+  check(
+    "a tracked config/.GITIGNORE containing `*` switches the skip off, so the reviewer-local credentials.json is scanned",
+    blockedBy(f.run(), /(credentials\.json|cacert\.pem)/),
+    JSON.stringify(f.last)
+  );
+}
+
+console.log("\n=== security re-review M-1: a PATH folder inside the repo never supplies git ===");
+{
+  // An activated venv or node_modules\.bin in the worktree is routinely
+  // prepended to PATH; a branch can commit a git.exe there. The stand-in is a
+  // copy of node.exe (it fails if launched as git, changing the outcome).
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase();
+  const binDir = path.join(f.root, ".venv", "Scripts");
+  fs.mkdirSync(binDir, { recursive: true });
+  fs.copyFileSync(process.execPath, path.join(binDir, "git.exe"));
+  const env = { ...process.env, PATH: `${binDir}${path.delimiter}${process.env.PATH}` };
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  let result;
+  try {
+    const stdout = execFileSync(
+      "node",
+      [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+      { encoding: "utf8", env }
+    );
+    result = JSON.parse(stdout);
+  } catch (e) {
+    result = JSON.parse(e.stdout.toString());
+  }
+  check(
+    "with a planted git.exe in a PATH folder inside the repo, the scan still reaches the instruction-containment gate (the real git is used)",
+    passedScan(result),
+    JSON.stringify(result)
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);
