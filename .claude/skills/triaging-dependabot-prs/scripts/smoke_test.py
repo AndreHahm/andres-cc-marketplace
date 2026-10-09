@@ -25,6 +25,7 @@ EXPECTED_BASH = {
     "gh pr view:*",
     "gh pr checks:*",
     "gh pr comment:*",
+    "gh pr close:*",
     "gh api repos/*/pulls/*/commits:*",
     "gh api repos/*/pulls/*/files:*",
     "gh api repos/*/contents/uv.lock:*",
@@ -233,27 +234,113 @@ def check_gh_api_calls_are_get_only():
     return True, "every gh api command carries --method GET"
 
 
-def check_comment_bodies_are_fixed():
+SUPPORTED_COMMAND_WORDS = ("rebase", "recreate", "ignore", "unignore", "show")
+DEPRECATED_COMMAND_WORDS = ("merge", "squash and merge", "cancel merge", "close", "reopen")
+
+
+DEP_RE = r"[A-Za-z0-9][A-Za-z0-9._/-]{0,99}"
+CONDITION_RE = r"\[[0-9A-Za-z<>=!~.,*+ -]{1,60}\]"
+
+
+def listed_body_patterns():
+    """Anchored regexes for every body in the supported-commands table, with the <dep> and
+    <condition> placeholders replaced by their validation patterns."""
+    path = SKILL_DIR / "references" / "dependabot-comments.md"
+    if not path.exists():
+        return []
+    match = re.search(r"^## Supported commands\n.*?(?=^## |\Z)", read(path), re.S | re.M)
+    rows = re.findall(r"^\| `(@dependabot [^`]+)` \|", match.group(0), re.M) if match else []
+    patterns = []
+    for row in rows:
+        parts = re.split(r"(<dep>|<condition>)", row)
+        patterns.append(
+            "".join(
+                DEP_RE if p == "<dep>" else CONDITION_RE if p == "<condition>" else re.escape(p)
+                for p in parts
+            )
+        )
+    return patterns
+
+
+def check_comment_bodies_are_listed():
     _, body = split_skill()
     spans = re.findall(r"`(gh pr comment [^`]+)`", without_boundaries(body))
     if not spans:
         return False, "no gh pr comment commands found to check (the scan would pass vacuously)"
+    patterns = listed_body_patterns()
+    if not patterns:
+        return False, "no supported command patterns could be built from the table"
+
+    def body_listed(span):
+        found = re.search(r'--body "([^"]*)"', span)
+        return bool(found) and any(re.fullmatch(p, found.group(1)) for p in patterns)
+
     bad = [
         s[:70]
         for s in spans
-        if not re.search(r'--body "@dependabot (rebase|close)"', s)
-        or re.search(r"\s-R\b|--repo\b|--body-file|https?://", s)
+        if not body_listed(s) or re.search(r"\s-R\b|--repo\b|--body-file|https?://", s)
     ]
     if bad:
         return False, (
-            "gh pr comment with a body other than the two fixed strings, or with -R, a URL or "
-            "--body-file: " + "; ".join(bad)
+            "gh pr comment with a body that is not a supported @dependabot command, or with -R, "
+            "a URL or --body-file: " + "; ".join(bad)
         )
     return (
         True,
-        "every gh pr comment command uses one of the two fixed bodies "
+        "every gh pr comment command uses a supported @dependabot body "
         "and no -R, URL or --body-file",
     )
+
+
+def check_supported_comment_table():
+    path = SKILL_DIR / "references" / "dependabot-comments.md"
+    if not path.exists():
+        return False, "references/dependabot-comments.md not found"
+    text = read(path)
+    match = re.search(r"^## Supported commands\n.*?(?=^## |\Z)", text, re.S | re.M)
+    if not match:
+        return False, "'## Supported commands' section not found"
+    bodies = re.findall(r"^\| `(@dependabot [^`]+)` \|", match.group(0), re.M)
+    if not bodies:
+        return False, "no supported command rows found (the scan would pass vacuously)"
+    words = "|".join(SUPPORTED_COMMAND_WORDS)
+    problems = [b for b in bodies if not re.match(rf"@dependabot ({words})\b", b)]
+    problems += [
+        b for b in bodies if re.match(rf"@dependabot ({'|'.join(DEPRECATED_COMMAND_WORDS)})\b", b)
+    ]
+    missing = [
+        w for w in SUPPORTED_COMMAND_WORDS if not any(f"@dependabot {w}" in b for b in bodies)
+    ]
+    if problems:
+        return False, "unsupported or deprecated command in the supported table: " + "; ".join(
+            problems
+        )
+    if missing:
+        return False, "supported table lacks a row for: " + ", ".join(missing)
+    return (
+        True,
+        f"{len(bodies)} supported command rows, all supported words present, none deprecated",
+    )
+
+
+def check_close_command_is_plain():
+    _, body = split_skill()
+    spans = re.findall(r"`(gh pr close[^`]*)`", without_boundaries(body))
+    if not spans:
+        return False, "no gh pr close command found to check (the scan would pass vacuously)"
+    plain = [s for s in spans if s.strip() == "gh pr close <validated-number>"]
+    # A bare `gh pr close` is a prose mention of the command's name; anything carrying flags or
+    # other arguments is a different invocation.
+    bad = [
+        s[:70] for s in spans if s.strip() not in ("gh pr close", "gh pr close <validated-number>")
+    ]
+    if bad:
+        return False, "gh pr close in a form other than the plain one: " + "; ".join(bad)
+    if not plain:
+        return False, "no plain 'gh pr close <validated-number>' invocation found"
+    if re.search(r"--body \"@dependabot close\"", body):
+        return False, "the deprecated @dependabot close comment is posted by the skill"
+    return True, "every gh pr close command is the plain <validated-number> form"
 
 
 def check_marker_precedes_comment_in_posting_section():
@@ -309,7 +396,9 @@ def main():
         check_references_use_granted_commands,
         check_exact_grant_set,
         check_gh_api_calls_are_get_only,
-        check_comment_bodies_are_fixed,
+        check_comment_bodies_are_listed,
+        check_supported_comment_table,
+        check_close_command_is_plain,
         check_marker_precedes_comment_in_posting_section,
         check_classifier_tests_pass,
     ]

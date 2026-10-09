@@ -6,8 +6,8 @@
 # call wasn't immediately preceded by collaborating-on-a-pr's,
 # explain-pr-changes's, codex-review-recovery's,
 # handling-review-findings's, or triaging-dependabot-prs's marker handshake
-# (the last only for its two fixed `@dependabot rebase`/`@dependabot close`
-# `gh pr comment` calls -- enforced by that skill's own SKILL.md instructions,
+# (the last only for the supported `@dependabot` `gh pr comment` bodies listed in
+# its references/dependabot-comments.md -- enforced by that skill's own instructions,
 # not by this script, which cannot tell). Same mechanism as
 # git-guard-raw-pr-ops.sh (see that script's header comment for the full
 # marker-handshake rationale). merge-pr also writes this marker (issue #160),
@@ -1348,7 +1348,7 @@ if [ "$allowed" = true ]; then
   exit 0
 fi
 
-REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, \`handling-review-findings\`, \`triaging-dependabot-prs\` (its @dependabot rebase/close comments only), \`merge-pr\` (its step 2 unresolved-review-thread check and step 4(b) bypass-attestation comment), or \`create-pr\`/\`commit\` (their bypass-attestation comment only) matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
+REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, \`handling-review-findings\`, \`triaging-dependabot-prs\` (its supported @dependabot comments only), \`merge-pr\` (its step 2 unresolved-review-thread check and step 4(b) bypass-attestation comment), or \`create-pr\`/\`commit\` (their bypass-attestation comment only) matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
 
 jq -n --arg reason "$REASON" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
