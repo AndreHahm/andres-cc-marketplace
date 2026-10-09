@@ -1137,6 +1137,8 @@ console.log("\n=== security review C1: a git.exe committed at the repo root is n
     passedScan(result),
     JSON.stringify(result)
   );
+  // security review C1: do not leave a full node.exe copy behind per run.
+  fs.rmSync(f.root, { recursive: true, force: true });
 }
 
 console.log("\n=== security re-review M-2: an uncommitted edit, or a tracked upper-case .GITIGNORE, also switches the skip off ===");
@@ -1195,6 +1197,8 @@ console.log("\n=== security re-review M-1: a PATH folder inside the repo never s
     passedScan(result),
     JSON.stringify(result)
   );
+  // security review C1: do not leave a full node.exe copy behind per run.
+  fs.rmSync(f.root, { recursive: true, force: true });
 }
 
 console.log("\n=== security re-review m-5: an annotated hard-coded secret in an exempt-listed file is still caught by the content scan ===");
@@ -1223,6 +1227,41 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
     passedScan(f.run()),
     JSON.stringify(f.last)
   );
+}
+
+console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through a directory junction never supplies git ===");
+{
+  // The planted git.exe lives inside the repo; PATH names it only through a
+  // junction in the temp directory, so a purely lexical containment test
+  // (the earlier implementation) would not see it as inside the repo root.
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase();
+  const binDir = path.join(f.root, ".venv", "Scripts");
+  fs.mkdirSync(binDir, { recursive: true });
+  fs.copyFileSync(process.execPath, path.join(binDir, "git.exe"));
+  const link = path.join(os.tmpdir(), `cdx-junction-${path.basename(f.root)}`);
+  fs.symlinkSync(binDir, link, "junction");
+  const env = { ...process.env, PATH: `${link}${path.delimiter}${process.env.PATH}` };
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  let result;
+  try {
+    const stdout = execFileSync(
+      "node",
+      [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+      { encoding: "utf8", env }
+    );
+    result = JSON.parse(stdout);
+  } catch (e) {
+    result = JSON.parse(e.stdout.toString());
+  }
+  check(
+    "with the planted git.exe reachable only via a junction in PATH, the scan still reaches the instruction-containment gate (the real git is used)",
+    passedScan(result),
+    JSON.stringify(result)
+  );
+  fs.rmdirSync(link); // removes the junction itself, never its target
+  fs.rmSync(f.root, { recursive: true, force: true });
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
