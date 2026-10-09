@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer treats `@dependabot ignore this major version` as a supported command the user explicitly asked for and offers to post it on PR #107 rather than refusing it",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer asks via AskUserQuestion first, showing the exact body and stating that the comment is public and permanent, that Dependabot stores the preference for the whole repository, and that the PR is closed as part of it",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer posts it through two sequential Bash calls: the gh-pr-review marker script first, then the comment as the very next call, with the validated PR number 107",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer declines the note on a PR in another repository from a local file (-R/URL/--body-file) as outside the skill's scope",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer mentions that the comment grant is wider than the listed bodies and that the bound rests on the skill's instructions",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

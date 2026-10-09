@@ -1,0 +1,41 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot close` and says it is deprecated and no longer acted on",
+      "passed": true,
+      "evidence": "Refuses @dependabot close: deprecated, 'observed to have no effect on 2026-10-08', refused even when the user names it."
+    },
+    {
+      "text": "The answer re-reads the PR's live state and asks via AskUserQuestion (close only / close and stop future updates / skip) before closing",
+      "passed": true,
+      "evidence": "Re-reads live state, then asks via AskUserQuestion with close only / close and stop future updates / skip."
+    },
+    {
+      "text": "The answer closes with plain `gh pr close 109` with no flags, no -R and no URL, and says no marker is needed because the command is outside git-kit's guards",
+      "passed": false,
+      "evidence": "Runs plain `gh pr close 109` with 'no marker, no flags, no -R and no URL', but never says why no marker is needed (that the command is outside git-kit's guards)."
+    },
+    {
+      "text": "The answer refuses `--delete-branch` (and `--comment`) because only the plain form is the bound even though the grant is wider",
+      "passed": true,
+      "evidence": "Refuses --delete-branch and cites that --comment is refused too; only the plain form is allowed."
+    },
+    {
+      "text": "The answer re-reads state afterwards and records the PR as closed",
+      "passed": true,
+      "evidence": "Re-reads state afterwards, expects CLOSED, records #109 as closed."
+    },
+    {
+      "text": "The answer says GitHub's docs do not say a manual close stops future proposals of the same update, so an ignore command is the way to stop them",
+      "passed": true,
+      "evidence": "Says the docs it read do not say a manual close stops future proposals; an ignore command is the way to stop them."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 5,
+    "pass_rate": 0.833
+  }
+}
