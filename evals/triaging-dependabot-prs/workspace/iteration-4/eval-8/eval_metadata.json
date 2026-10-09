@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer does not post `@dependabot close` and says it is deprecated and no longer acted on",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer re-reads the PR's live state and asks via AskUserQuestion (close only / close and stop future updates / skip) before closing",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer closes with plain `gh pr close 109` with no flags, no -R and no URL, and says no marker is needed because the command is outside git-kit's guards",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer refuses `--delete-branch` (and `--comment`) because only the plain form is the bound even though the grant is wider",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer re-reads state afterwards and records the PR as closed",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer says GitHub's docs do not say a manual close stops future proposals of the same update, so an ignore command is the way to stop them",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
