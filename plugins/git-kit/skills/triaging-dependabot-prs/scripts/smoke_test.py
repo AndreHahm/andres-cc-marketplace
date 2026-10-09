@@ -263,6 +263,7 @@ def listed_body_patterns():
 
 
 def check_comment_bodies_are_listed():
+    """Every gh pr comment body in SKILL.md must fully match a row of the supported table."""
     _, body = split_skill()
     spans = re.findall(r"`(gh pr comment [^`]+)`", without_boundaries(body))
     if not spans:
@@ -272,6 +273,7 @@ def check_comment_bodies_are_listed():
         return False, "no supported command patterns could be built from the table"
 
     def body_listed(span):
+        """True when the span's --body value fully matches one supported-command pattern."""
         found = re.search(r'--body "([^"]*)"', span)
         return bool(found) and any(re.fullmatch(p, found.group(1)) for p in patterns)
 
@@ -293,6 +295,7 @@ def check_comment_bodies_are_listed():
 
 
 def check_supported_comment_table():
+    """The supported-commands table lists only supported words, never a deprecated one."""
     path = SKILL_DIR / "references" / "dependabot-comments.md"
     if not path.exists():
         return False, "references/dependabot-comments.md not found"
@@ -324,6 +327,7 @@ def check_supported_comment_table():
 
 
 def check_close_command_is_plain():
+    """Every gh pr close in SKILL.md is the plain form; the deprecated close comment is absent."""
     _, body = split_skill()
     spans = re.findall(r"`(gh pr close[^`]*)`", without_boundaries(body))
     if not spans:
@@ -344,6 +348,7 @@ def check_close_command_is_plain():
 
 
 def check_reply_author_rule_is_exact():
+    """The reply-reading section names both Dependabot logins and requires a whole-string match."""
     path = SKILL_DIR / "references" / "dependabot-comments.md"
     if not path.exists():
         return False, "references/dependabot-comments.md not found"
