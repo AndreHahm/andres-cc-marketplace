@@ -1190,7 +1190,7 @@ jobs:
 
   publish:
     name: Publish Codex policy result
-    needs: [compute-scope, codex-review, prefix-permanence]
+    needs: [compute-scope, codex-review, prefix-permanence, hygiene, python-quality, marketplace-parity]
     # Always runs for a same-repo PR (fork-unsupported owns the fork case
     # and already fails explicitly, independently of this job) -- a
     # security review found the earlier `needs.codex-review.result !=
@@ -1211,7 +1211,10 @@ jobs:
     # bypass_eligible=true, would otherwise accept as a legitimate skip.
     # prefix-permanence is now both a direct dependency here and
     # independently checked below, closing that gap. Found by CodeRabbit,
-    # round 9.
+    # round 9. `hygiene`, `python-quality` and `marketplace-parity` (the
+    # rest of codex-review's own `needs`) are direct dependencies and
+    # checked below for the same reason; a Codex review finding on this
+    # job's `needs` list prompted that addition.
     if: always() && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
@@ -1572,7 +1575,22 @@ jobs:
           BYPASS_ELIGIBLE: ${{ needs.compute-scope.outputs.bypass_eligible }}
           CODEX_RESULT: ${{ needs.codex-review.result }}
           PREFIX_PERMANENCE_RESULT: ${{ needs.prefix-permanence.result }}
+          HYGIENE_RESULT: ${{ needs.hygiene.result }}
+          PYTHON_QUALITY_RESULT: ${{ needs.python-quality.result }}
+          MARKETPLACE_PARITY_RESULT: ${{ needs.marketplace-parity.result }}
         run: |
+          # hygiene, python-quality and marketplace-parity are the other
+          # deterministic gates codex-review itself needs. Any of them
+          # failing makes codex-review 'skipped' as a side effect, which the
+          # bypass_eligible check further down would otherwise accept; they
+          # are checked directly here, before the BYPASSED short-circuit,
+          # for the same reason prefix-permanence is.
+          for gate in "hygiene:$HYGIENE_RESULT" "python-quality:$PYTHON_QUALITY_RESULT" "marketplace-parity:$MARKETPLACE_PARITY_RESULT"; do
+            if [ "${gate#*:}" != "success" ]; then
+              echo "${gate%%:*} did not succeed (result: ${gate#*:}) -- failing closed."
+              exit 1
+            fi
+          done
           # Checked before the BYPASSED short-circuit below, deliberately:
           # prefix-permanence is a deterministic, mechanical gate, not the
           # (expensive, rate-limited) Codex review the bypass label/variable
@@ -1595,14 +1613,15 @@ jobs:
             exit 1
           fi
           # A 'skipped' codex-review is only legitimate when compute-scope
-          # itself said so. Enumerating codex-review's OTHER needs (hygiene,
-          # python-quality, marketplace-parity) one at a time was the gap a
-          # security review found: any of those failing also makes
-          # codex-review 'skipped' as an unrelated side effect, which the
-          # old check here would have silently accepted as a clean pass.
-          # Keying off compute-scope's own explicit output instead of
-          # codex-review's bare result closes every such path at once,
-          # regardless of which upstream job actually caused the skip.
+          # itself said so. Any of codex-review's other needs (hygiene,
+          # python-quality, marketplace-parity) failing also makes
+          # codex-review 'skipped' as an unrelated side effect, which an
+          # earlier version of this check would have silently accepted as a
+          # clean pass. Keying off compute-scope's own explicit output
+          # instead of codex-review's bare result closes every such path at
+          # once, regardless of which upstream job actually caused the skip
+          # -- this is the primary guard. The direct per-job check at the
+          # top of this step is defense in depth for those three jobs.
           if [ "$CODEX_RESULT" = "skipped" ] && [ "$BYPASS_ELIGIBLE" != "true" ]; then
             echo "codex-review was skipped for a reason other than an approved reviewer-scope bypass (bypass_eligible=$BYPASS_ELIGIBLE) -- failing closed."
             exit 1
