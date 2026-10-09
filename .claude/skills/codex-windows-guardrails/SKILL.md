@@ -169,7 +169,7 @@ provenance field imply otherwise.
   dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (68 checks, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (73 checks, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —

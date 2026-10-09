@@ -73,33 +73,44 @@ const REGULAR_FILE_MODES = new Set(["100644", "100755"]);
 // Remote-tracking names only; keeps an option-shaped ref from reaching git.
 const SAFE_REF = /^origin\/[A-Za-z0-9._/-]+$/;
 
-let cachedGit;
+const cachedGit = new Map();
+
+function isInsideRoot(dir, root) {
+  const norm = (p) => path.resolve(p).toLowerCase();
+  const rel = path.relative(norm(root), norm(dir));
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
 
 // Absolute path of git, searching PATH only -- never the cwd, never a
-// relative or empty PATH entry. null when none is found (callers fail
-// closed: execFileSync(null, ...) throws, which every caller already treats
-// as "git unavailable"). Off Windows the bare name is already safe (execvp
-// does not search the cwd for a name without a slash).
-export function gitExecutable() {
-  if (cachedGit !== undefined) return cachedGit;
-  if (process.platform !== "win32") {
-    cachedGit = "git";
-    return cachedGit;
-  }
-  cachedGit = null;
-  for (const dir of (process.env.PATH || process.env.Path || "").split(path.delimiter)) {
+// relative or empty PATH entry, and (security re-review M-1) never a PATH
+// folder that is the repo root or inside it: an activated `.venv\Scripts` or
+// `node_modules\.bin` in the worktree is routinely prepended to PATH, and a
+// branch under review can commit a `git.exe` there. Pass the repo root being
+// scanned as `excludeRoot`; the answer is cached per root. null when none is
+// found (callers fail closed: execFileSync(null, ...) throws, which every
+// caller already treats as "git unavailable"). Off Windows the bare name is
+// already safe (execvp does not search the cwd for a name without a slash).
+export function gitExecutable(excludeRoot) {
+  if (process.platform !== "win32") return "git";
+  const key = excludeRoot ? path.resolve(excludeRoot).toLowerCase() : "";
+  if (cachedGit.has(key)) return cachedGit.get(key);
+  let found = null;
+  for (const raw of (process.env.PATH || process.env.Path || "").split(path.delimiter)) {
+    const dir = raw.replace(/^"|"$/g, "");
     if (!dir || !path.isAbsolute(dir)) continue;
-    const candidate = path.join(dir.replace(/^"|"$/g, ""), "git.exe");
+    if (excludeRoot && isInsideRoot(dir, excludeRoot)) continue;
+    const candidate = path.join(dir, "git.exe");
     try {
       if (fs.statSync(candidate).isFile()) {
-        cachedGit = candidate;
+        found = candidate;
         break;
       }
     } catch {
       // not in this directory
     }
   }
-  return cachedGit;
+  cachedGit.set(key, found);
+  return found;
 }
 
 export function gitEnv(extra = {}) {
@@ -119,9 +130,9 @@ export function gitEnv(extra = {}) {
 export const NULL_DEVICE = process.platform === "win32" ? "NUL" : "/dev/null";
 
 // Returns trimmed stdout, or null on any failure (non-zero exit, git missing).
-function runGit(args, cwd, extraEnv = {}) {
+function runGit(args, cwd, extraEnv = {}, root = cwd) {
   try {
-    return execFileSync(gitExecutable(), args, {
+    return execFileSync(gitExecutable(root), args, {
       cwd,
       env: gitEnv(extraEnv),
       encoding: "utf8",
@@ -154,11 +165,14 @@ export function resolveTrustedBase(repoRoot) {
 // differs from it -- committed, added, deleted or uncommitted edits all count.
 // Untracked .gitignore files (e.g. the one pip/uv write inside .venv) cannot
 // come from a branch under review, so they are not compared.
+// The pathspec is case-INSENSITIVE on purpose: on NTFS git reads a tracked
+// `dir/.GITIGNORE` as an ignore file (verified live: it hid an untracked
+// credentials.json), but a plain `:(glob)**/.gitignore` does not match that name.
 export function gitignoreUnchangedSinceBase(repoRoot) {
   const base = resolveTrustedBase(repoRoot);
   if (!base) return false;
   try {
-    execFileSync(gitExecutable(), ["diff", "--quiet", base, "--", ":(glob)**/.gitignore"], {
+    execFileSync(gitExecutable(repoRoot), ["diff", "--quiet", base, "--", ":(glob,icase)**/.gitignore"], {
       cwd: repoRoot,
       env: gitEnv(),
       stdio: "ignore",
@@ -177,7 +191,7 @@ export function createBaseVerifier(repoRoot) {
   // Read the raw blob (runGit trims) so a pattern's trailing escapes survive.
   let ignoreText;
   try {
-    ignoreText = execFileSync(gitExecutable(), ["show", `${base}:.secretlintignore`], {
+    ignoreText = execFileSync(gitExecutable(repoRoot), ["show", `${base}:.secretlintignore`], {
       cwd: repoRoot,
       env: gitEnv(),
       encoding: "utf8",
@@ -194,7 +208,7 @@ export function createBaseVerifier(repoRoot) {
   let matcherDir;
   try {
     matcherDir = fs.mkdtempSync(path.join(os.tmpdir(), "cdx-lintignore-base-"));
-    if (runGit(["init", "-q", "--template="], matcherDir, matcherEnv) === null) {
+    if (runGit(["init", "-q", "--template="], matcherDir, matcherEnv, repoRoot) === null) {
       throw new Error("matcher repo init failed");
     }
     fs.writeFileSync(path.join(matcherDir, ".gitignore"), ignoreText);
@@ -205,7 +219,7 @@ export function createBaseVerifier(repoRoot) {
 
   const matchesBasePatterns = (posixPath) => {
     try {
-      execFileSync(gitExecutable(), [...isolated, "check-ignore", "-q", "--no-index", "--", posixPath], {
+      execFileSync(gitExecutable(repoRoot), [...isolated, "check-ignore", "-q", "--no-index", "--", posixPath], {
         cwd: matcherDir,
         env: gitEnv(matcherEnv),
         stdio: "ignore",
