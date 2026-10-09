@@ -370,11 +370,24 @@ const DOCUMENTATION_EXTENSION = /\.(md|mdx|txt|rst)$/i;
 // present in the original case-insensitive version).
 const CREDENTIAL_ASSIGNMENT_LINE_PATTERN = /^\s*[A-Za-z0-9_]*(?:CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*=\s*(.+)$/im;
 const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
+// Security re-review (m-5, 2026-10-09): `redactSecrets`' generic assignment
+// pattern needs `NAME = value` and is beaten by a type annotation
+// (`API_KEY: str = "..."`), so a file carrying a hard-coded annotated secret
+// would pass the content scan. This second local check (kept here, not in
+// the shared `redactSecrets`, for the same blast-radius reason as above)
+// flags an annotated assignment to a secret-suggestive name only when the
+// right-hand side is a QUOTED LITERAL -- `total_tokens: int = 0`, or
+// `api_key: str = os.getenv("X")`, still pass.
+const ANNOTATED_SECRET_LITERAL_PATTERN =
+  /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:\s*[A-Za-z_][\w[\], .|]*\s*=\s*(["'])[^"'\r\n]+\1/im;
 
 function looksLikeCredentialAssignment(content) {
   for (const line of content.split(/\r?\n/)) {
     const match = line.match(CREDENTIAL_ASSIGNMENT_LINE_PATTERN);
     if (match && !CREDENTIAL_ASSIGNMENT_CALL_SHAPE.test(match[1].trim())) {
+      return true;
+    }
+    if (ANNOTATED_SECRET_LITERAL_PATTERN.test(line)) {
       return true;
     }
   }

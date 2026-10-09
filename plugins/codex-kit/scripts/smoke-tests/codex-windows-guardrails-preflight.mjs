@@ -1081,7 +1081,7 @@ console.log("\n=== trusted-base .secretlintignore tier: gitignore syntax, but on
   check("the clean state advances past the scan again (control: nothing above left residue)", passedScan(f.run()), JSON.stringify(f.last));
 }
 
-console.log("\n=== security review M2: an exemption the branch adds for a file ALREADY in the base is not honored ===");
+console.log("\n=== security review M2: an exemption the branch adds for a file ALREADY in the base is not honored by the trusted-base tier (the older exact-path tier still reads the working tree: issue #295) ===");
 {
   const f = makeFixture();
   writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n");
@@ -1194,6 +1194,34 @@ console.log("\n=== security re-review M-1: a PATH folder inside the repo never s
     "with a planted git.exe in a PATH folder inside the repo, the scan still reaches the instruction-containment gate (the real git is used)",
     passedScan(result),
     JSON.stringify(result)
+  );
+}
+
+console.log("\n=== security re-review m-5: an annotated hard-coded secret in an exempt-listed file is still caught by the content scan ===");
+{
+  // The exact-path tier (working-tree .secretlintignore, no base) always
+  // content-scans what it exempts. `redactSecrets` is beaten by a type
+  // annotation, so guarded-dispatch.mjs carries its own narrow check.
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\nscripts/anls_x_token.py\n");
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "total_tokens: int = 0\n");
+  f.commit("exempt-listed script with an innocuous annotated assignment");
+  check(
+    "control: `total_tokens: int = 0` (annotated, numeric literal) still advances past the scan",
+    passedScan(f.run()),
+    JSON.stringify(f.last)
+  );
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: str = \"hunter2-not-a-real-key\"\n");
+  check(
+    "an annotated assignment of a quoted literal to a secret-suggestive name is rejected",
+    blockedBy(f.run(), /anls_x_token\.py/),
+    JSON.stringify(f.last)
+  );
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "api_key: str = os.getenv(\"API_KEY\")\n");
+  check(
+    "reading the value from the environment (a call, not a literal) still passes",
+    passedScan(f.run()),
+    JSON.stringify(f.last)
   );
 }
 
