@@ -46,6 +46,13 @@ def submission(records, **overrides):
     return json.dumps(base)
 
 
+def rec(title="t", **extra):
+    """A valid create record: title, description and status are required."""
+    record = {"title": title, "description": "d", "status": "Backlog"}
+    record.update(extra)
+    return record
+
+
 def update_record(i=0, **overrides):
     rec = {
         "id": f"ISSUE-{i}",
@@ -71,7 +78,7 @@ def main() -> int:
             path.write_text(text, encoding="utf-8")
             return str(path)
 
-        recs = [{"title": "x", "description": "dx"}, {"title": "y"}, {"title": "z"}]
+        recs = [rec("x", description="dx"), rec("y"), rec("z")]
         a = write("a.json", submission(recs))
 
         # --- hash / verify -------------------------------------------------------------
@@ -82,7 +89,9 @@ def main() -> int:
 
         reordered = write(
             "reordered.json",
-            '{"records": [{"title": "x", "description": "dx"}, {"title": "y"}, {"title": "z"}],\n'
+            '{"records": [{"title": "x", "description": "dx", "status": "Backlog"},'
+            ' {"title": "y", "description": "d", "status": "Backlog"},'
+            ' {"title": "z", "description": "d", "status": "Backlog"}],\n'
             ' "batch_id": "batch-0001", "team_id": "team-1",'
             ' "environment": "production", "operation": "create"}',
         )
@@ -92,7 +101,7 @@ def main() -> int:
         )
 
         for label, text in [
-            ("a changed record", submission([recs[0], recs[1], {"title": "w"}])),
+            ("a changed record", submission([recs[0], recs[1], rec("w")])),
             ("record order", submission([recs[1], recs[0], recs[2]])),
             ("a different team", submission(recs, team_id="team-2")),
             ("a different environment", submission(recs, environment="test")),
@@ -103,7 +112,7 @@ def main() -> int:
 
         rc, out = run("verify", a, digest)
         check("verify accepts the matching hash", rc == 0 and out["ok"])
-        rc, out = run("verify", write("v2.json", submission([{"title": "q"}])), digest)
+        rc, out = run("verify", write("v2.json", submission([rec("q")])), digest)
         check("verify rejects a changed set", rc == 1 and "hash mismatch" in out["error"])
         rc, out = run("verify", a, "ABC")
         check("verify rejects a malformed expected hash", rc == 1 and not out["ok"])
@@ -130,7 +139,7 @@ def main() -> int:
             "chunk refuses a mismatched hash and emits no records", rc == 1 and "records" not in out
         )
 
-        many = write("many.json", submission([{"title": f"t{i}"} for i in range(60)]))
+        many = write("many.json", submission([rec(f"t{i}") for i in range(60)]))
         rc, out = run("hash", many)
         many_digest = out["sha256"]
         rc, out = run("chunk", many, many_digest, "0", "25")
@@ -140,7 +149,7 @@ def main() -> int:
 
         fat = write(
             "fat.json",
-            submission([{"title": f"t{i}", "description": "d" * 2000} for i in range(25)]),
+            submission([rec(f"t{i}", description="d" * 2000) for i in range(25)]),
         )
         rc, out = run("hash", fat)
         fat_digest = out["sha256"]
@@ -192,7 +201,7 @@ def main() -> int:
         )
         rc, out = run("preview", many, many_digest, "0", "60")
         check("preview of 60 short rows is allowed", rc == 0 and len(out["rows"]) == 60)
-        big = write("big.json", submission([{"title": f"t{i}"} for i in range(150)]))
+        big = write("big.json", submission([rec(f"t{i}") for i in range(150)]))
         rc, out = run("hash", big)
         rc, out = run("preview", big, out["sha256"], "0", "101")
         check("preview over 100 rows refused", rc == 1 and not out["ok"])
@@ -202,13 +211,13 @@ def main() -> int:
         # --- validation ----------------------------------------------------------------
         dup_top = write(
             "dup_top.json",
-            '{"operation":"create","environment":"production","team_id":"A","team_id":"B","batch_id":"batch-0001","records":[{"title":"t"}]}',
+            '{"operation":"create","environment":"production","team_id":"A","team_id":"B","batch_id":"batch-0001","records":[{"title":"t","description":"d","status":"s"}]}',
         )
         rc, out = run("hash", dup_top)
         check("duplicate top-level key refused", rc == 1 and "duplicate" in out["error"])
         dup_rec = write(
             "dup_rec.json",
-            '{"operation":"create","environment":"production","team_id":"A","batch_id":"batch-0001","records":[{"title":"1","title":"2"}]}',
+            '{"operation":"create","environment":"production","team_id":"A","batch_id":"batch-0001","records":[{"title":"1","title":"2","description":"d","status":"s"}]}',
         )
         rc, out = run("hash", dup_rec)
         check("duplicate key inside a record refused", rc == 1 and "duplicate" in out["error"])
@@ -227,28 +236,39 @@ def main() -> int:
             ("empty records", submission([])),
             ("non-object top level", "[1, 2]"),
             ("invalid JSON", "{not json"),
-            ("create record with a team override", submission([{"title": "t", "team": "other"}])),
-            ("create record with a parent", submission([{"title": "t", "parent": "X-1"}])),
+            ("create record with a team override", submission([rec("t", team="other")])),
+            ("create record with a parent", submission([rec("t", parent="X-1")])),
             ("create record that is empty", submission([{}])),
-            ("create record with an owner", submission([{"title": "t", "owner": "someone"}])),
+            ("create record with only a priority", submission([{"priority": "High"}])),
+            ("create record without a title", submission([{"description": "d", "status": "s"}])),
+            ("create record without a description", submission([{"title": "t", "status": "s"}])),
+            ("create record without a status", submission([{"title": "t", "description": "d"}])),
+            ("create record with an empty status", submission([rec("t", status="")])),
+            ("create record with a blank title", submission([rec("   ")])),
+            ("source_plugin that is not kebab-case", submission(recs, source_plugin="Work_Ledger")),
+            ("source_plugin as an object", submission(recs, source_plugin={"note": "x"})),
+            ("source_skill with a path", submission(recs, source_skill="../x")),
+            ("linear_target that is not a slug", submission(recs, linear_target="not a slug")),
+            ("linear_target as an object", submission(recs, linear_target={"a": 1})),
+            ("create record with an owner", submission([rec("t", owner="someone")])),
             (
                 "create record with dependencies",
-                submission([{"title": "t", "dependencies": ["X-1"]}]),
+                submission([rec("t", dependencies=["X-1"])]),
             ),
-            ("create record with a cycle", submission([{"title": "t", "cycle": "c1"}])),
+            ("create record with a cycle", submission([rec("t", cycle="c1")])),
             (
                 "create title that is not a string",
-                submission([{"title": {"id": "x", "teamId": "y"}}]),
+                submission([rec({"id": "x", "teamId": "y"})]),
             ),
             (
                 "create labels as objects",
-                submission([{"title": "t", "labels": [{"name": "x", "teamId": "y"}]}]),
+                submission([rec("t", labels=[{"name": "x", "teamId": "y"}])]),
             ),
             (
                 "create labels over the cap",
-                submission([{"title": "t", "labels": [f"l{i}" for i in range(21)]}]),
+                submission([rec("t", labels=[f"l{i}" for i in range(21)])]),
             ),
-            ("create empty label string", submission([{"title": "t", "labels": [""]}])),
+            ("create empty label string", submission([rec("t", labels=[""])])),
             ("unexpected top-level key", submission(recs, project="P-1")),
             (
                 "update set value that is null",
@@ -311,6 +331,27 @@ def main() -> int:
         )
         rc, out = run("hash", upd_null_before)
         check("update before may hold null for an unset field", rc == 0 and out["ok"])
+
+        for token in ("NaN", "Infinity", "-Infinity"):
+            nonfinite = write(
+                "nonfinite.json",
+                '{"operation":"create","environment":"test","team_id":"T","batch_id":"batch-0001",'
+                f'"linear_target":"o/r","records":[{{"title":"t","description":"d","status":"s","x":{token}}}]}}',
+            )
+            rc, out = run("hash", nonfinite)
+            check(f"non-finite number {token} refused", rc == 1 and "non-finite" in out["error"])
+
+        with_target = write(
+            "with_target.json",
+            submission(
+                recs,
+                source_plugin="workledger-kit",
+                source_skill="syncing-open-items",
+                linear_target="acme/widgets",
+            ),
+        )
+        rc, out = run("hash", with_target)
+        check("valid source and target fields are accepted", rc == 0 and out["ok"])
 
         deep = write("deep.json", "[" * 100000 + "]" * 100000)
         rc, out = run("hash", deep)

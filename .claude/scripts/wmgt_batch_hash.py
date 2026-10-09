@@ -31,8 +31,11 @@ update), "environment" (production or test), a non-empty string "team_id", a "ba
 nonce (intake generates a fresh one for every submission, including a resume, so the same
 records never hash the same twice), and a non-empty "records" array. Records are checked
 against a per-operation field allowlist and typed (strings; labels as a bounded array of
-strings). Duplicate JSON keys anywhere are refused. The hash covers the whole object,
-serialized canonically (sorted keys, no whitespace, ASCII escapes).
+strings), and a create record must carry a non-blank title, description and status.
+Duplicate JSON keys and non-finite numbers (NaN, Infinity) anywhere are refused, and the
+source_plugin, source_skill and linear_target fields are pattern-checked when present. The
+hash covers the whole object, serialized canonically (sorted keys, no whitespace, ASCII
+escapes).
 
 What this does and does not do: it binds an approval to the bytes of one file, and lets a
 write be built from those bytes. It cannot bind the model's own connector-call arguments to
@@ -61,6 +64,9 @@ FULL_DESCRIPTION_COUNT = 3
 SCRATCH_DIR_NAME = "wmgt-intake"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _BATCH_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+_KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,99}/[a-z0-9][a-z0-9._-]{0,99}$")
+_CREATE_REQUIRED = ("title", "description", "status")
 _PURGE_NAME_RE = re.compile(
     r"^(?:[A-Za-z0-9._-]{8,64}\.json|[0-9a-f]{64}-[A-Za-z0-9._-]{8,64}\.progress\.json)$"
 )
@@ -86,6 +92,10 @@ MAX_LABEL_CHARS = 100
 
 class HashError(Exception):
     pass
+
+
+def _reject_constant(name):
+    raise HashError(f"non-finite number {name} is not allowed")
 
 
 def _no_duplicate_keys(pairs):
@@ -124,6 +134,12 @@ def _check_records(operation: str, records: list) -> None:
             extra = set(record) - _CREATE_FIELDS
             if extra:
                 raise HashError(f"{where} has fields not allowed on create: {sorted(extra)}")
+            for field in _CREATE_REQUIRED:
+                value = record.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    raise HashError(
+                        f"{where}: {field!r} is required and must be a non-blank string"
+                    )
             for field, value in record.items():
                 _check_value(where, field, value)
         else:
@@ -175,7 +191,11 @@ def load_submission(path_str: str) -> dict:
     if len(raw) > MAX_BYTES:
         raise HashError(f"file exceeds {MAX_BYTES} bytes")
     try:
-        data = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_duplicate_keys)
+        data = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_reject_constant,
+        )
     except HashError:
         raise
     except (UnicodeDecodeError, ValueError, RecursionError, MemoryError) as exc:
@@ -185,6 +205,13 @@ def load_submission(path_str: str) -> dict:
     unexpected = set(data) - _TOP_LEVEL_KEYS
     if unexpected:
         raise HashError(f"unexpected top-level keys: {sorted(unexpected)}")
+    for key in ("source_plugin", "source_skill"):
+        if key in data and not (isinstance(data[key], str) and _KEBAB_RE.match(data[key])):
+            raise HashError(f"{key!r} must be a lowercase kebab-case name of at most 64 characters")
+    if "linear_target" in data and not (
+        isinstance(data["linear_target"], str) and _SLUG_RE.match(data["linear_target"])
+    ):
+        raise HashError('"linear_target" must be a lowercase owner/repo slug')
     if data.get("operation") not in _OPERATIONS:
         raise HashError('"operation" must be "create" or "update"')
     if data.get("environment") not in _ENVIRONMENTS:
@@ -205,7 +232,9 @@ def load_submission(path_str: str) -> dict:
 
 
 def digest_of(data: dict) -> str:
-    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    canonical = json.dumps(
+        data, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+    )
     return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
@@ -369,7 +398,7 @@ def main(argv=None) -> int:
     except (RecursionError, MemoryError):
         print(json.dumps({"ok": False, "error": "input too deeply nested or too large"}))
         return 1
-    print(json.dumps(result))
+    print(json.dumps(result, allow_nan=False))
     return 0
 
 
