@@ -77,9 +77,11 @@ Ask via `AskUserQuestion` per PR and per command, showing the exact body and the
 plainly that the comment is public and permanent. For `ignore` and `unignore`, also say that Dependabot
 stores the preference for the whole repository, not just this PR, and that the PR is closed as part of
 it; for `unignore *`, that it clears the ignore conditions of every dependency in the group. For
-`ignore`, add that GitHub's docs say it lasts until the PR is reopened or the suggested version is
-installed by hand, and that this skill has not verified whether it also suppresses Dependabot security
-updates for the dependency, so the user should treat it as possibly doing so. For
+`ignore this ...`, add that GitHub's docs say it lasts unless the PR is reopened or the user upgrades to
+that dependency or version themselves; for the `<dep>` forms the docs state no end condition, so say that
+and tell the user to assume it persists until removed with `unignore`. For either kind, add that this skill
+has not verified whether it also suppresses Dependabot security updates for the dependency, so the user
+should treat it as possibly doing so. For
 `recreate`, that edits made to the PR are overwritten.
 
 Choosing the scope of an `ignore` is the user's: ask a separate `AskUserQuestion` listing patch version,
