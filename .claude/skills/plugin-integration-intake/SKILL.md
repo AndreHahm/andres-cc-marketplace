@@ -8,7 +8,7 @@ description: >-
   own prior approval never substitutes. Use when another plugin's workflow needs to store
   something in Notion or act on something in Linear; this is the only path any other plugin in
   this repository may use for that.
-allowed-tools: Read, Write, Glob, Skill(notion-knowledge-management), Skill(linear-work-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), AskUserQuestion
+allowed-tools: Read, Write, Glob, Skill(notion-knowledge-management), Skill(linear-work-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py:*), AskUserQuestion
 ---
 
 # Plugin Integration Intake
@@ -105,11 +105,13 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
      passed and the payload has cleared the Malformed-content check** — a payload that fails
      either of those goes straight to a structured handoff with no classifier dispatch; the
      content of a caller that failed existence-checking is never fed to a live Codex process.
-3. On a valid payload, preview the exact proposed target record(s) — identical in form to what a
-   direct user-initiated capture/promotion would show, never a summary of "what the calling plugin
+3. On a valid payload, preview the exact proposed target record(s) — for a single record, identical
+   in form to what a direct user-initiated capture/promotion would show (a batch preview is not
+   identical: see Batch, Query and Update below), never a summary of "what the calling plugin
    wants." **This preview's target workspace/database/team scope must reflect a trust-checked
-   value, not an assumed one.** This skill's only `Bash` grant is scoped to
-   `wmgt_bridge_caller.py` (for the optional classifier dispatch in step 2 above) — it holds no
+   value, not an assumed one.** This skill's `Bash` grants are scoped to
+   `wmgt_bridge_caller.py` (for the optional classifier dispatch in step 2 above) and
+   `wmgt_batch_hash.py` (the batch hash, below) — it holds no
    `git ls-files`-capable grant and never runs `FOUNDATION_CONTRACTS.md`'s Local Override
    tracked-vs-untracked trust check itself — that check
    belongs to whichever service skill (`notion-knowledge-management`/`linear-work-management`)
@@ -133,9 +135,41 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    the write's own `affected_record`, so an audit later can trace exactly which plugin's claim
    caused which write.
 
+## Batch, Query and Update
+
+The envelope's optional `operation` field (`create` by default, `query`, `update`; any other value is
+malformed content) and a `records` array in place of `content` extend the single-record path above; an
+envelope without them behaves exactly as before. A `linear_target` that is an `owner/repo` slug is resolved
+to a Linear team by `linear-work-management` (which runs the Local Override trust check this skill cannot)
+before any preview: exact match against `linear.repositories`, an unknown slug rejected (never guessed,
+defaulted or retried as an ID), the mapped team checked against the host-profile operation's `team_ids`,
+production team unless the caller sets `test_run`. A `test_run` flag is caller-asserted like `source_plugin`,
+so the preview must name the environment and team in bold.
+
+- **Batch create and update:** one approval for the whole set, bound to a hash that
+  `scripts/wmgt_batch_hash.py` computes over the previewed submission file (kept in the session scratchpad,
+  with a fresh `batch_id` nonce inside it so an approval cannot be replayed). The preview and every write are
+  built only from the script's verified `show`, `preview` and `chunk` output, at most 25 records at a time; a mismatch
+  or a script failure stops the batch and never falls back to an unverified write. A batch preview is **not**
+  identical to a direct request's: it tabulates every record and shows full text for the first three, and the
+  person's own review of the hashed file is the control for the rest. A resume is a re-submission that
+  re-runs every check and shows the full preview again. Full procedure:
+  `references/wmgt-intake-batch-contract.md`.
+- **Query:** a structured dedup key (`<owner/repo>|<source-ref>|<fingerprint>`, first part equal to the
+  resolved slug), matched only against the first line of an Issue's description, returning
+  `{key, match_count, ids}` with no titles or other fields. No approval, because nothing is written and
+  only IDs are returned to the caller (the search hits still enter the shared model context; the query
+  contract lists that as a residual). **Update:** same approval and hash binding as a write, a short field list
+  (no `description`), each Issue scope-checked and re-read just before it is written. Full procedure:
+  `references/wmgt-intake-query-update-contract.md`.
+- Everything in the Data-Only boundary and the fresh-approval rule below applies unchanged to every record in
+  a batch, every `keys` entry in a query, and every `set` in an update. The batch and query paths are
+  prose-enforced like the rest of this gate; the contracts list what they do not guarantee.
+
 ## Confirmation and Safety
 
-- **No approval needed:** receiving and validating the payload, building the preview.
+- **No approval needed:** receiving and validating the payload, building the preview, and a structured-key
+  `query` (it writes nothing and returns IDs only; see the query contract for why it is narrow).
 - **Approval required:** every actual write — no exception for a "low-risk" or "read-only-looking"
   submission; if it writes to Notion or Linear at all, it goes through the gate. The preview shown
   for approval must also surface anything that looks like a credential, token, or third-party
@@ -183,7 +217,10 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
 - a direct user request to capture knowledge or manage work → `notion-knowledge-management` /
   `linear-work-management` directly, no intake payload involved
 
-**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-2/ (2026-09-11) — re-run
+**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-4/ (2026-10-09) — evals 5-11 for
+the Wave 3a batch, query and update additions, each a single simulated (dry-run) with_skill run graded by the
+orchestrator: 24/24 assertions passed; eval 11 (resume) tested the no-envelope path, with the full resume steps
+only walked through conditionally. Prior run: evals/plugin-integration-intake/workspace/iteration-2/ (2026-09-11) — re-run
 after the Phase 6/7 fix batch (Write + scoped `Bash(wmgt_bridge_caller.py:*)` grants, Ambiguous-target dispatch
 text citing `FOUNDATION_CONTRACTS.md`, Step 3's stale no-Bash-grant claim corrected); with_skill 100% vs.
 baseline 19.4% pass rate across 3 evals (the third added specifically to exercise the fixed
@@ -202,11 +239,18 @@ Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-
       grant) findings from that pass are fixed in this file's Trust Model section and
       `allowed-tools`. Re-run before this gate is wired to a live connector.
 - [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
+- [ ] The batch, query and update additions (Wave 3a work package 3) pass `security-reviewer` with no open
+      Critical or Major finding before they ship, and `scripts/wmgt_test_batch_hash.py` passes. Four passes ran
+      during development (2026-10-09): the first three returned Reject on findings fixed afterwards, and the
+      fourth returned Approve with conditions (two Major findings, fixed afterwards). The final result is
+      recorded in the PR that ships this change.
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `references/intake-payload-schema.md` | Exact required/optional payload fields and validation rules |
+| `references/wmgt-intake-batch-contract.md` | Batch envelope additions, slug-to-team resolution, hash-bound approval, chunked and resumable writes |
+| `references/wmgt-intake-query-update-contract.md` | Structured-key, IDs-only query and hash-bound update operations |
 | `assets/intake-payload.schema.json` | Machine-checkable JSON Schema defining the envelope (not `content`'s per-type shape — see the reference above); not yet invoked by any runtime component, see `intake-payload-schema.md`'s own intro |
 | `examples/wiring-a-caller.md` | Worked example of another plugin author's own skill calling into this one |

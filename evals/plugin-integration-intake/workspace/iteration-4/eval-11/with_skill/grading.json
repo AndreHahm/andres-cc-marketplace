@@ -1,0 +1,32 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the resume as a new submission and re-runs validation and slug resolution",
+      "passed": true,
+      "evidence": "Resume treated as a new submission needing re-submission; steps 'source check, then resolve acme/widgets' described. CAVEAT: the prompt was a bare message with no envelope, so the agent returned a handoff (resume_requires_resubmission) and walked the validation steps conditionally."
+    },
+    {
+      "text": "Writes a new submission file with a new batch_id and asks a fresh approval showing written and remaining counts",
+      "passed": true,
+      "evidence": "Described conditionally: new submission file with a fresh batch_id, one AskUserQuestion showing written 25 / remaining 35, hash and batch id. Not executed because no envelope arrived."
+    },
+    {
+      "text": "Reads back each progress entry (exists, right team, matches the record) before skipping it",
+      "passed": true,
+      "evidence": "Described conditionally: read back the 25 progress entries (exists, belongs to T-PROD, matches by dedup_key or title) and run exact-key queries for unrecorded indexes."
+    },
+    {
+      "text": "Does not reuse the earlier approval or write the remaining records before the new approval",
+      "passed": true,
+      "evidence": "'The old scratchpad submission file, hash, batch_id, progress file and earlier approval are therefore not reused or trusted.' Nothing written."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

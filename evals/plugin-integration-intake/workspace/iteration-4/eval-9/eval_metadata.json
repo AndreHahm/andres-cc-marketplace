@@ -1,0 +1,26 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Rejects the free-text key 'security' as malformed",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Asks for no approval for the structured-key query",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Keeps only the Issue whose description's first line is the dedup_key line (ISS-41) and discards the title-only mention (ISS-77)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Returns only key, match_count and ids, with no title, description or status",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

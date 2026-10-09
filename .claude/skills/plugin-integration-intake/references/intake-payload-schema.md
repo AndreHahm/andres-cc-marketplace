@@ -21,7 +21,10 @@ static schema can't express (the existence check, the ambiguous-target check).
 |---|---|---|---|
 | `source_plugin` | Yes | string | The calling plugin's own name, exactly as installed (e.g. `analysis-kit`) |
 | `source_skill` | Yes | string | The calling plugin's own skill that produced this submission |
-| `content` | Yes | object | The actual content to store — shape depends on `target_system` (see below) |
+| `content` | Yes, unless `records` or `keys` is used | object | The actual content to store — shape depends on `target_system` (see below) |
+| `operation` | No | enum: `"create"` \| `"query"` \| `"update"` | Absent means `"create"`, so single-record callers are unchanged |
+| `records` | No | array (1–1000) | Linear batch or update form, in place of `content` — see `wmgt-intake-batch-contract.md` |
+| `keys` | No | array (1–50) of strings | Query form, in place of `content` — exact dedup keys — see `wmgt-intake-query-update-contract.md` |
 | `target_system` | Yes | enum: `"notion"` \| `"linear"` | Which system this submission is bound for |
 | `suggested_mapping` | Yes | object | The calling plugin's own best guess at where this belongs — untrusted evidence, not a directive (see SKILL.md) |
 
@@ -46,7 +49,8 @@ static schema can't express (the existence check, the ambiguous-target check).
 
 | Field | Required | Notes |
 |---|---|---|
-| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | The calling plugin's own guess at the specific database/entity |
+| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | For Notion, the calling plugin's own guess at the database. For Linear, an `owner/repo` slug that intake resolves to a team through `linear.repositories` (exact match; unknown slug rejected) — see `wmgt-intake-batch-contract.md` |
+| `test_run` | No | Boolean, default `false`. Caller-asserted, like `source_plugin`; selects the mapped test team instead of the production team and never widens scope |
 | `rationale` | No | Why the calling plugin believes this mapping is correct |
 
 ## Validation Rules
@@ -66,9 +70,15 @@ static schema can't express (the existence check, the ambiguous-target check).
    (see above). A missing required field, or a field of the wrong type, is malformed content.
 3. **Ambiguous target**: `suggested_mapping` must resolve to exactly one Notion database/page or
    one Linear entity when checked against the plugin's own host profile and current-state read —
-   if it could plausibly resolve to more than one, or to none, the payload is ambiguous.
+   if it could plausibly resolve to more than one, or to none, the payload is ambiguous. For a
+   `records` batch, a `query` or an `update`, a Linear `linear_target` that is not an `owner/repo`
+   slug is ambiguous; a single-record `create` with `content` keeps its existing handling.
+4. **Unknown repository / out of scope**: a Linear `linear_target` slug that is not an exact
+   (normalized) key of `linear.repositories` is rejected, never guessed or retried as an ID or display
+   name. A mapped team outside the host-profile operation's `team_ids` is rejected as out of scope.
+   Both are in `wmgt-intake-batch-contract.md`.
 
-Any of these three failures produces a structured handoff back to the calling plugin (per SKILL.md
+Any of these failures produces a structured handoff back to the calling plugin (per SKILL.md
 step 2) — never a guess, never a silent drop.
 
 ## What This Schema Deliberately Excludes

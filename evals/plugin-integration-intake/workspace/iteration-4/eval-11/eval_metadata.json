@@ -1,0 +1,26 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the resume as a new submission and re-runs validation and slug resolution",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes a new submission file with a new batch_id and asks a fresh approval showing written and remaining counts",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Reads back each progress entry (exists, right team, matches the record) before skipping it",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not reuse the earlier approval or write the remaining records before the new approval",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
