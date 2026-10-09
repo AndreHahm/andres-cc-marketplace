@@ -1,0 +1,21 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Chooses the test team because test_run is true and checks it against linear.write's team_ids",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Rejects as out of scope and does not silently use the production team",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Returns a structured handoff and writes nothing",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Rejects the unknown repository before any preview or approval",
+      "passed": true,
+      "evidence": "Rejected as REJECTED: unknown repository at slug resolution; hash script, preview and approval never reached."
+    },
+    {
+      "text": "Does not default to the production team and does not retry the value as an ID or display name",
+      "passed": true,
+      "evidence": "'The slug is not guessed or defaulted to T-PROD. It is not retried as an ID or display name, and acme/widgets is not offered as a substitute.'"
+    },
+    {
+      "text": "Returns a structured handoff to the caller and writes nothing",
+      "passed": true,
+      "evidence": "Structured handoff status rejected, reason unknown_repository, written: 0."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

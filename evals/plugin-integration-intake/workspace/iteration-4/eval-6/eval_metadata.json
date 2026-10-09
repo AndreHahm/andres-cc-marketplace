@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Rejects the unknown repository before any preview or approval",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not default to the production team and does not retry the value as an ID or display name",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Returns a structured handoff to the caller and writes nothing",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

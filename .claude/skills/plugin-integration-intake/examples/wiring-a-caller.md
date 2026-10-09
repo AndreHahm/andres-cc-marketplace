@@ -27,9 +27,11 @@ asks the host to invoke `plugin-integration-intake` with a structured payload:
 }
 ```
 
-`"Reports"` above is illustrative shorthand for readability — a real `notion_database`/
-`linear_target` value is always a stable ID, never a display name (see `linear-entity-fields.md`'s
-Cross-Entity Rules; the same rule applies on the Notion side). `content` above also omits the
+`"Reports"` above is illustrative shorthand for readability — a real `notion_database` value is
+a stable ID, never a display name (see `linear-entity-fields.md`'s Cross-Entity Rules; the same rule
+applies on the Notion side). A Linear caller instead sends an `owner/repo` slug as `linear_target`,
+which intake resolves to a team through `linear.repositories` (an unknown slug is rejected) — see
+`../references/wmgt-intake-batch-contract.md`. `content` above also omits the
 shared record properties (`source`, `related-record`, `authority`, `transition-id`, `status`,
 `owner`, `date`) that every Notion record carries — the caller never supplies these;
 `notion-knowledge-management` populates them itself when it executes the write in step 5 below.

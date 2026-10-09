@@ -1,0 +1,21 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs the Local Override trust check before using linear.repositories",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Normalizes the slug to acme/widgets and selects the test team T-TEST because test_run is true",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Rejects as out of scope because T-TEST is not in linear.write's team_ids, without falling back to T-PROD",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
