@@ -250,6 +250,19 @@ def main() -> int:
             ("source_skill with a path", submission(recs, source_skill="../x")),
             ("linear_target that is not a slug", submission(recs, linear_target="not a slug")),
             ("linear_target as an object", submission(recs, linear_target={"a": 1})),
+            (
+                "source_plugin with a trailing newline",
+                submission(recs, source_plugin="workledger-kit\n"),
+            ),
+            (
+                "source_skill with a trailing newline",
+                submission(recs, source_skill="syncing-open-items\n"),
+            ),
+            (
+                "linear_target with a trailing newline",
+                submission(recs, linear_target="acme/widgets\n"),
+            ),
+            ("batch_id with a trailing newline", submission(recs, batch_id="batch-0001\n")),
             ("create record with an owner", submission([rec("t", owner="someone")])),
             (
                 "create record with dependencies",
@@ -340,6 +353,17 @@ def main() -> int:
             )
             rc, out = run("hash", nonfinite)
             check(f"non-finite number {token} refused", rc == 1 and "non-finite" in out["error"])
+
+        overflow = write(
+            "overflow.json",
+            '{"operation":"create","environment":"test","team_id":"T","batch_id":"batch-0001",'
+            '"records":[{"title":1e999,"description":"d","status":"s"}]}',
+        )
+        rc, out = run("hash", overflow)
+        check(
+            "a literal that overflows to infinity is refused with a typed failure",
+            rc == 1 and not out["ok"],
+        )
 
         with_target = write(
             "with_target.json",
