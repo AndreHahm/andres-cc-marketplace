@@ -1,6 +1,8 @@
 # Supported Dependabot Comments
 
-The only `@dependabot` comments this skill posts, and the only way it closes a PR. Source: GitHub's
+The only `@dependabot` comments this skill posts. A plain close is not a comment: it uses
+`gh pr close <validated-number>` (SKILL.md step 6.2), while the `ignore` and `unignore` comments close
+the PR as a side effect. Source: GitHub's
 [Dependabot pull request comment commands](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands)
 reference and the
 [changelog entry](https://github.blog/changelog/2025-10-07-upcoming-changes-to-github-dependabot-pull-request-comment-commands/)
