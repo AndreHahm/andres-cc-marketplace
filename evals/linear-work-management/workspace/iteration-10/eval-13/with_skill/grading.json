@@ -1,0 +1,27 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs the Local Override trust check before using linear.repositories",
+      "passed": true,
+      "evidence": "Step 1: the Local Override trust check passes before the override is honored."
+    },
+    {
+      "text": "Normalizes the slug to acme/widgets and selects the test team T-TEST because test_run is true",
+      "passed": true,
+      "evidence": "'Acme/Widgets.git' lowercased and the trailing .git removed to acme/widgets; test_run true selects T-TEST."
+    },
+    {
+      "text": "Rejects as out of scope because T-TEST is not in linear.write's team_ids, without falling back to T-PROD",
+      "passed": true,
+      "evidence": "T-TEST is not in linear.write team_ids [T-PROD]: rejected as out of scope, 'no fallback to T-PROD'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

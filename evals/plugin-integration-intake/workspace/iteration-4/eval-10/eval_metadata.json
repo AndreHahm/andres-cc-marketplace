@@ -1,0 +1,21 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the envelope as malformed because description is not an updatable field",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Refuses the closed-state status change and points closure to merge-to-completion",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Returns a structured handoff and does not apply the valid third record on its own",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

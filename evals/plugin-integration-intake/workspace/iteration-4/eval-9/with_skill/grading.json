@@ -1,0 +1,32 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Rejects the free-text key 'security' as malformed",
+      "passed": true,
+      "evidence": "'security' rejected as malformed: free text, not a <owner/repo>|<source-ref>|<fingerprint> key."
+    },
+    {
+      "text": "Asks for no approval for the structured-key query",
+      "passed": true,
+      "evidence": "Structured-key query 'needs no approval, hash or scratch file'."
+    },
+    {
+      "text": "Keeps only the Issue whose description's first line is the dedup_key line (ISS-41) and discards the title-only mention (ISS-77)",
+      "passed": true,
+      "evidence": "ISS-41 kept (first line exactly 'dedup_key: acme/widgets|pr#12|a1b2c3d4'); ISS-77 dropped (key only in its title)."
+    },
+    {
+      "text": "Returns only key, match_count and ids, with no title, description or status",
+      "passed": true,
+      "evidence": "Returned {key, match_count: 1, ids: ['ISS-41']}; 'no titles or statuses'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

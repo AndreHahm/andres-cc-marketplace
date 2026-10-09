@@ -1,0 +1,32 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves the slug through linear-work-management (trust check first) to the production team and states the environment and team in the approval preview",
+      "passed": true,
+      "evidence": "Slug 'Acme/Widgets' normalized to acme/widgets and resolved by linear-work-management (trust check first) to T-PROD; preview names production and T-PROD in bold."
+    },
+    {
+      "text": "Asks exactly one approval question for the whole batch, not one per record, with options approve all or reject",
+      "passed": true,
+      "evidence": "One AskUserQuestion for the whole batch, options 'Approve all 3' / 'Reject'; no per-record prompts."
+    },
+    {
+      "text": "Computes the hash and builds the preview and every write from the hash script's verified output (hash/show/preview/chunk), with a fresh batch_id inside the hashed file kept in the session scratchpad",
+      "passed": true,
+      "evidence": "Ran hash, show and preview and built the preview only from their output; submission file in the session scratchpad with a fresh batch_id inside it."
+    },
+    {
+      "text": "Writes through linear-work-management in chunks without per-record prompts, records progress, and removes the scratch files with purge at the end",
+      "passed": true,
+      "evidence": "linear-work-management ran chunk itself, checked the four conditions, wrote 3 Issues in one chunk, appended {index, issue_id} after each, then purged both files."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}
