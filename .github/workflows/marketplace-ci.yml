@@ -90,11 +90,59 @@ jobs:
         if: github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
+      - name: Verify the trusted base SHA actually resolves in this checkout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git rev-parse --verify "$BASE_SHA"^{commit}
+
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
-      - run: uv sync --group dev
+
+      # check-pr runs below with GH_TOKEN, so it and its dependency install
+      # must not come from the PR's own untrusted checkout -- the same
+      # principle compute-scope and publish already apply to their own
+      # decision code (codex-review uses a detect-and-refuse variant). Restores before `uv sync` so the dependency
+      # install also comes from the trusted spec. Fails closed if the restore
+      # itself cannot complete. Raised by Codex's security review of PR #504.
+      #
+      # Overwriting files that exist at base is not enough: `git restore`
+      # without `--overlay` also deletes tracked files the PR added under
+      # scripts/, and the loop below restores or deletes the uv and
+      # CODEOWNERS/template inputs check-pr reads as data (merge privilege is
+      # decided from CODEOWNERS, so the PR's own copy must never be trusted).
+      # A PR-added top-level module (json.py, sitecustomize.py, ...), a new
+      # top-level package, or tracked .venv content can shadow imports and is
+      # not covered by a restore, so it is refused outright. The diff goes to a
+      # file first and grep's exit code is read explicitly (0 match, 1 clean,
+      # anything else fails closed): piping into `grep -q` under pipefail can
+      # fail open when git is killed by SIGPIPE.
+      - name: Restore the base SHA's copy of the PR-contract check code and its data inputs (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore PR-contract check code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version CODEOWNERS .github/CODEOWNERS docs/CODEOWNERS .github/pull_request_template.md; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
+            fi
+          done
+          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN"
+            exit 1
+          fi
+          echo "restored scripts/, pyproject.toml, uv.lock, uv config and CODEOWNERS/template from $BASE_SHA"
+
+      - run: uv sync --locked --no-config --group dev
       - name: Write PR event payload
         env:
           # Never interpolate ${{ }} event data directly into a shell string --
@@ -395,16 +443,38 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          # No `pipefail` here on purpose: the bootstrap test below pipes
+          # `git show` into `grep -q`, and pipefail would turn a SIGPIPE on
+          # `git show` into a false "bootstrapping" verdict (fail open).
+          set -eu
           if ! git show "$BASE_SHA:scripts/marketplace_ci/__main__.py" 2>/dev/null | grep -q "check-prefixes"; then
             echo "check-prefixes does not exist at base $BASE_SHA yet -- this is the bootstrapping PR introducing it (and check-prefix-permanence); using the PR's own copy for this one-time rollout only. Every later PR's base SHA will have real trusted copies to restore against."
-          elif git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
-            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
           else
-            echo "::error::could not restore prefix-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"
-            exit 1
+            # Same restore as the hygiene job's (see its comment): no-overlay
+            # restore deletes PR-added files under scripts/, uv.toml and
+            # .python-version are restored or deleted, and a PR-added
+            # top-level module/package or .venv content is refused.
+            git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+              || { echo "::error::could not restore prefix-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
+            for p in uv.toml .python-version; do
+              if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+                git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+              else
+                git rm -q -f --ignore-unmatch -- "$p"
+                rm -f -- "$p"
+              fi
+            done
+            git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+            rc=0
+            grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+            if [ "$rc" -ne 1 ]; then
+              echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code"
+              exit 1
+            fi
+            echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
           fi
 
-      - run: uv sync --group dev
+      - run: uv sync --locked --no-config --group dev
       # Mechanical enforcement of plugin-rulebook's R33 (every file under a
       # registered, prefixed plugin's in-scope directories must carry that
       # plugin's own `<prefix>-` basename) plus format/uniqueness
@@ -644,14 +714,31 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
-            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
-          else
-            echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"
+          # Same restore as the hygiene job's (see its comment): no-overlay
+          # restore deletes PR-added files under scripts/, uv.toml and
+          # .python-version are restored or deleted, and a PR-added top-level
+          # module/package or .venv content is refused.
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
+            fi
+          done
+          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code"
             exit 1
           fi
+          echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
 
-      - run: uv sync --group dev
+      - run: uv sync --locked --no-config --group dev
 
       - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
         id: scope
@@ -830,12 +917,13 @@ jobs:
       # run-codex-review's own import closure (a security review of this
       # split confirmed it) -- it's gated here for a distinct reason: it's
       # merge-privilege-deciding code (`check_merge_rights`'s CODEOWNERS
-      # matching), evaluated by the `hygiene` job's `check-pr` step, which
-      # -- unlike this job and `compute-scope`/`publish` -- has no
-      # base-SHA restore of its own. Reclassifying it alongside sync.py/
-      # validators.py would let a same-repo PR tamper with its own
+      # matching), evaluated by the `hygiene` job's `check-pr` step. That
+      # job now restores its code and data inputs from the base SHA too (as
+      # `compute-scope`/`publish` do), but this file stays in the list until
+      # a separate decision says otherwise: reclassifying it alongside
+      # sync.py/validators.py would let a same-repo PR tamper with its own
       # merge-privilege evaluation with only automated (not mandatory
-      # human) review. This list must stay in sync with review.py's own
+      # human) review if that restore were ever bypassed or removed. This list must stay in sync with review.py's own
       # comment note if either changes (R20 duplicate-fact-sweep risk --
       # both are hand-duplicated restatements of the same Tier 1 file set,
       # by necessity: this is a shell pathspec list, review.py's is a
@@ -1042,14 +1130,31 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
-            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
-          else
-            echo "::error::could not restore bypass-validation code from $BASE_SHA -- refusing to trust the PR's own copy of it"
+          # Same restore as the hygiene job's (see its comment): no-overlay
+          # restore deletes PR-added files under scripts/, uv.toml and
+          # .python-version are restored or deleted, and a PR-added top-level
+          # module/package or .venv content is refused.
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore bypass-validation code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
+            fi
+          done
+          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code"
             exit 1
           fi
+          echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
 
-      - run: uv sync --group dev
+      - run: uv sync --locked --no-config --group dev
 
       - name: Check attested bypass (comment-plus-label protocol, or CODEX_CI_REVIEW_BYPASS var)
         id: bypass

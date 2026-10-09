@@ -181,7 +181,14 @@ computing the scope decision or installing dependencies for it (same principle
 "Restore the base SHA's copy..." step), and fails the job outright if that restore itself can't complete,
 rather than falling back to scoring with the PR's own copy. `git diff base...HEAD` is unaffected by this
 restore — it compares commit objects, not the working tree, so the PR's real diff is still what gets
-scored. This raises the bar against an *unaware* PR touching the bypass logic, dependency spec, or
+scored. The same restore (a no-overlay `git restore`, so files the PR added under `scripts/` are deleted
+too, plus `uv.toml`/`.python-version` and, in `hygiene`, the CODEOWNERS and PR-template inputs) runs in
+`hygiene`, `compute-scope`, `prefix-permanence` and `publish`, followed by `uv sync --locked
+--no-config`. Each of those jobs also refuses a PR that adds a top-level `*.py` file, a top-level
+`<dir>/__init__.py` package, or tracked `.venv/` content, since such a file can shadow an import and a
+restore cannot remove what base never had. The jobs fail for such a PR, and the SHA-bound Codex bypass
+does not cover them (it only affects the Codex policy check), so a PR that legitimately needs a new
+top-level module or package requires a maintainer to change this check first. This raises the bar against an *unaware* PR touching the bypass logic, dependency spec, or
 `scripts/__init__.py` and defeating itself by accident. It is **not** an adversarial-proof boundary, and
 doesn't claim to be one: a same-repo PR author can edit `.github/workflows/marketplace-ci.yml` itself,
 since GitHub runs a `pull_request` workflow using the PR's own copy of the workflow file for a same-repo
@@ -236,9 +243,11 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `pr_policy.py` is also in this gate's pathspec list, even though it is *not* part of
   `run-codex-review`'s own import closure — it's gated for a distinct reason: it's the
   merge-privilege-deciding code (`check_merge_rights`'s CODEOWNERS matching) that the `hygiene` job's
-  `check-pr` step evaluates, and unlike this job and `compute-scope`/`publish`, `hygiene` has no
-  base-SHA restore of its own. Classifying it as Tier 2 would let a same-repo PR tamper with its own
-  merge-privilege evaluation and get only automated (never mandatory human) review of that change.
+  `check-pr` step evaluates. `hygiene` now restores that code and its data inputs from the base SHA
+  too, like `compute-scope`/`publish`, but the file stays on this list until a separate decision says
+  otherwise: classifying it as Tier 2 would let a same-repo PR tamper with its own merge-privilege
+  evaluation and get only automated (never mandatory human) review of that change if the restore were
+  ever bypassed or removed.
 - **Tier 2 (everything else)** — `sync.py` (the mirror/export apply and staging side), `validators.py`
   (the staged-parity check and the PostToolUse post-edit hook), and the non-Python `rules/`/`hooks/`
   mirror-source data. A PR touching only these now gets **real, non-bypassed** Codex review coverage
