@@ -184,7 +184,10 @@ def test_codex_review_refuses_shadow_forms_below_the_top_level_of_scripts():
 
 def test_codex_review_refuses_any_symlink_added_or_retyped_under_scripts():
     block = "\n".join(_run_block(REFUSE_STEP_NAME))
-    assert 'git diff -z --raw --no-renames --diff-filter=AT "$BASE_SHA" HEAD -- scripts' in block
+    assert (
+        'git diff -z --raw --no-renames --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts'
+        in block
+    )
     match = re.search(r"grep -zqE '(\^:\[0-7\]\+ 120000 )' \"\$RUNNER_TEMP/scripts-raw\.z\"", block)
     assert match is not None, "codex-review's scripts/ symlink refusal is missing"
     header = re.compile(match.group(1))
@@ -203,6 +206,22 @@ def test_codex_review_messages_point_at_the_attestation_not_at_editing_the_check
     # The restore jobs' refusals cannot be bypassed, so they keep the other advice.
     restore = "\n".join(_run_block("Restore the base SHA's copy of the PR-contract check code"))
     assert "admin-merge" in restore
+
+
+def test_the_pr_additions_are_taken_from_the_pr_head_not_from_the_merge_ref():
+    """$BASE_SHA can lag the base branch and HEAD may be the merge ref, so diffing them counts
+    files the base branch gained meanwhile as the PR's own -- a refusal the Codex bypass cannot
+    clear. The range must be merge-base($BASE_SHA, PR head)..PR head in every copy."""
+    assert '"$BASE_SHA" HEAD' not in TEXT
+    assert (
+        TEXT.count('PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")') == 6
+    )  # 5 + codex scripts/
+    assert TEXT.count("PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}") == 5
+    for name, block in _all_blocks().items():
+        text = "\n".join(block)
+        assert 'git ls-tree -z "$PR_BASE"' in text, name
+        assert 'git ls-tree -z "$PR_HEAD_SHA"' in text, name
+        assert '--diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA"' in text, name
 
 
 def test_the_node_chain_codex_review_runs_stays_inside_the_tier1_set():

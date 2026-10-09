@@ -124,9 +124,14 @@ jobs:
       # identical. The diff goes to a file first and grep's exit code is read
       # explicitly (0 match, 1 clean, anything else fails closed): piping into
       # `grep -q` under pipefail can fail open when git is killed by SIGPIPE.
+      # The PR's additions are taken as merge-base($BASE_SHA, PR head)..PR head, not
+      # $BASE_SHA..HEAD: $BASE_SHA can lag the base branch and HEAD may be the merge
+      # ref, so the latter would count files the base branch gained meanwhile as the
+      # PR's own, and these refusals are not clearable by the Codex bypass.
       - name: Restore the base SHA's copy of the PR-contract check code and its data inputs (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
@@ -143,15 +148,16 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
           grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
-          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
-          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
@@ -457,6 +463,7 @@ jobs:
       - name: Restore the base SHA's copy of the prefix-check code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # Same restore as the hygiene job's (see its comment): no-overlay
           # restore deletes PR-added files under scripts/, uv.toml, .python-version
@@ -477,15 +484,16 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
           grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
-          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
-          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
@@ -739,6 +747,7 @@ jobs:
       - name: Restore the base SHA's copy of the scope-decision code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # Same restore as the hygiene job's (see its comment): no-overlay
           # restore deletes PR-added files under scripts/, uv.toml, .python-version
@@ -759,15 +768,16 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
           grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
-          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
-          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
@@ -1025,6 +1035,7 @@ jobs:
       - name: Refuse automated Codex dispatch when this PR adds an importable top-level shadow (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           # Unlike the restore jobs, this job runs scripts/ from the PR's own checkout, so a
@@ -1032,7 +1043,8 @@ jobs:
           # a package directory named after one (scripts/marketplace_ci/review/__init__.py),
           # a compiled extension or sourceless bytecode (review.so, review.pyc), or a cached
           # __pycache__ entry (loaded without checking the source when it is hash-based).
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD -- scripts > "$RUNNER_TEMP/scripts-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-added-files.z"
           rc=0
           grep -zqE '^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|^scripts/marketplace_ci/(__init__|__main__|review|git_state|registry|sync_plan|conversion|pr_policy)(/|$)' "$RUNNER_TEMP/scripts-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
@@ -1042,7 +1054,7 @@ jobs:
 
           # A symlink anywhere under scripts/ can stand in for a module or package (it is one
           # path with no trailing slash, so the name patterns above do not see it).
-          git diff -z --raw --no-renames --diff-filter=AT "$BASE_SHA" HEAD -- scripts > "$RUNNER_TEMP/scripts-raw.z"
+          git diff -z --raw --no-renames --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-raw.z"
           rc=0
           grep -zqE '^:[0-7]+ 120000 ' "$RUNNER_TEMP/scripts-raw.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
@@ -1053,15 +1065,16 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
           grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
             exit 1
           fi
-          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
-          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
@@ -1241,6 +1254,7 @@ jobs:
       - name: Restore the base SHA's copy of the bypass-validation code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # Same restore as the hygiene job's (see its comment): no-overlay
           # restore deletes PR-added files under scripts/, uv.toml, .python-version
@@ -1261,15 +1275,16 @@ jobs:
           # top-level package marker (<dir>/__init__.*), or .venv content, and a
           # top-level symlink (which can be named like a module and matches no name
           # pattern). A restore cannot remove what base never had, so these are refused.
-          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
+          git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
           grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
-          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
-          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          git ls-tree -z "$PR_BASE" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z "$PR_HEAD_SHA" > "$RUNNER_TEMP/head-top.z"
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
