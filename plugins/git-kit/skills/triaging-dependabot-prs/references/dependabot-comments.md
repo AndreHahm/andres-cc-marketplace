@@ -4,9 +4,9 @@ The only `@dependabot` comments this skill posts. A plain close is not a comment
 `gh pr close <validated-number>` (SKILL.md step 6.2), while the `ignore` and `unignore` comments close
 the PR as a side effect. Source: GitHub's
 [Dependabot pull request comment commands](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands)
-reference and the
-[changelog entry](https://github.blog/changelog/2025-10-07-upcoming-changes-to-github-dependabot-pull-request-comment-commands/)
-that deprecates the merge-and-close commands. Re-read both if this file looks out of date.
+reference and GitHub's changelog entry of 2025-10-07, "Upcoming changes to GitHub Dependabot pull
+request comment commands", which deprecates the merge-and-close commands. Re-read both if this file
+looks out of date.
 
 ## Never posted: deprecated commands
 
