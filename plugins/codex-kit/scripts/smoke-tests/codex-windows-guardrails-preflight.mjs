@@ -932,5 +932,212 @@ console.log("\n=== --dry-run gate: every malformed shape is rejected BEFORE the 
   // should paper over by guessing at a reset step.
 }
 
+// --- gitignored-file skip + trusted-base .secretlintignore tier -------------
+// Each scenario below uses its OWN fresh fixture repo (the shared `repoRoot`
+// above carries leaked state between scenarios, see the dry-run note). The
+// instruction file lives INSIDE the target (target.md), so a scan that
+// passes stops at instruction_containment_violation instead of ever
+// reaching a real danger-full-access Codex exec; secret_file_in_scope means
+// the scan blocked. A trusted base (origin/main) only exists once a scenario
+// calls markBase(); without one, both new mechanisms are off (fail closed).
+function makeFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-tier-"));
+  git(["init", "-q"], root);
+  // The enabling override must stay untracked (a tracked one is ignored, see
+  // the "Tracked local override" scenario above); .git/info/exclude keeps
+  // `git add -A` from picking it up without touching any scanned file.
+  fs.mkdirSync(path.join(root, ".git", "info"), { recursive: true });
+  fs.writeFileSync(path.join(root, ".git", "info", "exclude"), ".claude/\n");
+  writeFixtureFile(root, "target.md", "content");
+  writeFixtureFile(path.join(root, ".claude"), "codex-windows-guardrails.local.json", JSON.stringify({ windows_guardrails: { enabled: true, central_policy_version: "1" } }));
+  const fixture = {
+    root,
+    last: null,
+    commit(message) {
+      git(["add", "-A"], root);
+      git(["-c", "user.email=t@t.com", "-c", "user.name=Test", "commit", "-q", "-m", message], root);
+    },
+    // Marks the current HEAD as the trusted base (origin/main), as a real clone would have.
+    markBase() {
+      git(["update-ref", "refs/remotes/origin/main", "HEAD"], root);
+      git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"], root);
+    },
+    // Remembers its result in `last` so a check's failure detail reuses the
+    // same dispatch instead of paying for a second one.
+    run() {
+      fixture.last = runDispatch(root, root, path.join(root, "target.md"));
+      return fixture.last;
+    }
+  };
+  return fixture;
+}
+const passedScan = (r) => r.ok === false && r.category === "instruction_containment_violation";
+const blockedBy = (r, re) => r.ok === false && r.category === "secret_file_in_scope" && re.test(r.detail);
+const fakeCredential = "AKIA" + "IOSFODNN7EXAMPLE";
+
+console.log("\n=== gitignored files are skipped (accepted scope decision), tracked ones never are ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", ".env\n.venv/\n");
+  f.commit("init");
+  f.markBase();
+  writeFixtureFile(f.root, ".env", "SECRET=1");
+  check("a gitignored, untracked .env is not scanned", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, ".venv", "lib"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  fs.rmSync(path.join(f.root, ".env"));
+  check("a file inside a gitignored directory (.venv/lib/cacert.pem) is not scanned", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "vendor"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  check("the same filename in a NON-ignored directory still blocks", blockedBy(f.run(), /cacert\.pem/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, "vendor"), { recursive: true, force: true });
+  git(["add", "-f", ".venv/lib/cacert.pem"], f.root);
+  check("a tracked file is still scanned even though a .gitignore pattern also matches it (force-added)", blockedBy(f.run(), /cacert\.pem/), JSON.stringify(f.last));
+}
+
+console.log("\n=== a directory holding BOTH ignored and non-ignored untracked files never hides the non-ignored one (git --directory collapsing) ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", "*.log\n");
+  f.commit("init");
+  f.markBase();
+  writeFixtureFile(path.join(f.root, "newdir"), "build.log", "noise");
+  writeFixtureFile(path.join(f.root, "newdir"), "id_rsa", "not a real key");
+  check("an untracked id_rsa next to an ignored build.log still blocks", blockedBy(f.run(), /id_rsa/), JSON.stringify(f.last));
+}
+
+console.log("\n=== the user's GLOBAL gitignore never widens the skip ===");
+{
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase(); // base present, so the skip mechanism is ON and only the global config is under test
+  const globalIgnore = path.join(f.root, "..", `global-ignore-${path.basename(f.root)}`);
+  const globalConfig = path.join(f.root, "..", `global-config-${path.basename(f.root)}`);
+  fs.writeFileSync(globalIgnore, ".env\n");
+  fs.writeFileSync(globalConfig, `[core]\n\texcludesFile = ${globalIgnore.replace(/\\/g, "/")}\n`);
+  writeFixtureFile(f.root, ".env", "SECRET=1");
+  const previous = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = globalConfig;
+  try {
+    check("an untracked .env ignored only by a personal global excludesFile is still caught", blockedBy(f.run(), /\.env/), JSON.stringify(f.last));
+  } finally {
+    if (previous === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = previous;
+  }
+}
+
+console.log("\n=== security review M1: the skip is only honored while every tracked .gitignore matches the trusted base ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", ".venv/\n");
+  f.commit("init");
+  f.markBase();
+  writeFixtureFile(f.root, "id_rsa", "reviewer-local secret, untracked, not ignored by the base rules");
+  check("control: with the base .gitignore, an untracked id_rsa blocks", blockedBy(f.run(), /id_rsa/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, "id_rsa"));
+  writeFixtureFile(path.join(f.root, ".venv", "lib"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  check("control: the base-defined skip works while .gitignore is unchanged", passedScan(f.run()), JSON.stringify(f.last));
+  // A branch widens .gitignore (committed, so HEAD moves but the base does not).
+  writeFixtureFile(f.root, ".gitignore", ".venv/\n*\n");
+  f.commit("branch adds a catch-all ignore");
+  writeFixtureFile(f.root, "id_rsa", "reviewer-local secret");
+  check(
+    "a branch that widens .gitignore (adds `*`) cannot hide an untracked id_rsa: the skip is switched off, everything is scanned",
+    blockedBy(f.run(), /(id_rsa|cacert\.pem)/),
+    JSON.stringify(f.last)
+  );
+  fs.rmSync(path.join(f.root, "id_rsa"));
+  check("and the previously-skipped .venv file is scanned again too (skip fully off, not merely narrowed)", blockedBy(f.run(), /cacert\.pem/), JSON.stringify(f.last));
+}
+
+console.log("\n=== trusted-base .secretlintignore tier: gitignore syntax, but only for files unchanged since the base ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n/fixtures\n");
+  writeFixtureFile(path.join(f.root, "fixtures"), "secret-notes.txt", `${fakeCredential}\n`);
+  writeFixtureFile(path.join(f.root, "fixtures"), "fake.pem", "not a real key\n");
+  f.commit("base");
+  f.markBase();
+  check(
+    "a base-listed directory entry exempts an unchanged file even though its content is credential-shaped (the content scan cannot clear such a file by design) -- but the tracked fixtures/fake.pem is a STRICT pattern and still blocks",
+    blockedBy(f.run(), /fake\.pem/),
+    JSON.stringify(f.last)
+  );
+  git(["rm", "-q", "-f", "fixtures/fake.pem"], f.root);
+  f.commit("drop the strict-pattern fixture");
+  f.markBase();
+  check(
+    "with the strict-pattern file gone, the credential-shaped but unchanged base file advances past the scan",
+    passedScan(f.run()),
+    JSON.stringify(f.last)
+  );
+  writeFixtureFile(path.join(f.root, "fixtures"), "secret-notes.txt", `${fakeCredential}\nedited\n`);
+  check("the same file, edited since the base, is no longer exempt", blockedBy(f.run(), /secret-notes\.txt/), JSON.stringify(f.last));
+  git(["checkout", "--", "fixtures/secret-notes.txt"], f.root);
+  writeFixtureFile(path.join(f.root, "fixtures"), "new-secret.txt", `${fakeCredential}\n`);
+  check("a NEW untracked file under the exempt directory is not exempt (it has no base blob)", blockedBy(f.run(), /new-secret\.txt/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, "fixtures", "new-secret.txt"));
+  writeFixtureFile(path.join(f.root, "fixtures"), ".env", "SECRET=1");
+  check("an untracked .env under the exempt directory is not exempt (the original C1 exploit)", blockedBy(f.run(), /\.env/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, "fixtures", ".env"));
+  check("the clean state advances past the scan again (control: nothing above left residue)", passedScan(f.run()), JSON.stringify(f.last));
+}
+
+console.log("\n=== security review M2: an exemption the branch adds for a file ALREADY in the base is not honored ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n");
+  writeFixtureFile(path.join(f.root, "branchdir"), "secret-b.txt", `${fakeCredential}\n`);
+  f.commit("base: credential-shaped file present, NO exemption for it");
+  f.markBase();
+  check("control: without an exemption in the base the file blocks", blockedBy(f.run(), /secret-b\.txt/), JSON.stringify(f.last));
+  writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n/branchdir\n");
+  f.commit("branch adds ONLY the exemption entry; the file itself is byte-identical to its base blob");
+  check(
+    "the file is base-identical, so only the pattern source decides: a branch-added /branchdir entry must not exempt it (patterns come from the base, not the working tree)",
+    blockedBy(f.run(), /secret-b\.txt/),
+    JSON.stringify(f.last)
+  );
+}
+
+console.log("\n=== trusted-base tier: fails closed when no base can be resolved ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n/fixtures\n");
+  writeFixtureFile(path.join(f.root, "fixtures"), "secret-notes.txt", `${fakeCredential}\n`);
+  f.commit("no origin remote");
+  check("without an origin base ref the directory entry exempts nothing", blockedBy(f.run(), /secret-notes\.txt/), JSON.stringify(f.last));
+}
+
+console.log("\n=== security review C1: a git.exe committed at the repo root is never executed by the gate ===");
+{
+  // The stand-in is a copy of node.exe: if the gate ever launched it as "git"
+  // the call would fail (node does not understand git's arguments), which
+  // flips the outcome away from reaching the instruction-containment gate.
+  // NoDefaultCurrentDirectoryInExePath is removed from the child's env so
+  // libuv's current-directory lookup is actually in play (some harness
+  // environments set it to 1, which masks the bug).
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase();
+  fs.copyFileSync(process.execPath, path.join(f.root, "git.exe"));
+  const env = { ...process.env };
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  let result;
+  try {
+    const stdout = execFileSync(
+      "node",
+      [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+      { encoding: "utf8", env }
+    );
+    result = JSON.parse(stdout);
+  } catch (e) {
+    result = JSON.parse(e.stdout.toString());
+  }
+  check(
+    "the scan still reaches the instruction-containment gate with a planted git.exe at the repo root: every git call used the real git from PATH",
+    passedScan(result),
+    JSON.stringify(result)
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);

@@ -29,7 +29,7 @@ KNOWN_LEVELS = {"whole_session", "skill", "subagent", "tool"}
 
 
 def aggregate(entries: list[dict]) -> dict:
-    total_tokens = 0
+    total_tokens: int = 0
     total_duration_ms = 0
     by_label: dict[str, dict] = defaultdict(lambda: {"tokens": 0, "duration_ms": 0, "count": 0})
     by_level: dict[str, dict] = defaultdict(lambda: {"tokens": 0, "duration_ms": 0, "count": 0})
