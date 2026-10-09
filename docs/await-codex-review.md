@@ -40,7 +40,13 @@ distinguish an active review from a queued, missed, or unavailable one.
    (`github.event.issue.pull_request` present) — skipping the job while the pull request is a
    draft (checked directly from the event for `pull_request`; re-fetched live via `gh api` for
    `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
-   push is deliberately **not** a trigger — see "Trigger scope" below.
+   push is deliberately **not** a trigger — see "Trigger scope" below. The job is also skipped for
+   a Dependabot pull request (maintainer decision, 2026-10-09), identified by any of
+   `github.actor`, `github.event.pull_request.user.login` (`pull_request` events) or
+   `github.event.issue.user.login` (`issue_comment` events, which have no `pull_request`
+   sub-object and where `github.actor` is the commenter) being `dependabot[bot]`. On a Dependabot pull
+   request the job therefore never waits, including after an explicit `@codex review` comment; it
+   is reported as skipped, which does not block a merge since it is not a required check.
 2. Requests `contents: read`, `pull-requests: read`, `issues: read` (the last is needed to read the
    connector's comments, its no-findings reaction, and to read PR state for an `issue_comment`
    trigger), and `checks: write` (needed for point 6 below) — no checkout, third-party action,
