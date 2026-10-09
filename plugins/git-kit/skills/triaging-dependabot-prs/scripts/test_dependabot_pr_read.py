@@ -244,6 +244,15 @@ class UvLock(unittest.TestCase):
                 self.assertEqual(code, 2, out)
                 self.assertEqual(fake.api_calls(), [])
 
+    def test_directory_outside_the_temp_dir_is_refused(self):
+        outside = str(HERE)  # the scripts directory itself: a real, absolute, non-temp directory
+        fake = FakeRun(api_stdout="x\n")
+        code, out = self.fetch(fake, directory=outside)
+        self.assertEqual(code, 2, out)
+        self.assertIn("system temp directory", out["refused"])
+        self.assertEqual(fake.api_calls(), [])
+        self.assertFalse((HERE / "base-uv.lock").exists())
+
     def test_symlink_and_directory_targets_are_refused_and_nothing_is_written_through(self):
         outside = pathlib.Path(self.dir) / "victim.txt"
         outside.write_text("keep", encoding="utf-8")

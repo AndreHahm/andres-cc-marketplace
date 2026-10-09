@@ -128,6 +128,8 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 `allowed-tools`/agent `tools` must apply least privilege. Always scope Bash to a named tool — `Bash(git:*)`, `Bash(python:*)` — never `Bash(*)` or bare `Bash`; shell interpreters (`sh`, `bash`, `cmd`, `powershell`) are equivalent to `Bash(*)` and are REQUIRED violations regardless of argument pattern. **Agent files are the reverse:** an agent's `tools` field has no Bash-scoping syntax at all — a scoped `Bash(cmd:*)` entry there is the REQUIRED violation; replace with bare `Bash`.
 
+**Deliberately ungranted write form:** a real-run form of a granted script that the component's Boundaries documents as intentionally ungranted (so it prompts), next to a granted `--dry-run`-style form, is not a tool-completeness violation.
+
 **Scope:** `allowed-tools` (skill/command frontmatter) and `tools` (agent frontmatter). See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full scope/verdict table, format examples, the tool-completeness sub-check, and the mechanical assist script (`scripts/check_tool_grants.py`) for the Bash-command case.
 
 ---
