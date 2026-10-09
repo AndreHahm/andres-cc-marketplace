@@ -1240,6 +1240,34 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
   check("an f-string literal is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: str = \"\"\"hard-coded-value\"\"\"\n");
   check("a triple-quoted literal is rejected too", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: Annotated[str, \"x=y\"] = \"value\"\n");
+  check("an equals sign inside the annotation metadata (Annotated[str, \"x=y\"]) does not hide the literal", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  // Pass-4 review: the content scan runs on attacker-influenced file content, so
+  // its patterns must stay linear. A 20,000-space run after `API_KEY:` took
+  // minutes with the earlier cubic form; the bound below turns a regression
+  // into a failing check instead of a hung suite.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY:" + " ".repeat(20000) + "x\n");
+  {
+    const started = Date.now();
+    let timedOut = false;
+    let result = null;
+    try {
+      const stdout = execFileSync(
+        "node",
+        [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+        { encoding: "utf8", timeout: 60000 }
+      );
+      result = JSON.parse(stdout);
+    } catch (e) {
+      if (e.code === "ETIMEDOUT" || e.signal) timedOut = true;
+      else result = JSON.parse(e.stdout.toString());
+    }
+    check(
+      "a 20,000-space line after a secret-suggestive annotated name is scanned in linear time (finishes well inside the bound)",
+      !timedOut && Date.now() - started < 50000 && result !== null,
+      `elapsed ${Date.now() - started} ms, timedOut=${timedOut}`
+    );
+  }
 }
 
 console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through a directory junction never supplies git ===");
