@@ -343,6 +343,27 @@ def check_close_command_is_plain():
     return True, "every gh pr close command is the plain <validated-number> form"
 
 
+def check_reply_author_rule_is_exact():
+    path = SKILL_DIR / "references" / "dependabot-comments.md"
+    if not path.exists():
+        return False, "references/dependabot-comments.md not found"
+    match = re.search(r"^## Reading Dependabot's replies\n.*?(?=^## |\Z)", read(path), re.S | re.M)
+    if not match:
+        return False, "'## Reading Dependabot's replies' section not found"
+    section = " ".join(match.group(0).split())
+    problems = []
+    for login in ("`dependabot`", "`dependabot[bot]`"):
+        if login not in section:
+            problems.append(f"does not name the accepted login {login}")
+    if "whole string, not a prefix" not in section:
+        problems.append("does not require a whole-string comparison")
+    if "any other login" not in section:
+        problems.append("does not say any other login is ignored")
+    if problems:
+        return False, "reply-author rule: " + "; ".join(problems)
+    return True, "reply-author rule names both Dependabot logins and requires an exact match"
+
+
 def check_marker_precedes_comment_in_posting_section():
     _, body = split_skill()
     match = re.search(r"^## Posting a comment\n.*?(?=^## |\Z)", body, re.S | re.M)
@@ -399,6 +420,7 @@ def main():
         check_comment_bodies_are_listed,
         check_supported_comment_table,
         check_close_command_is_plain,
+        check_reply_author_rule_is_exact,
         check_marker_precedes_comment_in_posting_section,
         check_classifier_tests_pass,
     ]

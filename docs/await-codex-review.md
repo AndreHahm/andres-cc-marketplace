@@ -10,8 +10,8 @@ see "Adoption modes" below.
 
 ## What it does
 
-The workflow starts only when Codex's own auto-review connector would actually be asked to look at
-the pull request: the pull request is opened non-draft (`opened`), a draft pull request is marked
+Except on a Dependabot pull request (see workflow contract point 1 below), the workflow starts only
+when Codex's own auto-review connector would actually be asked to look at the pull request: the pull request is opened non-draft (`opened`), a draft pull request is marked
 ready for review (`ready_for_review`), or someone posts an explicit `@codex review` or
 `@codex full review` comment (`issue_comment`) — never on a plain `synchronize` push by itself, since the connector no longer
 auto-reviews every push (see "Trigger scope" below for why this changed). Its `Await Codex review`
@@ -223,7 +223,7 @@ author, is not something a human can spoof from the GitHub UI, by design.
 ## Adoption modes
 
 Currently visibility-only: the check runs per the trigger scope above (opened non-draft, marked
-ready for review, or an `@codex review`/`@codex full review` comment) but is not required by branch protection. Making `Await Codex review` a required status check is a real option — a
+ready for review, or an `@codex review`/`@codex full review` comment, and never on a Dependabot pull request) but is not required by branch protection. Making `Await Codex review` a required status check is a real option — a
 missing or late external review would block merging after the workflow times out — but it comes
 with a real, structural tradeoff, not just a pending-validation item; see "Validation before
 requiring this check" below before deciding.
