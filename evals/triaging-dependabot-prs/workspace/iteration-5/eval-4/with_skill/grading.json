@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch",
+      "passed": true,
+      "evidence": "'I ignore merge-pr's /git-sync-branch advice and do not run it... or push'"
+    },
+    {
+      "text": "The answer treats the PR as needing a rebase regardless of mergeStateStatus and returns to the branch-freshness step, asking the user first",
+      "passed": true,
+      "evidence": "Returns to 6.1/6.3 and asks via AskUserQuestion before any rebase"
+    },
+    {
+      "text": "The rebase is posted through the action script (a --dry-run for the exact body, then the real run with the head SHA read for the approval), not a raw gh command or marker script",
+      "passed": true,
+      "evidence": "Dry run '--dry-run rebase 105 --head-sha <headRefOid>' then the same command without --dry-run; no raw comment command or marker script"
+    },
+    {
+      "text": "The answer says this would be the second and last allowed rebase comment (cap of two), after which the PR is skipped with the reason",
+      "passed": true,
+      "evidence": "'a second comment is allowed, and it is the last one... any further need for a rebase means I skip the PR'"
+    },
+    {
+      "text": "The PR is recorded as not merged for now",
+      "passed": true,
+      "evidence": "'Record the stop. PR #105 is not merged'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

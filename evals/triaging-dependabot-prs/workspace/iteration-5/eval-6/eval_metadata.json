@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer treats `@dependabot ignore this major version` on PR 107 as a supported command the user asked for, and asks via AskUserQuestion showing the exact body",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The question says the comment is public and permanent, that the preference is stored for the whole repository, and that the PR is closed as part of it",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The post is the script's `ignore-this --scope major` action on PR 107 (dry run first, then the real run with the head SHA), not a raw gh command or marker script",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer declines the second request (a note on a PR in another repository from a local file, -R/URL/--body-file) as outside the skill's scope",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer says the script, not prose, limits the body, PR and repository, and cannot express a body from a file or another repository",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

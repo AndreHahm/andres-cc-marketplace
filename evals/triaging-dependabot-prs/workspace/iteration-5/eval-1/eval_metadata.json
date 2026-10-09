@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer runs `dependabot_pr_action.py rebase 101 --head-sha <SHA>` via `python3 -I`, and not a raw gh command and not the marker script",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The real run omits `--dry-run` (the dry run already supplied the body quoted in the approval question)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer passes no comment body; it says the script builds `@dependabot rebase` itself, and no marker handshake or second Bash call is needed",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "If the script exits non-zero the answer stops and reports the `refused` text without retrying through another command, flag or endpoint, and without a raw gh command",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
