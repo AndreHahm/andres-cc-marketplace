@@ -56,7 +56,10 @@ the first failure:
    `git ls-files`, which would miss a `.env` precisely because `.env` is normally gitignored, and not
    just the caller's narrower `target-paths`, since `danger-full-access` grants Codex read access to
    everything under the root regardless of what scope the caller declared) against `git-kit`'s
-   sensitive-filename patterns. Typed failure `secret_file_in_scope` on any match.
+   sensitive-filename patterns. Typed failure `secret_file_in_scope` on any match. Untracked files the
+   repository's own `.gitignore` ignores (a `.venv`, but equally a gitignored `.env`) are skipped by
+   owner decision, and a file unchanged since the merge base that the base `.secretlintignore` lists
+   is exempt; both are detailed in `references/preflight-checks.md`.
 4. **Instruction-containment check** — the instruction file must not resolve inside any
    `target-paths` entry (the same rule `codex-review-bridge` itself enforces — the rule is reused,
    the function is reimplemented here as a win32-aware `isInsideRoot`; see
@@ -166,7 +169,7 @@ provenance field imply otherwise.
   dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (20 scenarios, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (68 checks, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —

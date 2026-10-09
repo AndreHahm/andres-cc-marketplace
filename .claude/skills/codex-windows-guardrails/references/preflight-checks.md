@@ -129,6 +129,53 @@ rewritten to teach the same lessons without any `redactSecrets`-matching content
 limitations" below for the full account, including why the third copy — `.agents/` — was
 deliberately left unfixed, and why that alone still blocks the whole-repo scan today regardless).
 
+**Gitignored files are not scanned (decision, 2026-10-09).** An *untracked* file that the repository
+itself ignores — `.gitignore` files and `.git/info/exclude`, never the user's global
+`core.excludesFile` or system config — is skipped. One `git ls-files --others --ignored
+--exclude-standard --directory -z` call lists them (an ignored directory such as `.venv/` collapses
+to a single entry). Why: any worktree that had run `uv`, `pytest` or `npm` otherwise blocked every
+dispatch on a dependency's own `certifi/cacert.pem` or a `__pycache__/*token*.pyc`. **The cost is
+real and was accepted by the repository owner:** a gitignored `.env`, `*.local.json` or key file is
+no longer caught by this check, and unsandboxed Codex can read it. A *tracked* file is never skipped,
+even when a `.gitignore` pattern also matches it (a force-added `.env` is still scanned).
+
+**The skip is only honored while every tracked `.gitignore` (root or nested) is unchanged from the
+trusted merge base** (security review M1). The ignore rules are the checkout's own, so without this a
+branch under review could add a single `*` line and hide every untracked file on the reviewer's disk
+from the scan. If any tracked `.gitignore` differs from the base (committed, added, deleted or
+uncommitted), or no base can be resolved, nothing is skipped and the whole tree is scanned. Untracked
+`.gitignore` files (such as the one `uv` writes inside `.venv/`) cannot come from a branch and are
+not compared. If `git` fails, nothing is skipped either.
+
+**Git is resolved from `PATH` only** (security review C1). Every git call uses an absolute `git.exe`
+found on `PATH`, never a bare `git`: on Windows, libuv resolves a bare program name against the
+child's working directory first (live-verified with a stand-in `git.exe` while
+`NoDefaultCurrentDirectoryInExePath` was unset), so a branch could otherwise commit its own `git.exe`
+at the repo root and have it run before any guard. Other `codex-kit` scripts that call a bare `git`
+(for example `scripts/lib/cdx-git.mjs`) predate this and are not changed here.
+
+**Trusted-base `.secretlintignore` tier (full gitignore syntax).** Separate from, and checked before,
+the older exact-path `.secretlintignore` consultation (issue #295: the working-tree file, exact full
+paths only, no globs or directories, and the exempted file is still content-scanned) — see
+`cdx-lintignore-base.mjs` for this tier. A
+filename match is exempted — **without a content scan** — only when all of these hold: the basename
+matches no *strict* pattern; the path is a regular file (mode 100644/100755, not a symlink) in the
+**merge base** with the default branch (`origin/HEAD`, else `origin/main`/`origin/master`); its
+current content hashes to that base blob (hashed with the **base's** `.gitattributes` via
+`--attr-source`, so a branch cannot choose a filter or `ident` rewrite that makes an edited file
+collide with the base blob; a git too old for `--attr-source` simply never exempts); and the path matches the `.secretlintignore` **as committed
+at that base**, evaluated with real gitignore semantics (`/dir`, `*`, `**`, `!`) in a throwaway empty
+repo so this repo's own `.gitignore` and the user's global ignores cannot influence the verdict. This
+is what lets a file whose *content* is legitimately secret-shaped (a redactor's own smoke test, a
+fixture of fake credentials) pass at all: the exact-path tier always ends in a content scan, which
+such a file fails by design. Because the file must already be on the base unchanged, a branch cannot
+add an exemption, edit an exempted file, or smuggle in a new one (a new untracked `.env` under an
+exempt directory has no base blob). Limits: an entry added by the branch only counts after it merges;
+as in gitignore itself, a file under an excluded directory cannot be re-included by a `!` entry; a
+real secret already committed to the base under an exempt path is not caught here (CI's secretlint
+skips the same paths). If the base cannot be resolved (no `origin` ref, shallow clone), this tier is
+off and only the exact-path tier below applies.
+
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
 credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
 check — the content scan described above only ever runs on the small set of files the path/extension
@@ -172,14 +219,15 @@ required to produce, every time.
   `CREDENTIAL`/`AUTH` check documented in check 2 above, and a second doc-rewrite round to match.
   Both fixes verified directly against the pattern logic (`redactSecrets(content) === content` and
   the new pattern both clean) and via a live dispatch. The third copy, at
-  `.agents/skills/skill-development/references/secrets-and-credentials.md`, was deliberately left
-  unfixed — `.agents/` is documented elsewhere in this repo as a stale mirror outside the automated
-  `sync-plugin-mirrors` tooling, and fixing it would require a manual, tooling-bypassing copy.
-  Because `checkSecretFiles` scans the **whole repository root**, not just the caller's declared
-  scope, this stale `.agents/` copy alone still blocks the Windows fallback dispatch path for the
-  whole repo today, confirmed live: a dispatch targeting only the now-fixed `plugins/plugin-devkit/`
-  copy still fails with `secret_file_in_scope` on the `.agents/` copy instead, since directory
-  traversal reaches it first. Not fully resolved even for the two fixed copies — the general
+  `.agents/skills/skill-development/references/secrets-and-credentials.md`, was first deliberately
+  left unfixed — `.agents/` is a stale mirror outside the automated `sync-plugin-mirrors` tooling.
+  Because `checkSecretFiles` scans the **whole repository root**, that stale copy alone blocked the
+  Windows fallback dispatch path for the whole repo (confirmed live: a dispatch targeting only the
+  fixed `plugins/plugin-devkit/` copy still failed on the `.agents/` copy, since directory traversal
+  reaches it first). **Resolved 2026-10-09 by deleting the stale `.agents/` copy**; clearing it
+  exposed the further blockers addressed by the gitignored-file skip and the trusted-base tier in
+  check 2 above (plus nine exact-path `.secretlintignore` entries and a one-line type annotation in
+  `anls_token_time_aggregator.py`). Not fully resolved even so — the general
   "content-scan can't distinguish an illustrative example from a real secret" limitation still
   holds for *any* trigger word not yet anticipated (this round closed `CREDENTIAL`/`AUTH`
   specifically because a real, live case used them; a future evasion using some other word not on

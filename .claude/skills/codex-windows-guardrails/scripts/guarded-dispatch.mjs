@@ -10,6 +10,13 @@ import {
   LOOSE_SECRET_FILENAME_PATTERNS,
   isExemptedBySecretlintignore
 } from "../../../scripts/lib/cdx-secret-filenames.mjs";
+import {
+  createBaseVerifier,
+  gitExecutable,
+  gitEnv,
+  gitignoreUnchangedSinceBase,
+  NULL_DEVICE
+} from "../../../scripts/lib/cdx-lintignore-base.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
@@ -79,10 +86,13 @@ function resolveConfig(repoRoot) {
   // with "-" from being parsed as a git option instead of a pathspec.
   let untracked = false;
   try {
-    execFileSync("git", ["ls-files", "--error-unmatch", "--", localPath], {
+    // gitExecutable(): an absolute git resolved from PATH only. A bare "git"
+    // would let libuv run a git.exe committed at the repo root (cwd) by the
+    // branch under review -- see cdx-lintignore-base.mjs's header.
+    execFileSync(gitExecutable(), ["ls-files", "--error-unmatch", "--", localPath], {
       cwd: repoRoot,
       stdio: ["ignore", "ignore", "pipe"],
-      env: { ...process.env, LC_ALL: "C" }
+      env: gitEnv({ LC_ALL: "C" })
     });
   } catch (error) {
     const stderr = error.stderr ? error.stderr.toString() : "";
@@ -176,9 +186,10 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
 function verifyRepoRootIsGitToplevel(repoRoot) {
   let actualToplevel;
   try {
-    actualToplevel = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    actualToplevel = execFileSync(gitExecutable(), ["rev-parse", "--show-toplevel"], {
       cwd: repoRoot,
       stdio: ["ignore", "pipe", "pipe"],
+      env: gitEnv(),
       encoding: "utf8"
     }).trim();
   } catch {
@@ -396,13 +407,56 @@ function isDocumentationAboutSecrets(relativePath, matchedPattern) {
   return DOCUMENTATION_DIR_SEGMENT.test(relativePath) && DOCUMENTATION_EXTENSION.test(relativePath);
 }
 
-function checkSecretFiles(targetPaths, repoRoot) {
+// Untracked paths the REPOSITORY ignores (.gitignore files and
+// .git/info/exclude -- deliberately NOT the user's global core.excludesFile
+// or system config, so the verdict doesn't depend on one developer's personal
+// ignore list, e.g. a global `.env` entry): an ignored directory collapses to
+// one "dir/" entry, so a .venv or node_modules is one comparison, not
+// thousands of per-file git calls. A TRACKED file is never listed here, even
+// if a .gitignore pattern also matches it (a force-added .env stays
+// scanned). Returns [] on any git failure, which fails closed: nothing is
+// skipped and the scan covers everything it did before this skip existed.
+//
+// Security review (2026-10-09, M1): the ignore rules are the CHECKOUT's own
+// .gitignore files, which a branch under review controls -- a single `*` line
+// would otherwise hide every untracked file on the reviewer's disk from the
+// scan. So the skip is honored only while every tracked .gitignore is
+// unchanged from the trusted merge base; if one differs, or no base can be
+// resolved, nothing is skipped.
+function listGitIgnoredEntries(canonicalRoot) {
+  if (!gitignoreUnchangedSinceBase(canonicalRoot)) return [];
+  try {
+    const out = execFileSync(
+      gitExecutable(),
+      ["-c", "core.excludesFile=", "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"],
+      {
+        cwd: canonicalRoot,
+        env: gitEnv({ GIT_CONFIG_GLOBAL: NULL_DEVICE, GIT_CONFIG_NOSYSTEM: "1" }),
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        windowsHide: true,
+        maxBuffer: 64 * 1024 * 1024
+      }
+    );
+    return out.split("\0").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function isGitIgnoredEntry(ignoredEntries, relativePath) {
+  const posixPath = relativePath.split(path.sep).join("/");
+  return ignoredEntries.some((entry) => (entry.endsWith("/") ? posixPath.startsWith(entry) : posixPath === entry));
+}
+
+function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt) {
   // Relativize against the CANONICAL root, not the raw repoRoot argument --
   // a path reached via symlink/junction recursion is already in canonical
   // form, so relativizing it against a non-canonical repoRoot could render
   // a `..`-laden path exposing real on-disk structure instead of a clean
   // repo-relative one.
   const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
+  const ignoredEntries = listGitIgnoredEntries(canonicalRoot);
   for (const entry of targetPaths) {
     const absoluteEntry = path.resolve(repoRoot, entry);
     const files = [];
@@ -422,6 +476,19 @@ function checkSecretFiles(targetPaths, repoRoot) {
         const matched = matchesSecretPattern(name);
         if (matched) {
           const relativePath = path.relative(canonicalRoot, file.path);
+          // Deliberate, user-accepted scope decision (2026-10-09): an
+          // UNTRACKED file that git itself ignores (.venv, node_modules,
+          // __pycache__, and equally a gitignored .env or *.local.json) is
+          // not part of this scan. Without this, any worktree that had run
+          // `uv`/`pytest`/`npm` blocked every dispatch on a dependency's own
+          // cacert.pem or a *token*.pyc. The cost is real and disclosed in
+          // references/preflight-checks.md: a gitignored credential file is
+          // no longer caught here, and the .gitignore doing the ignoring is
+          // the checkout's own (so a branch under review can influence it).
+          // A tracked file is never skipped, however it is ignored.
+          if (isGitIgnoredEntry(ignoredEntries, relativePath)) {
+            continue;
+          }
           // Security review, issue #78 fix (M4): only exempt when the
           // MATCHED name is the file's own basename -- a file symlink is
           // checked under both its own name and its real target's name
@@ -435,6 +502,22 @@ function checkSecretFiles(targetPaths, repoRoot) {
           // file, whose single checkNames entry already equals its own
           // basename.
           const matchedOwnBasename = name === path.basename(relativePath);
+          // Tier A -- trusted-base exemption (cdx-lintignore-base.mjs,
+          // see its header for the full threat model): full gitignore syntax,
+          // but only against the .secretlintignore committed at the merge
+          // base, and only for a regular file whose current content is
+          // byte-identical to its base blob. Reaches no content scan on
+          // purpose: that scan can never clear a file whose content is
+          // legitimately secret-shaped (a redactor's own smoke test, a fixture
+          // with fake credentials), and the provenance check is what makes
+          // skipping it safe -- a branch cannot add an exemption or alter an
+          // exempt file. A strict-pattern filename (.env, *.pem, id_rsa, ...)
+          // is never eligible, same as the tier below. Falls through to that
+          // tier unchanged when this tier doesn't apply or the base cannot
+          // be resolved.
+          if (matchedOwnBasename && !matchesAnyStrictPattern(name) && isBaseVerifiedExempt(relativePath)) {
+            continue;
+          }
           // Two independent exemption signals, either sufficient to reach
           // the content-scan below (issue #295 adds the second): a
           // path-shape heuristic (isDocumentationAboutSecrets) and an
@@ -490,6 +573,27 @@ function checkSecretFiles(targetPaths, repoRoot) {
     }
   }
   return null;
+}
+
+function checkSecretFiles(targetPaths, repoRoot) {
+  // Resolved lazily, once: most scans never reach a filename match at all,
+  // and resolving the merge base + building the matcher repo costs several
+  // git invocations. null (base unresolvable) makes every lookup false, so
+  // the scan degrades to the exact-path tier alone rather than failing open.
+  let verifier;
+  let resolved = false;
+  const isBaseVerifiedExempt = (relativePath) => {
+    if (!resolved) {
+      resolved = true;
+      verifier = createBaseVerifier(canonicalizeWithAncestorFallback(repoRoot));
+    }
+    return verifier ? verifier.isExempt(relativePath) : false;
+  };
+  try {
+    return scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt);
+  } finally {
+    if (verifier) verifier.dispose();
+  }
 }
 
 function parseArgs(argv) {
