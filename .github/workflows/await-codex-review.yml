@@ -44,9 +44,19 @@ jobs:
     # phrases -- its replies routinely quote them back verbatim (e.g. explaining what it just
     # reviewed), which is not a human asking for another round. Without this exclusion, the
     # connector's own reply can retrigger this same job against itself.
+    #
+    # Dependabot pull requests never start a wait (maintainer decision, 2026-10-09). Three
+    # checks cover the three places the identity can appear: github.actor (the user who
+    # triggered this run -- Dependabot itself on its own pull_request events),
+    # github.event.pull_request.user.login (the PR author on pull_request events), and
+    # github.event.issue.user.login (the PR author on issue_comment events, which carry no
+    # pull_request sub-object and where github.actor is the commenter, not the PR author).
     if: >-
-      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login != 'chatgpt-codex-connector[bot]' && (contains(github.event.comment.body, '@codex review') || contains(github.event.comment.body, '@codex full review')))
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.issue.user.login != 'dependabot[bot]' &&
+      ((github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && github.event.comment.user.login != 'chatgpt-codex-connector[bot]' && (contains(github.event.comment.body, '@codex review') || contains(github.event.comment.body, '@codex full review'))))
     runs-on: ubuntu-latest
     timeout-minutes: 33
     env:
