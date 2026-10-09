@@ -15,11 +15,23 @@ from pathlib import Path
 SCRIPT = Path(__file__).parent / "wmgt_batch_hash.py"
 
 
-def run(*args):
+def run_script(script, *args):
     proc = subprocess.run(
-        [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False
+        [sys.executable, str(script), *args], capture_output=True, text=True, check=False
     )
-    return proc.returncode, json.loads(proc.stdout)
+    try:
+        return proc.returncode, json.loads(proc.stdout)
+    except ValueError:
+        return proc.returncode, {
+            "ok": False,
+            "error": "non-json output",
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+
+
+def run(*args):
+    return run_script(SCRIPT, *args)
 
 
 def submission(records, **overrides):
@@ -162,6 +174,17 @@ def main() -> int:
             and out["rows"][0]["title"] == "x"
             and out["full_descriptions"][0] == {"index": 0, "description": "dx"},
         )
+        rc, out = run("preview", many, many_digest, "1", "5")
+        check(
+            "preview with start 1 prints full text only for indices 1 and 2",
+            rc == 0 and [d["index"] for d in out["full_descriptions"]] == [1, 2],
+        )
+        rc, out = run("preview", many, many_digest, "3", "8")
+        check(
+            "preview with start 3 prints no full descriptions",
+            rc == 0 and out["full_descriptions"] == [],
+        )
+
         rc, out = run("preview", fat, fat_digest, "0", "3")
         check(
             "preview excerpts long descriptions",
@@ -349,6 +372,32 @@ def main() -> int:
             rc == 1 and decoy.exists(),
         )
 
+        for short in ("a.json", "1234567.json"):
+            short_file = scratch / short
+            short_file.write_text("{}", encoding="utf-8")
+            rc, out = run("purge", str(tmp_path), str(short_file))
+            check(
+                f"purge refuses the {len(short) - 5}-character name {short}",
+                rc == 1 and short_file.exists(),
+            )
+        eight = scratch / "12345678.json"
+        eight.write_text("{}", encoding="utf-8")
+        rc, out = run("purge", str(tmp_path), str(eight))
+        check("purge accepts an 8-character batch id", rc == 0 and not eight.exists())
+
+        target = Path(write("symlink-target.json", "{}"))
+        link = scratch / "12345678-link.json"
+        try:
+            link.symlink_to(target)
+        except (OSError, NotImplementedError):
+            link = None  # this platform cannot create a symlink here; the case is skipped
+        if link is not None:
+            rc, out = run("purge", str(tmp_path), str(link))
+            check(
+                "purge refuses a symlink and leaves its target alone",
+                rc == 1 and target.exists() and link.is_symlink(),
+            )
+
         odd = scratch / "notes.txt"
         odd.write_text("x", encoding="utf-8")
         rc, out = run("purge", str(tmp_path), str(odd))
@@ -357,10 +406,40 @@ def main() -> int:
         settings.write_text("{}", encoding="utf-8")
         rc, out = run("purge", str(tmp_path), str(settings))
         check("purge refuses a name outside the generated pattern", rc == 1 and settings.exists())
-        rc, out = run("purge", str(tmp_path), str(scratch / "missing.json"))
+        folder_named_like_a_file = scratch / "dir-12345.json"
+        folder_named_like_a_file.mkdir()
+        rc, out = run("purge", str(tmp_path), str(folder_named_like_a_file))
+        check(
+            "purge refuses a folder named like an intake file",
+            rc == 1 and folder_named_like_a_file.exists(),
+        )
+
+        no_scratch_root = tmp_path / "no-scratch"
+        no_scratch_root.mkdir()
+        rc, out = run(
+            "purge", str(no_scratch_root), str(no_scratch_root / "wmgt-intake" / "missing1.json")
+        )
+        check("purge with no wmgt-intake folder is a typed failure", rc == 1 and not out["ok"])
+
+        rc, out = run("purge", str(tmp_path), str(scratch / "missing1.json"))
         check("purge of a missing file is a typed failure", rc == 1 and not out["ok"])
         rc, out = run("purge", str(tmp_path), str(scratch / ".." / "outside.json"))
         check("purge refuses a path that climbs out of wmgt-intake", rc == 1 and outside.exists())
+
+        silent = tmp_path / "silent.py"
+        silent.write_text("pass\n", encoding="utf-8")
+        rc, out = run_script(silent)
+        check(
+            "the harness reports empty output as a failed case",
+            out["ok"] is False and out["error"] == "non-json output",
+        )
+        noisy = tmp_path / "noisy.py"
+        noisy.write_text("print('not json')\n", encoding="utf-8")
+        rc, out = run_script(noisy)
+        check(
+            "the harness reports non-JSON output as a failed case",
+            out["ok"] is False and out["stdout"].strip() == "not json",
+        )
 
         rc, out = run("bogus")
         check("invalid arguments give a typed failure", rc == 1 and not out["ok"])

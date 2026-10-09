@@ -124,6 +124,7 @@ never satisfies any of this. A calling plugin's own earlier approval never count
 - A model-executed gate cannot authenticate who delegated a call, who issued an `AskUserQuestion`, or whether text in its context is a real tool result. Requiring the latest unused approval of the exact hash, a script-verified chunk and the scope checks above is the strongest signal available in prose; it reduces the risk and does not remove it.
 - Linear has no conditional write, so a re-read before an update leaves a short race.
 - Symlink and hard-link refusal in the script is best effort on Windows.
+- `purge` deletes relative to an open directory descriptor on POSIX, so swapping the file itself after the check cannot redirect the delete. A parent folder of the scratch root swapped between path resolution and opening it still can, and Windows has no descriptor-relative delete in Python at all, so there it checks the path and then removes it by name. Either way the worst case is deleting a regular file with an intake-generated name in another folder, and it needs a concurrent actor with write access to a parent of the scratch root.
 
 ## Result
 
