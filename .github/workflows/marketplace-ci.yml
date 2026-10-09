@@ -1149,12 +1149,16 @@ jobs:
       # ("bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted") and
       # leaves every reviewer with an empty, inconclusive review. Relaxing the
       # restriction on this ephemeral runner keeps the sandbox on; see
-      # openai/codex issue 15057. The probe only reports (warning, not
-      # failure) so a runner image change shows up in the log.
+      # openai/codex issue 15057. The probe fails the job closed (this step
+      # runs with `bash -e`) so reviewers, which hold OPENAI_API_KEY and read
+      # PR-controlled content, are only dispatched after the bwrap sandbox is
+      # shown to start. It checks that bwrap starts, not the reviewers' own
+      # `exec --sandbox read-only` policy; the sysctl change lasts the whole
+      # job, and the runner image is `ubuntu-latest`, not pinned.
       - name: Allow Codex's bwrap sandbox on the hosted runner
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          codex sandbox /bin/true || echo "::warning::Codex sandbox probe failed; reviewers may return empty reviews"
+          codex sandbox /bin/true
 
       - name: Dispatch reviewers directly, validate output, aggregate findings
         env:
