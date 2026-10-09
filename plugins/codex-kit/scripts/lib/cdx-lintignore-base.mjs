@@ -89,10 +89,27 @@ const STRIPPED_GIT_ENV = new Set([
 
 const cachedGit = new Map();
 
-function isInsideRoot(dir, root) {
-  const norm = (p) => path.resolve(p).toLowerCase();
-  const rel = path.relative(norm(root), norm(dir));
+// Canonical form (realpath resolves junctions/symlinks and 8.3 short names);
+// a path that does not exist cannot be resolved, so it falls back to its
+// lexical form -- a PATH entry that does not exist supplies no git.exe anyway.
+function canonicalLower(p) {
+  try {
+    return fs.realpathSync.native(p).toLowerCase();
+  } catch {
+    return path.resolve(p).toLowerCase();
+  }
+}
+
+function withinRoot(dirNorm, rootNorm) {
+  const rel = path.relative(rootNorm, dirNorm);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+// Inside the root by EITHER its lexical or its canonical spelling, so a
+// junction or 8.3 alias into the repo cannot be used to name an in-repo folder.
+function isInsideRoot(dir, root) {
+  const lexical = (p) => path.resolve(p).toLowerCase();
+  return withinRoot(lexical(dir), lexical(root)) || withinRoot(canonicalLower(dir), canonicalLower(root));
 }
 
 // Absolute path of git, searching PATH only -- never the cwd, never a
@@ -185,8 +202,7 @@ export function resolveTrustedBase(repoRoot) {
 // The pathspec is case-INSENSITIVE on purpose: on NTFS git reads a tracked
 // `dir/.GITIGNORE` as an ignore file (verified live: it hid an untracked
 // credentials.json), but a plain `:(glob)**/.gitignore` does not match that name.
-export function gitignoreUnchangedSinceBase(repoRoot) {
-  const base = resolveTrustedBase(repoRoot);
+export function gitignoreUnchangedSinceBase(repoRoot, base = resolveTrustedBase(repoRoot)) {
   if (!base) return false;
   try {
     execFileSync(gitExecutable(repoRoot), ["diff", "--quiet", base, "--", ":(glob,icase)**/.gitignore"], {
@@ -202,8 +218,9 @@ export function gitignoreUnchangedSinceBase(repoRoot) {
 }
 
 // Returns { base, isExempt(relativePath), dispose() } or null (fail closed).
-export function createBaseVerifier(repoRoot) {
-  const base = resolveTrustedBase(repoRoot);
+// `base` is the trusted merge base; pass an already-resolved one (as
+// guarded-dispatch.mjs does) so a scan resolves it once, not once per helper.
+export function createBaseVerifier(repoRoot, base = resolveTrustedBase(repoRoot)) {
   if (!base) return null;
   // Read the raw blob (runGit trims) so a pattern's trailing escapes survive.
   let ignoreText;

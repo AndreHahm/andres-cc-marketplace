@@ -12,6 +12,7 @@ import {
 } from "../../../scripts/lib/cdx-secret-filenames.mjs";
 import {
   createBaseVerifier,
+  resolveTrustedBase,
   gitExecutable,
   gitEnv,
   gitignoreUnchangedSinceBase,
@@ -436,8 +437,8 @@ function isDocumentationAboutSecrets(relativePath, matchedPattern) {
 // scan. So the skip is honored only while every tracked .gitignore is
 // unchanged from the trusted merge base; if one differs, or no base can be
 // resolved, nothing is skipped.
-function listGitIgnoredEntries(canonicalRoot) {
-  if (!gitignoreUnchangedSinceBase(canonicalRoot)) return [];
+function listGitIgnoredEntries(canonicalRoot, base) {
+  if (!gitignoreUnchangedSinceBase(canonicalRoot, base)) return [];
   try {
     const out = execFileSync(
       gitExecutable(canonicalRoot),
@@ -462,14 +463,14 @@ function isGitIgnoredEntry(ignoredEntries, relativePath) {
   return ignoredEntries.some((entry) => (entry.endsWith("/") ? posixPath.startsWith(entry) : posixPath === entry));
 }
 
-function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt) {
+function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
   // Relativize against the CANONICAL root, not the raw repoRoot argument --
   // a path reached via symlink/junction recursion is already in canonical
   // form, so relativizing it against a non-canonical repoRoot could render
   // a `..`-laden path exposing real on-disk structure instead of a clean
   // repo-relative one.
   const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
-  const ignoredEntries = listGitIgnoredEntries(canonicalRoot);
+  const ignoredEntries = listGitIgnoredEntries(canonicalRoot, base);
   for (const entry of targetPaths) {
     const absoluteEntry = path.resolve(repoRoot, entry);
     const files = [];
@@ -593,17 +594,21 @@ function checkSecretFiles(targetPaths, repoRoot) {
   // and resolving the merge base + building the matcher repo costs several
   // git invocations. null (base unresolvable) makes every lookup false, so
   // the scan degrades to the exact-path tier alone rather than failing open.
+  const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
+  // The trusted merge base is resolved ONCE per scan and shared by the
+  // ignored-file skip and the lazy exemption verifier (each used to resolve it).
+  const base = resolveTrustedBase(canonicalRoot);
   let verifier;
   let resolved = false;
   const isBaseVerifiedExempt = (relativePath) => {
     if (!resolved) {
       resolved = true;
-      verifier = createBaseVerifier(canonicalizeWithAncestorFallback(repoRoot));
+      verifier = createBaseVerifier(canonicalRoot, base);
     }
     return verifier ? verifier.isExempt(relativePath) : false;
   };
   try {
-    return scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt);
+    return scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base);
   } finally {
     if (verifier) verifier.dispose();
   }

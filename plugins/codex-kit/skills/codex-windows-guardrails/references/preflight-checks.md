@@ -150,7 +150,7 @@ not compared. If `git` fails, nothing is skipped either.
 
 **Git is resolved from `PATH` only** (security review C1). Every git call uses an absolute `git.exe`
 found on `PATH` outside the repo (a `PATH` folder that is the repo root or inside it, such as an activated
-`.venv/Scripts` or `node_modules/.bin`, is skipped), never a bare `git`: on Windows, libuv resolves a bare program name against the
+`.venv/Scripts` or `node_modules/.bin`, is skipped; compared by real path, so a junction or 8.3 alias into the repo does not hide it), never a bare `git`: on Windows, libuv resolves a bare program name against the
 child's working directory first (live-verified with a stand-in `git.exe` while
 `NoDefaultCurrentDirectoryInExePath` was unset), so a branch could otherwise commit its own `git.exe`
 at the repo root and have it run before any guard. Other `codex-kit` scripts that call a bare `git`
