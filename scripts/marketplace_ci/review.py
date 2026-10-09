@@ -512,8 +512,9 @@ def run_delta_structural_checks(
 # scripts/marketplace_ci/pr_policy.py, even though pr_policy.py is NOT
 # part of run-codex-review's own import closure (a security review of the
 # split confirmed it isn't) -- it's gated there for a distinct reason
-# (merge-privilege-deciding code, evaluated by a sibling job with no
-# base-SHA restore of its own), not because narrowing this constant would
+# (merge-privilege-deciding code, evaluated by the hygiene job, which now
+# restores it from the base SHA too but stays gated until a separate
+# decision says otherwise), not because narrowing this constant would
 # affect it. See that gate's own comment for the full rationale, and
 # tests/marketplace_ci/test_import_isolation.py's
 # test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set, which
@@ -535,6 +536,19 @@ BYPASS_INELIGIBLE_PREFIXES = (
     ".claude/skills/plugin-rulebook/",
     "pyproject.toml",
     "uv.lock",
+    # uv's own config and the interpreter version files: the restore jobs
+    # delete or restore them and codex-review refuses a PR that changes them,
+    # so a PR touching one must never take the zero-reviewer path either.
+    # ".python-version" is a prefix of ".python-versions", covering both.
+    "uv.toml",
+    ".python-version",
+    # The Node chain codex-review executes with the API key in its
+    # environment (the same three files trust_boundary.TIER1_FILES gates): a
+    # PR touching only one of them must reach the hard-refuse step, not the
+    # zero-reviewer path that skips the codex-review job entirely.
+    "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+    "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-process.mjs",
     # The other 2 of pr_policy.py's 3 _CODEOWNERS_CANDIDATES -- a PR adding
     # or editing either one changes who check_merge_rights lets merge for
     # every subsequent PR (a CODEOWNERS match is terminal: it both grants

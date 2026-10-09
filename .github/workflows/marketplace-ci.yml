@@ -103,21 +103,27 @@ jobs:
       # check-pr runs below with GH_TOKEN, so it and its dependency install
       # must not come from the PR's own untrusted checkout -- the same
       # principle compute-scope and publish already apply to their own
-      # decision code (codex-review uses a detect-and-refuse variant). Restores before `uv sync` so the dependency
-      # install also comes from the trusted spec. Fails closed if the restore
-      # itself cannot complete. Raised by Codex's security review of PR #504.
+      # decision code (codex-review refuses instead of restoring, since its
+      # reviewers must see the PR's real files). Restores before `uv sync` so
+      # the dependency install also comes from the trusted spec. Fails closed
+      # if the restore itself cannot complete. Raised by Codex's security
+      # review of PR #504.
       #
       # Overwriting files that exist at base is not enough: `git restore`
       # without `--overlay` also deletes tracked files the PR added under
-      # scripts/, and the loop below restores or deletes the uv and
-      # CODEOWNERS/template inputs check-pr reads as data (merge privilege is
-      # decided from CODEOWNERS, so the PR's own copy must never be trusted).
-      # A PR-added top-level module (json.py, sitecustomize.py, ...), a new
-      # top-level package, or tracked .venv content can shadow imports and is
-      # not covered by a restore, so it is refused outright. The diff goes to a
-      # file first and grep's exit code is read explicitly (0 match, 1 clean,
-      # anything else fails closed): piping into `grep -q` under pipefail can
-      # fail open when git is killed by SIGPIPE.
+      # scripts/, and the loop below restores or deletes the uv, Python-version
+      # and CODEOWNERS/template inputs check-pr reads as data (merge privilege
+      # is decided from CODEOWNERS, so the PR's own copy must never be trusted).
+      # A restore cannot remove what base never had, so a PR that ADDS an
+      # importable top-level name (a module such as yaml.py / yaml.pyc /
+      # yaml.so, a <dir>/__init__.* package marker, .venv content, or a
+      # top-level symlink) is refused outright. That is a denylist of the
+      # forms CPython's importer accepts, not a proof there are no others; the
+      # same block is repeated in every job that runs trusted code and
+      # tests/marketplace_ci/test_workflow_trusted_restore.py keeps the copies
+      # identical. The diff goes to a file first and grep's exit code is read
+      # explicitly (0 match, 1 clean, anything else fails closed): piping into
+      # `grep -q` under pipefail can fail open when git is killed by SIGPIPE.
       - name: Restore the base SHA's copy of the PR-contract check code and its data inputs (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -125,7 +131,7 @@ jobs:
           set -euo pipefail
           git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
             || { echo "::error::could not restore PR-contract check code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
-          for p in uv.toml .python-version CODEOWNERS .github/CODEOWNERS docs/CODEOWNERS .github/pull_request_template.md; do
+          for p in uv.toml .python-version .python-versions CODEOWNERS .github/CODEOWNERS docs/CODEOWNERS .github/pull_request_template.md; do
             if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
               git restore --source="$BASE_SHA" --staged --worktree -- "$p"
             else
@@ -133,11 +139,29 @@ jobs:
               rm -f -- "$p"
             fi
           done
-          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
-          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN"
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock, uv config and CODEOWNERS/template from $BASE_SHA"
@@ -424,55 +448,57 @@ jobs:
       # best-effort only, the same characteristic that job's pre-existing
       # check-plugin-mirrors/check-codex-exports constituents already have).
       #
-      # Bootstrapping exception, same shape as this file's own
-      # restore_from_base() "keep" branch above: this PR is what introduces
-      # both the check-prefixes and check-prefix-permanence subcommands in
-      # the first place, so $BASE_SHA's copy of scripts/ doesn't have
-      # either yet -- restoring unconditionally would make this job fail on
-      # its own rollout PR (argparse: invalid choice), which would also
-      # cascade into blocking codex-review below, since it now depends on
-      # this job (Codex cross-model-review finding, round 3). Check whether
-      # check-prefixes already exists at base before restoring (a
-      # prerequisite for check-prefix-permanence too, since both share
-      # prefix_check.py and were introduced together) -- only this one-time
-      # rollout PR takes the "use the PR's own copy" branch -- every later
-      # PR's base SHA has both real subcommands, and the restore's
-      # fail-closed `else` branch below is unaffected by this bootstrapping
-      # check.
+      # There is deliberately no bootstrapping exception left here: check-prefixes
+      # and check-prefix-permanence have existed at the base SHA since the PR that
+      # introduced them. If they were ever missing the restore below still runs and
+      # this job fails closed, rather than running the PR's own copy of the code
+      # (a former conditional skipped the restore whenever a text probe of base's
+      # __main__.py failed, which could only ever fail open).
       - name: Restore the base SHA's copy of the prefix-check code and its dependency spec (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          # No `pipefail` here on purpose: the bootstrap test below pipes
-          # `git show` into `grep -q`, and pipefail would turn a SIGPIPE on
-          # `git show` into a false "bootstrapping" verdict (fail open).
-          set -eu
-          if ! git show "$BASE_SHA:scripts/marketplace_ci/__main__.py" 2>/dev/null | grep -q "check-prefixes"; then
-            echo "check-prefixes does not exist at base $BASE_SHA yet -- this is the bootstrapping PR introducing it (and check-prefix-permanence); using the PR's own copy for this one-time rollout only. Every later PR's base SHA will have real trusted copies to restore against."
-          else
-            # Same restore as the hygiene job's (see its comment): no-overlay
-            # restore deletes PR-added files under scripts/, uv.toml and
-            # .python-version are restored or deleted, and a PR-added
-            # top-level module/package or .venv content is refused.
-            git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
-              || { echo "::error::could not restore prefix-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
-            for p in uv.toml .python-version; do
-              if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
-                git restore --source="$BASE_SHA" --staged --worktree -- "$p"
-              else
-                git rm -q -f --ignore-unmatch -- "$p"
-                rm -f -- "$p"
-              fi
-            done
-            git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
-            rc=0
-            grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
-            if [ "$rc" -ne 1 ]; then
-              echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code"
-              exit 1
+          # Same restore as the hygiene job's (see its comment): no-overlay
+          # restore deletes PR-added files under scripts/, uv.toml, .python-version
+          # and .python-versions are restored or deleted, and an importable
+          # top-level shadow (module, package, .venv, symlink) is refused.
+          set -euo pipefail
+          git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
+            || { echo "::error::could not restore prefix-check code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
+          for p in uv.toml .python-version .python-versions; do
+            if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --staged --worktree -- "$p"
+            else
+              git rm -q -f --ignore-unmatch -- "$p"
+              rm -f -- "$p"
             fi
-            echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
+          done
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
           fi
+          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
 
       - run: uv sync --locked --no-config --group dev
       # Mechanical enforcement of plugin-rulebook's R33 (every file under a
@@ -715,13 +741,13 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Same restore as the hygiene job's (see its comment): no-overlay
-          # restore deletes PR-added files under scripts/, uv.toml and
-          # .python-version are restored or deleted, and a PR-added top-level
-          # module/package or .venv content is refused.
+          # restore deletes PR-added files under scripts/, uv.toml, .python-version
+          # and .python-versions are restored or deleted, and an importable
+          # top-level shadow (module, package, .venv, symlink) is refused.
           set -euo pipefail
           git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
             || { echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"; exit 1; }
-          for p in uv.toml .python-version; do
+          for p in uv.toml .python-version .python-versions; do
             if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
               git restore --source="$BASE_SHA" --staged --worktree -- "$p"
             else
@@ -729,11 +755,29 @@ jobs:
               rm -f -- "$p"
             fi
           done
-          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
-          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code"
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
@@ -958,12 +1002,80 @@ jobs:
               scripts/marketplace_ci/conversion.py \
               scripts/marketplace_ci/pr_policy.py \
               pyproject.toml \
-              uv.lock; then
-            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec (pyproject.toml, uv.lock) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
+              uv.lock \
+              uv.toml \
+              .python-version \
+              .python-versions \
+              plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs \
+              plugins/codex-kit/scripts/lib/codex-exec.mjs \
+              plugins/codex-kit/scripts/lib/cdx-process.mjs; then
+            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec or uv/Python-version config (pyproject.toml, uv.lock, uv.toml, .python-version, .python-versions), or the Node bridge this job runs with the API key (plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs, plugins/codex-kit/scripts/lib/codex-exec.mjs, plugins/codex-kit/scripts/lib/cdx-process.mjs) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi
 
-      - run: uv sync --group dev
+      # codex-review cannot restore scripts/ or the uv config from base the way the
+      # other jobs do -- the reviewers must see this PR's real changes on disk -- so it
+      # refuses instead: the hard-refuse step above covers the Tier-1 Python code, the
+      # uv and Python-version config files and the three Node files this job runs with
+      # the key, and this step covers files the PR ADDS that could shadow an import next
+      # to OPENAI_API_KEY (the same check the restore jobs run, plus scripts/-specific
+      # forms and symlinks). A SHA-bound bypass attestation clears these refusals; it
+      # does not clear the restore jobs'. The `uv sync` below is then locked and
+      # config-free.
+      - name: Refuse automated Codex dispatch when this PR adds an importable top-level shadow (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # Unlike the restore jobs, this job runs scripts/ from the PR's own checkout, so a
+          # file the PR adds BELOW the top level can still replace an unchanged Tier-1 module:
+          # a package directory named after one (scripts/marketplace_ci/review/__init__.py),
+          # a compiled extension or sourceless bytecode (review.so, review.pyc), or a cached
+          # __pycache__ entry (loaded without checking the source when it is hash-based).
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD -- scripts > "$RUNNER_TEMP/scripts-added-files.z"
+          rc=0
+          grep -zqE '^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|^scripts/marketplace_ci/(__init__|__main__|review|git_state|registry|sync_plan|conversion|pr_policy)(/|$)' "$RUNNER_TEMP/scripts-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds a file under scripts/ that could replace a review-dispatch-critical module (a same-named package, an extension or bytecode file, or a __pycache__ entry), or the check could not run (grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
+            exit 1
+          fi
+
+          # A symlink anywhere under scripts/ can stand in for a module or package (it is one
+          # path with no trailing slash, so the name patterns above do not see it).
+          git diff -z --raw --no-renames --diff-filter=AT "$BASE_SHA" HEAD -- scripts > "$RUNNER_TEMP/scripts-raw.z"
+          rc=0
+          grep -zqE '^:[0-7]+ 120000 ' "$RUNNER_TEMP/scripts-raw.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a symlink under scripts/ (or the check could not run, grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
+            exit 1
+          fi
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          rc=0
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
+            exit 1
+          fi
+          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
+            exit 1
+          fi
+
+      - run: uv sync --locked --no-config --group dev
 
       - name: Set up Node (for the codex CLI and codex-review-bridge)
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
@@ -1131,13 +1243,13 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Same restore as the hygiene job's (see its comment): no-overlay
-          # restore deletes PR-added files under scripts/, uv.toml and
-          # .python-version are restored or deleted, and a PR-added top-level
-          # module/package or .venv content is refused.
+          # restore deletes PR-added files under scripts/, uv.toml, .python-version
+          # and .python-versions are restored or deleted, and an importable
+          # top-level shadow (module, package, .venv, symlink) is refused.
           set -euo pipefail
           git restore --source="$BASE_SHA" --staged --worktree -- scripts pyproject.toml uv.lock \
             || { echo "::error::could not restore bypass-validation code from $BASE_SHA -- refusing to trust the PR's own copy of it"; exit 1; }
-          for p in uv.toml .python-version; do
+          for p in uv.toml .python-version .python-versions; do
             if git cat-file -e "$BASE_SHA:$p" 2>/dev/null; then
               git restore --source="$BASE_SHA" --staged --worktree -- "$p"
             else
@@ -1145,11 +1257,29 @@ jobs:
               rm -f -- "$p"
             fi
           done
-          git diff -z --no-renames --name-only --diff-filter=A "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
+          # Importable-name shadowing: a PR-added top-level module (.py/.pyc/.so/...), a
+          # top-level package marker (<dir>/__init__.*), or .venv content, and a
+          # top-level symlink (which can be named like a module and matches no name
+          # pattern). A restore cannot remove what base never had, so these are refused.
+          git diff -z --no-renames --name-only --diff-filter=AT "$BASE_SHA" HEAD > "$RUNNER_TEMP/pr-added-files.z"
           rc=0
-          grep -zqE '^[^/]+\.py$|^[^/]+/__init__\.py$|^\.venv/' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
+          grep -zqE '^[^/]+\.(py|pyc|pyw|pyd|so)$|^[^/]+/__init__\.[^/]+$|^\.venv(/|$)' "$RUNNER_TEMP/pr-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds a top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code"
+            echo "::error::this PR adds an importable top-level Python module, a top-level package, or .venv content (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+            exit 1
+          fi
+          git ls-tree -z "$BASE_SHA" > "$RUNNER_TEMP/base-top.z"
+          git ls-tree -z HEAD > "$RUNNER_TEMP/head-top.z"
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/base-top.z" > "$RUNNER_TEMP/base-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks at base (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
+          if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
+          rc=0
+          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
+          if [ "$rc" -ne 1 ]; then
+            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"

@@ -218,8 +218,8 @@ def test_critical_handlers_never_reference_tier2_modules_statically():
 
 def test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set():
     """Cross-checks the codex-review job's own hard-refuse gate pathspec
-    list (a shell pathspec, hand-maintained) against TIER1_FILES (this
-    test module's own single source of truth) so the two can't silently
+    list (a shell pathspec, hand-maintained) against TIER1_FILES (in
+    scripts/marketplace_ci/trust_boundary.py, the single source of truth) so the two can't silently
     drift apart -- neither can `$ref` the other across the YAML/Python
     boundary, so nothing but a test like this one catches one being
     updated without the other (security review finding M1)."""
