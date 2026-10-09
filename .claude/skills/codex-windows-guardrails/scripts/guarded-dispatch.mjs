@@ -382,7 +382,14 @@ const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
 // `total_tokens: int = 0`, or `api_key: str = os.getenv("X")`, still pass.
 // Widened by the pre-PR cross-model-review (pass 3) from a narrower form.
 const ANNOTATED_SECRET_LITERAL_PATTERN =
-  /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:\s*[^=\r\n]+?\s*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
+  /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
+// Linear on purpose (pass-4 review): an earlier form chained `\s*`, a lazy
+// `[^=]+?` and `\s*` before the `=`, which backtracked roughly cubically on a
+// long whitespace run (4000 spaces took ~8 s) -- a denial of service on the
+// scan's own input. The annotation is now one greedy `[^\r\n]*` (so an `=`
+// inside annotation metadata, `Annotated[str, "x=y"] = "v"`, is still crossed)
+// followed by a single `=\s*<quote>` test; each `=` is tried once. Still a
+// LINE-oriented heuristic, not a parser: a multi-line annotation is not seen.
 
 function looksLikeCredentialAssignment(content) {
   for (const line of content.split(/\r?\n/)) {
