@@ -184,6 +184,7 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
   `workledger-kit` sends only the `owner/repo` slug (as `linear_target`) and never holds team IDs;
   this kit resolves the slug to a team here. `plugin-integration-intake` requests this lookup and
   `linear-work-management` performs it after the Local Override trust check (procedure:
+  `skills/linear-work-management/references/wmgt-linear-slug-resolution.md`; intake side:
   `skills/plugin-integration-intake/references/wmgt-intake-batch-contract.md`), under these rules:
   - A slug is matched exactly after normalization (lowercase, no trailing `.git`, no glob or prefix
     matching). Map keys must be stored in that normalized form, and two keys that normalize to the

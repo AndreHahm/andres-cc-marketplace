@@ -34,7 +34,7 @@ static schema can't express (the existence check, the ambiguous-target check).
   commonly a Report — required fields `title`, `summary`, **and** `body`, not just "one of summary
   or body"). Extra fields not recognized by the target record type are rejected as malformed
   content, not silently dropped or ignored. **Authoritative source of the full per-type field
-  list:** `notion-knowledge-management`'s `references/notion-record-types.md` — the minimal Report
+  list:** `notion-knowledge-management`'s record-types reference — the minimal Report
   fields above are restated here for a quick check only; if that reference and this list ever
   disagree, the reference wins.
 - **`linear`**: must resemble a valid Issue-level submission (required fields `title`,
@@ -42,7 +42,7 @@ static schema can't express (the existence check, the ambiguous-target check).
   proposing a new Goal/Roadmap/Project/Milestone directly; those require the deliberate
   `idea-to-implementation` promotion flow, not a direct cross-plugin submission. **Authoritative
   source of the full per-type field list:** `linear-work-management`'s
-  `references/linear-entity-fields.md` — the minimal Issue fields above are restated here for a
+  entity-fields reference — the minimal Issue fields above are restated here for a
   quick check only; if that reference and this list ever disagree, the reference wins.
 
 ### `suggested_mapping` shape
