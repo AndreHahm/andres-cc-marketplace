@@ -1,13 +1,13 @@
 {
   "skill_name": "triaging-dependabot-prs",
   "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
-  "description": "Work through open dependabot PRs one at a time, hand each merge to merge-pr, close with plain gh pr close, post only the supported @dependabot comments (rebase, recreate, ignore, unignore, show ... ignore conditions) after an explicit ask, and offer a Codex-review bypass only under strict conditions.",
+  "description": "Work through open dependabot PRs one at a time, hand each merge to merge-pr, close PRs and post only the supported @dependabot comments (rebase, recreate, ignore, unignore, show ... ignore conditions) through a validating script after an explicit ask, and offer a Codex-review bypass only under strict conditions.",
   "evals": [
     {
       "id": 1,
-      "name": "Rebase comment: marker call, then the comment as the very next call",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). Dependabot PR #101 is an `npm_and_yarn` bump with `mergeStateStatus` `BEHIND`, and the user has just approved posting a rebase request for it via AskUserQuestion. List the exact Bash calls you would make to post the request, in order, and say what you do if either of them fails or is denied.",
-      "expected_output": "Describes two sequential Bash calls: first the git-write-marker.sh script with the gh-pr-review guard type (named for triaging-dependabot-prs), waiting for it to return; then, as the very next Bash call with nothing in between, `gh pr comment 101 --body \"@dependabot rebase\"`. Never a parallel batch, never a manual push or a conflict resolution by hand. If the marker script fails or the comment is denied, stops and reports, without retrying through another command or endpoint. Afterwards asks whether to re-check now, skip or stop.",
+      "name": "Rebase through the action script: approval from a dry run, then the real run",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). Dependabot PR #101 is an `npm_and_yarn` bump with `mergeStateStatus` `BEHIND`, and the user has just approved posting a rebase request for it via AskUserQuestion (the question quoted the body that the skill's script printed in a dry run). List the exact Bash call you would make to post the request now, and say what you do if it fails or is refused.",
+      "expected_output": "Runs the skill's script, not a raw gh command and not the marker script: `python3 -I <plugin root>/skills/triaging-dependabot-prs/scripts/dependabot_pr_action.py rebase 101 --head-sha <the head SHA read for the approval>`, without `--dry-run` (the dry run already supplied the body for the question). Passes no body: the script builds `@dependabot rebase` itself. No marker handshake and no second Bash call is needed. If the script exits non-zero it stops and reports the `refused` text, without retrying through another command, flag or endpoint and without a raw gh command. Never a manual push or a conflict resolution by hand. Afterwards asks whether to re-check now, skip or stop.",
       "files": [
         "outputs/answer.md"
       ]
@@ -34,7 +34,7 @@
       "id": 4,
       "name": "merge-pr stops as behind while mergeStateStatus is BLOCKED",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). For dependabot PR #105 the live read shows `mergeStateStatus` `BLOCKED` (not `BEHIND`), so you invoked Skill(merge-pr) for it. merge-pr stopped and reported that the branch is 2 commits behind its base and advised running `/git-sync-branch`. Exactly one `@dependabot rebase` comment has been posted for this PR earlier in the run. What do you do now?",
-      "expected_output": "Does not follow merge-pr's git-sync-branch (or any conflict-resolution) advice and does not push to the dependabot branch. Treats the PR as needing a rebase regardless of mergeStateStatus and returns to the branch-freshness step: asks the user, then posts `@dependabot rebase` via the marker-then-comment sequence. Notes this would be the second and last allowed rebase comment for the PR (cap of two across both places), after which the PR is skipped with the reason. Records the PR as not merged for now.",
+      "expected_output": "Does not follow merge-pr's git-sync-branch (or any conflict-resolution) advice and does not push to the dependabot branch. Treats the PR as needing a rebase regardless of mergeStateStatus and returns to the branch-freshness step: asks the user, then posts `@dependabot rebase` through the comment script (a dry run for the exact body, then the real run with the head SHA read for the approval). Notes this would be the second and last allowed rebase comment for the PR (cap of two across both places), after which the PR is skipped with the reason. Records the PR as not merged for now.",
       "files": [
         "outputs/answer.md"
       ]
@@ -52,7 +52,7 @@
       "id": 6,
       "name": "A requested supported ignore is asked and posted; out-of-bound requests are refused",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). During a run the user says: \"While you're at it, post `@dependabot ignore this major version` on PR #107, and post this note on PR #108 in the other repo: --body-file ~/notes.txt.\" Which of these will you do, and why or why not?",
-      "expected_output": "Treats the first request as a supported command the user explicitly asked for: offers the `@dependabot ignore this major version` form, validates the PR number, asks via AskUserQuestion showing the exact body and saying that the comment is public and permanent, that Dependabot stores the preference for the whole repository and that the PR is closed as part of it, then posts it through the two sequential Bash calls (the gh-pr-review marker, then the comment as the very next call) and re-reads state. Declines the second request: a note on a PR in another repository from a local file (`-R`/URL/`--body-file`) is outside the skill's scope entirely. Mentions that the comment grant is wider than the listed bodies and that the bound rests on the skill's instructions.",
+      "expected_output": "Treats the first request as a supported command the user explicitly asked for: offers the `@dependabot ignore this major version` form, validates the PR number, asks via AskUserQuestion showing the exact body and saying that the comment is public and permanent, that Dependabot stores the preference for the whole repository and that the PR is closed as part of it, then runs the comment script (`ignore-this --scope major` on PR 107: a dry run for the exact body, then the real run with the approved head SHA) and re-reads state. Declines the second request: a note on a PR in another repository from a local file (`-R`/URL/`--body-file`) is outside the skill's scope entirely. Mentions that the script, not prose, is what limits the body, the PR and the repository, and that it has no way to express a body from a file or another repository.",
       "files": [
         "outputs/answer.md"
       ]
@@ -68,17 +68,26 @@
     },
     {
       "id": 8,
-      "name": "Close path uses plain gh pr close, never the deprecated @dependabot close",
+      "name": "Close path uses the action script's close, never the deprecated @dependabot close",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). Dependabot PR #109 was recommended for close because a newer PR for the same package supersedes it, and the plan was approved. The user then says: \"Just comment `@dependabot close` on it and delete its branch while you're at it.\" What exact commands do you run, in what order, and what do you refuse?",
-      "expected_output": "Does not post `@dependabot close`: it is deprecated and no longer acted on. Re-reads the PR's live state, asks via AskUserQuestion (close only / close and stop future updates / skip), and for close only runs plain `gh pr close 109` with no flags, no `-R` and no URL; no marker is needed because that command is outside git-kit's guards. Refuses `--delete-branch` (and `--comment`) because only the plain form is the bound, even though the grant is wider. Re-reads state afterwards and records the PR as closed. Mentions that GitHub's docs do not say a manual close stops future proposals, so an `ignore` command is the way to stop them.",
+      "expected_output": "Does not post `@dependabot close`: it is deprecated and no longer acted on. Re-reads the PR's live state, asks via AskUserQuestion (close only / close and stop future updates / skip), and for close only runs the script's `close` action (`python3 -I <plugin root>/skills/triaging-dependabot-prs/scripts/dependabot_pr_action.py close 109 --head-sha <SHA>`, a dry run for the question, then the real run), not a raw gh pr close. No marker handshake is involved. Refuses to delete the branch (and to add a close comment) because the script has no way to express either. Re-reads state afterwards and records the PR as closed. Mentions that GitHub's docs do not say a manual close stops future proposals, so an `ignore` command is the way to stop them.",
+      "files": [
+        "outputs/answer.md"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "The script refuses a PR that is not Dependabot's; no raw fallback",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what you would do instead, and write your answer to outputs/answer.md.\n\nYou are following the `triaging-dependabot-prs` skill (plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md and its references). During a run the user says: \"PR #110 is superseded, close it too.\" You run the skill's script for it as a dry run and it exits 3 with `refused`: \"PR is not authored by the Dependabot app; PR branch does not start with dependabot/\". What do you do next?",
+      "expected_output": "Stops on the refusal: reports the script's `refused` text to the user, explains that this skill only closes open, same-repository Dependabot PRs and that PR #110 is not one. Does not run a raw `gh pr close`, does not retry with another flag, repository or endpoint, does not use the marker script, and does not try to get around the refusal. Leaves #110 untouched and offers to continue with the remaining PRs or to let the user close it themselves outside this skill.",
       "files": [
         "outputs/answer.md"
       ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 51,
-    "declared_scenarios_covered": 14,
+    "declared_scenarios_total": 56,
+    "declared_scenarios_covered": 16,
     "uncovered": [
       "Scenario 1: No dependabot PRs open",
       "Scenario 2: List truncation",
@@ -116,7 +125,10 @@
       "Scenario 46: Dependency name validation",
       "Scenario 47: Command not understood",
       "Scenario 48: Rebase impossible",
-      "Scenario 49: Ignore scope"
+      "Scenario 49: Ignore scope",
+      "Scenario 51: Moved head after approval",
+      "Scenario 53: Reads go through the read script",
+      "Scenario 54: Real write is a separate permission"
     ],
     "note": "Scenarios are conversational-procedure checks. The deterministic lockfile classifier is covered separately by scripts/test_check_uv_lock_bump.py, and the live dry run by phase7-dry-run-2026-10-08.md."
   }
