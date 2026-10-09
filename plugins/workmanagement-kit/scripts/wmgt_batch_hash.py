@@ -206,10 +206,10 @@ def load_submission(path_str: str) -> dict:
     if unexpected:
         raise HashError(f"unexpected top-level keys: {sorted(unexpected)}")
     for key in ("source_plugin", "source_skill"):
-        if key in data and not (isinstance(data[key], str) and _KEBAB_RE.match(data[key])):
+        if key in data and not (isinstance(data[key], str) and _KEBAB_RE.fullmatch(data[key])):
             raise HashError(f"{key!r} must be a lowercase kebab-case name of at most 64 characters")
     if "linear_target" in data and not (
-        isinstance(data["linear_target"], str) and _SLUG_RE.match(data["linear_target"])
+        isinstance(data["linear_target"], str) and _SLUG_RE.fullmatch(data["linear_target"])
     ):
         raise HashError('"linear_target" must be a lowercase owner/repo slug')
     if data.get("operation") not in _OPERATIONS:
@@ -220,7 +220,7 @@ def load_submission(path_str: str) -> dict:
     if not isinstance(team_id, str) or not team_id.strip():
         raise HashError('"team_id" must be a non-empty string')
     batch_id = data.get("batch_id")
-    if not isinstance(batch_id, str) or not _BATCH_ID_RE.match(batch_id):
+    if not isinstance(batch_id, str) or not _BATCH_ID_RE.fullmatch(batch_id):
         raise HashError('"batch_id" must match ^[A-Za-z0-9._-]{8,64}$')
     records = data.get("records")
     if not isinstance(records, list) or not records:
@@ -239,7 +239,7 @@ def digest_of(data: dict) -> str:
 
 
 def _require_hash(expected: str) -> None:
-    if not _SHA256_RE.match(expected):
+    if not _SHA256_RE.fullmatch(expected):
         raise HashError("expected hash is not 64 lowercase hex characters")
 
 
@@ -358,7 +358,7 @@ def purge(scratch_root: str, path_str: str) -> dict:
     if os.path.realpath(os.path.dirname(path)) != expected_dir:
         raise HashError(f"refused: file is not directly inside <scratch-root>/{SCRATCH_DIR_NAME}")
     name = os.path.basename(path)
-    if not _PURGE_NAME_RE.match(name):
+    if not _PURGE_NAME_RE.fullmatch(name):
         raise HashError("refused: not an intake-generated file name")
     try:
         _unlink_in_dir(expected_dir, name)
@@ -395,7 +395,7 @@ def main(argv=None) -> int:
     except HashError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
-    except (RecursionError, MemoryError):
+    except (RecursionError, MemoryError, ValueError):
         print(json.dumps({"ok": False, "error": "input too deeply nested or too large"}))
         return 1
     print(json.dumps(result, allow_nan=False))
