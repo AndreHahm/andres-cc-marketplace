@@ -32,6 +32,15 @@ TIER1_FILES = frozenset(
         "scripts/marketplace_ci/pr_policy.py",
         "pyproject.toml",
         "uv.lock",
+        "uv.toml",
+        ".python-version",
+        ".python-versions",
+        # The Node chain codex-review executes with OPENAI_API_KEY in its
+        # environment: review.py runs bridge-invoke.mjs, which imports
+        # codex-exec.mjs, which imports cdx-process.mjs.
+        "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+        "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+        "plugins/codex-kit/scripts/lib/cdx-process.mjs",
     }
 )
 

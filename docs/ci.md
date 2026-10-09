@@ -14,7 +14,7 @@ not hand-typed):
 
 | Check name | Job | What it verifies |
 |---|---|---|
-| `Hygiene (PR contract)` | `hygiene` | PR title/template conformance, author-privilege policy (`check-pr`) |
+| `Hygiene (PR contract)` | `hygiene` | PR title/template conformance, author-privilege policy (`check-pr`), run from a base-SHA-restored copy of `scripts/` and of the CODEOWNERS/template inputs |
 | `Python quality (ruff, ty, pytest)` | `python-quality` | `ruff format --check`, `ruff check`, `ty check`, `pytest -q` against `scripts/`+`tests/` |
 | `Marketplace mirror/export parity` | `marketplace-parity` | `check-all` — every plugin's generated `.claude`/`.agents`/`.codex` mirror/export is in sync with its canonical source |
 | `Plugin component-file prefix permanence (R33)` | `prefix-permanence` | Runs `check-prefixes` then `check-prefix-permanence --base-sha`, both from a base-SHA-restored, trusted copy of `scripts/` (same principle `compute-scope`/`codex-review`/`publish` already apply to their own decision code — this is the one trusted evaluation point for both checks; `marketplace-parity`'s own `check-all` also runs `check-prefixes`, but from the untrusted PR checkout, same as its pre-existing mirror/export constituents). `check-prefixes` verifies every file under a registered, prefixed plugin's in-scope directories carries that plugin's own `<prefix>-` basename, validates every registered prefix's own format and marketplace-wide uniqueness, cross-checks `marketplace-inventory.json`'s `source` field against the authoritative `marketplace.json` entry, treats a manifest-listed plugin as checked regardless of its curated `status` (a plugin genuinely absent from the manifest is the only kind exempted), and refuses to trust any single source for a name `marketplace.json` lists more than once. `check-prefix-permanence` compares `marketplace-inventory.json`'s `plugins[].id`-keyed records between the PR's base and head; fails if any record that had a registered prefix at base now has a different or missing prefix, its `name` changed (a rename un-joins a still-live plugin from `marketplace.json`'s authoritative entry, since `check-prefixes` looks it up by name), or the record itself disappeared — the layer that catches a hand-edited inventory file or a delete-and-rebootstrap, not just the `marketplace-inventory` CLI's own `update` path (`reconcile.apply_update`'s write-once guard covers only that path). |
@@ -140,7 +140,8 @@ after an excluded basename. `mode == "full"` (see "Full-mode escalation" below) 
 regardless of scope — that path is inherently high-risk by definition, including its own fail-closed
 empty-scope gap case. Nor is a diff touching the gate's own code, its CI dependency spec, the PR template,
 or a CODEOWNERS file — `.github/`, `scripts/`, `.codex/agents/`, `.claude/rules/`, `pyproject.toml`,
-`uv.lock`, `CODEOWNERS`, `docs/CODEOWNERS` (the three locations `check-pr`'s own merge-privilege matching
+`uv.lock`, `uv.toml`, `.python-version` (a prefix, so `.python-versions` too), `CODEOWNERS`,
+`docs/CODEOWNERS` (the three locations `check-pr`'s own merge-privilege matching
 reads — `.github/CODEOWNERS` is already covered by the broader `.github/` entry) — ever bypass-eligible,
 even mixed with otherwise-eligible files. This is enforced two ways, not just a flag flip:
 `derive_review_scope` itself falls through to a real delta dispatch (the baseline three reviewers) for any
@@ -182,13 +183,30 @@ computing the scope decision or installing dependencies for it (same principle
 rather than falling back to scoring with the PR's own copy. `git diff base...HEAD` is unaffected by this
 restore — it compares commit objects, not the working tree, so the PR's real diff is still what gets
 scored. The same restore (a no-overlay `git restore`, so files the PR added under `scripts/` are deleted
-too, plus `uv.toml`/`.python-version` and, in `hygiene`, the CODEOWNERS and PR-template inputs) runs in
-`hygiene`, `compute-scope`, `prefix-permanence` and `publish`, followed by `uv sync --locked
---no-config`. Each of those jobs also refuses a PR that adds a top-level `*.py` file, a top-level
-`<dir>/__init__.py` package, or tracked `.venv/` content, since such a file can shadow an import and a
-restore cannot remove what base never had. The jobs fail for such a PR, and the SHA-bound Codex bypass
-does not cover them (it only affects the Codex policy check), so a PR that legitimately needs a new
-top-level module or package requires a maintainer to change this check first. This raises the bar against an *unaware* PR touching the bypass logic, dependency spec, or
+too, plus `uv.toml`, `.python-version` and `.python-versions` and, in `hygiene`, the CODEOWNERS and
+PR-template inputs) runs in `hygiene`, `compute-scope`, `prefix-permanence` and `publish`, followed by
+`uv sync --locked --no-config`. A restore cannot remove what base never had, so each of those jobs
+also refuses a PR that adds an importable top-level name: a top-level `*.py`, `*.pyc`, `*.pyw`, `*.pyd`
+or `*.so` file, a `<dir>/__init__.*` package marker, `.venv` content, or any top-level symlink. This
+is a denylist of the forms CPython's importer accepts, not a proof that no other form exists.
+`codex-review`, which holds `OPENAI_API_KEY`, cannot restore (its reviewers must see the PR's real
+files), so it refuses instead: the same added-name check, plus its Tier-1 hard-refuse step now also
+covers `uv.toml`, `.python-version` and `.python-versions`, and its `uv sync` is locked and
+config-free. Because that job runs `scripts/` from the PR's own checkout, it also refuses a PR that
+adds a file under `scripts/` that could replace an unchanged Tier-1 module — a same-named package
+directory, a `.so`/`.pyc`/`.pyw`/`.pyd` file, a `__pycache__` entry, any new `__init__.*` package
+marker, or any symlink. The Node chain it runs with the key (`bridge-invoke.mjs`, `codex-exec.mjs`,
+`cdx-process.mjs`) is on the Tier-1 list too.
+
+Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
+including the Node files and the uv/Python-version config, and the shadow checks above), because
+`publish` short-circuits on an attested bypass before it reads the Codex result. It does **not** clear
+the restore jobs' refusals (`hygiene`, `prefix-permanence`, `compute-scope`, `publish`'s own restore
+step): those are deterministic gates, so a PR that legitimately needs a new top-level module, package
+or symlink requires a maintainer to change this check first, or an admin merge. The five hand-copied
+blocks are kept identical by `tests/marketplace_ci/test_workflow_trusted_restore.py`.
+
+This raises the bar against an *unaware* PR touching the bypass logic, dependency spec, or
 `scripts/__init__.py` and defeating itself by accident. It is **not** an adversarial-proof boundary, and
 doesn't claim to be one: a same-repo PR author can edit `.github/workflows/marketplace-ci.yml` itself,
 since GitHub runs a `pull_request` workflow using the PR's own copy of the workflow file for a same-repo
@@ -231,11 +249,17 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
 
 - **Tier 1 (review-dispatch-critical)** — `scripts/__init__.py`, and `scripts/marketplace_ci/`'s
   `__init__.py`, `__main__.py`, `review.py`, `git_state.py`, `registry.py`, `sync_plan.py`,
-  `conversion.py` — plus `pyproject.toml`/`uv.lock`. These are the modules `run-codex-review` (and
+  `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
+  `uv.toml`, `.python-version` and `.python-versions`, and the three Node files `codex-review` runs
+  with the API key (`plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs`,
+  `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `plugins/codex-kit/scripts/lib/cdx-process.mjs`).
+  These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
   review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,
   via a subprocess probe per subcommand, and statically, via an AST scan of every import statement —
-  module-level or function-local — in each Tier 1 file). A same-repo PR touching any of these still hits
+  module-level or function-local — in each Tier 1 *Python* module; the three Node files are covered by
+  `tests/marketplace_ci/test_workflow_trusted_restore.py`, which asserts their relative imports stay
+  inside this set). A same-repo PR touching any of these still hits
   `codex-review`'s own "Refuse automated Codex dispatch when this PR modifies review-dispatch-critical
   code" gate and requires the manual SHA-bound bypass protocol below — no automated pass can safely
   self-evaluate a change to the code that grades it.
