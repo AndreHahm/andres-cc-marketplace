@@ -62,7 +62,7 @@ SCRATCH_DIR_NAME = "wmgt-intake"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _BATCH_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 _PURGE_NAME_RE = re.compile(
-    r"^(?:[A-Za-z0-9._-]{1,64}\.json|[0-9a-f]{64}-[A-Za-z0-9._-]{1,64}\.progress\.json)$"
+    r"^(?:[A-Za-z0-9._-]{8,64}\.json|[0-9a-f]{64}-[A-Za-z0-9._-]{8,64}\.progress\.json)$"
 )
 _OPERATIONS = {"create", "update"}
 _ENVIRONMENTS = {"production", "test"}
@@ -141,7 +141,7 @@ def _check_records(operation: str, records: list) -> None:
             before = record.get("before")
             if (
                 not isinstance(before, dict)
-                or set(before) - (_UPDATE_SET_FIELDS | {"title"})
+                or set(before) - _UPDATE_SET_FIELDS
                 or "title" not in before
                 or not set(changes) <= set(before)
             ):
@@ -294,19 +294,47 @@ def run(args) -> dict:
     return result
 
 
+def _unlink_in_dir(directory: str, name: str) -> None:
+    """Delete <directory>/<name> without re-resolving the path where the platform allows.
+
+    On POSIX the directory is opened once, the entry is checked with lstat semantics relative
+    to that descriptor, and unlinked relative to it, so swapping a path component between the
+    check and the delete cannot redirect the delete. Where dir_fd is unsupported (Windows) this
+    falls back to a pathname check followed by os.remove, which leaves a small race.
+    """
+    if (
+        os.unlink in os.supports_dir_fd
+        and os.stat in os.supports_dir_fd
+        and os.stat in os.supports_follow_symlinks
+        and hasattr(os, "O_DIRECTORY")
+    ):
+        dir_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            info = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+            if not stat.S_ISREG(info.st_mode):
+                raise HashError("refused: not a regular file")
+            os.unlink(name, dir_fd=dir_fd)
+        finally:
+            os.close(dir_fd)
+        return
+    path = os.path.join(directory, name)
+    if os.path.islink(path) or not os.path.isfile(path):
+        raise HashError("refused: not a regular file")
+    os.remove(path)
+
+
 def purge(scratch_root: str, path_str: str) -> dict:
     expected_dir = os.path.realpath(os.path.join(scratch_root, SCRATCH_DIR_NAME))
     path = os.path.abspath(path_str)
     if os.path.realpath(os.path.dirname(path)) != expected_dir:
         raise HashError(f"refused: file is not directly inside <scratch-root>/{SCRATCH_DIR_NAME}")
-    if not _PURGE_NAME_RE.match(os.path.basename(path)):
+    name = os.path.basename(path)
+    if not _PURGE_NAME_RE.match(name):
         raise HashError("refused: not an intake-generated file name")
-    if os.path.islink(path) or not os.path.isfile(path):
-        raise HashError("refused: not a regular file")
     try:
-        os.remove(path)
+        _unlink_in_dir(expected_dir, name)
     except OSError as exc:
-        raise HashError(f"cannot delete: {exc.strerror}") from exc
+        raise HashError(f"cannot delete: {exc.strerror or exc}") from exc
     return {"ok": True, "purged": True}
 
 
