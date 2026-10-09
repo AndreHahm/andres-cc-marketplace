@@ -36,10 +36,12 @@ The body is exactly one of these strings: no other text, no second command, no a
 | `@dependabot unignore <dep> <condition>` | Closes the PR, clears only that ignore condition and opens a new PR for that range | Only when the user asks |
 | `@dependabot show <dep> ignore conditions` | Dependabot replies with a table of the stored ignore conditions; changes nothing | Only when the user asks; useful before an `unignore <dep> <condition>` |
 
-The docs list the `this ...` forms under standard PRs and the `<dep>` forms and `unignore` under grouped
-version updates and security updates. This skill does not infer which family a PR belongs to: offer the
-`this ...` forms for an ordinary single-dependency version-update PR and the `<dep>` forms for a grouped
-or security-update PR, and say that the docs split them this way. If Dependabot's reply shows that it did
+The docs list the `this ...` forms, `rebase`, `recreate` and `show <dep> ignore conditions` under standard
+PRs, and the `<dep>` ignore forms and `unignore` under grouped version updates and security updates. This
+skill does not infer which family a PR belongs to: offer the `this ...` forms for an ordinary
+single-dependency version-update PR and the `<dep>` ignore and `unignore` forms for a grouped or
+security-update PR, and say that the docs split them this way. `show <dep> ignore conditions` is
+available on either kind of PR. If Dependabot's reply shows that it did
 not understand the command, report that and ask before trying another form; never retry on your own.
 
 ## Validation before any comment
