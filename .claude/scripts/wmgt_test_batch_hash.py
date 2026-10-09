@@ -16,6 +16,7 @@ SCRIPT = Path(__file__).parent / "wmgt_batch_hash.py"
 
 
 def run_script(script, *args):
+    """Run ``script`` with ``args``; return (exit code, parsed JSON or a non-JSON sentinel)."""
     proc = subprocess.run(
         [sys.executable, str(script), *args], capture_output=True, text=True, check=False
     )
@@ -31,10 +32,12 @@ def run_script(script, *args):
 
 
 def run(*args):
+    """Run wmgt_batch_hash.py with ``args`` and return (exit code, parsed JSON)."""
     return run_script(SCRIPT, *args)
 
 
 def submission(records, **overrides):
+    """Return a submission file's JSON text with ``overrides`` applied to a valid base."""
     base = {
         "operation": "create",
         "environment": "production",
@@ -54,6 +57,7 @@ def rec(title="t", **extra):
 
 
 def update_record(i=0, **overrides):
+    """Return a valid update record for issue ``i`` with ``overrides`` applied."""
     rec = {
         "id": f"ISSUE-{i}",
         "set": {"status": "Todo"},
@@ -64,9 +68,11 @@ def update_record(i=0, **overrides):
 
 
 def main() -> int:
+    """Run every fixture case against the script; return 0 if all pass, 1 otherwise."""
     failures = []
 
     def check(name, condition):
+        """Record ``name`` as a failure when ``condition`` is false."""
         if not condition:
             failures.append(name)
 
@@ -74,6 +80,7 @@ def main() -> int:
         tmp_path = Path(tmp)
 
         def write(name, text, directory=tmp_path):
+            """Write ``text`` to ``name`` inside ``directory``; return the path as a string."""
             path = directory / name
             path.write_text(text, encoding="utf-8")
             return str(path)
@@ -158,6 +165,39 @@ def main() -> int:
             "a chunk over the byte cap refused with a smaller-range hint",
             rc == 1 and "smaller range" in out["error"],
         )
+
+        # The cap applies to the final output, "bytes" field included (Codex review, PR #505).
+        def edge_digest(n):
+            """Write a submission with an n-character description; return (path, hash)."""
+            edge = write("edge.json", submission([rec("t", description="x" * n)]))
+            return edge, run("hash", edge)[1]["sha256"]
+
+        lo, hi = 19000, 20500
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            edge, edge_hash = edge_digest(mid)
+            lo, hi = (mid, hi) if run("chunk", edge, edge_hash, "0", "1")[0] == 0 else (lo, mid - 1)
+        edge, edge_hash = edge_digest(lo)
+        rc, out = run("chunk", edge, edge_hash, "0", "1")
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), "chunk", edge, edge_hash, "0", "1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        printed = len(proc.stdout.rstrip("\n").encode("utf-8"))
+        check(
+            "the largest accepted chunk stays within the 20000-byte cap",
+            rc == 0 and printed <= 20000,
+        )
+        check("the bytes field equals the printed size", out["bytes"] == printed)
+        edge, edge_hash = edge_digest(lo + 1)
+        rc, out = run("chunk", edge, edge_hash, "0", "1")
+        check(
+            "one character more is refused with a smaller-range hint",
+            rc == 1 and "smaller range" in out["error"],
+        )
+
         rc, out = run("chunk", fat, fat_digest, "0", "5")
         check("a smaller range of the same file is allowed", rc == 0 and len(out["records"]) == 5)
 
