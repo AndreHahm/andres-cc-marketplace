@@ -49,7 +49,7 @@ distinguish an active review from a queued, missed, or unavailable one.
    is reported as skipped, which does not block a merge since it is not a required check.
 2. Requests `contents: read`, `pull-requests: read`, `issues: read` (the last is needed to read the
    connector's comments, its no-findings reaction, and to read PR state for an `issue_comment`
-   trigger), and `checks: write` (needed for point 6 below) — no checkout, third-party action,
+   trigger), and `checks: write` (needed for point 6 below) — a pinned `actions/checkout` and no other third-party action,
    custom token, or repository secret is used.
 3. Uses one concurrency group per pull request (`codex-review-<PR number>`, plus a run-id-unique
    suffix for an `issue_comment` event the job's own `if:` will skip — see below) and cancels a

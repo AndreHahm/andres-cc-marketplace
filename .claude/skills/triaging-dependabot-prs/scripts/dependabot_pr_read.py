@@ -16,7 +16,8 @@ Usage:
   dependabot_pr_read.py uv-lock --role base|head --ref REF --dir DIR
 `files` and `commits` print a compact summary of the first page (100 entries); "truncated" is true
 when that page is full. `uv-lock` writes the file only to DIR/base-uv.lock or DIR/head-uv.lock
-(DIR must be an existing absolute directory; the target must not be a symlink; at most 8 MiB).
+(DIR must be an existing absolute directory inside the system temp directory; the target must
+not be a symlink; at most 8 MiB).
 Prints one JSON object with an "ok" field. Exit 0 = done, 2 = bad arguments, 4 = `gh` or `git`
 failed or was unavailable, or the file could not be written.
 """
@@ -28,6 +29,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 PR_RE = re.compile(r"[1-9][0-9]{0,8}")
 REF_RE = re.compile(r"[0-9a-f]{40}|[A-Za-z0-9][A-Za-z0-9._/@+=-]{0,199}")
@@ -159,7 +161,11 @@ def fetch_uv_lock(run, gh, repo, ref, role, directory):
         raise Refusal("--ref must be a 40-hex SHA or a plain branch name")
     if not os.path.isabs(directory) or not os.path.isdir(directory):
         raise Refusal("--dir must be an existing absolute directory")
-    target = os.path.join(os.path.realpath(directory), f"{role}-uv.lock")
+    real_dir = os.path.realpath(directory)
+    temp_root = os.path.realpath(tempfile.gettempdir())
+    if os.path.commonpath([real_dir, temp_root]) != temp_root:
+        raise Refusal(f"--dir must be inside the system temp directory ({temp_root})")
+    target = os.path.join(real_dir, f"{role}-uv.lock")
     if os.path.islink(target) or os.path.isdir(target):
         raise Refusal(f"{role}-uv.lock in --dir is a symlink or a directory; refusing to write")
     done = _api_get(run, gh, f"repos/{repo}/contents/uv.lock", f"ref={ref}", raw=True)

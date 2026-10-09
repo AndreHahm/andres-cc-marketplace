@@ -47,6 +47,12 @@ all — equally unrestricted)
 **Violation:** Body instructs Claude to run a shell command (Bash) but `Bash(...)` is absent from
 `allowed-tools`.
 
+**Deliberately ungranted write form (not a violation):** a script whose safe form is granted (for example
+`Bash(python3 -I <script> --dry-run:*)`) may be run in its real form without a grant when the component's
+own Boundaries section says that form is intentionally not pre-approved, so every real run raises a
+permission prompt for the user. Record it as an ADVISORY note at most. This does not cover a wider grant,
+a tool the Boundaries section does not mention, or an undocumented gap.
+
 ## R6 — Mechanical Assist for the Tool-Completeness Sub-Check
 
 Narrative "scan the body" review missed the tool-completeness violation four independent times in one
