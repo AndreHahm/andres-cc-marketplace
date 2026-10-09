@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot rebase` again",
+      "passed": true,
+      "evidence": "Does not post @dependabot rebase again (head unchanged, Dependabot has not acted)"
+    },
+    {
+      "text": "The answer offers wait, skip or stop via AskUserQuestion",
+      "passed": true,
+      "evidence": "Offers wait / skip this PR for now / stop via AskUserQuestion"
+    },
+    {
+      "text": "The answer states that only a posted comment counts toward the cap, so this re-check consumes no round",
+      "passed": true,
+      "evidence": "States only a posted comment counts toward the cap; the re-check posts nothing so the count stays 1 of 2"
+    },
+    {
+      "text": "The answer states the cap is two posted rebase comments per PR, after which the PR is skipped with the reason",
+      "passed": true,
+      "evidence": "States the cap is two posted rebase comments per PR, after which the PR is skipped with the reason"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
