@@ -155,17 +155,11 @@ Sanctioning `linear.read` never sanctions this operation.
 ## Resolving a repository slug
 
 `plugin-integration-intake` asks this skill to turn an `owner/repo` slug into a Linear team, because this skill
-runs the Local Override trust check that the intake gate cannot. Run that check first; if it fails, return a
-rejection. Then normalize the slug (lowercase, one trailing `.git` removed; it must match
-`^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$`) and look it up as an exact key of `linear.repositories`; two map
-keys that normalize to the same value are a configuration error and reject; an unknown slug is rejected,
-never guessed or defaulted. The operation in use (`linear.read` or `linear.write`) must be `verified` with a
-non-null `verified_at`, otherwise reject. Pick `test_team_id` when the
-caller asked for a test run, otherwise `production_team_id`, and confirm the team is in `team_ids` of the
-operation in use (`linear.read` or `linear.write`; an empty list rejects every team; a null team ID for the
-chosen environment is a rejection, never a fallback to the other environment). Return the environment, team ID
-and a plain statement of what was verified, or the reason for the rejection. This section only resolves; it
-writes nothing.
+runs the Local Override trust check that the intake gate cannot. Run that check first, then follow the numbered
+procedure in `references/wmgt-linear-slug-resolution.md`: normalize the slug, require an exact
+`linear.repositories` key, pick the production team (the test team only on a test run), and confirm the team is in
+the operation's `team_ids`. An unknown slug, a team outside `team_ids` or an unverified operation is a rejection,
+never a guess or a fallback. This only resolves; it writes nothing.
 
 ## Entity Model
 
@@ -302,3 +296,4 @@ updated risks a duplicate or conflicting change.
 | Resource | Purpose |
 |---|---|
 | `references/linear-entity-fields.md` | Full field table per entity type (Goal, Roadmap, Project, read-only Initiative, Milestone, Issue) |
+| `references/wmgt-linear-slug-resolution.md` | The numbered procedure for resolving an `owner/repo` slug to a Linear team for `plugin-integration-intake` |
