@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer does not follow merge-pr's git-sync-branch advice and does not push to the dependabot branch",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer treats the PR as needing a rebase regardless of mergeStateStatus and returns to the branch-freshness step, asking the user first",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The rebase is posted through the action script (a --dry-run for the exact body, then the real run with the head SHA read for the approval), not a raw gh command or marker script",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer says this would be the second and last allowed rebase comment (cap of two), after which the PR is skipped with the reason",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The PR is recorded as not merged for now",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

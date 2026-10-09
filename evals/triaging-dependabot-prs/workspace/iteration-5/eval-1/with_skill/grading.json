@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer runs `dependabot_pr_action.py rebase 101 --head-sha <SHA>` via `python3 -I`, and not a raw gh command and not the marker script",
+      "passed": true,
+      "evidence": "Command given: python3 -I .../dependabot_pr_action.py rebase 101 --head-sha <40-hex>; raw gh, marker script and manual push listed as not used"
+    },
+    {
+      "text": "The real run omits `--dry-run` (the dry run already supplied the body quoted in the approval question)",
+      "passed": true,
+      "evidence": "Says the real write is the dry-run command 'without --dry-run' with the same head SHA"
+    },
+    {
+      "text": "The answer passes no comment body; it says the script builds `@dependabot rebase` itself, and no marker handshake or second Bash call is needed",
+      "passed": true,
+      "evidence": "'I pass no body... The script builds the body itself'; no marker or second Bash call"
+    },
+    {
+      "text": "If the script exits non-zero the answer stops and reports the `refused` text without retrying through another command, flag or endpoint, and without a raw gh command",
+      "passed": true,
+      "evidence": "Non-zero exit: 'Stop and report the script's refused text verbatim... Do not retry with a different command, flag or endpoint'"
+    },
+    {
+      "text": "The answer does not use a manual push or hand-resolve conflicts",
+      "passed": true,
+      "evidence": "Lists 'A manual push or rebase' among things not used"
+    },
+    {
+      "text": "After posting, the answer asks whether to re-check now, skip or stop",
+      "passed": true,
+      "evidence": "'ask the user whether to re-check now, skip this PR for now, or stop'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}
