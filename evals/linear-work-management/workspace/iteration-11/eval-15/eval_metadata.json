@@ -1,0 +1,21 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognises that the later reject ended the approval, so the batch-approval exception does not apply to chunk 2",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Falls back to its own per-write approval via AskUserQuestion instead of writing the 25 records",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes nothing for chunk 2 before the person approves",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
