@@ -2,11 +2,10 @@
 """Persisted smoke test for triaging-dependabot-prs: frontmatter validity,
 referenced-file existence (including bare reference-file mentions inside the
 reference files), orphan files, allowed-tools grants versus the gh/Skill/marker
-commands the skill actually uses (both directions, with gh api commands matched
-by endpoint path), and an exact expected grant set so no extra write-capable
-grant can slip in -- structural checks only, since this is a conversational,
-AskUserQuestion-driven skill with no executable logic of its own to
-simulate."""
+commands the skill actually uses (both directions), and an exact expected grant
+set so no extra write-capable grant (and no raw gh api grant) can slip in --
+structural checks only, since this is a conversational, AskUserQuestion-driven
+skill with no executable logic of its own to simulate."""
 
 import fnmatch
 import importlib.util
@@ -24,14 +23,12 @@ EXPECTED_BASH = {
     "gh pr list:*",
     "gh pr view:*",
     "gh pr checks:*",
-    "gh pr comment:*",
-    "gh pr close:*",
-    "gh api repos/*/pulls/*/commits:*",
-    "gh api repos/*/pulls/*/files:*",
-    "gh api repos/*/contents/uv.lock:*",
     "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
     "check_uv_lock_bump.py:*",
-    "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*",
+    "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
+    "dependabot_pr_read.py:*",
+    "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
+    "dependabot_pr_action.py --dry-run:*",
 }
 EXPECTED_OTHER = {"Read", "AskUserQuestion", "Skill(merge-pr)", "Skill(finishing-work)"}
 
@@ -155,8 +152,8 @@ def check_grants_match_body():
             if base not in used:
                 problems.append(f"unused grant: {base}")
         else:
-            target = base.split(" ", 1)[1] if base.startswith("python3 ") else base
-            name = pathlib.PurePosixPath(target).name
+            py = next((tok for tok in base.split() if tok.endswith(".py")), base)
+            name = pathlib.PurePosixPath(py).name
             if name not in used and not any(name in t for t in reference_texts().values()):
                 problems.append(f"unused grant: {grant}")
     for span in spans:
@@ -221,17 +218,20 @@ def check_name_matches_directory():
     return True, "frontmatter name equals the directory name"
 
 
-def check_gh_api_calls_are_get_only():
-    _, body = split_skill()
-    spans = re.findall(
-        r"`(gh api [^`]+)`", without_boundaries(body) + "\n" + "\n".join(reference_texts().values())
-    )
-    if not spans:
-        return False, "no gh api commands found to check (the scan would pass vacuously)"
-    bad = [s[:60] for s in spans if "--method GET" not in s]
-    if bad:
-        return False, "gh api command without --method GET: " + "; ".join(bad)
-    return True, "every gh api command carries --method GET"
+def check_no_raw_gh_api():
+    """The skill reads through scripts/dependabot_pr_read.py; no raw `gh api` command or grant."""
+    fm, body = split_skill()
+    if fm is None:
+        return False, "no frontmatter to check"
+    text = without_boundaries(body) + "\n" + "\n".join(reference_texts().values())
+    problems = [f"raw command: {s[:50]}" for s in re.findall(r"`(gh api[^`]*)`", text)]
+    bash, _ = allowed_tools(fm)
+    problems += [f"grant: {g}" for g in sorted(bash) if g.startswith("gh api")]
+    if "dependabot_pr_read.py" not in text:
+        problems.append("the read script is not named in the instructions or references")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "no raw gh api command or grant; reads go through dependabot_pr_read.py"
 
 
 SUPPORTED_COMMAND_WORDS = ("rebase", "recreate", "ignore", "unignore", "show")
@@ -262,36 +262,55 @@ def listed_body_patterns():
     return patterns
 
 
-def check_comment_bodies_are_listed():
-    """Every gh pr comment body in SKILL.md must fully match a row of the supported table."""
-    _, body = split_skill()
-    spans = re.findall(r"`(gh pr comment [^`]+)`", without_boundaries(body))
-    if not spans:
-        return False, "no gh pr comment commands found to check (the scan would pass vacuously)"
+def _load_action_module():
+    path = SKILL_DIR / "scripts" / "dependabot_pr_action.py"
+    spec = importlib.util.spec_from_file_location("dependabot_pr_action", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_script_covers_supported_table():
+    """Every body the action script builds is a table row, and every table row can be built."""
     patterns = listed_body_patterns()
     if not patterns:
         return False, "no supported command patterns could be built from the table"
-
-    def body_listed(span):
-        """True when the span's --body value fully matches one supported-command pattern."""
-        found = re.search(r'--body "([^"]*)"', span)
-        return bool(found) and any(re.fullmatch(p, found.group(1)) for p in patterns)
-
-    bad = [
-        s[:70]
-        for s in spans
-        if not body_listed(s) or re.search(r"\s-R\b|--repo\b|--body-file|https?://", s)
+    try:
+        module = _load_action_module()
+    except (ImportError, OSError, SyntaxError) as exc:
+        return False, f"cannot load scripts/dependabot_pr_action.py: {exc}"
+    if module.DEP_RE.pattern != DEP_RE or module.CONDITION_RE.pattern != CONDITION_RE:
+        return False, "the script's dependency/condition patterns differ from this test's copies"
+    dep, cond = "ty", "[< 1.9, > 1.8.0]"
+    samples = [
+        ("rebase", {}),
+        ("recreate", {}),
+        ("unignore-all", {}),
+        ("show-ignore-conditions", {"dep": dep}),
+        ("ignore-dep", {"dep": dep}),
+        ("unignore-dep", {"dep": dep}),
+        ("unignore-dep", {"dep": dep, "condition": cond}),
     ]
-    if bad:
-        return False, (
-            "gh pr comment with a body that is not a supported @dependabot command, or with -R, "
-            "a URL or --body-file: " + "; ".join(bad)
-        )
-    return (
-        True,
-        "every gh pr comment command uses a supported @dependabot body "
-        "and no -R, URL or --body-file",
-    )
+    samples += [("ignore-this", {"scope": s}) for s in module.THIS_SCOPES]
+    samples += [("ignore-dep", {"dep": dep, "scope": s}) for s in module.DEP_SCOPES]
+    untried = set(module.ACTIONS) - {"close"} - {action for action, _ in samples}
+    if untried:
+        return False, "actions with no sample in this check: " + ", ".join(sorted(untried))
+    bodies = []
+    for action, kwargs in samples:
+        try:
+            bodies.append(module.build_body(action, **kwargs))
+        except module.Refusal as exc:
+            return False, f"the script refused a documented action {action} {kwargs}: {exc}"
+    unlisted = [b for b in bodies if not any(re.fullmatch(p, b) for p in patterns)]
+    unreachable = [p for p in patterns if not any(re.fullmatch(p, b) for b in bodies)]
+    if unlisted:
+        return False, "script builds bodies missing from the table: " + "; ".join(unlisted)
+    if unreachable:
+        return False, "table rows the script cannot build: " + "; ".join(unreachable)
+    return True, f"{len(bodies)} sample bodies all match a table row and every row is buildable"
 
 
 def check_supported_comment_table():
@@ -326,25 +345,29 @@ def check_supported_comment_table():
     )
 
 
-def check_close_command_is_plain():
-    """Every gh pr close in SKILL.md is the plain form; the deprecated close comment is absent."""
-    _, body = split_skill()
-    spans = re.findall(r"`(gh pr close[^`]*)`", without_boundaries(body))
-    if not spans:
-        return False, "no gh pr close command found to check (the scan would pass vacuously)"
-    plain = [s for s in spans if s.strip() == "gh pr close <validated-number>"]
-    # A bare `gh pr close` is a prose mention of the command's name; anything carrying flags or
-    # other arguments is a different invocation.
-    bad = [
-        s[:70] for s in spans if s.strip() not in ("gh pr close", "gh pr close <validated-number>")
+def check_no_raw_comment_close_or_marker():
+    """Outside Boundaries, SKILL.md never runs raw gh comment/close or the marker script."""
+    fm, body = split_skill()
+    if fm is None:
+        return False, "no frontmatter to check"
+    used = without_boundaries(body)
+    problems = [
+        f"raw command in the instructions: {s[:50]}"
+        for s in re.findall(r"`(gh pr (?:comment|close)[^`]*)`", used)
     ]
-    if bad:
-        return False, "gh pr close in a form other than the plain one: " + "; ".join(bad)
-    if not plain:
-        return False, "no plain 'gh pr close <validated-number>' invocation found"
-    if re.search(r"--body \"@dependabot close\"", body):
-        return False, "the deprecated @dependabot close comment is posted by the skill"
-    return True, "every gh pr close command is the plain <validated-number> form"
+    if "git-write-marker" in used:
+        problems.append("the instructions mention the marker script outside Boundaries")
+    bash, _ = allowed_tools(fm)
+    problems += [
+        f"grant that should be gone: {g}"
+        for g in sorted(bash)
+        if g.startswith(("gh pr comment", "gh pr close")) or "git-write-marker" in g
+    ]
+    if re.search(r'--body "@dependabot close"', body):
+        problems.append("the deprecated @dependabot close comment is posted by the skill")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "no raw gh comment/close, no marker script, no grants for either"
 
 
 def check_reply_author_rule_is_exact():
@@ -369,24 +392,24 @@ def check_reply_author_rule_is_exact():
     return True, "reply-author rule names both Dependabot logins and requires an exact match"
 
 
-def check_marker_precedes_comment_in_posting_section():
+def check_posting_section_uses_script():
+    """The posting section routes every comment and close through the script, dry run first."""
     _, body = split_skill()
-    match = re.search(r"^## Posting a comment\n.*?(?=^## |\Z)", body, re.S | re.M)
+    match = re.search(r"^## Posting a comment or closing\n.*?(?=^## |\Z)", body, re.S | re.M)
     if not match:
-        return False, "'## Posting a comment' section not found"
-    section = match.group(0)
-    marker, comment = (
-        section.find("git-write-marker.sh"),
-        section.find("gh pr comment <validated-number>"),
-    )
-    if marker < 0 or comment < 0 or marker > comment:
-        return False, "the posting section no longer writes the marker before the comment"
-    if "never a parallel batch" not in section or "no other Bash command in between" not in section:
-        return (
-            False,
-            "the posting section no longer requires sequential calls with nothing in between",
-        )
-    return True, "the posting section writes the marker first and requires sequential calls"
+        return False, "'## Posting a comment or closing' section not found"
+    section = " ".join(match.group(0).split())
+    needed = [
+        "scripts/dependabot_pr_action.py",
+        "--dry-run",
+        "--head-sha",
+        "never pass a body",
+        "never fall back to a raw `gh` command",
+    ]
+    missing = [n for n in needed if n not in section]
+    if missing:
+        return False, "the posting section no longer says: " + ", ".join(missing)
+    return True, "the posting section routes everything through the script, dry run first"
 
 
 def check_classifier_tests_pass():
@@ -412,6 +435,31 @@ def check_classifier_tests_pass():
     return True, "classifier fixture tests pass"
 
 
+def _run_script_tests(name, label):
+    test = SKILL_DIR / "scripts" / name
+    if not test.exists():
+        return False, f"scripts/{name} not found"
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-I", str(test)], capture_output=True, text=True, timeout=300
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"{label} tests did not finish within 300 seconds"
+    if proc.returncode != 0:
+        return False, f"{label} tests fail: " + (proc.stderr.strip().splitlines() or ["?"])[-1]
+    return True, f"{label} tests pass"
+
+
+def check_action_tests_pass():
+    """The comment/close script's own fixture tests pass (fake gh and git, no network)."""
+    return _run_script_tests("test_dependabot_pr_action.py", "comment/close script")
+
+
+def check_read_tests_pass():
+    """The read script's own fixture tests pass (fake gh and git, no network)."""
+    return _run_script_tests("test_dependabot_pr_read.py", "read script")
+
+
 def main():
     checks = [
         check_frontmatter,
@@ -421,13 +469,15 @@ def main():
         check_grants_match_body,
         check_references_use_granted_commands,
         check_exact_grant_set,
-        check_gh_api_calls_are_get_only,
-        check_comment_bodies_are_listed,
+        check_no_raw_gh_api,
+        check_script_covers_supported_table,
         check_supported_comment_table,
-        check_close_command_is_plain,
+        check_no_raw_comment_close_or_marker,
         check_reply_author_rule_is_exact,
-        check_marker_precedes_comment_in_posting_section,
+        check_posting_section_uses_script,
         check_classifier_tests_pass,
+        check_action_tests_pass,
+        check_read_tests_pass,
     ]
     failed = 0
     for fn in checks:

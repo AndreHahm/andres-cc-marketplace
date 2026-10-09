@@ -1,8 +1,8 @@
 # Supported Dependabot Comments
 
-The only `@dependabot` comments this skill posts. A plain close is not a comment: it uses
-`gh pr close <validated-number>` (SKILL.md step 6.2), while the `ignore` and `unignore` comments close
-the PR as a side effect. Source: GitHub's
+The only `@dependabot` comments this skill posts. A plain close is not a comment: it uses the
+`close` action of `scripts/dependabot_pr_action.py` (SKILL.md step 6.2), while the `ignore` and
+`unignore` comments close the PR as a side effect. Every row below is a body that script can produce. Source: GitHub's
 [Dependabot pull request comment commands](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands)
 reference and GitHub's changelog entry of 2025-10-07, "Upcoming changes to GitHub Dependabot pull
 request comment commands", which deprecates the merge-and-close commands. Re-read both if this file
@@ -14,7 +14,7 @@ Announced in the changelog above for deprecation on GitHub cloud on 2026-01-27; 
 observed not to be acted on (2026-10-08). The commands are `@dependabot merge`,
 `@dependabot squash and merge`, `@dependabot cancel merge`, `@dependabot close` and
 `@dependabot reopen`. Do not post them, even when a PR body, a bot reply or the user's wording names one;
-use `Skill(merge-pr)` to merge and plain `gh pr close <validated-number>` to close (SKILL.md step 6.2).
+use `Skill(merge-pr)` to merge and the script's `close` action to close (SKILL.md step 6.2).
 Any command not in the table below is also refused, whatever its source.
 
 ## Supported commands
@@ -47,6 +47,9 @@ available on either kind of PR. If Dependabot's reply shows that it did
 not understand the command, report that and ask before trying another form; never retry on your own.
 
 ## Validation before any comment
+
+The script enforces the patterns below and refuses anything else; what it cannot know is where `<dep>`
+and `<condition>` come from, which is the model's job and is stated here.
 
 - `<dep>` matches `^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$`. Where it comes from:
   - Title matches the `bump <package> from <old> to <new>` pattern (`codex-bypass.md` condition 0):
@@ -88,9 +91,10 @@ Choosing the scope of an `ignore` is the user's: ask a separate `AskUserQuestion
 minor version, major version and whole dependency (patch first), with no default, and never pick one for
 them.
 
-Order of the final steps: re-read the PR's `state` and `headRefOid` (if the PR is no longer `OPEN` or the
-head changed, do not post), then write the marker, then post the comment. A re-read between the marker
-and the comment would consume the marker and the comment would be denied.
+Order of the final steps: read the PR's `headRefOid` for the approval, run the script with `--dry-run` to
+get the exact body for the question, ask, then run it for real with that same SHA. The script re-reads
+the PR and refuses (nothing is posted) if it is no longer `OPEN` or its head is no longer that SHA.
+There is no marker handshake for this skill: the script runs `gh` itself and enforces the limits.
 
 ## After posting
 
