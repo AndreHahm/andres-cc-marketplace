@@ -24,7 +24,10 @@ import path from "node:path";
 //    working tree:
 //      a. The patterns come from `.secretlintignore` as committed at the
 //         merge base with the default branch, never from the checkout -- a
-//         branch cannot add its own exemption.
+//         branch cannot add its own exemption to THIS tier. (The older
+//         exact-path tier in cdx-secret-filenames.mjs still reads the
+//         working-tree file and always content-scans what it exempts: the
+//         disclosed limit of issue #295.)
 //      b. The candidate file must exist at the same path in that base commit
 //         as a regular file (mode 100644/100755, never a symlink) AND its
 //         current content must hash to the base blob, hashed with the BASE's
@@ -73,6 +76,17 @@ const REGULAR_FILE_MODES = new Set(["100644", "100755"]);
 // Remote-tracking names only; keeps an option-shaped ref from reaching git.
 const SAFE_REF = /^origin\/[A-Za-z0-9._/-]+$/;
 
+const STRIPPED_GIT_ENV = new Set([
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_CONFIG_PARAMETERS",
+  "GIT_CONFIG_COUNT"
+]);
+
 const cachedGit = new Map();
 
 function isInsideRoot(dir, root) {
@@ -116,9 +130,12 @@ export function gitExecutable(excludeRoot) {
 export function gitEnv(extra = {}) {
   const env = { ...process.env };
   // An inherited GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE (e.g. from a git hook)
-  // would redirect every call to a different repository or index.
-  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"]) {
-    delete env[key];
+  // would redirect every call to a different repository or index, and an
+  // inherited object-store or injected-config variable would change which
+  // objects/config git trusts. Windows keeps each key's original case, so
+  // match case-insensitively. The caller's own `extra` is applied afterwards.
+  for (const key of Object.keys(env)) {
+    if (STRIPPED_GIT_ENV.has(key.toUpperCase())) delete env[key];
   }
   // A refs/replace/* object must not substitute the base blob or commit.
   env.GIT_NO_REPLACE_OBJECTS = "1";

@@ -178,6 +178,11 @@ real secret already committed to the base under an exempt path is not caught her
 skips the same paths). If the base cannot be resolved (no `origin` ref, shallow clone), this tier is
 off and only the exact-path tier below applies.
 
+**Annotated assignments (security re-review m-5).** `redactSecrets`' assignment pattern is beaten by a type
+annotation, so `guarded-dispatch.mjs` carries its own check: an annotated assignment of a *quoted literal*
+to a secret-suggestive name (`API_KEY: str = "..."`) fails the content scan, while `total_tokens: int = 0`
+or `api_key: str = os.getenv("X")` still pass.
+
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
 credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
 check — the content scan described above only ever runs on the small set of files the path/extension
