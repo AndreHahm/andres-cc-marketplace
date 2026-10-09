@@ -203,8 +203,14 @@ including the Node files and the uv/Python-version config, and the shadow checks
 `publish` short-circuits on an attested bypass before it reads the Codex result. It does **not** clear
 the restore jobs' refusals (`hygiene`, `prefix-permanence`, `compute-scope`, `publish`'s own restore
 step): those are deterministic gates, so a PR that legitimately needs a new top-level module, package
-or symlink requires a maintainer to change this check first, or an admin merge. The five hand-copied
-blocks are kept identical by `tests/marketplace_ci/test_workflow_trusted_restore.py`.
+or symlink requires a maintainer to change this check first, or an admin merge. "Added by the PR"
+means the diff from `merge-base($BASE_SHA, PR head)` to the PR head, not `$BASE_SHA` to the merge
+checkout: `$BASE_SHA` can lag the base branch, and the latter would blame the PR for a file the base
+branch gained in the meantime, a refusal the bypass cannot clear. Because `hygiene` restores
+`.github/pull_request_template.md` from the base too, a PR that edits the template (for example by
+adding or renaming a required section) is validated against the base template, so its own body may
+need to keep the old headings until the PR merges. The five hand-copied blocks are kept identical by
+`tests/marketplace_ci/test_workflow_trusted_restore.py`.
 
 This raises the bar against an *unaware* PR touching the bypass logic, dependency spec, or
 `scripts/__init__.py` and defeating itself by accident. It is **not** an adversarial-proof boundary, and
