@@ -180,7 +180,7 @@ off and only the exact-path tier below applies.
 
 **Annotated assignments (security re-review m-5).** `redactSecrets`' assignment pattern is beaten by a type
 annotation, so `guarded-dispatch.mjs` carries its own check: an annotated assignment of a *quoted literal*
-to a secret-suggestive name (`API_KEY: str = "..."`) fails the content scan, while `total_tokens: int = 0`
+to a secret-suggestive name (`API_KEY: str = "..."`, including richer annotations such as `Annotated[str, "x"]`, string prefixes and triple quotes) fails the content scan, while `total_tokens: int = 0`
 or `api_key: str = os.getenv("X")` still pass.
 
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
