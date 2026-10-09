@@ -373,6 +373,8 @@ A skill that reads content produced by another plugin component or an external r
 
 Every file recursively under a registered plugin's root-level `scripts/`, `references/`, `assets/`, `hooks/` (including nested `hooks/scripts/`) and `commands/` directories must be named `<prefix>-<rest>` or `<domain>-<rest>`, where `<prefix>`/`<domain>` are that plugin's own registered `prefix`/`domain_prefix` from `marketplace-inventory.json` (free mix within one plugin; a `.py` file may use snake_case for its whole basename instead). Only an explicit `null` prefix (with no `domain_prefix`) means none is registered and raises no finding; a missing `prefix` key is non-compliant.
 
+**Not in scope:** a skill's own `skills/<skill>/{scripts,references,assets}/` files (the skill folder already namespaces them) — never raise R33 for those, only for the plugin-root directories above.
+
 **Scope:** Every plugin whose `marketplace-inventory.json` record has a registered `prefix` and/or `domain_prefix` and is `active`/`deprecated` or still listed in `.claude-plugin/marketplace.json`. See `${CLAUDE_SKILL_DIR}/references/component-file-prefix.md` for the `domain_prefix` and snake_case detail, the `superseded`/`retired` handling, the full exclusion list (`agents/` and `rules/` are out of scope) and the mechanical counterpart (`scripts/marketplace_ci/prefix_check.py`, wired into `check-all`).
 
 ---
