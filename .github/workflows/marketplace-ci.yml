@@ -171,10 +171,11 @@ jobs:
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
-          rc=0
-          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
-          if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to run PR-contract checks next to GH_TOKEN. A maintainer must change this check in the PR itself, or admin-merge"
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to run PR-contract checks next to GH_TOKEN. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock, uv config and CODEOWNERS/template from $BASE_SHA"
@@ -514,10 +515,11 @@ jobs:
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
-          rc=0
-          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
-          if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the prefix-check code. A maintainer must change this check in the PR itself, or admin-merge"
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to trust the PR's own copy of the prefix-check code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
@@ -805,10 +807,11 @@ jobs:
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
-          rc=0
-          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
-          if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to score using the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"
@@ -1080,9 +1083,9 @@ jobs:
             exit 1
           fi
 
-          # A symlink anywhere under scripts/ can stand in for a module or package (it is one
+          # A symlink anywhere under scripts/ (added, retyped or retargeted) can stand in for a module or package (it is one
           # path with no trailing slash, so the name patterns above do not see it).
-          git diff -z --raw --no-renames --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-raw.z"
+          git diff -z --raw --no-renames --diff-filter=ATM "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-raw.z"
           rc=0
           grep -zqE '^:[0-7]+ 120000 ' "$RUNNER_TEMP/scripts-raw.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
@@ -1116,10 +1119,11 @@ jobs:
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
-          rc=0
-          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
-          if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
             exit 1
           fi
 
@@ -1333,10 +1337,11 @@ jobs:
           rc=0
           grep -zE '^120000 ' "$RUNNER_TEMP/head-top.z" > "$RUNNER_TEMP/head-links.z" || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::could not list top-level symlinks in the PR (grep exit $rc)"; exit 1; fi
-          rc=0
-          grep -zvxFf "$RUNNER_TEMP/base-links.z" "$RUNNER_TEMP/head-links.z" > /dev/null || rc=$?
-          if [ "$rc" -ne 1 ]; then
-            echo "::error::this PR adds or changes a top-level symlink (or the check could not run, grep exit $rc) -- refusing to trust the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
+          LC_ALL=C sort -z "$RUNNER_TEMP/base-links.z" > "$RUNNER_TEMP/base-links.sorted.z"
+          LC_ALL=C sort -z "$RUNNER_TEMP/head-links.z" > "$RUNNER_TEMP/head-links.sorted.z"
+          LC_ALL=C comm -z -13 "$RUNNER_TEMP/base-links.sorted.z" "$RUNNER_TEMP/head-links.sorted.z" > "$RUNNER_TEMP/new-links.z"
+          if [ -s "$RUNNER_TEMP/new-links.z" ]; then
+            echo "::error::this PR adds or changes a top-level symlink -- refusing to trust the PR's own copy of the code. A maintainer must change this check in the PR itself, or admin-merge"
             exit 1
           fi
           echo "restored scripts/, pyproject.toml, uv.lock and uv config from $BASE_SHA"

@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import posixpath
 import re
+import subprocess
 from pathlib import Path
 
+import pytest
+
 from scripts.marketplace_ci.review import BYPASS_INELIGIBLE_PREFIXES
-from scripts.marketplace_ci.trust_boundary import TIER1_FILES
+from scripts.marketplace_ci.trust_boundary import TIER1_FILES, find_tier1_touches
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "marketplace-ci.yml"
@@ -101,7 +104,11 @@ def test_shadow_refusal_section_is_identical_in_all_five_blocks():
         assert section == reference, f"{name} drifted from {reference_name}"
     joined = "\n".join(reference)
     assert f"grep -zqE '{NAME_PATTERN}'" in joined
-    assert "grep -zvxFf" in joined  # the top-level symlink comparison
+    # The top-level symlink comparison is NUL-aware set difference. It must never go back to
+    # `grep -f`: that reads patterns one per NEWLINE, so a NUL-terminated record file collapses into
+    # garbage and every PR is refused as soon as the base has a top-level symlink.
+    assert "comm -z -13" in joined and "sort -z" in joined
+    assert "grep -zvxFf" not in TEXT
     assert "--diff-filter=AT" in joined and "--no-renames" in joined
 
 
@@ -185,7 +192,7 @@ def test_codex_review_refuses_shadow_forms_below_the_top_level_of_scripts():
 def test_codex_review_refuses_any_symlink_added_or_retyped_under_scripts():
     block = "\n".join(_run_block(REFUSE_STEP_NAME))
     assert (
-        'git diff -z --raw --no-renames --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts'
+        'git diff -z --raw --no-renames --diff-filter=ATM "$PR_BASE" "$PR_HEAD_SHA" -- scripts'
         in block
     )
     match = re.search(r"grep -zqE '(\^:\[0-7\]\+ 120000 )' \"\$RUNNER_TEMP/scripts-raw\.z\"", block)
@@ -262,3 +269,28 @@ def test_the_node_chain_codex_review_runs_stays_inside_the_tier1_set():
 def test_every_tier1_file_is_ineligible_for_the_zero_reviewer_bypass():
     for path in TIER1_FILES:
         assert any(path.startswith(prefix) for prefix in BYPASS_INELIGIBLE_PREFIXES), path
+
+
+@pytest.mark.parametrize("path", sorted(TIER1_FILES))
+def test_find_tier1_touches_reports_every_tier1_path(git_repo, path):
+    """The local `check-trust-boundary` preview and the workflow gate share TIER1_FILES, so every
+    entry (including the uv/Python-version config and the Node bridge chain) must be detected as a
+    touch when a commit changes it -- a typo in a new entry would otherwise go unnoticed."""
+
+    def commit(message: str) -> str:
+        subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", message], cwd=git_repo.root, check=True)
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=git_repo.root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+    git_repo.write("README.md", "base")
+    base = commit("base")
+    git_repo.write(path, "changed")
+    commit("touch a tier-1 path")
+
+    assert find_tier1_touches(base, git_repo.root) == frozenset({path})
