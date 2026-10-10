@@ -1312,6 +1312,29 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
       `elapsed ${Date.now() - started} ms, timedOut=${timedOut}`
     );
   }
+  // Codex PR review round 3 (P1): the literal may sit inside parentheses.
+  for (const [label, rhs] of [
+    ["a parenthesized literal", '("hard-coded-value")'],
+    ["a spaced parenthesized literal", '( "hard-coded-value" )'],
+    ["a nested parenthesized literal", '(("hard-coded-value"))'],
+    ["a parenthesized prefixed literal", '(f"hard-{1}")'],
+    ["a parenthesized one-element tuple", '("hard-coded-value",)']
+  ]) {
+    writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", `API_KEY: str = ${rhs}\n`);
+    check(`${label} assigned to an annotated secret name is rejected`, blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  }
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", 'KEY: tuple = (1, 2)\nTOKEN: str = (os.getenv("X"))\n');
+  check("control: a parenthesized number tuple or call is still allowed", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: str = " + "( ".repeat(7000) + "x\n");
+  {
+    const started = Date.now();
+    const result = f.run();
+    check(
+      "a 14,000-character run of opening parentheses and spaces after an annotated secret name does not stall the scan",
+      result !== null && Date.now() - started < 50000,
+      `elapsed ${Date.now() - started} ms, ${JSON.stringify(result)}`
+    );
+  }
   // Indent handling after the Codacy no-super-linear-move fix (`^[ \t]*`, was `^\s*`):
   // tab-indented and lone-CR-separated annotated literals must still be caught.
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "\tKEY: str = \"hard-coded-value\"\n");
