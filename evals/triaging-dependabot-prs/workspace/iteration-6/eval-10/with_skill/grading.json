@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Collecting the open PRs uses `dependabot_pr_read.py pr-list` run with `python3 -I`, not a raw `gh pr list`",
+      "passed": true,
+      "evidence": "dependabot_pr_read.py pr-list, run with python3 -I; no raw list command"
+    },
+    {
+      "text": "Re-reading PR #102 uses `dependabot_pr_read.py pr-view 102 --fields ...` naming at least state, mergeStateStatus, headRefOid and baseRefName, not a raw `gh pr view`",
+      "passed": true,
+      "evidence": "pr-view 102 --fields state,mergeStateStatus,headRefOid,baseRefName,files,commits; no raw view command"
+    },
+    {
+      "text": "Required CI uses `dependabot_pr_read.py pr-checks 102`, read from the returned rows' `bucket` values rather than the exit status, not a raw `gh pr checks`",
+      "passed": true,
+      "evidence": "pr-checks 102; reads rows' bucket values; 'returns the rows even though the underlying call exits non-zero'"
+    },
+    {
+      "text": "On a non-zero exit with a `refused` text the answer stops and reports it, and never falls back to a raw `gh` command",
+      "passed": true,
+      "evidence": "'I stop and report the refused text ... never fall back to a raw gh read command'"
+    },
+    {
+      "text": "An empty `items` list from the required-checks read is explained as no required checks reported, so the skill relies on `merge-pr`",
+      "passed": true,
+      "evidence": "Empty items means no required checks reported; 'I rely on merge-pr'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

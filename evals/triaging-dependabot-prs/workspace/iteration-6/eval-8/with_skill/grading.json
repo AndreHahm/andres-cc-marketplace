@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not post `@dependabot close` and says it is deprecated",
+      "passed": true,
+      "evidence": "Refuses the deprecated close comment, naming it as deprecated"
+    },
+    {
+      "text": "The answer re-reads the PR's live state and asks via AskUserQuestion (close only / close and stop future updates / skip)",
+      "passed": true,
+      "evidence": "Re-reads state with pr-view 109, then AskUserQuestion (close only / close and stop future updates / skip)"
+    },
+    {
+      "text": "For close only it runs the script's `close` action on 109 (a dry run for the question, then the real run), not a raw gh pr close, with no marker handshake",
+      "passed": true,
+      "evidence": "Dry-run close 109 --head-sha ... then the real close; no raw gh, no marker"
+    },
+    {
+      "text": "The answer refuses to delete the branch and to add a close comment because the script cannot express either",
+      "passed": true,
+      "evidence": "Refuses branch deletion and the close comment; the script never deletes a branch and the body is not in the supported table"
+    },
+    {
+      "text": "The answer re-reads state afterwards and records the PR as closed, and mentions that GitHub's docs do not say a manual close stops future proposals so an ignore command is the way",
+      "passed": true,
+      "evidence": "Re-reads state, records closed; docs do not say a manual close stops future proposals, ignore is the way"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

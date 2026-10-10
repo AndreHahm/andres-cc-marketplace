@@ -69,22 +69,40 @@ def commits_json(n=1):
 
 
 class FakeRun:
-    """Records every command; answers `git remote get-url` and `gh api`."""
+    """Records every command; answers `git remote get-url`, `gh api` and `gh pr`."""
 
-    def __init__(self, api_stdout="[]", api_rc=0, origin=f"https://github.com/{REPO}.git"):
+    def __init__(
+        self,
+        api_stdout="[]",
+        api_rc=0,
+        origin=f"https://github.com/{REPO}.git",
+        pr_stdout="[]",
+        pr_stderr="",
+        pr_rc=0,
+    ):
         self.api_stdout = api_stdout
         self.api_rc = api_rc
         self.origin = origin
+        self.pr_stdout = pr_stdout
+        self.pr_stderr = pr_stderr
+        self.pr_rc = pr_rc
         self.calls = []
 
     def __call__(self, argv, **kwargs):
         self.calls.append((list(argv), kwargs))
         if os.path.basename(argv[0]) == "git":
             return subprocess.CompletedProcess(argv, 0, stdout=self.origin + "\n", stderr="")
+        if argv[1:2] == ["pr"]:
+            return subprocess.CompletedProcess(
+                argv, self.pr_rc, stdout=self.pr_stdout, stderr=self.pr_stderr
+            )
         return subprocess.CompletedProcess(argv, self.api_rc, stdout=self.api_stdout, stderr="")
 
     def api_calls(self):
         return [c for c in self.calls if c[0][1:2] == ["api"]]
+
+    def pr_calls(self):
+        return [c for c in self.calls if c[0][1:2] == ["pr"]]
 
 
 def run_main(argv, fake, which=fake_which):
@@ -160,7 +178,20 @@ class FilesAndCommits(unittest.TestCase):
         self.assertEqual(code, 4, out)
 
     def test_bad_pr_numbers_are_refused_before_any_call(self):
-        for pr in ["0", "07", "-1", "12a", "$(id)", "1234567890", "1/../2", ""]:
+        for pr in [
+            "0",
+            "07",
+            "-1",
+            "12a",
+            "$(id)",
+            "1234567890",
+            "1/../2",
+            "",
+            "482\n",
+            " 482",
+            "\u0664\u0668\u0662",
+            "\uff14\uff18\uff12",
+        ]:
             with self.subTest(pr=pr):
                 fake = FakeRun()
                 code, out = run_main(["files", pr], fake)
@@ -177,6 +208,166 @@ class FilesAndCommits(unittest.TestCase):
                 self.assertNotIn("shell", kwargs)
                 if call[1:2] == ["api"]:
                     self.assertEqual(call[call.index("--method") + 1], "GET")
+
+
+def checks_stdout(*rows):
+    return "".join("\t".join(row) + "\n" for row in rows)
+
+
+class PrReads(unittest.TestCase):
+    """pr-list, pr-view and pr-checks replace the three `gh pr` grants, so the code must pin what
+    those grants could not: the repository, a digits-only PR number and a fixed field set."""
+
+    def test_pr_list_is_pinned_to_the_dependabot_app_and_open_state(self):
+        items = [{"number": 7, "title": "bump x"}]
+        fake = FakeRun(pr_stdout=json.dumps(items))
+        code, out = run_main(["pr-list"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(
+            fake.pr_calls()[0][0],
+            [
+                GH,
+                "pr",
+                "list",
+                "--author",
+                "app/dependabot",
+                "--state",
+                "open",
+                "--limit",
+                "100",
+                "--json",
+                "number,title,url,headRefName,isCrossRepository,mergeStateStatus,createdAt",
+                "-R",
+                f"github.com/{REPO}",
+            ],
+        )
+        self.assertEqual((out["count"], out["truncated"], out["items"]), (1, False, items))
+
+    def test_pr_list_full_page_is_truncated_and_bad_output_is_a_tool_error(self):
+        full = json.dumps([{"number": n} for n in range(100)])
+        code, out = run_main(["pr-list"], FakeRun(pr_stdout=full))
+        self.assertTrue(out["truncated"], out)
+        for fake in (FakeRun(pr_stdout="{}"), FakeRun(pr_stdout="[1]"), FakeRun(pr_stdout="nope")):
+            code, out = run_main(["pr-list"], fake)
+            self.assertEqual(code, 4, out)
+            self.assertFalse(out["ok"])
+        code, out = run_main(["pr-list"], FakeRun(pr_rc=1))
+        self.assertEqual(code, 4, out)
+
+    def test_pr_view_asks_gh_for_exactly_the_requested_fields(self):
+        data = {"state": "OPEN", "headRefOid": SHA}
+        fake = FakeRun(pr_stdout=json.dumps(data))
+        code, out = run_main(["pr-view", "482", "--fields", "state,headRefOid"], fake)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(
+            fake.pr_calls()[0][0],
+            [GH, "pr", "view", "482", "--json", "state,headRefOid", "-R", f"github.com/{REPO}"],
+        )
+        self.assertEqual(out["data"], data)
+        self.assertEqual(out["pr"], "482")
+
+    def test_pr_view_refuses_unlisted_repeated_and_empty_fields_before_any_call(self):
+        for fields in ("state,nope", "state,state", "", "state;id", "assignees", "state,"):
+            fake = FakeRun()
+            code, out = run_main(["pr-view", "482", "--fields", fields], fake)
+            self.assertEqual(code, 2, (fields, out))
+            self.assertFalse(out["ok"])
+            self.assertEqual(fake.calls, [], f"no command may run for fields {fields!r}")
+
+    def test_pr_view_and_pr_checks_refuse_non_digit_numbers_before_any_call(self):
+        for kind in ("pr-view", "pr-checks"):
+            for bad in (
+                "0",
+                "01",
+                "-1",
+                "12a",
+                "1 2",
+                "$(id)",
+                "482/../1",
+                "",
+                "482\n",
+                "\u0664\u0668\u0662",
+                "\uff14\uff18\uff12",
+            ):
+                fake = FakeRun()
+                extra = ["--fields", "state"] if kind == "pr-view" else []
+                code, out = run_main([kind, bad, *extra], fake)
+                self.assertEqual(code, 2, (kind, bad, out))
+                self.assertEqual(fake.calls, [], f"no command may run for {bad!r}")
+
+    def test_pr_view_failure_and_bad_shape_are_tool_errors(self):
+        for fake in (FakeRun(pr_rc=1), FakeRun(pr_stdout="[]"), FakeRun(pr_stdout="nope")):
+            code, out = run_main(["pr-view", "482", "--fields", "state"], fake)
+            self.assertEqual(code, 4, out)
+            self.assertFalse(out["ok"])
+
+    def test_pr_checks_parses_rows_and_tolerates_failing_and_pending_exit_codes(self):
+        stdout = checks_stdout(
+            ("Hygiene (PR contract)", "pass", "16s", "https://example.test/1"),
+            ("Publish Codex policy result", "fail", "19s", "https://example.test/2"),
+            ("CodeRabbit", "pass", "0", "", "Review skipped: author ignored"),
+            ("Fork PR", "skipping", "0", "https://example.test/3"),
+        )
+        for rc in (0, 1, 8):
+            fake = FakeRun(pr_stdout=stdout, pr_rc=rc)
+            code, out = run_main(["pr-checks", "482"], fake)
+            self.assertEqual(code, 0, (rc, out))
+            self.assertEqual(
+                fake.pr_calls()[0][0],
+                [GH, "pr", "checks", "482", "--required", "-R", f"github.com/{REPO}"],
+            )
+            self.assertEqual(out["count"], 4)
+            self.assertEqual(
+                out["items"][1],
+                {
+                    "name": "Publish Codex policy result",
+                    "bucket": "fail",
+                    "elapsed": "19s",
+                    "link": "https://example.test/2",
+                },
+            )
+            self.assertEqual(out["items"][2]["link"], "")
+
+    def test_pr_checks_no_required_checks_is_empty_but_silence_is_not(self):
+        quiet = FakeRun(
+            pr_stdout="", pr_rc=1, pr_stderr="no required checks reported on the 'x' branch\n"
+        )
+        code, out = run_main(["pr-checks", "482"], quiet)
+        self.assertEqual((code, out["count"], out["items"]), (0, 0, []), out)
+        for fake in (
+            FakeRun(pr_stdout="", pr_rc=1, pr_stderr="authentication required"),
+            FakeRun(pr_stdout="", pr_rc=0),
+        ):
+            code, out = run_main(["pr-checks", "482"], fake)
+            self.assertEqual(code, 4, out)
+
+    def test_pr_checks_unknown_buckets_other_exit_codes_and_short_lines_are_tool_errors(self):
+        weird = checks_stdout(("x", "mystery", "1s", ""))
+        for fake in (
+            FakeRun(pr_stdout=weird, pr_rc=0),
+            FakeRun(pr_stdout="only-a-name\n", pr_rc=0),
+            FakeRun(pr_stdout=checks_stdout(("x", "pass", "1s", "")), pr_rc=4),
+        ):
+            code, out = run_main(["pr-checks", "482"], fake)
+            self.assertEqual(code, 4, out)
+            self.assertFalse(out["ok"])
+
+    def test_every_gh_pr_call_is_a_read_pinned_to_origin(self):
+        runs = [
+            (["pr-list"], FakeRun()),
+            (["pr-view", "5", "--fields", "body,files,commits"], FakeRun(pr_stdout="{}")),
+            (
+                ["pr-checks", "5"],
+                FakeRun(pr_stdout="", pr_rc=1, pr_stderr="no required checks reported"),
+            ),
+        ]
+        for argv, fake in runs:
+            run_main(argv, fake)
+            for call, _ in fake.pr_calls():
+                self.assertIn(call[2], ("list", "view", "checks"), call)
+                self.assertEqual(call[-2:], ["-R", f"github.com/{REPO}"], call)
+                for word in ("comment", "close", "merge", "edit", "review", "reopen", "ready"):
+                    self.assertNotIn(word, call, call)
 
 
 class UvLock(unittest.TestCase):

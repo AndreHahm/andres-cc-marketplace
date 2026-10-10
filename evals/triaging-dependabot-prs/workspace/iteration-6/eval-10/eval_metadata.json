@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Collecting the open PRs uses `dependabot_pr_read.py pr-list` run with `python3 -I`, not a raw `gh pr list`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Re-reading PR #102 uses `dependabot_pr_read.py pr-view 102 --fields ...` naming at least state, mergeStateStatus, headRefOid and baseRefName, not a raw `gh pr view`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Required CI uses `dependabot_pr_read.py pr-checks 102`, read from the returned rows' `bucket` values rather than the exit status, not a raw `gh pr checks`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "On a non-zero exit with a `refused` text the answer stops and reports it, and never falls back to a raw `gh` command",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "An empty `items` list from the required-checks read is explained as no required checks reported, so the skill relies on `merge-pr`",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

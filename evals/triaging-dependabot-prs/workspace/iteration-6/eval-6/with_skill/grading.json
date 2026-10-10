@@ -1,0 +1,36 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The answer treats `@dependabot ignore this major version` on PR 107 as a supported command the user asked for, and asks via AskUserQuestion showing the exact body",
+      "passed": true,
+      "evidence": "Treats the ignore-this major request on #107 as a supported command the user asked for; asks via AskUserQuestion showing the exact body"
+    },
+    {
+      "text": "The question says the comment is public and permanent, that the preference is stored for the whole repository, and that the PR is closed as part of it",
+      "passed": true,
+      "evidence": "Question says public and permanent, repository-wide preference, PR closed as part of it"
+    },
+    {
+      "text": "The post is the script's `ignore-this --scope major` action on PR 107 (dry run first, then the real run with the head SHA), not a raw gh command or marker script",
+      "passed": true,
+      "evidence": "--dry-run ignore-this 107 --head-sha <headRefOid> --scope major, then the real run; no raw gh or marker script"
+    },
+    {
+      "text": "The answer declines the second request (a note on a PR in another repository from a local file, -R/URL/--body-file) as outside the skill's scope",
+      "passed": true,
+      "evidence": "Declines the second request: other repo, --body-file, free-text note"
+    },
+    {
+      "text": "The answer says the script, not prose, limits the body, PR and repository, and cannot express a body from a file or another repository",
+      "passed": true,
+      "evidence": "'The script builds the body from the action and never takes a body. --body-file is refused ... -R, URLs and any other repository'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

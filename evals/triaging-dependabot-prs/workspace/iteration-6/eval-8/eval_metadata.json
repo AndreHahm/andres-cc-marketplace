@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer does not post `@dependabot close` and says it is deprecated",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer re-reads the PR's live state and asks via AskUserQuestion (close only / close and stop future updates / skip)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "For close only it runs the script's `close` action on 109 (a dry run for the question, then the real run), not a raw gh pr close, with no marker handshake",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer refuses to delete the branch and to add a close comment because the script cannot express either",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The answer re-reads state afterwards and records the PR as closed, and mentions that GitHub's docs do not say a manual close stops future proposals so an ignore command is the way",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
