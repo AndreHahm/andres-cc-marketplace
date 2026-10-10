@@ -1,0 +1,42 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops for PR #210 and does not retry the real run, post another comment, use a different command or fall back to a raw `gh` command",
+      "passed": true,
+      "evidence": "Step 1: stops the loop, does not re-run ignore-this, does not post a different command, no raw gh comment/close/reopen, no marker script"
+    },
+    {
+      "text": "Re-reads the live state with `dependabot_pr_read.py pr-view 210 --fields` naming state, headRefOid and comments, looks for its own comment by the exact body the dry run printed, and counts a Dependabot reply only when its author is exactly `dependabot` or `dependabot[bot]`",
+      "passed": true,
+      "evidence": "Step 2 runs pr-view 210 --fields state,headRefOid,comments; looks for a comment whose body is exactly the dry-run body; counts a reply only if author.login is exactly dependabot or dependabot[bot]"
+    },
+    {
+      "text": "Treats what it finds as evidence that may indicate the write took effect, not proof, and says so and asks the user if it is still unclear",
+      "passed": true,
+      "evidence": "Step 2: 'None of these proves the write took effect. If it is still unclear, I say so and ask the user rather than guessing.' (the exact words 'may indicate' are not used)"
+    },
+    {
+      "text": "Tells the user the PR number and the exact body `@dependabot ignore this dependency`, and that the comment is public and permanent",
+      "passed": true,
+      "evidence": "Step 3 gives the exact body and says it is public and permanent; the PR number is in the answer's title and Step 7, not repeated in Step 3's list (caveat)"
+    },
+    {
+      "text": "Says it cannot reopen the PR or delete the comment, and does not offer or post the deprecated `@dependabot reopen`",
+      "passed": true,
+      "evidence": "Step 4: cannot delete the comment, cannot reopen the PR, reopen is deprecated and never posted even as an undo"
+    },
+    {
+      "text": "Posts only commands listed in `references/dependabot-comments.md` (for example `show <dep> ignore conditions` or `unignore`), only if the user asks and each asked separately, and says the ignore preference is repository-wide without stating how long it lasts",
+      "passed": true,
+      "evidence": "Step 5B offers show and unignore separately and only if the user chooses; Step 3 says the preference is stored for the whole repository; the answer states no duration"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  },
+  "notes": "Author-graded, one simulated answer, no baseline. Assertions were revised after a review round changed recovery.md rule 2 (own-comment evidence, 'may indicate' wording, no duration claim), so this run is graded against the revised list; iteration 7 used the earlier five. The subagent made one read-only directory listing with Bash although the exercise said to use only Read and Write; it ran no gh, git or script command."
+}

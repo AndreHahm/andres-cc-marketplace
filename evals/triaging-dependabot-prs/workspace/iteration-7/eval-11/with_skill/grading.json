@@ -1,0 +1,37 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops for PR #210 and does not retry the real run, post another comment, use a different command or fall back to a raw `gh` command",
+      "passed": true,
+      "evidence": "Step 1: 'I do not retry the ignore. I do not post a different command, and I do not fall back to a raw gh command.'"
+    },
+    {
+      "text": "Re-reads the live state with `dependabot_pr_read.py pr-view 210 --fields` naming state, headRefOid and comments, and counts a comment only when its author is exactly `dependabot` or `dependabot[bot]`",
+      "passed": true,
+      "evidence": "Step 2 runs pr-view 210 --fields state,headRefOid,comments and counts a comment only if author.login is exactly dependabot or dependabot[bot]"
+    },
+    {
+      "text": "Tells the user the PR number and the exact body `@dependabot ignore this dependency`, and that the comment is public and permanent",
+      "passed": true,
+      "evidence": "Step 3 names the body and PR #210 and says any posted comment is public and permanent"
+    },
+    {
+      "text": "Says it cannot reopen the PR or delete the comment, and does not offer or post the deprecated `@dependabot reopen`",
+      "passed": true,
+      "evidence": "'What I will not do': reopening is a manual step; `@dependabot reopen` is deprecated and never posted, even as an undo; no way to delete the comment"
+    },
+    {
+      "text": "Offers only commands listed in `references/dependabot-comments.md` (for example `show <dep> ignore conditions` or `unignore`), each asked separately, and says the ignore preference is repository-wide",
+      "passed": true,
+      "evidence": "Step 4 offers show, unignore and recreate, each asked separately via AskUserQuestion; Step 3 says the ignore preference is stored repository-wide"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  },
+  "notes": "Author-graded, one simulated answer, no baseline. Not covered by any assertion: the answer lists `recreate` among its offers although the skill says to post it only when the user asks."
+}
