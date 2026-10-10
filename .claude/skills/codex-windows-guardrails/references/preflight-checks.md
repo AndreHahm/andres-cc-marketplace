@@ -183,6 +183,13 @@ annotation, so `guarded-dispatch.mjs` carries its own check: an annotated assign
 to a secret-suggestive name (`API_KEY: str = "..."`, including richer annotations such as `Annotated[str, "x"]`, string prefixes and triple quotes) fails the content scan, while `total_tokens: int = 0`
 or `api_key: str = os.getenv("X")` still pass.
 
+**Input bound (pass-5 review).** Every pattern the content scan applies (the two local ones and the shared `redactSecrets`)
+backtracks roughly quadratically on a single line packed with secret-suggestive words (about 0.6 s at 80,000 characters), and
+the scanned file may be attacker-controlled. A file over 2 MB, or with any line over 20,000 characters, therefore cannot be
+cleared by the content scan at all: it fails closed as `secret_file_in_scope`. The annotated-assignment check is also
+line-oriented, so a multi-line annotation (`API_KEY: (` / `str` / `) = "..."`) is a known gap; closing it needs a language
+parser, not another pattern.
+
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
 credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
 check — the content scan described above only ever runs on the small set of files the path/extension
