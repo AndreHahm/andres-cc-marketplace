@@ -82,7 +82,7 @@ Common secret-shaped variable names and value formats that should trigger alerts
 
 **Use these tools to detect secrets BEFORE committing:**
 
-- **git-secrets** — GitHub's official tool for preventing secret commits
+- **git-secrets** — AWS Labs' open-source git hook scanner for preventing secret commits (GitHub's own offering is Secret Scanning with push protection)
 - **truffleHog** — Searches git history for high-entropy strings and known patterns
 - **gitleaks** — Scans repos for secrets using regex patterns and entropy detection
 - **GitHub Secret Scanning** — GitHub's built-in scanning for known secret types
@@ -212,7 +212,7 @@ Bearer credential — copy-pasteable, but now a leaked credential sitting in you
 The same `curl` command, but with the Bearer credential replaced by an obvious placeholder
 (e.g. `YOUR_GITHUB_TOKEN`) instead of a real value:
 
-Set `YOUR_GITHUB_TOKEN` to your personal access token from https://github.com/settings/tokens
+Set `YOUR_GITHUB_TOKEN` to your personal access token from [GitHub token settings](https://github.com/settings/tokens)
 
 ---
 
@@ -235,7 +235,8 @@ Set `YOUR_GITHUB_TOKEN` to your personal access token from https://github.com/se
 Or use git credential helper:
 ```bash
 git config credential.helper store
-# Then git will prompt once and cache credentials securely
+# Then git will prompt once and cache credentials -- in PLAINTEXT (~/.git-credentials), not securely.
+# Prefer an OS-backed helper instead: Git Credential Manager, osxkeychain or libsecret.
 ```
 
 ---
@@ -352,7 +353,7 @@ bash scripts/validate-env.sh
 
 Use git hooks to prevent secrets from being committed.
 
-**Install git-secrets (GitHub's official tool):**
+**Install git-secrets (an AWS Labs tool):**
 ```bash
 brew install git-secrets  # macOS
 # or
@@ -401,7 +402,7 @@ Add to `.gitignore` to prevent secret files from being committed:
 
 **R18 exception (recorded):** intentionally exceeds the 30-line threshold — a security-relevant complete pattern set; trimming risks silently dropping a real credential-file pattern from the recommendation.
 
-```gitignore
+```text
 # Environment files with secrets
 .env
 .env.local
@@ -564,7 +565,7 @@ Use this checklist when creating or reviewing skills to ensure no secrets are ex
 
 ### Security Tools
 
-- **git-secrets** — GitHub's official tool to prevent secret commits
+- **git-secrets** — AWS Labs' open-source hook to prevent secret commits (GitHub's own offering is Secret Scanning with push protection)
   [github.com/awslabs/git-secrets](https://github.com/awslabs/git-secrets)
 
 - **truffleHog** — Searches git history for secrets with high confidence
