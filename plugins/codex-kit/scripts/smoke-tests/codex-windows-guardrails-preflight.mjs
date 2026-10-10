@@ -1285,6 +1285,15 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
   }
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "x = 1\n".repeat(400000));
   check("a file over the 2 MB size cap cannot be cleared by the content scan either", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  // Qodo review finding 4: the size cap is in BYTES on disk. 9,000 lines of 100 euro signs is
+  // about 2.7 MB but only about 909,000 UTF-16 code units, so a cap that compared decoded
+  // string length against "bytes" (the earlier version) let it through.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", ("€".repeat(100) + "\n").repeat(9000));
+  check(
+    "a multi-byte file over the 2 MB byte cap (but under 2M characters) cannot be cleared by the content scan",
+    blockedBy(f.run(), /anls_x_token\.py/),
+    JSON.stringify(f.last)
+  );
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "x = 1\n".repeat(1000));
   check("control: an ordinary small file in the same position still advances past the scan", passedScan(f.run()), JSON.stringify(f.last));
 }
@@ -1353,6 +1362,49 @@ console.log("\n=== cross-model-review pass 2: an in-repo PATH folder whose NAME 
     JSON.stringify(result)
   );
   fs.rmSync(f.root, { recursive: true, force: true });
+}
+
+console.log("\n=== Qodo review finding 5: no usable git on PATH is one typed failure, not a misleading downstream one ===");
+{
+  const f = makeFixture();
+  f.commit("init");
+  f.markBase();
+  // PATH holds only node's own folder, so gitExecutable() finds no git.exe (and the repo's
+  // PATH-folder exclusion is not what is under test here).
+  const env = { ...process.env, PATH: path.dirname(process.execPath) };
+  delete env.Path;
+  let result;
+  try {
+    const stdout = execFileSync(
+      "node",
+      [GUARDED_DISPATCH, "--reviewer-type", "test-reviewer", "--instruction-file", path.join(f.root, "target.md"), "--target-paths", f.root, "--dispatch-id", "smoke-test", "--repo-root", f.root],
+      { encoding: "utf8", env }
+    );
+    result = JSON.parse(stdout);
+  } catch (e) {
+    result = JSON.parse(e.stdout.toString());
+  }
+  check(
+    "with no git.exe on PATH the dispatch fails closed with category git_unavailable (not guardrails_disabled or a repo-root error)",
+    result.ok === false && result.category === "git_unavailable",
+    JSON.stringify(result)
+  );
+}
+
+console.log("\n=== Qodo review finding 6: an ignored directory hides only that directory, never a sibling sharing its name prefix ===");
+{
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", "build/\n");
+  f.commit("init");
+  f.markBase();
+  writeFixtureFile(path.join(f.root, "build", "lib"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  check("control: files inside the ignored build/ directory are skipped", passedScan(f.run()), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "build2"), "id_rsa", "not a real key");
+  check(
+    "an untracked build2/id_rsa is still scanned and blocks (the ignored entry 'build/' is a whole-segment match, not a string prefix)",
+    blockedBy(f.run(), /build2.id_rsa/),
+    JSON.stringify(f.last)
+  );
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
