@@ -136,7 +136,9 @@ export function gitExecutable(excludeRoot) {
     if (excludeRoot && isInsideRoot(dir, excludeRoot)) continue;
     const candidate = path.join(dir, "git.exe");
     try {
-      if (fs.statSync(candidate).isFile()) {
+      // candidate is an absolute PATH entry outside the repo (checked above): looking
+      // it up is the purpose of this function (Codacy non-literal-fs-filename FP).
+      if (fs.statSync(candidate).isFile()) { // nosemgrep
         found = candidate;
         break;
       }
@@ -249,7 +251,9 @@ export function createBaseVerifier(repoRoot, base = resolveTrustedBase(repoRoot)
     if (runGit(["init", "-q", "--template="], matcherDir, matcherEnv, repoRoot) === null) {
       throw new Error("matcher repo init failed");
     }
-    fs.writeFileSync(path.join(matcherDir, ".gitignore"), ignoreText);
+    // matcherDir is the private mkdtemp directory created just above, so this path
+    // is fixed-name inside a directory this process owns (Codacy FP).
+    fs.writeFileSync(path.join(matcherDir, ".gitignore"), ignoreText); // nosemgrep
   } catch {
     if (matcherDir) fs.rmSync(matcherDir, { recursive: true, force: true });
     return null;
@@ -288,7 +292,9 @@ export function createBaseVerifier(repoRoot, base = resolveTrustedBase(repoRoot)
         // Provenance 2: a regular file on disk (never a symlink), same content,
         // hashed with the BASE's attributes. A git too old for --attr-source
         // errors here, which reads as "not exempt".
-        if (!fs.lstatSync(absolutePath).isFile()) return false;
+        // absolutePath is the repo-root-joined path of a scan candidate; lstat is the
+        // symlink-safe regular-file check itself (Codacy FP).
+        if (!fs.lstatSync(absolutePath).isFile()) return false; // nosemgrep
         const currentBlob = runGit(
           [`--attr-source=${base}`, "hash-object", `--path=${posixPath}`, "--", absolutePath],
           repoRoot

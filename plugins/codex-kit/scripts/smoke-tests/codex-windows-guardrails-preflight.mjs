@@ -1275,6 +1275,22 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
       `elapsed ${Date.now() - started} ms, timedOut=${timedOut}`
     );
   }
+  // Indent handling after the Codacy no-super-linear-move fix (`^[ \t]*`, was `^\s*`):
+  // tab-indented and lone-CR-separated annotated literals must still be caught.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "\tKEY: str = \"hard-coded-value\"\n");
+  check("a tab-indented annotated literal is still rejected", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "x = 1\rKEY: str = \"hard-coded-value\"\r");
+  check("an annotated literal after a lone carriage return is still rejected", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "\r".repeat(18000) + "x\n");
+  {
+    const started = Date.now();
+    const result = f.run();
+    check(
+      "an 18,000-character run of carriage returns does not stall the scan",
+      result !== null && Date.now() - started < 50000,
+      `elapsed ${Date.now() - started} ms, ${JSON.stringify(result)}`
+    );
+  }
   // Pass-5 review: the scan's input is bounded before any pattern runs. A file
   // with an overlong line (or over the size cap) cannot be cleared by the content
   // scan -- it fails closed as secret_file_in_scope -- and does so quickly even
