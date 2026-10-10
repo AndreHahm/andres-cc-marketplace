@@ -334,6 +334,10 @@ class PrReads(unittest.TestCase):
         )
         code, out = run_main(["pr-checks", "482"], quiet)
         self.assertEqual((code, out["count"], out["items"]), (0, 0, []), out)
+        # The wording the real gh prints (live-verified): no "required" in it.
+        real = FakeRun(pr_stdout="", pr_rc=1, pr_stderr="no checks reported on the 'x' branch\n")
+        code, out = run_main(["pr-checks", "482"], real)
+        self.assertEqual((code, out["count"], out["items"]), (0, 0, []), out)
         for fake in (
             FakeRun(pr_stdout="", pr_rc=1, pr_stderr="authentication required"),
             FakeRun(pr_stdout="", pr_rc=0),
