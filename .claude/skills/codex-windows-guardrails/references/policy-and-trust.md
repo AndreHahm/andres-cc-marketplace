@@ -9,10 +9,16 @@ Resolution order: `.claude/codex-windows-guardrails.local.json` (gitignored, unt
 {
   "windows_guardrails": {
     "enabled": false,
-    "central_policy_version": "1"
+    "central_policy_version": "1",
+    "scan_ignored_high_risk": false
   }
 }
 ```
+
+`scan_ignored_high_risk` is an optional, opt-in tightening (only a literal `true` enables it): it keeps
+scanning gitignored files with strict secret names outside dependency directories; see
+`preflight-checks.md` check 2. It can only add scanning, so it needs no extra trust handling beyond the
+existing rule that a tracked local override is ignored.
 
 - Missing file, missing field, or unknown value → resolves to disabled *given today's shipped
   default of `enabled: false`* — the actual merge (`{...shipped, ...local}`) preserves whatever the
