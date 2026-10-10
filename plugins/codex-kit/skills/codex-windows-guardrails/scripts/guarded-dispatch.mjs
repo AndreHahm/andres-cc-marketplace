@@ -391,6 +391,29 @@ const ANNOTATED_SECRET_LITERAL_PATTERN =
 // followed by a single `=\s*<quote>` test; each `=` is tried once. Still a
 // LINE-oriented heuristic, not a parser: a multi-line annotation is not seen.
 
+// Pass-5 review: every pattern the content scan applies (the two local ones
+// above and the shared redactSecrets) backtracks roughly quadratically on a
+// single line packed with secret-suggestive words ("KEYKEYKEY..."): about
+// 0.6 s at 80,000 characters, so on the order of a minute at 1 MB and hours
+// at 10 MB. The scan's input is a file an attacker may control, so it is
+// bounded BEFORE any pattern runs, and a file over either bound simply
+// cannot be cleared by this scan (fail closed -- it stays a secret_file_in_scope
+// block). Real source and docs sit far below both limits.
+const CONTENT_SCAN_MAX_BYTES = 2 * 1024 * 1024;
+const CONTENT_SCAN_MAX_LINE_CHARS = 20000;
+
+function isBoundedForContentScan(content) {
+  if (content.length > CONTENT_SCAN_MAX_BYTES) return false;
+  let lineStart = 0;
+  for (let i = 0; i <= content.length; i += 1) {
+    if (i === content.length || content.charCodeAt(i) === 10) {
+      if (i - lineStart > CONTENT_SCAN_MAX_LINE_CHARS) return false;
+      lineStart = i + 1;
+    }
+  }
+  return true;
+}
+
 function looksLikeCredentialAssignment(content) {
   for (const line of content.split(/\r?\n/)) {
     const match = line.match(CREDENTIAL_ASSIGNMENT_LINE_PATTERN);
@@ -584,6 +607,7 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
             }
             if (
               content !== null &&
+              isBoundedForContentScan(content) &&
               redactSecrets(content) === content &&
               !looksLikeCredentialAssignment(content)
             ) {

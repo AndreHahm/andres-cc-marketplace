@@ -1243,10 +1243,10 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
   writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY: Annotated[str, \"x=y\"] = \"value\"\n");
   check("an equals sign inside the annotation metadata (Annotated[str, \"x=y\"]) does not hide the literal", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
   // Pass-4 review: the content scan runs on attacker-influenced file content, so
-  // its patterns must stay linear. A 20,000-space run after `API_KEY:` took
+  // its patterns must stay linear. A 15,000-space run after `API_KEY:` took
   // minutes with the earlier cubic form; the bound below turns a regression
   // into a failing check instead of a hung suite.
-  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY:" + " ".repeat(20000) + "x\n");
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "API_KEY:" + " ".repeat(15000) + "x\n");
   {
     const started = Date.now();
     let timedOut = false;
@@ -1263,11 +1263,30 @@ console.log("\n=== security re-review m-5: an annotated hard-coded secret in an 
       else result = JSON.parse(e.stdout.toString());
     }
     check(
-      "a 20,000-space line after a secret-suggestive annotated name is scanned in linear time (finishes well inside the bound)",
+      "a 15,000-space line after a secret-suggestive annotated name is scanned in linear time (finishes well inside the bound)",
       !timedOut && Date.now() - started < 50000 && result !== null,
       `elapsed ${Date.now() - started} ms, timedOut=${timedOut}`
     );
   }
+  // Pass-5 review: the scan's input is bounded before any pattern runs. A file
+  // with an overlong line (or over the size cap) cannot be cleared by the content
+  // scan -- it fails closed as secret_file_in_scope -- and does so quickly even
+  // when the line is packed with secret-suggestive words, which backtrack
+  // quadratically in every pattern the scan applies.
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "KEY".repeat(100000) + "x\n");
+  {
+    const started = Date.now();
+    const result = f.run();
+    check(
+      "a 300,000-character line of repeated secret words is refused by the size bound, quickly (fail closed)",
+      blockedBy(result, /anls_x_token\.py/) && Date.now() - started < 50000,
+      `elapsed ${Date.now() - started} ms, ${JSON.stringify(result)}`
+    );
+  }
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "x = 1\n".repeat(400000));
+  check("a file over the 2 MB size cap cannot be cleared by the content scan either", blockedBy(f.run(), /anls_x_token\.py/), JSON.stringify(f.last));
+  writeFixtureFile(path.join(f.root, "scripts"), "anls_x_token.py", "x = 1\n".repeat(1000));
+  check("control: an ordinary small file in the same position still advances past the scan", passedScan(f.run()), JSON.stringify(f.last));
 }
 
 console.log("\n=== cross-model-review C2: a PATH entry reaching the repo through a directory junction never supplies git ===");
