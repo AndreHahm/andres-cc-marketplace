@@ -127,7 +127,7 @@ most likely to contain realistic example values for illustration, and those matc
 `redactSecrets` patterns a real credential would. Two of its three identical copies were then
 rewritten to teach the same lessons without any `redactSecrets`-matching content (see "Known
 limitations" below for the full account, including why the third copy — `.agents/` — was
-deliberately left unfixed, and why that alone still blocks the whole-repo scan today regardless).
+first left unfixed and how it was finally resolved).
 
 **Gitignored files are not scanned (decision, 2026-10-09).** An *untracked* file that the repository
 itself ignores — `.gitignore` files and `.git/info/exclude`, never the user's global
@@ -175,7 +175,8 @@ matches no *strict* pattern; the path is a regular file (mode 100644/100755, not
 **merge base** with the default branch (`origin/HEAD`, else `origin/main`/`origin/master`); its
 current content hashes to that base blob (hashed with the **base's** `.gitattributes` via
 `--attr-source`, so a branch cannot choose a filter or `ident` rewrite that makes an edited file
-collide with the base blob; a git too old for `--attr-source` simply never exempts); and the path matches the `.secretlintignore` **as committed
+collide with the base blob, and the exemption is refused outright when that base declares `ident`, a
+`filter` or `working-tree-encoding` for the path, since those transform the bytes `hash-object` sees; a git too old for `--attr-source` simply never exempts); and the path matches the `.secretlintignore` **as committed
 at that base**, evaluated with real gitignore semantics (`/dir`, `*`, `**`, `!`) in a throwaway empty
 repo so this repo's own `.gitignore` and the user's global ignores cannot influence the verdict. This
 is what lets a file whose *content* is legitimately secret-shaped (a redactor's own smoke test, a
@@ -248,8 +249,10 @@ required to produce, every time.
   Because `checkSecretFiles` scans the **whole repository root**, that stale copy alone blocked the
   Windows fallback dispatch path for the whole repo (confirmed live: a dispatch targeting only the
   fixed `plugins/plugin-devkit/` copy still failed on the `.agents/` copy, since directory traversal
-  reaches it first). **Resolved 2026-10-09 by deleting the stale `.agents/` copy**; clearing it
-  exposed the further blockers addressed by the gitignored-file skip and the trusted-base tier in
+  reaches it first). **Resolved 2026-10-09 by deleting the stale `.agents/` copy, then on 2026-10-10 by
+  restoring it** (the stale `.agents/` skill copy still references it), re-synced from the sanitized
+  `plugin-devkit` copy with one database-URL example neutralized for CI's secretlint, and exempted by
+  an exact-path `.secretlintignore` entry; clearing the original blocker exposed the further blockers addressed by the gitignored-file skip and the trusted-base tier in
   check 2 above (plus nine exact-path `.secretlintignore` entries and a one-line type annotation in
   `anls_token_time_aggregator.py`). Not fully resolved even so — the general
   "content-scan can't distinguish an illustrative example from a real secret" limitation still
