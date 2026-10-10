@@ -250,9 +250,10 @@ required to produce, every time.
   Windows fallback dispatch path for the whole repo (confirmed live: a dispatch targeting only the
   fixed `plugins/plugin-devkit/` copy still failed on the `.agents/` copy, since directory traversal
   reaches it first). **Resolved 2026-10-09 by deleting the stale `.agents/` copy, then on 2026-10-10 by
-  restoring it** (the stale `.agents/` skill copy still references it), re-synced from the sanitized
-  `plugin-devkit` copy with one database-URL example neutralized for CI's secretlint, and exempted by
-  an exact-path `.secretlintignore` entry; clearing the original blocker exposed the further blockers addressed by the gitignored-file skip and the trusted-base tier in
+  restoring it** (the stale `.agents/` skill copy still references it), re-synced from the canonical
+  `plugin-devkit` copy (whose database-URL and payment-key examples are now plain placeholders in all
+  three copies, so they stay identical and need no scanner allowlist), and exempted by an exact-path
+  `.secretlintignore` entry; clearing the original blocker exposed the further blockers addressed by the gitignored-file skip and the trusted-base tier in
   check 2 above (plus nine exact-path `.secretlintignore` entries and a one-line type annotation in
   `anls_token_time_aggregator.py`). Not fully resolved even so — the general
   "content-scan can't distinguish an illustrative example from a real secret" limitation still

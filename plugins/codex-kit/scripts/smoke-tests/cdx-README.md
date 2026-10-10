@@ -4,6 +4,8 @@ Persistent, mostly dependency-free Node scripts verifying specific behavior fixe
 
 Run from `plugins/codex-kit/`:
 
+Review bridge and `codex-exec`:
+
 ```bash
 node scripts/smoke-tests/cdx-commands-arg-handling.mjs
 node scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs
@@ -13,6 +15,11 @@ node scripts/smoke-tests/codex-exec-schema-validation.mjs
 node scripts/smoke-tests/codex-exec-secret-redaction.mjs
 node scripts/smoke-tests/codex-exec-windows-spawn.mjs
 node scripts/smoke-tests/codex-exec-live-roundtrip.mjs
+```
+
+Broker, prompt assembly, hooks and config:
+
+```bash
 node scripts/smoke-tests/cdx-broker-rpc-auth.mjs
 node scripts/smoke-tests/codex-rescue-prompt-assembly.mjs
 node scripts/smoke-tests/codex-verify-prompt-assembly.mjs
@@ -21,6 +28,11 @@ node scripts/smoke-tests/cdx-stop-review-gate-hook.mjs
 node scripts/smoke-tests/codex-config-toml-sections.mjs
 node scripts/smoke-tests/cdx-session-lifecycle-hook.mjs
 node scripts/smoke-tests/cdx-fs-atomic-write.mjs
+```
+
+Guardrails, loop invariants and references:
+
+```bash
 node scripts/smoke-tests/codex-windows-guardrails-preflight.mjs
 node scripts/smoke-tests/codex-audit-loop-invariants.mjs
 node scripts/smoke-tests/codex-peer-review-invariants.mjs
