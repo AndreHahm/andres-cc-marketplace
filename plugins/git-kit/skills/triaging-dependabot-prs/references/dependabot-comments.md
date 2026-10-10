@@ -24,7 +24,7 @@ The body is exactly one of these strings: no other text, no second command, no a
 | Body | Effect (per the docs) | Offered |
 |---|---|---|
 | `@dependabot rebase` | Rebases the PR onto its base; the head SHA changes | Step 6.3, when the PR needs a rebase |
-| `@dependabot recreate` | Recreates the PR and overwrites any edits made to it; the head SHA changes | Only when the user asks, for example after Dependabot says it cannot rebase |
+| `@dependabot recreate` | Recreates the PR and overwrites any edits made to it; the head SHA changes | Only when the user asks, for example after Dependabot says it cannot rebase; not recommended when the reply says the `dependabot.yml` entry was deleted (SKILL.md step 6.3) |
 | `@dependabot ignore this dependency` | Closes the PR and stops future PRs for the dependency | Only when the user asks, or chooses it in the close path (6.2) |
 | `@dependabot ignore this major version` | Same, for that major version only | Same |
 | `@dependabot ignore this minor version` | Same, for that minor version only | Same |
