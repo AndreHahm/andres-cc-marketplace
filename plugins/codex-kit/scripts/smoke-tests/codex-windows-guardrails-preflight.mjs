@@ -1407,5 +1407,46 @@ console.log("\n=== Qodo review finding 6: an ignored directory hides only that d
   );
 }
 
+console.log("\n=== Qodo review finding 1: opt-in strict mode (scan_ignored_high_risk) re-scans ignored high-risk names, but not dependency directories ===");
+{
+  const strictOverride = (value) =>
+    JSON.stringify({ windows_guardrails: { enabled: true, central_policy_version: "1", scan_ignored_high_risk: value } });
+  const f = makeFixture();
+  writeFixtureFile(f.root, ".gitignore", ".env\n.venv/\nnode_modules/\nnotes/\nconfig/\n");
+  f.commit("init");
+  f.markBase();
+  const overridePath = path.join(f.root, ".claude");
+
+  writeFixtureFile(overridePath, "codex-windows-guardrails.local.json", strictOverride(true));
+  writeFixtureFile(f.root, ".env", "SECRET=1");
+  check("strict ON: a gitignored, untracked .env is scanned and blocks", blockedBy(f.run(), /\.env/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, ".env"));
+
+  writeFixtureFile(path.join(f.root, ".venv", "lib"), "cacert.pem", "-----BEGIN CERTIFICATE-----");
+  writeFixtureFile(path.join(f.root, "node_modules", "pkg"), "id_rsa", "not a real key");
+  check(
+    "strict ON: strict-named files inside dependency directories (.venv, node_modules) are still skipped",
+    passedScan(f.run()),
+    JSON.stringify(f.last)
+  );
+
+  writeFixtureFile(path.join(f.root, "notes"), "api-token.txt", "loose name only");
+  check("strict ON: an ignored file with only a LOOSE keyword name (api-token.txt) stays skipped", passedScan(f.run()), JSON.stringify(f.last));
+
+  writeFixtureFile(path.join(f.root, "config"), "id_rsa", "not a real key");
+  check("strict ON: an ignored id_rsa outside a dependency directory (config/) blocks", blockedBy(f.run(), /config.id_rsa/), JSON.stringify(f.last));
+  fs.rmSync(path.join(f.root, "config"), { recursive: true, force: true });
+
+  writeFixtureFile(overridePath, "codex-windows-guardrails.local.json", strictOverride("true"));
+  writeFixtureFile(f.root, ".env", "SECRET=1");
+  check(
+    "a non-boolean value (the string \"true\") does NOT enable strict mode: the documented skip default applies",
+    passedScan(f.run()),
+    JSON.stringify(f.last)
+  );
+  writeFixtureFile(overridePath, "codex-windows-guardrails.local.json", strictOverride(false));
+  check("strict explicitly OFF behaves like the default: the ignored .env is skipped", passedScan(f.run()), JSON.stringify(f.last));
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);

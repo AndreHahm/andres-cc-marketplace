@@ -502,7 +502,25 @@ function isGitIgnoredEntry(ignoredEntries, relativePath) {
   return ignoredEntries.some((entry) => (entry.endsWith("/") ? posixPath.startsWith(entry) : posixPath === entry));
 }
 
-function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
+// Directories whose contents are third-party packages rather than the reviewer's
+// own files. Under the opt-in strict mode below these stay skipped, so a worktree
+// that has run `uv`/`npm` does not block on a dependency's bundled CA certificate
+// (the original reason the ignored-file skip exists). Matched per path segment.
+const DEPENDENCY_DIR_NAMES = new Set([".venv", "venv", "node_modules", "__pycache__"]);
+
+function isInDependencyDir(relativePath) {
+  return relativePath
+    .split(/[\\/]/)
+    .slice(0, -1)
+    .some((segment) => DEPENDENCY_DIR_NAMES.has(segment.toLowerCase()));
+}
+
+// scanIgnoredHighRisk (config `windows_guardrails.scan_ignored_high_risk`, default
+// false; Qodo review finding 1): opt-in strict mode. When true, an UNTRACKED file the
+// repository ignores is still scanned if its name matches a STRICT secret pattern
+// (.env*, *.pem, *.key, SSH/cloud key names, .npmrc, ...) and it is not inside a
+// dependency directory. The loose keyword names (token, password, ...) stay skipped.
+function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scanIgnoredHighRisk = false) {
   // Relativize against the CANONICAL root, not the raw repoRoot argument --
   // a path reached via symlink/junction recursion is already in canonical
   // form, so relativizing it against a non-canonical repoRoot could render
@@ -540,7 +558,11 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
           // the checkout's own (so a branch under review can influence it).
           // A tracked file is never skipped, however it is ignored.
           if (isGitIgnoredEntry(ignoredEntries, relativePath)) {
-            continue;
+            const keptByStrictMode =
+              scanIgnoredHighRisk === true && matchesAnyStrictPattern(name) && !isInDependencyDir(relativePath);
+            if (!keptByStrictMode) {
+              continue;
+            }
           }
           // Security review, issue #78 fix (M4): only exempt when the
           // MATCHED name is the file's own basename -- a file symlink is
@@ -634,7 +656,7 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
   return null;
 }
 
-function checkSecretFiles(targetPaths, repoRoot) {
+function checkSecretFiles(targetPaths, repoRoot, scanIgnoredHighRisk = false) {
   // Resolved lazily, once: most scans never reach a filename match at all,
   // and resolving the merge base + building the matcher repo costs several
   // git invocations. null (base unresolvable) makes every lookup false, so
@@ -653,7 +675,7 @@ function checkSecretFiles(targetPaths, repoRoot) {
     return verifier ? verifier.isExempt(relativePath) : false;
   };
   try {
-    return scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base);
+    return scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scanIgnoredHighRisk);
   } finally {
     if (verifier) verifier.dispose();
   }
@@ -846,7 +868,9 @@ async function main() {
   // is always repoRoot correctly normalized, whether repoRoot itself was
   // passed as an absolute or relative path; path.resolve(repoRoot, repoRoot)
   // would double-resolve if repoRoot were ever relative.
-  const secretFailure = checkSecretFiles(["."], repoRoot);
+  // Only a literal boolean true turns strict mode on (a string "true" or any
+  // other value is ignored, fail-safe to the documented default of skipping).
+  const secretFailure = checkSecretFiles(["."], repoRoot, config.scan_ignored_high_risk === true);
   if (secretFailure) {
     fail(secretFailure.category, secretFailure.detail);
     return;

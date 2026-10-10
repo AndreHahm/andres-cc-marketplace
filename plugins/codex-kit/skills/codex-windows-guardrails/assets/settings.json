@@ -1,6 +1,7 @@
 {
   "windows_guardrails": {
     "enabled": false,
-    "central_policy_version": "1"
+    "central_policy_version": "1",
+    "scan_ignored_high_risk": false
   }
 }

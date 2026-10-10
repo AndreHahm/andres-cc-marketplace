@@ -139,6 +139,16 @@ real and was accepted by the repository owner:** a gitignored `.env`, `*.local.j
 no longer caught by this check, and unsandboxed Codex can read it. A *tracked* file is never skipped,
 even when a `.gitignore` pattern also matches it (a force-added `.env` is still scanned).
 
+**Opt-in strict mode (Qodo review finding 1).** Setting `windows_guardrails.scan_ignored_high_risk` to the
+boolean `true` (default `false`; read from `assets/settings.json` and the untracked
+`.claude/codex-windows-guardrails.local.json` override, with the existing rule that a tracked override
+is ignored) keeps scanning an ignored file whose name matches a *strict* secret pattern (`.env*`, `*.pem`,
+`*.key`, `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, `service-account.json`, `*.p12`/`*.pfx`/`*.jks`,
+`.npmrc`, `.pgpass`, `.netrc`). Files inside `.venv`, `venv`, `node_modules` and `__pycache__` stay skipped,
+so a worktree that has run `uv` or `npm` does not block on a bundled CA certificate, and the loose keyword
+names (token, password, secret, credential) stay skipped. Any value other than literal `true` leaves the
+default in force.
+
 **The skip is only honored while every tracked `.gitignore` (root or nested) is unchanged from the
 trusted merge base** (security review M1; compared case-insensitively, because on NTFS git reads a
 tracked `dir/.GITIGNORE` as an ignore file). The ignore rules are the checkout's own, so without this a
