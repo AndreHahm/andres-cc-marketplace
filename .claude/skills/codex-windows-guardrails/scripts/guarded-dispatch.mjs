@@ -382,9 +382,12 @@ const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
 // `total_tokens: int = 0`, or `api_key: str = os.getenv("X")`, still pass.
 // Widened by the pre-PR cross-model-review (pass 3) from a narrower form. The
 // secret word may be the whole name (`KEY: str = "x"`, Codex PR review P1); the
-// lookahead only keeps the name from starting with a digit.
+// lookahead only keeps the name from starting with a digit. The leading indent is
+// `[ \t]*`, not `\s*`: with the `m` flag `^` also matches after a lone `\r`, and
+// `\s*` could then span a run of line terminators from every such start
+// (Codacy ESLint no-super-linear-move).
 const ANNOTATED_SECRET_LITERAL_PATTERN =
-  /^\s*(?=[A-Za-z_])[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
+  /^[ \t]*(?=[A-Za-z_])[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
 // Linear on purpose (pass-4 review): an earlier form chained `\s*`, a lazy
 // `[^=]+?` and `\s*` before the `=`, which backtracked roughly cubically on a
 // long whitespace run (4000 spaces took ~8 s) -- a denial of service on the
@@ -634,10 +637,16 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
             try {
               // Size check first (bytes on disk): an over-cap file is never
               // read, and stays null = unverifiable = blocked.
-              content =
-                fs.statSync(file.path).size > CONTENT_SCAN_MAX_BYTES
-                  ? null
-                  : fs.readFileSync(file.path, "utf8");
+              // file.path comes from this function's own in-root directory walk, never
+              // from caller input, so the non-literal path is the scanner's purpose
+              // (Codacy: eslint security/detect-non-literal-fs-filename, Semgrep
+              // non-literal-fs-filename -- both false positives here).
+              // eslint-disable-next-line security/detect-non-literal-fs-filename
+              const sizeOnDisk = fs.statSync(file.path).size; // nosemgrep
+              if (sizeOnDisk <= CONTENT_SCAN_MAX_BYTES) {
+                // eslint-disable-next-line security/detect-non-literal-fs-filename
+                content = fs.readFileSync(file.path, "utf8"); // nosemgrep
+              }
             } catch {
               content = null;
             }
