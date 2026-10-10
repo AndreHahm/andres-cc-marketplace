@@ -223,6 +223,30 @@ export function gitignoreUnchangedSinceBase(repoRoot, base = resolveTrustedBase(
   }
 }
 
+// `git hash-object --path` (used by isExempt below) applies the path's content
+// transformations -- `ident` ($Id: ...$ expansion), a clean `filter`, and
+// `working-tree-encoding` -- so bytes that differ on disk can hash equal to the base
+// blob (Codex PR review, P1: a secret inside an `$Id: ... $` field). Rather than
+// hashing raw bytes, which would break CRLF checkouts, the exemption is refused for
+// any path for which the BASE declares one of them. Fails closed: if the attributes
+// cannot be read, the path counts as transforming. `unset` (-ident) turns the
+// transformation off, so it is safe; `unspecified` means it was never declared.
+const TRANSFORMING_ATTRIBUTES = ["ident", "filter", "working-tree-encoding"];
+
+function declaresTransformingAttribute(repoRoot, base, posixPath) {
+  const out = runGit(["check-attr", `--source=${base}`, ...TRANSFORMING_ATTRIBUTES, "--", posixPath], repoRoot);
+  if (out === null) return true;
+  const seen = new Set();
+  for (const line of out.split("\n")) {
+    const match = line.match(/: (ident|filter|working-tree-encoding): (.*)$/);
+    if (!match) continue;
+    seen.add(match[1]);
+    const value = match[2].trim();
+    if (value !== "unspecified" && value !== "unset") return true;
+  }
+  return seen.size !== TRANSFORMING_ATTRIBUTES.length;
+}
+
 // Returns { base, isExempt(relativePath), dispose() } or null (fail closed).
 // `base` is the trusted merge base; pass an already-resolved one (as
 // guarded-dispatch.mjs does) so a scan resolves it once, not once per helper.
@@ -295,6 +319,7 @@ export function createBaseVerifier(repoRoot, base = resolveTrustedBase(repoRoot)
         // absolutePath is the repo-root-joined path of a scan candidate; lstat is the
         // symlink-safe regular-file check itself (Codacy FP).
         if (!fs.lstatSync(absolutePath).isFile()) return false; // nosemgrep
+        if (declaresTransformingAttribute(repoRoot, base, posixPath)) return false;
         const currentBlob = runGit(
           [`--attr-source=${base}`, "hash-object", `--path=${posixPath}`, "--", absolutePath],
           repoRoot

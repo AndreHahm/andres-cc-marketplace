@@ -1081,6 +1081,43 @@ console.log("\n=== trusted-base .secretlintignore tier: gitignore syntax, but on
   check("the clean state advances past the scan again (control: nothing above left residue)", passedScan(f.run()), JSON.stringify(f.last));
 }
 
+console.log("\n=== Codex PR review (P1): a base that declares a content-transforming attribute never grants the trusted-base exemption ===");
+// `git hash-object --path` applies ident / clean filters / working-tree-encoding, so a file
+// whose on-disk bytes differ (inside an `$Id: ... $` field, say) can hash equal to its base
+// blob. The tier therefore refuses any path for which the BASE declares one of them.
+{
+  for (const attr of ["ident", "filter=lossy", "working-tree-encoding=UTF-8"]) {
+    const f = makeFixture();
+    writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\n/fixtures\n");
+    writeFixtureFile(f.root, ".gitattributes", `fixtures/* ${attr}\n`);
+    writeFixtureFile(path.join(f.root, "fixtures"), "secret-notes.txt", `${fakeCredential} $Id$\n`);
+    f.commit("base with a transforming attribute");
+    f.markBase();
+    check(
+      `base declares ${attr}: an UNCHANGED credential-shaped file is not exempt (fail closed)`,
+      blockedBy(f.run(), /secret-notes\.txt/),
+      JSON.stringify(f.last)
+    );
+    writeFixtureFile(path.join(f.root, "fixtures"), "secret-notes.txt", `${fakeCredential} $Id: REAL_SECRET_VALUE_1234567890 $\n`);
+    check(
+      `base declares ${attr}: a change confined to an $Id: ...$ field is not exempt either`,
+      blockedBy(f.run(), /secret-notes\.txt/),
+      JSON.stringify(f.last)
+    );
+  }
+  const control = makeFixture();
+  writeFixtureFile(control.root, ".secretlintignore", ".secretlintignore\n/fixtures\n");
+  writeFixtureFile(control.root, ".gitattributes", "*.md text\n");
+  writeFixtureFile(path.join(control.root, "fixtures"), "secret-notes.txt", `${fakeCredential} $Id$\n`);
+  control.commit("base with an unrelated, non-transforming attribute");
+  control.markBase();
+  check(
+    "control: an unrelated attribute (*.md text) does not disable the exemption for an unchanged file",
+    passedScan(control.run()),
+    JSON.stringify(control.last)
+  );
+}
+
 console.log("\n=== security review M2: an exemption the branch adds for a file ALREADY in the base is not honored by the trusted-base tier (the older exact-path tier still reads the working tree: issue #295) ===");
 {
   const f = makeFixture();
