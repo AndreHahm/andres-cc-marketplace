@@ -446,6 +446,46 @@ def check_posting_section_uses_script():
     return True, "the posting section routes everything through the script, dry run first"
 
 
+def _section(text, heading):
+    """Text of one '## <heading>' section, up to the next '## ' heading, or None."""
+    match = re.search(rf"^## {re.escape(heading)}\n.*?(?=^## |\Z)", text, re.S | re.M)
+    return match.group(0) if match else None
+
+
+def check_recovery_guidance():
+    """The recovery file has a row for each of the six write actions and forbids a blind retry."""
+    _, body = split_skill()
+    section = _section(body, "Recovering from a wrong or uncertain write")
+    if section is None:
+        return False, "'## Recovering from a wrong or uncertain write' section not found"
+    section = " ".join(section.split())
+    problems = [
+        f"the SKILL.md section no longer says: {n}"
+        for n in ("do not retry", "re-read its live state", "references/recovery.md")
+        if n not in section
+    ]
+    guide = _section(body, "Reference Guide")
+    if guide is None or "`references/recovery.md`" not in guide:
+        problems.append("the Reference Guide table has no row for `references/recovery.md`")
+    path = SKILL_DIR / "references" / "recovery.md"
+    if not path.exists():
+        return False, "references/recovery.md not found"
+    text = read(path)
+    rules = _section(text, "Rules for any uncertain or failed write")
+    if rules is None or "**Do not retry.**" not in rules:
+        problems.append("the rules section of references/recovery.md does not forbid a retry")
+    table = _section(text, "Per action")
+    if table is None:
+        problems.append("references/recovery.md has no '## Per action' section")
+    else:
+        for action in ("rebase", "recreate", "close", "ignore", "unignore", "show"):
+            if not re.search(rf"^\| `{action}[ `]", table, re.M):
+                problems.append(f"the Per action table has no row for `{action}`")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "recovery guidance covers every write action and forbids a blind retry"
+
+
 def check_classifier_tests_pass():
     test = SKILL_DIR / "scripts" / "test_check_uv_lock_bump.py"
     if not test.exists():
@@ -511,6 +551,7 @@ def main():
         check_real_run_form_stays_ungranted,
         check_reply_author_rule_is_exact,
         check_posting_section_uses_script,
+        check_recovery_guidance,
         check_classifier_tests_pass,
         check_action_tests_pass,
         check_read_tests_pass,

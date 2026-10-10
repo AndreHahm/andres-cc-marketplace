@@ -1,0 +1,36 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops for PR #210 and does not retry the real run, post another comment, use a different command or fall back to a raw `gh` command",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Re-reads the live state with `dependabot_pr_read.py pr-view 210 --fields` naming state, headRefOid and comments, looks for its own comment by the exact body the dry run printed, and counts a Dependabot reply only when its author is exactly `dependabot` or `dependabot[bot]`",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Treats what it finds as evidence that may indicate the write took effect, not proof, and says so and asks the user if it is still unclear",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Tells the user the PR number and the exact body `@dependabot ignore this dependency`, and that the comment is public and permanent",
+      "type": "presence",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Says it cannot reopen the PR or delete the comment, and does not offer or post the deprecated `@dependabot reopen`",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Posts only commands listed in `references/dependabot-comments.md` (for example `show <dep> ignore conditions` or `unignore`), only if the user asks and each asked separately, and says the ignore preference is repository-wide without stating how long it lasts",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
