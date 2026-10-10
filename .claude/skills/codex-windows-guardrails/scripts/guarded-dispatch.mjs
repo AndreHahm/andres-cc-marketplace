@@ -385,9 +385,11 @@ const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
 // lookahead only keeps the name from starting with a digit. The leading indent is
 // `[ \t]*`, not `\s*`: with the `m` flag `^` also matches after a lone `\r`, and
 // `\s*` could then span a run of line terminators from every such start
-// (Codacy ESLint no-super-linear-move).
+// (Codacy ESLint no-super-linear-move). Between `=` and the quote, `[ \t(]*` also
+// admits opening parentheses (`API_KEY: str = ("x")`, Codex PR review round 3); it
+// is one character class on purpose, since `\s*\(*\s*` would be quadratic on spaces.
 const ANNOTATED_SECRET_LITERAL_PATTERN =
-  /^[ \t]*(?=[A-Za-z_])[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
+  /^[ \t]*(?=[A-Za-z_])[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=[ \t(]*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
 // Linear on purpose (pass-4 review): an earlier form chained `\s*`, a lazy
 // `[^=]+?` and `\s*` before the `=`, which backtracked roughly cubically on a
 // long whitespace run (4000 spaces took ~8 s) -- a denial of service on the
