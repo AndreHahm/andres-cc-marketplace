@@ -72,6 +72,8 @@ VIEW_FIELDS = frozenset(
 )
 CHECK_BUCKETS = frozenset({"pass", "fail", "pending", "skipping", "cancel"})
 # `gh pr checks` exits 0 when all pass, 1 on a failing check or none reported, 8 while pending.
+# With nothing to report it prints "no checks reported on the '<branch>' branch" to stderr (live-
+# verified; the word "required" is absent even under --required).
 CHECKS_EXIT_CODES = (0, 1, 8)
 
 EXIT_OK, EXIT_USAGE, EXIT_PRECONDITION, EXIT_TOOL = 0, 2, 3, 4
@@ -288,9 +290,9 @@ def pr_checks(run, gh, repo, pr):
                 "link": cols[3] if len(cols) > 3 else "",
             }
         )
-    if not rows and "no required checks" not in done.stderr:
+    if not rows and "checks reported" not in done.stderr:
         raise Refusal(
-            f"gh pr checks {pr} reported nothing and no 'no required checks' notice", EXIT_TOOL
+            f"gh pr checks {pr} reported nothing and no 'checks reported' notice", EXIT_TOOL
         )
     return {"count": len(rows), "items": rows}
 
