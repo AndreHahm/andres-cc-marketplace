@@ -21,11 +21,41 @@ matching its own pre-existing scope note above.
 
 import argparse
 import json
+import math
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 KNOWN_LEVELS = {"whole_session", "skill", "subagent", "tool"}
+
+
+def _bad_number(value: object) -> bool:
+    """True for a present, non-null value that is not a usable count.
+
+    Booleans, text, negative numbers and nan/inf are all refused.
+    """
+    if value is None:
+        return False
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return True
+    return not math.isfinite(value) or value < 0
+
+
+def validate_entries(entries: list[dict]) -> str | None:
+    """Return a one-line description of the first malformed entry, or None when all are usable.
+
+    Absent or null `tokens`/`duration_ms` still mean 0, and an unknown `level` still falls back
+    to "subagent" in `aggregate`; only values that would crash or corrupt the totals are refused.
+    """
+    for index, entry in enumerate(entries):
+        for field in ("tokens", "duration_ms"):
+            if _bad_number(entry.get(field)):
+                got = entry.get(field)
+                return f"entry {index}: {field} must be a non-negative number, got {got!r}"
+        label = entry.get("label")
+        if label is not None and not isinstance(label, str):
+            return f"entry {index}: label must be a string, got {label!r}"
+    return None
 
 
 def aggregate(entries: list[dict]) -> dict:
@@ -91,6 +121,11 @@ def main() -> int:
 
     if not isinstance(entries, list) or not all(isinstance(e, dict) for e in entries):
         print("Error: --input must be a JSON array of objects", file=sys.stderr)
+        return 1
+
+    problem = validate_entries(entries)
+    if problem is not None:
+        print(f"Error: invalid input in {input_path}: {problem}", file=sys.stderr)
         return 1
 
     result = aggregate(entries)
