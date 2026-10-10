@@ -182,11 +182,10 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
 - `linear.repositories` — a map from a repository slug (`owner/repo`) to that repository's Linear
   team: `{"owner/repo": {"production_team_id": "...", "test_team_id": "..."}}`. A caller such as
   `workledger-kit` sends only the `owner/repo` slug (as `linear_target`) and never holds team IDs;
-  this kit is meant to resolve the slug to a team here. **Not yet implemented:**
-  `plugin-integration-intake` does not resolve against this map today, so until it does, a slug
-  `linear_target` is an ambiguous-target structured handoff, and `wiring-a-caller.md` still says a
-  real `linear_target` is always a stable ID (`intake-payload-schema.md` calls it the calling
-  plugin's own guess at the entity). When the lookup ships:
+  this kit resolves the slug to a team here. `plugin-integration-intake` requests this lookup and
+  `linear-work-management` performs it after the Local Override trust check (procedure:
+  `skills/linear-work-management/references/wmgt-linear-slug-resolution.md`; intake side:
+  `skills/plugin-integration-intake/references/wmgt-intake-batch-contract.md`), under these rules:
   - A slug is matched exactly after normalization (lowercase, no trailing `.git`, no glob or prefix
     matching). Map keys must be stored in that normalized form, and two keys that normalize to the
     same value are rejected. A slug that is not a key in this map is an **unknown repository and
@@ -557,6 +556,14 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-10-09 — Wave 3a work package 3 (intake batch, query and update). `plugin-integration-intake`
+  now resolves an `owner/repo` `linear_target` through `linear.repositories` (the rules recorded under
+  Versioned Configuration), and gained an optional `operation` (`create`, `query`, `update`), a `records`
+  batch form with one hash-bound approval per batch, an exact-key `keys` query form, and a caller-asserted
+  `suggested_mapping.test_run` flag. The hash is computed by `scripts/wmgt_batch_hash.py`. No change to
+  the host profile or the versioned configuration schema. Procedures:
+  `skills/plugin-integration-intake/references/wmgt-intake-batch-contract.md` and
+  `wmgt-intake-query-update-contract.md`.
 - 2026-10-08 — Wave 3a work package 2 (multi-team configuration). Host profile gained a fifth
   operation, `linear.initiatives.read` (organization-scoped, read-only Initiative reads on a second
   Linear connector, shipped `unconfigured` with no connector); additive within host-profile schema v1.

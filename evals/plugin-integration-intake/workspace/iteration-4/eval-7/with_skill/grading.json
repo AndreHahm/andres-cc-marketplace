@@ -1,0 +1,27 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Chooses the test team because test_run is true and checks it against linear.write's team_ids",
+      "passed": true,
+      "evidence": "test_run true selects T-TEST; checked against linear.write team_ids [T-PROD] after the trust check passed."
+    },
+    {
+      "text": "Rejects as out of scope and does not silently use the production team",
+      "passed": true,
+      "evidence": "Rejected as out_of_scope; 'no fallback to T-PROD'."
+    },
+    {
+      "text": "Returns a structured handoff and writes nothing",
+      "passed": true,
+      "evidence": "Structured handoff status rejected, category out_of_scope, records_written: 0; no submission file, no approval."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

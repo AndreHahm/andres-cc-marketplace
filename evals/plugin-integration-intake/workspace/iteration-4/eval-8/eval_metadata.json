@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops with a structured handoff when the hash script fails",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not compute, estimate or invent a hash itself",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not ask the person to approve the batch and does not write any record",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

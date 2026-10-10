@@ -1,0 +1,26 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the earlier approve-all as still in force for chunk 2 and does not treat chunk 1's writes as having consumed it",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Runs the chunk command itself and writes only the operation, environment, team and records its own call printed",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Checks the other conditions (file in the scratchpad wmgt-intake folder, printed team in linear.write team_ids with linear.write verified, same environment, team and record count as the approval)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not ask a per-record AskUserQuestion for the 25 records",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

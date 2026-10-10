@@ -1,0 +1,32 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the earlier approve-all as still in force for chunk 2 and does not treat chunk 1's writes as having consumed it",
+      "passed": true,
+      "evidence": "'Every chunk of the same file and hash qualifies, so chunk 2 is covered'; nothing rejected, hash unchanged, batch not finished."
+    },
+    {
+      "text": "Runs the chunk command itself and writes only the operation, environment, team and records its own call printed",
+      "passed": true,
+      "evidence": "Runs the skill's chunk command itself and writes 25 records 'using only what my own chunk call printed'."
+    },
+    {
+      "text": "Checks the other conditions (file in the scratchpad wmgt-intake folder, printed team in linear.write team_ids with linear.write verified, same environment, team and record count as the approval)",
+      "passed": true,
+      "evidence": "Checks file directly in the scratchpad wmgt-intake folder, T-PROD in team_ids with linear.write verified, and that the printed operation, environment and team match the approval (production, T-PROD, 60 records)."
+    },
+    {
+      "text": "Does not ask a per-record AskUserQuestion for the 25 records",
+      "passed": true,
+      "evidence": "'I would ask no new AskUserQuestion'; no per-record prompts."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

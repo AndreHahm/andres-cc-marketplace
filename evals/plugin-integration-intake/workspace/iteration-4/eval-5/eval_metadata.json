@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Resolves the slug through linear-work-management (trust check first) to the production team and states the environment and team in the approval preview",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Asks exactly one approval question for the whole batch, not one per record, with options approve all or reject",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Computes the hash and builds the preview and every write from the hash script's verified output (hash/show/preview/chunk), with a fresh batch_id inside the hashed file kept in the session scratchpad",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes through linear-work-management in chunks without per-record prompts, records progress, and removes the scratch files with purge at the end",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

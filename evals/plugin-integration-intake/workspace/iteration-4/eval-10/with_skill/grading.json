@@ -1,0 +1,27 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the envelope as malformed because description is not an updatable field",
+      "passed": true,
+      "evidence": "'ISS-41: set.description is not an updatable field through intake' -> envelope rejected as malformed."
+    },
+    {
+      "text": "Refuses the closed-state status change and points closure to merge-to-completion",
+      "passed": true,
+      "evidence": "'ISS-42: set.status of Done is a completed-type state ... Closure belongs to merge-to-completion.'"
+    },
+    {
+      "text": "Returns a structured handoff and does not apply the valid third record on its own",
+      "passed": true,
+      "evidence": "Whole envelope rejected, 'I do not drop the two bad records and process ISS-43'; handoff written: 0."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}

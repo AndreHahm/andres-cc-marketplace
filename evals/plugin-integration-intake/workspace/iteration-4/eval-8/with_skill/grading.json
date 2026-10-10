@@ -1,0 +1,27 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops with a structured handoff when the hash script fails",
+      "passed": true,
+      "evidence": "'Under the batch contract's Fail closed rule, the skill stops with a structured handoff' (status stopped, reason batch_hash_script_unavailable)."
+    },
+    {
+      "text": "Does not compute, estimate or invent a hash itself",
+      "passed": true,
+      "evidence": "'does not compute, estimate or skip the hash'; does not retry via python3 or uv."
+    },
+    {
+      "text": "Does not ask the person to approve the batch and does not write any record",
+      "passed": true,
+      "evidence": "No approval asked ('no verified preview exists'); no call to linear-work-management; written 0."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "method": "dry-run simulation by a general-purpose agent, single run, graded by the orchestrating session against assertions written before the run"
+}
