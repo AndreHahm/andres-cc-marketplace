@@ -380,9 +380,11 @@ const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
 // right-hand side STARTS a quoted literal (after ANY annotation text such as
 // `Annotated[str, "x"]`, optionally with an r/b/f/u prefix or triple quotes) --
 // `total_tokens: int = 0`, or `api_key: str = os.getenv("X")`, still pass.
-// Widened by the pre-PR cross-model-review (pass 3) from a narrower form.
+// Widened by the pre-PR cross-model-review (pass 3) from a narrower form. The
+// secret word may be the whole name (`KEY: str = "x"`, Codex PR review P1); the
+// lookahead only keeps the name from starting with a digit.
 const ANNOTATED_SECRET_LITERAL_PATTERN =
-  /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
+  /^\s*(?=[A-Za-z_])[A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API|CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*:[^\r\n]*=\s*[rRbBfFuU]{0,2}(?:"""|'''|"|')[^"'\r\n]/im;
 // Linear on purpose (pass-4 review): an earlier form chained `\s*`, a lazy
 // `[^=]+?` and `\s*` before the `=`, which backtracked roughly cubically on a
 // long whitespace run (4000 spaces took ~8 s) -- a denial of service on the
