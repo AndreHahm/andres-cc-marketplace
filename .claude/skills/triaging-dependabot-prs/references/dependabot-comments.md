@@ -66,7 +66,7 @@ and `<condition>` come from, which is the model's job and is stated here.
 
 ## Reading Dependabot's replies
 
-Run `gh pr view <n> --json comments` and count a comment only when its `author.login` is exactly
+Run `dependabot_pr_read.py pr-view <n> --fields comments` (SKILL.md, "Reading PR state") and count a comment only when its `author.login` is exactly
 `dependabot` (what that command returned for Dependabot's replies on 2026-10-08) or `dependabot[bot]`
 (what the REST API returned as `user.login` for the same account that day, in case replies are ever
 read through the REST API instead of this command). Compare the whole string, not a prefix: a comment by any other login, however similar

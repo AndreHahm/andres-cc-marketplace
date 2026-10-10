@@ -20,9 +20,6 @@ PATH_RE = re.compile(r"`((?:references|scripts)/[\w./-]+)`")
 BARE_MD_RE = re.compile(r"`([\w-]+\.md)`")
 
 EXPECTED_BASH = {
-    "gh pr list:*",
-    "gh pr view:*",
-    "gh pr checks:*",
     "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
     "check_uv_lock_bump.py:*",
     "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
@@ -370,6 +367,43 @@ def check_no_raw_comment_close_or_marker():
     return True, "no raw gh comment/close, no marker script, no grants for either"
 
 
+def check_no_gh_pr_read_grants():
+    """PR reads go through dependabot_pr_read.py: no `gh pr` grant of any kind, and every read
+    subcommand the instructions rely on exists in the script."""
+    fm, body = split_skill()
+    if fm is None:
+        return False, "no frontmatter to check"
+    bash, _ = allowed_tools(fm)
+    problems = [f"gh pr grant: {g}" for g in sorted(bash) if g.startswith("gh ")]
+    used = without_boundaries(body) + "\n" + "\n".join(reference_texts().values())
+    problems += [f"raw gh pr command: {s[:50]}" for s in re.findall(r"`(gh pr [^`]*)`", used)]
+    script = read(SKILL_DIR / "scripts" / "dependabot_pr_read.py")
+    for sub in ("pr-list", "pr-view", "pr-checks", "files", "commits", "uv-lock"):
+        if f'"{sub}"' not in script:
+            problems.append(f"read script has no {sub} subcommand")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "no gh grant or raw gh pr command; the read script has all six subcommands"
+
+
+def check_real_run_form_stays_ungranted():
+    """Only the --dry-run form of dependabot_pr_action.py is granted, and the instructions say
+    the real-run form is deliberately ungranted (so every real write raises its own prompt)."""
+    fm, body = split_skill()
+    if fm is None:
+        return False, "no frontmatter to check"
+    bash, _ = allowed_tools(fm)
+    grants = [g for g in sorted(bash) if "dependabot_pr_action.py" in g]
+    problems = [f"real-run grant: {g}" for g in grants if "--dry-run" not in g]
+    if len(grants) != 1:
+        problems.append(f"expected exactly one action-script grant, found {len(grants)}")
+    if "deliberately absent from `allowed-tools`" not in body:
+        problems.append("the instructions do not say the real-run form is deliberately ungranted")
+    if problems:
+        return False, "; ".join(problems)
+    return True, "only the --dry-run action grant exists and the omission is stated as deliberate"
+
+
 def check_reply_author_rule_is_exact():
     """The reply-reading section names both Dependabot logins and requires a whole-string match."""
     path = SKILL_DIR / "references" / "dependabot-comments.md"
@@ -473,6 +507,8 @@ def main():
         check_script_covers_supported_table,
         check_supported_comment_table,
         check_no_raw_comment_close_or_marker,
+        check_no_gh_pr_read_grants,
+        check_real_run_form_stays_ungranted,
         check_reply_author_rule_is_exact,
         check_posting_section_uses_script,
         check_classifier_tests_pass,
