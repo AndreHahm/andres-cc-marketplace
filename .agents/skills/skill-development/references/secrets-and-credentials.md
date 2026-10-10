@@ -337,7 +337,7 @@ Set them before running:
 ```bash
 export GITHUB_TOKEN=your_token_here
 export DATABASE_URL=postgres://user:password@host/db
-export API_KEY=sk_live_1234567890abcdef
+export API_KEY=YOUR_PAYMENT_KEY_HERE
 ```
 
 Then validate:

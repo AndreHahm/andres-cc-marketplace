@@ -17,12 +17,3 @@ regexes = [
 ]
 # Limit to YAML only for now. Comment this out if you want it to apply everywhere.
 paths = ['''(?i).*\.ya?ml$''']
-
-# One documentation file about secrets handling carries one deliberately fake Stripe-shaped
-# example. Both conditions must hold: this exact path AND this exact fake value, so any other
-# secret-shaped value added to that file (or this value anywhere else) is still reported.
-[[allowlists]]
-description = "Fake Stripe-shaped example in the secrets-handling guide (.agents copy)"
-condition = "AND"
-paths = ['''^\.agents/skills/skill-development/references/secrets-and-credentials\.md$''']
-stopwords = ["sk_live_1234567890abcdef"]

@@ -130,7 +130,7 @@ def fetch_from_service():
 ❌ **BAD: Hardcoded credentials**
 ```python
 # scripts/migrate.py
-DB_URL = "postgres://admin:SecurePass123@db.example.com:5432/myapp"
+DB_URL = "postgres://user:password@host/db"
 
 def run_migration():
     engine = create_engine(DB_URL)
@@ -337,7 +337,7 @@ Set them before running:
 ```bash
 export GITHUB_TOKEN=your_token_here
 export DATABASE_URL=postgres://user:password@host/db
-export API_KEY=sk_live_1234567890abcdef
+export API_KEY=YOUR_PAYMENT_KEY_HERE
 ```
 
 Then validate:
