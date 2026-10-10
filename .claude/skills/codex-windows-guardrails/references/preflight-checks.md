@@ -153,7 +153,7 @@ found on `PATH` outside the repo (a `PATH` folder that is the repo root or insid
 `.venv/Scripts` or `node_modules/.bin`, is skipped; compared by real path, so a junction or 8.3 alias into the repo does not hide it), never a bare `git`: on Windows, libuv resolves a bare program name against the
 child's working directory first (live-verified with a stand-in `git.exe` while
 `NoDefaultCurrentDirectoryInExePath` was unset), so a branch could otherwise commit its own `git.exe`
-at the repo root and have it run before any guard. Other `codex-kit` scripts that call a bare `git`
+at the repo root and have it run before any guard. If no usable git is found at all, the dispatch fails up front with the typed category `git_unavailable` rather than failing closed through a misleading downstream error. Other `codex-kit` scripts that call a bare `git`
 (for example `scripts/lib/cdx-git.mjs`) predate this and are not changed here.
 
 **Trusted-base `.secretlintignore` tier (full gitignore syntax).** Separate from, and checked before,
@@ -185,7 +185,7 @@ or `api_key: str = os.getenv("X")` still pass.
 
 **Input bound (pass-5 review).** Every pattern the content scan applies (the two local ones and the shared `redactSecrets`)
 backtracks roughly quadratically on a single line packed with secret-suggestive words (about 0.6 s at 80,000 characters), and
-the scanned file may be attacker-controlled. A file over 2 MB, or with any line over 20,000 characters, therefore cannot be
+the scanned file may be attacker-controlled. A file over 2 MB on disk (checked with a size lookup before the file is read, so it is never loaded), or with any line over 20,000 characters, therefore cannot be
 cleared by the content scan at all: it fails closed as `secret_file_in_scope`. The annotated-assignment check is also
 line-oriented, so a multi-line annotation (`API_KEY: (` / `str` / `) = "..."`) is a known gap; closing it needs a language
 parser, not another pattern.

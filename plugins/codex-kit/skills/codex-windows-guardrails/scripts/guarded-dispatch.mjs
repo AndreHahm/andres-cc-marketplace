@@ -399,11 +399,18 @@ const ANNOTATED_SECRET_LITERAL_PATTERN =
 // bounded BEFORE any pattern runs, and a file over either bound simply
 // cannot be cleared by this scan (fail closed -- it stays a secret_file_in_scope
 // block). Real source and docs sit far below both limits.
+//
+// The size bound is in BYTES on disk (fs.statSync), applied BEFORE the file is
+// read, so an oversized file is never loaded into memory at all; Qodo review
+// finding 4 caught the earlier version comparing a decoded string's UTF-16
+// length against a "bytes" constant (a multi-byte file of 2.7 MB slipped
+// through). A file within the byte bound decodes to at most that many UTF-16
+// code units, so the regex input is bounded too; the per-line bound below is
+// in characters because that is what the regexes backtrack over.
 const CONTENT_SCAN_MAX_BYTES = 2 * 1024 * 1024;
 const CONTENT_SCAN_MAX_LINE_CHARS = 20000;
 
 function isBoundedForContentScan(content) {
-  if (content.length > CONTENT_SCAN_MAX_BYTES) return false;
   let lineStart = 0;
   for (let i = 0; i <= content.length; i += 1) {
     if (i === content.length || content.charCodeAt(i) === 10) {
@@ -601,7 +608,12 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base) {
             // re-verifying.
             let content = null;
             try {
-              content = fs.readFileSync(file.path, "utf8");
+              // Size check first (bytes on disk): an over-cap file is never
+              // read, and stays null = unverifiable = blocked.
+              content =
+                fs.statSync(file.path).size > CONTENT_SCAN_MAX_BYTES
+                  ? null
+                  : fs.readFileSync(file.path, "utf8");
             } catch {
               content = null;
             }
@@ -787,6 +799,21 @@ async function main() {
       fail("invalid_arguments", `target-paths entry contains a disallowed character: ${targetPath}`);
       return;
     }
+  }
+
+  // Qodo review finding 5: gitExecutable() returns null when no git.exe is
+  // found on PATH outside the repository, and every git call below (the
+  // local-override tracked check, the toplevel check, the ignored-file listing,
+  // the trusted-base helpers) then fails inside its own try/catch -- failing
+  // closed, but surfacing as a misleading "guardrails_disabled" or "repo-root
+  // is not inside a git repository". One up-front, typed failure instead, so
+  // the cause is named once and no call site has to reinterpret a throw.
+  if (!gitExecutable(repoRoot)) {
+    fail(
+      "git_unavailable",
+      "no usable git.exe was found on PATH outside the repository (a PATH folder inside the repository is deliberately never used)"
+    );
+    return;
   }
 
   // The enable check happens here, in code -- not left as prose the caller
