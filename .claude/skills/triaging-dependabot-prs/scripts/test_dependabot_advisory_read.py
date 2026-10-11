@@ -35,6 +35,19 @@ def load(path, name):
 
 mod = load(HERE / "dependabot_advisory_read.py", "dependabot_advisory_read")
 
+
+def symlinks_supported():
+    """Whether this machine and user may create symlinks (Windows needs a privilege)."""
+    with tempfile.TemporaryDirectory() as probe:
+        try:
+            os.symlink(os.path.join(probe, "target"), os.path.join(probe, "link"))
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+SYMLINKS_OK = symlinks_supported()
+
 GH = "/opt/bin/gh"
 
 
@@ -705,6 +718,56 @@ packages:
             self.assertFalse(mod.commit_like(value), value)
 
 
+class TruncatedAdvisoryTests(unittest.TestCase):
+    """A full first page of advisories is not the whole answer: no comparison may rest on it."""
+
+    @staticmethod
+    def page(count, severity="low"):
+        return [gh_advisory(f"GHSA-{i}", severity, pkg="requests") for i in range(count)]
+
+    def signal(self, old_count, new_count):
+        gh = FakeGh(
+            {"requests@1.0.0": self.page(old_count), "requests@2.0.0": self.page(new_count)}
+        )
+        _, result = run_main(base_args(old="1.0.0", new="2.0.0"), gh, FakeFetch())
+        return result
+
+    def test_a_truncated_side_makes_the_close_signal_null(self):
+        for old_count, new_count in ((100, 100), (100, 3), (3, 100)):
+            result = self.signal(old_count, new_count)
+            self.assertTrue(
+                result["versions"]["old"].get("truncated")
+                or result["versions"]["new"].get("truncated")
+            )
+            self.assertIsNone(
+                result["signals"]["new_vulnerable_not_safer_than_old"], (old_count, new_count)
+            )
+
+    def test_complete_lists_still_compare(self):
+        self.assertTrue(self.signal(3, 3)["signals"]["new_vulnerable_not_safer_than_old"])
+        self.assertFalse(self.signal(5, 0)["signals"]["new_vulnerable_not_safer_than_old"])
+
+    def test_a_truncated_newest_compatible_list_makes_the_merge_signal_null(self):
+        newer = {
+            mod.PYPI_URL.format(name="requests"): pypi_doc(["1.0.0", "2.0.0", "3.0.0"], "3.0.0")
+        }
+        for version in ("2.0.0", "3.0.0"):
+            newer[mod.PYPI_VERSION_URL.format(name="requests", version=version)] = pypi_meta(
+                ["dep-a>=2"]
+            )
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        path = os.path.join(tmp, "base-uv.lock")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(UV_LOCK)
+        gh = FakeGh({"requests@3.0.0": self.page(100, "high")})
+        args = base_args(old="1.0.0", new="2.0.0") + ["--lock", path]
+        _, result = run_main(args, gh, FakeFetch(newer))
+        self.assertEqual(result["newest_compatible"]["version"], "3.0.0")
+        self.assertTrue(result["versions"]["newest_compatible"]["truncated"])
+        self.assertIsNone(result["signals"]["new_safer_than_newest_compatible"])
+
+
 class LockParserTests(unittest.TestCase):
     def test_uv_lock(self):
         lock = mod.parse_uv_lock(UV_LOCK)
@@ -744,19 +807,21 @@ class LockPathTests(unittest.TestCase):
 
     def test_bad_paths_are_refused(self):
         good = self.write("base-uv.lock")
-        link = os.path.join(self.dir, "head-uv.lock")
-        os.symlink(good, link)
         outside = os.path.join(HERE, "base-uv.lock")
         pnpm = self.write("base-pnpm-lock.yaml", PNPM_LOCK)
-        for path, eco in [
+        cases = [
             (self.write("evil.lock"), "uv"),
             (pnpm, "uv"),
             (good, "npm_and_yarn"),
-            (link, "uv"),
             (outside, "uv"),
             ("base-uv.lock", "uv"),
             (good, "github_actions"),
-        ]:
+        ]
+        if SYMLINKS_OK:
+            link = os.path.join(self.dir, "head-uv.lock")
+            os.symlink(good, link)
+            cases.append((link, "uv"))
+        for path, eco in cases:
             with self.assertRaises(mod.Refusal, msg=(path, eco)):
                 mod.load_lock(path, eco)
 
@@ -770,6 +835,7 @@ class LockPathTests(unittest.TestCase):
         with self.assertRaises(mod.Refusal):
             mod.load_lock(fifo, "uv")
 
+    @unittest.skipUnless(SYMLINKS_OK, "symlink creation not permitted here")
     def test_a_lock_still_loads_and_a_symlink_is_still_refused_without_o_nofollow(self):
         """Windows' os module has no O_NOFOLLOW: the loader must not depend on it."""
         good = self.write("base-uv.lock")

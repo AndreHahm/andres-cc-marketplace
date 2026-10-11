@@ -903,7 +903,8 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
         }
     latest = out["latest"]
     v = out["versions"]
-    known = {role: info["status"] == "ok" for role, info in v.items()}
+    # A truncated list (a full first page) is not the whole answer, so no comparison may rest on it.
+    known = {role: info["status"] == "ok" and not info.get("truncated") for role, info in v.items()}
     latest_key = version_key(latest) if latest else None
     if target is None or new_key is None or version_key(target) is None:
         new_is_newest_compatible = None

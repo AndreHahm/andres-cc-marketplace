@@ -22,3 +22,11 @@ not be loaded on Windows because `os.O_NOFOLLOW` was used unguarded (every `asse
 internal error; reproduced by removing the attribute on Linux, not run on Windows); a candidate's `requires_python`
 was skipped silently when the lock had no readable `requires-python`, and is now counted as unevaluated; and one
 test used `os.mkfifo`, which Windows lacks, and is now skipped there. The advisory suite has 88 tests.
+
+## Update, 2026-10-11 (second pre-PR cross-model review)
+
+The cross-model review was run a second time on the full diff after the first round's fixes. Two further findings,
+both cross-confirmed and fixed with tests that were each shown to fail without the fix: a full first page of 100
+advisories set `truncated` but the comparison signals still used the partial list (they are now `null` when a
+compared list is truncated), and tests that create symlinks were not skipped where symlink creation is not
+permitted (a probe now skips them; checked by forcing `os.symlink` to raise). The advisory suite has 91 tests.
