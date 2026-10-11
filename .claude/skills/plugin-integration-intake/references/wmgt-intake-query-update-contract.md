@@ -1,7 +1,7 @@
 # Intake Query and Update Contract
 
 The `query` and `update` values of the envelope's `operation` field. Both are Linear only. They share the target
-resolution, scratch files and hash binding described in `wmgt-intake-batch-contract.md` (a see-also: this file states
+resolution, scratch files and hash binding described in the batch procedure (see the Reference Guide in `SKILL.md`; this file states
 every rule it depends on below, in a line or two each). Like the batch
 path, this is prose-enforced: the limits below narrow what a calling plugin can do, they do not authenticate it.
 
