@@ -9,11 +9,13 @@
   "properties": {
     "source_plugin": {
       "type": "string",
+      "maxLength": 64,
       "pattern": "^[a-z0-9][a-z0-9-]*$",
       "description": "The calling plugin's own name, exactly as installed. Caller-asserted, not host-attested -- checked for existence only, never treated as an authenticated identity (see SKILL.md's Trust Model section). Kebab-case allowlist, not just non-empty -- SKILL.md's step 2 uses this value inside a Glob pattern, where an unconstrained string (glob metacharacters, path separators) would defeat the existence check this schema is meant to gate before that procedure ever runs."
     },
     "source_skill": {
       "type": "string",
+      "maxLength": 64,
       "pattern": "^[a-z0-9][a-z0-9-]*$",
       "description": "The calling plugin's own skill that produced this submission. Same kebab-case allowlist and rationale as source_plugin."
     },
@@ -42,7 +44,7 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 50,
-      "items": {"type": "string", "maxLength": 340, "pattern": "^[^|\\s]+/[^|\\s]+\\|[^|\\r\\n]{1,100}\\|[A-Za-z0-9._-]{8,64}$"},
+      "items": {"type": "string", "maxLength": 367, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}\\|[^|\\r\\n]{1,100}\\|[A-Za-z0-9._-]{8,64}$"},
       "description": "Query form: exact dedup keys, never search phrases."
     },
     "suggested_mapping": {

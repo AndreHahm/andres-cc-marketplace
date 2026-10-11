@@ -67,6 +67,7 @@ FULL_DESCRIPTION_COUNT = 3
 SCRATCH_DIR_NAME = "wmgt-intake"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _BATCH_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+_TEAM_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,99}/[a-z0-9][a-z0-9._-]{0,99}$")
 _CREATE_REQUIRED = ("title", "description", "status")
@@ -251,13 +252,13 @@ def load_submission(path_str: str) -> dict:
         isinstance(data.get("linear_target"), str) and _SLUG_RE.fullmatch(data["linear_target"])
     ):
         raise HashError('"linear_target" is required and must be a lowercase owner/repo slug')
-    if data.get("operation") not in _OPERATIONS:
+    if not (isinstance(data.get("operation"), str) and data["operation"] in _OPERATIONS):
         raise HashError('"operation" must be "create" or "update"')
-    if data.get("environment") not in _ENVIRONMENTS:
+    if not (isinstance(data.get("environment"), str) and data["environment"] in _ENVIRONMENTS):
         raise HashError('"environment" must be "production" or "test"')
     team_id = data.get("team_id")
-    if not isinstance(team_id, str) or not team_id.strip():
-        raise HashError('"team_id" must be a non-empty string')
+    if not isinstance(team_id, str) or not _TEAM_ID_RE.fullmatch(team_id):
+        raise HashError('"team_id" must match ^[A-Za-z0-9_-]{1,64}$')
     batch_id = data.get("batch_id")
     if not isinstance(batch_id, str) or not _BATCH_ID_RE.fullmatch(batch_id):
         raise HashError('"batch_id" must match ^[A-Za-z0-9._-]{8,64}$')

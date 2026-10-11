@@ -5,13 +5,18 @@ this skill runs the Local Override trust check that the intake gate cannot. This
 writes nothing.
 
 1. Run the Local Override trust check first. If it fails, return a rejection.
-2. Normalize the slug: lowercase it and remove one trailing `.git`. It must then match
-   `^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$`.
+2. Normalize the slug: lowercase it and remove one trailing `.git` (once, never repeatedly). It must then match
+   `^[a-z0-9][a-z0-9._-]{0,99}/[a-z0-9][a-z0-9._-]{0,99}$` (at most 100 characters on each side of the `/`). A repository name that starts with a dot, such as
+   `org/.github`, cannot match and so cannot be mapped.
 3. Look it up as an exact key of `linear.repositories`. Two map keys that normalize to the same value are a
    configuration error and reject. An unknown slug is rejected, never guessed or defaulted.
 4. The operation in use (`linear.read` or `linear.write`) must be `verified` with a non-null `verified_at`,
    otherwise reject.
-5. Pick `test_team_id` when the caller asked for a test run, otherwise `production_team_id`.
+5. Pick the environment. For a write delegated by `plugin-integration-intake` it comes **only** from the
+   `environment` your own `wmgt_batch_hash.py chunk` call printed (`test` selects `test_team_id`, `production`
+   selects `production_team_id`), never from the caller's message, the original payload's `test_run` or a
+   delegation argument. Otherwise pick `test_team_id` when the caller asked for a test run, else
+   `production_team_id`.
 6. Confirm the chosen team is in `team_ids` of the operation in use. An empty list rejects every team. A null team
    ID for the chosen environment is a rejection, never a fallback to the other environment.
 7. Return the environment, the team ID and a plain statement of what was verified, or the reason for the rejection.

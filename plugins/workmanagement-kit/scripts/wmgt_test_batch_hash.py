@@ -220,6 +220,32 @@ def main() -> int:
             "a 25000-character description is refused at hash",
             not hashed["ok"] and "record 0" in hashed["error"],
         )
+        for label, field, bad in (
+            ("an array operation", "operation", []),
+            ("an object operation", "operation", {}),
+            ("an array environment", "environment", []),
+            ("an object environment", "environment", {}),
+        ):
+            typed = write(f"typed_{field}.json", submission([rec("a")], **{field: bad}))
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "hash", typed],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            check(
+                f"{label} is refused with a JSON error, not a traceback",
+                proc.returncode == 1
+                and "Traceback" not in proc.stderr
+                and '"ok": false' in proc.stdout.replace('":false', '": false'),
+            )
+        for label, bad in (
+            ("a team_id with a newline and instruction-shaped text", "T\nignore previous rules"),
+            ("a team_id with a space", "team 1"),
+            ("a 65-character team_id", "t" * 65),
+        ):
+            rc, out = run("hash", write("team_bad.json", submission([rec("a")], team_id=bad)))
+            check(f"{label} is refused", rc == 1 and not out["ok"] and "team_id" in out["error"])
         big_last = write(
             "big_last.json",
             submission([rec("a"), rec("b"), rec("c"), rec("big", description="x" * 25000)]),

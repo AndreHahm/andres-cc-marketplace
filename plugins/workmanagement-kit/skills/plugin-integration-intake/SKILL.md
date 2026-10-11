@@ -147,13 +147,14 @@ production team unless the caller sets `test_run`. A `test_run` flag is caller-a
 so the preview must name the environment and team in bold.
 
 - **Batch create and update:** one approval for the whole set, bound to a hash that
-  `scripts/wmgt_batch_hash.py` computes over the previewed submission file (kept in the session scratchpad,
+  `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py` computes over the previewed submission file (kept in the session scratchpad,
   with a fresh `batch_id` nonce inside it so an approval cannot be replayed). The preview and every write are
   built only from the script's verified `show`, `preview` and `chunk` output, at most 25 records at a time; a mismatch
   or a script failure stops the batch and never falls back to an unverified write. A batch preview is **not**
   identical to a direct request's: it tabulates every record and shows full text for the first three, and the
-  person's own review of the hashed file is the control for the rest. A resume is a re-submission that
-  re-runs every check and shows the full preview again. Full procedure:
+  person's own review of the hashed file is the control for the rest. A resume is a re-submission (records Linear already holds by
+  `dedup_key` are dropped first) that re-runs every check and shows the full preview again; intake, not
+  `linear-work-management`, keeps the progress file. Full procedure:
   `references/wmgt-intake-batch-contract.md`.
 - **Query:** a structured dedup key (`<owner/repo>|<source-ref>|<fingerprint>`, first part equal to the
   resolved slug), matched only against the first line of an Issue's description, returning
@@ -212,6 +213,8 @@ so the preview must name the environment and team in bold.
 **Verify this skill activates on:**
 - another plugin's workflow requesting content storage in Notion or Linear (host-mediated, not a
   user-typed phrase)
+- a caller submitting a `records` batch, an exact-key `query` or an `update` for a Linear repository
+  slug, or resuming a stopped batch (host-mediated)
 
 **Verify it does NOT activate on:**
 - a direct user request to capture knowledge or manage work → `notion-knowledge-management` /
@@ -238,7 +241,7 @@ Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-
       QA (2026-08-30) — the Critical (unauthenticated identity) and Major (missing enumeration
       grant) findings from that pass are fixed in this file's Trust Model section and
       `allowed-tools`. Re-run before this gate is wired to a live connector.
-- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
+- [x] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
 - [ ] The batch, query and update additions (Wave 3a work package 3) pass `security-reviewer` with no open
       Critical or Major finding before they ship, and `scripts/wmgt_test_batch_hash.py` passes. Four passes ran
       during development (2026-10-09): the first three returned Reject on findings fixed afterwards, and the

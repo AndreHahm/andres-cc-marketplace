@@ -193,7 +193,9 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
     a stable ID or display name. The single `production_team_id`/`test_team_id` pair stays as the
     installation's own default team for work that names no repository.
   - A mapped repository's work goes to its `production_team_id` by default, and to its
-    `test_team_id` only on an explicit test-run signal from the caller.
+    `test_team_id` only on an explicit test-run signal from the caller. For a write delegated by
+    `plugin-integration-intake` after a hash-bound approval, the environment is only the one the
+    verified batch file carries, never a caller message or the original payload's `test_run`.
   - Each mapped team must also appear in the `team_ids` of the host-profile operation being used
     (`linear.read` for a read, `linear.write` for a write), since the host profile's approved scope
     still bounds every call. A mapped team outside that operation's `team_ids` is rejected as out
@@ -253,8 +255,8 @@ connector call at all (see e.g. `notion-knowledge-management/SKILL.md`'s own sec
 copy committed by anyone with repo write access (this file is gitignored by convention, but a
 `git add -f` still tracks it) could falsely assert `verified` status and a scope
 (`workspace_id`/`organization_id`/`team_ids`) an attacker controls, for any unwitting user who later
-checks out that branch. The per-write `AskUserQuestion` approval gate is a separate, hardcoded check
-in each skill and still fires regardless — this file's claims alone can never cause a write to
+checks out that branch. A live `AskUserQuestion` approval (per write, or once per hash-bound intake batch) is a separate,
+hardcoded check in each skill and still fires regardless — this file's claims alone can never cause a write to
 happen with no human in the loop — but a forged `verified`/scope claim still reaches that approval
 prompt as if it were legitimate, which is a real trust-boundary gap, not a merely cosmetic one.
 Before honoring this file's `host_profile`/`versioned_configuration` overrides, resolve whether it
@@ -557,10 +559,10 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 ## Change Log
 
 - 2026-10-09 — Wave 3a work package 3 (intake batch, query and update). `plugin-integration-intake`
-  now resolves an `owner/repo` `linear_target` through `linear.repositories` (the rules recorded under
+  now has `linear-work-management` resolve an `owner/repo` `linear_target` through `linear.repositories` (the rules recorded under
   Versioned Configuration), and gained an optional `operation` (`create`, `query`, `update`), a `records`
   batch form with one hash-bound approval per batch, an exact-key `keys` query form, and a caller-asserted
-  `suggested_mapping.test_run` flag. The hash is computed by `scripts/wmgt_batch_hash.py`. No change to
+  `suggested_mapping.test_run` flag. The hash is computed by `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py`. No change to
   the host profile or the versioned configuration schema. Procedures:
   `skills/plugin-integration-intake/references/wmgt-intake-batch-contract.md` and
   `wmgt-intake-query-update-contract.md`.

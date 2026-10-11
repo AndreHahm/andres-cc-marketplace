@@ -49,7 +49,7 @@ static schema can't express (the existence check, the ambiguous-target check).
 
 | Field | Required | Notes |
 |---|---|---|
-| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | For Notion, the calling plugin's own guess at the database. For Linear, an `owner/repo` slug that intake resolves to a team through `linear.repositories` (exact match; unknown slug rejected; procedure: see the Reference Guide in `SKILL.md`) |
+| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | For Notion, the calling plugin's own guess at the database. For Linear, an `owner/repo` slug that intake has `linear-work-management` resolve to a team through `linear.repositories` (exact match; unknown slug rejected; procedure: see the Reference Guide in `SKILL.md`) |
 | `test_run` | No | Boolean, default `false`. Caller-asserted, like `source_plugin`; selects the mapped test team instead of the production team and never widens scope |
 | `rationale` | No | Why the calling plugin believes this mapping is correct |
 
