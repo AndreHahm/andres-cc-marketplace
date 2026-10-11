@@ -134,9 +134,12 @@ called once per run through `_diff_scope` in `__main__.py`:
 
 "On a line the PR changed" means the new-side line ranges of `git diff -U0 --text <base>...HEAD`, matched
 exactly (no slack window). A pure deletion counts the two lines either side of the removal, and a finding that
-names no line counts as on a changed line whenever its file is touched. A cross-file finding also lists the other files involved (`components`); it is judged by the same test at each
-cited location and blocks when any one of them is on a changed line. The following all count as changed in
-full, so a finding on them blocks whichever line it names:
+names no line counts as on a changed line whenever its file is touched. A cross-file finding also lists the other files involved (`components`); it is judged at each
+cited location and blocks when any one of them is on a changed line. A component that names a line is tested
+like the primary location. A component that names no line (a bare path) counts only when its file is changed
+in full (the list below), never merely because the file is touched: otherwise a one-line edit to a file would
+block every finding that cites it. The following all count as changed in full, so a finding on them blocks
+whichever line it names:
 
 - a changed path that has no hunk: a pure rename (both the old and the new name), a mode change, an empty or
   binary file;
@@ -145,6 +148,7 @@ full, so a finding on them blocks whichever line it names:
   repository (up to `/`) therefore makes every finding that resolves into that target block;
 - a file that was renamed or copied, or whose mode changed, whether or not it also has edits — its carried-over
   lines become loadable at a new path or mode, which is the same exposure a new symlink creates;
+- a file the PR newly adds — every line is new, so a bare component naming it counts;
 - a file whose changed lines contain a line break other than `\n` (a bare CR, vertical tab, form feed,
   FS/GS/RS, NEL, U+2028 or U+2029; the CR that ends a CRLF line does not count). Git counts lines by `\n` only,
   but a reviewer may count by these, so its line number cannot be trusted to match git's for that file.
