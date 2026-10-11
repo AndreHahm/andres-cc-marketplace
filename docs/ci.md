@@ -143,7 +143,10 @@ full, so a finding on them blocks whichever line it names:
   but a reviewer may count by these, so its line number cannot be trusted to match git's for that file.
 
 A finding's path is normalised before it is matched (`./x`, `a//b`, `a/../b`, absolute paths under the checkout,
-and symlinks resolved against the git root, not the working directory). A resolved path outside the checkout adds
+and symlinks resolved against the git root, not the working directory). A symlink is recognised from git's tree
+(mode `120000`, target text read from the blob) as well as from the checkout, so `core.symlinks=false` does not
+hide one. Off Linux, paths are also compared after Unicode NFC normalisation and case folding, because the
+filesystem there can match a spelling git did not store; on Linux (the CI runner) they are compared exactly. A resolved path outside the checkout adds
 no extra spelling to match, unless it lies inside the target of a changed symlink, which blocks.
 
 **Fail closed.** If the changed lines cannot be computed — git fails or cannot start, or the diff output has a
@@ -151,7 +154,8 @@ shape the parser does not recognise (a quoted path header, or any line outside a
 Critical and Major blocks, exactly as before diff scoping. `diff_scoped` in the artifact says which case
 applied. The `git diff` call pins `core.quotepath`, the path prefixes, external diff drivers and textconv, and
 passes `--text`, so a PR-controlled `.gitattributes` entry such as `-diff` or `binary` cannot turn hunks into
-"Binary files differ". An unexpected error while classifying exits 2 and overwrites `codex-review-result.json`
+"Binary files differ". The diff output is read with a 64 MiB cap (`_MAX_DIFF_BYTES`); a larger one counts as
+uncomputable and takes the fail-closed fallback. An unexpected error while classifying exits 2 and overwrites `codex-review-result.json`
 the same way the other exit-2 paths do.
 
 **Accepted residual risk.** A PR can remove a guard on one line and leave the exposed use of it elsewhere in the

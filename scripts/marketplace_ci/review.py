@@ -17,6 +17,7 @@ import signal
 import subprocess
 import sys
 import time
+import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -807,16 +808,23 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     return {p: tuple(r) for p, r in ranges.items()}
 
 
+# Cap on the `git diff` output read into memory: a PR adding large files would
+# otherwise be held in full (several times over once decoded and split). Over the
+# cap the changed lines count as uncomputable, so every Critical/Major blocks.
+_MAX_DIFF_BYTES = 64 * 1024 * 1024
+
+
 def compute_changed_line_ranges(repo: Path, base_sha: str) -> LineRanges | None:
     """Changed new-side line ranges for `base_sha...HEAD`, or None when they
-    cannot be computed (git cannot run or fails, or the parser refuses the
-    output). None makes the blocking check keep blocking on every
-    Critical/Major. Config and attributes that could change what git prints
-    are pinned off: path quoting (core.quotepath), prefixes, external diff
-    drivers, textconv, and `--text` so a PR-controlled `.gitattributes` entry
-    such as `-diff` or `binary` cannot turn hunks into "Binary files differ"."""
+    cannot be computed (git cannot run or fails, the output is over
+    `_MAX_DIFF_BYTES`, or the parser refuses it). None makes the blocking check
+    keep blocking on every Critical/Major. Config and attributes that could
+    change what git prints are pinned off: path quoting (core.quotepath),
+    prefixes, external diff drivers, textconv, and `--text` so a PR-controlled
+    `.gitattributes` entry such as `-diff` or `binary` cannot turn hunks into
+    "Binary files differ"."""
     try:
-        result = subprocess.run(
+        with subprocess.Popen(
             [
                 "git",
                 "-c",
@@ -833,16 +841,32 @@ def compute_changed_line_ranges(repo: Path, base_sha: str) -> LineRanges | None:
                 f"{base_sha}...HEAD",
             ],
             cwd=repo,
-            capture_output=True,
-        )
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        ) as proc:
+            assert proc.stdout is not None
+            output = proc.stdout.read(_MAX_DIFF_BYTES + 1)
+            if len(output) > _MAX_DIFF_BYTES:
+                proc.kill()
+                return None
+            if proc.wait() != 0:
+                return None
     except OSError:
         return None
-    if result.returncode != 0:
-        return None
     try:
-        return parse_changed_line_ranges(result.stdout.decode("utf-8", errors="surrogateescape"))
+        return parse_changed_line_ranges(output.decode("utf-8", errors="surrogateescape"))
     except ValueError:
         return None
+
+
+# Off Linux the filesystem (and so the bridge's existence check) may match a path
+# whatever its case or Unicode normalisation form, but git reports the stored
+# spelling. Fold both sides there; on Linux a different spelling is a different file.
+_FOLD_PATHS = sys.platform != "linux"
+
+
+def _fold(path: str) -> str:
+    return unicodedata.normalize("NFC", path).casefold() if _FOLD_PATHS else path
 
 
 def _lookup_keys(path: str, repo_root: Path | None) -> set[str]:
@@ -857,29 +881,92 @@ def _lookup_keys(path: str, repo_root: Path | None) -> set[str]:
         rel = os.path.relpath(os.path.realpath(os.path.join(repo_root, path)), root)
         if rel != ".." and not rel.startswith(".." + os.sep):
             keys.add(rel.replace(os.sep, "/"))
-    return keys
+    return {_fold(k) for k in keys}
 
 
 _NO_SYMLINKS: tuple[frozenset[str], tuple[str, ...]] = (frozenset(), ())
 
 
+def _git_symlinks(repo_root: Path, candidates: frozenset[str]) -> dict[str, str]:
+    """{path: link text} for candidate paths stored as mode 120000 at HEAD. The
+    tree is the source of truth: with `core.symlinks=false` a link is checked
+    out as a plain file holding its target text, which `os.path.islink` would
+    miss. Empty when git cannot answer."""
+    try:
+        listing = subprocess.run(
+            ["git", "ls-tree", "-r", "-z", "HEAD"], cwd=repo_root, capture_output=True
+        )
+    except OSError:
+        return {}
+    if listing.returncode != 0:
+        return {}
+    links: dict[str, str] = {}
+    for entry in listing.stdout.split(b"\0"):
+        meta, _, raw_path = entry.partition(b"\t")
+        fields = meta.split()
+        if len(fields) != 3 or fields[0] != b"120000":
+            continue
+        path = raw_path.decode("utf-8", errors="surrogateescape")
+        if path not in candidates:
+            continue
+        try:
+            blob = subprocess.run(
+                ["git", "cat-file", "blob", fields[2].decode("ascii")],
+                cwd=repo_root,
+                capture_output=True,
+            )
+        except OSError:
+            continue
+        if blob.returncode == 0:
+            links[path] = blob.stdout.decode("utf-8", errors="surrogateescape")
+    return links
+
+
 def _changed_symlinks(
     candidates: Iterable[str], repo_root: Path | None
 ) -> tuple[frozenset[str], tuple[str, ...]]:
-    """Changed paths that are symlinks in the checkout, and their resolved
-    targets. A PR that adds a link exposes existing, unchanged content at a
-    new loadable path, and the bridge accepts a finding that cites either the
-    link or its target, so both must count as changed."""
+    """Changed paths that are symlinks, and their resolved targets. A PR that
+    adds a link exposes existing, unchanged content at a new loadable path, and
+    the bridge accepts a finding that cites either the link or its target, so
+    both must count as changed. A link counts if the checkout holds a symlink or
+    git's tree records one (mode 120000)."""
     if repo_root is None:
         return _NO_SYMLINKS
+    paths = frozenset(candidates)
+    git_links = _git_symlinks(repo_root, paths)
     links: set[str] = set()
     targets: list[str] = []
-    for path in candidates:
+    for path in paths:
         full = os.path.join(repo_root, path)
         if os.path.islink(full):
             links.add(path)
             targets.append(os.path.realpath(full))
+        elif path in git_links:
+            links.add(path)
+            text = git_links[path]
+            target = text if os.path.isabs(text) else os.path.join(os.path.dirname(full), text)
+            targets.append(os.path.realpath(target))
     return frozenset(links), tuple(targets)
+
+
+def _scope_views(
+    ranges: _RangesView, changed_paths: Iterable[str], repo_root: Path | None
+) -> tuple[_RangesView, frozenset[str], tuple[frozenset[str], tuple[str, ...]]]:
+    """(ranges, changed paths, symlinks) as the classifier consumes them. The
+    filesystem work uses the spellings git reported; only then are the path
+    keys folded, so the lookup in `_classify` compares like with like."""
+    changed = frozenset(changed_paths)
+    link_paths, link_targets = _changed_symlinks(changed | set(ranges), repo_root)
+    if not _FOLD_PATHS:
+        return ranges, changed, (link_paths, link_targets)
+    folded: dict[str, tuple[tuple[int, int], ...]] = {}
+    for key, value in ranges.items():
+        folded[_fold(key)] = folded.get(_fold(key), ()) + value
+    return (
+        folded,
+        frozenset(_fold(p) for p in changed),
+        (frozenset(_fold(p) for p in link_paths), link_targets),
+    )
 
 
 def _classify(
@@ -924,8 +1011,7 @@ def split_findings_by_diff(
     line match is exact, with no slack window. A finding with no line on a
     changed file, or on a changed path that has no hunk, stays in_diff, so a
     file-level finding is never hidden."""
-    changed = frozenset(changed_paths)
-    symlinks = _changed_symlinks(changed | set(ranges), repo_root)
+    ranges, changed, symlinks = _scope_views(ranges, changed_paths, repo_root)
     in_diff: list[Finding] = []
     out_of_diff: list[Finding] = []
     for finding in findings:
@@ -949,8 +1035,7 @@ def blocking_findings(
     gated = [f for f in findings if f.severity in ("Critical", "Major")]
     if ranges is None:
         return tuple(gated)
-    changed = frozenset(changed_paths)
-    symlinks = _changed_symlinks(changed | set(ranges), repo_root)
+    ranges, changed, symlinks = _scope_views(ranges, changed_paths, repo_root)
     blocking: list[Finding] = []
     for finding in gated:
         touched, on_line = _classify(finding, ranges, changed, repo_root, symlinks)
