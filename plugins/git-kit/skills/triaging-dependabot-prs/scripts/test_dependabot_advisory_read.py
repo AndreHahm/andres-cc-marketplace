@@ -524,7 +524,9 @@ class HostileInputTests(unittest.TestCase):
         )
 
     def test_long_pnpm_lines_are_skipped(self):
-        text = "packages:\n  '" + "a" * 100_000 + "@1.0.0':\n  react@18.2.0:\n"
+        text = (
+            "lockfileVersion: '9.0'\npackages:\n  '" + "a" * 100_000 + "@1.0.0':\n  react@18.2.0:\n"
+        )
         lock = self.timed(lambda: mod.parse_pnpm_lock(text))
         self.assertEqual(list(lock["versions"]), ["react"])
 
@@ -643,6 +645,66 @@ class ContainmentTests(unittest.TestCase):
         self.assertEqual(result["refused"], "internal error (RuntimeError)")
 
 
+class ReviewRoundTests(unittest.TestCase):
+    """Fixes from the cross-model review: peer-suffixed pnpm keys, mixed locked versions, commit-like."""
+
+    PNPM_V6 = """lockfileVersion: '6.0'
+
+packages:
+
+  /react@18.2.0:
+    resolution: {integrity: sha512-a}
+
+  /react-dom@18.2.0(react@18.2.0):
+    resolution: {integrity: sha512-b}
+
+  /@scope/ui@2.0.0(react@18.2.0)(react-dom@18.2.0):
+    resolution: {integrity: sha512-c}
+
+  /@scope/ui@2.0.0(react@18.2.0)(react-dom@18.3.0):
+    resolution: {integrity: sha512-d}
+"""
+
+    def test_peer_suffixed_pnpm_keys_are_parsed_and_deduplicated(self):
+        lock = mod.parse_pnpm_lock(self.PNPM_V6)
+        self.assertEqual(lock["versions"]["react-dom"], ["18.2.0"])
+        self.assertEqual(lock["versions"]["@scope/ui"], ["2.0.0"])
+        self.assertEqual(lock["versions"]["react"], ["18.2.0"])
+
+    def test_a_peer_conflict_with_a_suffixed_lock_is_incompatible(self):
+        lock = mod.parse_pnpm_lock(self.PNPM_V6)
+        verdict = mod.check_npm({"peerDependencies": {"react-dom": "^19.0.0"}}, lock)
+        self.assertEqual([v["dependency"] for v in verdict["violations"]], ["react-dom"])
+
+    def test_unrecognised_lockfile_versions_are_a_lookup_failure(self):
+        for header in ("lockfileVersion: '5.4'\n", "lockfileVersion: '7.0'\n", ""):
+            with self.assertRaises(mod.LookupFailed, msg=header):
+                mod.parse_pnpm_lock(
+                    header + "packages:\n  /react@18.2.0:\n"
+                )  # a key the parser accepts
+
+    def test_mixed_locked_versions_are_ambiguous_not_a_pass(self):
+        lock = {"versions": {"dep": ["1.0.0", "2.0.0"]}, "requires_python": ">=3.11"}
+        verdict = mod.check_pypi({"requires_dist": ["dep<2"]}, lock)
+        self.assertEqual(
+            (verdict["ambiguous"], verdict["checked"], verdict["violations"]), (1, 0, [])
+        )
+        both_fail = mod.check_pypi({"requires_dist": ["dep<1"]}, lock)
+        self.assertEqual(len(both_fail["violations"]), 1)
+        both_pass = mod.check_pypi({"requires_dist": ["dep>=1"]}, lock)
+        self.assertEqual((both_pass["ambiguous"], both_pass["checked"]), (0, 1))
+        pnpm = {"versions": {"react": ["17.0.0", "18.2.0"]}, "requires_python": None}
+        self.assertEqual(
+            mod.check_npm({"peerDependencies": {"react": "^18"}}, pnpm)["ambiguous"], 1
+        )
+
+    def test_commit_like_detection(self):
+        for value in ("3f2a9c1d", "abcdef0", "a" * 40, "1" * 40, "v3f2a9c1d"):
+            self.assertTrue(mod.commit_like(value), value)
+        for value in ("20240101", "1234567", "1.2.3", "12", "2024.1"):
+            self.assertFalse(mod.commit_like(value), value)
+
+
 class LockParserTests(unittest.TestCase):
     def test_uv_lock(self):
         lock = mod.parse_uv_lock(UV_LOCK)
@@ -756,7 +818,9 @@ class CheckTests(unittest.TestCase):
         )  # present in the lock: still checked
         self.assertEqual(verdict["checked"], 1)  # absent from the lock: ignored
         engines = mod.check_npm({"peerDependencies": {}, "engines": {"node": ">=20"}}, lock)
-        self.assertEqual(engines["unevaluated"], 1)
+        self.assertEqual((engines["unevaluated"], engines["checked"]), (0, 0))
+        self.assertTrue(engines["engines_not_checked"])
+        self.assertFalse(mod.check_npm({"peerDependencies": {}}, lock)["engines_not_checked"])
 
 
 def pypi_doc(releases, latest):
@@ -836,22 +900,62 @@ class WalkBackTests(unittest.TestCase):
         self.assertEqual(result["newest_compatible"]["status"], "none")
         self.assertIsNone(result["signals"]["new_is_newest_compatible"])
 
-    def test_nothing_evaluated_is_unknown_not_compatible(self):
+    def test_engines_only_npm_releases_are_compatible_and_the_walk_continues(self):
         packument = {
             "versions": {
                 "1.0.0": {"engines": {"node": ">=20"}},
                 "2.0.0": {"engines": {"node": ">=20"}},
+                "3.0.0": {"engines": {"node": ">=20"}},
             }
         }
         url = mod.NPM_PACKUMENT_URL.format(name="pkg")
-        fetch = FakeFetch({url: packument, mod.NPM_URL.format(name="pkg"): {"version": "2.0.0"}})
+        fetch = FakeFetch({url: packument, mod.NPM_URL.format(name="pkg"): {"version": "3.0.0"}})
         path = self.lock_path("base-pnpm-lock.yaml", PNPM_LOCK)
         _, result = run_main(
             base_args("npm_and_yarn", "pkg", "1.0.0", "2.0.0") + ["--lock", path], FakeGh(), fetch
         )
+        self.assertEqual(result["compatibility"]["status"], "compatible")
+        self.assertTrue(result["compatibility"]["engines_not_checked"])
+        self.assertEqual(
+            (result["compatibility"]["checked"], result["compatibility"]["unevaluated"]), (0, 0)
+        )
+        self.assertEqual(result["newest_compatible"]["version"], "3.0.0")
+        self.assertTrue(result["signals"]["new_compatible"])
+        self.assertFalse(result["signals"]["new_is_newest_compatible"])
+
+    def test_nothing_evaluated_is_unknown_not_compatible(self):
+        meta = {
+            "info": {
+                "requires_python": None,
+                "requires_dist": ["dep-a @ https://example.invalid/x.whl"],
+            }
+        }
+        table = {
+            mod.PYPI_URL.format(name="foo"): pypi_doc(["1.0.0", "2.0.0"], "2.0.0"),
+            mod.PYPI_VERSION_URL.format(name="foo", version="2.0.0"): meta,
+        }
+        args = base_args("uv", "foo", "1.0.0", "2.0.0") + ["--lock", self.lock_path()]
+        _, result = run_main(args, FakeGh(), FakeFetch(table))
         self.assertEqual(result["compatibility"]["status"], "unknown")
         self.assertIsNone(result["signals"]["new_compatible"])
-        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+
+    def test_a_dependency_locked_at_several_versions_makes_the_result_unknown(self):
+        two = UV_LOCK + '\n[[package]]\nname = "dep-a"\nversion = "1.0.0"\n'
+        table = {
+            mod.PYPI_URL.format(name="foo"): pypi_doc(["1.0.0", "2.0.0"], "2.0.0"),
+            mod.PYPI_VERSION_URL.format(name="foo", version="2.0.0"): pypi_meta(["dep-a<2"]),
+        }
+        args = base_args("uv", "foo", "1.0.0", "2.0.0") + ["--lock", self.lock_path(text=two)]
+        _, result = run_main(args, FakeGh(), FakeFetch(table))
+        self.assertEqual(result["compatibility"]["status"], "unknown")
+        self.assertEqual(result["compatibility"]["ambiguous"], 1)
+        self.assertIsNone(result["signals"]["new_compatible"])
+
+    def test_a_date_style_version_reaches_the_advisory_lookup(self):
+        gh = FakeGh({"requests@20240101": [gh_advisory("GHSA-5", "high", pkg="requests")]})
+        _, result = run_main(base_args(old="1.0.0", new="20240101"), gh, FakeFetch())
+        self.assertEqual(result["versions"]["new"]["status"], "ok")
+        self.assertTrue(result["signals"]["new_vulnerable_not_safer_than_old"])
 
     def test_no_lock_means_unknown_everywhere(self):
         result, fetch = self.uv_run(["1.0.0", "2.0.0"], {}, lock=False)
