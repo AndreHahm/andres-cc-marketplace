@@ -7,7 +7,7 @@ description: >-
   against git-kit's [type]/[description] convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Glob, Write, AskUserQuestion
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Glob, Write, AskUserQuestion
 ---
 
 # Starting Work
@@ -71,7 +71,7 @@ branch off", "set up a worktree for this feature".
    ask — a human always makes the actual choice. See `references/worktree-decision.md` for the tradeoffs
    to mention if the user wants guidance rather than a snap decision.
 4. **Create**: immediately before either branch-creating command below, run
-   `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-branch-create starting-work` — this writes
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-branch-create starting-work` — this writes
    the marker git-kit's branch-creation guard requires; it must be written right before the command runs,
    not earlier, since the hook only accepts a marker up to 60 seconds old.
    - Plain branch: `git checkout -b <type>/<description>`.

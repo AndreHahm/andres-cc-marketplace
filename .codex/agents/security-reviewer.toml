@@ -24,7 +24,7 @@ Same R19-style path resolution as every other `*-reviewer` in this plugin — re
 ## Step 2: Permission-Risk Analysis
 
 For each component's `allowed-tools`/`tools` field:
-- Flag any `Bash(*)`, bare `Bash`, or shell-interpreter scope (`Bash(sh:*)`, `Bash(bash:*)`, `Bash(cmd:*)`, `Bash(powershell:*)`) as **Critical** — this duplicates `plugin-rulebook` R6 by design; a security review that skipped tool-scoping would be incomplete, not a replacement for R6.
+- Flag any `Bash(*)`, bare `Bash`, or shell-interpreter scope (`Bash(sh:*)`, `Bash(bash:*)`, `Bash(cmd:*)`, `Bash(powershell:*)`; an interpreter followed by one pinned script path, such as `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`, is not flagged) as **Critical** — this duplicates `plugin-rulebook` R6 by design; a security review that skipped tool-scoping would be incomplete, not a replacement for R6.
 - Flag a tool grant broader than what the component's own documented Process actually uses (e.g. `Write` declared but the body never writes a file) as **Major** — unused privilege is exactly the surface a prompt-injection attack would exploit if it ever gained control of this component's context.
 - Flag any component with `Bash`/`Write`/`Edit` access whose own description or `When to Use` characterizes it as \"read-only\" or \"review-only\" as a **Critical** contradiction between claimed and actual capability.
 

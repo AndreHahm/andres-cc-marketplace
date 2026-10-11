@@ -90,7 +90,7 @@ login/repo-name character rules make this safe, unlike a shell-string compositio
    c. Write the comment body (marker wrapped in `<!-- marketplace-ci-bypass-attestation {...} -->`) to a
       second scratchpad file. The marker must be the last thing in the body — CI ignores a comment with
       any text after it — so write the marker alone and add no footer. Then, as the last step before the comment and in its own `Bash` call, run
-      `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review <caller-skill-name>` —
+      `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review <caller-skill-name>` —
       `git-guard-raw-pr-review.sh` hard-blocks every `gh pr comment` absent a fresh `gh-pr-review` marker,
       and the attestation comment has no exemption, so a caller that skips this has its comment denied after
       the user already approved the bypass. The guard accepts the marker for about a minute and deletes it on
@@ -135,7 +135,7 @@ push`/similar broad grants:
 
 - `gh pr comment` permits an inline `--body` with arbitrary text against any PR number — this protocol
   never posts anything but the `--body-file` marker comment, against the caller's own resolved PR only.
-- `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)` accepts any guard type, and while a
+- `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)` accepts any guard type, and while a
   `gh-pr-review` marker is fresh the guard would allow any guarded review or comment command, not just
   step 3(c)'s comment — this protocol writes it only immediately before that one comment, and keeping to
   that rests on these instructions, not on the guard.
