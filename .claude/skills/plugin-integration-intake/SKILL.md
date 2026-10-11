@@ -6,8 +6,9 @@ description: >-
   identity against real installed plugins and validates the payload, then routes through the exact
   same live approval gate and service skills used for a direct user request — a calling plugin's
   own prior approval never substitutes. Use when another plugin's workflow needs to store
-  something in Notion or act on something in Linear; this is the only path any other plugin in
-  this repository may use for that.
+  something in Notion or act on something in Linear, including a batch of records to create or
+  update Linear Issues (one hash-bound approval), an exact dedup-key query, or an Issue update;
+  this is the only path any other plugin in this repository may use for that.
 allowed-tools: Read, Write, Glob, Skill(notion-knowledge-management), Skill(linear-work-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py:*), AskUserQuestion
 ---
 
@@ -52,12 +53,18 @@ convenience, performance, or a "trusted" calling plugin — there is no trusted 
 ## When to Use
 
 Another plugin's own workflow needs to submit content for Notion/Linear storage or action —
-always host-mediated, never a direct user-typed phrase.
+always host-mediated, never a direct user-typed phrase: a single record, a records batch
+(create or update), an exact `dedup_key` query, an Issue update, or resuming a stopped batch. When a
+request comes from a plugin rather than the user, this skill takes precedence; `linear-work-management`
+is entered only as its delegate.
 
 ## When NOT to Use
 
 A direct user request to capture knowledge or manage work → `notion-knowledge-management` /
-`linear-work-management` directly; no intake payload involved.
+`linear-work-management` directly; no intake payload involved. A user asking how to submit a batch or
+query, or typing a dedup-key or status lookup → answer directly or use `linear-work-management` (a live
+read); do not start the gate. Closing or completing Issues → `merge-to-completion` (refused here); editing an
+Issue's description → refused here, only a direct request with the user present, to `linear-work-management`.
 
 ## Quick Start
 
@@ -127,7 +134,8 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    write there is no code path here that skips this step, regardless of the payload's own claimed
    urgency or the calling plugin's own approval history (a `query` writes nothing and has no approval).
 5. On approval, execute through `notion-knowledge-management` or `linear-work-management` (never
-   a connector call of this skill's own) and read the result back. That delegated write records its
+   a connector call of this skill's own; a batch is delegated range by range, in the order the batch
+   contract's "Batch flow, in order" gives) and read the result back. That delegated write records its
    own transition per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract (its next-write
    convention or its creation-write exception, whichever applies) — this skill's own contribution
    is the `source_plugin` value passed into that write.
@@ -149,8 +157,8 @@ caller-asserted like `source_plugin`, so the preview must name the environment a
 
 - **Batch create and update:** one approval for the whole set, bound to a hash that
   `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py` computes over the previewed submission file (kept in the session scratchpad,
-  with a fresh `batch_id` nonce inside it so an approval cannot be replayed). The preview and every write are
-  built only from the script's verified `show`, `preview` and `chunk` output, at most 25 records at a time; a mismatch
+  with a fresh `batch_id` nonce inside it so an approval cannot be replayed). The preview is built only from the script's verified
+  `show` and `preview` output and every write only from the Linear skill's own `chunk` output, at most 25 records at a time; a mismatch
   or a script failure stops the batch and never falls back to an unverified write. A batch preview is **not**
   identical to a direct request's: it tabulates every record and shows full text for the first three, and the
   person's own review of the hashed file is the control for the rest. A reject cancels the batch (nothing written, files purged). A resume is a re-submission (a `create`
