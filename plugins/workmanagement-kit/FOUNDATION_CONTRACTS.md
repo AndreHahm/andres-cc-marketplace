@@ -186,8 +186,8 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
   `linear-work-management` performs it after the Local Override trust check (procedure:
   `skills/linear-work-management/references/wmgt-linear-slug-resolution.md`; intake side:
   `skills/plugin-integration-intake/references/wmgt-intake-batch-contract.md`), under these rules:
-  - A slug is matched exactly after normalization (lowercase, no trailing `.git`, no glob or prefix
-    matching). Map keys must be stored in that normalized form, and two keys that normalize to the
+  - A slug is matched exactly after normalization (lowercase, one trailing `.git` removed, no glob or prefix
+    matching; the full pattern is in the procedure). Map keys must be stored in that normalized form, and two keys that normalize to the
     same value are rejected. A slug that is not a key in this map is an **unknown repository and
     must be rejected**, never guessed, never defaulted to `production_team_id`, and never re-tried as
     a stable ID or display name. The single `production_team_id`/`test_team_id` pair stays as the
@@ -195,7 +195,8 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
   - A mapped repository's work goes to its `production_team_id` by default, and to its
     `test_team_id` only on an explicit test-run signal from the caller. For a write delegated by
     `plugin-integration-intake` after a hash-bound approval, the environment is only the one the
-    verified batch file carries, never a caller message or the original payload's `test_run`.
+    verified batch file carries (chosen when intake built the file), never a caller message or the
+    original payload's `test_run`.
   - Each mapped team must also appear in the `team_ids` of the host-profile operation being used
     (`linear.read` for a read, `linear.write` for a write), since the host profile's approved scope
     still bounds every call. A mapped team outside that operation's `team_ids` is rejected as out
