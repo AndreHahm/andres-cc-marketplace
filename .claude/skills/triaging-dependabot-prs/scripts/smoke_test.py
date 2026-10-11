@@ -25,6 +25,8 @@ EXPECTED_BASH = {
     "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
     "dependabot_pr_read.py:*",
     "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
+    "dependabot_advisory_read.py:*",
+    "python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/triaging-dependabot-prs/scripts/"
     "dependabot_pr_action.py --dry-run:*",
 }
 EXPECTED_OTHER = {"Read", "AskUserQuestion", "Skill(merge-pr)", "Skill(finishing-work)"}
@@ -534,6 +536,26 @@ def check_read_tests_pass():
     return _run_script_tests("test_dependabot_pr_read.py", "read script")
 
 
+def check_advisory_tests_pass():
+    """The advisory script's own fixture tests pass (fake gh and fetch, no network)."""
+    return _run_script_tests("test_dependabot_advisory_read.py", "advisory script")
+
+
+def check_advisory_step_is_wired():
+    """Step 3 names the script, both rules' signals, and the never-read-unknown-as-safe rule."""
+    _, body = split_skill()
+    needed = [
+        "`dependabot_advisory_read.py assess`",
+        "new_vulnerable_not_safer_than_old",
+        "new_safer_than_latest",
+        "never read it as safe",
+    ]
+    missing = [n for n in needed if n not in body]
+    if missing:
+        return False, f"SKILL.md is missing: {missing}"
+    return True, "step 3 wires the advisory script, both signals and the unknown rule"
+
+
 def main():
     checks = [
         check_frontmatter,
@@ -555,6 +577,8 @@ def main():
         check_classifier_tests_pass,
         check_action_tests_pass,
         check_read_tests_pass,
+        check_advisory_tests_pass,
+        check_advisory_step_is_wired,
     ]
     failed = 0
     for fn in checks:
