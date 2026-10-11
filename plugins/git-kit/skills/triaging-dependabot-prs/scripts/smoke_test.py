@@ -380,12 +380,12 @@ def check_no_gh_pr_read_grants():
     used = without_boundaries(body) + "\n" + "\n".join(reference_texts().values())
     problems += [f"raw gh pr command: {s[:50]}" for s in re.findall(r"`(gh pr [^`]*)`", used)]
     script = read(SKILL_DIR / "scripts" / "dependabot_pr_read.py")
-    for sub in ("pr-list", "pr-view", "pr-checks", "files", "commits", "uv-lock"):
+    for sub in ("pr-list", "pr-view", "pr-checks", "files", "commits", "uv-lock", "pnpm-lock"):
         if f'"{sub}"' not in script:
             problems.append(f"read script has no {sub} subcommand")
     if problems:
         return False, "; ".join(problems)
-    return True, "no gh grant or raw gh pr command; the read script has all six subcommands"
+    return True, "no gh grant or raw gh pr command; the read script has all seven subcommands"
 
 
 def check_real_run_form_stays_ungranted():
@@ -547,13 +547,18 @@ def check_advisory_step_is_wired():
     needed = [
         "`dependabot_advisory_read.py assess`",
         "new_vulnerable_not_safer_than_old",
-        "new_safer_than_latest",
-        "never read it as safe",
+        "new_compatible",
+        "new_safer_than_newest_compatible",
+        "never read it as safe or compatible",
+        "pnpm-lock",
     ]
     missing = [n for n in needed if n not in body]
     if missing:
         return False, f"SKILL.md is missing: {missing}"
-    return True, "step 3 wires the advisory script, both signals and the unknown rule"
+    return (
+        True,
+        "step 3 wires the advisory script, the three rule signals, the lockfile fetch and the unknown rule",
+    )
 
 
 def main():

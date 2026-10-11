@@ -11,8 +11,12 @@ Run: python3 -I scripts/test_dependabot_advisory_read.py
 import importlib.util
 import io
 import json
+import os
 import pathlib
+import shutil
 import subprocess
+import tempfile
+import time
 import unittest
 import urllib.error
 from contextlib import redirect_stdout
@@ -81,9 +85,11 @@ class FakeFetch:
         self.table = table or {}
         self.fail = set(fail)
         self.calls = []
+        self.kwargs = []
 
-    def __call__(self, url, body=None):
+    def __call__(self, url, body=None, **kwargs):
         self.calls.append((url, body))
+        self.kwargs.append(kwargs)
         if url in self.fail:
             raise mod.LookupFailed("down")
         key = url if body is None else (url, body["package"]["name"], body["version"])
@@ -239,7 +245,7 @@ class AdvisoryTests(unittest.TestCase):
             self.assertEqual(result["versions"][role]["status"], "unknown")
         signals = result["signals"]
         self.assertIsNone(signals["new_vulnerable_not_safer_than_old"])
-        self.assertIsNone(signals["new_safer_than_latest"])
+        self.assertIsNone(signals["new_safer_than_newest_compatible"])
 
     def test_github_empty_and_osv_failing_still_counts_as_answered(self):
         fetch = FakeFetch(fail={mod.OSV_URL})
@@ -289,7 +295,7 @@ class LatestVersionTests(unittest.TestCase):
         self.assertIsNone(result["latest"])
         self.assertNotIn("latest", result["versions"])
         self.assertIsNone(result["signals"]["new_is_latest"])
-        self.assertIsNone(result["signals"]["new_safer_than_latest"])
+        self.assertIsNone(result["signals"]["new_safer_than_newest_compatible"])
         odd = FakeFetch(
             {mod.PYPI_URL.format(name="requests"): {"info": {"version": "not a version"}}}
         )
@@ -327,17 +333,6 @@ class SignalTests(unittest.TestCase):
     def test_clean_new_is_never_flagged(self):
         s = self.signals({"requests@1.0.0": [gh_advisory("GHSA-A")]}, "2.0.0")
         self.assertFalse(s["new_vulnerable_not_safer_than_old"])
-
-    def test_not_latest_but_safer_than_latest(self):
-        adv = {"requests@3.0.0": [gh_advisory("GHSA-L", "high")]}
-        s = self.signals(adv, "3.0.0")
-        self.assertFalse(s["new_is_latest"])
-        self.assertTrue(s["new_safer_than_latest"])
-
-    def test_not_latest_and_latest_is_clean_is_not_safer(self):
-        s = self.signals({}, "3.0.0")
-        self.assertFalse(s["new_is_latest"])
-        self.assertFalse(s["new_safer_than_latest"])
 
     def test_new_ahead_of_or_equal_to_latest_counts_as_latest(self):
         self.assertTrue(self.signals({}, "2.0.0")["new_is_latest"])
@@ -400,6 +395,546 @@ class ReviewFixTests(unittest.TestCase):
         _, result = run_main(base_args(), gh, FakeFetch())
         self.assertTrue(result["versions"]["old"]["truncated"])
         self.assertFalse(result["versions"]["new"]["truncated"])
+
+
+UV_LOCK = """version = 1
+requires-python = ">=3.11"
+
+[[package]]
+name = "Dep_A"
+version = "2.1.0"
+
+[[package]]
+name = "other"
+version = "1.0.0"
+"""
+
+PNPM_LOCK = """lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      react:
+        specifier: ^18.0.0
+        version: 18.2.0
+
+packages:
+
+  '@scope/pkg@3.1.0':
+    resolution: {integrity: sha512-x}
+
+  react@18.2.0:
+    resolution: {integrity: sha512-y}
+
+  /legacy@1.0.0:
+    resolution: {integrity: sha512-z}
+
+snapshots:
+
+  react@18.2.0: {}
+"""
+
+
+class EvaluatorTests(unittest.TestCase):
+    def test_pep440_specifiers(self):
+        cases = [
+            ("2.0.0", ">=1,<3", True),
+            ("3.0.0", ">=1,<3", False),
+            ("1.4.2", "~=1.4", True),
+            ("2.0", "~=1.4", False),
+            ("1.2.5", "==1.2.*", True),
+            ("1.3.0", "==1.2.*", False),
+            ("1.0", "!=1.0", False),
+            ("1.0", "===1.0", None),
+            ("1.0.0rc1", ">=1", None),
+            ("1.0", ">=1,<2,foo", None),
+            ("3.0", "<2,foo", False),
+        ]
+        for version, spec, want in cases:
+            self.assertIs(mod.pep440_satisfies(version, spec), want, (version, spec))
+
+    def test_npm_ranges(self):
+        cases = [
+            ("1.5.0", "^1.2.0", True),
+            ("2.0.0", "^1.2.0", False),
+            ("0.2.5", "^0.2.3", True),
+            ("0.3.0", "^0.2.3", False),
+            ("0.0.4", "^0.0.3", False),
+            ("1.2.9", "~1.2.3", True),
+            ("1.3.0", "~1.2.3", False),
+            ("1.9.0", ">=1.2 <2", True),
+            ("1.9.0", ">= 1.2 < 2", True),
+            ("3.0.0", "^1 || ^3", True),
+            ("2.0.0", "^1 || ^3", False),
+            ("1.0.0", "1.x", True),
+            ("2.0.0", "1.x", False),
+            ("1.2.3", "1.2.3", True),
+            ("1.2.4", "1.2.3", False),
+            ("19.0.0", "19.3.0-canary-abc", None),
+            ("1.0.0", "*", True),
+            ("2.0.0", "1.2.3 - 2.3.4", True),
+            ("3.0.0", "1.2.3 - 2.3.4", False),
+            ("1.0.0", "git+https://example.invalid/x", None),
+        ]
+        for version, rng, want in cases:
+            self.assertIs(mod.npm_satisfies(version, rng), want, (version, rng))
+
+    def test_markers(self):
+        py = (3, 11)
+        self.assertTrue(mod.marker_applies(None, py))
+        self.assertFalse(mod.marker_applies('extra == "dev"', py))
+        self.assertIsNone(mod.marker_applies('python_version >= "3" or extra == "x"', py))
+        self.assertIsNone(mod.marker_applies('extra != "slim"', py))
+        self.assertFalse(mod.marker_applies('python_version < "3.9"', py))
+        self.assertTrue(mod.marker_applies('python_version >= "3.9"', py))
+        self.assertIsNone(mod.marker_applies('python_version < "3.12"', py))
+        self.assertIsNone(mod.marker_applies('sys_platform == "win32"', py))
+        self.assertIsNone(mod.marker_applies('python_version < "3.9"', None))
+
+    def test_names_are_normalized(self):
+        self.assertEqual(mod.python_name("Dep_A.b"), "dep-a-b")
+
+
+class HostileInputTests(unittest.TestCase):
+    """Registry and lockfile strings are third-party: long ones are skipped, never backtracked."""
+
+    def timed(self, call):
+        started = time.monotonic()
+        result = call()
+        self.assertLess(time.monotonic() - started, 2.0)
+        return result
+
+    def test_long_requirement_strings_are_unevaluated_and_fast(self):
+        lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": ">=3.11"}
+        meta = {
+            "requires_dist": [
+                "a" + " " * 200_000 + "!",
+                "dep-a" + "<" * 100_000,
+                "x; " + "y" * 200_000,
+            ]
+        }
+        verdict = self.timed(lambda: mod.check_pypi(meta, lock))
+        self.assertEqual((verdict["violations"], verdict["unevaluated"]), ([], 3))
+
+    def test_long_specifiers_and_ranges_are_none_and_fast(self):
+        self.assertIsNone(self.timed(lambda: mod.pep440_satisfies("1.0", ">=" + "1" * 100_000)))
+        self.assertIsNone(self.timed(lambda: mod.npm_satisfies("1.0.0", "^" + "1." * 100_000)))
+        self.assertIsNone(
+            self.timed(lambda: mod.marker_applies("python_version < " + "'" * 100_000, (3, 11)))
+        )
+
+    def test_long_pnpm_lines_are_skipped(self):
+        text = "packages:\n  '" + "a" * 100_000 + "@1.0.0':\n  react@18.2.0:\n"
+        lock = self.timed(lambda: mod.parse_pnpm_lock(text))
+        self.assertEqual(list(lock["versions"]), ["react"])
+
+    def test_huge_requirement_lists_are_capped(self):
+        lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": ">=3.11"}
+        meta = {"requires_dist": ["dep-a<2"] * 100_000}
+        verdict = self.timed(lambda: mod.check_pypi(meta, lock))
+        self.assertEqual(verdict["checked"], 500)
+
+
+class ContainmentTests(unittest.TestCase):
+    """The compatibility stage can fail or be fed hostile data without costing the advisory result."""
+
+    def test_short_hostile_requirement_strings_are_fast(self):
+        lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": ">=3.11"}
+        hostile = [
+            "a" + " " * 298 + "#",
+            "a" + " " * 140 + "[" + " " * 140,
+            "dep-a" + " " * 290 + "<2 " + " " * 3,
+            "a;" + " " * 290,
+        ]
+        started = time.monotonic()
+        mod.check_pypi({"requires_dist": hostile * 125}, lock)
+        self.assertLess(time.monotonic() - started, 2.0)
+
+    def test_parse_requirement(self):
+        cases = {
+            "dep-a (<2)": ("dep-a", "<2", None),
+            "Dep_A[x,y]>=1.0,<3 ; python_version < '3.9'": (
+                "Dep_A",
+                ">=1.0,<3",
+                "python_version < '3.9'",
+            ),
+            "dep-a": ("dep-a", "", None),
+            "dep-a @ https://example.invalid/x.whl": None,
+            "[bad": None,
+            "dep-a[x": None,
+            "dep-a (<2": None,
+        }
+        for raw, want in cases.items():
+            self.assertEqual(mod.parse_requirement(raw), want, raw)
+
+    def test_a_crash_in_the_compatibility_stage_keeps_the_advisories(self):
+        class Boom(FakeFetch):
+            def __call__(self, url, body=None, **kwargs):
+                if "/foo/" in url and url.endswith("/json"):
+                    raise RuntimeError("boom")
+                return super().__call__(url, body, **kwargs)
+
+        lock = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, lock, True)
+        path = os.path.join(lock, "base-uv.lock")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(UV_LOCK)
+        table = {mod.PYPI_URL.format(name="foo"): pypi_doc(["1.0.0", "2.0.0", "3.0.0"], "3.0.0")}
+        gh = FakeGh({"foo@2.0.0": [gh_advisory("GHSA-9", "high", pkg="foo")]})
+        code, result = run_main(
+            base_args("uv", "foo", "1.0.0", "2.0.0") + ["--lock", path], gh, Boom(table)
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue(result["signals"]["new_vulnerable_not_safer_than_old"])
+        self.assertEqual(result["compatibility"]["status"], "unknown")
+        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+
+    def test_a_deeply_nested_registry_answer_is_a_lookup_failure(self):
+        class Response:
+            def __init__(self, raw):
+                self.raw = raw
+
+            def read(self, _n):
+                return self.raw
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+        original = mod.urllib.request.build_opener
+        deep = ("[" * 100_000 + "]" * 100_000).encode()
+        mod.urllib.request.build_opener = lambda *_a: type(
+            "O", (), {"open": lambda self, *_a, **_k: Response(deep)}
+        )()
+        try:
+            with self.assertRaises(mod.LookupFailed):
+                mod.http_fetch("https://pypi.org/pypi/x/json")
+        finally:
+            mod.urllib.request.build_opener = original
+
+    def test_huge_digit_versions_are_not_versions(self):
+        self.assertIsNone(mod.version_key("1" * 5000))
+        self.assertIsNone(mod.version_key("1." + "9" * 20))
+        self.assertIsNone(mod.npm_satisfies("1.0.0", "^" + "9" * 20))
+
+    def test_the_walk_back_stops_at_its_deadline(self):
+        lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": ">=3.11"}
+        table = {mod.PYPI_URL.format(name="foo"): pypi_doc(["1.0.0", "2.0.0", "3.0.0"], "3.0.0")}
+        table[mod.PYPI_VERSION_URL.format(name="foo", version="3.0.0")] = pypi_meta()
+        result = mod.newest_compatible(
+            FakeFetch(table), {}, "uv", "foo", "2.0.0", "compatible", lock, deadline=0
+        )
+        self.assertEqual(result["status"], "unknown")
+
+    def test_an_unexpected_exception_still_prints_json(self):
+        def explode(*_a, **_k):
+            raise RuntimeError("boom")
+
+        original = mod.assess
+        mod.assess = explode
+        try:
+            code, result = run_main(base_args())
+        finally:
+            mod.assess = original
+        self.assertEqual(code, 4)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["refused"], "internal error (RuntimeError)")
+
+
+class LockParserTests(unittest.TestCase):
+    def test_uv_lock(self):
+        lock = mod.parse_uv_lock(UV_LOCK)
+        self.assertEqual(lock["versions"]["dep-a"], ["2.1.0"])
+        self.assertEqual(lock["requires_python"], ">=3.11")
+
+    def test_uv_lock_garbage_is_a_lookup_failure(self):
+        with self.assertRaises(mod.LookupFailed):
+            mod.parse_uv_lock("this is [not toml")
+
+    def test_pnpm_lock_reads_only_the_packages_section(self):
+        lock = mod.parse_pnpm_lock(PNPM_LOCK)
+        self.assertEqual(lock["versions"]["@scope/pkg"], ["3.1.0"])
+        self.assertEqual(lock["versions"]["react"], ["18.2.0"])
+        self.assertEqual(lock["versions"]["legacy"], ["1.0.0"])
+
+    def test_pnpm_lock_without_packages_fails(self):
+        with self.assertRaises(mod.LookupFailed):
+            mod.parse_pnpm_lock("lockfileVersion: '9.0'\n")
+
+
+class LockPathTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def write(self, name, text=UV_LOCK):
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def test_a_good_path_loads(self):
+        lock = mod.load_lock(self.write("base-uv.lock"), "uv")
+        self.assertEqual(lock["versions"]["other"], ["1.0.0"])
+        self.assertIsNone(mod.load_lock(None, "uv"))
+
+    def test_bad_paths_are_refused(self):
+        good = self.write("base-uv.lock")
+        link = os.path.join(self.dir, "head-uv.lock")
+        os.symlink(good, link)
+        outside = os.path.join(HERE, "base-uv.lock")
+        pnpm = self.write("base-pnpm-lock.yaml", PNPM_LOCK)
+        for path, eco in [
+            (self.write("evil.lock"), "uv"),
+            (pnpm, "uv"),
+            (good, "npm_and_yarn"),
+            (link, "uv"),
+            (outside, "uv"),
+            ("base-uv.lock", "uv"),
+            (good, "github_actions"),
+        ]:
+            with self.assertRaises(mod.Refusal, msg=(path, eco)):
+                mod.load_lock(path, eco)
+
+    def test_head_lock_names_are_accepted_and_fifos_refused(self):
+        self.assertIsNotNone(mod.load_lock(self.write("head-uv.lock"), "uv"))
+        fifo = os.path.join(self.dir, "base-uv.lock")
+        os.mkfifo(fifo)
+        with self.assertRaises(mod.Refusal):
+            mod.load_lock(fifo, "uv")
+
+    def test_an_oversized_lock_is_refused(self):
+        path = self.write("base-uv.lock", "x" * (mod.MAX_LOCK_BYTES + 1))
+        with self.assertRaises(mod.Refusal):
+            mod.load_lock(path, "uv")
+
+    def test_an_unreadable_lock_is_none_not_a_crash(self):
+        self.assertIsNone(mod.load_lock(self.write("base-uv.lock", "not [toml"), "uv"))
+
+
+class CheckTests(unittest.TestCase):
+    lock = {"versions": {"dep-a": ["2.1.0"], "other": ["1.0.0"]}, "requires_python": ">=3.11"}
+
+    def test_pypi_violation_and_pass(self):
+        bad = mod.check_pypi(
+            {"requires_dist": ["dep-a (<2)"], "requires_python": ">=3.9"}, self.lock
+        )
+        self.assertEqual(bad["violations"][0]["dependency"], "dep-a")
+        good = mod.check_pypi({"requires_dist": ["Dep_A>=2", "unrelated<1"]}, self.lock)
+        self.assertEqual((good["violations"], good["checked"]), ([], 1))
+
+    def test_pypi_requires_python_must_admit_our_minimum(self):
+        verdict = mod.check_pypi({"requires_python": ">=3.12", "requires_dist": []}, self.lock)
+        self.assertEqual(verdict["violations"][0]["kind"], "requires-python")
+
+    def test_pypi_markers_extras_and_unevaluable(self):
+        meta = {
+            "requires_dist": [
+                'dep-a<2; python_version < "3.9"',
+                'dep-a<2; extra == "dev"',
+                'dep-a<2; sys_platform == "win32"',
+                "not a requirement !!",
+            ]
+        }
+        verdict = mod.check_pypi(meta, self.lock)
+        self.assertEqual(verdict["violations"], [])
+        self.assertEqual(verdict["unevaluated"], 2)
+
+    def test_npm_peer_checks(self):
+        lock = {"versions": {"react": ["18.2.0"], "@scope/pkg": ["3.1.0"]}, "requires_python": None}
+        bad = mod.check_npm({"peerDependencies": {"react": "^19.0.0"}}, lock)
+        self.assertEqual(bad["violations"][0]["dependency"], "react")
+        optional = {
+            "peerDependencies": {"react": "^19", "absent": "^1"},
+            "peerDependenciesMeta": {"react": {"optional": True}},
+        }
+        verdict = mod.check_npm(optional, lock)
+        self.assertEqual(
+            [v["dependency"] for v in verdict["violations"]], ["react"]
+        )  # present in the lock: still checked
+        self.assertEqual(verdict["checked"], 1)  # absent from the lock: ignored
+        engines = mod.check_npm({"peerDependencies": {}, "engines": {"node": ">=20"}}, lock)
+        self.assertEqual(engines["unevaluated"], 1)
+
+
+def pypi_doc(releases, latest):
+    return {
+        "info": {"version": latest},
+        "releases": {v: [{"filename": f"x-{v}.whl"}] for v in releases},
+    }
+
+
+def pypi_meta(requires_dist=(), requires_python=">=3.9"):
+    return {"info": {"requires_dist": list(requires_dist), "requires_python": requires_python}}
+
+
+class WalkBackTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def lock_path(self, name="base-uv.lock", text=UV_LOCK):
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def uv_run(self, releases, metas, advisories=None, lock=True, fail=(), new="2.0.0"):
+        table = {mod.PYPI_URL.format(name="foo"): pypi_doc(releases, releases[-1])}
+        for version, meta in metas.items():
+            table[mod.PYPI_VERSION_URL.format(name="foo", version=version)] = meta
+        fetch = FakeFetch(
+            table, fail={mod.PYPI_VERSION_URL.format(name="foo", version=v) for v in fail}
+        )
+        args = base_args("uv", "foo", "1.0.0", new)
+        if lock:
+            args += ["--lock", self.lock_path()]
+        code, result = run_main(args, FakeGh(advisories or {}), fetch)
+        self.assertEqual(code, 0)
+        return result, fetch
+
+    def test_newest_compatible_skips_incompatible_newer_releases(self):
+        metas = {
+            "2.0.0": pypi_meta(["dep-a>=2"]),
+            "3.0.0": pypi_meta(["dep-a<2"]),
+            "3.1.0": pypi_meta(["dep-a<2"]),
+        }
+        result, _ = self.uv_run(["1.0.0", "2.0.0", "3.0.0", "3.1.0"], metas)
+        newest = result["newest_compatible"]
+        self.assertEqual((newest["status"], newest["version"]), ("found", "2.0.0"))
+        self.assertEqual([x["version"] for x in newest["newer_incompatible"]], ["3.1.0", "3.0.0"])
+        self.assertEqual(result["compatibility"]["status"], "compatible")
+        signals = result["signals"]
+        self.assertTrue(signals["new_compatible"])
+        self.assertTrue(signals["new_is_newest_compatible"])
+        self.assertFalse(signals["new_is_latest"])
+        self.assertNotIn("newest_compatible", result["versions"])
+
+    def test_newer_compatible_version_that_is_riskier(self):
+        metas = {v: pypi_meta(["dep-a>=2"]) for v in ("2.0.0", "3.0.0")}
+        adv = {"foo@3.0.0": [gh_advisory("GHSA-9", "high", pkg="foo")]}
+        result, _ = self.uv_run(["1.0.0", "2.0.0", "3.0.0"], metas, adv)
+        signals = result["signals"]
+        self.assertEqual(result["newest_compatible"]["version"], "3.0.0")
+        self.assertFalse(signals["new_is_newest_compatible"])
+        self.assertTrue(signals["new_safer_than_newest_compatible"])
+        self.assertEqual(result["versions"]["newest_compatible"]["version"], "3.0.0")
+
+    def test_newer_compatible_version_that_is_not_riskier(self):
+        metas = {v: pypi_meta(["dep-a>=2"]) for v in ("2.0.0", "3.0.0")}
+        result, _ = self.uv_run(["1.0.0", "2.0.0", "3.0.0"], metas)
+        self.assertFalse(result["signals"]["new_is_newest_compatible"])
+        self.assertFalse(result["signals"]["new_safer_than_newest_compatible"])
+
+    def test_incompatible_new_version_is_reported_with_its_violation(self):
+        metas = {"2.0.0": pypi_meta(["dep-a<2"]), "3.0.0": pypi_meta(["dep-a<2"])}
+        result, _ = self.uv_run(["1.0.0", "2.0.0", "3.0.0"], metas)
+        self.assertFalse(result["signals"]["new_compatible"])
+        self.assertEqual(result["compatibility"]["violations"][0]["requirement"], "<2")
+        self.assertEqual(result["newest_compatible"]["status"], "none")
+        self.assertIsNone(result["signals"]["new_is_newest_compatible"])
+
+    def test_nothing_evaluated_is_unknown_not_compatible(self):
+        packument = {
+            "versions": {
+                "1.0.0": {"engines": {"node": ">=20"}},
+                "2.0.0": {"engines": {"node": ">=20"}},
+            }
+        }
+        url = mod.NPM_PACKUMENT_URL.format(name="pkg")
+        fetch = FakeFetch({url: packument, mod.NPM_URL.format(name="pkg"): {"version": "2.0.0"}})
+        path = self.lock_path("base-pnpm-lock.yaml", PNPM_LOCK)
+        _, result = run_main(
+            base_args("npm_and_yarn", "pkg", "1.0.0", "2.0.0") + ["--lock", path], FakeGh(), fetch
+        )
+        self.assertEqual(result["compatibility"]["status"], "unknown")
+        self.assertIsNone(result["signals"]["new_compatible"])
+        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+
+    def test_no_lock_means_unknown_everywhere(self):
+        result, fetch = self.uv_run(["1.0.0", "2.0.0"], {}, lock=False)
+        self.assertEqual(result["compatibility"]["status"], "unknown")
+        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+        for key in (
+            "new_compatible",
+            "new_is_newest_compatible",
+            "new_safer_than_newest_compatible",
+        ):
+            self.assertIsNone(result["signals"][key])
+
+    def test_unreadable_metadata_of_a_newer_release_blocks_the_answer(self):
+        metas = {"2.0.0": pypi_meta(["dep-a>=2"]), "3.0.0": pypi_meta(["dep-a>=2"])}
+        result, _ = self.uv_run(["1.0.0", "2.0.0", "3.0.0", "3.1.0"], metas, fail=["3.1.0"])
+        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+        self.assertIsNone(result["newest_compatible"]["version"])
+
+    def test_more_newer_releases_than_the_cap_with_none_compatible_is_unknown(self):
+        newer = [f"3.{i}.0" for i in range(mod.WALK_BACK_CAP + 3)]
+        metas = {v: pypi_meta(["dep-a<2"]) for v in newer}
+        metas["2.0.0"] = pypi_meta(["dep-a>=2"])
+        result, fetch = self.uv_run(["1.0.0", "2.0.0", *newer], metas)
+        self.assertEqual(result["newest_compatible"]["status"], "unknown")
+        per_version = [c for c in fetch.calls if c[0].endswith("/json") and "/foo/3." in c[0]]
+        self.assertEqual(len(per_version), mod.WALK_BACK_CAP)
+
+    def test_yanked_and_prerelease_versions_are_not_candidates(self):
+        doc = pypi_doc(["1.0.0", "2.0.0", "3.0.0", "4.0.0rc1"], "3.0.0")
+        doc["releases"]["3.0.0"] = [{"yanked": True}]
+        table = {mod.PYPI_URL.format(name="foo"): doc}
+        table[mod.PYPI_VERSION_URL.format(name="foo", version="2.0.0")] = pypi_meta()
+        fetch = FakeFetch(table)
+        _, result = run_main(
+            base_args("uv", "foo", "1.0.0", "2.0.0") + ["--lock", self.lock_path()], FakeGh(), fetch
+        )
+        self.assertEqual(result["newest_compatible"]["version"], "2.0.0")
+        self.assertEqual([c for c in fetch.calls if "3.0.0" in c[0] or "4.0.0rc1" in c[0]], [])
+
+    def test_listing_fetches_ask_for_the_larger_cap(self):
+        _, fetch = self.uv_run(["1.0.0", "2.0.0"], {"2.0.0": pypi_meta()})
+        listing = [
+            k
+            for (u, _b), k in zip(fetch.calls, fetch.kwargs)
+            if u == mod.PYPI_URL.format(name="foo")
+        ]
+        self.assertEqual(listing[0].get("max_bytes"), mod.LISTING_MAX_BYTES)
+        self.assertEqual(len(listing), 1)  # latest and the walk share one download
+
+    def test_npm_walk_back_uses_one_packument_and_the_pnpm_lock(self):
+        packument = {
+            "versions": {
+                "1.0.0": {"peerDependencies": {"react": "^18"}},
+                "2.0.0": {"peerDependencies": {"react": "^18"}},
+                "3.0.0": {"peerDependencies": {"react": "^19"}},
+                "3.1.0": {"peerDependencies": {"react": "^19"}, "deprecated": "no"},
+            }
+        }
+        url = mod.NPM_PACKUMENT_URL.format(name="pkg")
+        fetch = FakeFetch({url: packument, mod.NPM_URL.format(name="pkg"): {"version": "3.1.0"}})
+        path = self.lock_path("base-pnpm-lock.yaml", PNPM_LOCK)
+        _, result = run_main(
+            base_args("npm_and_yarn", "pkg", "1.0.0", "2.0.0") + ["--lock", path], FakeGh(), fetch
+        )
+        self.assertEqual(result["newest_compatible"]["version"], "2.0.0")
+        self.assertEqual(
+            [x["version"] for x in result["newest_compatible"]["newer_incompatible"]], ["3.0.0"]
+        )
+        self.assertEqual([c[0] for c in fetch.calls].count(url), 1)
+        accepts = [k.get("accept") for (u, _b), k in zip(fetch.calls, fetch.kwargs) if u == url]
+        self.assertEqual(accepts, [mod.NPM_ABBREVIATED])
+
+    def test_github_actions_have_no_compatibility_data(self):
+        gh = FakeGh(release="v7.0.0")
+        _, result = run_main(base_args("github_actions", "actions/labeler", "6.0.1", "7.0.0"), gh)
+        self.assertEqual(result["compatibility"]["status"], "unknown")
+        self.assertIsNone(result["signals"]["new_is_newest_compatible"])
+
+    def test_lock_refusals_exit_2(self):
+        for eco, name in [("uv", "base-pnpm-lock.yaml"), ("npm_and_yarn", "base-uv.lock")]:
+            code, result = run_main(base_args(eco, "foo") + ["--lock", self.lock_path(name)])
+            self.assertEqual(code, 2)
+            self.assertFalse(result["ok"])
 
 
 class HelperTests(unittest.TestCase):

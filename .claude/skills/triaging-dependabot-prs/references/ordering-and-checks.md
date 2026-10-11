@@ -22,14 +22,15 @@ Earlier merges make every later PR behind or conflicted, so order to minimize re
 
 PRs touching only workflow files cannot conflict with lockfiles, but they still go behind their base after every other merge and need `@dependabot rebase` before `merge-pr` accepts them; two PRs editing the same workflow file can also conflict.
 
-## Advisories and the newest version
+## Advisories, compatibility and the newest compatible version
 
-Step 3 runs `dependabot_advisory_read.py assess` for the dependency's old, new and newest version. A version is riskier than another when its worst advisory severity is higher, or equal with more advisories. Two rules use the result, each only on an exact `true` signal:
+Step 3 runs `dependabot_advisory_read.py assess` for the dependency's old, new and newest compatible version, with the base branch's lockfile for `uv` and `npm_and_yarn`. A version is riskier than another when its worst advisory severity is higher, or equal with more advisories. Three rules use the result, in this order, each only on the exact signal named:
 
-- The new version has advisories and is not less risky than the old one (`new_vulnerable_not_safer_than_old`): recommend close, and say that a plain close may let Dependabot propose the same update again.
-- The new version is not the newest (`new_is_latest` false) but is less risky than the newest (`new_safer_than_latest`): recommend rebase and merge, naming the newest version and why it is not preferred.
+- The new version has advisories and is not less risky than the old one (`new_vulnerable_not_safer_than_old` true): recommend close, and say that a plain close may let Dependabot propose the same update again.
+- The new version's own declared constraints conflict with the versions in the lock (`new_compatible` false): recommend skip (hold) and quote the violated constraints. Closing is left to the user: the constraints are declared by the package's publisher, the conflict can come from this repository's own lock as much as from the release, and Dependabot's resolution in the PR may already have bumped the conflicting dependency, so the base lock can show a conflict the PR itself resolves.
+- The new version is not the newest compatible version (`new_is_newest_compatible` false) but is less risky than it (`new_safer_than_newest_compatible` true): recommend rebase and merge, naming the newest compatible version and why it is not preferred.
 
-`null` or an `unknown` status means no data, never "safe". The newest version is whatever the publisher marks as latest (PyPI's current release, npm's `latest` dist-tag, a repository's latest GitHub release), so it is upstream-controlled data, not an independent fact, and it can be ahead of what Dependabot has proposed. Risk comparisons between two versions answered by different databases are approximate (OSV can list one vulnerability under several aliases), and identical advisory sets on the old and new version count as not safer, so the rule recommends close; a newer open PR for the same dependency is still handled below.
+`null` or an `unknown` status means no data, never "safe" and never "compatible". Compatibility is a partial check, not a resolver: it covers PyPI `requires-python` and `requires_dist` and npm `peerDependencies` against the base lock, and counts every constraint it could not parse or decide as `unevaluated`. A newer release that conflicts with the lock is not "the newest" for rule three; it is listed as information. The newest version is whatever the publisher marks as latest or lists as released, so it is upstream-controlled data, not an independent fact, and it can be ahead of what Dependabot has proposed. Risk comparisons between two versions answered by different databases are approximate (OSV can list one vulnerability under several aliases), and identical advisory sets on the old and new version count as not safer, so the first rule recommends close; a newer open PR for the same dependency is still handled below.
 
 ## Duplicates and supersession
 
