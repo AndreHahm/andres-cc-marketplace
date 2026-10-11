@@ -1064,8 +1064,8 @@ def test_instruction_names_changed_ranges_and_limits_findings_to_them(
     )
 
     assert text.lstrip().startswith("review this")  # the reviewer's own text stays first
-    block = text[text.index("<diff_scope>") :]
-    assert block.rstrip().endswith("</diff_scope>")
+    block = text[text.index("[diff scope]") :]
+    assert block.rstrip().endswith("[end diff scope]")
     assert f"{_SKILL_PATH}: lines 3-5, 10" in block
     assert "only" in block and "changed lines" in block
 
@@ -1100,7 +1100,7 @@ def test_instruction_is_unchanged_when_changed_ranges_are_unavailable(
             monkeypatch, repo, change, dependency_index, completed, **kwargs
         )
         assert text == "\nreview this\n"  # exactly what the base-SHA export held
-        assert "<diff_scope>" not in text
+        assert "[diff scope]" not in text
 
 
 def test_instruction_marks_a_reviewed_path_the_pr_did_not_touch_as_context_only(
@@ -1135,7 +1135,7 @@ def test_instruction_tells_the_reviewer_to_report_what_a_removal_exposes(
         changed_ranges={_SKILL_PATH: ((41, 42),)},
     )
     assert "only the point where lines were removed" in text
-    assert "a removal included, causes or exposes it elsewhere" in text
+    assert "a removal included, plausibly causes or exposes it elsewhere" in text
 
 
 def test_instruction_marks_a_changed_symlink_as_entire_file(
@@ -1178,7 +1178,7 @@ def test_instruction_is_unchanged_when_the_symlink_lookup_cannot_answer(
         scope, base_sha="deadbeef", repo=repo, changed_ranges={_SKILL_PATH: ((3, 3),)}
     )
     assert instruction_files
-    assert all("<diff_scope>" not in text for text in instruction_files)
+    assert all("[diff scope]" not in text for text in instruction_files)
 
 
 def test_a_path_that_could_write_words_into_the_instruction_fails_the_reviewer(

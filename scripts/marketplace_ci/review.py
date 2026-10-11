@@ -1187,7 +1187,7 @@ def render_diff_scope(
     changed_paths: Iterable[str] = (),
     whole_file: Iterable[str] = (),
 ) -> str:
-    """The `<diff_scope>` briefing appended to a reviewer's instructions: which
+    """The `[diff scope]` briefing appended to a reviewer's instructions: which
     lines of each reviewed path this PR changed, so the model judges those and
     not whole files (issue #527). It describes the same changed lines
     `_classify` blocks on and never widens them: a file with a whole-file range
@@ -1200,11 +1200,11 @@ def render_diff_scope(
     changed = frozenset(changed_paths)
     whole = frozenset(whole_file)
     lines = [
-        "<diff_scope>",
+        "[diff scope]",
         "This pull request changed only the lines listed below; a listed range may be "
         "only the point where lines were removed. Read the rest of each file for "
         "context. Report a finding when it is on one of the changed lines, or when a "
-        "change here, a removal included, causes or exposes it elsewhere: anchor that "
+        "change here, a removal included, plausibly causes or exposes it elsewhere: anchor that "
         "finding to the changed line. A problem that exists only on unchanged lines "
         "and does not come from this change is not this pull request's to fix; leave "
         "it out. A finding that spans files should be anchored to a changed line, and "
@@ -1220,7 +1220,7 @@ def render_diff_scope(
             lines.append(f"{path}: entire file")
         else:
             lines.append(f"{path}: not changed by this pull request (context only)")
-    lines.append("</diff_scope>")
+    lines.append("[end diff scope]")
     return "\n".join(lines)
 
 
@@ -1644,7 +1644,7 @@ def dispatch_reviewers(
     inconclusive review up to `max_empty_retries` times; no call starts unless
     a full per-call budget still fits inside `budget_seconds` overall.
 
-    `changed_ranges` (from `compute_changed_line_ranges`) adds a `<diff_scope>`
+    `changed_ranges` (from `compute_changed_line_ranges`) adds a `[diff scope]`
     briefing to each instruction so the reviewer reports on the PR's changed
     lines only; `None` leaves the instruction exactly as the base SHA has it."""
     instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
