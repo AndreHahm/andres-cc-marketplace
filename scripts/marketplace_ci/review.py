@@ -1036,7 +1036,9 @@ def _classify(
         return True
     for component in finding.components:
         path, line = _split_location(component)
-        if _classify_location(path, line, ranges, changed_paths, repo_root, symlinks):
+        if _classify_location(
+            path, line, ranges, changed_paths, repo_root, symlinks, bare_widens=False
+        ):
             return True
     return False
 
@@ -1048,10 +1050,15 @@ def _classify_location(
     changed_paths: frozenset[str],
     repo_root: Path | None,
     symlinks: tuple[frozenset[str], tuple[str, ...]],
+    bare_widens: bool = True,
 ) -> bool:
     """True when one cited location sits on a changed line. A touched file with
     no hunk (pure rename, mode change, empty or binary file) counts as changed
-    in full, and so does a changed symlink or anything that resolves into one."""
+    in full, and so does a changed symlink or anything that resolves into one.
+    A location with no line on a file that has hunks counts only when
+    `bare_widens`: true for the finding's own location (a file-level finding is
+    never hidden), false for a cited component, where a bare path would
+    otherwise make every one-line edit to that file block the finding."""
     link_paths, link_targets = symlinks
     keys = _lookup_keys(path, repo_root)
     if any(k in link_paths for k in keys):
@@ -1068,8 +1075,10 @@ def _classify_location(
     in_ranges = any(k in ranges for k in keys)
     if not in_ranges and not any(k in changed_paths for k in keys):
         return False
-    if not in_ranges or line is None:
+    if not in_ranges:
         return True
+    if line is None:
+        return bare_widens
     return any(s <= line <= e for s, e in hunked)
 
 
