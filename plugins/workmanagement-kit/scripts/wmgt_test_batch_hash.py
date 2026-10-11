@@ -43,6 +43,9 @@ def submission(records, **overrides):
         "environment": "production",
         "team_id": "team-1",
         "batch_id": "batch-0001",
+        "linear_target": "acme/widgets",
+        "source_plugin": "workledger-kit",
+        "source_skill": "syncing-open-items",
         "records": records,
     }
     base.update(overrides)
@@ -54,6 +57,14 @@ def rec(title="t", **extra):
     record = {"title": title, "description": "d", "status": "Backlog"}
     record.update(extra)
     return record
+
+
+def without(*keys):
+    """Return a valid submission's JSON text with the given top-level ``keys`` removed."""
+    base = json.loads(submission([rec()]))
+    for key in keys:
+        del base[key]
+    return json.dumps(base)
 
 
 def update_record(i=0, **overrides):
@@ -100,6 +111,8 @@ def main() -> int:
             ' {"title": "y", "description": "d", "status": "Backlog"},'
             ' {"title": "z", "description": "d", "status": "Backlog"}],\n'
             ' "batch_id": "batch-0001", "team_id": "team-1",'
+            ' "source_skill": "syncing-open-items", "source_plugin": "workledger-kit",'
+            ' "linear_target": "acme/widgets",'
             ' "environment": "production", "operation": "create"}',
         )
         rc, out = run("hash", reordered)
@@ -137,6 +150,12 @@ def main() -> int:
             and out.get("team_id") == "team-1",
         )
         check("chunk reports its byte size", isinstance(out.get("bytes"), int) and out["bytes"] > 0)
+        check(
+            "chunk prints the slug and source claim it was built from",
+            out.get("linear_target") == "acme/widgets"
+            and out.get("source_plugin") == "workledger-kit"
+            and out.get("source_skill") == "syncing-open-items",
+        )
         rc, out = run("chunk", a, digest, "2", "5")
         check("chunk range past the end refused", rc == 1 and not out["ok"])
         rc, out = run("chunk", a, digest, "2", "2")
@@ -166,36 +185,49 @@ def main() -> int:
             rc == 1 and "smaller range" in out["error"],
         )
 
-        # The cap applies to the final output, "bytes" field included (Codex review, PR #505).
-        def edge_digest(n):
-            """Write a submission with an n-character description; return (path, hash)."""
+        # The cap applies to the final output, "bytes" field included (Codex review, PR #505), and
+        # a record that could never fit a one-record chunk is refused at hash time (Codex, round 2).
+        def edge_hash_result(n):
+            """Write a submission with an n-character description; return (path, hash result)."""
             edge = write("edge.json", submission([rec("t", description="x" * n)]))
-            return edge, run("hash", edge)[1]["sha256"]
+            return edge, run("hash", edge)[1]
 
         lo, hi = 19000, 20500
         while lo < hi:
             mid = (lo + hi + 1) // 2
-            edge, edge_hash = edge_digest(mid)
-            lo, hi = (mid, hi) if run("chunk", edge, edge_hash, "0", "1")[0] == 0 else (lo, mid - 1)
-        edge, edge_hash = edge_digest(lo)
-        rc, out = run("chunk", edge, edge_hash, "0", "1")
+            lo, hi = (mid, hi) if edge_hash_result(mid)[1]["ok"] else (lo, mid - 1)
+        edge, hashed = edge_hash_result(lo)
+        rc, out = run("chunk", edge, hashed["sha256"], "0", "1")
         proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "chunk", edge, edge_hash, "0", "1"],
+            [sys.executable, str(SCRIPT), "chunk", edge, hashed["sha256"], "0", "1"],
             capture_output=True,
             text=True,
             check=False,
         )
         printed = len(proc.stdout.rstrip("\n").encode("utf-8"))
         check(
-            "the largest accepted chunk stays within the 20000-byte cap",
+            "the largest record that hash accepts can still be written within the 20000-byte cap",
             rc == 0 and printed <= 20000,
         )
-        check("the bytes field equals the printed size", out["bytes"] == printed)
-        edge, edge_hash = edge_digest(lo + 1)
-        rc, out = run("chunk", edge, edge_hash, "0", "1")
+        check("the bytes field equals the printed size", out.get("bytes") == printed)
+        edge, hashed = edge_hash_result(lo + 1)
         check(
-            "one character more is refused with a smaller-range hint",
-            rc == 1 and "smaller range" in out["error"],
+            "one character more is refused at hash, before any approval",
+            not hashed["ok"] and "too large to write" in hashed["error"],
+        )
+        edge, hashed = edge_hash_result(25000)
+        check(
+            "a 25000-character description is refused at hash",
+            not hashed["ok"] and "record 0" in hashed["error"],
+        )
+        big_last = write(
+            "big_last.json",
+            submission([rec("a"), rec("b"), rec("c"), rec("big", description="x" * 25000)]),
+        )
+        rc, out = run("hash", big_last)
+        check(
+            "one oversized record among several refuses the whole submission",
+            rc == 1 and "record 3" in out["error"],
         )
 
         rc, out = run("chunk", fat, fat_digest, "0", "5")
@@ -251,13 +283,13 @@ def main() -> int:
         # --- validation ----------------------------------------------------------------
         dup_top = write(
             "dup_top.json",
-            '{"operation":"create","environment":"production","team_id":"A","team_id":"B","batch_id":"batch-0001","records":[{"title":"t","description":"d","status":"s"}]}',
+            '{"operation":"create","environment":"production","team_id":"A","team_id":"B","batch_id":"batch-0001","linear_target":"o/r","source_plugin":"p","source_skill":"s","records":[{"title":"t","description":"d","status":"s"}]}',
         )
         rc, out = run("hash", dup_top)
         check("duplicate top-level key refused", rc == 1 and "duplicate" in out["error"])
         dup_rec = write(
             "dup_rec.json",
-            '{"operation":"create","environment":"production","team_id":"A","batch_id":"batch-0001","records":[{"title":"1","title":"2","description":"d","status":"s"}]}',
+            '{"operation":"create","environment":"production","team_id":"A","batch_id":"batch-0001","linear_target":"o/r","source_plugin":"p","source_skill":"s","records":[{"title":"1","title":"2","description":"d","status":"s"}]}',
         )
         rc, out = run("hash", dup_rec)
         check("duplicate key inside a record refused", rc == 1 and "duplicate" in out["error"])
@@ -279,6 +311,9 @@ def main() -> int:
             ("create record with a team override", submission([rec("t", team="other")])),
             ("create record with a parent", submission([rec("t", parent="X-1")])),
             ("create record that is empty", submission([{}])),
+            ("submission without linear_target", without("linear_target")),
+            ("submission without source_plugin", without("source_plugin")),
+            ("submission without source_skill", without("source_skill")),
             ("create record with only a priority", submission([{"priority": "High"}])),
             ("create record without a title", submission([{"description": "d", "status": "s"}])),
             ("create record without a description", submission([{"title": "t", "status": "s"}])),
@@ -373,7 +408,15 @@ def main() -> int:
             ),
         ]:
             rc, out = run("hash", write("bad.json", text))
-            check(f"{label} refused", rc == 1 and not out["ok"])
+            # A typed JSON error is a refusal; a crash (the sentinel adds "stdout") is not.
+            check(f"{label} refused", rc == 1 and not out["ok"] and "stdout" not in out)
+
+        for field in ("linear_target", "source_plugin", "source_skill"):
+            rc, out = run("hash", write("missing.json", without(field)))
+            check(
+                f"a missing {field} is refused with a typed 'is required' error",
+                rc == 1 and field in out.get("error", "") and "is required" in out["error"],
+            )
 
         upd_null_before = write(
             "upd_null.json",
@@ -397,6 +440,7 @@ def main() -> int:
         overflow = write(
             "overflow.json",
             '{"operation":"create","environment":"test","team_id":"T","batch_id":"batch-0001",'
+            '"linear_target":"o/r","source_plugin":"p","source_skill":"s",'
             '"records":[{"title":1e999,"description":"d","status":"s"}]}',
         )
         rc, out = run("hash", overflow)

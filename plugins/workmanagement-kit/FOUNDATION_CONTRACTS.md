@@ -568,8 +568,8 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
   operation, `linear.initiatives.read` (organization-scoped, read-only Initiative reads on a second
   Linear connector, shipped `unconfigured` with no connector); additive within host-profile schema v1.
   `versioned-configuration.json` gained `linear.repositories`, an empty owner/repo-to-Linear-team map,
-  additive within schema v2. The slug lookup is documented as not yet implemented by
-  `plugin-integration-intake`; the rules for when it ships (exact normalized matching, reject unknown
+  additive within schema v2. The slug lookup was then documented as not yet implemented by
+  `plugin-integration-intake` (it is implemented as of the 2026-10-09 entry above); the rules for when it ships (exact normalized matching, reject unknown
   slugs, production-by-default team choice, mapped teams bounded by the operation's `team_ids`, an
   override's array fields replace rather than union) are recorded in the Versioned Configuration and
   Local Override sections. The local-override trust paragraph now names the team-choosing fields too.

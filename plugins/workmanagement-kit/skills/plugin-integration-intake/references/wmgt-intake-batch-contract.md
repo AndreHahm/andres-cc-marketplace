@@ -1,8 +1,8 @@
 # Intake Batch Contract
 
 How `plugin-integration-intake` accepts, previews, approves and writes a **batch** of Linear Issue records, and how
-a repository slug becomes a Linear team. The single-record envelope in `intake-payload-schema.md` is unchanged and
-stays valid; this file adds to it. `wmgt-intake-query-update-contract.md` covers the query and update operations,
+a repository slug becomes a Linear team. The single-record envelope (the payload-schema reference) is unchanged and
+stays valid; this file adds to it. The query and update procedure covers the query and update operations,
 which reuse the target resolution, scratch files and hash binding defined here.
 
 This gate is **prose-enforced and model-executed**. The hash script binds an approval to one file's bytes and lets a
@@ -58,7 +58,7 @@ than choosing another location.
 one submission and cannot be replayed for a later one.
 
 Compute the hash with `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py hash <file>`. The script refuses duplicate
-JSON keys, a symlink or hard link (best effort on Windows), a missing `operation`/`environment`/`team_id`/`batch_id`,
+JSON keys, a symlink or hard link (best effort on Windows), a missing `operation`/`environment`/`team_id`/`batch_id`/`linear_target`/`source_plugin`/`source_skill`,
 more than 1000 records, any top-level key outside `operation`, `environment`, `team_id`, `batch_id`, `linear_target`,
 `source_plugin`, `source_skill` and `records`, and any record outside the per-operation field allowlist: a create record
 may hold only `title`, `description`, `status`, `priority`, `labels` (so a batch create can never assign an owner, add
@@ -66,10 +66,10 @@ dependency relations or set a cycle); an update record may hold only `id`, `set`
 `labels`, `priority`, `owner`) and `before`. Values are typed: strings for `title`, `description`, `status`,
 `priority` and `owner`, and an array of at most 20 non-empty strings for `labels`; an update's `before` must hold
 the current `title` and every field named in `set`. A record carrying `team`, `project`, `parent` or anything else is
-refused mechanically. The hash covers the operation, environment, team, `batch_id` and every record in order. The `linear_target` stored in the file is the normalized slug from the resolution (lowercase, no trailing `.git`, at most 100 characters on each side of the `/`), never the caller's raw value; `source_plugin` and `source_skill` are lowercase kebab-case of at most 64 characters.
+refused mechanically, and so is a record too large to write: every record must fit a one-record chunk (at most 20000 bytes of output), so one oversized description is refused at `hash` and can never strand a batch half-written. The hash covers the operation, environment, team, `batch_id` and every record in order. The `linear_target` stored in the file is the normalized slug from the resolution (lowercase, no trailing `.git`, at most 100 characters on each side of the `/`), never the caller's raw value; `source_plugin` and `source_skill` are lowercase kebab-case of at most 64 characters.
 
 A `create` record whose `status` resolves to a completed or canceled workflow state is refused as malformed, for the
-same reason an update to one is (see `wmgt-intake-query-update-contract.md`): a single approve-all question cannot
+same reason an update to one is refused: a single approve-all question cannot
 confirm a closure.
 
 **Fail closed.** If the script is unavailable, errors, prints anything but one JSON object, or reports `"ok": false`,
@@ -101,7 +101,7 @@ the submission file path and the chunk range. That skill does not take intake's 
 prompt **only if all of these hold**, and otherwise applies its own per-write approval in full:
 
 1. the file is directly inside `<scratchpad>/wmgt-intake/`, and it ran `wmgt_batch_hash.py chunk` itself and writes only the operation, environment, team and records its own call prints;
-2. the printed `team_id` is in `linear.write`'s `team_ids` and `linear.write` is `verified` with a non-null `verified_at`;
+2. the printed `linear_target` resolves, through `linear-work-management`'s slug resolution, to the printed `team_id` for the printed environment, that team is in `linear.write`'s `team_ids`, and `linear.write` is `verified` with a non-null `verified_at`;
 3. the most recent `AskUserQuestion` naming that hash was asked inside a `plugin-integration-intake` invocation, named the same environment, team and record count the script prints, was answered "approve all", and is still in force: every chunk of the same file and hash under that one answer qualifies, each record index is written at most once (skip and report one already in the progress file), and a later reject, a changed hash or a completed batch ends it;
 4. for an `update`, each Issue is re-read immediately before it is written, still belongs to that team, and still holds the `before` values; otherwise the record is reported as a conflict and skipped.
 

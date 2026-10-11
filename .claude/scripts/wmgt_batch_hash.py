@@ -15,10 +15,11 @@ Subcommands:
                                            in [start, end) (at most 100 rows, at most 20000
                                            bytes) and, for the first three records of the batch
                                            when in range, their full description
-    chunk   <file> <sha256> <start> <end>  verify, then print operation, environment, team_id
-                                           and the records [start, end) exactly as hashed (at
-                                           most 25 records and 20000 bytes), so a write is built
-                                           from verified output and not from a second read
+    chunk   <file> <sha256> <start> <end>  verify, then print operation, environment, team_id,
+                                           linear_target, source_plugin, source_skill and the
+                                           records [start, end) exactly as hashed (at most 25
+                                           records and 20000 bytes), so a write is built from
+                                           verified output and not from a second read
     purge   <scratch-root> <file>          delete a submission or progress file, only when it is
                                            directly inside <scratch-root>/wmgt-intake and has an
                                            intake-generated name (the only mutating command)
@@ -27,13 +28,15 @@ Every verified output carries "bytes" (the size of what was printed) so a trunca
 result can be recognised.
 
 The file must be a regular (non-symlink) UTF-8 JSON object with: "operation" (create or
-update), "environment" (production or test), a non-empty string "team_id", a "batch_id"
+update), "environment" (production or test), a non-empty string "team_id", a normalized
+"linear_target" slug, "source_plugin" and "source_skill" names, a "batch_id"
 nonce (intake generates a fresh one for every submission, including a resume, so the same
 records never hash the same twice), and a non-empty "records" array. Records are checked
 against a per-operation field allowlist and typed (strings; labels as a bounded array of
 strings), and a create record must carry a non-blank title, description and status.
 Duplicate JSON keys and non-finite numbers (NaN, Infinity) anywhere are refused, and the
-source_plugin, source_skill and linear_target fields are pattern-checked when present. The
+source_plugin, source_skill and linear_target fields are pattern-checked. Every record must also
+fit a one-record chunk, so none can be hashed yet never written. The
 hash covers the whole object, serialized canonically (sorted keys, no whitespace, ASCII
 escapes).
 
@@ -172,6 +175,35 @@ def _check_records(operation: str, records: list) -> None:
                 _check_value(where + " before", field, value, allow_none=True)
 
 
+def _check_records_fit_a_chunk(data: dict) -> None:
+    """Refuse a submission holding a record that could never be written in a one-record chunk."""
+    head = {
+        key: data[key]
+        for key in (
+            "operation",
+            "environment",
+            "team_id",
+            "linear_target",
+            "source_plugin",
+            "source_skill",
+        )
+    }
+    for index, record in enumerate(data["records"]):
+        probe = {
+            "ok": True,
+            "sha256": "0" * 64,
+            "record_count": len(data["records"]),
+            **head,
+            "start": index,
+            "records": [record],
+        }
+        if _sized(probe) > MAX_OUTPUT_BYTES:
+            raise HashError(
+                f"record {index} is too large to write: its one-record chunk would exceed "
+                f"{MAX_OUTPUT_BYTES} bytes"
+            )
+
+
 def load_submission(path_str: str) -> dict:
     """Read and validate a submission file; return the parsed object or raise HashError."""
     if os.path.islink(path_str):
@@ -211,12 +243,14 @@ def load_submission(path_str: str) -> dict:
     if unexpected:
         raise HashError(f"unexpected top-level keys: {sorted(unexpected)}")
     for key in ("source_plugin", "source_skill"):
-        if key in data and not (isinstance(data[key], str) and _KEBAB_RE.fullmatch(data[key])):
-            raise HashError(f"{key!r} must be a lowercase kebab-case name of at most 64 characters")
-    if "linear_target" in data and not (
-        isinstance(data["linear_target"], str) and _SLUG_RE.fullmatch(data["linear_target"])
+        if not (isinstance(data.get(key), str) and _KEBAB_RE.fullmatch(data[key])):
+            raise HashError(
+                f"{key!r} is required and must be a lowercase kebab-case name (max 64 characters)"
+            )
+    if not (
+        isinstance(data.get("linear_target"), str) and _SLUG_RE.fullmatch(data["linear_target"])
     ):
-        raise HashError('"linear_target" must be a lowercase owner/repo slug')
+        raise HashError('"linear_target" is required and must be a lowercase owner/repo slug')
     if data.get("operation") not in _OPERATIONS:
         raise HashError('"operation" must be "create" or "update"')
     if data.get("environment") not in _ENVIRONMENTS:
@@ -233,6 +267,7 @@ def load_submission(path_str: str) -> dict:
     if len(records) > MAX_RECORDS:
         raise HashError(f'"records" exceeds {MAX_RECORDS} entries')
     _check_records(data["operation"], records)
+    _check_records_fit_a_chunk(data)
     return data
 
 
@@ -328,6 +363,9 @@ def run(args) -> dict:
         result["operation"] = data["operation"]
         result["environment"] = data["environment"]
         result["team_id"] = data["team_id"]
+        result["linear_target"] = data["linear_target"]
+        result["source_plugin"] = data["source_plugin"]
+        result["source_skill"] = data["source_skill"]
         result["start"] = args.start
         result["records"] = records[args.start : args.end]
     if args.command in ("preview", "chunk"):
