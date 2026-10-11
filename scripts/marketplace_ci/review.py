@@ -745,6 +745,11 @@ _DIFF_HEADER_PREFIXES = (
     "GIT binary patch",
 )
 
+# A line break other than "\\n" inside a diff line (a bare CR, VT, FF, FS/GS/RS, NEL, LS, PS; a CR
+# that ends a CRLF line does not count). Git counts hunk lines by "\\n" only, but a reviewer may
+# count by these, so exact line matching cannot be trusted for such a file.
+_ODD_LINE_BREAK = re.compile("\r(?=.)|[\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
+
 LineRanges = dict[str, tuple[tuple[int, int], ...]]
 _RangesView = Mapping[str, tuple[tuple[int, int], ...]]
 
@@ -762,6 +767,7 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     a quoted path header or on any unexpected line outside a hunk body: the
     caller must treat that as "ranges unavailable", never as "nothing changed"."""
     ranges: dict[str, list[tuple[int, int]]] = {}
+    changed_in_full: set[str] = set()
     path: str | None = None
     body_left = 0
     lines = diff_text.split("\n")
@@ -769,6 +775,8 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
         if body_left > 0:
             if not line.startswith("\\"):
                 body_left -= 1
+                if path is not None and _ODD_LINE_BREAK.search(line[1:]):
+                    changed_in_full.add(path)
             continue
         if line.startswith("\\") or (line == "" and index == len(lines) - 1):
             continue
@@ -794,6 +802,8 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
             continue
         end = start + 1 if new_count == 0 else start + new_count - 1
         ranges.setdefault(path, []).append((start, end))
+    for full_path in changed_in_full:
+        ranges[full_path].append((1, sys.maxsize))
     return {p: tuple(r) for p, r in ranges.items()}
 
 
@@ -888,7 +898,10 @@ def _classify(
         return True, True
     if repo_root is not None and link_targets:
         real = os.path.realpath(os.path.join(repo_root, finding.path))
-        if any(real == t or real.startswith(t + os.sep) for t in link_targets):
+        if any(
+            real == t or real.startswith(t if t.endswith(os.sep) else t + os.sep)
+            for t in link_targets
+        ):
             return True, True
     hunked = [r for k in keys for r in ranges.get(k, ())]
     in_ranges = any(k in ranges for k in keys)

@@ -923,7 +923,16 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
     )
 
     ranges = compute_changed_line_ranges(repo, base_sha)
-    scope = {"changed_paths": changed_paths, "repo_root": repo}
+    # git prints repo-root-relative paths whatever the working directory is, so
+    # symlink checks must resolve them against the git root, not against cwd.
+    root = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.rstrip("\n")
+    scope = {"changed_paths": changed_paths, "repo_root": Path(root)}
     blocking = set(blocking_findings(findings, ranges, **scope))
     if ranges is None:
         return blocking, None, False
@@ -951,7 +960,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     Codex-executed skill), validate every returned envelope, and aggregate.
     Exit 2 on any infrastructure failure (unresolvable base SHA, dispatch
     failure, malformed output) — never silently treated as a passing review.
-    Exit 1 only for a genuine blocking (Critical/Major) finding.
+    Exit 1 only for a genuine blocking finding (see _diff_scope: a Major/Critical
+    on a changed line, or a Critical in a touched file).
     """
     from scripts.marketplace_ci.git_state import parse_name_status_z
     from scripts.marketplace_ci.review import (
