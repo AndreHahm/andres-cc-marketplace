@@ -155,8 +155,9 @@ provenance field imply otherwise.
 - A `target-paths` entry containing a prompt tag-closing character (`<`, `>`) or a newline —
   verified live: rejected with `invalid_arguments` before any config/exec is attempted.
 - A `target-paths` entry that is empty or has leading/trailing whitespace (issue #533) — rejected with
-  `invalid_arguments` as given, never trimmed or dropped; checked with the platform gate spoofed on Linux,
-  since the full suite only runs on Windows.
+  `invalid_arguments` as given, never trimmed or dropped. These scenarios are in the preflight suite, which
+  only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they have not been
+  run on Windows yet.
 - A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
   `invalid_arguments`, even when guardrails resolve as enabled relative to that passed root.
 - A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
