@@ -916,7 +916,6 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
     in the artifact as a non-blocking notice. `in_diff` is None, and every
     Critical/Major blocks, when the changed lines could not be computed."""
     from scripts.marketplace_ci.review import (
-        blocking_findings,
         compute_changed_line_ranges,
         split_findings_by_diff,
     )
@@ -931,11 +930,17 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
         text=True,
         check=True,
     ).stdout.rstrip("\n")
-    scope = {"changed_paths": changed_paths, "repo_root": Path(root)}
-    blocking = set(blocking_findings(findings, ranges, **scope))
+    gated = {f for f in findings if f.severity in ("Critical", "Major")}
     if ranges is None:
-        return blocking, None, False
-    return blocking, set(split_findings_by_diff(findings, ranges, **scope)[0]), True
+        return gated, None, False
+    # One classification pass (one tree lookup); blocking is the gated subset of
+    # the findings on a changed line, so the two sets can never disagree.
+    in_diff = set(
+        split_findings_by_diff(findings, ranges, changed_paths=changed_paths, repo_root=Path(root))[
+            0
+        ]
+    )
+    return gated & in_diff, in_diff, True
 
 
 def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
