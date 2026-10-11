@@ -1204,3 +1204,17 @@ def test_a_path_that_could_write_words_into_the_instruction_fails_the_reviewer(
     assert all(r.status == "failed" for r in reports)
     assert all("characters the reviewer bridge does not accept" in (r.error or "") for r in reports)
     assert not [c for c in calls if "--reviewer-type" in c]  # nothing was dispatched
+
+
+def test_instruction_stops_listing_ranges_for_a_file_with_very_many_hunks(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    # An unbounded range list could make the instruction huge. Past the cap the
+    # file reads "entire file": the reviewer is not narrowed on it, which is the
+    # safe side, and the instruction stays small.
+    many = tuple((n * 3, n * 3) for n in range(1, review._MAX_BRIEFING_SPANS + 2))
+    text = _dispatch_and_read_instruction(
+        monkeypatch, repo, change, dependency_index, completed, changed_ranges={_SKILL_PATH: many}
+    )
+    assert f"{_SKILL_PATH}: entire file" in text
+    assert "lines 3" not in text
