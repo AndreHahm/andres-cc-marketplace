@@ -34,8 +34,10 @@ remove other tools from the session, so any write command would still need a nor
   check that a lookup never performs; this skill only displays text.
 - Creating, editing, revising, activating or deactivating a prompt: use `prompt-library`. It is
   user-invoked only, so tell the user to run `/prompt-library`; do not try to invoke it from here.
-- A repeatable instruction that needs scripts, tool restrictions, automatic activation or multi-step
-  orchestration: that is a skill, so use `skill-development`.
+- A repeatable instruction that needs scripts, tool restrictions or automatic activation: that is a
+  skill, so use `skill-development`.
+- A repeatable instruction that needs multi-step phases or sub-agent orchestration: that is a workflow
+  skill, so use `workflow-skill-development`.
 
 ## Data-only boundary
 

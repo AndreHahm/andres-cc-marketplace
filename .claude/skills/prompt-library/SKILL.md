@@ -99,7 +99,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    scope is in `references/prompt-intake-sources.md`). For `user` text a match is a warning the user may
    accept, because their own prompt can legitimately contain a path or an example string.
 5. **Triage.** Ask whether this is one reusable instruction text (a prompt) or needs something a prompt
-   cannot provide (a skill: point to `skill-development` and create no record). Then filter `validate`'s
+   cannot provide (a skill: point to `skill-development`, or to `workflow-skill-development` for
+   multi-step phases or sub-agent orchestration, and create no record). Then filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
