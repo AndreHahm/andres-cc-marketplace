@@ -35,6 +35,19 @@ def load(path, name):
 
 read_module = load(READ_PATH, "dependabot_pr_read")
 
+
+def symlinks_supported():
+    """Whether this machine and user may create symlinks (Windows needs a privilege)."""
+    with tempfile.TemporaryDirectory() as probe:
+        try:
+            os.symlink(os.path.join(probe, "target"), os.path.join(probe, "link"))
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+SYMLINKS_OK = symlinks_supported()
+
 REPO = "OwnerX/repo-y"
 GH = "/opt/bin/gh"
 GIT = "/opt/bin/git"
@@ -494,13 +507,14 @@ class UvLock(unittest.TestCase):
         outside = pathlib.Path(self.dir) / "victim.txt"
         outside.write_text("keep", encoding="utf-8")
         link = pathlib.Path(self.dir) / "base-uv.lock"
-        os.symlink(outside, link)
-        fake = FakeRun(api_stdout="overwritten\n")
-        code, out = self.fetch(fake)
-        self.assertEqual(code, 2, out)
-        self.assertEqual(outside.read_text(encoding="utf-8"), "keep")
-        self.assertEqual(fake.api_calls(), [])
-        link.unlink()
+        if SYMLINKS_OK:
+            os.symlink(outside, link)
+            fake = FakeRun(api_stdout="overwritten\n")
+            code, out = self.fetch(fake)
+            self.assertEqual(code, 2, out)
+            self.assertEqual(outside.read_text(encoding="utf-8"), "keep")
+            self.assertEqual(fake.api_calls(), [])
+            link.unlink()
         link.mkdir()
         code, out = self.fetch(FakeRun(api_stdout="x\n"))
         self.assertEqual(code, 2, out)
