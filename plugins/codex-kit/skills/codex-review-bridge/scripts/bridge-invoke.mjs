@@ -525,7 +525,10 @@ async function main() {
     }
   }
 
-  const targetPaths = targetPathsRaw.split(",").map((p) => p.trim());
+  // No trim(): each entry is validated exactly as given, so a padded entry
+  // (space, U+2028, no-break space) or an empty one is rejected instead of
+  // being normalized into a valid-looking token (issue #533).
+  const targetPaths = targetPathsRaw.split(",");
 
   // Each entry is interpolated verbatim into the <target_paths> prompt tag
   // below and used to build filesystem paths -- same isValidToken-style
