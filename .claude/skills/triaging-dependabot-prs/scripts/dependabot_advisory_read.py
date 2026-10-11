@@ -435,7 +435,11 @@ def pep440_satisfies(version, spec):
     return True if results and all(r is True for r in results) else None
 
 
-NPM_TOKEN_RE = re.compile(r"(>=|<=|>|<|=|\^|~)?v?([0-9xX*]{1,9}(?:\.[0-9xX*]{1,9}){0,2})")
+# Each version segment is 1 to 9 digits or one wildcard; a mixed segment such as 1.xx is not a range we read.
+NPM_SEGMENT = r"(?:[0-9]{1,9}|[xX*])"
+NPM_TOKEN_RE = re.compile(
+    r"(>=|<=|>|<|=|\^|~)?v?(" + NPM_SEGMENT + r"(?:\." + NPM_SEGMENT + r"){0,2})"
+)
 
 
 def _npm_token(have, token):
