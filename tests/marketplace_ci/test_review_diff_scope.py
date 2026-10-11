@@ -1243,3 +1243,24 @@ def test_handler_briefs_every_reviewer_with_the_changed_lines(monkeypatch, git_r
     # EDIT_LINE_2 changes only line 2 of the file, which is exactly what the
     # gate's own ranges say too.
     assert all("plugins/demo-kit/hooks/hooks.json: lines 2\n" in b for b in briefings)
+
+
+def test_handler_computes_the_changed_lines_once_for_briefing_and_gate(
+    monkeypatch, git_repo, tmp_path
+):
+    # Two computations could disagree (one failing after the reviewers were
+    # already narrowed); one shared result cannot.
+    import scripts.marketplace_ci.review as review_module
+
+    calls = []
+    real = review_module.compute_changed_line_ranges
+
+    def counting(repo, base_sha):
+        calls.append(base_sha)
+        return real(repo, base_sha)
+
+    monkeypatch.setattr(review_module, "compute_changed_line_ranges", counting)
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    rc, _ = _run_handler(monkeypatch, git_repo, base, _envelope("minor", 2), tmp_path)
+    assert rc == 0
+    assert calls == [base]

@@ -911,17 +911,24 @@ def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None
     }
 
 
-def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
+def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_ranges=None):
     """(blocking, in_diff, diff_scoped) for the aggregated findings. A
     Major/Critical on a line this PR changed blocks; every other finding stays
     in the artifact as a non-blocking notice. `in_diff` is None, and every
-    Critical/Major blocks, when the changed lines could not be computed."""
+    Critical/Major blocks, when the changed lines could not be computed.
+    `precomputed_ranges` is `(compute_changed_line_ranges(...),)`, passed in so
+    the reviewers' briefing and this gate use one computation (the one element
+    may itself be None, meaning "could not be computed"); left out, the ranges
+    are computed here."""
     from scripts.marketplace_ci.review import (
         compute_changed_line_ranges,
         split_findings_by_diff,
     )
 
-    ranges = compute_changed_line_ranges(repo, base_sha)
+    if precomputed_ranges is not None:
+        ranges = precomputed_ranges[0]
+    else:
+        ranges = compute_changed_line_ranges(repo, base_sha)
     # git prints repo-root-relative paths whatever the working directory is, so
     # symlink checks must resolve them against the git root, not against cwd.
     root = subprocess.run(
@@ -1029,11 +1036,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
 
     structural_findings = run_delta_structural_checks(repo, changed)
+    changed_ranges = compute_changed_line_ranges(repo, base_sha)
     reports = dispatch_reviewers(
         scope,
         base_sha=base_sha,
         repo=repo,
-        changed_ranges=compute_changed_line_ranges(repo, base_sha),
+        changed_ranges=changed_ranges,
         changed_paths=_changed_path_set(changed),
     )
 
@@ -1078,7 +1086,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     findings = aggregate_findings(validated)
     try:
         blocking_set, in_diff, diff_scoped = _diff_scope(
-            findings, repo, base_sha, _changed_path_set(changed)
+            findings, repo, base_sha, _changed_path_set(changed), (changed_ranges,)
         )
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}")

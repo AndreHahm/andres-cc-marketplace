@@ -184,9 +184,9 @@ the deleted-guard kind.
 
 **Reviewer briefing (issue #527).** Blocking alone left each reviewer free to read and judge whole files, so the
 findings on the changed lines could still differ between runs of the same head. `run-codex-review` therefore also
-appends a `<diff_scope>` block to every reviewer's instruction (`render_diff_scope`, from the same ranges the gate
+appends a `[diff scope]` block to every reviewer's instruction (`render_diff_scope`, from the same ranges the gate
 uses): it lists each reviewed path with its changed lines and tells the reviewer to read the rest for context but
-report only on the changed ones, or on a problem that a change here, a removal included, causes or exposes
+report only on the changed ones, or on a problem that a change here, a removal included, plausibly causes or exposes
 elsewhere, anchored to the changed line. A path that counts as changed in full above (whole-file range, rename,
 mode change, empty or binary file, changed symlink or a path resolving into one) reads `entire file`; a reviewed path the PR did not touch, such as part of a
 `full`-mode dependency closure, reads `context only`. When the changed lines cannot be computed, the instruction is
