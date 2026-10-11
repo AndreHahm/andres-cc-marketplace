@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill_committed_wording",
+  "assertions_evaluated": [
+    {
+      "text": "Response describes Delta Validate running before Delta Audit",
+      "passed": true,
+      "evidence": "Numbered plan: '2. Delta Validate (required, 3-reviewer floor)' followed by '3. Delta Audit (required)'."
+    },
+    {
+      "text": "Response explicitly states whole-plugin plugin-validator/plugin-grader are NOT run",
+      "passed": true,
+      "evidence": "'Do not run plugin-validator or plugin-grader in whole-plugin mode.'"
+    },
+    {
+      "text": "Response states that this skill/document is never itself executed to perform a review and that CI's repository-owned code (dispatch_reviewers in scripts/marketplace_ci/review.py) runs the review",
+      "passed": true,
+      "evidence": "'the plugin-marketplace-review skill is policy documentation, not an execution mechanism. CI does not run it. The sole orchestrator is scripts/marketplace_ci/review.py (derive_review_scope, then dispatch_reviewers)'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": "3/3"
+  },
+  "notes": "Isolation run: identical prompt and assertions, but the skill text is the COMMITTED (pre-R35/R29/R32-fix) SKILL.md from HEAD, without the new When to Use / When NOT to Use sections or trigger lists. Single run, no repeat."
+}

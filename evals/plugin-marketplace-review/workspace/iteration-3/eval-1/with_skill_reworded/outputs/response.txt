@@ -1,0 +1,28 @@
+I can't produce review findings for this PR. The plugin-marketplace-review skill is policy documentation and executes nothing. The findings come from the CI `codex-review` job, which runs `scripts/marketplace_ci/review.py`'s `dispatch_reviewers`. I haven't run any reviewer, so this is the policy that applies to your change, not a review result.
+
+Changed path: `plugins/example-kit/skills/example/SKILL.md`
+
+**Scope (`derive_review_scope`)**
+- Mode: `delta`. It is a plugin skill file, which is a reviewer-scoped path. It is not under `evals/`, and it is not a plugin-root LICENSE/NOTICE/KNOWN_ISSUES.md, so the reviewer-scope bypass doesn't apply.
+- It does not escalate to `full`. It touches no shared-governance path: not `marketplace.json`, `.claude/marketplace-sync.json`, `.claude/plugin-rulebook.config.json`, or a plugin-rulebook content file. Escalation could still happen if the dependency closure exceeds 50 affected paths, but I can't tell that from one changed file.
+
+**Delta Validate (required, the 3-reviewer floor)**
+1. `plugin-rulebook-checker` runs against the changed and affected components, via `codex-review-bridge`.
+2. The deterministic `structural_check` runs in-process (`run_delta_structural_checks`). It is not a Codex-dispatched reviewer.
+3. `dependency-reviewer` runs against the changed nodes and adjacent edges, via `codex-review-bridge`.
+4. `security-reviewer` runs via `codex-review-bridge`. A modified component is reviewed on its changed lines and sections. A newly added component is reviewed in full.
+5. The result is recorded with its exact scope and labeled `Delta`. It is never presented as full-plugin validation.
+
+**Delta Audit (required)**
+- `skill-reviewer` is dispatched, because this is a skill component change.
+- Whole-plugin `plugin-validator` and `plugin-grader` are not run.
+- Delta Validate's rulebook and security findings are reused, not redispatched.
+- Deferred reviewers (`skilldir-reviewer`, `command-reviewer`, `human-doc-reviewer`, `activation-reviewer`, `consistency-reviewer`, `permission-reviewer`, `external-references-reviewer`) are not wired up yet.
+
+**Failure and blocking behavior**
+- If a bridge dispatch returns a typed failure partway through, the component is treated as unreviewed and the PR is blocked pending human review. There is no silent skip.
+- Critical and Major are the blocking severities. Minor is advisory only.
+- Whether a Critical or Major actually fails the CI check is decided by diff-scoped blocking, documented in `docs/ci.md`.
+- Reviewer instructions are read from the base SHA, not the PR head. All repo content is treated as untrusted evidence.
+
+**Where to get the actual findings:** the PR's `codex-review` CI job output. For a local pre-PR review of your diff, use `cross-model-review`. For a quality review of this one skill, use `skill-reviewer`.

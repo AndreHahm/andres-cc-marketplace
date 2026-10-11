@@ -1,0 +1,18 @@
+{
+  "iteration": 3,
+  "eval_id": "eval-1",
+  "note": "Single-run comparison, n=1 each; not a statistical result. staged_wording = first draft of the new sections (1/3); committed_wording = pre-edit HEAD (3/3); reworded_wording = after the 3-bullet rewrite (3/3).",
+  "staged_wording": {
+    "passed": 1,
+    "total": 3
+  },
+  "committed_wording": {
+    "passed": 3,
+    "total": 3
+  },
+  "probable_cause": "The staged negative-trigger bullet 'Run the marketplace review on this PR -> CI dispatch_reviewers; this document executes nothing' is a near-copy of the eval prompt, so the agent deflected instead of stating the policy.",
+  "reworded_wording": {
+    "passed": 3,
+    "total": 3
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill_reworded",
+  "assertions_evaluated": [
+    {
+      "text": "Response describes Delta Validate running before Delta Audit",
+      "passed": true,
+      "evidence": "Sections in order: 'Delta Validate (required, the 3-reviewer floor)' followed by 'Delta Audit (required)'."
+    },
+    {
+      "text": "Response explicitly states whole-plugin plugin-validator/plugin-grader are NOT run",
+      "passed": true,
+      "evidence": "'Whole-plugin `plugin-validator` and `plugin-grader` are not run.'"
+    },
+    {
+      "text": "Response states that this skill/document is never itself executed to perform a review and that CI's repository-owned code (dispatch_reviewers in scripts/marketplace_ci/review.py) runs the review",
+      "passed": true,
+      "evidence": "'The plugin-marketplace-review skill is policy documentation and executes nothing. The findings come from the CI `codex-review` job, which runs `scripts/marketplace_ci/review.py`'s `dispatch_reviewers`.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": "3/3"
+  },
+  "notes": "Re-test after rewording the 3 bullets (When NOT to Use 'Producing review findings', positive trigger 'Run the marketplace review on this PR', negative trigger 'Give me the findings for this PR'). Single run."
+}

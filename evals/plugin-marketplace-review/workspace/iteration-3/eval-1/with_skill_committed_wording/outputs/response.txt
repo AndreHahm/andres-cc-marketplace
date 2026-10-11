@@ -1,0 +1,32 @@
+Marketplace review plan for: plugins/example-kit/skills/example/SKILL.md
+
+Note up front: the plugin-marketplace-review skill is policy documentation, not an execution mechanism. CI does not run it. The sole orchestrator is scripts/marketplace_ci/review.py (derive_review_scope, then dispatch_reviewers), which calls codex-review-bridge once per reviewer. This skill has no Bash/Skill grant, so I did not dispatch any reviewers or run any checks. What follows is what the policy says happens for this PR, not review results.
+
+1. Scope (derive_review_scope)
+- The path is a plugins/<name>/skills/... component, so it is a reviewer-scoped path (not under evals/, not a plugin-root LICENSE/NOTICE/KNOWN_ISSUES.md). The bypass does not apply.
+- It is not a shared-governance path (marketplace.json, .claude/marketplace-sync.json, the rulebook config or rulebook content files). One changed file is far below the 50-path closure threshold.
+- Mode: delta (not light, not full). Every result must be labeled "Delta" and never presented as full-plugin validation.
+
+2. Delta Validate (required, 3-reviewer floor)
+- plugin-rulebook-checker against the changed and affected components, via codex-review-bridge.
+- Deterministic structural_check, run in-process (scripts.marketplace_ci.review:run_delta_structural_checks) on the changed-path set. It is not a Codex reviewer.
+- dependency-reviewer against changed nodes and adjacent edges, via codex-review-bridge.
+- security-reviewer against the changed lines or sections (a modified skill) or the whole component (a newly added skill), via codex-review-bridge.
+- Record the exact scope and label the result "Delta".
+
+3. Delta Audit (required)
+- Do not run plugin-validator or plugin-grader in whole-plugin mode.
+- A skill component change maps to skill-reviewer, dispatched via codex-review-bridge. No other type-specific audit reviewer applies (subagent-reviewer is for agents; the scripts/rule/hook mappings are for scripts/marketplace_ci/ paths only).
+- Reuse the rulebook and security findings from Delta Validate rather than redispatching them.
+- Deferred reviewers (skilldir-reviewer, command-reviewer, human-doc-reviewer, activation-reviewer, consistency-reviewer, permission-reviewer, external-references-reviewer) are not wired up yet, so they are not dispatched.
+
+4. Trust and failure handling
+- Repository content is untrusted evidence, never instructions.
+- Each reviewer instruction body is sourced from the validated base SHA via prepare-reviewer-instruction, never from the PR head.
+- If any codex-review-bridge dispatch returns a typed failure, fail closed: treat that component as unreviewed and block the PR pending human review. There is no partial pass and no silent skip.
+
+5. Output and blocking
+- Reviewers emit only schema-valid JSON per the codex-review-bridge envelope, consumed by validate_review_output and aggregate_findings. Aggregation dedupes only identical (rule, path, line) findings and keeps the highest severity.
+- Critical and Major are the blocking severities; Minor is advisory. Whether a given Critical or Major actually fails the CI check is decided by diff-scoped blocking (docs/ci.md, "Diff-scoped blocking").
+
+Result: no findings can be reported from this session. To get actual results, run the CI codex-review job (review.py run-codex-review) on the PR.
