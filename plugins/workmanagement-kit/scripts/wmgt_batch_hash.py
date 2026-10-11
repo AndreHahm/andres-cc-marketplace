@@ -24,8 +24,8 @@ Subcommands:
                                            directly inside <scratch-root>/wmgt-intake and has an
                                            intake-generated name (the only mutating command)
 
-Every verified output carries "bytes" (the size of what was printed) so a truncated tool
-result can be recognised.
+The preview and chunk outputs carry "bytes" (the size of what was printed) so a truncated
+tool result can be recognised.
 
 The file must be a regular (non-symlink) UTF-8 JSON object with: "operation" (create or
 update), "environment" (production or test), a non-empty string "team_id", a normalized

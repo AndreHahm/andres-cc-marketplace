@@ -73,7 +73,9 @@ same reason an update to one is refused: a single approve-all question cannot
 confirm a closure.
 
 **Fail closed.** If the script is unavailable, errors, prints anything but one JSON object, or reports `"ok": false`,
-stop with a structured handoff. Never compute, estimate or skip the hash, and never write without a verified chunk.
+stop with a structured handoff. Never compute, estimate or skip the hash, and never write without a verified chunk. In this repository's own
+sessions `CLAUDE_PLUGIN_ROOT` can be empty; the byte-identical `.claude/scripts/wmgt_batch_hash.py` mirror is then the
+same script, run at that path once it is confirmed to exist. That is not a fallback: any other unavailability fails closed.
 
 ## Approval
 
