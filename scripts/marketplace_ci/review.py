@@ -1043,6 +1043,29 @@ def _classify(
     return False
 
 
+def _covers_whole_file(
+    path: str, hunked: Sequence[tuple[int, int]], repo_root: Path | None
+) -> bool:
+    """True when the hunks leave no line of the file unchanged: the whole-file
+    range of a renamed, copied or re-moded file with edits, or hunks that add
+    every line of a new file (counted against the file on disk)."""
+    if (1, sys.maxsize) in hunked:
+        return True
+    if repo_root is None:
+        return False
+    try:
+        data = (Path(repo_root) / path).read_bytes()
+    except OSError:
+        return False
+    total = data.count(b"\n") + (0 if not data or data.endswith(b"\n") else 1)
+    next_line = 1
+    for start, end in sorted(hunked):
+        if start > next_line:
+            break
+        next_line = max(next_line, end + 1)
+    return next_line > total
+
+
 def _classify_location(
     path: str,
     line: int | None,
@@ -1079,8 +1102,7 @@ def _classify_location(
     if not in_ranges:
         return True
     if line is None:
-        # A renamed, copied or re-moded file with edits carries a whole-file range.
-        return bare_widens or (1, sys.maxsize) in hunked
+        return bare_widens or _covers_whole_file(path, hunked, repo_root)
     return any(s <= line <= e for s, e in hunked)
 
 
