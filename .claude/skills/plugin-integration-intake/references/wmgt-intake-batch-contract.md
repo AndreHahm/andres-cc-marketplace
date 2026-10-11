@@ -25,7 +25,7 @@ creation.
 ## Target resolution (slug to team)
 
 `suggested_mapping.linear_target` is an `owner/repo` slug. This skill holds no `git ls-files` grant and cannot run
-the Local Override trust check in `../../../FOUNDATION_CONTRACTS.md`, so it **does not read the override itself**.
+the Local Override trust check in the workmanagement-kit plugin root's `FOUNDATION_CONTRACTS.md`, so it **does not read the override itself**.
 It asks `linear-work-management` to resolve the slug (that skill's "Resolving a repository slug" section), which
 runs the trust check and returns the team and environment, or a rejection. Stop with a structured handoff at the
 first rejection. The rules (normalization, exact key, `verified` operation, the environment's team, the `team_ids`
