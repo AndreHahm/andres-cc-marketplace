@@ -30,3 +30,13 @@ both cross-confirmed and fixed with tests that were each shown to fail without t
 advisories set `truncated` but the comparison signals still used the partial list (they are now `null` when a
 compared list is truncated), and tests that create symlinks were not skipped where symlink creation is not
 permitted (a probe now skips them; checked by forcing `os.symlink` to raise). The advisory suite has 91 tests.
+
+## Update, 2026-10-12 (third pre-PR cross-model review)
+
+A third Claude plus Codex review of the full diff found one more issue, confirmed by reproduction in both directions:
+an advisory with no recognized severity (common for OSV-only records) was ranked as 0, below `low`, so it could make a
+version look safer than one with a known low advisory (merge-anyway signal) or go unflagged against one (close signal).
+Two non-empty advisory lists are now only ranked when every advisory's severity is recognized, and the signal is `null`
+otherwise; a comparison with an empty list is unchanged. Fixed with four tests, each guard shown to fail its test when
+removed. The advisory suite has 95 tests. Codex's cross-examination pass was skipped for this round because Claude's
+independent pass had no findings for it to classify.

@@ -768,6 +768,67 @@ class TruncatedAdvisoryTests(unittest.TestCase):
         self.assertIsNone(result["signals"]["new_safer_than_newest_compatible"])
 
 
+class UnknownSeverityTests(unittest.TestCase):
+    """An advisory with no recognized severity is unknown, not the lowest: it blocks a ranking."""
+
+    @staticmethod
+    def osv_only(version):
+        vuln = {
+            "id": "PYSEC-2024-1",
+            "summary": "an osv advisory without a severity",
+            "affected": [],
+        }
+        return {(mod.OSV_URL, "requests", version): {"vulns": [vuln]}}
+
+    def run_case(self, gh_table, fetch_table, with_lock=False):
+        args = base_args(old="1.0.0", new="2.0.0")
+        if with_lock:
+            tmp = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, tmp, True)
+            path = os.path.join(tmp, "base-uv.lock")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(UV_LOCK)
+            args += ["--lock", path]
+        _, result = run_main(args, FakeGh(gh_table), FakeFetch(fetch_table))
+        return result
+
+    def test_unknown_severity_against_a_known_one_blocks_the_merge_signal(self):
+        table = {
+            mod.PYPI_URL.format(name="requests"): pypi_doc(["1.0.0", "2.0.0", "3.0.0"], "3.0.0")
+        }
+        for version in ("2.0.0", "3.0.0"):
+            table[mod.PYPI_VERSION_URL.format(name="requests", version=version)] = pypi_meta(
+                ["dep-a>=2"]
+            )
+        table.update(self.osv_only("2.0.0"))
+        result = self.run_case(
+            {"requests@3.0.0": [gh_advisory("GHSA-low", "low", pkg="requests")]}, table, True
+        )
+        self.assertEqual(result["versions"]["new"]["advisories"][0]["severity"], "unknown")
+        self.assertIsNone(result["signals"]["new_safer_than_newest_compatible"])
+
+    def test_unknown_severity_against_a_known_one_blocks_the_close_signal(self):
+        gh = {"requests@1.0.0": [gh_advisory("GHSA-low", "low", pkg="requests")]}
+        result = self.run_case(gh, self.osv_only("2.0.0"))
+        self.assertIsNone(result["signals"]["new_vulnerable_not_safer_than_old"])
+
+    def test_an_empty_side_needs_no_severity(self):
+        only_new = self.run_case({}, self.osv_only("2.0.0"))
+        self.assertTrue(only_new["signals"]["new_vulnerable_not_safer_than_old"])
+        only_old = self.run_case({}, self.osv_only("1.0.0"))
+        self.assertFalse(only_old["signals"]["new_vulnerable_not_safer_than_old"])
+
+    def test_recognized_severities_still_compare(self):
+        both = self.run_case(
+            {
+                "requests@1.0.0": [gh_advisory("GHSA-a", "high", pkg="requests")],
+                "requests@2.0.0": [gh_advisory("GHSA-b", "low", pkg="requests")],
+            },
+            {},
+        )
+        self.assertFalse(both["signals"]["new_vulnerable_not_safer_than_old"])
+
+
 class LockParserTests(unittest.TestCase):
     def test_uv_lock(self):
         lock = mod.parse_uv_lock(UV_LOCK)

@@ -24,7 +24,7 @@ PRs touching only workflow files cannot conflict with lockfiles, but they still 
 
 ## Advisories, compatibility and the newest compatible version
 
-Step 3 runs `dependabot_advisory_read.py assess` for the dependency's old, new and newest compatible version, with the base branch's lockfile for `uv` and `npm_and_yarn`. A version is riskier than another when its worst advisory severity is higher, or equal with more advisories. Three rules use the result, in this order, each only on the exact signal named:
+Step 3 runs `dependabot_advisory_read.py assess` for the dependency's old, new and newest compatible version, with the base branch's lockfile for `uv` and `npm_and_yarn`. A version is riskier than another when its worst advisory severity is higher, or equal with more advisories; two non-empty advisory lists are not ranked at all (the signal is `null`) when any advisory in them has no recognized severity, because an unknown severity is not the lowest one. Three rules use the result, in this order, each only on the exact signal named:
 
 - The new version has advisories and is not less risky than the old one (`new_vulnerable_not_safer_than_old` true): recommend close, and say that a plain close may let Dependabot propose the same update again.
 - The new version's own declared constraints conflict with the versions in the lock (`new_compatible` false): recommend skip (hold) and quote the violated constraints. Closing is left to the user: the constraints are declared by the package's publisher, the conflict can come from this repository's own lock as much as from the release, and Dependabot's resolution in the PR may already have bumped the conflicting dependency, so the base lock can show a conflict the PR itself resolves.
