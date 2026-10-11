@@ -3,7 +3,7 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(bash */git-kit/scripts/git-write-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
 ---
 
 # Git Cleanup
