@@ -9,11 +9,13 @@ Fixtures reproduce PR #506 (run 38117400285), whose only Major findings sat on
 lines 45, 93 and 113 of `skill-development/SKILL.md` while the PR added line 42.
 """
 
+import json
 import subprocess
+import sys
 
 import pytest
 
-from scripts.marketplace_ci.__main__ import _diff_scope, _finding_to_dict
+from scripts.marketplace_ci.__main__ import _diff_scope, _finding_to_dict, main
 from scripts.marketplace_ci.review import (
     Finding,
     blocking_findings,
@@ -341,7 +343,9 @@ def test_parse_added_form_feed_does_not_desync_hunk_counting():
         + "@@ -10,0 +11,2 @@\n+a\x0cb\n+++ b/README.md\n"
         + "@@ -200 +201 @@\n-old\n+new\n"
     )
-    assert parse_changed_line_ranges(diff) == {SKILL: ((11, 12), (201, 201))}
+    # The form feed also marks the file changed in full (a reviewer may count by it);
+    # the point here is that the second hunk stays under SKILL and README.md never appears.
+    assert parse_changed_line_ranges(diff) == {SKILL: ((11, 12), (201, 201), (1, sys.maxsize))}
 
 
 def test_parse_unicode_line_separator_in_a_path_is_kept_whole():
@@ -545,3 +549,181 @@ def test_diff_scope_falls_back_to_every_critical_and_major_when_git_fails(repo):
     assert blocking == {major}
     assert in_diff is None
     assert scoped is False
+
+
+# --- Third security review: root symlink, odd line breaks, repo root, exit 2 ---
+
+
+def test_finding_under_a_changed_symlink_to_the_filesystem_root_blocks(tmp_path):
+    # The link target "/" must not turn the containment prefix into "//".
+    inside = tmp_path / "plugins/foo/x.py"
+    inside.parent.mkdir(parents=True)
+    inside.write_text("x\n" * 20)
+    link = tmp_path / "plugins/evil/root"
+    link.parent.mkdir(parents=True)
+    link.symlink_to("/")
+    finding = _finding("Major", f"plugins/evil/root{inside}", 10)
+    found = blocking_findings(
+        [finding],
+        {"plugins/evil/root": ((1, 1),)},
+        changed_paths=("plugins/evil/root",),
+        repo_root=tmp_path,
+    )
+    assert found == (finding,)
+
+
+@pytest.mark.parametrize(
+    "added",
+    ["a\rb", "a\x0bb", "a\x0cb", "a\x1cb", "a\x1db", "a\x1eb", "a\x85b", "a\u2028b", "a\u2029b"],
+)
+def test_parse_marks_a_file_changed_in_full_when_a_diff_line_has_a_non_newline_break(added):
+    # A reviewer may count lines by these breaks while git counts only "\n", so
+    # the exact line match cannot be trusted for this file.
+    diff = HEADER.format(p=SKILL) + f"@@ -3 +3 @@\n-old\n+{added}\n"
+    ranges = parse_changed_line_ranges(diff)
+    major_far_away = _finding("Major", SKILL, 500)
+    assert split_findings_by_diff([major_far_away], ranges)[0] == (major_far_away,)
+
+
+def test_parse_keeps_line_scoping_for_crlf_content():
+    diff = HEADER.format(p=SKILL) + "@@ -3 +3 @@\n-old\r\n+new\r\n"
+    ranges = parse_changed_line_ranges(diff)
+    assert ranges == {SKILL: ((3, 3),)}
+    assert split_findings_by_diff([_finding("Major", SKILL, 500)], ranges)[0] == ()
+
+
+def test_parse_full_file_marker_only_applies_to_the_file_with_the_odd_break():
+    diff = (
+        HEADER.format(p=SKILL)
+        + "@@ -3 +3 @@\n-old\n+a\u2028b\n"
+        + HEADER.format(p=SCRIPT)
+        + "@@ -3 +3 @@\n-old\n+new\n"
+    )
+    ranges = parse_changed_line_ranges(diff)
+    assert split_findings_by_diff([_finding("Major", SCRIPT, 500)], ranges)[0] == ()
+    assert len(split_findings_by_diff([_finding("Major", SKILL, 500)], ranges)[0]) == 1
+
+
+def test_diff_scope_finds_symlinks_from_the_git_root_not_the_working_directory(repo):
+    base = _base(repo)
+    (repo / "link.md").symlink_to("a.md")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "link")
+    (repo / "sub").mkdir()
+    target_spelling = _finding("Major", "a.md", 3)
+    blocking, _, _ = _diff_scope((target_spelling,), repo / "sub", base, ("link.md",))
+    assert blocking == {target_spelling}
+
+
+def _handler_repo(git_repo, hooks_lines):
+    for name in ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer"):
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    git_repo.write("README.md", "original")
+    git_repo.write("plugins/demo-kit/hooks/hooks.json", "".join(f"line {n}\n" for n in range(1, 8)))
+    for args in (("add", "-A"), ("commit", "-q", "-m", "base")):
+        subprocess.run(["git", *args], cwd=git_repo.root, check=True, capture_output=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/hooks/hooks.json", "".join(hooks_lines))
+    for args in (("add", "-A"), ("commit", "-q", "-m", "change")):
+        subprocess.run(["git", *args], cwd=git_repo.root, check=True, capture_output=True)
+    return base_sha
+
+
+def _envelope(severity, line):
+    return json.dumps(
+        {
+            "contract_version": "1",
+            "dispatch": {
+                "id": "d",
+                "reviewer": "security-reviewer",
+                "backend": "codex",
+                "target_paths": ["plugins/demo-kit/hooks/hooks.json"],
+            },
+            "provenance": {
+                "provider": "openai",
+                "model": "m",
+                "cli_version": "0",
+                "execution_profile": "read-only",
+            },
+            "findings": [
+                {
+                    "id": "F1",
+                    "severity": severity,
+                    "axis": "R6",
+                    "location": f"plugins/demo-kit/hooks/hooks.json:{line}",
+                    "evidence": "e",
+                    "finding": "f",
+                    "fix": "m",
+                    "confidence": "high",
+                }
+            ],
+            "verdict": "reject",
+            "inspection_limits": [],
+        }
+    ).encode()
+
+
+def _run_handler(monkeypatch, git_repo, base_sha, envelope, tmp_path):
+    real_run = subprocess.run
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess.CompletedProcess(argv, returncode=0, stdout=envelope, stderr=b"")
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "result.json"
+    rc = main(["run-codex-review", "--base-sha", base_sha, "--output", str(out)])
+    return rc, json.loads(out.read_text(encoding="utf-8"))
+
+
+EDIT_LINE_2 = ["line 1\n", "EDITED\n"] + [f"line {n}\n" for n in range(3, 8)]
+
+
+def test_handler_does_not_fail_on_a_major_outside_the_changed_lines(
+    monkeypatch, git_repo, tmp_path
+):
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    rc, result = _run_handler(monkeypatch, git_repo, base, _envelope("major", 6), tmp_path)
+    assert rc == 0
+    assert result["blocking"] is False
+    assert result["diff_scoped"] is True
+    assert result["findings"][0]["in_diff"] is False
+    assert result["findings"][0]["blocking"] is False
+
+
+def test_handler_fails_on_a_major_on_a_changed_line(monkeypatch, git_repo, tmp_path):
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    rc, result = _run_handler(monkeypatch, git_repo, base, _envelope("major", 2), tmp_path)
+    assert rc == 1
+    assert result["findings"][0]["in_diff"] is True
+    assert result["findings"][0]["blocking"] is True
+
+
+def test_handler_fails_on_a_critical_outside_the_changed_lines_of_a_touched_file(
+    monkeypatch, git_repo, tmp_path
+):
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    rc, result = _run_handler(monkeypatch, git_repo, base, _envelope("critical", 6), tmp_path)
+    assert rc == 1
+    assert result["findings"][0]["in_diff"] is False
+    assert result["findings"][0]["blocking"] is True
+
+
+def test_handler_exits_2_and_rewrites_the_output_when_classification_raises(
+    monkeypatch, git_repo, tmp_path
+):
+    import scripts.marketplace_ci.__main__ as cli
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("classification exploded")
+
+    monkeypatch.setattr(cli, "_diff_scope", boom)
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    rc, result = _run_handler(monkeypatch, git_repo, base, _envelope("major", 6), tmp_path)
+    assert rc == 2
+    assert result["blocking"] is True
+    assert "classification exploded" in result["error"]

@@ -20,7 +20,7 @@ not hand-typed):
 | `Plugin component-file prefix permanence (R33)` | `prefix-permanence` | Runs `check-prefixes` then `check-prefix-permanence --base-sha`, both from a base-SHA-restored, trusted copy of `scripts/` (same principle `compute-scope`/`codex-review`/`publish` already apply to their own decision code — this is the one trusted evaluation point for both checks; `marketplace-parity`'s own `check-all` also runs `check-prefixes`, but from the untrusted PR checkout, same as its pre-existing mirror/export constituents). `check-prefixes` verifies every file under a registered, prefixed plugin's in-scope directories carries that plugin's own `<prefix>-` basename, validates every registered prefix's own format and marketplace-wide uniqueness, cross-checks `marketplace-inventory.json`'s `source` field against the authoritative `marketplace.json` entry, treats a manifest-listed plugin as checked regardless of its curated `status` (a plugin genuinely absent from the manifest is the only kind exempted), and refuses to trust any single source for a name `marketplace.json` lists more than once. `check-prefix-permanence` compares `marketplace-inventory.json`'s `plugins[].id`-keyed records between the PR's base and head; fails if any record that had a registered prefix at base now has a different or missing prefix, its `name` changed (a rename un-joins a still-live plugin from `marketplace.json`'s authoritative entry, since `check-prefixes` looks it up by name), or the record itself disappeared — the layer that catches a hand-edited inventory file or a delete-and-rebootstrap, not just the `marketplace-inventory` CLI's own `update` path (`reconcile.apply_update`'s write-once guard covers only that path). |
 | `Fork PR (unsupported — explicit terminal result)` | `fork-unsupported` | Only runs (`if:`) when the PR head is a fork; fails explicitly rather than leaving Codex review silently pending. **Reports `skipped` on a same-repo PR** — a `skipped` conclusion satisfies a required check in GitHub's branch protection, so this doesn't block ordinary same-repo PRs. |
 | `Compute Codex review scope` | `compute-scope` | Cheap, Node/Codex-CLI-free job that computes whether the diff is eligible for the automatic reviewer-scope bypass (see below) and, on a `synchronize` event, whether this push rebased onto a newer base. Checks out the PR's own head SHA directly (never the async `refs/pull/<n>/merge` ref `codex-review` uses) so its scope decision can't disagree with what `codex-review` actually reviews — then restores `scripts/marketplace_ci/` itself from the **trusted base SHA** before scoring, so the decision logic isn't evaluated by a version of itself the PR could have edited (same principle `prepare_reviewer_instruction` already applies to reviewer instructions). Not a required check itself, but `publish` now depends on it having actually **succeeded** — a failure, cancellation, or timeout (5 min) here fails `publish` closed, it does not silently read as "not eligible, run `codex-review` normally." |
-| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below). Skipped when `compute-scope` reports the diff bypass-eligible, in addition to the existing fork-PR skip. |
+| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below). Skipped when `compute-scope` reports the diff bypass-eligible, in addition to the existing fork-PR skip. Fails only on a finding that blocks under "Diff-scoped blocking" below, not on any Critical/Major anywhere in a touched file. |
 | `Publish Codex policy result` | `publish` | The single check branch protection should actually require for Codex policy: first requires `prefix-permanence` to have **succeeded on its own**, checked before anything else in this job — including before the SHA-bound bypass attestation below, since it's a deterministic, mechanical gate, not the Codex review the attestation exists to skip. Then passes if `compute-scope` succeeded AND (`codex-review` succeeded, OR was skipped **with `compute-scope`'s own `bypass_eligible` output confirming why**), OR if a valid SHA-bound bypass attestation + `s: codex review bypassed` label is present for the current head SHA. Now runs unconditionally for every same-repo PR (only a fork PR skips it) rather than only when `codex-review` itself ran. Keys the "was this skip legitimate?" check off `compute-scope`'s explicit output rather than `codex-review`'s bare result — `codex-review` also depends on `hygiene`/`python-quality`/`marketplace-parity`/`prefix-permanence`, any of which failing independently also produces a `skipped` `codex-review`, which the bare-result check alone would have accepted as a clean pass. The direct `prefix-permanence` check closes exactly that residual gap for `prefix-permanence` itself: without it, an inventory-only PR that is legitimately `bypass_eligible=true` (unrelated to prefix-permanence) but ALSO fails `prefix-permanence` would have had its `codex-review` skip read as a clean pass, since `bypass_eligible=true` alone doesn't distinguish "skipped because of a legitimate scope bypass" from "skipped because a sibling dependency happened to fail." |
 
 Configure branch protection to require: `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`,
@@ -111,6 +111,64 @@ way; that outcome is expected and needs a manual review or an attested bypass.
 
 The `CODEX_KIT_REVIEW_TIMEOUT_MS` workflow value is the only per-call timeout the dispatcher reads; a
 repository variable of that name has no effect, because the workflow sets the value itself.
+
+## Diff-scoped blocking
+
+`run-codex-review` fails the `codex-review` job (exit 1) only for findings that belong to the PR. A reviewer
+reads every touched file as a whole, so it also reports problems that already exist on the base branch; those
+used to fail a PR that never wrote them (issue #525). The deciding code is `blocking_findings` in
+`scripts/marketplace_ci/review.py`, called through `_diff_scope` in `__main__.py`:
+
+| Finding | Blocks? |
+|---|---|
+| Major or Critical on a line the PR changed | Yes |
+| Critical anywhere in a file the PR touched | Yes |
+| Major on an unchanged line of a touched file | No — kept in the artifact as a notice |
+| Any finding in a file the PR did not touch | No — kept in the artifact as a notice |
+| Minor | No |
+| A structural finding (`structural_findings`) | Yes, independent of the above |
+
+"On a line the PR changed" means the new-side line ranges of `git diff -U0 --text <base>...HEAD`, matched
+exactly (no slack window). A pure deletion counts the two lines either side of the removal, and a finding that
+names no line counts as on a changed line whenever its file is touched. The following all count as changed in
+full, so a finding on them blocks whichever line it names:
+
+- a changed path that has no hunk: a pure rename (both the old and the new name), a mode change, an empty or
+  binary file;
+- a changed symlink, and anything that resolves into one — a PR that adds a link exposes existing, unchanged
+  content at a new path, and a reviewer may cite either spelling. A link whose target lies outside the
+  repository (up to `/`) therefore makes every finding that resolves into that target block;
+- a file whose changed lines contain a line break other than `\n` (a bare CR, vertical tab, form feed,
+  FS/GS/RS, NEL, U+2028 or U+2029; the CR that ends a CRLF line does not count). Git counts lines by `\n` only,
+  but a reviewer may count by these, so its line number cannot be trusted to match git's for that file.
+
+A finding's path is normalised before it is matched (`./x`, `a//b`, `a/../b`, absolute paths under the checkout,
+and symlinks resolved against the git root, not the working directory). A resolved path outside the checkout adds
+no extra spelling to match, unless it lies inside the target of a changed symlink, which blocks.
+
+**Fail closed.** If the changed lines cannot be computed — git fails or cannot start, or the diff output has a
+shape the parser does not recognise (a quoted path header, or any line outside a hunk it does not expect) — every
+Critical and Major blocks, exactly as before diff scoping. `diff_scoped` in the artifact says which case
+applied. The `git diff` call pins `core.quotepath`, the path prefixes, external diff drivers and textconv, and
+passes `--text`, so a PR-controlled `.gitattributes` entry such as `-diff` or `binary` cannot turn hunks into
+"Binary files differ". An unexpected error while classifying exits 2 and overwrites `codex-review-result.json`
+the same way the other exit-2 paths do.
+
+**Accepted residual risk.** A PR can remove a guard on one line and leave the exposed use of it elsewhere in the
+file. A Critical there still blocks (the second row of the table), but a Major on that unchanged line does not;
+it appears in the artifact with `"in_diff": false`. Matching also trusts the line number the reviewer reports: a
+Major reported on a line other than the one git would give (the odd line breaks above are covered, but not every
+way a reviewer can miscount) does not block, while a Critical still does. Use the attested bypass or a manual
+review for a PR whose risk is of this kind.
+
+`codex-review-result.json` carries, in addition to the fields above:
+
+- `diff_scoped` — `true` when the changed lines were computed, `false` for the fail-closed fallback;
+- per finding, `in_diff` (on a changed line or in a changed-in-full path; `null` when `diff_scoped` is `false`)
+  and `blocking` (whether that finding failed the job).
+
+`ReviewResult.blocking` (used only by the `check-review-output` command on a single reviewer's envelope) is
+unchanged and still counts any Critical/Major.
 
 ## Fork PR limitation
 
