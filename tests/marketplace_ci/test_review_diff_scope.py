@@ -15,6 +15,7 @@ import sys
 
 import pytest
 
+import scripts.marketplace_ci.review as review_module
 from scripts.marketplace_ci.__main__ import _diff_scope, _finding_to_dict, main
 from scripts.marketplace_ci.review import (
     Finding,
@@ -727,3 +728,90 @@ def test_handler_exits_2_and_rewrites_the_output_when_classification_raises(
     assert rc == 2
     assert result["blocking"] is True
     assert "classification exploded" in result["error"]
+
+
+# --- Open findings closed after the third review (items 2, 3, 4) -----------------
+
+
+def test_symlink_recorded_in_git_is_found_when_the_checkout_holds_a_plain_file(repo):
+    # core.symlinks=false checks a link out as a plain file holding its target
+    # text, so os.path.islink is False; the git tree still says mode 120000.
+    base = _base(repo)
+    blob = (
+        subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"],
+            cwd=repo,
+            input=b"a.md",
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode()
+        .strip()
+    )
+    _git(repo, "update-index", "--add", "--cacheinfo", f"120000,{blob},link.md")
+    _git(repo, "commit", "-q", "-m", "link")
+    (repo / "link.md").write_text("a.md")
+    assert not (repo / "link.md").is_symlink()
+    ranges = compute_changed_line_ranges(repo, base)
+    assert ranges is not None
+    target_spelling = _finding("Major", "a.md", 3)
+    found = blocking_findings([target_spelling], ranges, changed_paths=("link.md",), repo_root=repo)
+    assert found == (target_spelling,)
+
+
+def test_relative_git_symlink_target_resolves_from_the_links_directory(repo):
+    (repo / "sub").mkdir()
+    (repo / "sub/x.md").write_text("x\n" * 5)
+    _git(repo, "add", ".")
+    blob = (
+        subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"],
+            cwd=repo,
+            input=b"x.md",
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode()
+        .strip()
+    )
+    _git(repo, "update-index", "--add", "--cacheinfo", f"120000,{blob},sub/link.md")
+    _git(repo, "commit", "-q", "-m", "link")
+    (repo / "sub/link.md").write_text("x.md")
+    cited = _finding("Major", "sub/x.md", 4)
+    found = blocking_findings(
+        [cited], {"sub/link.md": ((1, 1),)}, changed_paths=("sub/link.md",), repo_root=repo
+    )
+    assert found == (cited,)
+
+
+def test_compute_ranges_is_unavailable_when_the_diff_exceeds_the_size_cap(repo, monkeypatch):
+    base = _base(repo)
+    (repo / "a.md").write_text("changed\n" * 50)
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "big")
+    assert compute_changed_line_ranges(repo, base) is not None
+    monkeypatch.setattr(review_module, "_MAX_DIFF_BYTES", 10)
+    assert compute_changed_line_ranges(repo, base) is None
+
+
+def test_path_match_ignores_case_and_unicode_form_off_linux(monkeypatch):
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
+    ranges = {"plugins/Demo/Caf\u00e9.md": ((5, 5),)}
+    case_variant = _finding("Major", "plugins/demo/caf\u00e9.md", 5)
+    nfd_variant = _finding("Major", "plugins/Demo/Cafe\u0301.md", 5)
+    in_diff, out = split_findings_by_diff([case_variant, nfd_variant], ranges)
+    assert in_diff == (case_variant, nfd_variant)
+    assert out == ()
+
+
+def test_path_match_is_case_sensitive_on_linux(monkeypatch):
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", False)
+    ranges = {"plugins/Demo/x.md": ((5, 5),)}
+    other_case = _finding("Major", "plugins/demo/x.md", 5)
+    assert split_findings_by_diff([other_case], ranges)[0] == ()
+
+
+def test_fold_also_applies_to_changed_paths_and_blocking(monkeypatch):
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
+    critical = _finding("Critical", "PLUGINS/X/run.sh", None)
+    assert blocking_findings([critical], {}, changed_paths=("plugins/x/run.sh",)) == (critical,)
