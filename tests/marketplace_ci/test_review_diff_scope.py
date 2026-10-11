@@ -272,10 +272,25 @@ def test_split_cross_file_finding_is_in_diff_when_a_component_is_on_a_changed_li
     assert out_of_diff == ()
 
 
-def test_split_component_without_a_line_counts_when_its_file_is_changed():
+def test_split_bare_component_on_a_file_with_hunks_does_not_widen_an_untouched_primary():
+    # Issue #531: a bare cited path used to count the whole file as changed, so a
+    # one-line edit there blocked every finding that merely cited the file.
     cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL,))
-    in_diff, _ = split_findings_by_diff([cross], PR506_RANGES, changed_paths=[SKILL])
+    in_diff, out_of_diff = split_findings_by_diff([cross], PR506_RANGES, changed_paths=[SKILL])
+    assert in_diff == ()
+    assert out_of_diff == (cross,)
+    assert not has_blocking_findings([cross], PR506_RANGES, changed_paths=[SKILL])
+
+
+def test_split_bare_component_on_a_hunkless_changed_file_still_counts():
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL,))
+    in_diff, _ = split_findings_by_diff([cross], {}, changed_paths=[SKILL])
     assert in_diff == (cross,)
+
+
+def test_split_lined_component_still_blocks_beside_a_bare_one():
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL, f"{SKILL}:42"))
+    assert has_blocking_findings([cross], PR506_RANGES, changed_paths=[SKILL])
 
 
 def test_split_component_on_an_unchanged_line_or_file_stays_out_of_diff():
