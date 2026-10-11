@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response describes Delta Validate running before Delta Audit",
+      "passed": false,
+      "evidence": "Response only says 'routes to the Delta Validate baseline (plugin-rulebook-checker, dependency-reviewer, security-reviewer) plus the Delta Audit reviewer skill-reviewer'. Both are named, but no ordering (Validate before Audit) is stated."
+    },
+    {
+      "text": "Response explicitly states whole-plugin plugin-validator/plugin-grader are NOT run",
+      "passed": false,
+      "evidence": "Neither plugin-validator nor plugin-grader is mentioned anywhere in the response. The closest line is 'Results would be labelled Delta, not full-plugin validation.'"
+    },
+    {
+      "text": "Response states that this skill/document is never itself executed to perform a review and that CI's repository-owned code (dispatch_reviewers in scripts/marketplace_ci/review.py) runs the review",
+      "passed": true,
+      "evidence": "'It is policy documentation, not an execution mechanism. It is never executed by CI or by a session.' and the quoted When NOT to Use line: 'Running a review: this document is never executed; CI runs `dispatch_reviewers` in the `codex-review` job.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": "1/3"
+  },
+  "notes": "Single run, no baseline. Assertions 1-2 are the iteration-2 assertions (2/2 on the pre-edit wording); assertion 3 is new and targets the added When NOT to Use text. The agent declined to perform a review, as the new When NOT to Use text directs, and summarised the policy more narrowly than iteration 2."
+}

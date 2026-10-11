@@ -1,0 +1,18 @@
+I could not run a marketplace review of plugins/example-kit/skills/example/SKILL.md with this skill, because the skill does not perform reviews.
+
+What the skill says (plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md):
+- It is policy documentation, not an execution mechanism. It is never executed by CI or by a session.
+- Its `allowed-tools` are Read, Grep and Glob only, with `disable-model-invocation: true`.
+- Its "When NOT to Use" section says: "Running a review: this document is never executed; CI runs `dispatch_reviewers` in the `codex-review` job."
+- Its "Verify it does NOT activate on" list includes "Run the marketplace review on this PR", which it maps to CI's `dispatch_reviewers` in `scripts/marketplace_ci/review.py`.
+
+What the skill does describe for a changed file, if you want to know what CI would dispatch:
+- A changed skill under plugins/<name>/skills/... routes to the Delta Validate baseline (plugin-rulebook-checker, dependency-reviewer, security-reviewer) plus the Delta Audit reviewer skill-reviewer.
+- Results would be labelled Delta, not full-plugin validation.
+- Blocking is decided by diff-scoped blocking in docs/ci.md, not by this document.
+
+Two things to check before a real review:
+- plugins/example-kit/ may not exist in this worktree. I did not verify this, because the instructions limited me to the skill file.
+- To get a real review, open a PR and let the codex-review CI job run, or run cross-model-review locally before opening the PR.
+
+No files other than this output were modified.
