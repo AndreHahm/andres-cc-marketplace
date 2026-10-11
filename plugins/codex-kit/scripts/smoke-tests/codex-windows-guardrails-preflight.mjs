@@ -686,8 +686,8 @@ for (const [label, value] of [
   ["a space after a comma", "target.md, NOTE"],
   ["leading whitespace", " target.md"],
   ["trailing whitespace", "target.md "],
-  ["U+2028 padding", "target.md "],
-  ["no-break space padding", " target.md"],
+  ["U+2028 padding", "target.md\u2028"],
+  ["no-break space padding", "\u00a0target.md"],
   ["an empty entry between commas", "target.md,,target.md"],
   ["a trailing comma", "target.md,"]
 ]) {
@@ -695,6 +695,18 @@ for (const [label, value] of [
   check(
     `rejected with invalid_arguments, not normalized into valid-looking entries: ${label}`,
     result.ok === false && result.category === "invalid_arguments" && /target-paths entry/.test(result.detail),
+    JSON.stringify(result)
+  );
+}
+
+console.log("\n=== a padded, secret-shaped target-paths entry is redacted in the failure detail (issue #533) ===");
+{
+  // Built at runtime so no secret-shaped literal sits in the source.
+  const fakeKey = "AKIA" + "IOSFODNN7EXAMPLE";
+  const result = runDispatch(repoRoot, ` ${fakeKey}`, instructionFile);
+  check(
+    "rejected with invalid_arguments and the echoed entry does not contain the secret-shaped value",
+    result.ok === false && result.category === "invalid_arguments" && !String(result.detail).includes(fakeKey),
     JSON.stringify(result)
   );
 }

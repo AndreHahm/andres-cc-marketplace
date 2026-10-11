@@ -31,7 +31,7 @@ function check(label, condition, detail = "") {
   }
 }
 
-function runBridge(tmpDir, instructionFile, targetPaths) {
+function runBridge(tmpDir, instructionFile, targetPaths, extraArgs = []) {
   try {
     execFileSync(
       "node",
@@ -42,7 +42,8 @@ function runBridge(tmpDir, instructionFile, targetPaths) {
         "--target-paths", targetPaths,
         "--execution-profile", "read-only",
         "--dispatch-id", "smoke-test",
-        "--cwd", tmpDir
+        "--cwd", tmpDir,
+        ...extraArgs
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
     );
@@ -63,8 +64,8 @@ try {
     ["space after a comma (one name split on commas and spaces)", "target, NOTE, report"],
     ["leading space", " target"],
     ["trailing space", "target "],
-    ["U+2028 padding", "target "],
-    ["no-break space padding", " target"],
+    ["U+2028 padding", "target\u2028"],
+    ["no-break space padding", "\u00a0target"],
     ["empty entry between commas", "target,,other"],
     ["trailing comma", "target,"],
     ["leading comma", ",target"]
@@ -81,7 +82,8 @@ try {
   ];
   for (const [label, value] of accepted) {
     console.log(`\n=== Accepted: ${label} ===`);
-    const result = runBridge(tmpDir, instructionFile, value);
+    // --dry-run true runs the same validation but never spawns codex.
+    const result = runBridge(tmpDir, instructionFile, value, ["--dry-run", "true"]);
     check("not rejected by the entry check", !result.stderr.includes(ENTRY_ERROR), result.stderr);
   }
 } finally {
