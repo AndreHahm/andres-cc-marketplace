@@ -735,6 +735,26 @@ def test_diff_scope_returns_blocking_and_in_diff_sets_from_a_real_diff(repo):
     assert scoped is True
 
 
+def test_diff_scope_judges_a_bare_component_through_the_production_path(repo):
+    # Issue #531 replay shape: a Major whose primary line is untouched cites the
+    # one-line-edited file as a bare component (PR #524's 501-line R13 finding).
+    base = _base(repo)
+    lines = [f"line {n}\n" for n in range(1, 11)]
+    lines[2] = "edited\n"
+    (repo / "a.md").write_text("".join(lines))
+    (repo / "added.md").write_text("one\ntwo\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "change")
+    changed = ("a.md", "added.md")
+    bare = _finding("Major", "gone.md", 1, components=("a.md",))
+    lined = _finding("Major", "gone.md", 1, components=("a.md:3",))
+    bare_on_added = _finding("Major", "gone.md", 1, components=("added.md",))
+    blocking, in_diff, scoped = _diff_scope((bare, lined, bare_on_added), repo, base, changed)
+    assert scoped is True
+    assert blocking == {lined, bare_on_added}
+    assert in_diff == {lined, bare_on_added}
+
+
 def test_diff_scope_falls_back_to_every_critical_and_major_when_git_fails(repo):
     major, minor = _finding("Major", "a.md", 8), _finding("Minor", "a.md", 8)
     blocking, in_diff, scoped = _diff_scope((major, minor), repo, "0" * 40, ("a.md",))
