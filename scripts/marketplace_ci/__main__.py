@@ -974,6 +974,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ReviewOutputError,
         _changed_path_set,
         aggregate_findings,
+        compute_changed_line_ranges,
         derive_review_scope,
         dispatch_reviewers,
         run_delta_structural_checks,
@@ -1028,7 +1029,13 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
 
     structural_findings = run_delta_structural_checks(repo, changed)
-    reports = dispatch_reviewers(scope, base_sha=base_sha, repo=repo)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha=base_sha,
+        repo=repo,
+        changed_ranges=compute_changed_line_ranges(repo, base_sha),
+        changed_paths=_changed_path_set(changed),
+    )
 
     failed_reports = [r for r in reports if r.status == "failed"]
     if failed_reports:

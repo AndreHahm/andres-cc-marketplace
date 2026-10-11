@@ -1215,3 +1215,31 @@ def test_git_symlinks_rejects_batch_output_that_does_not_line_up(repo, monkeypat
     monkeypatch.setattr(review_module, "_run_git", damaged)
     with pytest.raises(RuntimeError):
         review_module._git_symlinks(repo, frozenset({"link.md"}))
+
+
+# --- The reviewers are briefed with the same changed lines the gate uses (#527) --
+
+
+def test_handler_briefs_every_reviewer_with_the_changed_lines(monkeypatch, git_repo, tmp_path):
+    base = _handler_repo(git_repo, EDIT_LINE_2)
+    real_run = subprocess.run
+    briefings: list[str] = []
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            text = Path(argv[argv.index("--instruction-file") + 1]).read_text(encoding="utf-8")
+            briefings.append(text)
+            return subprocess.CompletedProcess(
+                argv, returncode=0, stdout=_envelope("minor", 2), stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base, "--output", str(tmp_path / "result.json")])
+
+    assert rc == 0
+    assert briefings
+    # EDIT_LINE_2 changes only line 2 of the file, which is exactly what the
+    # gate's own ranges say too.
+    assert all("plugins/demo-kit/hooks/hooks.json: lines 2\n" in b for b in briefings)
