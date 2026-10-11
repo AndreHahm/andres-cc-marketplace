@@ -815,7 +815,7 @@ async function main() {
   const targetPaths = args["target-paths"].split(",");
   for (const targetPath of targetPaths) {
     if (targetPath === "" || targetPath !== targetPath.trim()) {
-      fail("invalid_arguments", `target-paths entry is empty or has leading/trailing whitespace: ${JSON.stringify(redactSecrets(targetPath.slice(0, 200)))} (a literal comma inside a single path is not supported)`);
+      fail("invalid_arguments", `target-paths entry is empty or has leading/trailing whitespace: ${JSON.stringify(redactSecrets(targetPath).slice(0, 200))} (a literal comma inside a single path is not supported)`);
       return;
     }
   }
