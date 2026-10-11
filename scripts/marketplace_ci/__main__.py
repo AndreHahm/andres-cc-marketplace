@@ -905,6 +905,7 @@ def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None
         "evidence": finding.evidence,
         "remediation": finding.remediation,
         "reporters": list(finding.reporters),
+        "components": list(finding.components),
         "in_diff": in_diff,
         "blocking": blocking,
     }
