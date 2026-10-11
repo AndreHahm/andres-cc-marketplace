@@ -28,7 +28,7 @@ asks the host to invoke `plugin-integration-intake` with a structured payload:
 ```
 
 `"Reports"` above is illustrative shorthand for readability — a real `notion_database` value is
-a stable ID, never a display name (see `linear-work-management/references/linear-entity-fields.md`'s Cross-Entity Rules; the same rule
+a stable ID, never a display name (see `../../linear-work-management/references/linear-entity-fields.md`'s Cross-Entity Rules; the same rule
 applies on the Notion side). A Linear caller instead sends an `owner/repo` slug as `linear_target`,
 which intake has `linear-work-management` resolve to a team through `linear.repositories` (an unknown slug is rejected) — see
 `../references/wmgt-intake-batch-contract.md`. `content` above also omits the
@@ -66,7 +66,7 @@ concrete result rather than the general rule:
    user sees and approves this specific Notion write independently.
 5. On approval, writes via `notion-knowledge-management` and reads the result back.
 6. Records the transition tagged with both the new Notion record and `source_plugin:
-   "analysis-kit"`, per `../../../FOUNDATION_CONTRACTS.md`'s Transition Contract schema.
+   "analysis-kit"`, per the plugin root's `FOUNDATION_CONTRACTS.md` Transition Contract schema.
 
 ## What Would Happen on a Bad Payload
 
