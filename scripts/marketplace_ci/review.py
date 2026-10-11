@@ -771,6 +771,8 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     binary) is absent too, so callers pair this with the changed-path set. A
     renamed, copied or re-moded file with edits gets a whole-file range: its
     carried-over lines become loadable at a new path or mode, like a symlink.
+    So does a newly added file: every line is new, which a bare cited path must
+    be able to tell from a deletion's join-point range such as (1, 2).
 
     Hunk bodies are skipped by their header's line counts, and the text is
     split on "\\n" only (git counts lines that way; str.splitlines() would also
@@ -794,7 +796,7 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
             continue
         if line.startswith("diff --git "):
             moved = False
-        elif line.startswith(("rename from ", "copy from ", "old mode ")):
+        elif line.startswith(("rename from ", "copy from ", "old mode ", "new file mode ")):
             moved = True
         if line.startswith("+++ "):
             target = line[4:].removesuffix("\t")
@@ -1043,29 +1045,6 @@ def _classify(
     return False
 
 
-def _covers_whole_file(
-    path: str, hunked: Sequence[tuple[int, int]], repo_root: Path | None
-) -> bool:
-    """True when the hunks leave no line of the file unchanged: the whole-file
-    range of a renamed, copied or re-moded file with edits, or hunks that add
-    every line of a new file (counted against the file on disk)."""
-    if (1, sys.maxsize) in hunked:
-        return True
-    if repo_root is None:
-        return False
-    try:
-        data = (Path(repo_root) / path).read_bytes()
-    except OSError:
-        return False
-    total = data.count(b"\n") + (0 if not data or data.endswith(b"\n") else 1)
-    next_line = 1
-    for start, end in sorted(hunked):
-        if start > next_line:
-            break
-        next_line = max(next_line, end + 1)
-    return next_line > total
-
-
 def _classify_location(
     path: str,
     line: int | None,
@@ -1102,7 +1081,8 @@ def _classify_location(
     if not in_ranges:
         return True
     if line is None:
-        return bare_widens or _covers_whole_file(path, hunked, repo_root)
+        # The whole-file range of a renamed, copied, re-moded or new file.
+        return bare_widens or (1, sys.maxsize) in hunked
     return any(s <= line <= e for s, e in hunked)
 
 
