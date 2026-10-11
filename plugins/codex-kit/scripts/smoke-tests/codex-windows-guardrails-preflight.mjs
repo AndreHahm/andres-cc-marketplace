@@ -681,6 +681,24 @@ console.log("\n=== target-paths entry with a prompt tag-closing character ===");
   );
 }
 
+console.log("\n=== target-paths entries are validated as given, never trimmed or dropped (issue #533) ===");
+for (const [label, value] of [
+  ["a space after a comma", "target.md, NOTE"],
+  ["leading whitespace", " target.md"],
+  ["trailing whitespace", "target.md "],
+  ["U+2028 padding", "target.md "],
+  ["no-break space padding", " target.md"],
+  ["an empty entry between commas", "target.md,,target.md"],
+  ["a trailing comma", "target.md,"]
+]) {
+  const result = runDispatch(repoRoot, value, instructionFile);
+  check(
+    `rejected with invalid_arguments, not normalized into valid-looking entries: ${label}`,
+    result.ok === false && result.category === "invalid_arguments" && /target-paths entry/.test(result.detail),
+    JSON.stringify(result)
+  );
+}
+
 console.log("\n=== --repo-root that is not the actual git repository toplevel ===");
 {
   const subdir = path.join(repoRoot, "subdir");
