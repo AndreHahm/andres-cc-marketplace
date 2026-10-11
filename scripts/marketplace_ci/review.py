@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import re
 import secrets
 import signal
@@ -724,29 +725,55 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
 
 _HUNK_HEADER = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
+# Lines git emits between hunks. Anything else outside a hunk body means the
+# parser is out of step with the diff, which must never read as "no changes".
+_DIFF_HEADER_PREFIXES = (
+    "diff --git ",
+    "index ",
+    "--- ",
+    "old mode ",
+    "new mode ",
+    "deleted file mode ",
+    "new file mode ",
+    "similarity index ",
+    "dissimilarity index ",
+    "rename from ",
+    "rename to ",
+    "copy from ",
+    "copy to ",
+    "Binary files ",
+    "GIT binary patch",
+)
+
 LineRanges = dict[str, tuple[tuple[int, int], ...]]
+_RangesView = Mapping[str, tuple[tuple[int, int], ...]]
 
 
 def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     """Map each changed path to its changed new-side line ranges (inclusive),
     from `git diff -U0` output. A pure deletion has no new-side line, so it
     touches the two lines either side of the removal. A deleted file has no
-    new side and is left out.
+    new side and is left out; a path with no hunk (pure rename, mode change,
+    binary) is absent too, so callers pair this with the changed-path set.
 
-    Hunk bodies are skipped by their header's line counts, so an added line
-    whose text looks like a `+++ b/...` or `@@` header is never read as one.
-    Raises ValueError on a quoted path header (git quotes unusual names): the
+    Hunk bodies are skipped by their header's line counts, and the text is
+    split on "\\n" only (git counts lines that way; str.splitlines() would also
+    split on form feed and U+2028 and desync the count). Raises ValueError on
+    a quoted path header or on any unexpected line outside a hunk body: the
     caller must treat that as "ranges unavailable", never as "nothing changed"."""
     ranges: dict[str, list[tuple[int, int]]] = {}
     path: str | None = None
     body_left = 0
-    for line in diff_text.splitlines():
+    lines = diff_text.split("\n")
+    for index, line in enumerate(lines):
         if body_left > 0:
             if not line.startswith("\\"):
                 body_left -= 1
             continue
+        if line.startswith("\\") or (line == "" and index == len(lines) - 1):
+            continue
         if line.startswith("+++ "):
-            target = line[4:]
+            target = line[4:].removesuffix("\t")
             if target == "/dev/null":
                 path = None
             elif target.startswith('"'):
@@ -756,7 +783,9 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
             continue
         match = _HUNK_HEADER.match(line)
         if match is None:
-            continue
+            if line.startswith(_DIFF_HEADER_PREFIXES):
+                continue
+            raise ValueError(f"unexpected line outside a hunk: {line!r}")
         old_count = int(match.group(1)) if match.group(1) is not None else 1
         start = int(match.group(2))
         new_count = int(match.group(3)) if match.group(3) is not None else 1
@@ -768,33 +797,165 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     return {p: tuple(r) for p, r in ranges.items()}
 
 
+def compute_changed_line_ranges(repo: Path, base_sha: str) -> LineRanges | None:
+    """Changed new-side line ranges for `base_sha...HEAD`, or None when they
+    cannot be computed (git cannot run or fails, or the parser refuses the
+    output). None makes the blocking check keep blocking on every
+    Critical/Major. Config and attributes that could change what git prints
+    are pinned off: path quoting (core.quotepath), prefixes, external diff
+    drivers, textconv, and `--text` so a PR-controlled `.gitattributes` entry
+    such as `-diff` or `binary` cannot turn hunks into "Binary files differ"."""
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.quotepath=false",
+                "diff",
+                "-U0",
+                "--text",
+                "--no-color",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--src-prefix=a/",
+                "--dst-prefix=b/",
+                "--find-renames",
+                f"{base_sha}...HEAD",
+            ],
+            cwd=repo,
+            capture_output=True,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        return parse_changed_line_ranges(result.stdout.decode("utf-8", errors="surrogateescape"))
+    except ValueError:
+        return None
+
+
+def _lookup_keys(path: str, repo_root: Path | None) -> set[str]:
+    """Repo-relative spellings a reviewer's finding path may stand for: the
+    lexically normalised path (`./x`, `a//b`, `a/../b`), plus, given the repo
+    root, its symlink-resolved form (absolute paths included). The bridge
+    resolves a location the same way before checking the file exists, so the
+    classifier must accept every spelling the bridge does."""
+    keys = {posixpath.normpath(path)}
+    if repo_root is not None:
+        root = os.path.realpath(repo_root)
+        rel = os.path.relpath(os.path.realpath(os.path.join(repo_root, path)), root)
+        if rel != ".." and not rel.startswith(".." + os.sep):
+            keys.add(rel.replace(os.sep, "/"))
+    return keys
+
+
+_NO_SYMLINKS: tuple[frozenset[str], tuple[str, ...]] = (frozenset(), ())
+
+
+def _changed_symlinks(
+    candidates: Iterable[str], repo_root: Path | None
+) -> tuple[frozenset[str], tuple[str, ...]]:
+    """Changed paths that are symlinks in the checkout, and their resolved
+    targets. A PR that adds a link exposes existing, unchanged content at a
+    new loadable path, and the bridge accepts a finding that cites either the
+    link or its target, so both must count as changed."""
+    if repo_root is None:
+        return _NO_SYMLINKS
+    links: set[str] = set()
+    targets: list[str] = []
+    for path in candidates:
+        full = os.path.join(repo_root, path)
+        if os.path.islink(full):
+            links.add(path)
+            targets.append(os.path.realpath(full))
+    return frozenset(links), tuple(targets)
+
+
+def _classify(
+    finding: Finding,
+    ranges: _RangesView,
+    changed_paths: frozenset[str],
+    repo_root: Path | None,
+    symlinks: tuple[frozenset[str], tuple[str, ...]] = _NO_SYMLINKS,
+) -> tuple[bool, bool]:
+    """(file_touched, on_changed_line). A touched file with no hunk (pure
+    rename, mode change, empty or binary file) counts as changed in full, and
+    so does a changed symlink or anything that resolves into one."""
+    link_paths, link_targets = symlinks
+    keys = _lookup_keys(finding.path, repo_root)
+    if any(k in link_paths for k in keys):
+        return True, True
+    if repo_root is not None and link_targets:
+        real = os.path.realpath(os.path.join(repo_root, finding.path))
+        if any(real == t or real.startswith(t + os.sep) for t in link_targets):
+            return True, True
+    hunked = [r for k in keys for r in ranges.get(k, ())]
+    in_ranges = any(k in ranges for k in keys)
+    touched = in_ranges or any(k in changed_paths for k in keys)
+    if not touched:
+        return False, False
+    if not in_ranges or finding.line is None:
+        return True, True
+    return True, any(s <= finding.line <= e for s, e in hunked)
+
+
 def split_findings_by_diff(
-    findings: Sequence[Finding], ranges: Mapping[str, tuple[tuple[int, int], ...]]
+    findings: Sequence[Finding],
+    ranges: _RangesView,
+    *,
+    changed_paths: Iterable[str] = (),
+    repo_root: Path | None = None,
 ) -> tuple[tuple[Finding, ...], tuple[Finding, ...]]:
     """Split findings into (in_diff, out_of_diff), keeping input order. The
     line match is exact, with no slack window. A finding with no line on a
-    changed file stays in_diff, so a file-level finding is never hidden."""
+    changed file, or on a changed path that has no hunk, stays in_diff, so a
+    file-level finding is never hidden."""
+    changed = frozenset(changed_paths)
+    symlinks = _changed_symlinks(changed | set(ranges), repo_root)
     in_diff: list[Finding] = []
     out_of_diff: list[Finding] = []
     for finding in findings:
-        file_ranges = ranges.get(finding.path)
-        if file_ranges is None:
-            out_of_diff.append(finding)
-        elif finding.line is None or any(s <= finding.line <= e for s, e in file_ranges):
-            in_diff.append(finding)
-        else:
-            out_of_diff.append(finding)
+        on_line = _classify(finding, ranges, changed, repo_root, symlinks)[1]
+        (in_diff if on_line else out_of_diff).append(finding)
     return tuple(in_diff), tuple(out_of_diff)
 
 
+def blocking_findings(
+    findings: Sequence[Finding],
+    ranges: _RangesView | None,
+    *,
+    changed_paths: Iterable[str] = (),
+    repo_root: Path | None = None,
+) -> tuple[Finding, ...]:
+    """The findings that fail the gate: a Major/Critical on a changed line, or
+    a Critical anywhere in a file the PR touched (a PR can remove a guard on
+    one line and leave the exposed use elsewhere). `ranges` of None means the
+    changed lines could not be computed: every Critical/Major blocks, as
+    before diff scoping."""
+    gated = [f for f in findings if f.severity in ("Critical", "Major")]
+    if ranges is None:
+        return tuple(gated)
+    changed = frozenset(changed_paths)
+    symlinks = _changed_symlinks(changed | set(ranges), repo_root)
+    blocking: list[Finding] = []
+    for finding in gated:
+        touched, on_line = _classify(finding, ranges, changed, repo_root, symlinks)
+        if on_line or (touched and finding.severity == "Critical"):
+            blocking.append(finding)
+    return tuple(blocking)
+
+
 def has_blocking_findings(
-    findings: Sequence[Finding], ranges: Mapping[str, tuple[tuple[int, int], ...]] | None
+    findings: Sequence[Finding],
+    ranges: _RangesView | None,
+    *,
+    changed_paths: Iterable[str] = (),
+    repo_root: Path | None = None,
 ) -> bool:
-    """True when a Critical/Major finding sits on a changed line. `ranges` of
-    None means the changed lines could not be computed: every Critical/Major
-    blocks, as before diff scoping."""
-    considered = findings if ranges is None else split_findings_by_diff(findings, ranges)[0]
-    return any(f.severity in ("Critical", "Major") for f in considered)
+    return bool(
+        blocking_findings(findings, ranges, changed_paths=changed_paths, repo_root=repo_root)
+    )
 
 
 # --- Trusted base-SHA reviewer-instruction extraction (design v4 amendment 13) ---
