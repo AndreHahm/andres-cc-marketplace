@@ -551,6 +551,7 @@ def check_advisory_step_is_wired():
         "new_is_newest_compatible",
         "new_safer_than_newest_compatible",
         "never read it as safe or compatible",
+        "recommend skip (hold) for that PR so the user decides",
         "pnpm-lock",
     ]
     missing = [n for n in needed if n not in body]
