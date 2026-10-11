@@ -711,6 +711,18 @@ console.log("\n=== a padded, secret-shaped target-paths entry is redacted in the
   );
 }
 
+console.log("\n=== a long padded PEM-shaped entry is redacted before truncation (issue #533) ===");
+{
+  // Redaction must run on the whole entry: truncating first would cut the END marker and defeat the pattern.
+  const pem = "-----BEGIN PRIVATE " + "KEY-----" + "A".repeat(300) + "-----END PRIVATE " + "KEY-----";
+  const result = runDispatch(repoRoot, ` ${pem}`, instructionFile);
+  check(
+    "rejected with invalid_arguments and no run of the key body survives in the echoed entry",
+    result.ok === false && result.category === "invalid_arguments" && !/A{20}/.test(String(result.detail)),
+    JSON.stringify(result)
+  );
+}
+
 console.log("\n=== --repo-root that is not the actual git repository toplevel ===");
 {
   const subdir = path.join(repoRoot, "subdir");
