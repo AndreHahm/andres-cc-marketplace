@@ -39,8 +39,10 @@ the user seeing a prompt.
 
 - Looking up or showing a prompt: use `prompt-retrieval`, which is read-only.
 - Running a prompt: use `prompt-execution`, which previews, asks for approval and rechecks the hash.
-- Content that needs bundled scripts or references, tool restrictions, automatic activation or multi-step
-  orchestration: that is a skill, so use `skill-development`. This skill creates no skills.
+- Content that needs bundled scripts or references, tool restrictions or automatic activation: that is a
+  skill, so use `skill-development`. This skill creates no skills.
+- Content that needs multi-step phases or sub-agent orchestration: that is a workflow skill, so use
+  `workflow-skill-development`.
 
 ## Data-only boundary
 
