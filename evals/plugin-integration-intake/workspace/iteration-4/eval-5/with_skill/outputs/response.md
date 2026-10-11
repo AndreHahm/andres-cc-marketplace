@@ -72,7 +72,7 @@ Result: the source passes the existence check. It is recorded as a caller-assert
 ## Step 5. Hash and verified output
 
 1. Tool call: `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py hash C:\scratch\session\wmgt-intake\b-20261009-7f3a9c21.json")`.
-   - Expected output: a single JSON object, `{"ok": true, "hash": "<sha256>", "records": 3, "bytes": N}`.
+   - Expected output: a single JSON object, `{"ok": true, "sha256": "<sha256>", "record_count": 3}` (`bytes` appears only on preview and chunk output).
    - I take `<sha256>` as H.
    - Fail-closed rule: if it errors, prints anything else, or reports `ok:false`, I stop with a structured handoff. I never compute the hash myself.
    - In this repo's own session, if `CLAUDE_PLUGIN_ROOT` is empty, the `.claude` mirror rule applies: use `$PWD/.claude/scripts/wmgt_batch_hash.py`.
@@ -134,7 +134,7 @@ Records: 3, so there is one chunk, within the 25-record and 20000-byte limit.
 ## Step 8. Cleanup
 
 - Tool call: `Bash("... wmgt_batch_hash.py purge C:\scratch\session <file>")`, covering the submission file and the progress file.
-- Expected output: `{"ok":true, "removed":[...]}`. If it failed, I would say so and not claim the files are gone.
+- Expected output: `{"ok":true, "purged":true}`. If it failed, I would say so and not claim the files are gone.
 
 ## Step 9. Result to the caller
 
