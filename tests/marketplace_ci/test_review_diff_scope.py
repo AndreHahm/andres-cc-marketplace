@@ -438,6 +438,15 @@ def test_finding_to_dict_in_diff_is_null_when_ranges_are_unavailable():
     assert _finding_to_dict(_finding(line=42), in_diff=None)["in_diff"] is None
 
 
+def test_finding_to_dict_carries_the_cited_components():
+    cross = _finding(components=(f"{SKILL}:42", "plugins/other-kit/README.md"))
+    assert _finding_to_dict(cross, in_diff=True, blocking=True)["components"] == [
+        f"{SKILL}:42",
+        "plugins/other-kit/README.md",
+    ]
+    assert _finding_to_dict(_finding())["components"] == []
+
+
 # --- Hardening from the security review of the gate (issue #525) --------------
 
 HEADER = "--- a/{p}\n+++ b/{p}\n"

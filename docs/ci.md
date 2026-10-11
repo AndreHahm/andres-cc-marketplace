@@ -181,7 +181,8 @@ the deleted-guard kind.
 `codex-review-result.json` carries, in addition to the fields above:
 
 - `diff_scoped` — `true` when the changed lines were computed, `false` for the fail-closed fallback;
-- per finding, `in_diff` (on a changed line or in a changed-in-full path; `null` when `diff_scoped` is `false`)
+- per finding, `components` (the other locations a cross-file finding cites, which can be what put it in the diff),
+  `in_diff` (on a changed line or in a changed-in-full path; `null` when `diff_scoped` is `false`)
   and `blocking` (whether that finding failed the job).
 
 `ReviewResult.blocking` (used only by the `check-review-output` command on a single reviewer's envelope) is
