@@ -288,6 +288,15 @@ def test_split_bare_component_on_a_hunkless_changed_file_still_counts():
     assert in_diff == (cross,)
 
 
+def test_split_bare_component_on_a_renamed_file_with_edits_still_counts():
+    # A rename/copy/mode change with an edit carries a whole-file range alongside
+    # its hunk, so it is changed in full even though the file has hunks.
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL,))
+    ranges = {SKILL: ((5, 5), (1, sys.maxsize))}
+    in_diff, _ = split_findings_by_diff([cross], ranges, changed_paths=[SKILL])
+    assert in_diff == (cross,)
+
+
 def test_split_lined_component_still_blocks_beside_a_bare_one():
     cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL, f"{SKILL}:42"))
     assert has_blocking_findings([cross], PR506_RANGES, changed_paths=[SKILL])
