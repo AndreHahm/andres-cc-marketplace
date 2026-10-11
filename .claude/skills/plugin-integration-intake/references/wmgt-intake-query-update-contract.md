@@ -1,8 +1,9 @@
 # Intake Query and Update Contract
 
-The `query` and `update` values of the envelope's `operation` field. Both are Linear only. They share the target
-resolution, scratch files and hash binding described in the batch procedure (`wmgt-intake-batch-contract.md` in the Reference Guide in `SKILL.md`; this file states
-every rule it depends on below, in a line or two each). Like the batch
+The `query` and `update` values of the envelope's `operation` field. Both are Linear only. Target resolution goes
+through `linear-work-management`. An update's submission file lives at `<scratchpad>/wmgt-intake/<batch-id>.json` in the
+session scratchpad (never in a repository) and is hashed with `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py hash
+<file>`; this file states every other rule it depends on below. Like the batch
 path, this is prose-enforced: the limits below narrow what a calling plugin can do, they do not authenticate it.
 
 ## Query (read-only, structured dedup key, IDs only)
