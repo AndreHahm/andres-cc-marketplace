@@ -56,7 +56,14 @@ SKILL_MIRROR = ".claude/skills/skill-development/SKILL.md"
 SCRIPT = "plugins/analysis-kit/scripts/anls_redact_secrets.py"
 
 
-def _finding(severity="Major", path=SKILL, line=42, rule="activation", reviewer="skill-reviewer"):
+def _finding(
+    severity="Major",
+    path=SKILL,
+    line=42,
+    rule="activation",
+    reviewer="skill-reviewer",
+    components=(),
+):
     return Finding(
         reviewer=reviewer,
         severity=severity,
@@ -65,6 +72,7 @@ def _finding(severity="Major", path=SKILL, line=42, rule="activation", reviewer=
         evidence="e",
         remediation="r",
         line=line,
+        components=components,
     )
 
 
@@ -253,6 +261,37 @@ def test_split_finding_without_a_line_on_an_untouched_file_is_out_of_diff():
     file_level = _finding(path="plugins/other-kit/README.md", line=None, rule="size")
     _, out_of_diff = split_findings_by_diff([file_level], PR506_RANGES)
     assert out_of_diff == (file_level,)
+
+
+def test_split_cross_file_finding_is_in_diff_when_a_component_is_on_a_changed_line():
+    # The primary location is unchanged code, but the finding is about the
+    # relationship with a file the PR changed (envelope `components`).
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(f"{SKILL}:42",))
+    in_diff, out_of_diff = split_findings_by_diff([cross], PR506_RANGES)
+    assert in_diff == (cross,)
+    assert out_of_diff == ()
+
+
+def test_split_component_without_a_line_counts_when_its_file_is_changed():
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL,))
+    in_diff, _ = split_findings_by_diff([cross], PR506_RANGES, changed_paths=[SKILL])
+    assert in_diff == (cross,)
+
+
+def test_split_component_on_an_unchanged_line_or_file_stays_out_of_diff():
+    cross = _finding(
+        path="plugins/other-kit/README.md",
+        line=3,
+        components=(f"{SKILL}:45", "plugins/other-kit/skills/y/SKILL.md"),
+    )
+    in_diff, out_of_diff = split_findings_by_diff([cross], PR506_RANGES)
+    assert in_diff == ()
+    assert out_of_diff == (cross,)
+
+
+def test_cross_file_major_with_a_changed_component_blocks():
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(f"{SKILL}:42",))
+    assert has_blocking_findings([cross], PR506_RANGES)
 
 
 def test_split_preserves_input_order_in_both_groups():

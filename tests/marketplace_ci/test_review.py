@@ -772,6 +772,40 @@ def test_validate_review_output_accepts_location_without_line():
     assert result.findings[0].line is None
 
 
+def test_validate_review_output_keeps_component_citations():
+    raw = _finding("major", path="a", line=1)
+    raw["components"] = ["plugins/x/SKILL.md:42", "plugins/y/SKILL.md"]
+    result = validate_review_output(_envelope(findings=[raw]))
+    assert result.findings[0].components == ("plugins/x/SKILL.md:42", "plugins/y/SKILL.md")
+
+
+@pytest.mark.parametrize("components", [None, []])
+def test_validate_review_output_treats_null_or_empty_components_as_none(components):
+    raw = _finding("major", path="a", line=1)
+    raw["components"] = components
+    assert validate_review_output(_envelope(findings=[raw])).findings[0].components == ()
+
+
+@pytest.mark.parametrize("components", ["plugins/x", [1], {"a": "b"}])
+def test_validate_review_output_rejects_malformed_components(components):
+    raw = _finding("major", path="a", line=1)
+    raw["components"] = components
+    with pytest.raises(ReviewOutputError, match="components"):
+        validate_review_output(_envelope(findings=[raw]))
+
+
+def test_aggregate_findings_unions_components_of_merged_duplicates():
+    a = _finding("major")
+    a["components"] = ["c1"]
+    b = _finding("critical")
+    b["components"] = ["c2"]
+    reports = [
+        validate_review_output(_envelope(reviewer="r1", findings=[a])),
+        validate_review_output(_envelope(reviewer="r2", findings=[b])),
+    ]
+    assert aggregate_findings(reports)[0].components == ("c1", "c2")
+
+
 # run_delta_structural_checks moved here from validators.py (issue #351,
 # direction #3) -- it's on the review-dispatch-critical path
 # (_handle_run_codex_review calls it directly), so it lives in this Tier 1

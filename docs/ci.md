@@ -134,7 +134,8 @@ called once per run through `_diff_scope` in `__main__.py`:
 
 "On a line the PR changed" means the new-side line ranges of `git diff -U0 --text <base>...HEAD`, matched
 exactly (no slack window). A pure deletion counts the two lines either side of the removal, and a finding that
-names no line counts as on a changed line whenever its file is touched. The following all count as changed in
+names no line counts as on a changed line whenever its file is touched. A cross-file finding also lists the other files involved (`components`); it is judged by the same test at each
+cited location and blocks when any one of them is on a changed line. The following all count as changed in
 full, so a finding on them blocks whichever line it names:
 
 - a changed path that has no hunk: a pure rename (both the old and the new name), a mode change, an empty or
