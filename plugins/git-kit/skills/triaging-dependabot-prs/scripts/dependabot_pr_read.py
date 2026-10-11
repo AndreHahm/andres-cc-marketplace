@@ -2,7 +2,7 @@
 """Read-only GitHub lookups for triaging-dependabot-prs, in place of raw `gh` read grants.
 
 The skill needs these reads: the open Dependabot PR list, one PR's fields, a PR's required checks,
-a PR's changed files and commits, and a `uv.lock` file at a ref. A raw `gh api` or `gh pr`
+a PR's changed files and commits, and a `uv.lock` or `pnpm-lock.yaml` file at a ref. A raw `gh api` or `gh pr`
 grant cannot be narrowed to those (a prefix grant lets any trailing argument through), so this
 script does exactly these things and nothing else, with the repository, the PR number and the
 JSON fields checked in code. It has no code path that posts, closes, edits or deletes anything on
@@ -20,13 +20,14 @@ Usage:
   dependabot_pr_read.py files PR_NUMBER
   dependabot_pr_read.py commits PR_NUMBER
   dependabot_pr_read.py uv-lock --role base|head --ref REF --dir DIR
+  dependabot_pr_read.py pnpm-lock --role base|head --ref REF --dir DIR
 `pr-list` returns up to 100 open PRs by the Dependabot app with a fixed field set; "truncated" is
 true when that page is full. `pr-view` returns only the requested fields, each from a fixed
 allowlist.
 `pr-checks` returns the required checks as name/bucket/elapsed/link rows (an empty list when none
 are reported). `files` and `commits` print a compact summary of the first page (100 entries);
 "truncated" is true when that page is full. `uv-lock` writes the file only to DIR/base-uv.lock or
-DIR/head-uv.lock (DIR must be an existing absolute directory inside the system temp directory; the
+DIR/head-uv.lock (`pnpm-lock`: DIR/base-pnpm-lock.yaml or DIR/head-pnpm-lock.yaml; DIR must be an existing absolute directory inside the system temp directory; the
 target must not be a symlink; at most 8 MiB).
 Prints one JSON object with an "ok" field. Exit 0 = done, 2 = bad arguments, 4 = `gh` or `git`
 failed or was unavailable, or the file could not be written.
@@ -187,8 +188,11 @@ def list_page(run, gh, repo, kind, pr):
     return {"count": len(items), "truncated": len(items) >= PAGE_SIZE, "items": items}
 
 
-def fetch_uv_lock(run, gh, repo, ref, role, directory):
-    """Write uv.lock at REF to DIRECTORY/<role>-uv.lock; return what was written."""
+LOCKFILES = {"uv-lock": "uv.lock", "pnpm-lock": "pnpm-lock.yaml"}
+
+
+def fetch_uv_lock(run, gh, repo, ref, role, directory, remote="uv.lock"):
+    """Write REMOTE (uv.lock or pnpm-lock.yaml) at REF to DIRECTORY/<role>-<REMOTE>; return it."""
     if not REF_RE.fullmatch(ref) or ".." in ref:
         raise Refusal("--ref must be a 40-hex SHA or a plain branch name")
     if not os.path.isabs(directory) or not os.path.isdir(directory):
@@ -197,22 +201,24 @@ def fetch_uv_lock(run, gh, repo, ref, role, directory):
     temp_root = os.path.realpath(tempfile.gettempdir())
     if os.path.commonpath([real_dir, temp_root]) != temp_root:
         raise Refusal(f"--dir must be inside the system temp directory ({temp_root})")
-    target = os.path.join(real_dir, f"{role}-uv.lock")
+    if remote not in LOCKFILES.values():
+        raise Refusal("unsupported lockfile")
+    target = os.path.join(real_dir, f"{role}-{remote}")
     if os.path.islink(target) or os.path.isdir(target):
-        raise Refusal(f"{role}-uv.lock in --dir is a symlink or a directory; refusing to write")
-    done = _api_get(run, gh, f"repos/{repo}/contents/uv.lock", f"ref={ref}", raw=True)
+        raise Refusal(f"{role}-{remote} in --dir is a symlink or a directory; refusing to write")
+    done = _api_get(run, gh, f"repos/{repo}/contents/{remote}", f"ref={ref}", raw=True)
     if done.returncode != 0:
-        raise Refusal("gh api contents/uv.lock failed", EXIT_TOOL)
+        raise Refusal(f"gh api contents/{remote} failed", EXIT_TOOL)
     data = done.stdout.encode("utf-8")
     if not data or len(data) > MAX_LOCK_BYTES:
-        raise Refusal("uv.lock came back empty or larger than 8 MiB", EXIT_TOOL)
+        raise Refusal(f"{remote} came back empty or larger than 8 MiB", EXIT_TOOL)
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(target, flags, 0o600)
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
     except OSError as exc:
-        raise Refusal(f"could not write {role}-uv.lock: {type(exc).__name__}", EXIT_TOOL) from exc
+        raise Refusal(f"could not write {role}-{remote}: {type(exc).__name__}", EXIT_TOOL) from exc
     return {"path": target, "bytes": len(data)}
 
 
@@ -307,10 +313,11 @@ def parse_args(argv):
     view = sub.add_parser("pr-view")
     view.add_argument("pr_number")
     view.add_argument("--fields", required=True)
-    lock = sub.add_parser("uv-lock")
-    lock.add_argument("--role", required=True, choices=ROLES)
-    lock.add_argument("--ref", required=True)
-    lock.add_argument("--dir", required=True)
+    for lock_kind in LOCKFILES:
+        lock = sub.add_parser(lock_kind)
+        lock.add_argument("--role", required=True, choices=ROLES)
+        lock.add_argument("--ref", required=True)
+        lock.add_argument("--dir", required=True)
     return parser.parse_args(argv)
 
 
@@ -325,9 +332,11 @@ def main(argv=None, run=subprocess.run, which=shutil.which):
         git, gh = resolve_tool(which, "git"), resolve_tool(which, "gh")
         repo = origin_repo(run, git)
         result["repo"] = repo
-        if args.kind == "uv-lock":
+        if args.kind in LOCKFILES:
             result.update(role=args.role, ref=args.ref)
-            result.update(fetch_uv_lock(run, gh, repo, args.ref, args.role, args.dir))
+            result.update(
+                fetch_uv_lock(run, gh, repo, args.ref, args.role, args.dir, LOCKFILES[args.kind])
+            )
         elif args.kind == "pr-list":
             result.update(pr_list(run, gh, repo))
         elif args.kind == "pr-view":

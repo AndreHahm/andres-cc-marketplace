@@ -374,6 +374,48 @@ class PrReads(unittest.TestCase):
                     self.assertNotIn(word, call, call)
 
 
+class PnpmLock(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = os.path.realpath(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def fetch(self, fake, role="base", ref="main"):
+        return run_main(["pnpm-lock", "--role", role, "--ref", ref, "--dir", self.dir], fake)
+
+    def test_fetches_pnpm_lock_yaml_and_writes_its_own_file(self):
+        content = "lockfileVersion: '9.0'\npackages:\n  react@18.2.0:\n"
+        fake = FakeRun(api_stdout=content)
+        code, out = self.fetch(fake)
+        self.assertEqual(code, 0, out)
+        argv = fake.api_calls()[0][0]
+        self.assertEqual(argv[:6], [GH, "api", "--hostname", "github.com", "--method", "GET"])
+        self.assertEqual(argv[6], f"repos/{REPO}/contents/pnpm-lock.yaml")
+        target = pathlib.Path(self.dir) / "base-pnpm-lock.yaml"
+        self.assertEqual(out["path"], str(target))
+        self.assertEqual(target.read_text(encoding="utf-8"), content)
+        self.assertEqual(sorted(os.listdir(self.dir)), ["base-pnpm-lock.yaml"])
+
+    def test_head_role_and_bad_inputs(self):
+        code, out = self.fetch(FakeRun(api_stdout="x\n"), role="head")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(sorted(os.listdir(self.dir)), ["head-pnpm-lock.yaml"])
+        fake = FakeRun(api_stdout="x\n")
+        code, out = self.fetch(fake, ref="../x")
+        self.assertEqual(code, 2)
+        self.assertEqual(fake.api_calls(), [])
+
+    def test_uv_and_pnpm_files_do_not_collide(self):
+        self.fetch(FakeRun(api_stdout="a\n"))
+        run_main(
+            ["uv-lock", "--role", "base", "--ref", "main", "--dir", self.dir],
+            FakeRun(api_stdout="b\n"),
+        )
+        self.assertEqual(sorted(os.listdir(self.dir)), ["base-pnpm-lock.yaml", "base-uv.lock"])
+
+
 class UvLock(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
