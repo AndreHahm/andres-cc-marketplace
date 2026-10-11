@@ -13,3 +13,12 @@ Evals 12 and 13 were re-run as iteration 11 after the cross-model-review fixes (
 skip (hold) for that PR, a cost note for `assess` was added, and eval 12's prompt wording and sixth assertion were
 tightened (7 of 7 each). Iterations 10 and 11 apply to the earlier text for that behavior. The run history that was
 inline in `SKILL.md` was moved to this file the same day.
+
+## Update, 2026-10-11 (pre-PR cross-model review of the full diff)
+
+A second Claude plus Codex cross-model review ran on the full diff against `main` (51 files) before the pull request.
+Three findings, all cross-confirmed and fixed with tests that were each shown to fail without the fix: `--lock` could
+not be loaded on Windows because `os.O_NOFOLLOW` was used unguarded (every `assess` call with `--lock` ended in an
+internal error; reproduced by removing the attribute on Linux, not run on Windows); a candidate's `requires_python`
+was skipped silently when the lock had no readable `requires-python`, and is now counted as unevaluated; and one
+test used `os.mkfifo`, which Windows lacks, and is now skipped there. The advisory suite has 88 tests.
