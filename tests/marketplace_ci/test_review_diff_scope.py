@@ -297,6 +297,25 @@ def test_split_bare_component_on_a_renamed_file_with_edits_still_counts():
     assert in_diff == (cross,)
 
 
+def test_split_bare_component_on_a_newly_added_file_counts(repo):
+    # Every line of a new file is added, so a bare cited path is changed in full
+    # (a.md in the fixture repo has 10 lines).
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=("a.md",))
+    in_diff, _ = split_findings_by_diff(
+        [cross], {"a.md": ((1, 10),)}, changed_paths=["a.md"], repo_root=repo
+    )
+    assert in_diff == (cross,)
+
+
+@pytest.mark.parametrize("hunks", [((1, 9),), ((2, 10),), ((1, 4), (6, 10))])
+def test_split_bare_component_on_a_partly_edited_file_stays_out_of_diff(repo, hunks):
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=("a.md",))
+    _, out_of_diff = split_findings_by_diff(
+        [cross], {"a.md": hunks}, changed_paths=["a.md"], repo_root=repo
+    )
+    assert out_of_diff == (cross,)
+
+
 def test_split_lined_component_still_blocks_beside_a_bare_one():
     cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL, f"{SKILL}:42"))
     assert has_blocking_findings([cross], PR506_RANGES, changed_paths=[SKILL])
