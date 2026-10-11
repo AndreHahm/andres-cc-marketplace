@@ -1179,6 +1179,9 @@ def _format_ranges(spans: Sequence[tuple[int, int]]) -> str:
 # is interpolated into the briefing only when it matches this in full, so no
 # PR-controlled file name can put words of its own into the instruction body.
 _BRIEFING_SAFE_PATH = re.compile(r"[A-Za-z0-9._/-]+")
+# A file with more changed ranges than this is listed as "entire file": the
+# list would otherwise grow with the diff (bounded only by `_MAX_DIFF_BYTES`).
+_MAX_BRIEFING_SPANS = 50
 
 
 def render_diff_scope(
@@ -1214,7 +1217,7 @@ def render_diff_scope(
         spans = ranges.get(path)
         if path in whole:
             lines.append(f"{path}: entire file")
-        elif spans and (1, sys.maxsize) not in spans:
+        elif spans and (1, sys.maxsize) not in spans and len(spans) <= _MAX_BRIEFING_SPANS:
             lines.append(f"{path}: lines {_format_ranges(spans)}")
         elif spans or path in changed:
             lines.append(f"{path}: entire file")

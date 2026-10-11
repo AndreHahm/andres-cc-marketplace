@@ -188,7 +188,8 @@ appends a `[diff scope]` block to every reviewer's instruction (`render_diff_sco
 uses): it lists each reviewed path with its changed lines and tells the reviewer to read the rest for context but
 report only on the changed ones, or on a problem that a change here, a removal included, plausibly causes or exposes
 elsewhere, anchored to the changed line. A path that counts as changed in full above (whole-file range, rename,
-mode change, empty or binary file, changed symlink or a path resolving into one) reads `entire file`; a reviewed path the PR did not touch, such as part of a
+mode change, empty or binary file, changed symlink or a path resolving into one, or a file with more than 50
+changed ranges, which keeps the briefing small) reads `entire file`; a reviewed path the PR did not touch, such as part of a
 `full`-mode dependency closure, reads `context only`. When the changed lines cannot be computed, the instruction is
 left exactly as the base SHA holds it, matching the fail-closed fallback. The briefing narrows what the model is
 asked to judge; it does not change what blocks. It can still lower how many unchanged-line problems a reviewer
