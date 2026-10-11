@@ -720,6 +720,83 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
     return tuple(aggregated)
 
 
+# --- Diff-scoped blocking (issue #525) ---
+
+_HUNK_HEADER = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+LineRanges = dict[str, tuple[tuple[int, int], ...]]
+
+
+def parse_changed_line_ranges(diff_text: str) -> LineRanges:
+    """Map each changed path to its changed new-side line ranges (inclusive),
+    from `git diff -U0` output. A pure deletion has no new-side line, so it
+    touches the two lines either side of the removal. A deleted file has no
+    new side and is left out.
+
+    Hunk bodies are skipped by their header's line counts, so an added line
+    whose text looks like a `+++ b/...` or `@@` header is never read as one.
+    Raises ValueError on a quoted path header (git quotes unusual names): the
+    caller must treat that as "ranges unavailable", never as "nothing changed"."""
+    ranges: dict[str, list[tuple[int, int]]] = {}
+    path: str | None = None
+    body_left = 0
+    for line in diff_text.splitlines():
+        if body_left > 0:
+            if not line.startswith("\\"):
+                body_left -= 1
+            continue
+        if line.startswith("+++ "):
+            target = line[4:]
+            if target == "/dev/null":
+                path = None
+            elif target.startswith('"'):
+                raise ValueError(f"quoted path in diff header: {line!r}")
+            else:
+                path = target.removeprefix("b/")
+            continue
+        match = _HUNK_HEADER.match(line)
+        if match is None:
+            continue
+        old_count = int(match.group(1)) if match.group(1) is not None else 1
+        start = int(match.group(2))
+        new_count = int(match.group(3)) if match.group(3) is not None else 1
+        body_left = old_count + new_count
+        if path is None:
+            continue
+        end = start + 1 if new_count == 0 else start + new_count - 1
+        ranges.setdefault(path, []).append((start, end))
+    return {p: tuple(r) for p, r in ranges.items()}
+
+
+def split_findings_by_diff(
+    findings: Sequence[Finding], ranges: Mapping[str, tuple[tuple[int, int], ...]]
+) -> tuple[tuple[Finding, ...], tuple[Finding, ...]]:
+    """Split findings into (in_diff, out_of_diff), keeping input order. The
+    line match is exact, with no slack window. A finding with no line on a
+    changed file stays in_diff, so a file-level finding is never hidden."""
+    in_diff: list[Finding] = []
+    out_of_diff: list[Finding] = []
+    for finding in findings:
+        file_ranges = ranges.get(finding.path)
+        if file_ranges is None:
+            out_of_diff.append(finding)
+        elif finding.line is None or any(s <= finding.line <= e for s, e in file_ranges):
+            in_diff.append(finding)
+        else:
+            out_of_diff.append(finding)
+    return tuple(in_diff), tuple(out_of_diff)
+
+
+def has_blocking_findings(
+    findings: Sequence[Finding], ranges: Mapping[str, tuple[tuple[int, int], ...]] | None
+) -> bool:
+    """True when a Critical/Major finding sits on a changed line. `ranges` of
+    None means the changed lines could not be computed: every Critical/Major
+    blocks, as before diff scoping."""
+    considered = findings if ranges is None else split_findings_by_diff(findings, ranges)[0]
+    return any(f.severity in ("Critical", "Major") for f in considered)
+
+
 # --- Trusted base-SHA reviewer-instruction extraction (design v4 amendment 13) ---
 
 _DEVELOPER_INSTRUCTIONS_PATTERN = re.compile(r'developer_instructions\s*=\s*"""(.*)"""', re.DOTALL)
