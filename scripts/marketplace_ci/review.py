@@ -636,6 +636,7 @@ class Finding:
     remediation: str
     line: int | None = None
     reporters: tuple[str, ...] = ()
+    components: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -685,6 +686,11 @@ def validate_review_output(data: dict) -> ReviewResult:
         if severity is None:
             raise ReviewOutputError(f"unknown severity: {raw['severity']!r}")
         path, line = _split_location(raw["location"])
+        components = raw.get("components")
+        if components is None:
+            components = []
+        if not isinstance(components, list) or not all(isinstance(c, str) for c in components):
+            raise ReviewOutputError("finding 'components' must be null or a list of strings")
         findings.append(
             Finding(
                 reviewer=reviewer,
@@ -694,6 +700,7 @@ def validate_review_output(data: dict) -> ReviewResult:
                 evidence=raw["evidence"],
                 remediation=raw["fix"],
                 line=line,
+                components=tuple(components),
             )
         )
 
@@ -718,7 +725,8 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
         group = grouped[key]
         highest = max(group, key=lambda f: _SEVERITY_RANK[f.severity])
         reporters = tuple(sorted({f.reviewer for f in group}))
-        aggregated.append(replace(highest, reporters=reporters))
+        components = tuple(dict.fromkeys(c for f in group for c in f.components))
+        aggregated.append(replace(highest, reporters=reporters, components=components))
     return tuple(aggregated)
 
 
@@ -1018,15 +1026,37 @@ def _classify(
     repo_root: Path | None,
     symlinks: tuple[frozenset[str], tuple[str, ...]] = _NO_SYMLINKS,
 ) -> bool:
-    """True when the finding sits on a changed line. A touched file with no
-    hunk (pure rename, mode change, empty or binary file) counts as changed in
-    full, and so does a changed symlink or anything that resolves into one."""
+    """True when the finding sits on a changed line, either at its primary
+    location or at any cited component (a cross-file finding is about the
+    relationship, so a changed line on either side makes it the PR's). The
+    primary location is always checked and the results are ORed, so components
+    can only widen blocking, never narrow it."""
+    if _classify_location(finding.path, finding.line, ranges, changed_paths, repo_root, symlinks):
+        return True
+    for component in finding.components:
+        path, line = _split_location(component)
+        if _classify_location(path, line, ranges, changed_paths, repo_root, symlinks):
+            return True
+    return False
+
+
+def _classify_location(
+    path: str,
+    line: int | None,
+    ranges: _RangesView,
+    changed_paths: frozenset[str],
+    repo_root: Path | None,
+    symlinks: tuple[frozenset[str], tuple[str, ...]],
+) -> bool:
+    """True when one cited location sits on a changed line. A touched file with
+    no hunk (pure rename, mode change, empty or binary file) counts as changed
+    in full, and so does a changed symlink or anything that resolves into one."""
     link_paths, link_targets = symlinks
-    keys = _lookup_keys(finding.path, repo_root)
+    keys = _lookup_keys(path, repo_root)
     if any(k in link_paths for k in keys):
         return True
     if repo_root is not None and link_targets:
-        real = _fold(os.path.realpath(os.path.join(repo_root, finding.path)))
+        real = _fold(os.path.realpath(os.path.join(repo_root, path)))
         for target in link_targets:
             folded_target = _fold(target)
             if real == folded_target or real.startswith(
@@ -1037,9 +1067,9 @@ def _classify(
     in_ranges = any(k in ranges for k in keys)
     if not in_ranges and not any(k in changed_paths for k in keys):
         return False
-    if not in_ranges or finding.line is None:
+    if not in_ranges or line is None:
         return True
-    return any(s <= finding.line <= e for s, e in hunked)
+    return any(s <= line <= e for s, e in hunked)
 
 
 def split_findings_by_diff(
