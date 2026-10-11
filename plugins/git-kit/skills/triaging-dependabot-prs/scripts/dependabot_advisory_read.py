@@ -67,6 +67,7 @@ ECOSYSTEMS = {
 }
 VERSION_RE = re.compile(r"v?[0-9][0-9A-Za-z.+_-]{0,63}")
 SHA_LIKE_RE = re.compile(r"[0-9a-f]{7,40}")
+HEX_LETTER_RE = re.compile(r"[a-f]")
 ADVISORY_ID_RE = re.compile(r"[A-Z][A-Z0-9]*-[A-Za-z0-9-]{1,60}")
 HOST = "github.com"
 OSV_URL = "https://api.osv.dev/v1/query"
@@ -113,6 +114,17 @@ def clean(text, limit=SUMMARY_LIMIT):
     """Third-party text reduced to one short printable line."""
     one_line = CONTROL_RE.sub(" ", str(text or "")).strip()
     return one_line[:limit]
+
+
+def commit_like(version):
+    """Whether VERSION looks like a commit hash: 40 hex characters, or 7 to 40 with a letter.
+
+    A dot-less all-digit value such as a date-style 20240101 is a version, not a commit.
+    """
+    text = normalize_version(version)
+    return bool(SHA_LIKE_RE.fullmatch(text)) and (
+        len(text) == 40 or bool(HEX_LETTER_RE.search(text))
+    )
 
 
 def normalize_version(version):
@@ -283,7 +295,7 @@ def advisories_for(run, gh, environ, fetch, eco, name, version):
     is a version that looks like a commit SHA, which neither database can match. `sources` records
     what each source did, so an empty "ok" is never mistaken for a confirmed-clean version.
     """
-    if SHA_LIKE_RE.fullmatch(normalize_version(version)):
+    if commit_like(version):
         return {
             "status": "unknown",
             "advisories": [],
@@ -522,12 +534,20 @@ def parse_uv_lock(text):
     }
 
 
-PNPM_KEY_RE = re.compile(r"  '?/?(@?[^@'\s/]+(?:/[^@'\s/]+)?)@([0-9][^'\s:()]*)'?:\s*")
+# A packages: key, optionally with a peer-resolution suffix `(react@18.2.0)(...)` after the version.
+PNPM_KEY_RE = re.compile(
+    r"  '?/?(@?[^@'\s/]+(?:/[^@'\s/]+)?)@([0-9][^'\s:()]*)(?:\([^'\s:]*)?'?:\s*"
+)
+PNPM_LOCKFILE_RE = re.compile(r"""lockfileVersion:\s*['"]?([0-9]+)""")
+PNPM_SUPPORTED_MAJORS = ("6", "9")  # pnpm 8 writes 6.x, pnpm 9 and 10 write 9.x
 
 
 def parse_pnpm_lock(text):
     """{'versions': {name: [versions]}, 'requires_python': None} from a pnpm-lock.yaml."""
     versions, inside = {}, False
+    declared = PNPM_LOCKFILE_RE.search(text[:2000])
+    if not declared or declared.group(1) not in PNPM_SUPPORTED_MAJORS:
+        raise LookupFailed("unsupported or missing pnpm lockfileVersion")
     for line in text.splitlines():
         if line.startswith("packages:"):
             inside = True
@@ -535,8 +555,8 @@ def parse_pnpm_lock(text):
             inside = False
         elif inside and len(line) <= MAX_CONSTRAINT_CHARS:
             match = PNPM_KEY_RE.fullmatch(line)
-            if match:
-                versions.setdefault(match.group(1), []).append(match.group(2))
+            if match and match.group(2) not in versions.setdefault(match.group(1), []):
+                versions[match.group(1)].append(match.group(2))
     if not versions:
         raise LookupFailed("no packages found in the pnpm lockfile")
     return {"versions": versions, "requires_python": None}
@@ -638,9 +658,17 @@ def marker_applies(marker, min_python):
 
 
 def _judge(requirement, dependency, locked, results, verdict):
-    """Fold one requirement's per-locked-version results into the running verdict."""
-    if any(r is True for r in results):
+    """Fold one requirement's per-locked-version results into the running verdict.
+
+    With several locked copies we do not know which one the candidate would use, so one satisfying
+    copy cannot prove compatibility: a mix of satisfied and violated is ambiguous, not a pass.
+    """
+    if all(r is True for r in results):
         verdict["checked"] += 1
+    elif any(r is True for r in results) and any(r is False for r in results):
+        verdict["ambiguous"] += 1
+    elif any(r is True for r in results):
+        verdict["unevaluated"] += 1
     elif all(r is False for r in results):
         verdict["checked"] += 1
         verdict["violations"].append(
@@ -657,7 +685,7 @@ def _judge(requirement, dependency, locked, results, verdict):
 
 def check_pypi(meta, lock):
     """Check a PyPI version's requires-python and requires-dist against the uv.lock versions."""
-    verdict = {"violations": [], "checked": 0, "unevaluated": 0}
+    verdict = {"violations": [], "checked": 0, "unevaluated": 0, "ambiguous": 0}
     min_python = minimum_python(lock["requires_python"])
     requires_python = meta.get("requires_python")
     if isinstance(requires_python, str) and requires_python.strip() and min_python:
@@ -696,14 +724,15 @@ def check_pypi(meta, lock):
 
 def check_npm(meta, lock):
     """Check an npm version's peerDependencies against the pnpm-lock.yaml versions."""
-    verdict = {"violations": [], "checked": 0, "unevaluated": 0}
+    verdict = {"violations": [], "checked": 0, "unevaluated": 0, "ambiguous": 0}
     for dependency, wanted in list((meta.get("peerDependencies") or {}).items())[:500]:
         locked = lock["versions"].get(dependency)
         if not locked or not isinstance(wanted, str):
             continue
         _judge(wanted, dependency, locked, [npm_satisfies(v, wanted) for v in locked], verdict)
-    if meta.get("engines"):
-        verdict["unevaluated"] += 1  # the Node version we run on is not known here
+    # `engines` needs the Node version we run on, which is not known here. It is outside the lockfile
+    # check, so it is reported on its own and does not turn a version with no peer conflict unknown.
+    verdict["engines_not_checked"] = bool(meta.get("engines"))
     return verdict
 
 
@@ -743,6 +772,12 @@ def compatibility(fetch, cache, eco, name, version, lock):
         return {"status": "unknown", "reason": "the registry metadata could not be read"}
     if verdict["violations"]:
         return {"status": "incompatible", **verdict}
+    if verdict["ambiguous"]:
+        return {
+            "status": "unknown",
+            "reason": "a dependency is locked at several versions and only some satisfy the constraint",
+            **verdict,
+        }
     if verdict["checked"] == 0 and verdict["unevaluated"] > 0:
         return {
             "status": "unknown",
