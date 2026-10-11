@@ -23,7 +23,7 @@ static schema can't express (the existence check, the ambiguous-target check).
 | `source_skill` | Yes | string | The calling plugin's own skill that produced this submission |
 | `content` | Yes, unless `records` or `keys` is used | object | The actual content to store — shape depends on `target_system` (see below) |
 | `operation` | No | enum: `"create"` \| `"query"` \| `"update"` | Absent means `"create"`, so single-record callers are unchanged |
-| `records` | No | array (1–1000) | Linear batch or update form, in place of `content` (batch procedure: see the Reference Guide in `SKILL.md`) |
+| `records` | No | array (1–1000) | Linear batch or update form, in place of `content`: a create record holds only `title`, `description`, `status`, `priority`, `labels`; an update record is `{id, set}` (batch procedure: see the Reference Guide in `SKILL.md`) |
 | `keys` | No | array (1–50) of strings | Query form, in place of `content` — exact dedup keys (query procedure: see the Reference Guide in `SKILL.md`) |
 | `target_system` | Yes | enum: `"notion"` \| `"linear"` | Which system this submission is bound for |
 | `suggested_mapping` | Yes | object | The calling plugin's own best guess at where this belongs — untrusted evidence, not a directive (see SKILL.md) |
@@ -49,7 +49,7 @@ static schema can't express (the existence check, the ambiguous-target check).
 
 | Field | Required | Notes |
 |---|---|---|
-| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | For Notion, the calling plugin's own guess at the database. For Linear, an `owner/repo` slug that intake has `linear-work-management` resolve to a team through `linear.repositories` (exact match; unknown slug rejected; procedure: see the Reference Guide in `SKILL.md`) |
+| `notion_database` or `linear_target` | Yes (one, matching `target_system`) | For Notion, the calling plugin's own guess at the database. For Linear, an `owner/repo` slug (required for a batch, query or update; a single-record create may also use its earlier target forms) that intake has `linear-work-management` resolve to a team through `linear.repositories` (procedure: `wmgt-linear-slug-resolution.md` in that skill) |
 | `test_run` | No | Boolean, default `false`. Caller-asserted, like `source_plugin`; selects the mapped test team instead of the production team and never widens scope |
 | `rationale` | No | Why the calling plugin believes this mapping is correct |
 
@@ -72,7 +72,8 @@ static schema can't express (the existence check, the ambiguous-target check).
    one Linear entity when checked against the plugin's own host profile and current-state read —
    if it could plausibly resolve to more than one, or to none, the payload is ambiguous. For a
    `records` batch, a `query` or an `update`, a Linear `linear_target` that is not an `owner/repo`
-   slug is ambiguous; a single-record `create` with `content` keeps its existing handling.
+   slug is ambiguous; a single-record `create` with `content` and a slug `linear_target` is resolved the same way
+   (environment from `test_run`, shown in bold in that record's preview), and any other form keeps its existing handling.
 4. **Unknown repository / out of scope**: a Linear `linear_target` slug that is not an exact
    (normalized) key of `linear.repositories` is rejected, never guessed or retried as an ID or display
    name. A mapped team outside the host-profile operation's `team_ids` is rejected as out of scope.
