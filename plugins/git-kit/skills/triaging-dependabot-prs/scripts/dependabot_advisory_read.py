@@ -859,6 +859,17 @@ def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=N
     }
 
 
+def comparable(a, b):
+    """Whether risk() may rank results A and B against each other.
+
+    Ranking two non-empty advisory lists needs every advisory's severity to be recognized: an unknown
+    severity is not the lowest one, it is unknown. A list compared with an empty one needs no severity.
+    """
+    if a["advisories"] and b["advisories"]:
+        return all(item["severity"] in SEVERITY_RANK for item in a["advisories"] + b["advisories"])
+    return True
+
+
 def risk(result):
     """Sort key for how risky a version is: worst severity first, then how many advisories."""
     items = result["advisories"]
@@ -913,14 +924,16 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
     out["signals"] = {
         "new_vulnerable_not_safer_than_old": (
             bool(v["new"]["advisories"]) and risk(v["new"]) >= risk(v["old"])
-            if known["new"] and known["old"]
+            if known["new"] and known["old"] and comparable(v["new"], v["old"])
             else None
         ),
         "new_compatible": {"compatible": True, "incompatible": False}.get(compat["status"]),
         "new_is_newest_compatible": new_is_newest_compatible,
         "new_safer_than_newest_compatible": (
             risk(v["new"]) < risk(v["newest_compatible"])
-            if known["new"] and known.get("newest_compatible")
+            if known["new"]
+            and known.get("newest_compatible")
+            and comparable(v["new"], v["newest_compatible"])
             else None
         ),
         "new_is_latest": (
