@@ -188,14 +188,17 @@ appends a `[diff scope]` block to every reviewer's instruction (`render_diff_sco
 uses): it lists each reviewed path with its changed lines and tells the reviewer to read the rest for context but
 report only on the changed ones, or on a problem that a change here, a removal included, plausibly causes or exposes
 elsewhere, anchored to the changed line. A path that counts as changed in full above (whole-file range, rename,
-mode change, empty or binary file, changed symlink or a path resolving into one, or a file with more than 50
-changed ranges, which keeps the briefing small) reads `entire file`; a reviewed path the PR did not touch, such as part of a
+mode change, empty or binary file, changed symlink or a path resolving into one) reads `entire file`, and so
+does a file with more than 50 changed ranges, which keeps the briefing small and is briefing-only: the gate
+still counts only that file's changed ranges; a reviewed path the PR did not touch, such as part of a
 `full`-mode dependency closure, reads `context only`. When the changed lines cannot be computed, the instruction is
 left exactly as the base SHA holds it, matching the fail-closed fallback. The briefing narrows what the model is
 asked to judge; it does not change what blocks. It can still lower how many unchanged-line problems a reviewer
 mentions, so fewer `"in_diff": false` notices may appear, and the deleted-guard case above relies on the reviewer
 anchoring what a removal exposes to the changed line. A changed path with characters outside `[A-Za-z0-9._/-]`
-fails the reviewer (exit 2) instead of being written into the instruction. The briefing makes repeated runs more
+fails the reviewer (exit 2) instead of being written into the instruction. A name made only of allowed
+characters is still shown to the model, fenced as data with the boundary stated before and after it; that
+reduces but cannot remove the chance that a hostile file name influences the review. The briefing makes repeated runs more
 alike but cannot guarantee they agree, because the model is still non-deterministic.
 
 `codex-review-result.json` carries, in addition to the fields above:
