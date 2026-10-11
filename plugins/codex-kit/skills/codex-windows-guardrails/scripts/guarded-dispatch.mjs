@@ -809,7 +809,16 @@ async function main() {
     return;
   }
 
-  const targetPaths = args["target-paths"].split(",").map((p) => p.trim()).filter(Boolean);
+  // No trim()/filter(Boolean): each entry is checked exactly as given, so a
+  // padded or empty entry is rejected instead of being normalized into a
+  // valid-looking one (issue #533, same rule as bridge-invoke.mjs).
+  const targetPaths = args["target-paths"].split(",");
+  for (const targetPath of targetPaths) {
+    if (targetPath === "" || targetPath !== targetPath.trim()) {
+      fail("invalid_arguments", `target-paths entry is empty or has leading/trailing whitespace: ${JSON.stringify(targetPath)} (a literal comma inside a single path is not supported)`);
+      return;
+    }
+  }
 
   // Every target-paths entry is interpolated verbatim into the
   // <target_paths> prompt tag below. isValidToken's charset doesn't apply
