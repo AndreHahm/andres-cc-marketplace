@@ -579,8 +579,11 @@ def load_lock(path, eco):
         inside = False
     if not inside:
         raise Refusal("--lock must be an absolute path inside the system temp directory")
+    if os.path.islink(path):  # O_NOFOLLOW is missing on Windows, so refuse a symlink here as well
+        raise Refusal("--lock must be a readable regular file, not a symlink")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0))
+        fd = os.open(path, flags)
     except OSError as exc:
         raise Refusal("--lock must be a readable regular file, not a symlink") from exc
     try:
@@ -688,7 +691,11 @@ def check_pypi(meta, lock):
     verdict = {"violations": [], "checked": 0, "unevaluated": 0, "ambiguous": 0}
     min_python = minimum_python(lock["requires_python"])
     requires_python = meta.get("requires_python")
-    if isinstance(requires_python, str) and requires_python.strip() and min_python:
+    if isinstance(requires_python, str) and requires_python.strip() and not min_python:
+        verdict["unevaluated"] += (
+            1  # the project's lowest Python is unknown, so nothing to compare to
+        )
+    elif isinstance(requires_python, str) and requires_python.strip():
         fits = pep440_satisfies(".".join(str(n) for n in min_python), requires_python)
         if fits is False:
             verdict["checked"] += 1

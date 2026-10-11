@@ -760,12 +760,47 @@ class LockPathTests(unittest.TestCase):
             with self.assertRaises(mod.Refusal, msg=(path, eco)):
                 mod.load_lock(path, eco)
 
-    def test_head_lock_names_are_accepted_and_fifos_refused(self):
+    def test_head_lock_names_are_accepted(self):
         self.assertIsNotNone(mod.load_lock(self.write("head-uv.lock"), "uv"))
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "no FIFOs on this platform")
+    def test_fifos_are_refused(self):
         fifo = os.path.join(self.dir, "base-uv.lock")
         os.mkfifo(fifo)
         with self.assertRaises(mod.Refusal):
             mod.load_lock(fifo, "uv")
+
+    def test_a_lock_still_loads_and_a_symlink_is_still_refused_without_o_nofollow(self):
+        """Windows' os module has no O_NOFOLLOW: the loader must not depend on it."""
+        good = self.write("base-uv.lock")
+        link = os.path.join(self.dir, "head-uv.lock")
+        os.symlink(good, link)
+        saved = os.O_NOFOLLOW
+        del os.O_NOFOLLOW
+        try:
+            self.assertEqual(mod.load_lock(good, "uv")["versions"]["other"], ["1.0.0"])
+            with self.assertRaises(mod.Refusal):
+                mod.load_lock(link, "uv")
+            code, result = run_main(base_args("uv", "requests") + ["--lock", good])
+        finally:
+            os.O_NOFOLLOW = saved
+        self.assertEqual(code, 0)
+        self.assertTrue(result["ok"])
+
+    def test_a_candidate_requires_python_is_unevaluated_when_the_project_minimum_is_unknown(self):
+        meta = {"requires_python": ">=3.12", "requires_dist": []}
+        for requires in (None, "==3.12.*"):
+            lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": requires}
+            verdict = mod.check_pypi(meta, lock)
+            self.assertEqual(
+                (verdict["violations"], verdict["checked"], verdict["unevaluated"]),
+                ([], 0, 1),
+                requires,
+            )
+            cache = {("pypi-version", "foo", "9.9.9"): ("ok", {"info": meta})}
+            self.assertEqual(
+                mod.compatibility(None, cache, "uv", "foo", "9.9.9", lock)["status"], "unknown"
+            )
 
     def test_an_oversized_lock_is_refused(self):
         path = self.write("base-uv.lock", "x" * (mod.MAX_LOCK_BYTES + 1))
