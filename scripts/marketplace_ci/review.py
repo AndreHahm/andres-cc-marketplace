@@ -997,6 +997,24 @@ def _changed_symlinks(
     return frozenset(links), tuple(targets)
 
 
+def _symlinked_paths(
+    reviewed: Iterable[str], changed_paths: Iterable[str], ranges: LineRanges, repo_root: Path
+) -> frozenset[str]:
+    """The reviewed paths the gate counts as changed in full because of a
+    symlink: a changed link, or a path that resolves into a changed link's
+    target (the same two tests `_classify_location` applies)."""
+    link_paths, link_targets = _changed_symlinks(set(changed_paths) | set(ranges), repo_root)
+    whole: set[str] = set()
+    for path in reviewed:
+        real = os.path.realpath(os.path.join(repo_root, path))
+        if path in link_paths or any(
+            real == t or real.startswith(t if t.endswith(os.sep) else t + os.sep)
+            for t in link_targets
+        ):
+            whole.add(path)
+    return frozenset(whole)
+
+
 def _scope_views(
     ranges: _RangesView, changed_paths: Iterable[str], repo_root: Path | None
 ) -> tuple[_RangesView, frozenset[str], tuple[frozenset[str], tuple[str, ...]]]:
@@ -1147,13 +1165,72 @@ def has_blocking_findings(
 _DEVELOPER_INSTRUCTIONS_PATTERN = re.compile(r'developer_instructions\s*=\s*"""(.*)"""', re.DOTALL)
 
 
+def _format_ranges(spans: Sequence[tuple[int, int]]) -> str:
+    merged: list[tuple[int, int]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in merged)
+
+
+# What the reviewer bridge accepts in --target-paths (bridge-invoke.mjs). A path
+# is interpolated into the briefing only when it matches this in full, so no
+# PR-controlled file name can put words of its own into the instruction body.
+_BRIEFING_SAFE_PATH = re.compile(r"[A-Za-z0-9._/-]+")
+
+
+def render_diff_scope(
+    paths: Iterable[str],
+    ranges: LineRanges,
+    changed_paths: Iterable[str] = (),
+    whole_file: Iterable[str] = (),
+) -> str:
+    """The `<diff_scope>` briefing appended to a reviewer's instructions: which
+    lines of each reviewed path this PR changed, so the model judges those and
+    not whole files (issue #527). It describes the same changed lines
+    `_classify` blocks on and never widens them: a file with a whole-file range
+    or no hunk (rename, mode change, empty or binary) reads "entire file", as it
+    counts as changed in full there; a reviewed path the PR did not touch (the
+    dependency closure of a `full`-mode run) is context only. `whole_file` names
+    the paths the gate counts as changed in full because of a symlink (a changed
+    link, or a path that resolves into a changed link's target). Every path must
+    match `_BRIEFING_SAFE_PATH`; callers check that before rendering."""
+    changed = frozenset(changed_paths)
+    whole = frozenset(whole_file)
+    lines = [
+        "<diff_scope>",
+        "This pull request changed only the lines listed below; a listed range may be "
+        "only the point where lines were removed. Read the rest of each file for "
+        "context. Report a finding when it is on one of the changed lines, or when a "
+        "change here, a removal included, causes or exposes it elsewhere: anchor that "
+        "finding to the changed line. A problem that exists only on unchanged lines "
+        "and does not come from this change is not this pull request's to fix; leave "
+        "it out. A finding that spans files should be anchored to a changed line, and "
+        "may cite unchanged files as components.",
+    ]
+    for path in dict.fromkeys(paths):
+        spans = ranges.get(path)
+        if path in whole:
+            lines.append(f"{path}: entire file")
+        elif spans and (1, sys.maxsize) not in spans:
+            lines.append(f"{path}: lines {_format_ranges(spans)}")
+        elif spans or path in changed:
+            lines.append(f"{path}: entire file")
+        else:
+            lines.append(f"{path}: not changed by this pull request (context only)")
+    lines.append("</diff_scope>")
+    return "\n".join(lines)
+
+
 def _extract_developer_instructions(toml_text: str) -> str:
     match = _DEVELOPER_INSTRUCTIONS_PATTERN.search(toml_text)
     return match.group(1) if match else ""
 
 
 def prepare_reviewer_instruction(
-    agent_name: str, *, base_sha: str, out: Path, repo: Path | None = None
+    agent_name: str, *, base_sha: str, out: Path, repo: Path | None = None, briefing: str = ""
 ) -> Path:
     """Read the exact tracked `.codex/agents/<agent_name>.toml` blob from the
     validated base SHA — never the PR working tree or index, with no
@@ -1210,7 +1287,9 @@ def prepare_reviewer_instruction(
         )
         raise SystemExit(2)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(instructions, encoding="utf-8")
+    # One write: appending to a file already read back would also write the
+    # briefing through anything an earlier read followed.
+    out.write_text(instructions + (f"\n\n{briefing}\n" if briefing else ""), encoding="utf-8")
     return out
 
 
@@ -1392,6 +1471,9 @@ def _dispatch_one(
     deadline: float,
     max_timeout_retries: int,
     max_empty_retries: int,
+    changed_ranges: LineRanges | None = None,
+    changed_paths: Iterable[str] = (),
+    whole_file: Iterable[str] = (),
 ) -> ReviewerReport:
     reviewer_scope = scope.paths
     if name == "plugin-rulebook-checker":
@@ -1407,8 +1489,27 @@ def _dispatch_one(
     target_paths = ",".join(reviewer_scope)
 
     instruction_path = instructions_dir / f"{name}.txt"
+    briefing = ""
+    if changed_ranges is not None:
+        # Narrows what the model judges; the gate (`_classify`) still decides
+        # what blocks. None means the ranges could not be computed, and then
+        # every Critical/Major blocks, so the reviewer is not narrowed either.
+        unsafe = [p for p in reviewer_scope if not _BRIEFING_SAFE_PATH.fullmatch(p)]
+        if unsafe:
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=_sanitize_log_text(
+                    "changed path with characters the reviewer bridge does not accept: "
+                    f"{unsafe[0]!r}"
+                )[:_MAX_ERROR_CHARS],
+                attempts=0,
+            )
+        briefing = render_diff_scope(reviewer_scope, changed_ranges, changed_paths, whole_file)
     try:
-        prepare_reviewer_instruction(name, base_sha=base_sha, out=instruction_path, repo=repo)
+        prepare_reviewer_instruction(
+            name, base_sha=base_sha, out=instruction_path, repo=repo, briefing=briefing
+        )
     except SystemExit:
         return ReviewerReport(
             reviewer=name, status="failed", error="instruction preparation failed", attempts=0
@@ -1528,6 +1629,8 @@ def dispatch_reviewers(
     max_timeout_retries: int = DISPATCH_MAX_TIMEOUT_RETRIES,
     max_empty_retries: int = DISPATCH_MAX_EMPTY_RETRIES,
     budget_seconds: float = DISPATCH_BUDGET_SECONDS,
+    changed_ranges: LineRanges | None = None,
+    changed_paths: Iterable[str] = (),
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -1539,7 +1642,11 @@ def dispatch_reviewers(
     reports keep the scope's own order. A reviewer whose bridge call times out
     is retried up to `max_timeout_retries` times, and one that returns an empty
     inconclusive review up to `max_empty_retries` times; no call starts unless
-    a full per-call budget still fits inside `budget_seconds` overall."""
+    a full per-call budget still fits inside `budget_seconds` overall.
+
+    `changed_ranges` (from `compute_changed_line_ranges`) adds a `<diff_scope>`
+    briefing to each instruction so the reviewer reports on the PR's changed
+    lines only; `None` leaves the instruction exactly as the base SHA has it."""
     instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
@@ -1548,6 +1655,15 @@ def dispatch_reviewers(
     # Deduplicated, order kept: two workers must never write the same
     # per-reviewer instruction file at once.
     names = tuple(dict.fromkeys((*scope.validate, *scope.audit)))
+    changed_paths = tuple(changed_paths)
+    whole_file: frozenset[str] = frozenset()
+    if changed_ranges is not None:
+        try:
+            whole_file = _symlinked_paths(scope.paths, changed_paths, changed_ranges, repo)
+        except (OSError, RuntimeError):
+            # The gate runs the same lookup later and fails closed (exit 2); an
+            # unnarrowed reviewer is the safe side of this one.
+            changed_ranges = None
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = [
             pool.submit(
@@ -1562,6 +1678,9 @@ def dispatch_reviewers(
                 deadline=deadline,
                 max_timeout_retries=max_timeout_retries,
                 max_empty_retries=max_empty_retries,
+                changed_ranges=changed_ranges,
+                changed_paths=changed_paths,
+                whole_file=whole_file,
             )
             for name in names
         ]
