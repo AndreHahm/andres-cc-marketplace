@@ -94,7 +94,8 @@ def check_bash_grants():
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
-    search_text = _collect_search_text(body)
+    # Shell quotes around a script path are not part of the grant text.
+    search_text = _collect_search_text(body).replace('"', "")
     unused = [cmd for cmd in granted_cmds if not re.search(_grant_pattern(cmd), search_text)]
     if unused:
         return False, (

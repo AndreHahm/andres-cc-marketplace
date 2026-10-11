@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -280,7 +280,7 @@ Before creating a PR, check for uncommitted changes:
    `--label "p: <tier>"` in step 4 — never skip it once the taxonomy exists. A missing specific label
    (taxonomy present) is a labeling failure to report, not something to silently create or omit.
 
-4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", always including `--assignee <login>` from step 3.75, and including `--label "p: <tier>"` from step 3.85 only when that step actually resolved a tier (omit the flag entirely in a repository with no `p:` taxonomy):
+4. Immediately before creating the PR, run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", always including `--assignee <login>` from step 3.75, and including `--label "p: <tier>"` from step 3.85 only when that step actually resolved a tier (omit the flag entirely in a repository with no `p:` taxonomy):
 
    ```bash
    # Basic command structure (draft) -- omit --label entirely if step 3.85 was a no-op

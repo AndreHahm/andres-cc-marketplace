@@ -3,7 +3,7 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(*/git-kit/scripts/git-write-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(bash */git-kit/scripts/git-write-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh:*), Read, Grep
 ---
 
 # Git Cleanup
@@ -304,22 +304,22 @@ Confirm? (yes/no)
 
 ### Phase 5: Execute
 
-Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
+Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
 
 ```bash
 git branch -d fix/typo
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/login
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-v2
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-refactor
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-final
 git worktree unlock ../proj-auth
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
 "${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh" 1

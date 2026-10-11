@@ -65,7 +65,8 @@ def check_bash_grants():
     granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
-    body = fm_text[header_end:]
+    # Shell quotes around a script path are not part of the grant text.
+    body = fm_text[header_end:].replace('"', "")
     # Match the full multi-word grant (e.g. "gh pr view"), not just its first token --
     # a first-token-only match (e.g. bare "gh") would false-positive against any
     # unrelated word containing it anywhere in the body.

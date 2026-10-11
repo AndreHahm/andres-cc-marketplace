@@ -33,7 +33,7 @@ permission prompt (not verified against how Claude Code matches grants).
 ## Incorrect
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review triaging-dependabot-prs
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review triaging-dependabot-prs
 ```
 It fails with `/scripts/git-write-marker.sh: No such file or directory` (exit 127), and the session gives up
 although the script exists in the mirror.
@@ -41,7 +41,7 @@ although the script exists in the mirror.
 ## Correct
 
 ```
-"$PWD/.claude/scripts/git-write-marker.sh" gh-pr-review triaging-dependabot-prs
+bash "$PWD/.claude/scripts/git-write-marker.sh" gh-pr-review triaging-dependabot-prs
 ```
 
 ## Why

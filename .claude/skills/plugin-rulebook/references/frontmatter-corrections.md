@@ -27,6 +27,7 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 | `Bash` (no scope argument at all) | REQUIRED — unrestricted, equivalent to `Bash(*)` |
 | `Bash(*)` | REQUIRED — unrestricted |
 | `Bash(sh:*)` `Bash(bash:*)` `Bash(cmd:*)` `Bash(powershell:*)` | REQUIRED — shell interpreters bypass scoping |
+| `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)` (interpreter followed by one pinned script path) | PASS — permits that one script only; needed where Claude Code refuses direct execution of a script whose operands start with `git-` in an `EnterWorktree` session (issue #516) |
 | `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped |
 | `Bash(git:* mkdir:*)` | PASS — multiple named tools, each explicit |
 

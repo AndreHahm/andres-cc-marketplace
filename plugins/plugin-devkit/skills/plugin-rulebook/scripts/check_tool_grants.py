@@ -328,7 +328,9 @@ def is_covered(span_text, granted_prefixes):
     non-alphanumeric (the intentional mid-token case above). Without this, a
     `Bash(sh:*)` grant would wrongly "cover" an unrelated `shellcheck ...`
     span just because the string "sh" is a literal prefix of "shellcheck"."""
-    span_norm = " ".join(span_text.strip().lower().split())
+    # Shell quoting around a path (`bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"`) is not part of
+    # how a grant is written (`Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`), so drop it.
+    span_norm = " ".join(span_text.strip().lower().replace('"', "").split())
     tokens = tuple(span_norm.split())
     n = len(tokens)
     for prefix in granted_prefixes:

@@ -126,7 +126,7 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 ### R6 — Tool Scoping: Least Privilege [REQUIRED, default: on]
 
-`allowed-tools`/agent `tools` must apply least privilege. Always scope Bash to a named tool — `Bash(git:*)`, `Bash(python:*)` — never `Bash(*)` or bare `Bash`; shell interpreters (`sh`, `bash`, `cmd`, `powershell`) are equivalent to `Bash(*)` and are REQUIRED violations regardless of argument pattern. **Agent files are the reverse:** an agent's `tools` field has no Bash-scoping syntax at all — a scoped `Bash(cmd:*)` entry there is the REQUIRED violation; replace with bare `Bash`.
+`allowed-tools`/agent `tools` must apply least privilege. Always scope Bash to a named tool — `Bash(git:*)`, `Bash(python:*)` — never `Bash(*)` or bare `Bash`; shell interpreters (`sh`, `bash`, `cmd`, `powershell`) are equivalent to `Bash(*)` and are REQUIRED violations regardless of argument pattern, except a grant that pins one script path after the interpreter (`Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`), which is PASS: it permits one named script, not arbitrary commands. **Agent files are the reverse:** an agent's `tools` field has no Bash-scoping syntax at all — a scoped `Bash(cmd:*)` entry there is the REQUIRED violation; replace with bare `Bash`.
 
 **Deliberately ungranted write form:** a real-run form of a granted script that the component's Boundaries documents as intentionally ungranted (so it prompts), next to a granted `--dry-run`-style form, is not a tool-completeness violation.
 

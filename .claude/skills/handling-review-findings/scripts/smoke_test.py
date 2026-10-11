@@ -69,13 +69,14 @@ def check_bash_grants():
     granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
-    body = fm_text[header_end:]
+    # Shell quotes around a script path are not part of the grant text.
+    body = fm_text[header_end:].replace('"', "")
     # A grant used only inside an extracted references/*.md file (progressive disclosure)
     # must still count as "used" -- search those too, not just SKILL.md's own body.
     references_dir = SKILL_DIR / "references"
     if references_dir.is_dir():
         for ref_file in sorted(references_dir.glob("*.md")):
-            body += "\n" + ref_file.read_text(encoding="utf-8")
+            body += "\n" + ref_file.read_text(encoding="utf-8").replace('"', "")
 
     # Match the full multi-word grant (e.g. "gh pr checks"), not just its first token --
     # a first-token-only match (e.g. bare "gh") would false-positive against any
