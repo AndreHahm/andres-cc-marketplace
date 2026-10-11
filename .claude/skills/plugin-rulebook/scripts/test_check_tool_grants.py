@@ -162,6 +162,28 @@ allowed-tools: Read Bash(sh:*)
 Run `sh script.sh` (covered), then run `shellcheck script.sh` (NOT covered by Bash(sh:*)).
 """
 
+FIXTURE_QUOTED_GRANT_AND_INVOCATION = """---
+name: quoted-grant-fixture
+description: test fixture
+allowed-tools: Read Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/x.py":*)
+---
+
+# Test Skill
+
+Run `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/x.py" "<arg>"` to check the title.
+"""
+
+FIXTURE_BASH_PINNED_GRANT_QUOTED_INVOCATION = """---
+name: bash-pinned-fixture
+description: test fixture
+allowed-tools: Read Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)
+---
+
+# Test Skill
+
+Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh" guard-type skill-name` first.
+"""
+
 FIXTURE_CLAUSE_SCOPED_NEGATION = """---
 name: clause-scoped-negation-fixture
 description: test fixture
@@ -269,6 +291,20 @@ def main():
                 1,
                 ["MISSING GRANT -- command `shellcheck script.sh`"],
                 ["MISSING GRANT -- command `sh script.sh`"],
+            ),
+            (
+                "quoted path in both the grant and the invocation still matches",
+                FIXTURE_QUOTED_GRANT_AND_INVOCATION,
+                0,
+                ["PASS (tool grants)"],
+                ["MISSING GRANT"],
+            ),
+            (
+                "unquoted pinned bash grant covers a quoted bash invocation",
+                FIXTURE_BASH_PINNED_GRANT_QUOTED_INVOCATION,
+                0,
+                ["PASS (tool grants)"],
+                ["MISSING GRANT"],
             ),
             (
                 "negative-instruction suppression is clause-scoped, not whole-line",

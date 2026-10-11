@@ -243,7 +243,7 @@ def extract_bash_grant_prefixes(allowed_tools_value):
             if not scope:
                 universal = True
                 continue
-            prefixes.add(tuple(scope.lower().split()))
+            prefixes.add(tuple(scope.lower().replace('"', "").split()))
     # A malformed scoped attempt like `Bash (git:*)` (space before the
     # paren) doesn't match BASH_GRANT_RE at all, so it never reaches the
     # loop above -- but its bare "Bash" token would still be present in a
