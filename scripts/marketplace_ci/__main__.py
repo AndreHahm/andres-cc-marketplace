@@ -895,7 +895,7 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
-def _finding_to_dict(finding) -> dict:
+def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None = None) -> dict:
     return {
         "reviewer": finding.reviewer,
         "severity": finding.severity,
@@ -905,7 +905,29 @@ def _finding_to_dict(finding) -> dict:
         "evidence": finding.evidence,
         "remediation": finding.remediation,
         "reporters": list(finding.reporters),
+        "in_diff": in_diff,
+        "blocking": blocking,
     }
+
+
+def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
+    """(blocking, in_diff, diff_scoped) for the aggregated findings. A
+    Major/Critical on a line this PR changed blocks, and so does a Critical
+    anywhere in a file it touched; the rest stay in the artifact as
+    non-blocking notices. `in_diff` is None, and every Critical/Major blocks,
+    when the changed lines could not be computed."""
+    from scripts.marketplace_ci.review import (
+        blocking_findings,
+        compute_changed_line_ranges,
+        split_findings_by_diff,
+    )
+
+    ranges = compute_changed_line_ranges(repo, base_sha)
+    scope = {"changed_paths": changed_paths, "repo_root": repo}
+    blocking = set(blocking_findings(findings, ranges, **scope))
+    if ranges is None:
+        return blocking, None, False
+    return blocking, set(split_findings_by_diff(findings, ranges, **scope)[0]), True
 
 
 def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
@@ -935,6 +957,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.review import (
         FULL_ESCALATION_PATHS,
         ReviewOutputError,
+        _changed_path_set,
         aggregate_findings,
         derive_review_scope,
         dispatch_reviewers,
@@ -1031,7 +1054,13 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             return _fail_run_codex_review(args, f"{report.reviewer} returned invalid output: {exc}")
 
     findings = aggregate_findings(validated)
-    blocking = any(f.severity in ("Critical", "Major") for f in findings)
+    try:
+        blocking_set, in_diff, diff_scoped = _diff_scope(
+            findings, repo, base_sha, _changed_path_set(changed)
+        )
+    except Exception as exc:  # fail closed: exit 2 and overwrite the output file
+        return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}")
+    blocking = bool(blocking_set)
     structural_blocking = len(structural_findings) > 0
 
     payload = {
@@ -1043,7 +1072,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             {"path": f.path, "operation": f.operation, "reason": f.reason}
             for f in structural_findings
         ],
-        "findings": [_finding_to_dict(f) for f in findings],
+        "diff_scoped": diff_scoped,
+        "findings": [
+            _finding_to_dict(f, None if in_diff is None else f in in_diff, f in blocking_set)
+            for f in findings
+        ],
         "blocking": blocking or structural_blocking,
     }
     output_text = json.dumps(payload, indent=2)

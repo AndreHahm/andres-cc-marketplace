@@ -9,10 +9,15 @@ Fixtures reproduce PR #506 (run 38117400285), whose only Major findings sat on
 lines 45, 93 and 113 of `skill-development/SKILL.md` while the PR added line 42.
 """
 
+import subprocess
+
 import pytest
 
+from scripts.marketplace_ci.__main__ import _diff_scope, _finding_to_dict
 from scripts.marketplace_ci.review import (
     Finding,
+    blocking_findings,
+    compute_changed_line_ranges,
     has_blocking_findings,
     parse_changed_line_ranges,
     split_findings_by_diff,
@@ -245,3 +250,298 @@ def test_unavailable_ranges_fall_back_to_severity_only_blocking():
 
 def test_empty_ranges_mean_nothing_changed_not_unavailable():
     assert has_blocking_findings([_finding("Critical", SKILL, 1)], {}) is False
+
+
+# --- compute_changed_line_ranges (real git repo) ---------------------------------
+
+
+def _git(repo, *args):
+    subprocess.run(
+        ["git", "-c", "user.email=t@example.com", "-c", "user.name=t", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+
+@pytest.fixture
+def repo(tmp_path):
+    _git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "a.md").write_text("".join(f"line {n}\n" for n in range(1, 11)))
+    (tmp_path / "gone.md").write_text("x\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    return tmp_path
+
+
+def _base(repo):
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def test_compute_ranges_reports_added_and_edited_lines(repo):
+    base = _base(repo)
+    lines = [f"line {n}\n" for n in range(1, 11)]
+    lines[2] = "edited\n"
+    lines.insert(5, "inserted\n")
+    (repo / "a.md").write_text("".join(lines))
+    (repo / "new.md").write_text("one\ntwo\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "change")
+    assert compute_changed_line_ranges(repo, base) == {
+        "a.md": ((3, 3), (6, 6)),
+        "new.md": ((1, 2),),
+    }
+
+
+def test_compute_ranges_leaves_out_a_deleted_file(repo):
+    base = _base(repo)
+    (repo / "gone.md").unlink()
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "delete")
+    assert compute_changed_line_ranges(repo, base) == {}
+
+
+def test_compute_ranges_handles_a_non_ascii_filename(repo):
+    base = _base(repo)
+    (repo / "k\u00e4se.md").write_text("one\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "umlaut")
+    assert compute_changed_line_ranges(repo, base) == {"k\u00e4se.md": ((1, 1),)}
+
+
+def test_compute_ranges_is_unavailable_for_an_unresolvable_base(repo):
+    assert compute_changed_line_ranges(repo, "0" * 40) is None
+
+
+# --- _finding_to_dict ----------------------------------------------------------
+
+
+def test_finding_to_dict_carries_the_in_diff_flag():
+    finding = _finding(line=42)
+    assert _finding_to_dict(finding, in_diff=True)["in_diff"] is True
+    assert _finding_to_dict(finding, in_diff=False)["in_diff"] is False
+
+
+def test_finding_to_dict_in_diff_is_null_when_ranges_are_unavailable():
+    assert _finding_to_dict(_finding(line=42), in_diff=None)["in_diff"] is None
+
+
+# --- Hardening from the security review of the gate (issue #525) --------------
+
+HEADER = "--- a/{p}\n+++ b/{p}\n"
+
+
+def test_parse_added_form_feed_does_not_desync_hunk_counting():
+    # str.splitlines() splits on \x0c; git counts hunk lines by \n only. The
+    # second added line looks like a file header and must stay hunk content.
+    diff = (
+        HEADER.format(p=SKILL)
+        + "@@ -10,0 +11,2 @@\n+a\x0cb\n+++ b/README.md\n"
+        + "@@ -200 +201 @@\n-old\n+new\n"
+    )
+    assert parse_changed_line_ranges(diff) == {SKILL: ((11, 12), (201, 201))}
+
+
+def test_parse_unicode_line_separator_in_a_path_is_kept_whole():
+    path = "plugins/x/ev\u2028il.sh"
+    diff = HEADER.format(p=path) + "@@ -1 +1 @@\n-a\n+b\n"
+    assert parse_changed_line_ranges(diff) == {path: ((1, 1),)}
+
+
+def test_parse_strips_the_tab_git_appends_to_a_path_with_a_space():
+    diff = "--- a/my hook.sh\t\n+++ b/my hook.sh\t\n@@ -1 +1 @@\n-a\n+b\n"
+    assert parse_changed_line_ranges(diff) == {"my hook.sh": ((1, 1),)}
+
+
+def test_parse_raises_when_a_non_header_line_follows_a_finished_hunk():
+    diff = HEADER.format(p=SKILL) + "@@ -1 +1 @@\n-a\n+b\nstray line outside any hunk\n"
+    with pytest.raises(ValueError):
+        parse_changed_line_ranges(diff)
+
+
+def test_parse_accepts_no_newline_marker_and_binary_and_mode_lines():
+    diff = (
+        "diff --git a/a.sh b/a.sh\nold mode 100644\nnew mode 100755\n"
+        "diff --git a/b.bin b/b.bin\nBinary files a/b.bin and b/b.bin differ\n"
+        + HEADER.format(p="c.md")
+        + "@@ -1 +1 @@\n-a\n\\ No newline at end of file\n+b\n"
+    )
+    assert parse_changed_line_ranges(diff) == {"c.md": ((1, 1),)}
+
+
+def test_compute_ranges_sees_hunks_despite_a_gitattributes_minus_diff(repo):
+    base = _base(repo)
+    (repo / ".gitattributes").write_text("* -diff\n")
+    (repo / "a.md").write_text("changed\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "attrs")
+    ranges = compute_changed_line_ranges(repo, base)
+    assert ranges is not None
+    assert ranges["a.md"] == ((1, 1),)
+
+
+def test_compute_ranges_is_unavailable_when_git_cannot_start(tmp_path):
+    assert compute_changed_line_ranges(tmp_path / "does-not-exist", "0" * 40) is None
+
+
+def test_split_changed_path_without_hunks_is_in_diff_with_or_without_a_line():
+    # A pure rename, mode change or empty file produces no hunk at all.
+    no_hunk = "plugins/x/hooks/run.sh"
+    with_line = _finding(path=no_hunk, line=3)
+    without_line = _finding(path=no_hunk, line=None)
+    in_diff, out = split_findings_by_diff([with_line, without_line], {}, changed_paths=(no_hunk,))
+    assert in_diff == (with_line, without_line)
+    assert out == ()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "./" + SKILL,
+        "plugins/plugin-devkit//skills/skill-development/SKILL.md",
+        SKILL + "/../SKILL.md",
+    ],
+)
+def test_split_normalises_the_finding_path_before_lookup(raw):
+    finding = _finding(path=raw, line=42)
+    in_diff, _ = split_findings_by_diff([finding], PR506_RANGES)
+    assert in_diff == (finding,)
+
+
+def test_split_resolves_an_absolute_path_under_the_repo_root(tmp_path):
+    target = tmp_path / SKILL
+    target.parent.mkdir(parents=True)
+    target.write_text("x\n")
+    finding = _finding(path=str(target), line=42)
+    in_diff, _ = split_findings_by_diff([finding], PR506_RANGES, repo_root=tmp_path)
+    assert in_diff == (finding,)
+
+
+def test_split_resolves_a_symlink_to_a_changed_file(tmp_path):
+    target = tmp_path / SKILL
+    target.parent.mkdir(parents=True)
+    target.write_text("x\n")
+    (tmp_path / "alias.md").symlink_to(target)
+    finding = _finding(path="alias.md", line=42)
+    in_diff, _ = split_findings_by_diff([finding], PR506_RANGES, repo_root=tmp_path)
+    assert in_diff == (finding,)
+
+
+def test_split_path_escaping_the_repo_root_stays_out_of_diff(tmp_path):
+    finding = _finding(path="../../etc/passwd", line=1)
+    _, out = split_findings_by_diff([finding], PR506_RANGES, repo_root=tmp_path)
+    assert out == (finding,)
+
+
+def test_critical_in_a_touched_file_blocks_even_outside_the_changed_lines():
+    # A PR can delete a guard on one line and leave the exposed use elsewhere.
+    critical = _finding("Critical", SKILL, 93, "injection-surface")
+    assert blocking_findings([critical], PR506_RANGES) == (critical,)
+    assert has_blocking_findings([critical], PR506_RANGES) is True
+
+
+def test_major_outside_the_changed_lines_of_a_touched_file_does_not_block():
+    assert blocking_findings([_finding("Major", SKILL, 93)], PR506_RANGES) == ()
+
+
+def test_critical_in_a_file_the_pr_did_not_touch_does_not_block():
+    other = _finding("Critical", "plugins/other-kit/skills/x/SKILL.md", 1)
+    assert blocking_findings([other], PR506_RANGES) == ()
+
+
+def test_critical_on_a_changed_path_without_hunks_blocks():
+    critical = _finding("Critical", "plugins/x/run.sh", None)
+    assert blocking_findings([critical], {}, changed_paths=("plugins/x/run.sh",)) == (critical,)
+
+
+def test_blocking_findings_with_unavailable_ranges_keeps_every_critical_and_major():
+    major, minor = _finding("Major", SKILL, 113), _finding("Minor", SKILL, 113)
+    assert blocking_findings([major, minor], None) == (major,)
+
+
+def test_finding_to_dict_carries_the_blocking_flag():
+    assert _finding_to_dict(_finding(), in_diff=False, blocking=True)["blocking"] is True
+    assert _finding_to_dict(_finding())["blocking"] is None
+
+
+# --- Changed symlinks expose existing content as new (second security review) ---
+
+
+def _symlink_repo(tmp_path):
+    (tmp_path / "plugins/y/scripts").mkdir(parents=True)
+    (tmp_path / "plugins/y/scripts/existing.sh").write_text("a\n" * 20)
+    (tmp_path / "plugins/trusted/lib").mkdir(parents=True)
+    (tmp_path / "plugins/trusted/lib/a.py").write_text("a\n" * 20)
+    (tmp_path / "plugins/x/hooks").mkdir(parents=True)
+    (tmp_path / "plugins/x/hooks/run.sh").symlink_to("../../y/scripts/existing.sh")
+    (tmp_path / "plugins/evil").mkdir(parents=True)
+    (tmp_path / "plugins/evil/lib").symlink_to("../trusted/lib")
+    return tmp_path
+
+
+LINK = "plugins/x/hooks/run.sh"
+DIR_LINK = "plugins/evil/lib"
+LINK_RANGES = {LINK: ((1, 1),), DIR_LINK: ((1, 1),)}
+LINK_PATHS = (LINK, DIR_LINK)
+
+
+@pytest.mark.parametrize(
+    "cited",
+    [LINK + "", "plugins/y/scripts/existing.sh"],
+    ids=["link spelling", "target spelling"],
+)
+@pytest.mark.parametrize("severity", ["Major", "Critical"])
+def test_finding_in_a_changed_file_symlink_blocks_whichever_spelling_it_cites(
+    tmp_path, cited, severity
+):
+    root = _symlink_repo(tmp_path)
+    finding = _finding(severity, cited, 7)
+    found = blocking_findings([finding], LINK_RANGES, changed_paths=LINK_PATHS, repo_root=root)
+    assert found == (finding,)
+
+
+@pytest.mark.parametrize("cited", [DIR_LINK + "/a.py", "plugins/trusted/lib/a.py"])
+def test_finding_under_a_changed_directory_symlink_blocks_whichever_spelling_it_cites(
+    tmp_path, cited
+):
+    root = _symlink_repo(tmp_path)
+    finding = _finding("Major", cited, 3)
+    found = blocking_findings([finding], LINK_RANGES, changed_paths=LINK_PATHS, repo_root=root)
+    assert found == (finding,)
+
+
+def test_target_of_a_symlink_the_pr_did_not_change_stays_untouched(tmp_path):
+    root = _symlink_repo(tmp_path)
+    finding = _finding("Critical", "plugins/y/scripts/existing.sh", 7)
+    assert blocking_findings([finding], {SKILL: ((42, 42),)}, repo_root=root) == ()
+
+
+# --- _diff_scope: the handler's classification, in one place ------------------
+
+
+def test_diff_scope_returns_blocking_and_in_diff_sets_from_a_real_diff(repo):
+    base = _base(repo)
+    lines = [f"line {n}\n" for n in range(1, 11)]
+    lines[2] = "edited\n"
+    (repo / "a.md").write_text("".join(lines))
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "change")
+    on_line = _finding("Major", "a.md", 3)
+    off_line_major = _finding("Major", "a.md", 8)
+    off_line_critical = _finding("Critical", "a.md", 9)
+    blocking, in_diff, scoped = _diff_scope(
+        (on_line, off_line_major, off_line_critical), repo, base, ("a.md",)
+    )
+    assert blocking == {on_line, off_line_critical}
+    assert in_diff == {on_line}
+    assert scoped is True
+
+
+def test_diff_scope_falls_back_to_every_critical_and_major_when_git_fails(repo):
+    major, minor = _finding("Major", "a.md", 8), _finding("Minor", "a.md", 8)
+    blocking, in_diff, scoped = _diff_scope((major, minor), repo, "0" * 40, ("a.md",))
+    assert blocking == {major}
+    assert in_diff is None
+    assert scoped is False
