@@ -18,6 +18,7 @@ jobs:
   hygiene:
     name: Hygiene (PR contract)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       # check-pr's gh api calls (collaborator permission, PR commit list).
@@ -196,6 +197,7 @@ jobs:
   python-quality:
     name: Python quality (ruff, ty, pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -278,6 +280,7 @@ jobs:
   marketplace-parity:
     name: Marketplace mirror/export parity
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -362,6 +365,7 @@ jobs:
   prefix-permanence:
     name: Plugin component-file prefix permanence (R33)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -557,6 +561,7 @@ jobs:
     name: Fork PR (unsupported — explicit terminal result)
     if: github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -1221,6 +1226,7 @@ jobs:
     # job's `needs` list prompted that addition.
     if: always() && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
