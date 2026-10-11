@@ -1056,9 +1056,10 @@ def _classify_location(
     no hunk (pure rename, mode change, empty or binary file) counts as changed
     in full, and so does a changed symlink or anything that resolves into one.
     A location with no line on a file that has hunks counts only when
-    `bare_widens`: true for the finding's own location (a file-level finding is
-    never hidden), false for a cited component, where a bare path would
-    otherwise make every one-line edit to that file block the finding."""
+    `bare_widens` or the file is changed in full: true for the finding's own
+    location (a file-level finding is never hidden), false for a cited
+    component, where a bare path would otherwise make every one-line edit to
+    that file block the finding."""
     link_paths, link_targets = symlinks
     keys = _lookup_keys(path, repo_root)
     if any(k in link_paths for k in keys):
@@ -1078,7 +1079,8 @@ def _classify_location(
     if not in_ranges:
         return True
     if line is None:
-        return bare_widens
+        # A renamed, copied or re-moded file with edits carries a whole-file range.
+        return bare_widens or (1, sys.maxsize) in hunked
     return any(s <= line <= e for s, e in hunked)
 
 
