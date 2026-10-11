@@ -64,9 +64,9 @@ more than 1000 records, any top-level key outside `operation`, `environment`, `t
 may hold only `title`, `description`, `status`, `priority`, `labels` (so a batch create can never assign an owner, add
 dependency relations or set a cycle); an update record may hold only `id`, `set` (limited to `title`, `status`,
 `labels`, `priority`, `owner`) and `before`. Values are typed: strings for `title`, `description`, `status`,
-`priority` and `owner`, and an array of at most 20 non-empty strings of at most 100 characters each for `labels`; an update's `before` must hold
-the current `title` and every field named in `set`. A record carrying `team`, `project`, `parent` or anything else is
-refused mechanically, and so is a record too large to write: every record must fit a one-record chunk (at most 20000 bytes of output), so one oversized description is refused at `hash` and can never strand a batch half-written. The hash covers the whole submission object: every field above and every record in order. `team_id` must match `^[A-Za-z0-9_-]{1,64}$`, and the file may not exceed 8 MiB. The `linear_target` stored in the file is the normalized slug from the resolution (lowercase, no trailing `.git`, at most 100 characters on each side of the `/`), never the caller's raw value; `source_plugin` and `source_skill` are lowercase kebab-case of at most 64 characters.
+`priority` and `owner` (`title` at most 256 characters, `status` and `owner` at most 100, `priority` at most 32, an update `id` at most 100), and an array of at most 20 non-empty strings of at most 100 characters each for `labels`; an update's `before` must hold
+the current `title` (a non-blank string) and every field named in `set`. A record carrying `team`, `project`, `parent` or anything else is
+refused mechanically, and so is a record too large to write or preview: every record must fit a one-record chunk and a one-row preview (at most 20000 bytes of output each), so one oversized description is refused at `hash` and can never strand a batch half-written or be impossible to show. The hash covers the whole submission object: every field above and every record in order. `team_id` must match `^[A-Za-z0-9_-]{1,64}$`, and the file may not exceed 8 MiB. The `linear_target` stored in the file is the normalized slug from the resolution (lowercase, no trailing `.git`, at most 100 characters on each side of the `/`), never the caller's raw value; `source_plugin` and `source_skill` are lowercase kebab-case of at most 64 characters.
 
 A `create` record whose `status` resolves to a completed or canceled workflow state is refused as malformed, for the
 same reason an update to one is refused: a single approve-all question cannot
@@ -86,7 +86,11 @@ for the header (operation, environment, team, source claim) and `wmgt_batch_hash
 for the rows, never from the set held in memory, so what the person sees is the set the hash binds. `preview` returns at
 most 100 rows and 20000 bytes per call, and `preview` and `chunk` output carries a `bytes` field: if a result looks cut short
 (its `bytes` is larger than what arrived), request smaller ranges. Page through every record and put the whole table in
-the reply before the question, so it is in the transcript. The preview shows:
+the reply before the question, so it is in the transcript. `preview` already makes every cell inert (record text cannot forge or split a row, though a few invisible filler characters outside the control and format classes are not made visible: line breaks, pipes, angle brackets,
+backticks, `&`, markdown punctuation and control or bidi characters are neutralised or shown as visible escapes): render the
+cells exactly as printed, end the table with a count line, "table shows N rows; script record_count = M", taken from the
+script's output, and render each full description inside the `fence` string printed with it. The preview is display-normalised;
+the write uses the exact text in the hashed file, which the person may open first. The preview shows:
 
 - the source claim, labeled caller-asserted (SKILL.md's Trust Model);
 - the **environment, team and repository slug** (`linear_target`), in bold, the environment stated as "production" or "test", and what `linear-work-management`'s resolution reported as verified (the trust check passed, plus the operation's `support_status` and `verified_at`);

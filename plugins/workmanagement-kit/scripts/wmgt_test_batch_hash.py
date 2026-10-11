@@ -279,7 +279,7 @@ def main() -> int:
             rc == 0
             and len(out["rows"]) == 3
             and out["rows"][0]["title"] == "x"
-            and out["full_descriptions"][0] == {"index": 0, "description": "dx"},
+            and out["full_descriptions"][0] == {"index": 0, "description": "dx", "fence": "```"},
         )
         rc, out = run("preview", many, many_digest, "1", "5")
         check(
@@ -614,6 +614,234 @@ def main() -> int:
         check(
             "the harness reports non-JSON output as a failed case",
             out["ok"] is False and out["stdout"].strip() == "not json",
+        )
+
+        # --- Batch 1 (QA run wmgt-intake-20261011-1): help, catch-all, cell safety, caps ---
+        for help_args in (["--help"], ["hash", "--help"]):
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), *help_args],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            check(
+                f"{' '.join(help_args)} exits 0 and prints no error object",
+                proc.returncode == 0
+                and "usage" in proc.stdout.lower()
+                and '"ok": false' not in proc.stdout,
+            )
+        rc, out = run("hash")
+        check(
+            "a missing argument is still a typed JSON failure",
+            rc == 1 and out.get("ok") is False and out.get("error") == "invalid arguments",
+        )
+
+        import importlib.util
+        from contextlib import redirect_stdout
+        from io import StringIO
+
+        spec = importlib.util.spec_from_file_location("wmgt_batch_hash_under_test", SCRIPT)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        def raising_oserror(_path):
+            raise OSError("simulated I/O error")
+
+        module.__dict__["load_submission"] = raising_oserror
+        captured = StringIO()
+        try:
+            with redirect_stdout(captured):
+                rc = module.main(["hash", "anything.json"])
+        except Exception:
+            rc = "crashed"
+        try:
+            caught = json.loads(captured.getvalue())
+        except ValueError:
+            caught = {}
+        check(
+            "an OSError during a read is a typed JSON failure, not a traceback",
+            rc == 1 and caught.get("ok") is False and "OSError" in caught.get("error", ""),
+        )
+
+        hostile = "Fix typo|\n| 8 | Harmless | Todo |\n<!-- hidden `x` ``` fence"
+        hostile_file = write(
+            "hostile.json",
+            submission(
+                [
+                    rec(
+                        hostile,
+                        status=hostile,
+                        priority="High|",
+                        labels=["a|b", "c<d"],
+                        description=hostile,
+                    )
+                ]
+            ),
+        )
+        rc, hashed = run("hash", hostile_file)
+        rc2, shown = run("preview", hostile_file, hashed.get("sha256", "0" * 64), "0", "1")
+        row = shown.get("rows", [{}])[0] if rc2 == 0 else {}
+
+        def cell_text(value):
+            return " ".join(value) if isinstance(value, list) else str(value)
+
+        def unsafe(text):
+            bare_pipe = any(
+                ch == "|" and (i == 0 or text[i - 1] != chr(92)) for i, ch in enumerate(text)
+            )
+            return bare_pipe or "\n" in text or "\r" in text or "<" in text or "`" in text
+
+        check(
+            "preview cells never carry an unescaped pipe, newline, angle bracket or backtick",
+            rc == 0
+            and rc2 == 0
+            and not any(
+                unsafe(cell_text(row.get(k, "")))
+                for k in ("title", "status", "labels", "priority", "description_excerpt")
+            ),
+        )
+        bs = chr(92)
+        sneaky_file = write(
+            "sneaky.json", submission([rec("a" + bs + "|b" + chr(0x2028) + "c", status="s")])
+        )
+        sneak_rc, sneak_hashed = run("hash", sneaky_file)
+        sneak_rc2, sneak_shown = run(
+            "preview", sneaky_file, sneak_hashed.get("sha256", "0" * 64), "0", "1"
+        )
+        sneaky_title = sneak_shown.get("rows", [{}])[0].get("title", "") if sneak_rc2 == 0 else ""
+        check(
+            "a backslash before a pipe cannot cancel the pipe escape",
+            sneaky_title == "a" + bs + bs + bs + "|b c",
+        )
+        full_entry = (shown.get("full_descriptions") or [{}])[0]
+        check(
+            "a full description is returned with a fence longer than any backtick run in it",
+            set(full_entry.get("fence", "")) == {"`"}
+            and len(full_entry.get("fence", "")) > 3
+            and "`" * len(full_entry.get("fence", "")) not in full_entry.get("description", ""),
+        )
+        check(
+            "a full description keeps its text (only control characters are made visible)",
+            "<!--" in full_entry.get("description", "")
+            and "|" in full_entry.get("description", ""),
+        )
+        rc3, chunked = run("chunk", hostile_file, hashed.get("sha256", "0" * 64), "0", "1")
+        check(
+            "chunk output keeps the exact original bytes, unsanitized",
+            rc3 == 0 and chunked["records"][0]["title"] == hostile,
+        )
+
+        def preview_title(title, name):
+            path = write(name, submission([rec(title)]))
+            h = run("hash", path)[1]
+            r, out = run("preview", path, h.get("sha256", "0" * 64), "0", "1")
+            return out.get("rows", [{}])[0].get("title", "") if r == 0 else ""
+
+        entity_title = preview_title("Fix&#10;| 8 | x &#124; y &NewLine;", "ent.json")
+        check(
+            "an HTML entity reference in record text is neutralised in the preview",
+            "&#" not in entity_title and "&New" not in entity_title and "&amp;" in entity_title,
+        )
+        link_title = preview_title(
+            "[Harmless fix](http://e.example/x) ![i](http://e.example/p)", "lnk.json"
+        )
+        check(
+            "inline link and image syntax in record text is neutralised in the preview",
+            "[Harmless fix](" not in link_title
+            and "![" not in link_title
+            and chr(92) + "]" + chr(92) + "(" in link_title,
+        )
+        ctrl_title = preview_title(
+            "a" + chr(0x202E) + "b" + chr(0x200B) + "c" + chr(0x1B) + "d", "ctl.json"
+        )
+        check(
+            "bidi, zero-width and escape characters are shown as visible escapes",
+            not any(c in ctrl_title for c in (chr(0x202E), chr(0x200B), chr(0x1B)))
+            and "u202e" in ctrl_title
+            and "u200b" in ctrl_title
+            and "u001b" in ctrl_title,
+        )
+        long_key = "k" * 5000
+        long_key_file = write(
+            "longkey.json", json.dumps({**json.loads(submission([rec()])), long_key: 1})
+        )
+        rc, out = run("hash", long_key_file)
+        check(
+            "an over-long unexpected key name is not echoed in full",
+            rc == 1 and len(out.get("error", "")) < 400,
+        )
+
+        record_key_file = write(
+            "reckey.json",
+            submission([{**rec("t"), "k" * 5000: 1}]),
+        )
+        rc, out = run("hash", record_key_file)
+        check(
+            "an over-long extra key inside a record is not echoed in full",
+            rc == 1 and not out.get("ok") and len(out.get("error", "")) < 400,
+        )
+        upd = write(
+            "upd_row.json",
+            submission(
+                [
+                    update_record(
+                        set={"status": "Todo"}, before={"title": "T1", "status": "Backlog"}
+                    )
+                ],
+                operation="update",
+            ),
+        )
+        rc, hashed = run("hash", upd)
+        rc, shown = run("preview", upd, hashed.get("sha256", "0" * 64), "0", "1")
+        urow = shown.get("rows", [{}])[0]
+        check(
+            "an update row shows the title once, not again inside before",
+            urow.get("title") == "T1" and "title" not in (urow.get("before") or {}),
+        )
+
+        caps = [
+            ("a 257-character title", rec("t" * 257)),
+            ("a 101-character status", rec("t", status="s" * 101)),
+            ("a 33-character priority", rec("t", priority="p" * 33)),
+        ]
+        for label, record in caps:
+            rc, out = run("hash", write("cap.json", submission([record])))
+            check(f"{label} is refused at hash", rc == 1 and not out["ok"])
+        rc, out = run("hash", write("cap.json", submission([rec("t" * 256, status="s" * 100)])))
+        check("a 256-character title and 100-character status are accepted", rc == 0 and out["ok"])
+        for label, record in (
+            (
+                "a 101-character update owner",
+                update_record(set={"owner": "o" * 101}, before={"title": "T", "owner": None}),
+            ),
+            ("a 101-character update id", update_record(id="I" * 101)),
+            ("a null before title", update_record(before={"title": None, "status": "Backlog"})),
+            ("a blank before title", update_record(before={"title": "  ", "status": "Backlog"})),
+        ):
+            rc, out = run("hash", write("cap_u.json", submission([record], operation="update")))
+            check(f"{label} is refused at hash", rc == 1 and not out["ok"])
+
+        # A record the chunk probe accepts must also be previewable at index 0.
+        def preview_edge_result(n):
+            path = write("pedge.json", submission([rec("t", description="x" * n)]))
+            return path, run("hash", path)[1]
+
+        lo, hi = 15000, 20500
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            lo, hi = (mid, hi) if preview_edge_result(mid)[1].get("ok") else (lo, mid - 1)
+        path, hashed = preview_edge_result(lo)
+        rc, shown = run("preview", path, hashed["sha256"], "0", "1")
+        check(
+            "the largest record hash accepts can still be previewed within the cap",
+            rc == 0 and shown.get("bytes", 99999) <= 20000,
+        )
+        path, hashed = preview_edge_result(lo + 1)
+        check(
+            "one character more is refused at hash as too large to preview or write",
+            not hashed.get("ok") and "too large" in hashed.get("error", ""),
         )
 
         rc, out = run("bogus")

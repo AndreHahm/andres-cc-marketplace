@@ -14,7 +14,9 @@ Subcommands:
     preview <file> <sha256> <start> <end>  verify, then print one compact table row per record
                                            in [start, end) (at most 100 rows, at most 20000
                                            bytes) and, for the first three records of the batch
-                                           when in range, their full description
+                                           when in range, their full description plus a backtick
+                                           "fence" to render it in; cell text is made safe for a
+                                           markdown table, chunk output is never altered
     chunk   <file> <sha256> <start> <end>  verify, then print operation, environment, team_id,
                                            linear_target, source_plugin, source_skill and the
                                            records [start, end) exactly as hashed (at most 25
@@ -33,10 +35,11 @@ update), "environment" (production or test), a non-empty string "team_id", a nor
 nonce (intake generates a fresh one for every submission, including a resume, so the same
 records never hash the same twice), and a non-empty "records" array. Records are checked
 against a per-operation field allowlist and typed (strings; labels as a bounded array of
-strings), and a create record must carry a non-blank title, description and status.
+strings; title, status, priority, owner and id are length-capped, labels bounded), and a create
+record must carry a non-blank title, description and status.
 Duplicate JSON keys and non-finite numbers (NaN, Infinity) anywhere are refused, and the
 source_plugin, source_skill and linear_target fields are pattern-checked. Every record must also
-fit a one-record chunk, so none can be hashed yet never written. The
+fit a one-record chunk and a one-row preview, so none can be hashed yet never written or shown. The
 hash covers the whole object, serialized canonically (sorted keys, no whitespace, ASCII
 escapes).
 
@@ -45,8 +48,9 @@ write be built from those bytes. It cannot bind the model's own connector-call a
 the file; that gap is inherent to a model-executed gate and is disclosed in the contract.
 Symlink and hard-link refusal is best effort on Windows.
 
-Except for --help, always prints one JSON object on stdout. Exit 0 on success, 1 on a typed failure
-(never a traceback).
+Except for --help (argparse's own help text, exit 0), always prints one JSON object on stdout.
+Exit 0 on success, 1 on a typed failure (never a traceback; an unexpected error is reported by
+its type name only).
 """
 
 import argparse
@@ -56,6 +60,7 @@ import os
 import re
 import stat
 import sys
+import unicodedata
 
 MAX_BYTES = 8 * 1024 * 1024
 MAX_RECORDS = 1000
@@ -92,6 +97,10 @@ _TOP_LEVEL_KEYS = {
 _STRING_FIELDS = {"title", "description", "status", "priority", "owner"}
 MAX_LABELS = 20
 MAX_LABEL_CHARS = 100
+_FIELD_CAPS = {"title": 256, "status": 100, "priority": 32, "owner": 100}
+MAX_ID_CHARS = 100
+BS = chr(92)
+_MD_PUNCT = "[]()!*_~#"
 
 
 class HashError(Exception):
@@ -108,7 +117,7 @@ def _no_duplicate_keys(pairs):
     seen = {}
     for key, value in pairs:
         if key in seen:
-            raise HashError(f"duplicate JSON key: {key!r}")
+            raise HashError(f"duplicate JSON key: {key[:64]!r}")
         seen[key] = value
     return seen
 
@@ -120,6 +129,8 @@ def _check_value(where: str, field: str, value, allow_none: bool = False) -> Non
     if field in _STRING_FIELDS:
         if not isinstance(value, str):
             raise HashError(f"{where}: {field!r} must be a string")
+        if len(value) > _FIELD_CAPS.get(field, len(value)):
+            raise HashError(f"{where}: {field!r} is longer than {_FIELD_CAPS[field]} characters")
     elif field == "labels":
         if (
             not isinstance(value, list)
@@ -141,7 +152,8 @@ def _check_records(operation: str, records: list) -> None:
         if operation == "create":
             extra = set(record) - _CREATE_FIELDS
             if extra:
-                raise HashError(f"{where} has fields not allowed on create: {sorted(extra)}")
+                shown = sorted(k[:64] for k in extra)[:10]
+                raise HashError(f"{where} has fields not allowed on create: {shown}")
             for field in _CREATE_REQUIRED:
                 value = record.get(field)
                 if not isinstance(value, str) or not value.strip():
@@ -156,6 +168,8 @@ def _check_records(operation: str, records: list) -> None:
                 raise HashError(f'{where} must hold "id" and "set" (and "before") only')
             if not isinstance(record["id"], str) or not record["id"].strip():
                 raise HashError(f"{where} needs a non-empty string id")
+            if len(record["id"]) > MAX_ID_CHARS:
+                raise HashError(f"{where}: id is longer than {MAX_ID_CHARS} characters")
             changes = record["set"]
             if not isinstance(changes, dict) or not changes or set(changes) - _UPDATE_SET_FIELDS:
                 allowed = sorted(_UPDATE_SET_FIELDS)
@@ -172,6 +186,8 @@ def _check_records(operation: str, records: list) -> None:
                 raise HashError(
                     f'{where} "before" must hold the current "title" and every field named in "set"'
                 )
+            if not isinstance(before["title"], str) or not before["title"].strip():
+                raise HashError(f'{where} "before" needs a non-blank string title')
             for field, value in before.items():
                 _check_value(where + " before", field, value, allow_none=True)
 
@@ -200,8 +216,14 @@ def _check_records_fit_a_chunk(data: dict) -> None:
         }
         if _sized(probe) > MAX_OUTPUT_BYTES:
             raise HashError(
-                f"record {index} is too large to write: its one-record chunk would exceed "
-                f"{MAX_OUTPUT_BYTES} bytes"
+                f"record {index} is too large to write or preview: its one-record chunk would "
+                f"exceed {MAX_OUTPUT_BYTES} bytes"
+            )
+        shown = _preview_result(data, "0" * 64, index, index + 1)
+        if _sized(shown) > MAX_OUTPUT_BYTES:
+            raise HashError(
+                f"record {index} is too large to write or preview: its one-row preview would "
+                f"exceed {MAX_OUTPUT_BYTES} bytes"
             )
 
 
@@ -242,7 +264,7 @@ def load_submission(path_str: str) -> dict:
         raise HashError("top level must be a JSON object")
     unexpected = set(data) - _TOP_LEVEL_KEYS
     if unexpected:
-        raise HashError(f"unexpected top-level keys: {sorted(unexpected)}")
+        raise HashError(f"unexpected top-level keys: {sorted(k[:64] for k in unexpected)[:10]}")
     for key in ("source_plugin", "source_skill"):
         if not (isinstance(data.get(key), str) and _KEBAB_RE.fullmatch(data[key])):
             raise HashError(
@@ -300,24 +322,87 @@ def _excerpt(value) -> str:
     return text if len(text) <= EXCERPT_CHARS else text[:EXCERPT_CHARS] + "..."
 
 
+def _visible_controls(text: str, keep: str = "") -> str:
+    """Show control and format characters (bidi, zero-width, ESC...) as visible backslash-u text."""
+    out = []
+    for ch in text:
+        if ch not in keep and unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp"):
+            code = ord(ch)
+            out.append(f"{BS}u{code:04x}" if code <= 0xFFFF else f"{BS}U{code:08x}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _safe(value):
+    """Make preview text inert in a markdown table cell.
+
+    Line breaks become spaces, a backslash is escaped first so a trailing one cannot cancel
+    later escapes, then markdown punctuation, '&' (so an entity cannot rebuild a character),
+    '<', backtick and the pipe are neutralised, and control or format characters are made visible.
+    """
+    if isinstance(value, str):
+        text = re.sub("[\r\n\v\f\x85\u2028\u2029]", " ", value).replace(BS, BS + BS)
+        for ch in _MD_PUNCT:
+            text = text.replace(ch, BS + ch)
+        text = (
+            text.replace("&", "&amp;").replace("<", "&lt;").replace("`", "'").replace("|", BS + "|")
+        )
+        return _visible_controls(text)
+    if isinstance(value, list):
+        return [_safe(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _safe(v) for k, v in value.items()}
+    return value
+
+
 def _row(index: int, record: dict, operation: str) -> dict:
-    """Build one compact preview row for a record."""
+    """Build one compact preview row for a record; text is made safe for a markdown table."""
     if operation == "create":
         return {
             "index": index,
-            "title": record.get("title"),
-            "status": record.get("status"),
-            "labels": record.get("labels"),
-            "priority": record.get("priority"),
-            "description_excerpt": _excerpt(record.get("description", "")),
+            "title": _safe(record.get("title")),
+            "status": _safe(record.get("status")),
+            "labels": _safe(record.get("labels")),
+            "priority": _safe(record.get("priority")),
+            "description_excerpt": _safe(_excerpt(record.get("description", ""))),
         }
+    before = record.get("before", {})
     return {
         "index": index,
-        "id": record["id"],
-        "title": record.get("before", {}).get("title"),
-        "set": record["set"],
-        "before": record.get("before"),
+        "id": _safe(record["id"]),
+        "title": _safe(before.get("title")),
+        "set": _safe(record["set"]),
+        "before": _safe({k: v for k, v in before.items() if k != "title"}),
     }
+
+
+def _preview_result(data: dict, digest: str, start: int, end: int) -> dict:
+    """Build the preview output for records [start, end); shared by ``run`` and the fit probe."""
+    records = data["records"]
+    result = {"ok": True, "sha256": digest, "record_count": len(records), "start": start}
+    result["rows"] = [_row(i, records[i], data["operation"]) for i in range(start, end)]
+    result["full_descriptions"] = [
+        {
+            "index": i,
+            "description": _safe_block(records[i].get("description")),
+            "fence": _fence_for(_safe_block(records[i].get("description"))),
+        }
+        for i in range(start, min(end, FULL_DESCRIPTION_COUNT))
+        if data["operation"] == "create"
+    ]
+    return result
+
+
+def _safe_block(value):
+    """Show control and format characters in a full description as visible text; keep newlines."""
+    return _visible_controls(value, keep="\n\t") if isinstance(value, str) else value
+
+
+def _fence_for(text) -> str:
+    """Return a backtick fence longer than any backtick run in ``text`` (at least three)."""
+    longest = max((len(run) for run in re.findall("`+", text or "")), default=0)
+    return "`" * max(3, longest + 1)
 
 
 def _sized(result: dict) -> int:
@@ -350,15 +435,7 @@ def run(args) -> dict:
         result["submission"] = {k: v for k, v in data.items() if k != "records"}
     if args.command == "preview":
         _range(args, len(records), MAX_PREVIEW_ROWS, "preview")
-        result["start"] = args.start
-        result["rows"] = [
-            _row(i, records[i], data["operation"]) for i in range(args.start, args.end)
-        ]
-        result["full_descriptions"] = [
-            {"index": i, "description": records[i].get("description")}
-            for i in range(args.start, min(args.end, FULL_DESCRIPTION_COUNT))
-            if data["operation"] == "create"
-        ]
+        result = _preview_result(data, digest, args.start, args.end)
     if args.command == "chunk":
         _range(args, len(records), MAX_CHUNK, "chunk")
         result["operation"] = data["operation"]
@@ -423,7 +500,7 @@ def purge(scratch_root: str, path_str: str) -> dict:
 
 def main(argv=None) -> int:
     """Parse arguments, run the command and print exactly one JSON object; return the exit code."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "wmgt_batch_hash").splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("hash").add_argument("file")
     p_purge = sub.add_parser("purge")
@@ -441,7 +518,9 @@ def main(argv=None) -> int:
         p_ranged.add_argument("end", type=int)
     try:
         args = parser.parse_args(argv)
-    except SystemExit:
+    except SystemExit as exc:
+        if exc.code == 0:
+            return 0  # --help: argparse already printed its help text
         # argparse exits 2 on its own; keep the typed-failure contract instead.
         print(json.dumps({"ok": False, "error": "invalid arguments"}))
         return 1
@@ -452,6 +531,9 @@ def main(argv=None) -> int:
         return 1
     except (RecursionError, MemoryError, ValueError):
         print(json.dumps({"ok": False, "error": "input too deeply nested or too large"}))
+        return 1
+    except Exception as exc:  # last resort: keep the one-JSON-object contract
+        print(json.dumps({"ok": False, "error": f"unexpected failure: {type(exc).__name__}"}))
         return 1
     print(json.dumps(result, allow_nan=False))
     return 0
