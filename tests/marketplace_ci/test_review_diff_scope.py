@@ -117,7 +117,9 @@ def test_parse_new_file_covers_every_line():
         "+++ b/plugins/x/new.md\n"
         "@@ -0,0 +1,3 @@\n"
     )
-    assert parse_changed_line_ranges(diff) == {"plugins/x/new.md": ((1, 3),)}
+    # Every line is new, so the file also carries the whole-file range that lets a
+    # bare cited path tell it from a deletion's join-point range.
+    assert parse_changed_line_ranges(diff) == {"plugins/x/new.md": ((1, 3), (1, sys.maxsize))}
 
 
 def test_parse_deleted_file_has_no_new_side_entry():
@@ -297,22 +299,25 @@ def test_split_bare_component_on_a_renamed_file_with_edits_still_counts():
     assert in_diff == (cross,)
 
 
-def test_split_bare_component_on_a_newly_added_file_counts(repo):
-    # Every line of a new file is added, so a bare cited path is changed in full
-    # (a.md in the fixture repo has 10 lines).
-    cross = _finding(path="plugins/other-kit/README.md", line=3, components=("a.md",))
-    in_diff, _ = split_findings_by_diff(
-        [cross], {"a.md": ((1, 10),)}, changed_paths=["a.md"], repo_root=repo
-    )
+def test_split_bare_component_on_a_newly_added_file_counts():
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=(SKILL,))
+    ranges = {SKILL: ((1, 3), (1, sys.maxsize))}
+    in_diff, _ = split_findings_by_diff([cross], ranges, changed_paths=[SKILL])
     assert in_diff == (cross,)
 
 
-@pytest.mark.parametrize("hunks", [((1, 9),), ((2, 10),), ((1, 4), (6, 10))])
-def test_split_bare_component_on_a_partly_edited_file_stays_out_of_diff(repo, hunks):
-    cross = _finding(path="plugins/other-kit/README.md", line=3, components=("a.md",))
-    _, out_of_diff = split_findings_by_diff(
-        [cross], {"a.md": hunks}, changed_paths=["a.md"], repo_root=repo
+def test_split_bare_component_on_a_file_whose_leading_lines_were_deleted_stays_out():
+    # `@@ -1,9 +1,0 @@` is recorded as the join-point range (1, 2); the surviving
+    # lines are unchanged, so the file is not changed in full.
+    diff = (
+        "diff --git a/plugins/x/a.md b/plugins/x/a.md\n"
+        "--- a/plugins/x/a.md\n"
+        "+++ b/plugins/x/a.md\n"
+        "@@ -1,9 +1,0 @@\n" + "-gone\n" * 9
     )
+    ranges = parse_changed_line_ranges(diff)
+    cross = _finding(path="plugins/other-kit/README.md", line=3, components=("plugins/x/a.md",))
+    _, out_of_diff = split_findings_by_diff([cross], ranges, changed_paths=["plugins/x/a.md"])
     assert out_of_diff == (cross,)
 
 
@@ -444,7 +449,7 @@ def test_compute_ranges_reports_added_and_edited_lines(repo):
     _git(repo, "commit", "-q", "-m", "change")
     assert compute_changed_line_ranges(repo, base) == {
         "a.md": ((3, 3), (6, 6)),
-        "new.md": ((1, 2),),
+        "new.md": ((1, 2), (1, sys.maxsize)),
     }
 
 
@@ -461,7 +466,7 @@ def test_compute_ranges_handles_a_non_ascii_filename(repo):
     (repo / "k\u00e4se.md").write_text("one\n")
     _git(repo, "add", ".")
     _git(repo, "commit", "-q", "-m", "umlaut")
-    assert compute_changed_line_ranges(repo, base) == {"k\u00e4se.md": ((1, 1),)}
+    assert compute_changed_line_ranges(repo, base) == {"k\u00e4se.md": ((1, 1), (1, sys.maxsize))}
 
 
 def test_compute_ranges_is_unavailable_for_an_unresolvable_base(repo):
