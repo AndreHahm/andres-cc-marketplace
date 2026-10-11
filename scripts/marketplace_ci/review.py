@@ -861,7 +861,8 @@ def compute_changed_line_ranges(repo: Path, base_sha: str) -> LineRanges | None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         ) as proc:
-            assert proc.stdout is not None
+            if proc.stdout is None:
+                return None
             output = proc.stdout.read(_MAX_DIFF_BYTES + 1)
             if len(output) > _MAX_DIFF_BYTES:
                 proc.kill()
