@@ -98,7 +98,9 @@ def test_parse_deleted_file_has_no_new_side_entry():
     assert parse_changed_line_ranges(diff) == {}
 
 
-def test_parse_rename_keys_on_the_new_path():
+def test_parse_rename_keys_on_the_new_path_and_counts_it_changed_in_full():
+    # Moving a file makes its carried-over lines loadable at a new path, so a
+    # rename with an edit is not judged on the edited lines alone.
     diff = (
         "diff --git a/plugins/x/old.md b/plugins/x/new.md\n"
         "similarity index 90%\n"
@@ -106,9 +108,45 @@ def test_parse_rename_keys_on_the_new_path():
         "rename to plugins/x/new.md\n"
         "--- a/plugins/x/old.md\n"
         "+++ b/plugins/x/new.md\n"
-        "@@ -5 +5 @@\n"
+        "@@ -5 +5 @@\n-old\n+new\n"
     )
-    assert parse_changed_line_ranges(diff) == {"plugins/x/new.md": ((5, 5),)}
+    assert parse_changed_line_ranges(diff) == {"plugins/x/new.md": ((5, 5), (1, sys.maxsize))}
+
+
+def test_parse_copy_with_an_edit_counts_as_changed_in_full():
+    diff = (
+        "diff --git a/docs/a.md b/plugins/x/copy.md\n"
+        "similarity index 90%\n"
+        "copy from docs/a.md\n"
+        "copy to plugins/x/copy.md\n"
+        "--- a/docs/a.md\n"
+        "+++ b/plugins/x/copy.md\n"
+        "@@ -2 +2 @@\n-old\n+new\n"
+    )
+    assert parse_changed_line_ranges(diff)["plugins/x/copy.md"][-1] == (1, sys.maxsize)
+
+
+def test_parse_mode_change_with_an_edit_counts_as_changed_in_full():
+    diff = (
+        "diff --git a/hooks/run.sh b/hooks/run.sh\n"
+        "old mode 100644\n"
+        "new mode 100755\n"
+        "index 1111111..2222222\n"
+        "--- a/hooks/run.sh\n"
+        "+++ b/hooks/run.sh\n"
+        "@@ -3 +3 @@\n-old\n+new\n"
+    )
+    assert parse_changed_line_ranges(diff) == {"hooks/run.sh": ((3, 3), (1, sys.maxsize))}
+
+
+def test_parse_move_flag_does_not_leak_into_the_next_file():
+    diff = (
+        "diff --git a/a.md b/b.md\nrename from a.md\nrename to b.md\n--- a/a.md\n+++ b/b.md\n"
+        "@@ -1 +1 @@\n-x\n+y\n"
+        "diff --git a/c.md b/c.md\nindex 1111111..2222222\n--- a/c.md\n+++ b/c.md\n"
+        "@@ -4 +4 @@\n-x\n+y\n"
+    )
+    assert parse_changed_line_ranges(diff)["c.md"] == ((4, 4),)
 
 
 def test_parse_keeps_files_separate_and_mirror_paths_independent():
@@ -440,11 +478,30 @@ def test_split_path_escaping_the_repo_root_stays_out_of_diff(tmp_path):
     assert out == (finding,)
 
 
-def test_critical_in_a_touched_file_blocks_even_outside_the_changed_lines():
-    # A PR can delete a guard on one line and leave the exposed use elsewhere.
+def test_critical_outside_the_changed_lines_of_a_touched_file_does_not_block():
+    # Severity does not widen the scope: a Critical on an unchanged line is a
+    # notice, like a Major. (Accepted residual: a PR that deletes a guard on one
+    # line and leaves the exposed use elsewhere is not caught by this gate.)
     critical = _finding("Critical", SKILL, 93, "injection-surface")
-    assert blocking_findings([critical], PR506_RANGES) == (critical,)
-    assert has_blocking_findings([critical], PR506_RANGES) is True
+    assert blocking_findings([critical], PR506_RANGES) == ()
+    assert has_blocking_findings([critical], PR506_RANGES) is False
+
+
+def test_pr526_pre_existing_critical_outside_its_changed_lines_does_not_block():
+    # Recorded finding from PR #526's failed run: a Critical on the frontmatter
+    # (line 11) of a file whose only change was lines 42-45.
+    path = "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md"
+    critical = _finding("Critical", path, 11, "dependency-graph", "dependency-reviewer")
+    assert blocking_findings([critical], {path: ((42, 45),)}, changed_paths=(path,)) == ()
+
+
+def test_pr524_pre_existing_critical_in_a_touched_file_does_not_block():
+    # Recorded finding from PR #524's failed run: git-cleanup/SKILL.md is 501
+    # lines on main too; the PR only edited single lines elsewhere in the file.
+    path = "plugins/git-kit/skills/git-cleanup/SKILL.md"
+    critical = _finding("Critical", path, 501, "gatekeeper-size", "skill-reviewer")
+    ranges = {path: ((6, 6), (307, 307), (322, 322))}
+    assert blocking_findings([critical], ranges, changed_paths=(path,)) == ()
 
 
 def test_major_outside_the_changed_lines_of_a_touched_file_does_not_block():
@@ -539,7 +596,7 @@ def test_diff_scope_returns_blocking_and_in_diff_sets_from_a_real_diff(repo):
     blocking, in_diff, scoped = _diff_scope(
         (on_line, off_line_major, off_line_critical), repo, base, ("a.md",)
     )
-    assert blocking == {on_line, off_line_critical}
+    assert blocking == {on_line}
     assert in_diff == {on_line}
     assert scoped is True
 
@@ -704,14 +761,15 @@ def test_handler_fails_on_a_major_on_a_changed_line(monkeypatch, git_repo, tmp_p
     assert result["findings"][0]["blocking"] is True
 
 
-def test_handler_fails_on_a_critical_outside_the_changed_lines_of_a_touched_file(
+def test_handler_does_not_fail_on_a_critical_outside_the_changed_lines(
     monkeypatch, git_repo, tmp_path
 ):
     base = _handler_repo(git_repo, EDIT_LINE_2)
     rc, result = _run_handler(monkeypatch, git_repo, base, _envelope("critical", 6), tmp_path)
-    assert rc == 1
+    assert rc == 0
+    assert result["blocking"] is False
     assert result["findings"][0]["in_diff"] is False
-    assert result["findings"][0]["blocking"] is True
+    assert result["findings"][0]["blocking"] is False
 
 
 def test_handler_exits_2_and_rewrites_the_output_when_classification_raises(
@@ -815,3 +873,46 @@ def test_fold_also_applies_to_changed_paths_and_blocking(monkeypatch):
     monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
     critical = _finding("Critical", "PLUGINS/X/run.sh", None)
     assert blocking_findings([critical], {}, changed_paths=("plugins/x/run.sh",)) == (critical,)
+
+
+# --- Moved or re-moded files are changed in full (fifth security review) -------
+
+
+def test_renamed_file_with_a_one_line_edit_blocks_on_a_carried_over_line(repo):
+    base = _base(repo)
+    _git(repo, "mv", "a.md", "b.md")
+    lines = [f"line {n}\n" for n in range(1, 11)]
+    lines[2] = "edited\n"
+    (repo / "b.md").write_text("".join(lines))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "move and edit")
+    ranges = compute_changed_line_ranges(repo, base)
+    assert ranges is not None
+    carried_over = _finding("Critical", "b.md", 8)
+    assert blocking_findings([carried_over], ranges, changed_paths=("a.md", "b.md")) == (
+        carried_over,
+    )
+
+
+def test_file_made_executable_with_a_one_line_edit_blocks_on_an_unchanged_line(repo):
+    base = _base(repo)
+    script = repo / "a.md"
+    lines = [f"line {n}\n" for n in range(1, 11)]
+    lines[2] = "edited\n"
+    script.write_text("".join(lines))
+    script.chmod(0o755)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "chmod and edit")
+    ranges = compute_changed_line_ranges(repo, base)
+    assert ranges is not None
+    unchanged = _finding("Major", "a.md", 8)
+    assert blocking_findings([unchanged], ranges, changed_paths=("a.md",)) == (unchanged,)
+
+
+def test_pr524_pre_existing_fetched_url_critical_does_not_block():
+    # Recorded finding from PR #524's failed run: create-pr/SKILL.md line 64, a
+    # Critical about an install page; the PR edited lines 9 and 283 only.
+    path = ".claude/skills/create-pr/SKILL.md"
+    critical = _finding("Critical", path, 64, "injection-surface", "security-reviewer")
+    ranges = {path: ((9, 9), (283, 283))}
+    assert blocking_findings([critical], ranges, changed_paths=(path,)) == ()

@@ -912,10 +912,9 @@ def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None
 
 def _diff_scope(findings, repo: Path, base_sha: str, changed_paths):
     """(blocking, in_diff, diff_scoped) for the aggregated findings. A
-    Major/Critical on a line this PR changed blocks, and so does a Critical
-    anywhere in a file it touched; the rest stay in the artifact as
-    non-blocking notices. `in_diff` is None, and every Critical/Major blocks,
-    when the changed lines could not be computed."""
+    Major/Critical on a line this PR changed blocks; every other finding stays
+    in the artifact as a non-blocking notice. `in_diff` is None, and every
+    Critical/Major blocks, when the changed lines could not be computed."""
     from scripts.marketplace_ci.review import (
         blocking_findings,
         compute_changed_line_ranges,
@@ -961,7 +960,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     Exit 2 on any infrastructure failure (unresolvable base SHA, dispatch
     failure, malformed output) — never silently treated as a passing review.
     Exit 1 only for a genuine blocking finding (see _diff_scope: a Major/Critical
-    on a changed line, or a Critical in a touched file).
+    on a changed line).
     """
     from scripts.marketplace_ci.git_state import parse_name_status_z
     from scripts.marketplace_ci.review import (

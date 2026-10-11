@@ -126,8 +126,7 @@ used to fail a PR that never wrote them (issue #525). The deciding code is `bloc
 | Finding | Blocks? |
 |---|---|
 | Major or Critical on a line the PR changed | Yes |
-| Critical anywhere in a file the PR touched | Yes |
-| Major on an unchanged line of a touched file | No — kept in the artifact as a notice |
+| Critical or Major on an unchanged line of a touched file | No — kept in the artifact as a notice |
 | Any finding in a file the PR did not touch | No — kept in the artifact as a notice |
 | Minor | No |
 | A structural finding (`structural_findings`) | Yes, independent of the above |
@@ -142,6 +141,8 @@ full, so a finding on them blocks whichever line it names:
 - a changed symlink, and anything that resolves into one — a PR that adds a link exposes existing, unchanged
   content at a new path, and a reviewer may cite either spelling. A link whose target lies outside the
   repository (up to `/`) therefore makes every finding that resolves into that target block;
+- a file that was renamed or copied, or whose mode changed, whether or not it also has edits — its carried-over
+  lines become loadable at a new path or mode, which is the same exposure a new symlink creates;
 - a file whose changed lines contain a line break other than `\n` (a bare CR, vertical tab, form feed,
   FS/GS/RS, NEL, U+2028 or U+2029; the CR that ends a CRLF line does not count). Git counts lines by `\n` only,
   but a reviewer may count by these, so its line number cannot be trusted to match git's for that file.
@@ -162,12 +163,16 @@ passes `--text`, so a PR-controlled `.gitattributes` entry such as `-diff` or `b
 uncomputable and takes the fail-closed fallback. An unexpected error while classifying exits 2 and overwrites `codex-review-result.json`
 the same way the other exit-2 paths do.
 
-**Accepted residual risk.** A PR can remove a guard on one line and leave the exposed use of it elsewhere in the
-file. A Critical there still blocks (the second row of the table), but a Major on that unchanged line does not;
-it appears in the artifact with `"in_diff": false`. Matching also trusts the line number the reviewer reports: a
-Major reported on a line other than the one git would give (the odd line breaks above are covered, but not every
-way a reviewer can miscount) does not block, while a Critical still does. Use the attested bypass or a manual
-review for a PR whose risk is of this kind.
+**Accepted residual risk.** Severity does not widen the scope. A PR can remove a guard on one line and leave the
+exposed use of it elsewhere in the file; a finding on that unchanged line, Critical or Major, does not block and
+appears in the artifact with `"in_diff": false`. Matching also trusts the line number the reviewer reports: a
+finding reported on a line other than the one git would give (the odd line breaks above are covered, but not every
+way a reviewer can miscount) does not block. In the other direction, a finding about a missing behavior that
+the reviewer happens to anchor on a changed line blocks even though the PR did not cause it. An earlier version
+of this rule also blocked on any Critical in a touched file; replaying the recorded findings of PRs #524 and #526
+showed that rule kept both failing on pre-existing Criticals (an over-length file, a fetched-URL instruction, a
+dangling `Skill()` grant), so it was dropped. Use the attested bypass or a manual review for a PR whose risk is of
+the deleted-guard kind.
 
 `codex-review-result.json` carries, in addition to the fields above:
 

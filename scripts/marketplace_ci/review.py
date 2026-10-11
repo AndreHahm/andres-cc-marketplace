@@ -760,7 +760,9 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     from `git diff -U0` output. A pure deletion has no new-side line, so it
     touches the two lines either side of the removal. A deleted file has no
     new side and is left out; a path with no hunk (pure rename, mode change,
-    binary) is absent too, so callers pair this with the changed-path set.
+    binary) is absent too, so callers pair this with the changed-path set. A
+    renamed, copied or re-moded file with edits gets a whole-file range: its
+    carried-over lines become loadable at a new path or mode, like a symlink.
 
     Hunk bodies are skipped by their header's line counts, and the text is
     split on "\\n" only (git counts lines that way; str.splitlines() would also
@@ -770,6 +772,7 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
     ranges: dict[str, list[tuple[int, int]]] = {}
     changed_in_full: set[str] = set()
     path: str | None = None
+    moved = False
     body_left = 0
     lines = diff_text.split("\n")
     for index, line in enumerate(lines):
@@ -781,6 +784,10 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
             continue
         if line.startswith("\\") or (line == "" and index == len(lines) - 1):
             continue
+        if line.startswith("diff --git "):
+            moved = False
+        elif line.startswith(("rename from ", "copy from ", "old mode ")):
+            moved = True
         if line.startswith("+++ "):
             target = line[4:].removesuffix("\t")
             if target == "/dev/null":
@@ -789,6 +796,8 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
                 raise ValueError(f"quoted path in diff header: {line!r}")
             else:
                 path = target.removeprefix("b/")
+                if moved:
+                    changed_in_full.add(path)
             continue
         match = _HUNK_HEADER.match(line)
         if match is None:
@@ -804,7 +813,7 @@ def parse_changed_line_ranges(diff_text: str) -> LineRanges:
         end = start + 1 if new_count == 0 else start + new_count - 1
         ranges.setdefault(path, []).append((start, end))
     for full_path in changed_in_full:
-        ranges[full_path].append((1, sys.maxsize))
+        ranges.setdefault(full_path, []).append((1, sys.maxsize))
     return {p: tuple(r) for p, r in ranges.items()}
 
 
@@ -975,29 +984,28 @@ def _classify(
     changed_paths: frozenset[str],
     repo_root: Path | None,
     symlinks: tuple[frozenset[str], tuple[str, ...]] = _NO_SYMLINKS,
-) -> tuple[bool, bool]:
-    """(file_touched, on_changed_line). A touched file with no hunk (pure
-    rename, mode change, empty or binary file) counts as changed in full, and
-    so does a changed symlink or anything that resolves into one."""
+) -> bool:
+    """True when the finding sits on a changed line. A touched file with no
+    hunk (pure rename, mode change, empty or binary file) counts as changed in
+    full, and so does a changed symlink or anything that resolves into one."""
     link_paths, link_targets = symlinks
     keys = _lookup_keys(finding.path, repo_root)
     if any(k in link_paths for k in keys):
-        return True, True
+        return True
     if repo_root is not None and link_targets:
         real = os.path.realpath(os.path.join(repo_root, finding.path))
         if any(
             real == t or real.startswith(t if t.endswith(os.sep) else t + os.sep)
             for t in link_targets
         ):
-            return True, True
+            return True
     hunked = [r for k in keys for r in ranges.get(k, ())]
     in_ranges = any(k in ranges for k in keys)
-    touched = in_ranges or any(k in changed_paths for k in keys)
-    if not touched:
-        return False, False
+    if not in_ranges and not any(k in changed_paths for k in keys):
+        return False
     if not in_ranges or finding.line is None:
-        return True, True
-    return True, any(s <= finding.line <= e for s, e in hunked)
+        return True
+    return any(s <= finding.line <= e for s, e in hunked)
 
 
 def split_findings_by_diff(
@@ -1015,7 +1023,7 @@ def split_findings_by_diff(
     in_diff: list[Finding] = []
     out_of_diff: list[Finding] = []
     for finding in findings:
-        on_line = _classify(finding, ranges, changed, repo_root, symlinks)[1]
+        on_line = _classify(finding, ranges, changed, repo_root, symlinks)
         (in_diff if on_line else out_of_diff).append(finding)
     return tuple(in_diff), tuple(out_of_diff)
 
@@ -1027,19 +1035,19 @@ def blocking_findings(
     changed_paths: Iterable[str] = (),
     repo_root: Path | None = None,
 ) -> tuple[Finding, ...]:
-    """The findings that fail the gate: a Major/Critical on a changed line, or
-    a Critical anywhere in a file the PR touched (a PR can remove a guard on
-    one line and leave the exposed use elsewhere). `ranges` of None means the
-    changed lines could not be computed: every Critical/Major blocks, as
-    before diff scoping."""
+    """The findings that fail the gate: a Major/Critical on a changed line.
+    Severity does not widen the scope, so a finding on an unchanged line stays a
+    notice (accepted residual: a PR that deletes a guard on one line and leaves
+    the exposed use elsewhere is not caught here). `ranges` of None means the
+    changed lines could not be computed: every Critical/Major blocks, as before
+    diff scoping."""
     gated = [f for f in findings if f.severity in ("Critical", "Major")]
     if ranges is None:
         return tuple(gated)
     ranges, changed, symlinks = _scope_views(ranges, changed_paths, repo_root)
     blocking: list[Finding] = []
     for finding in gated:
-        touched, on_line = _classify(finding, ranges, changed, repo_root, symlinks)
-        if on_line or (touched and finding.severity == "Critical"):
+        if _classify(finding, ranges, changed, repo_root, symlinks):
             blocking.append(finding)
     return tuple(blocking)
 
