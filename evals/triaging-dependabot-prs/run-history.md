@@ -40,3 +40,15 @@ Two non-empty advisory lists are now only ranked when every advisory's severity 
 otherwise; a comparison with an empty list is unchanged. Fixed with four tests, each guard shown to fail its test when
 removed. The advisory suite has 95 tests. Codex's cross-examination pass was skipped for this round because Claude's
 independent pass had no findings for it to classify.
+
+## Update, 2026-10-12 (fourth pre-PR cross-model review)
+
+A fourth Claude plus Codex review of the full diff found two more issues. One, found by a seeded randomized stress test
+of the string evaluators and confirmed by Codex: `npm_satisfies` raised `ValueError` for a range segment that mixes
+digits and wildcards (for example `1.xx` or `*1`); the pattern now accepts only digits or a single wildcard per
+segment, and a seeded property test pins that the evaluators return True, False or None for any input (the test fails
+on the old pattern; the advisory suite has 97 tests). The other, found by Codex and confirmed by Claude as minor and
+pre-existing: the lockfile writer in `dependabot_pr_read.py` checks for a symlink and then opens the path, which
+leaves a race on platforms without `O_NOFOLLOW`; `main` already had the same code, so it was filed as an issue instead
+of changing the older script in this change. A fifth gate pass was skipped on the user's instruction (reason recorded
+in the session output).

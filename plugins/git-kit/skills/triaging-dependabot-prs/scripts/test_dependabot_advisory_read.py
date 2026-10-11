@@ -13,6 +13,7 @@ import io
 import json
 import os
 import pathlib
+import random
 import shutil
 import subprocess
 import tempfile
@@ -827,6 +828,87 @@ class UnknownSeverityTests(unittest.TestCase):
             {},
         )
         self.assertFalse(both["signals"]["new_vulnerable_not_safer_than_old"])
+
+
+class EvaluatorContractTests(unittest.TestCase):
+    """The string evaluators return True, False or None for any input and never raise."""
+
+    def test_mixed_digit_and_wildcard_segments_are_not_ranges(self):
+        for bad in ("1.xx", "1.x11", "*1", "2x", "x1", "1.2.*x", "x*", "10X", "1.x.3x"):
+            self.assertIsNone(mod.npm_satisfies("1.0.0", bad), bad)
+        self.assertTrue(mod.npm_satisfies("1.2.3", "1.x"))
+        self.assertTrue(mod.npm_satisfies("1.2.3", "1.2.*"))
+        self.assertTrue(mod.npm_satisfies("5.0.0", "*"))
+
+    def test_seeded_random_input_never_raises_or_returns_a_fourth_value(self):
+        rng = random.Random(20261012)
+        atoms = [
+            "0",
+            "1",
+            "2",
+            "3.11",
+            "10",
+            "99999999999",
+            ".",
+            " ",
+            "~=",
+            "==",
+            "!=",
+            ">=",
+            "<=",
+            ">",
+            "<",
+            ",",
+            "||",
+            "^",
+            "~",
+            "-",
+            "*",
+            "x",
+            "X",
+            "1.x",
+            "1.2.*",
+            "v",
+            "rc1",
+            "+local",
+            "(",
+            ")",
+            "[",
+            "]",
+            ";",
+            "'",
+            '"',
+            "extra",
+            "python_version",
+            "sys_platform",
+            "and",
+            "or",
+            "@",
+            "\t",
+            "\u00e9",
+            "\n",
+            "1.2.3 - 2.0.0",
+            ">= 1.2",
+        ]
+        versions = ["0", "1", "1.0", "2.1.0", "3.11.4", "10.20.30"]
+        for _ in range(4000):
+            a = "".join(rng.choice(atoms) for _ in range(rng.randint(0, 9)))
+            b = "".join(rng.choice(atoms) for _ in range(rng.randint(0, 9)))
+            for result in (
+                mod.pep440_satisfies(rng.choice(versions), a),
+                mod.npm_satisfies(rng.choice(versions), a),
+                mod.marker_applies(a, rng.choice([None, (3, 11), (3, 9)])),
+            ):
+                self.assertIn(result, (True, False, None), (a, b))
+            mod.parse_requirement(a + ";" + b)
+            lock = {
+                "versions": {"dep-a": ["2.1.0"], "react": ["18.2.0"]},
+                "requires_python": ">=3.11",
+            }
+            mod.check_pypi({"requires_python": a, "requires_dist": [a, b]}, lock)
+            mod.check_npm(
+                {"peerDependencies": {"react": a, "dep-a": b}, "engines": {"node": a}}, lock
+            )
 
 
 class LockParserTests(unittest.TestCase):
