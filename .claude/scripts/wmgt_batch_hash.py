@@ -45,7 +45,7 @@ write be built from those bytes. It cannot bind the model's own connector-call a
 the file; that gap is inherent to a model-executed gate and is disclosed in the contract.
 Symlink and hard-link refusal is best effort on Windows.
 
-Always prints one JSON object on stdout. Exit 0 on success, 1 on a typed failure
+Except for --help, always prints one JSON object on stdout. Exit 0 on success, 1 on a typed failure
 (never a traceback).
 """
 
