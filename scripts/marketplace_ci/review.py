@@ -896,39 +896,67 @@ def _lookup_keys(path: str, repo_root: Path | None) -> set[str]:
 _NO_SYMLINKS: tuple[frozenset[str], tuple[str, ...]] = (frozenset(), ())
 
 
+# Longest symlink target text read from git's tree. A longer target cannot be
+# checked out (PATH_MAX), so it is refused rather than resolved.
+_MAX_LINK_TEXT = 4096
+
+
+def _run_git(repo_root: Path, *args: str, stdin: bytes | None = None) -> bytes:
+    """Run git in `repo_root`; any failure raises, so the caller fails closed
+    (the handler turns an exception into exit 2) instead of treating it as
+    "nothing found"."""
+    try:
+        result = subprocess.run(["git", *args], cwd=repo_root, input=stdin, capture_output=True)
+    except OSError as exc:
+        raise RuntimeError(f"git {args[0]} could not run: {exc}") from exc
+    if result.returncode != 0:
+        raise RuntimeError(f"git {args[0]} failed with exit code {result.returncode}")
+    return result.stdout
+
+
 def _git_symlinks(repo_root: Path, candidates: frozenset[str]) -> dict[str, str]:
     """{path: link text} for candidate paths stored as mode 120000 at HEAD. The
     tree is the source of truth: with `core.symlinks=false` a link is checked
     out as a plain file holding its target text, which `os.path.islink` would
-    miss. Empty when git cannot answer."""
-    try:
-        listing = subprocess.run(
-            ["git", "ls-tree", "-r", "-z", "HEAD"], cwd=repo_root, capture_output=True
-        )
-    except OSError:
-        return {}
-    if listing.returncode != 0:
-        return {}
-    links: dict[str, str] = {}
-    for entry in listing.stdout.split(b"\0"):
+    miss. One `ls-tree` and at most two `cat-file` calls, whatever the number of
+    links. Raises when git cannot answer, when a target is missing, longer than
+    `_MAX_LINK_TEXT`, or contains a NUL byte."""
+    wanted: dict[str, str] = {}
+    for entry in _run_git(repo_root, "ls-tree", "-r", "-z", "HEAD").split(b"\0"):
         meta, _, raw_path = entry.partition(b"\t")
         fields = meta.split()
         if len(fields) != 3 or fields[0] != b"120000":
             continue
         path = raw_path.decode("utf-8", errors="surrogateescape")
-        if path not in candidates:
-            continue
-        try:
-            blob = subprocess.run(
-                ["git", "cat-file", "blob", fields[2].decode("ascii")],
-                cwd=repo_root,
-                capture_output=True,
+        if path in candidates:
+            wanted[path] = fields[2].decode("ascii")
+    if not wanted:
+        return {}
+    shas = list(dict.fromkeys(wanted.values()))
+    request = ("\n".join(shas) + "\n").encode("ascii")
+    for line in _run_git(repo_root, "cat-file", "--batch-check", stdin=request).splitlines():
+        parts = line.split()
+        if len(parts) != 3 or parts[1] != b"blob" or int(parts[2]) > _MAX_LINK_TEXT:
+            raise RuntimeError(
+                f"symlink target is missing or over {_MAX_LINK_TEXT} bytes: {line!r}"
             )
-        except OSError:
-            continue
-        if blob.returncode == 0:
-            links[path] = blob.stdout.decode("utf-8", errors="surrogateescape")
-    return links
+    output = _run_git(repo_root, "cat-file", "--batch", stdin=request)
+    texts: dict[str, str] = {}
+    position = 0
+    for sha in shas:
+        newline = output.index(b"\n", position)
+        header = output[position:newline].split()
+        if len(header) != 3 or header[0] != sha.encode("ascii") or header[1] != b"blob":
+            raise RuntimeError(f"unexpected cat-file --batch header for blob {sha}")
+        size = int(header[2])
+        body = output[newline + 1 : newline + 1 + size]
+        if output[newline + 1 + size : newline + 2 + size] != b"\n":
+            raise RuntimeError(f"cat-file --batch output for blob {sha} is not newline-terminated")
+        if b"\0" in body:
+            raise RuntimeError(f"NUL byte in the symlink target of blob {sha}")
+        texts[sha] = body.decode("utf-8", errors="surrogateescape")
+        position = newline + 2 + size
+    return {path: texts[sha] for path, sha in wanted.items()}
 
 
 def _changed_symlinks(
@@ -971,6 +999,11 @@ def _scope_views(
     folded: dict[str, tuple[tuple[int, int], ...]] = {}
     for key, value in ranges.items():
         folded[_fold(key)] = folded.get(_fold(key), ()) + value
+    # A changed path with no hunk is changed in full; merged under a folded key
+    # shared with a path that has hunks, it must not inherit that path's ranges.
+    for path in changed:
+        if path not in ranges:
+            folded[_fold(path)] = folded.get(_fold(path), ()) + ((1, sys.maxsize),)
     return (
         folded,
         frozenset(_fold(p) for p in changed),
@@ -993,12 +1026,13 @@ def _classify(
     if any(k in link_paths for k in keys):
         return True
     if repo_root is not None and link_targets:
-        real = os.path.realpath(os.path.join(repo_root, finding.path))
-        if any(
-            real == t or real.startswith(t if t.endswith(os.sep) else t + os.sep)
-            for t in link_targets
-        ):
-            return True
+        real = _fold(os.path.realpath(os.path.join(repo_root, finding.path)))
+        for target in link_targets:
+            folded_target = _fold(target)
+            if real == folded_target or real.startswith(
+                folded_target if folded_target.endswith(os.sep) else folded_target + os.sep
+            ):
+                return True
     hunked = [r for k in keys for r in ranges.get(k, ())]
     in_ranges = any(k in ranges for k in keys)
     if not in_ranges and not any(k in changed_paths for k in keys):

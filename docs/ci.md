@@ -120,8 +120,9 @@ repository variable of that name has no effect, because the workflow sets the va
 
 `run-codex-review` fails the `codex-review` job (exit 1) only for findings that belong to the PR. A reviewer
 reads every touched file as a whole, so it also reports problems that already exist on the base branch; those
-used to fail a PR that never wrote them (issue #525). The deciding code is `blocking_findings` in
-`scripts/marketplace_ci/review.py`, called through `_diff_scope` in `__main__.py`:
+used to fail a PR that never wrote them (issue #525). The deciding code is `_classify` in
+`scripts/marketplace_ci/review.py` (via `split_findings_by_diff`; `blocking_findings` applies the same test),
+called once per run through `_diff_scope` in `__main__.py`:
 
 | Finding | Blocks? |
 |---|---|
@@ -150,7 +151,9 @@ full, so a finding on them blocks whichever line it names:
 A finding's path is normalised before it is matched (`./x`, `a//b`, `a/../b`, absolute paths under the checkout,
 and symlinks resolved against the git root, not the working directory). A symlink is recognised from git's tree
 (mode `120000`, target text read from the blob) as well as from the checkout, so `core.symlinks=false` does not
-hide one. Off Linux, paths are also compared after Unicode NFC normalisation and case folding, because the
+hide one. That lookup is one `git ls-tree` and at most two `git cat-file` calls per run, and it fails closed: if
+git cannot answer, or a link's target is missing, longer than 4096 bytes or contains a NUL byte, the run exits 2
+instead of skipping the check. Off Linux, paths are also compared after Unicode NFC normalisation and case folding, because the
 filesystem there can match a spelling git did not store; on Linux (the CI runner) they are compared exactly. A resolved path outside the checkout adds
 no extra spelling to match, unless it lies inside the target of a changed symlink, which blocks.
 

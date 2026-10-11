@@ -296,6 +296,11 @@ def test_empty_ranges_mean_nothing_changed_not_unavailable():
 # --- compute_changed_line_ranges (real git repo) ---------------------------------
 
 
+def _init_git(path):
+    _git(path, "init", "-q", "-b", "main")
+    _git(path, "commit", "-q", "--allow-empty", "-m", "init")
+
+
 def _git(repo, *args):
     subprocess.run(
         ["git", "-c", "user.email=t@example.com", "-c", "user.name=t", *args],
@@ -454,6 +459,7 @@ def test_split_normalises_the_finding_path_before_lookup(raw):
 
 
 def test_split_resolves_an_absolute_path_under_the_repo_root(tmp_path):
+    _init_git(tmp_path)
     target = tmp_path / SKILL
     target.parent.mkdir(parents=True)
     target.write_text("x\n")
@@ -463,6 +469,7 @@ def test_split_resolves_an_absolute_path_under_the_repo_root(tmp_path):
 
 
 def test_split_resolves_a_symlink_to_a_changed_file(tmp_path):
+    _init_git(tmp_path)
     target = tmp_path / SKILL
     target.parent.mkdir(parents=True)
     target.write_text("x\n")
@@ -473,6 +480,7 @@ def test_split_resolves_a_symlink_to_a_changed_file(tmp_path):
 
 
 def test_split_path_escaping_the_repo_root_stays_out_of_diff(tmp_path):
+    _init_git(tmp_path)
     finding = _finding(path="../../etc/passwd", line=1)
     _, out = split_findings_by_diff([finding], PR506_RANGES, repo_root=tmp_path)
     assert out == (finding,)
@@ -532,6 +540,7 @@ def test_finding_to_dict_carries_the_blocking_flag():
 
 
 def _symlink_repo(tmp_path):
+    _init_git(tmp_path)
     (tmp_path / "plugins/y/scripts").mkdir(parents=True)
     (tmp_path / "plugins/y/scripts/existing.sh").write_text("a\n" * 20)
     (tmp_path / "plugins/trusted/lib").mkdir(parents=True)
@@ -613,6 +622,7 @@ def test_diff_scope_falls_back_to_every_critical_and_major_when_git_fails(repo):
 
 
 def test_finding_under_a_changed_symlink_to_the_filesystem_root_blocks(tmp_path):
+    _init_git(tmp_path)
     # The link target "/" must not turn the containment prefix into "//".
     inside = tmp_path / "plugins/foo/x.py"
     inside.parent.mkdir(parents=True)
@@ -916,3 +926,143 @@ def test_pr524_pre_existing_fetched_url_critical_does_not_block():
     critical = _finding("Critical", path, 64, "injection-surface", "security-reviewer")
     ranges = {path: ((9, 9), (283, 283))}
     assert blocking_findings([critical], ranges, changed_paths=(path,)) == ()
+
+
+# --- Fourth-review minors: fail closed, size cap, NUL, one lookup, folding -----
+
+
+def _commit_symlink(repo, path, text: bytes):
+    blob = (
+        subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"],
+            cwd=repo,
+            input=text,
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode()
+        .strip()
+    )
+    _git(repo, "update-index", "--add", "--cacheinfo", f"120000,{blob},{path}")
+    _git(repo, "commit", "-q", "-m", f"link {path}")
+
+
+def test_symlink_lookup_fails_closed_when_git_cannot_answer(tmp_path):
+    # tmp_path is not a git repository: ls-tree fails, which must not read as
+    # "no symlinks here".
+    with pytest.raises(RuntimeError):
+        split_findings_by_diff([_finding()], {SKILL: ((42, 42),)}, repo_root=tmp_path)
+
+
+def test_symlink_lookup_fails_closed_when_cat_file_fails(repo, monkeypatch):
+    _commit_symlink(repo, "link.md", b"a.md")
+    real_run = subprocess.run
+
+    def fake_run(argv, **kw):
+        if "cat-file" in argv:
+            return subprocess.CompletedProcess(argv, returncode=128, stdout=b"", stderr=b"boom")
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(review_module.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError):
+        split_findings_by_diff(
+            [_finding(path="a.md")], {}, changed_paths=("link.md",), repo_root=repo
+        )
+
+
+def test_oversized_symlink_target_text_fails_closed(repo):
+    _commit_symlink(repo, "big.md", b"a" * 5000)
+    with pytest.raises(RuntimeError):
+        split_findings_by_diff(
+            [_finding(path="a.md")], {}, changed_paths=("big.md",), repo_root=repo
+        )
+
+
+def test_symlink_target_text_with_a_nul_byte_fails_closed(repo):
+    _commit_symlink(repo, "nul.md", b"a\0b")
+    with pytest.raises(RuntimeError):
+        split_findings_by_diff(
+            [_finding(path="a.md")], {}, changed_paths=("nul.md",), repo_root=repo
+        )
+
+
+def test_diff_scope_asks_git_for_the_tree_once_and_batches_the_blobs(repo, monkeypatch):
+    base = _base(repo)
+    for name in ("l1.md", "l2.md", "l3.md"):
+        _commit_symlink(repo, name, b"a.md")
+    calls = []
+    real_run = subprocess.run
+
+    def spy(argv, **kw):
+        calls.append(tuple(argv[1:3]))
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(review_module.subprocess, "run", spy)
+    findings = (_finding("Major", "a.md", 3), _finding("Critical", "a.md", 5))
+    _diff_scope(findings, repo, base, ("l1.md", "l2.md", "l3.md"))
+    assert sum(1 for c in calls if c[0] == "ls-tree") == 1
+    assert sum(1 for c in calls if c[0] == "cat-file") <= 2  # one --batch-check, one --batch
+
+
+def test_symlink_target_comparison_folds_case_off_linux(tmp_path, monkeypatch):
+    _init_git(tmp_path)
+    (tmp_path / "Target.md").write_text("x\n" * 5)
+    (tmp_path / "L").symlink_to("Target.md")
+    cited = _finding("Major", "target.md", 3)
+    args = ([cited], {"L": ((1, 1),)})
+    kwargs = {"changed_paths": ("L",), "repo_root": tmp_path}
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
+    assert blocking_findings(*args, **kwargs) == (cited,)
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", False)
+    assert blocking_findings(*args, **kwargs) == ()
+
+
+def test_fold_keeps_a_hunkless_changed_path_changed_in_full(monkeypatch):
+    # Doc.md has a hunk; doc.md is a pure rename with none. Merging both under one
+    # folded key must not let the first's narrow range stand for the second.
+    monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
+    major = _finding("Major", "doc.md", 40)
+    found = blocking_findings([major], {"Doc.md": ((3, 3),)}, changed_paths=("Doc.md", "doc.md"))
+    assert found == (major,)
+
+
+def test_git_symlinks_maps_each_path_to_its_own_text_across_several_blobs(repo):
+    # Different texts give different blobs, so the --batch output has several
+    # entries; a newline inside a text, an empty target and exactly 4096 bytes
+    # must each land on the right path.
+    texts = {
+        "t1.md": b"a.md",
+        "t2.md": b"line1\nline2",
+        "t3.md": b"",
+        "t4.md": b"x" * 4096,
+        "t5.md": b" leading-space",
+    }
+    for name, text in texts.items():
+        _commit_symlink(repo, name, text)
+    found = review_module._git_symlinks(repo, frozenset(texts))
+    assert found == {name: text.decode() for name, text in texts.items()}
+
+
+def test_git_symlinks_refuses_a_target_of_4097_bytes(repo):
+    _commit_symlink(repo, "ok.md", b"x" * 4096)
+    _commit_symlink(repo, "big.md", b"x" * 4097)
+    with pytest.raises(RuntimeError):
+        review_module._git_symlinks(repo, frozenset({"ok.md", "big.md"}))
+
+
+@pytest.mark.parametrize("damage", ["wrong-sha", "no-trailing-newline"])
+def test_git_symlinks_rejects_batch_output_that_does_not_line_up(repo, monkeypatch, damage):
+    _commit_symlink(repo, "link.md", b"a.md")
+    real_run_git = review_module._run_git
+
+    def damaged(repo_root, *args, stdin=None):
+        out = real_run_git(repo_root, *args, stdin=stdin)
+        if args[:2] == ("cat-file", "--batch"):
+            if damage == "wrong-sha":
+                return b"0" * 40 + out[40:]
+            return out[:-1]
+        return out
+
+    monkeypatch.setattr(review_module, "_run_git", damaged)
+    with pytest.raises(RuntimeError):
+        review_module._git_symlinks(repo, frozenset({"link.md"}))
