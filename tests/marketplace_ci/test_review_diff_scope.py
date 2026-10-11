@@ -12,6 +12,7 @@ lines 45, 93 and 113 of `skill-development/SKILL.md` while the PR added line 42.
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,30 @@ from scripts.marketplace_ci.review import (
     has_blocking_findings,
     parse_changed_line_ranges,
     split_findings_by_diff,
+)
+
+# Creating a symlink without elevation is denied on some Windows configs (Developer
+# Mode or an elevated shell is required), and Windows has no real POSIX executable
+# bit. Skip those tests there instead of erroring -- the same convention as
+# test_prefix_check.py's `requires_symlinks` and test_sync.py's
+# `requires_posix_permission_bits`. CI (ubuntu) runs them all.
+_SYMLINK_UNAVAILABLE = False
+try:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as _probe_dir:
+        _probe_target = Path(_probe_dir) / "t"
+        _probe_target.mkdir()
+        (Path(_probe_dir) / "l").symlink_to(_probe_target, target_is_directory=True)
+except OSError:
+    _SYMLINK_UNAVAILABLE = True
+
+requires_symlinks = pytest.mark.skipif(
+    _SYMLINK_UNAVAILABLE, reason="symlink creation not permitted on this machine/user"
+)
+requires_posix_permission_bits = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows' os.chmod/stat don't support real POSIX executable bits",
 )
 
 SKILL = "plugins/plugin-devkit/skills/skill-development/SKILL.md"
@@ -468,6 +493,7 @@ def test_split_resolves_an_absolute_path_under_the_repo_root(tmp_path):
     assert in_diff == (finding,)
 
 
+@requires_symlinks
 def test_split_resolves_a_symlink_to_a_changed_file(tmp_path):
     _init_git(tmp_path)
     target = tmp_path / SKILL
@@ -564,6 +590,7 @@ LINK_PATHS = (LINK, DIR_LINK)
     ids=["link spelling", "target spelling"],
 )
 @pytest.mark.parametrize("severity", ["Major", "Critical"])
+@requires_symlinks
 def test_finding_in_a_changed_file_symlink_blocks_whichever_spelling_it_cites(
     tmp_path, cited, severity
 ):
@@ -574,6 +601,7 @@ def test_finding_in_a_changed_file_symlink_blocks_whichever_spelling_it_cites(
 
 
 @pytest.mark.parametrize("cited", [DIR_LINK + "/a.py", "plugins/trusted/lib/a.py"])
+@requires_symlinks
 def test_finding_under_a_changed_directory_symlink_blocks_whichever_spelling_it_cites(
     tmp_path, cited
 ):
@@ -583,6 +611,7 @@ def test_finding_under_a_changed_directory_symlink_blocks_whichever_spelling_it_
     assert found == (finding,)
 
 
+@requires_symlinks
 def test_target_of_a_symlink_the_pr_did_not_change_stays_untouched(tmp_path):
     root = _symlink_repo(tmp_path)
     finding = _finding("Critical", "plugins/y/scripts/existing.sh", 7)
@@ -621,6 +650,7 @@ def test_diff_scope_falls_back_to_every_critical_and_major_when_git_fails(repo):
 # --- Third security review: root symlink, odd line breaks, repo root, exit 2 ---
 
 
+@requires_symlinks
 def test_finding_under_a_changed_symlink_to_the_filesystem_root_blocks(tmp_path):
     _init_git(tmp_path)
     # The link target "/" must not turn the containment prefix into "//".
@@ -672,6 +702,7 @@ def test_parse_full_file_marker_only_applies_to_the_file_with_the_odd_break():
     assert len(split_findings_by_diff([_finding("Major", SKILL, 500)], ranges)[0]) == 1
 
 
+@requires_symlinks
 def test_diff_scope_finds_symlinks_from_the_git_root_not_the_working_directory(repo):
     base = _base(repo)
     (repo / "link.md").symlink_to("a.md")
@@ -904,6 +935,7 @@ def test_renamed_file_with_a_one_line_edit_blocks_on_a_carried_over_line(repo):
     )
 
 
+@requires_posix_permission_bits
 def test_file_made_executable_with_a_one_line_edit_blocks_on_an_unchanged_line(repo):
     base = _base(repo)
     script = repo / "a.md"
@@ -1004,6 +1036,7 @@ def test_diff_scope_asks_git_for_the_tree_once_and_batches_the_blobs(repo, monke
     assert sum(1 for c in calls if c[0] == "cat-file") <= 2  # one --batch-check, one --batch
 
 
+@requires_symlinks
 def test_symlink_target_comparison_folds_case_off_linux(tmp_path, monkeypatch):
     _init_git(tmp_path)
     (tmp_path / "Target.md").write_text("x\n" * 5)
