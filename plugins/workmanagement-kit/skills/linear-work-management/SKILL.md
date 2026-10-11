@@ -157,8 +157,8 @@ Sanctioning `linear.read` never sanctions this operation.
 `plugin-integration-intake` asks this skill to turn an `owner/repo` slug into a Linear team, because this skill
 runs the Local Override trust check that the intake gate cannot. Run that check first, then follow the numbered
 procedure in `references/wmgt-linear-slug-resolution.md`: normalize the slug, require an exact
-`linear.repositories` key, pick the production team (the test team only on a test run), and confirm the team is in
-the operation's `team_ids`. An unknown slug, a team outside `team_ids` or an unverified operation is a rejection,
+`linear.repositories` key, pick the environment's team (a delegated write takes the environment only from its verified batch file), and confirm
+the team is in the operation's `team_ids`. An unknown slug, a team outside `team_ids` or an unverified operation is a rejection,
 never a guess or a fallback. This only resolves; it writes nothing.
 
 ## Entity Model

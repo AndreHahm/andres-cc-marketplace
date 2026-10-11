@@ -60,7 +60,7 @@ Assume workledger-kit re-sends the envelope with the 60 records, `source_plugin:
 4. **Submission file.** Generate a fresh `batch_id`, for example `rsm-20261009-a7f3k2` (it matches `^[A-Za-z0-9._-]{8,64}$`). Write the 60-record set to `C:\scratch\session\wmgt-intake\rsm-20261009-a7f3k2.json`, with `operation: create`, `environment: production`, `team_id: T-PROD`, `batch_id`, `linear_target`, the source claim and the records.
 5. **Hash.**
    - `Bash: ${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py hash C:\scratch\session\wmgt-intake\rsm-20261009-a7f3k2.json`
-   - Expected output: one JSON object, `{"ok": true, "hash": "<sha256>", "records": 60, "bytes": N}`.
+   - Expected output: one JSON object, `{"ok": true, "sha256": "<sha256>", "record_count": 60}` (`bytes` appears only on preview and chunk output).
    - In this repo's own session `${CLAUDE_PLUGIN_ROOT}` is empty, so I substitute `"$PWD/.claude/scripts/wmgt_batch_hash.py"` per the mirror rule.
    - Any failure or `ok: false` means stop with a structured handoff.
 6. **Preview, built only from script output.**

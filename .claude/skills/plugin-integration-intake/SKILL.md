@@ -143,7 +143,8 @@ envelope without them behaves exactly as before. A `linear_target` that is an `o
 to a Linear team by `linear-work-management` (which runs the Local Override trust check this skill cannot)
 before any preview: exact match against `linear.repositories`, an unknown slug rejected (never guessed,
 defaulted or retried as an ID), the mapped team checked against the host-profile operation's `team_ids`,
-production team unless the caller sets `test_run`. A `test_run` flag is caller-asserted like `source_plugin`,
+production team unless the caller sets `test_run` (for the file intake builds or a query); the delegated write then
+takes the environment only from that verified file. `test_run` is caller-asserted like `source_plugin`,
 so the preview must name the environment and team in bold.
 
 - **Batch create and update:** one approval for the whole set, bound to a hash that
