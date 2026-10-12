@@ -77,3 +77,10 @@ no opt-in. Step 3 now asks once via `AskUserQuestion` before the first `assess` 
 to the whole run; on a decline it runs neither and reports the checks as not run (declined). Added scenario 63 and eval 14;
 iteration 13 passed 5 of 5 (author-graded, one simulated answer, no baseline). Evals 12 and 13 were not re-run against the
 new wording.
+
+Cross-model review round 1 (Claude plus Codex, scope: the skill directory): Codex raised nothing on its own. Claude's
+finding C1 (the opt-in text said "60 s each" although 60 s is one budget for the compatibility stage and each request
+times out after 30 s) was confirmed by Codex; N1 (nothing pinned the opt-in) was Claude's own. Fixed: the wording in
+`SKILL.md`, scenario 63 and eval 14, a smoke-test check for the opt-in sentence (shown to fail on a copy without it), and
+one clause in `references/advisory-and-compatibility.md`. Eval 14 re-run as iteration 14, 5 of 5 (author-graded, one
+simulated answer, no baseline).

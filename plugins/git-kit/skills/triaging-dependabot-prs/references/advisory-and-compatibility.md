@@ -1,6 +1,7 @@
 # Advisories, compatibility and the newest compatible version
 
-The detailed contract of `scripts/dependabot_advisory_read.py assess`, which step 3 of `SKILL.md` runs once per
+The detailed contract of `scripts/dependabot_advisory_read.py assess`, which step 3 of `SKILL.md` runs, after a one-time per-run opt-in
+(`AskUserQuestion`; a decline means no `assess` and no lockfile fetch), once per
 `uv` or `npm_and_yarn` PR (and, without a lockfile, once per `github_actions` PR). `SKILL.md` keeps the command,
 the three rules and the data-only boundary; this file holds what the output means and where it stops.
 
