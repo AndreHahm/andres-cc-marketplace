@@ -857,6 +857,22 @@ class EvaluatorContractTests(unittest.TestCase):
     def test_mixed_digit_and_wildcard_segments_are_not_ranges(self):
         for bad in ("1.xx", "1.x11", "*1", "2x", "x1", "1.2.*x", "x*", "10X", "1.x.3x"):
             self.assertIsNone(mod.npm_satisfies("1.0.0", bad), bad)
+        # npm ignores what follows a wildcard (x.1 is *, 1.x.3 is 1.x); we do not evaluate those forms
+        for unevaluated in ("x.1", "1.x.3", "1.*.3", "x.x.1", "^1.x.3", ">=x.1", "1.2.x.3"):
+            self.assertIsNone(mod.npm_satisfies("1.2.3", unevaluated), unevaluated)
+            self.assertIsNone(mod.npm_satisfies("99.0.0", unevaluated), unevaluated)
+        # a wildcard followed only by wildcards adds nothing, so these are evaluated like 1.x and *
+        for same_as_prefix, version, want in (
+            ("1.x.x", "1.2.3", True),
+            ("1.x.x", "2.0.0", False),
+            ("1.*.*", "1.9.9", True),
+            ("x.x.x", "99.0.0", True),
+            ("^1.x.x", "1.5.0", True),
+            ("^1.x.x", "2.0.0", False),
+        ):
+            self.assertIs(
+                mod.npm_satisfies(version, same_as_prefix), want, (version, same_as_prefix)
+            )
         self.assertTrue(mod.npm_satisfies("1.2.3", "1.x"))
         self.assertTrue(mod.npm_satisfies("1.2.3", "1.2.*"))
         self.assertTrue(mod.npm_satisfies("5.0.0", "*"))

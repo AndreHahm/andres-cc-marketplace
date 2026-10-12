@@ -52,3 +52,22 @@ pre-existing: the lockfile writer in `dependabot_pr_read.py` checks for a symlin
 leaves a race on platforms without `O_NOFOLLOW`; `main` already had the same code, so it was filed as an issue instead
 of changing the older script in this change. A fifth gate pass was skipped on the user's instruction (reason recorded
 in the session output).
+
+## Update, 2026-10-12 (open pull request: Codacy and the repository's Codex delta review)
+
+After the pull request was opened, Codacy flagged six high-severity security items and the repository's Codex delta
+review returned two blocking Major findings and three minors.
+
+Codacy: three Error items (`subprocess.CompletedProcess` built in the test fakes) and one High item (`import
+subprocess` in the test file) were cleared in code by replacing the fakes with a plain namespace object; one High
+and one Warning item (the `random` module in the seeded property test) were cleared by using a tiny seeded generator.
+The property test alone still fails on the original bug. The script's own `import subprocess` is accepted use (it runs
+`gh`) and was handled in Codacy, not in code.
+
+Codex delta review: R28 reported no `evals.json` although `evals/triaging-dependabot-prs/evals.json` exists (13 evals
+with run evidence), so `SKILL.md` now names the eval suite and its evidence explicitly. The second Major, `x.1` and
+`1.x.3` read as ranges, was checked against node-semver 6.3.1, which does treat them as `*` and `1.x`; the evaluator
+now returns unknown for a number that follows a wildcard instead of ignoring the rest (`1.x.x` and `x.x.x` are still evaluated, as in node-semver). The step 3 versus
+"Reading PR state" contradiction about a failed lockfile fetch is resolved with an explicit exception. The size
+findings were answered by moving the detailed `assess` contract into `references/advisory-and-compatibility.md`;
+`SKILL.md` stays above 100 lines (it was 138 on `main`).
