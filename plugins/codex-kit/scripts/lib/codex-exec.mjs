@@ -37,7 +37,7 @@ const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
 // denied" / "access is denied": those also appear in non-isolation errors (an
 // API 403 "permission denied for model ...").
 export const ISOLATION_FAILURE_PATTERN =
-  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)/i;
+  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)|failed to create unified exec process/i;
 
 // The slice of stderr the failure patterns are tested against -- not the whole
 // stream. Once a session starts, Codex prints a banner ("sandbox: read-only",
@@ -45,9 +45,16 @@ export const ISOLATION_FAILURE_PATTERN =
 // like "sandbox" or "OPENAI_API_KEY" can appear in every failing run, whatever
 // the cause (a model at capacity or rejected for the account matched "sandbox"
 // and was reported as a sandbox failure -- issue #544). Codex's own cause is on
-// its `ERROR:` lines, unindented; echoed diff lines are always prefixed, so only
-// the unindented ones count -- from anywhere in the stream, since output after
-// the error can run past any fixed window.
+// its `ERROR:` lines, unindented; the echoed prompt's diff lines are always
+// prefixed, so only the unindented ones count -- from anywhere in the stream,
+// since output after the error can run past any fixed window. Known, accepted
+// residual: the model's own tool output (a file it `cat`s) is printed unindented
+// too, so a column-0 `ERROR:` line inside a file Codex reads can count; that
+// existed before issue #545 and only matters when the run also exits non-zero.
+// Codex's tracing-log lines (`<ISO-8601 Z timestamp> ERROR <target>: ...`, real
+// Windows Codex 0.162.1 stderr, issue #545) are a separate, narrower scope: they
+// can copy repo paths and command text, so only specific spawn-failure shapes
+// (TRACING_ISOLATION_PATTERN) are read from them, never the bare keywords.
 // With no `ERROR:` line the remaining text may be the echoed prompt, which must
 // not decide a category (an echoed `landlock` mention would otherwise trigger the
 // privilege-widening isolation fallback), so the default is an empty scope. Only
@@ -57,14 +64,30 @@ export const ISOLATION_FAILURE_PATTERN =
 // it, so a reworded banner with a long echo still fails closed. Known limit: a
 // reworded banner with a prompt under the size cap is read as pre-session.
 const PRE_SESSION_MAX_CHARS = 2000;
+const TRACING_ERROR_LINE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ERROR /;
+// Only specific spawn-failure shapes, not the bare landlock/seccomp/bwrap words
+// the plain-ERROR scope also accepts (a tracing line can carry a repo path).
+const TRACING_ISOLATION_PATTERN =
+  /CreateProcessAsUserW|failed to create unified exec process|sandbox (?:failed|error|denied|unavailable)/i;
+
+// Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
+// prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed
+// (untrusted) prompt can then neither force nor hide a classification. If Codex ever
+// alters the echo, nothing matches and the rules below apply to the unstripped text.
+function withoutPromptEcho(stderr, prompt) {
+  const needle = typeof prompt === "string" ? prompt.trim() : "";
+  return needle ? stderr.split(needle).join("") : stderr;
+}
+
+function tracingErrorScope(stderr, prompt = "") {
+  return withoutPromptEcho(stderr, prompt)
+    .split(/\r?\n/)
+    .filter((line) => TRACING_ERROR_LINE_PATTERN.test(line))
+    .join("\n");
+}
 
 export function failureScope(stderr, prompt = "") {
-  // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
-  // prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed
-  // (untrusted) prompt can then neither force nor hide a classification. If Codex ever
-  // alters the echo, nothing matches and the rules below apply to the unstripped text.
-  const needle = typeof prompt === "string" ? prompt.trim() : "";
-  const text = needle ? stderr.split(needle).join("") : stderr;
+  const text = withoutPromptEcho(stderr, prompt);
   const errorLines = text.split(/\r?\n/).filter((line) => line.startsWith("ERROR:"));
   if (errorLines.length > 0) {
     return errorLines.join("\n");
@@ -85,7 +108,7 @@ export function classifyNonZeroExit(stderr, prompt = "") {
   if (UNSUPPORTED_OPTION_PATTERN.test(scope)) {
     return FAILURE_CATEGORIES.UNSUPPORTED_CLI_VERSION;
   }
-  if (ISOLATION_FAILURE_PATTERN.test(scope)) {
+  if (ISOLATION_FAILURE_PATTERN.test(scope) || TRACING_ISOLATION_PATTERN.test(tracingErrorScope(stderr, prompt))) {
     return FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE;
   }
   return FAILURE_CATEGORIES.NON_ZERO_EXIT;

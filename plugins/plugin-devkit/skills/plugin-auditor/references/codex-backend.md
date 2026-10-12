@@ -115,10 +115,14 @@ actually work on the current platform — its own documented behavior is that it
 literal string `danger-full-access` before attempting anything; every other value, including
 `read-only` on a platform with no working sandbox, is passed through unchanged to a real `codex
 exec` invocation. On Windows specifically, that real invocation is confirmed (via live re-test,
-`KNOWN_ISSUES.md`) to fail with `CreateProcessAsUserW`, and `codex-exec.mjs`'s own stderr
-classification correctly reports this as `isolation_profile_unavailable` — so the fallback below
-*does* trigger automatically today, but only because the underlying tool fails loudly, not because
-anything here verified isolation first. This is real protection, but a fragile guarantee: if a
+`KNOWN_ISSUES.md`) to fail to spawn any process. The failure is **not** reliably a non-zero exit:
+live-captured on Codex 0.162.1 (2026-10-12, issue #545), `codex exec` exited 0 and its final message
+said process creation failed, so detection relies on `codex-review-bridge`'s zero-findings
+`isTotalInspectionFailure` heuristic (which matches that phrasing) rather than on `codex-exec.mjs`'s
+non-zero-exit stderr classification; a non-zero variant is classified as `isolation_profile_unavailable`
+from its `ERROR` lines. Both are free-text heuristics tied to Codex's current wording (the error
+changed between 0.146, 0.147 and 0.162.1), so the fallback below triggers automatically only while
+that wording stays recognized — it does not verify isolation first. This is real protection, but a fragile guarantee: if a
 future Codex CLI version silently degrades instead of failing loudly on an unsupported platform,
 this resolver would not catch it. Until an operator explicitly opts into the Windows-guarded path
 below, every dispatch on an unqualified platform costs one real (harmless — it fails before doing

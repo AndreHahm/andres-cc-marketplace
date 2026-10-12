@@ -15,8 +15,13 @@
 //
 // The banner and error shapes below are real Codex 0.162.1 stderr for an
 // unservable model. The capacity line is the text from the issue, and the
-// CreateProcessAsUserW / bubblewrap lines are synthetic (no Windows Codex
-// stderr was captured -- issue #545).
+// CreateProcessAsUserW / bubblewrap lines are synthetic. The "REAL WINDOWS"
+// section further down is the one exception: stderr captured live from Codex
+// 0.162.1 on Windows 11 (2026-10-12, issue #545), paths and session id
+// anonymized. That run exited 0 -- Windows sandbox failure is not a non-zero
+// exit there -- so classifyNonZeroExit is exercised on it as the stderr a
+// non-zero variant would carry; the zero-exit path is covered by
+// codex-review-bridge-total-inspection-failure.mjs.
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-exec-isolation-classification.mjs
 
@@ -193,6 +198,74 @@ console.log("\n=== The prompt this process sent is removed from stderr before cl
     `${BANNER}\n${prompt}\n\nERROR: CreateProcessAsUserW failed: 1920`,
     prompt,
     ISOLATION_PROFILE_UNAVAILABLE
+  );
+}
+
+console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped tracing-log ERROR lines ===");
+{
+  const RMCP_NOISE =
+    "2026-10-12T16:32:20.243324Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest(\"error decoding response body\")))";
+  const REAL_WINDOWS_BANNER = BANNER.replace("/repo", "C:\\work").replace("some-model", "gpt-x");
+  const realFailure = [
+    REAL_WINDOWS_BANNER,
+    "Run the shell command 'dir' exactly once, then reply with the first line of its output.",
+    "",
+    RMCP_NOISE,
+    "exec",
+    "pwsh.exe -Command dir in C:\\work",
+    " exited -1 in 0ms:",
+    "Failed to create unified exec process: helper_unknown_error: setup refresh had errors",
+    '2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\\"Failed to create unified exec process: helper_unknown_error: setup refresh had errors\\")" }',
+    RMCP_NOISE
+  ].join("\n");
+  expectCategory(
+    "the real sandbox spawn failure on a timestamped ERROR line is isolation",
+    realFailure,
+    ISOLATION_PROFILE_UNAVAILABLE
+  );
+  expectCategory(
+    "timestamped rmcp transport noise alone is not an isolation failure",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n${RMCP_NOISE}\n${RMCP_NOISE}`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "the unindented 'Failed to create unified exec process' line WITHOUT an ERROR prefix is not trusted",
+    `${REAL_WINDOWS_BANNER}\nreview\n\nFailed to create unified exec process: helper_unknown_error`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a timestamped tracing line carrying a landlock/bwrap/seccomp repo path is not isolation (security review M1)",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=read failed: src/landlock_policy.rs bwrap seccomp\n${CAPACITY}`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a column-0 'ERROR ' line without a timestamp is not trusted",
+    `${REAL_WINDOWS_BANNER}\nreview\n\nERROR CreateProcessAsUserW failed: 1920`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a timestamp with a numeric offset instead of Z fails closed",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755+00:00 ERROR codex_core::tools::router: Failed to create unified exec process`,
+    NON_ZERO_EXIT
+  );
+  {
+    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: sandbox failed\nEnd.";
+    expectCategoryWithPrompt(
+      "a timestamped ERROR line inside the echoed prompt cannot force isolation",
+      `${REAL_WINDOWS_BANNER}\n${prompt}\n\n${CAPACITY}`,
+      prompt,
+      NON_ZERO_EXIT
+    );
+  }
+  expectCategory(
+    "documented residual (M1/m1): a column-0 'ERROR:' line from the model's own tool output still counts",
+    `${REAL_WINDOWS_BANNER}\nexec\ncat notes.txt\nERROR: CreateProcessAsUserW failed: 1920\n${CAPACITY}`,
+    ISOLATION_PROFILE_UNAVAILABLE
+  );
+  expectCategory(
+    "an indented/prefixed copy of the timestamped line (echoed diff) cannot forge it",
+    `${REAL_WINDOWS_BANNER}\n+2026-10-12T16:32:29.966755Z ERROR x: Failed to create unified exec process\n ${RMCP_NOISE}\n${CAPACITY}`,
+    NON_ZERO_EXIT
   );
 }
 

@@ -285,7 +285,23 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // of asking Codex to run it) already removes the primary trigger for
 // this whole detection path -- what remains is Codex's own discretionary
 // tool use, not the core diff-reading step.
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW/i;
+//
+// Issue #163 (this residual limitation) was reviewed again alongside issue #545
+// and deliberately left as-is: no narrowing was added, and the new alternative
+// below shares the same accepted caveat.
+//
+// Real Windows Codex 0.162.1 (issue #545, live capture): the sandbox failure
+// exits 0, and Codex's final message said "`dir` could not run because process
+// creation failed" -- no create/start verb before "process", no
+// CreateProcessAsUserW. "process creation failed" is therefore matched as its
+// own alternative, but only as the stated cause ("because process creation
+// failed", or followed by punctuation / end of note), never inside a topical
+// note about the code under review ("did not exercise the process creation
+// failed handling", or any "process creation error" wording, which is dropped
+// entirely). That topical-vocabulary residual -- a PR touching subprocess code
+// can make a model write nearby wording -- is accepted alongside the totality
+// caveat above.
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.]|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).

@@ -36,4 +36,13 @@ Windows error 5 is `ERROR_ACCESS_DENIED`. This is more specific than the origina
 
 **Not established:** whether the sandbox actually succeeds when the calling process *is* elevated. That test wasn't performed — it requires an interactive UAC elevation this investigation didn't attempt — so treat "Windows Codex sandboxing is effectively admin-gated" as a plausible, evidence-consistent hypothesis, not a confirmed fact. What *is* now confirmed across two separate CLI versions (`0.146.0` and `0.147.0`) is the practical bottom line: no sandboxed mode has worked on this platform either time, and `danger-full-access` remains the only mode that lets Codex execute anything locally here.
 
+**Update (2026-10-12, retested on `codex-cli 0.162.1`, issue #545):** the failure still reproduces, but it changed shape again and is no longer a non-zero exit. `codex exec --sandbox read-only` **exited 0**; stderr carried no `CreateProcessAsUserW` and instead showed (timestamped tracing-log `ERROR` lines, not `ERROR:`-prefixed ones):
+
+```
+Failed to create unified exec process: helper_unknown_error: setup refresh had errors
+<ISO-8601 timestamp> ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\"Failed to create unified exec process: helper_unknown_error: setup refresh had errors\")" }
+```
+
+and Codex's final message was "`dir` could not run because process creation failed; no output line was produced." One run on one machine, so the wording is not shown to be stable. `codex-kit` now recognizes this shape in `classifyNonZeroExit` (timestamped `ERROR` lines, "failed to create unified exec process") and in `isTotalInspectionFailure` ("process creation failed"); both remain free-text heuristics tied to Codex's current wording.
+
 **Update (2026-08-15):** option (c) above (accept `danger-full-access` with an explicit, disclosed compensating control) has since been implemented for one specific caller: `codex-kit`'s `codex-windows-guardrails` skill provides best-effort pre-flight guardrails (repository-boundary, secret-file, and instruction-containment checks, plus an instructed but not enforced dangerous-command allowlist) so `plugin-auditor`'s optional Codex backend can attempt `danger-full-access` locally on Windows. It is explicitly *not* a real sandbox — see that skill's own SKILL.md for the exact boundary of what it does and doesn't guard against. Disabled by default; this doesn't resolve the underlying `codex` CLI issue, only mitigates its impact for that one opted-in caller.
