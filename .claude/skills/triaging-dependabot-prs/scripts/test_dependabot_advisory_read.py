@@ -1429,7 +1429,19 @@ class ConnectorReviewFixTests(unittest.TestCase):
         self.assertLess(key("1.0.post1"), key("1.0.post2"))
         self.assertLess(key("1.0.post9"), key("1.0.1"))
         self.assertLess(key("9.9"), key("1!0.1"))
-        for text in ("1.0rc1", "1.0.dev1", "1.0+local", "1.0.post", "x", "1!", ""):
+        # every PEP 440 spelling of the same post-release is one release
+        for spelling in (
+            "1.0.post1",
+            "1.0-1",
+            "1.0.post-1",
+            "1.0_post1",
+            "1.0r1",
+            "1.0.REV1",
+            "1.0POST1",
+        ):
+            self.assertEqual(key(spelling), key("1.0.post1"), spelling)
+        self.assertEqual(key("1.0.post"), key("1.0.post0"))
+        for text in ("1.0rc1", "1.0.dev1", "1.0+local", "1.0.post1.dev1", "x", "1!", "", "1.0-"):
             self.assertIsNone(key(text), text)
         self.assertEqual(
             mod.order_key("npm_and_yarn", "v1.2.0"), mod.order_key("npm_and_yarn", "1.2")
@@ -1445,7 +1457,10 @@ class ConnectorReviewFixTests(unittest.TestCase):
         def draw():
             text = ".".join(str(rng.randint(0, 3)) for _ in range(rng.randint(1, 4)))
             if rng.random() < 0.4:
-                text += f".post{rng.randint(0, 3)}"
+                n = rng.randint(0, 3)
+                text += rng.choice(
+                    [f".post{n}", f"-{n}", f"r{n}", f"_POST.{n}", f".rev{n}", ".post"]
+                )
             return f"{rng.randint(1, 2)}!{text}" if rng.random() < 0.2 else text
 
         for _ in range(3000):
@@ -1454,6 +1469,25 @@ class ConnectorReviewFixTests(unittest.TestCase):
             self.assertEqual(
                 (ka > kb) - (ka < kb), (Version(a) > Version(b)) - (Version(a) < Version(b)), (a, b)
             )
+
+    def test_a_post_release_spelled_with_a_dash_is_ranked_above_the_new_version(self):
+        result = self.newest(["0.9", "1.0", "1.0-1"])
+        self.assertEqual((result["status"], result["version"]), ("found", "1.0-1"))
+
+    def test_version_argument_accepts_an_epoch_and_refuses_a_misplaced_bang(self):
+        def code_for(new):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = mod.main(
+                    base_args(new=new), run=FakeGh(), which=lambda _n: None, fetch=FakeFetch()
+                )
+            return code, json.loads(out.getvalue())
+
+        self.assertEqual(code_for("1!2.0")[0], 4)  # past validation, stopped at the missing gh
+        for bad in ("1.0!2", "!1.0", "1!2!3", "1!"):
+            code, result = code_for(bad)
+            self.assertEqual(code, 2, bad)
+            self.assertIn("does not look like a version", result["refused"])
 
     def test_assess_signals_use_a_post_release_as_the_newest_compatible_version(self):
         releases = ["0.9", "1.0", "1.0.post1"]
