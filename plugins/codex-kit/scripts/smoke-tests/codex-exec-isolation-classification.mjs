@@ -146,6 +146,21 @@ expectCategory(
 );
 expectCategory("an unrelated early failure with no banner", "error: something else broke\n", NON_ZERO_EXIT);
 
+console.log("\n=== Pre-session trust needs positive evidence, not just a missing banner ===");
+{
+  const longEcho = `user\n${"echoed prompt line mentioning landlock and seccomp\n".repeat(60)}Codex crashed unexpectedly\n`;
+  expectCategory(
+    "a reworded banner with a long echoed prompt fails closed",
+    `Codex CLI v0.200.0\n--------\n${longEcho}`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a long stderr with no banner at all fails closed",
+    longEcho,
+    NON_ZERO_EXIT
+  );
+}
+
 console.log("\n=== Auth and unknown-option checks use the same scope ===");
 expectCategory(
   "OPENAI_API_KEY in the echoed prompt does not make a capacity error an auth failure",

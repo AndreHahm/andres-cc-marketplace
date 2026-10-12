@@ -1426,6 +1426,7 @@ def _sanitize_log_text(text: str) -> str:
 _SECRET_TOKEN_PATTERNS = re.compile(
     r"\bsk-[A-Za-z0-9-]{20,}"
     r"|\bgh[pousr]_[A-Za-z0-9]{36,}"
+    r"|\bgithub_pat_[A-Za-z0-9_]{22,}"
     r"|\bxox[baprs]-[A-Za-z0-9-]+"
     r"|\bAKIA[0-9A-Z]{16}\b"
     r"|\bAIza[0-9A-Za-z_-]{35}"
@@ -1440,6 +1441,13 @@ _SECRET_TOKEN_PATTERNS = re.compile(
 
 def _redact_tokens(text: str) -> str:
     return _SECRET_TOKEN_PATTERNS.sub("[REDACTED]", text)
+
+
+def _report_error(text: str) -> str:
+    """Every error string that lands in a report (and so the CI log) goes through
+    here: one line, tokens redacted, capped. Model- and tool-generated text
+    included, so no call site has to remember the individual steps."""
+    return _clip_error(_redact_tokens(_sanitize_log_text(text)))
 
 
 def _run_bridge(
@@ -1506,7 +1514,7 @@ def _inspected_nothing(output: object) -> str | None:
         return None
     limits = output.get("inspection_limits")
     first = limits[0] if isinstance(limits, list) and limits and isinstance(limits[0], str) else ""
-    return _sanitize_log_text(first)[:_MAX_ERROR_CHARS] or "no inspection limit given"
+    return _report_error(first) or "no inspection limit given"
 
 
 def _dispatch_one(
@@ -1549,10 +1557,10 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
-                error=_sanitize_log_text(
+                error=_report_error(
                     "changed path with characters the reviewer bridge does not accept: "
                     f"{unsafe[0]!r}"
-                )[:_MAX_ERROR_CHARS],
+                ),
                 attempts=0,
             )
         briefing = render_diff_scope(reviewer_scope, changed_ranges, changed_paths, whole_file)
@@ -1607,9 +1615,7 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
-                error=_sanitize_log_text(f"bridge could not be run: {type(exc).__name__}: {exc}")[
-                    :_MAX_ERROR_CHARS
-                ],
+                error=_report_error(f"bridge could not be run: {type(exc).__name__}: {exc}"),
                 attempts=attempts,
             )
         except subprocess.TimeoutExpired:
@@ -1633,7 +1639,7 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
-                error=_clip_error(_redact_tokens(_sanitize_log_text(stderr))),
+                error=_report_error(stderr),
                 attempts=attempts,
             )
 
@@ -1749,9 +1755,7 @@ def dispatch_reviewers(
                     ReviewerReport(
                         reviewer=name,
                         status="failed",
-                        error=_sanitize_log_text(f"dispatch raised {type(exc).__name__}: {exc}")[
-                            :_MAX_ERROR_CHARS
-                        ],
+                        error=_report_error(f"dispatch raised {type(exc).__name__}: {exc}"),
                         attempts=0,
                     )
                 )

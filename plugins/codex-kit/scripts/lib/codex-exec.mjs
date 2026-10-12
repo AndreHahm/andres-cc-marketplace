@@ -48,17 +48,23 @@ export const ISOLATION_FAILURE_PATTERN =
 // its `ERROR:` lines, unindented; echoed diff lines are always prefixed, so only
 // the unindented ones count -- from anywhere in the stream, since output after
 // the error can run past any fixed window.
-// A started session with no `ERROR:` line has nothing attributable to Codex: the
-// remaining text is the echoed prompt, which must not decide a category (an
-// echoed `landlock` mention would otherwise trigger the privilege-widening
-// isolation fallback). A failure before the session starts (no banner, e.g. an
-// argument error) echoes nothing, so its whole stderr is Codex's own.
+// With no `ERROR:` line the remaining text may be the echoed prompt, which must
+// not decide a category (an echoed `landlock` mention would otherwise trigger the
+// privilege-widening isolation fallback), so the default is an empty scope. Only
+// positive evidence that nothing was echoed lifts that: no session banner AND a
+// short stderr (an argument error is a few lines; an echoed reviewer prompt is
+// kilobytes). Relying on the banner alone would fail open the day Codex rewords
+// it, so a reworded banner with a long echo still fails closed. Known limit: a
+// reworded banner with a prompt under the size cap is read as pre-session.
+const PRE_SESSION_MAX_CHARS = 2000;
+
 export function failureScope(stderr) {
   const errorLines = stderr.split(/\r?\n/).filter((line) => line.startsWith("ERROR:"));
   if (errorLines.length > 0) {
     return errorLines.join("\n");
   }
-  return /^OpenAI Codex v\S+/m.test(stderr) ? "" : stderr;
+  const preSession = !/^OpenAI Codex v\S+/m.test(stderr) && stderr.length <= PRE_SESSION_MAX_CHARS;
+  return preSession ? stderr : "";
 }
 
 // Auth is checked first, ahead of isolation: a benign "could not find
@@ -100,6 +106,7 @@ const SECRET_PATTERNS = [
   /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
   /\bAKIA[0-9A-Z]{16}\b/g,
   /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g,
+  /\bgithub_pat_[A-Za-z0-9_]{22,}\b/g,
   /\bxox[baprs]-[A-Za-z0-9-]+\b/g,
   /\bsk-[A-Za-z0-9-]{20,}\b/g,
   /\bAIza[0-9A-Za-z_-]{35}\b/g,

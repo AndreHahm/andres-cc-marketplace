@@ -59,6 +59,13 @@ console.log("\n=== GitHub token ===");
   check("the GitHub token is redacted", !redacted.includes("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ab"), redacted);
 }
 
+console.log("\n=== Fine-grained GitHub token ===");
+{
+  const token = "github_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const redacted = redactSecrets(`using ${token} for auth`);
+  check("the fine-grained GitHub token is redacted", !redacted.includes(token), redacted);
+}
+
 console.log("\n=== Slack token ===");
 {
   const redacted = redactSecrets("token xoxb-1234567890-abcdefghijklmnop leaked");
