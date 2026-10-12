@@ -279,17 +279,17 @@ updated risks a duplicate or conflicting change.
 - "repair the drift between this Linear issue and its GitHub PR" → `linear-github-reconciliation`
 - "fix the Notion link on this Linear issue" → `work-linking`
 
-**Last dated run record:** evals/linear-work-management/workspace/iteration-10/ (2026-10-09, evals 12-13, simulated, single run, 6/6 assertions); iteration-11 (evals 14-15, same method, 6/7: eval 15 declined to re-prompt after a reject instead of falling back to its own approval, a safe deviation that the skill and eval 15's expected output now state: a reject cancels the batch) covers the batch-approval exception and slug resolution added by Wave 3a work package 3. Earlier runs (iterations 1-9: the Initiative-read gate evals, the final-gate baseline comparison and the trigger-phrase check, all simulated single runs graded by the orchestrator) are under evals/linear-work-management/workspace/.
+**Last dated run record:** evals/linear-work-management/workspace/iteration-12/ (2026-10-12, eval 15 rebased on the current rule that any answer other than approve all is a reject that cancels the batch: 4/4, simulated, single run, graded by the orchestrator); iteration-10 (2026-10-09, evals 12-13, 6/6) and iteration-11 (2026-10-09, evals 14-15, 6/7; its eval 15 is superseded) cover the batch-approval exception and slug resolution added by Wave 3a work package 3. The label condition and the stopped-batch rule are not yet covered by an eval. Earlier runs are under evals/linear-work-management/workspace/: iteration-1 (evals 1-3, with_skill against baseline, with timing and a benchmark) and iterations 2-9 (the trigger-phrase check, the Initiative-read gate evals and the final-gate baseline comparison; simulated single runs graded by the orchestrator).
 
 **Quality gates:**
 - [ ] Every material change is preceded by a preview and live approval.
 - [ ] No priority/owner/scope derived from Notion content without explicit approval for that
       specific change.
 - [ ] Target resolution never infers from a display name when more than one match exists.
-- [ ] An Initiative read never proceeds unless `linear.initiatives.read` is `verified` with a
-      non-null `verified_at`, its `connector` is exactly `mcp-linear`, the local override passed the trust check, and the
-      organization in a structured response field matches; otherwise the result is discarded and it
-      is a structured handoff.
+- [ ] An Initiative read proceeds only when `linear.initiatives.read` is `verified` with a non-null `verified_at`,
+      its `connector` is exactly `mcp-linear`, the trust check passed and the organization in a structured
+      response field matches; otherwise the result is discarded and it is a structured handoff.
+- [ ] A delegated batch skips the per-record prompt only when all five conditions hold; a reject or a stopped batch cancels it.
 - [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing, and the shipped host-profile/versioned-configuration defaults).
 
 ## Reference Guide

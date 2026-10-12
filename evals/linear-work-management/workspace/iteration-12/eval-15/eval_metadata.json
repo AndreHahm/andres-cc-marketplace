@@ -1,0 +1,26 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the free-text answer as a reject",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes nothing for chunk 1",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not fall back to per-record approval prompts for this batch",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Reports the cancellation to the caller",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

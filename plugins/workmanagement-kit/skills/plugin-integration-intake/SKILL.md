@@ -222,25 +222,43 @@ caller-asserted like `source_plugin`, so the preview must name the environment a
 **Verify this skill activates on:**
 - another plugin's workflow requesting content storage in Notion or Linear (host-mediated, not a
   user-typed phrase)
-- a caller submitting a `records` batch, an exact-key `query` or an `update` for a Linear repository
-  slug, or resuming a stopped batch (host-mediated)
+- a caller submitting a `records` batch (create or update) for a Linear repository slug
+- a caller submitting an exact-key `query`, or resuming a stopped batch (a new submission with a new `batch_id`)
 
 **Verify it does NOT activate on:**
 - a direct user request to capture knowledge or manage work → `notion-knowledge-management` /
   `linear-work-management` directly, no intake payload involved
+- a user asking how to submit a batch or query, or typing a dedup-key or status lookup → answered directly or by
+  `linear-work-management`; the gate does not start
+- closing or completing Issues, or editing an Issue's description → refused here (`merge-to-completion`, or a
+  direct request to `linear-work-management`)
 
-**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-4/ (2026-10-09) — evals 5-11 for
-the Wave 3a batch, query and update additions, each a single simulated (dry-run) with_skill run graded by the
-orchestrator: 24/24 assertions passed; eval 11 (resume) tested the no-envelope path, with the full resume steps
-only walked through conditionally. Prior run: evals/plugin-integration-intake/workspace/iteration-2/ (2026-09-11) — re-run
-after the Phase 6/7 fix batch (Write + scoped `Bash(wmgt_bridge_caller.py:*)` grants, Ambiguous-target dispatch
-text citing `FOUNDATION_CONTRACTS.md`, Step 3's stale no-Bash-grant claim corrected); with_skill 100% vs.
-baseline 19.4% pass rate across 3 evals (the third added specifically to exercise the fixed
-Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-intake/workspace/iteration-1/
-(2026-08-30).
+**Stop scenarios** (each must end in a structured handoff or a refused record, never a write): a hash mismatch or
+script error at any step (fail closed); a record too large to write or preview (refused at `hash`); a create
+`status` or update `set.status` that resolves to a completed or canceled state; a label that does not exist on the
+resolved team; an update `description`; a query key naming another repository; an Issue in another team; a
+`dedup_key` first line that is malformed or names another repository; a reject or any non-"approve all" answer
+(cancels the batch, nothing written, files purged); and a resume, which never reads the old progress file and flags
+records with no `dedup_key` as possible duplicates.
+
+**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-5/ (2026-10-12) — eval 11 rewritten for
+the current resume design (exact-key dedup queries in groups of at most 50, old progress file never read, one new
+approval): 7/7 assertions, a single simulated (dry-run) with_skill run graded by the orchestrator against the text at
+commit 15ae4ff1. Evals 5-10 are from iteration-4 (2026-10-09, 24/24 across evals 5-11 at the time); iteration-4's
+eval 11 exercised an earlier resume design and is superseded by iteration-5. The stop scenarios above are covered
+in part by evals 5-10 (malformed and out-of-scope submissions); the reject answer, the missing-label stop and the
+stopped-batch purge have no intake eval yet (the reject answer is covered on the Linear side by its eval 15). The
+script-level stops are covered by the fixture suite (`scripts/wmgt_test_batch_hash.py`) and reviewer re-checks, not
+by agent evals. Prior runs:
+evals/plugin-integration-intake/workspace/iteration-3/ (eval 4, the trigger-consistency check; it predates the batch
+trigger); iteration-2 (2026-09-11) — re-run after the Phase 6/7 fix batch (Write + scoped
+`Bash(wmgt_bridge_caller.py:*)` grants, Ambiguous-target dispatch text citing `FOUNDATION_CONTRACTS.md`, Step 3's
+stale no-Bash-grant claim corrected); with_skill 100% vs. baseline 19.4% pass rate across 3 evals (the third added
+specifically to exercise the fixed Ambiguous-target/classifier-dispatch path); iteration-1 (2026-08-30, evals 1-2, with_skill against baseline).
 
 **Quality gates:**
-- [ ] Every submission that writes gets a live approval at this gate (a batch through its hash-bound preview); the IDs-only `query` is the one documented carve-out.
+- [ ] Every submission that writes gets a live approval at this gate (a batch through its hash-bound preview); the
+      IDs-only `query` is the one documented carve-out.
 - [ ] Unknown source, malformed content, and ambiguous target each produce a structured handoff,
       never a guess.
 - [x] The recorded transition is tagged with both the target record and the claimed source
@@ -251,11 +269,12 @@ Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-
       grant) findings from that pass are fixed in this file's Trust Model section and
       `allowed-tools`. Re-run before this gate is wired to a live connector.
 - [x] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
-- [ ] The batch, query and update additions (Wave 3a work package 3) pass `security-reviewer` with no open
-      Critical or Major finding before they ship, and `scripts/wmgt_test_batch_hash.py` passes. Four passes ran
-      during development (2026-10-09): the first three returned Reject on findings fixed afterwards, and the
-      fourth returned Approve with conditions (two Major findings, fixed afterwards). The final result is
-      recorded in the PR that ships this change.
+- [x] `scripts/wmgt_test_batch_hash.py` passes (Windows and WSL, 2026-10-12).
+- [ ] The batch, query and update additions pass `security-reviewer` with no open Critical or Major finding before
+      they ship. Four passes ran during development (2026-10-09): the first three returned Reject on findings fixed
+      afterwards, and the fourth returned Approve with conditions (two Major findings, fixed afterwards). Further
+      re-checks during the 2026-10-11/12 QA run each ended with no open Critical or Major finding after the batch's
+      fixes. The final result is recorded in the PR that ships this change.
 
 ## Reference Guide
 

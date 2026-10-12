@@ -1,0 +1,41 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {
+      "text": "Validates source and content, resolves the slug through linear-work-management and uses a NEW batch_id",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never reads or relies on the old progress file, the old approval or the old submission file",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Runs exact-key dedup queries in groups of at most 50 keys against T-PROD (two groups for 58 keys)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Drops the 25 already-held records and lists each dropped key with its Issue ID in the preview",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Flags the two records with no dedup_key as possible duplicates",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Runs the pre-hash checks (labels exist, no closed status), writes a new file of the 35 remaining records, hashes it and asks ONE fresh approval",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes nothing before the approval",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

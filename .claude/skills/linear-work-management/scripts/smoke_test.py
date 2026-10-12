@@ -24,11 +24,18 @@ import sys
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
+
+
+def _read_skill_md() -> str:
+    """Read SKILL.md with CRLF normalised, so a Windows checkout does not fail the checks."""
+    return SKILL_MD.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
 SECTION_HEADERS = ["## Quick Start"]
 
 
 def check_frontmatter():
-    text = SKILL_MD.read_text(encoding="utf-8")
+    text = _read_skill_md()
     if not text.startswith("---\n"):
         return False, "SKILL.md does not start with a frontmatter block"
     end = text.find("\n---\n", 4)
@@ -71,7 +78,7 @@ def _skill_dir_candidates(repo_root):
 
 
 def check_referenced_files():
-    text = SKILL_MD.read_text(encoding="utf-8")
+    text = _read_skill_md()
     missing = []
     repo_root = _find_repo_root(SKILL_DIR)
     skill_dirs = _skill_dir_candidates(repo_root)
@@ -131,9 +138,26 @@ def check_referenced_files():
         if not (repo_root / path_str).exists():
             missing.append(path_str)
 
+    # Reference and example files are part of the skill too: resolve each `../` pointer from the
+    # file's own directory, falling back to the canonical skill directory as SKILL.md does.
+    extras = list((SKILL_DIR / "references").rglob("*.md")) + list(
+        (SKILL_DIR / "examples").rglob("*.md")
+    )
+    for extra in sorted(extras):
+        extra_text = extra.read_text(encoding="utf-8").replace("\r\n", "\n")
+        rel_parent = extra.relative_to(SKILL_DIR).parent
+        for match in re.finditer(r"`((?:\.\./)+[\w./-]+\.(?:md|py|sh|json))`", extra_text):
+            if not any(
+                (cand / rel_parent / match.group(1)).resolve().exists() for cand in skill_dirs
+            ):
+                missing.append(f"{extra.relative_to(SKILL_DIR)} -> {match.group(1)}")
+
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
-    return True, "all referenced files exist"
+    return (
+        True,
+        f"all referenced files exist ({len(extras)} reference/example file(s) also scanned)",
+    )
 
 
 def _grant_pattern(cmd: str) -> str:
@@ -208,7 +232,7 @@ def _collect_plugin_contract_text(body: str) -> str:
 
 
 def check_bash_grants():
-    fm_text = SKILL_MD.read_text(encoding="utf-8")
+    fm_text = _read_skill_md()
     close = fm_text.find("\n---\n", 4)
     if close == -1:
         return True, "frontmatter never closed (skip -- check_frontmatter already reports this)"
@@ -219,6 +243,17 @@ def check_bash_grants():
         return True, "no allowed-tools line found (skip)"
     granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
+    start = frontmatter.find("allowed-tools:")
+    value = frontmatter[start + len("allowed-tools:") :]
+    next_key = re.search(r"\n[A-Za-z][\w-]*:", value)
+    if next_key:
+        value = value[: next_key.start()]
+    raw_grants = len(re.findall(r"Bash\(", value))
+    if raw_grants != len(granted_cmds):
+        return False, (
+            f"{raw_grants} Bash grant(s) in the frontmatter but {len(granted_cmds)} parsed "
+            "(a block-list or quoted allowed-tools value?); fix the parser or the value"
+        )
 
     body = fm_text[header_end:]
     search_text = _collect_search_text(body)
@@ -259,7 +294,7 @@ def check_step_sequence():
     # numbering from an earlier one's last step (verified live: merge-to-completion and
     # pr-to-linear both do this) or start its own fresh 1-based sequence, but never silently
     # skip steps at either a chunk's own start or a section-wide start.
-    text = SKILL_MD.read_text(encoding="utf-8")
+    text = _read_skill_md()
     found_any = False
     for header in SECTION_HEADERS:
         # Tolerant of trailing spaces/tabs after the header text (a bare "\n"+header+"\n"
@@ -348,7 +383,7 @@ def check_initiative_read_operation():
     second connector. Fail closed: the shipped profile must carry it unconfigured with no
     connector, and this skill must name it rather than falling back to linear.read.
     """
-    body = SKILL_MD.read_text(encoding="utf-8")
+    body = _read_skill_md()
     if "linear.initiatives.read" not in body:
         return False, "SKILL.md does not name the 'linear.initiatives.read' operation"
     profile, error = _load_plugin_json("host-profile.json")
@@ -449,7 +484,10 @@ CHECKS = [
 def main():
     failed = False
     for check in CHECKS:
-        ok, message = check()
+        try:
+            ok, message = check()
+        except Exception as exc:  # a missing file or a decode error is a FAIL line, not a traceback
+            ok, message = False, f"{type(exc).__name__}: {exc}"
         print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
         failed = failed or not ok
     sys.exit(1 if failed else 0)
