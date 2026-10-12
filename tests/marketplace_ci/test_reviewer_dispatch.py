@@ -365,6 +365,31 @@ def test_dispatch_never_retries_a_non_timeout_failure(monkeypatch, repo, change,
     assert set(calls.values()) == {1}
 
 
+def test_dispatch_keeps_the_head_and_the_tail_of_an_overlong_failure(
+    monkeypatch, repo, change, dependency_index
+):
+    # The bridge's one-line JSON error has `category` first and the real cause
+    # last, behind Codex's echoed reviewer prompt (issue #544).
+    stderr = (
+        b'{"ok":false,"category":"non_zero_exit","detail":"'
+        + b"echoed reviewer prompt " * 400
+        + b'ERROR: Selected model is at capacity"}'
+    )
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.status == "failed"
+        assert r.error is not None
+        assert r.error.startswith('{"ok":false,"category":"non_zero_exit"')
+        assert r.error.endswith('ERROR: Selected model is at capacity"}')
+        assert len(r.error) <= 2000
+
+
 def test_dispatch_never_retries_malformed_bridge_output(
     monkeypatch, repo, change, dependency_index
 ):
