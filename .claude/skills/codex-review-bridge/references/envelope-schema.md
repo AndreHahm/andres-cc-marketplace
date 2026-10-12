@@ -1,5 +1,7 @@
 # Canonical findings envelope
 
+**Reference-chain exception (recorded):** this file points to `semantic-validation.md` for the split between checks the bridge enforces and checks it does not yet enforce. That is a deliberate single-source-of-truth choice (the same one `typed-failures.md` records): the pointed-to file changes independently, and restating its lists here would recreate the drift this skill's de-duplication pass removed.
+
 This is codex-kit's canonical findings envelope — every reviewer dispatched through `codex-review-bridge` returns exactly this shape, with no partial/reviewer-specific variants. The schema itself (`ENVELOPE_SCHEMA` in `scripts/bridge-invoke.mjs`) is also directly imported by `codex-windows-guardrails`' `scripts/guarded-dispatch.mjs` for its own `danger-full-access` dispatch path — a change to this shape affects that consumer too, not only callers going through this bridge's own CLI.
 
 ```json
