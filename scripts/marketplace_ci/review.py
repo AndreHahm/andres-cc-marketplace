@@ -1437,7 +1437,9 @@ _SECRET_TOKEN_PATTERNS = re.compile(
     # digit, a lower-to-upper step or two capitals in a row, or any 20+ run (the
     # bridge redactor's own threshold).
     r"|\bbearer\s+(?:"
-    r"(?=[A-Za-z0-9._~+/=-]*(?:\d|[a-z][A-Z]|[A-Z]{2}))[A-Za-z0-9._~+/=-]{16,}"
+    # (?-i:...) because the pattern is compiled IGNORECASE for the keywords, which
+    # would otherwise turn these case checks into "any letter".
+    r"(?=(?-i:[A-Za-z0-9._~+/=-]*(?:\d|[a-z][A-Z]|[A-Z]{2})))[A-Za-z0-9._~+/=-]{16,}"
     r"|[A-Za-z0-9._~+/=-]{20,})",
     re.IGNORECASE,
 )
