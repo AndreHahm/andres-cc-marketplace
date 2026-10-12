@@ -294,3 +294,65 @@ def test_fetch_runs_with_credential_prompts_disabled(repo, tmp_path):
     result, _, _ = _run(repo, tmp_path)
     assert result.returncode == 0
     assert log.read_text(encoding="utf-8").strip() == "0"
+
+
+TRUST_BOUNDARY_SRC = (
+    "TIER1_FILES = frozenset(\n    {\n        'pyproject.toml',\n"
+    "        'scripts/marketplace_ci/review.py',\n    }\n)\n"
+)
+
+
+def _commit_files(repo: Path, files: dict[str, str]) -> None:
+    for name, text in files.items():
+        path = repo / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _make_base(repo: Path) -> None:
+    _commit_files(repo, {"scripts/marketplace_ci/trust_boundary.py": TRUST_BOUNDARY_SRC})
+    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, check=True)
+
+
+def test_tier1_change_warns_but_still_runs(repo, tmp_path):
+    _make_base(repo)
+    _commit_files(repo, {"pyproject.toml": "x\n", "README.md": "y\n"})
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "review-dispatch-critical files (pyproject.toml)" in result.stdout
+    assert args  # the run still happened
+
+
+def test_no_tier1_change_means_no_warning(repo, tmp_path):
+    _make_base(repo)
+    _commit_files(repo, {"README.md": "y\n"})
+    result, _, _ = _run(repo, tmp_path)
+    assert "review-dispatch-critical" not in result.stdout
+    assert "could not check" not in result.stdout
+
+
+def test_tier1_list_comes_from_the_base_copy_not_the_branch(repo, tmp_path):
+    _make_base(repo)
+    # The branch empties TIER1_FILES and changes a Tier-1 file; the base list must still win.
+    _commit_files(
+        repo,
+        {
+            "scripts/marketplace_ci/trust_boundary.py": "TIER1_FILES = frozenset({'zzz'})\n",
+            "pyproject.toml": "x\n",
+        },
+    )
+    result, _, _ = _run(repo, tmp_path)
+    assert "(pyproject.toml)" in result.stdout
+
+
+def test_unreadable_base_trust_boundary_warns(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path)  # the fixture's base has no trust_boundary.py
+    assert result.returncode == 0
+    assert "could not check whether review-dispatch files changed" in result.stdout

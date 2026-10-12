@@ -51,6 +51,9 @@ alongside `cross-model-review`.
 
 ## Limits
 
+- If the branch changed a review-dispatch-critical (Tier-1) file, the script prints a warning and still runs.
+  CI hard-refuses in that case, and the local run executes the branch's own copy of that code with your Codex
+  credentials, so treat a clean result as non-authoritative.
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
 - On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX; elsewhere only the direct child).
