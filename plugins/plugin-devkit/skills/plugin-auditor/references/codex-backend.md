@@ -96,15 +96,20 @@ For each reviewer in `references/dispatch-table.md`'s dispatch list:
    convention. A future live-integration pass (once a real `codex` CLI is available in this
    environment) could add an actual dispatch attempt as a regression case; until then, treat this
    pin's correctness as structurally-argued rather than empirically confirmed.
-3. **If the current audit's own scope includes `plugin-devkit` itself** (component or plugin mode,
-   auditing any file under `plugins/plugin-devkit/` or its `.claude/` mirror), **skip the Codex path
+3. **If the current audit's own scope includes `plugin-devkit` itself, or `codex-kit` itself** (component or
+   plugin mode, auditing any file under `plugins/plugin-devkit/` or `plugins/codex-kit/`, or their `.claude/`
+   mirrors), **skip the Codex path
    entirely for this whole dispatch** — every reviewer runs Claude-native. Reason: reviewer
    instructions are sourced from `plugin-devkit`'s own `agents/<name>.md` (step below); when
    `plugin-devkit` is also the target under review, the instruction source and the reviewed scope
    can be the same files, which the bridge's own containment check cannot detect (it only rejects
    an instruction file *literally inside* `--target-paths`, not a same-content file reached via the
    `.claude/`↔`plugins/plugin-devkit/` staging mirror or a different worktree). Simplest safe rule:
-   never mix them.
+   never mix them. The `codex-kit` half has a different reason: the dispatcher and failure classifier this path
+   executes (`bridge-invoke.mjs`, `guarded-dispatch.mjs`, `codex-exec.mjs`) run from the working tree by a
+   repo-relative path with no verification against the base branch, so auditing a tree that changes them would
+   run the code under review while the prompt describes a read-only run. `cross-model-review` handles the same
+   risk with its `DISPATCHER_TOUCHED` disclosure.
 4. If `reviewer_backend.enabled` is not `true` → Claude-native.
 5. Otherwise, look up `per_reviewer[<reviewer>]`, falling back to `default`. If the result is
    `claude` → Claude-native.
@@ -122,12 +127,15 @@ live-captured on Codex 0.162.1 (2026-10-12, issue #545), `codex exec` exited 0 a
 said process creation failed, so detection relies on `codex-review-bridge`'s zero-findings
 `isTotalInspectionFailure` heuristic (which matches that phrasing) rather than on `codex-exec.mjs`'s
 non-zero-exit stderr classification; a non-zero variant is classified as `isolation_profile_unavailable`
-from its `ERROR` lines. Both are free-text heuristics tied to Codex's current wording (the error
+from its `ERROR:` lines or from a numeric-coded tracing spawn error (the older 0.146/0.147 shapes recorded in
+`KNOWN_ISSUES.md` have no timestamp and put the code on a following line, so the non-zero-exit path does not
+recognize them and they fail closed to `non_zero_exit`). Both are free-text heuristics tied to Codex's current wording (the error
 changed between 0.146, 0.147 and 0.162.1), so the fallback below triggers automatically only while
 that wording stays recognized — it does not verify isolation first. This is real protection, but a fragile guarantee: if a
 future Codex CLI version silently degrades instead of failing loudly on an unsupported platform,
-this resolver would not catch it. Every dispatch on an unqualified platform costs one real (harmless
-— it fails before doing anything) subprocess attempt, not a skipped one; opting into the
+this resolver would not catch it. Every dispatch on an unqualified platform costs one real (safe,
+but not free: on 0.162.1 it is a full model turn that ends with a failed-process note) subprocess attempt, not a
+skipped one; opting into the
 Windows-guarded path below does not skip that attempt, because that path is only ever tried after it.
 
 ## Windows-Guarded Execution Profile (optional, independent gate)
@@ -141,26 +149,32 @@ back to Claude on that platform.
 **When this profile is attempted — reactive only, and never without its own confirmation.** Never
 first. Only when both hold: (a) the `read-only` attempt for this reviewer returned
 `isolation_profile_unavailable`, by either route in the previous section; and (b) the guardrails
-opt-in resolves enabled. Before calling the script below, ask a second `AskUserQuestion` — the
+opt-in resolves enabled. This resolver never reads the opt-in itself (the script checks it, and holds the
+local-override trust check): it first calls the script below once with `--dry-run true` and otherwise the
+same arguments, which runs the whole guard chain including the policy-enabled check and skips only the real
+`codex` call. Any typed failure from that dry run (`guardrails_disabled` included) routes the reviewer to
+Claude-native with no prompt. Only after a passing dry run, and before the real call, ask a second
+`AskUserQuestion` — the
 First-Send gate above does not cover this profile, because it describes read access only. Name the
 reviewer(s) and target path(s), and state plainly that this profile has **no sandbox**: the Codex
 process can read, write and execute anything this user account can reach — files and commands
 anywhere on this machine, not only under the repository root, because nothing enforces that root —
-bounded only by best-effort, not enforced, guardrails. Options: "Run without a sandbox for this
+with network access (so credentials such as `~/.codex/auth.json` or `~/.ssh` are reachable) and steered by
+the plugin content under audit, bounded only by best-effort, not enforced, guardrails. Options: "Run without a sandbox for this
 run" / "Stay Claude-native for this run". Ask once per audit run; the answer applies to every
 remaining reviewer in that run, and declining routes each of them to Claude-native (Codex Path
-step 8). The trigger in (a) is a free-text heuristic, which is why a live human sits between it and
+step 8). If the question cannot be asked (a headless or subagent context, or the tool is unavailable),
+treat that as declined, never as consent. The trigger in (a) is a free-text heuristic, which is why a live human sits between it and
 `danger-full-access`. (`cross-model-review` differs on purpose: its own First-Send Confirmation
-already discloses the no-sandbox fallback up front, covering both outcomes, so it has no second
-prompt.)
+already discloses the no-sandbox fallback up front, covering both outcomes, for a run the user started
+themselves, so it has no second prompt; its disclosure should state the same account-wide reach.)
 
 **Steps 0 and 1 still apply regardless of profile** (First-Send Confirmation; reviewer-name
-validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward, this
-skill does the work itself** — the caller must still complete step 2 (source the trusted
+validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward,
+`codex-windows-guardrails` does the work itself** — the caller must still complete step 2 (source the trusted
 instruction body from `agents/<reviewer>.md`) and step 3 (write it to the scratchpad) before
 invoking it, exactly as for the `read-only` profile; steps 4 (`authentication_mode`) through 6
-(bridge invocation) are what this skill's own script performs internally, not skipped. `codex-
-review-bridge` itself unconditionally refuses `--execution-profile danger-full-access` (a correct,
+(bridge invocation) are what that skill's own script performs internally, not skipped. `codex-review-bridge` itself unconditionally refuses `--execution-profile danger-full-access` (a correct,
 unchanged safety invariant for every other caller); routing through it for this profile would always
 fail. Instead, after completing steps 0-3, invoke the scoped
 `Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)`
@@ -252,7 +266,9 @@ existing reactive-fallback behavior in the previous section is unchanged.
    `bridge-invoke.mjs` ever produces its own typed-failure JSON — treat this the same as the
    bridge's own `cli_unavailable` category for fallback purposes, not as a missing/unhandled case.
 8. On any typed failure (or the codex-kit-not-installed case above) → fall back to the Claude-native
-   `Agent()` dispatch for this reviewer. Record the category once as a note on this dispatch's
+   `Agent()` dispatch for this reviewer — except `isolation_profile_unavailable` when the Windows-Guarded
+   conditions hold (see that section: opt-in enabled per a passing dry run, plus the user's confirmation),
+   which may take the guarded path instead; a failure on that path folds back into this step. Record the category once as a note on this dispatch's
    `coverage` entry in the Report Revision — not stamped on individual findings, since a fallback
    isn't a property of any one finding.
 9. On success → run the Adapter below, then proceed to Step 5's existing normalization same as any

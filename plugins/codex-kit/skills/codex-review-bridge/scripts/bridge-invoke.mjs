@@ -256,9 +256,15 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // process launcher failed with Windows error 1920" phrasing, which
 // doesn't put "start" immediately next to "process") still matches via
 // the process-create/start alternative below, now tolerant of a short
-// run of words between the modal+verb and "process" (`[^.]{0,40}?`) so
-// it doesn't require exact adjacency -- or via the CreateProcessAsUserW
-// literal.
+// run of words between the modal+verb and "process" so it doesn't require
+// exact adjacency -- or via the CreateProcessAsUserW literal. That run of
+// words may not cross a clause boundary (`;`, `,`, a newline, or a period
+// followed by whitespace -- a period inside a filename such as pwsh.exe is
+// fine), so an unrelated clause ("Failed to create a temp file; the process
+// doc was not reviewed") cannot satisfy it, and both straight and curly
+// apostrophes are accepted (models emit U+2019). The 0.162.1 phrasing
+// ("process creation failed") matches neither of these, which is why it has
+// its own alternative further down.
 //
 // Known, accepted residual limitation (Codex live finding, issue #78,
 // round 3 of narrowing this same pattern): the bare `CreateProcessAsUserW`
@@ -268,8 +274,9 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // for one file (e.g. running a linter on it) could fail this way while
 // the rest of a genuinely clean review still produced zero findings,
 // getting misreclassified as a total failure. Deliberately NOT narrowed
-// further: every real total-failure case observed live so far (three
-// separate dispatches) was an unambiguous, genuine total failure, and two
+// further: every real total-failure case observed live at the time (three
+// separate dispatches; the later Codex 0.162.1 capture was genuine too) was
+// an unambiguous, genuine total failure, and two
 // prior narrowing rounds each just relocated the same fundamental problem
 // (a free-text heuristic can't perfectly distinguish "nothing was
 // reviewed" from "one discretionary subprocess call failed") to a
@@ -296,16 +303,17 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // creation failed" -- no create/start verb before "process", no
 // CreateProcessAsUserW. "process creation failed" is therefore matched as its
 // own alternative, but only as the stated cause ("because process creation
-// failed", or followed by punctuation / the very end of the note -- there is no `m`
-// flag, so `$` is the end of the whole note and a wrapped topical note cannot match
-// at a mid-note line break; a wrapped REAL note is still caught through "because"),
+// failed", or followed by `; : , . ( -`, the word "with", or the very end of the note --
+// there is no `m` flag, so `$` is the end of the whole note and a wrapped topical note
+// cannot match at a mid-note line break; a wrapped REAL note is still caught through
+// "because"; a topical note whose sentence ends right after the phrase still matches),
 // never inside a topical note about the code under review ("did not exercise the
 // process creation failed handling", or any "process creation error" wording, which
 // is dropped entirely). That topical-vocabulary residual -- a PR touching subprocess
 // code can make a model write nearby wording -- is accepted alongside the totality
 // caveat above; so is the converse, a real note that wraps right after the phrase
 // without "because" or punctuation, which is read as clean.
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).

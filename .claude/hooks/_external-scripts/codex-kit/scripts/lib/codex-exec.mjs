@@ -37,7 +37,7 @@ const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
 // denied" / "access is denied": those also appear in non-isolation errors (an
 // API 403 "permission denied for model ...").
 export const ISOLATION_FAILURE_PATTERN =
-  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)|failed to create unified exec process:\s*helper_/i;
+  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]{0,200}sandbox|(?:sandbox|bwrap)[^\n]{0,200}(?:permission denied|access is denied)|failed to create unified exec process:\s*helper_/i;
 
 // The slice of stderr the failure patterns are tested against -- not the whole
 // stream. Once a session starts, Codex prints a banner ("sandbox: read-only",
@@ -48,8 +48,9 @@ export const ISOLATION_FAILURE_PATTERN =
 // its `ERROR:` lines, unindented; the echoed prompt's diff lines are always
 // prefixed, so only the unindented ones count -- from anywhere in the stream,
 // since output after the error can run past any fixed window. Known, accepted
-// residual: the model's own tool output (a file it `cat`s) is printed unindented
-// too, so a column-0 `ERROR:` line inside a file Codex reads can count; that
+// residual: the model's own tool output (a file it `cat`s), and probably its own
+// streamed narration (unverified), is printed unindented too, so a column-0
+// `ERROR:` line inside a file Codex reads can count; that
 // existed before issue #545 and only matters when the run also exits non-zero.
 // Codex's tracing-log lines (`<ISO-8601 Z timestamp> ERROR <target>: ...`, real
 // Windows Codex 0.162.1 stderr, issue #545) are a separate, narrower scope: they
@@ -75,6 +76,9 @@ const TRACING_ERROR_LINE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ERROR /;
 // `CreateProcessAsUserW` alone is not enough either: a tracing line can quote a command that merely
 // names the API or even the phrase (`rg "CreateProcessAsUserW failed" docs`), so the real error's
 // numeric code must follow it (`CreateProcessAsUserW failed: 1920`, KNOWN_ISSUES.md).
+// This stops incidental matches, not a model that deliberately picks a failing command whose text
+// contains the exact string: the real control against that is the human gate in front of any
+// no-sandbox run (plugin-auditor's second confirmation, cross-model-review's up-front consent).
 const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW failed:\s*\d+|failed to create unified exec process:\s*helper_/i;
 
 // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
