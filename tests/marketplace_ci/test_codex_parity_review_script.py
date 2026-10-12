@@ -516,3 +516,29 @@ def test_the_required_result_keys_are_still_written_by_the_entry_point():
     module = _load_module()
     for key in ("mode", "blocking", *module._RESULT_LIST_KEYS):
         assert f'"{key}":' in source, key
+
+
+def test_parse_ci_settings_reads_the_real_workflow():
+    # The wrapper depends on two step names in the real workflow; a rename must fail here, not
+    # silently turn every run into "could not read the timeout and Codex pin".
+    root = Path(__file__).resolve().parents[2]
+    text = (root / ".github/workflows/marketplace-ci.yml").read_text("utf-8")
+    settings = _load_module().parse_ci_settings(text)
+    assert settings is not None
+    timeout_ms, pin = settings
+    assert timeout_ms.isdigit()
+    assert pin.count(".") == 2
+
+
+def test_a_missing_output_directory_is_refused_before_dispatching(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path, output_name="not-created/out.json")
+    assert result.returncode == 2
+    assert "missing or not writable" in result.stdout
+    assert args == ""  # nothing was dispatched, so no expensive run was wasted
+
+
+def test_an_output_directory_that_is_a_file_is_refused(repo, tmp_path):
+    (tmp_path / "plain-file").write_text("x", encoding="utf-8")
+    result, args, _ = _run(repo, tmp_path, output_name="plain-file/out.json")
+    assert result.returncode == 2
+    assert args == ""

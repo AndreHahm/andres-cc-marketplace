@@ -15,8 +15,8 @@ settings that must match CI from the workflow file itself, so they cannot drift:
     and that is stated in the output.
 
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
-malformed or contradictory result file, or a pre-existing --output path), 3 not applicable
-(this checkout has no marketplace CI to mirror).
+malformed or contradictory result file, and a pre-existing or unwritable --output path), 3 not
+applicable (this checkout has no marketplace CI to mirror).
 
 This repository's own convention only.
 """
@@ -196,6 +196,11 @@ def main() -> int:
 
     if (output.parent.resolve() / output.name).is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
+        return 2
+    # The child writes its result only after the whole (10 to 40 minute) review, so a missing or
+    # unwritable directory must be caught here, not at the end of an expensive run.
+    if not output.parent.is_dir() or not os.access(output.parent, os.W_OK):
+        print(f"PARITY: the directory for --output ({output.parent}) is missing or not writable.")
         return 2
     # Never delete or overwrite anything: a pre-existing path (file, directory or symlink, even a
     # dangling one) is refused. The caller names a fresh file per run, so no stale result exists.

@@ -136,3 +136,5 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   symlink) → exit 2, nothing deleted or overwritten, nothing dispatched; a retry with a fresh file name proceeds
 - A run that exits 0 or 1 but whose result is not the full payload (non-string `mode`, missing list fields, only an
   `error`) → exit 2
+- `--output`'s directory is missing, not a directory, or not writable → exit 2 before anything is dispatched (the
+  result is only written after the whole review); the real `marketplace-ci.yml` still parses (drift test)
