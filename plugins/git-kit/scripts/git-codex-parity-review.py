@@ -166,7 +166,8 @@ def main() -> int:
     if local_version != pin:
         print(f"PARITY WARNING: local Codex CLI {local_version} differs from CI's pin {pin}.")
 
-    # CI diffs against the PR's current base; a stale local origin/main would widen the local diff.
+    # CI reviews against the PR's current base tip; a stale local origin/main would mean older
+    # reviewer instructions.
     # The explicit refspec updates the tracking ref this script reads next, whatever the remote's
     # configured fetch refspec is (a plain `git fetch origin main` only does so under the default).
     fetch = _run(
@@ -176,12 +177,16 @@ def main() -> int:
     if fetch is None or fetch.returncode != 0:
         print("PARITY WARNING: could not fetch origin/main; the local ref may be stale.")
 
-    merge_base = _run(["git", "merge-base", "origin/main", "HEAD"])
-    base_sha = merge_base.stdout.strip() if merge_base and merge_base.returncode == 0 else ""
+    # CI passes the PR's base *tip* (github.event.pull_request.base.sha), and the entry point reads
+    # each reviewer's .codex/agents/<name>.toml from exactly that SHA, so a merge-base would run
+    # stale reviewer instructions on a long-lived branch. The entry point takes its own three-dot
+    # diff.
+    tip = _run(["git", "rev-parse", "--verify", "origin/main^{commit}"])
+    base_sha = tip.stdout.strip() if tip and tip.returncode == 0 else ""
     if not base_sha:
-        print("PARITY: could not resolve the merge base with origin/main.", file=sys.stderr)
+        print("PARITY: could not resolve origin/main.", file=sys.stderr)
         return 2
-    print(f"PARITY: base {base_sha[:12]} (merge-base with origin/main).")
+    print(f"PARITY: base {base_sha[:12]} (tip of origin/main, as CI's base.sha).")
 
     touched = tier1_touches(base_sha)
     if touched is None:
@@ -296,7 +301,15 @@ def tier1_touches(base_sha: str) -> list[str] | None:
                 break
         else:
             return None
-    except (SyntaxError, ValueError, AttributeError, IndexError):
+    except (
+        SyntaxError,
+        ValueError,
+        AttributeError,
+        IndexError,
+        TypeError,
+        RecursionError,
+        MemoryError,
+    ):
         return None
     diff = _run(["git", "diff", "--name-only", f"{base_sha}...HEAD", "--", *paths])
     if diff is None or diff.returncode != 0:
