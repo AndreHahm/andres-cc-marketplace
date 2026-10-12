@@ -296,7 +296,8 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // creation failed" -- no create/start verb before "process", no
 // CreateProcessAsUserW. "process creation failed" is therefore matched as its
 // own alternative, but only as the stated cause ("because process creation
-// failed", or followed by punctuation / end of note), never inside a topical
+// failed", or followed by punctuation / the end of a line -- the `m` flag makes `$`
+// match at any line end, so a multi-line note can match mid-note), never inside a topical
 // note about the code under review ("did not exercise the process creation
 // failed handling", or any "process creation error" wording, which is dropped
 // entirely). That topical-vocabulary residual -- a PR touching subprocess code
