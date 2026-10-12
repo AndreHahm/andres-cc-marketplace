@@ -482,9 +482,24 @@ def _unlink_in_dir(directory: str, name: str) -> None:
     os.remove(path)
 
 
+def _is_link_or_junction(path: str) -> bool:
+    """True when ``path`` itself is a symlink or a Windows reparse point (junction)."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return stat.S_ISLNK(info.st_mode) or bool(
+        reparse and getattr(info, "st_file_attributes", 0) & reparse
+    )
+
+
 def purge(scratch_root: str, path_str: str) -> dict:
     """Delete one intake-generated scratch file, only inside ``<scratch_root>/wmgt-intake``."""
-    expected_dir = os.path.realpath(os.path.join(scratch_root, SCRATCH_DIR_NAME))
+    intake_dir = os.path.join(scratch_root, SCRATCH_DIR_NAME)
+    if _is_link_or_junction(intake_dir):
+        raise HashError(f"refused: <scratch-root>/{SCRATCH_DIR_NAME} is a link")
+    expected_dir = os.path.realpath(intake_dir)
     path = os.path.abspath(path_str)
     if os.path.realpath(os.path.dirname(path)) != expected_dir:
         raise HashError(f"refused: file is not directly inside <scratch-root>/{SCRATCH_DIR_NAME}")
