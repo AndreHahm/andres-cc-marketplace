@@ -16,9 +16,10 @@
 // The banner and error shapes below are real Codex 0.162.1 stderr for an
 // unservable model. The capacity line is the text from the issue, and the
 // CreateProcessAsUserW / bubblewrap lines are synthetic. The "REAL WINDOWS"
-// section further down is the one exception: stderr captured live from Codex
-// 0.162.1 on Windows 11 (2026-10-12, issue #545), paths and session id
-// anonymized. That run exited 0 -- Windows sandbox failure is not a non-zero
+// section further down is the one exception: its tracing and exec lines are
+// copied from stderr captured live from Codex 0.162.1 on Windows 11 (2026-10-12,
+// issue #545), paths and session id anonymized; its banner reuses the synthetic
+// one above. That run exited 0 -- Windows sandbox failure is not a non-zero
 // exit there -- so classifyNonZeroExit is exercised on it as the stderr a
 // non-zero variant would carry; the zero-exit path is covered by
 // codex-review-bridge-total-inspection-failure.mjs.
@@ -237,6 +238,30 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
     "a timestamped tracing line carrying a landlock/bwrap/seccomp repo path is not isolation (security review M1)",
     `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=read failed: src/landlock_policy.rs bwrap seccomp\n${CAPACITY}`,
     NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a timestamped tracing line carrying a command that mentions 'sandbox error' is not isolation (review M1)",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=exec_command failed: rg "sandbox error" src\n${CAPACITY}`,
+    NON_ZERO_EXIT
+  );
+  {
+    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed\nEnd.";
+    expectCategoryWithPrompt(
+      "an LF-built prompt echoed back with CRLF line endings is still stripped (Windows)",
+      `${REAL_WINDOWS_BANNER}\r\n${prompt.replace(/\n/g, "\r\n")}\r\n\r\n${CAPACITY}\r\n`,
+      prompt,
+      NON_ZERO_EXIT
+    );
+  }
+  expectCategory(
+    "CRLF stderr: the real tracing spawn-failure line is still recognized",
+    `${REAL_WINDOWS_BANNER}\r\nreview\r\n\r\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process\r\n`,
+    ISOLATION_PROFILE_UNAVAILABLE
+  );
+  expectCategory(
+    "documented residual: a column-0 tracing-shaped line from the model's own tool output still counts",
+    `${REAL_WINDOWS_BANNER}\nexec\ncat app.log\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed\n${CAPACITY}`,
+    ISOLATION_PROFILE_UNAVAILABLE
   );
   expectCategory(
     "a column-0 'ERROR ' line without a timestamp is not trusted",

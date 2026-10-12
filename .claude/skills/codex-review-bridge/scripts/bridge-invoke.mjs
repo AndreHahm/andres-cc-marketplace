@@ -301,7 +301,7 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // entirely). That topical-vocabulary residual -- a PR touching subprocess code
 // can make a model write nearby wording -- is accepted alongside the totality
 // caveat above.
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.]|$)/i;
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/im;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).
