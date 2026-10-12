@@ -43,7 +43,7 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 
 After a fix, commit it the way SKILL.md's Pre-flight step 2 already does (that step carries the skip-Auto-PR and
-skip-push instructions), then re-run step 4.5 (and step 4 if the fix is non-trivial).
+skip-push instructions), then re-run step 4 on the updated diff (unless the user bypasses it) and step 4.5 again.
 
 ## Bypass
 

@@ -111,7 +111,8 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
 - Egress question is asked again on a re-run after a fix, not only on the first run
 - `--output` pointing inside the checkout → refused with exit 2 (treated as "could not run"), never written
-- A timed-out run → the whole process group is killed, so no `codex` process lingers
+- A timed-out run → on POSIX the whole process group is killed, so no `codex` process lingers; on other platforms only the
+  direct child is killed and a stray `codex` process may linger (the reference states this limit)
 - `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) → step 4.5 runs `.claude/scripts/git-codex-parity-review.py`
   from the checkout root, matching the second grant, instead of failing with exit 127
 - A stalled `git fetch` / `gh` / `codex --version` → bounded by a 60 s timeout, then a warning or exit 2, never a hang
@@ -135,3 +136,9 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   `error`) → exit 2
 - `--output`'s directory is missing, not a directory, or not writable → exit 2 before anything is dispatched (the
   result is only written after the whole review); the real `marketplace-ci.yml` still parses (drift test)
+- Step 4's clean path and its re-review loop both route to step 4.5, never straight to the push (step 1); the smoke test
+  fails if "proceed to step 1" returns
+- After a step 4.5 fix, step 4 is re-run on the updated diff unless the user bypasses it, then step 4.5 again
+- The wrapper passes the fetched `origin/main` tip as `--base-sha` (CI's `base.sha`), not the merge-base, so a long-lived
+  branch is reviewed with the current reviewer instructions
+- A malformed Tier-1 list at the base (mixed types, an unhashable element) → the "could not check" warning, run proceeds

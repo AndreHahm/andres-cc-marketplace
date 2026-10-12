@@ -103,7 +103,7 @@ Before creating a PR, check for uncommitted changes:
    discarding a "yes" answer would still be overriding that decision, just silently, so the question
    itself is skipped rather than answered on the user's behalf. `commit`'s own step 16 carries the
    matching skip clause for this nested case — see `plugins/git-kit/skills/commit/SKILL.md`. Step 1
-   below is the only push this flow performs, and only once step 4 has cleared. **If this run ends
+   below is the only push this flow performs, and only once steps 4 and 4.5 have cleared. **If this run ends
    without ever reaching step 1** (the session stops, or the user doesn't resolve an invalid bypass
    reason) **after this step already committed work, say so plainly** — the branch has local commits
    that are not yet on the remote, which is a real state change from where the run started, not a
@@ -204,7 +204,7 @@ Before creating a PR, check for uncommitted changes:
    - `cross-model-review` is report-only and ends by asking the user which findings, if any, to fix; it
      never edits code itself. Once it returns control here — findings addressed, or the user explicitly
      declines to act on them — **re-run `git status`.**
-     - If the gate produced no edit (clean read), proceed directly to step 1 below.
+     - If the gate produced no edit (clean read), proceed to step 4.5 below (never straight to step 1).
      - If the gate produced any edit (an accepted finding was fixed — applied as a normal edit by this
        session, not by `create-pr` or the gate itself, neither of which edits code), that edit is now
        uncommitted work: re-invoke `Skill(commit)`, passing the same two explicit instructions
@@ -222,7 +222,7 @@ Before creating a PR, check for uncommitted changes:
        pass, not about the gate ever running out of things to raise. Repeat this re-commit-then-re-review
        loop for as long as the gate keeps producing newly-accepted edits; once a pass produces no
        newly-accepted edit (every finding raised on that pass — new, or a repeat of an earlier one —
-       was declined, or none were raised), proceed to step 1. **This loop always has an exit available
+       was declined, or none were raised), proceed to step 4.5. **This loop always has an exit available
        on demand: declining every
        finding on any single pass ends it immediately** — it is not possible to get stuck in it against
        the user's wishes.

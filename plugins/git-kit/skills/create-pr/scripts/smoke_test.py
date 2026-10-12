@@ -247,12 +247,33 @@ def check_shared_protocol_writes_marker():
     )
 
 
+def check_step_4_routes_to_step_4_5():
+    # Step 4's exits used to say "proceed to step 1" (the push); with step 4.5 added, an agent
+    # following those literally skips the CI-parity gate. Guard against the old phrasing returning.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    stale = [
+        phrase
+        for phrase in (
+            "proceed directly to step 1",
+            "proceed to step 1",
+            "only once step 4 has cleared",
+        )
+        if phrase in text
+    ]
+    if stale:
+        return False, f"step 4 exits bypass step 4.5: {stale}"
+    if "proceed to step 4.5" not in text:
+        return False, "step 4's exits no longer route to step 4.5"
+    return True, "step 4's clean and re-review exits route to step 4.5, never straight to the push"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
     check_bash_grants,
     check_step_sequence,
     check_shared_protocol_writes_marker,
+    check_step_4_routes_to_step_4_5,
 ]
 
 

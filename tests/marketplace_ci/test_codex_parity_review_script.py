@@ -297,7 +297,7 @@ def test_base_is_printed_and_a_missing_origin_only_warns(repo, tmp_path):
 
 
 @pytest.mark.parametrize("default_refspec", [True, False], ids=["default-refspec", "no-refspec"])
-def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path, default_refspec):
+def test_origin_main_is_fetched_before_the_base_is_taken(repo, tmp_path, default_refspec):
     def git(*args: str) -> str:
         done = subprocess.run(
             ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
@@ -545,3 +545,46 @@ def test_an_output_directory_that_is_a_file_is_refused(repo, tmp_path):
     result, args, _ = _run(repo, tmp_path, output_name="plain-file/out.json")
     assert result.returncode == 2
     assert args == ""
+
+
+def test_base_sha_is_the_origin_main_tip_not_the_merge_base(repo, tmp_path):
+    # CI passes base.sha (main's tip); the entry point reads reviewer TOMLs from exactly that SHA.
+    def git(*args: str) -> str:
+        done = subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return done.stdout.strip()
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    git("remote", "add", "origin", str(bare))
+    fork_point = git("rev-parse", "HEAD")
+    _commit_files(repo, {"main-moved.txt": "x"})
+    tip = git("rev-parse", "HEAD")
+    git("push", "-q", "origin", "HEAD:refs/heads/main")
+    git("reset", "-q", "--hard", fork_point)
+    git("update-ref", "refs/remotes/origin/main", fork_point)  # stale local ref
+    _commit_files(repo, {"branch-work.txt": "y"})  # the branch diverges from the new main tip
+    assert git("merge-base", tip, "HEAD") == fork_point != tip
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert f"--base-sha {tip}" in args
+    assert fork_point not in args
+
+
+@pytest.mark.parametrize(
+    "tier1_source",
+    ["TIER1_FILES = frozenset({1, 'a'})\n", "TIER1_FILES = frozenset({[1]})\n"],
+    ids=["mixed-types", "unhashable-element"],
+)
+def test_a_malformed_tier1_list_only_warns(repo, tmp_path, tier1_source):
+    _commit_files(repo, {"scripts/marketplace_ci/trust_boundary.py": tier1_source})
+    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, check=True)
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "could not check whether review-dispatch files changed" in result.stdout
+    assert args  # the run still happened
