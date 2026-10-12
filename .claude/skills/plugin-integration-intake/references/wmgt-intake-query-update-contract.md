@@ -3,7 +3,7 @@
 The `query` and `update` values of the envelope's `operation` field. Both are Linear only. Target resolution goes
 through `linear-work-management`. An update's submission file lives at `<scratchpad>/wmgt-intake/<batch-id>.json` in the
 session scratchpad (never in a repository) and is hashed with `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_batch_hash.py hash
-<file>`; this file states the rules specific to query and update; approval, chunking, purge and the pre-hash label step are in the batch contract. Like the batch
+<file>`; this file states the rules specific to query and update; the shared approval, chunking, purge and pre-hash label rules are loaded alongside it by SKILL.md. Like the batch
 path, this is prose-enforced: the limits below narrow what a calling plugin can do, they do not authenticate it.
 
 ## Query (read-only, structured dedup key, IDs only)
@@ -14,7 +14,7 @@ it cannot browse.
 
 - Envelope: `operation: "query"`, `keys` (array of 1 to 50 strings) in place of `content`/`records`, and `suggested_mapping.linear_target` as an `owner/repo` slug (plus optional `test_run`).
 - **Each key must be a structured dedup key** of the form `<owner/repo>|<source-ref>|<fingerprint>`, where the first part equals the **resolved** slug (both lowercased before comparing, since workledger-kit stores the repository as given), `<source-ref>` is 1 to 100 characters with no `|`, CR or LF (workledger-kit allows any other character there, including spaces and non-ASCII paths), and `<fingerprint>` matches `^[A-Za-z0-9._-]{8,64}$` (workledger-kit's own fingerprint is 8 hex characters). A key that does not fit, or whose first part is a different repository, makes the envelope malformed. A free-text phrase, a short string or a wildcard can never be queried.
-- Resolve the slug through `linear-work-management` for `linear.read` (its `wmgt-linear-slug-resolution.md` reference defines the procedure). Nothing is written, so a query uses the caller's `test_run` to pick the environment. Query needs `linear.read` `verified` with a non-null `verified_at`.
+- Resolve the slug through `linear-work-management` for `linear.read` (that skill owns the procedure). Nothing is written, so a query uses the caller's `test_run` to pick the environment. Query needs `linear.read` `verified` with a non-null `verified_at`.
 - **No live approval**, because nothing is written.
 - Run the lookup through `linear-work-management`: search the resolved team using the **full key string as the search term** with a small result limit, then keep a result **only if the first line of its description is `dedup_key: <key>`** (compared after stripping trailing whitespace and `\r`, as workledger-kit's own reader does, and case-insensitively on the repository part; the tracking-line shape is in its `wlgr-open-item-format.md`). A key in a title, a comment or later in the description is not a match, and a fuzzy search hit that fails this check is "no match".
 - Return, per key: `{key, match_count, ids}`. `ids` holds at most 3 stable Issue IDs. **No titles, descriptions, statuses or any other field are returned**; a caller that needs more reads the Issue through `linear-work-management` with the user present.
@@ -33,7 +33,7 @@ is what makes the match exact; if it cannot be applied, treat the result as "no 
 
 A caller asks to change existing Issues. It is a write, so it takes the full approval and the hash binding.
 
-- Envelope: `operation: "update"`, `records` array of 1 to 1000, each exactly `{id, set}` where `id` is a stable Linear Issue ID and `set` holds only these fields from the Issue table in `linear-work-management`'s entity-fields reference: `title`, `status`, `labels`, `priority`, `owner` (labels in `set.labels` must already exist on the team, as in the batch contract's pre-hash step). Any other key in a record or in `set` makes the envelope malformed, including a caller-supplied `before` (the snapshot always comes from intake's own read), `team`, `dependencies`, `cycle`, the accumulating arrays `disposition-history`, `open-item-source` and `git-github-evidence`, and **`description`**.
+- Envelope: `operation: "update"`, `records` array of 1 to 1000, each exactly `{id, set}` where `id` is a stable Linear Issue ID and `set` holds only these fields from `linear-work-management`'s Issue table: `title`, `status`, `labels`, `priority`, `owner` (labels in `set.labels` must already exist on the team, as in the batch contract's pre-hash step). Any other key in a record or in `set` makes the envelope malformed, including a caller-supplied `before` (the snapshot always comes from intake's own read), `team`, `dependencies`, `cycle`, the accumulating arrays `disposition-history`, `open-item-source` and `git-github-evidence`, and **`description`**.
 - `description` is not updatable here, because an Issue's description holds its tracking line and evidence block. Description edits stay a direct request to `linear-work-management` with the user present.
 - Resolve the slug through `linear-work-management` for `linear.write` (the same reference). The caller's `test_run` picks the environment only as intake builds the submission file; the delegated write then takes the environment only from that file.
 - **Scope check per record:** read each Issue through `linear-work-management` and confirm it belongs to the resolved team. An Issue in any other team is rejected as out of scope; an update never moves an Issue between teams.
@@ -47,4 +47,4 @@ A caller asks to change existing Issues. It is a write, so it takes the full app
 ## Not in this contract
 
 Native PR links, due dates, description edits, Report page-content blocks, classification requests and Notion
-batches. Callers needing them keep their plan-mode fallback (see workledger-kit's `wlgr-kit-dependencies.md`).
+batches. Callers needing them keep their plan-mode fallback (see workledger-kit's dependency notes).

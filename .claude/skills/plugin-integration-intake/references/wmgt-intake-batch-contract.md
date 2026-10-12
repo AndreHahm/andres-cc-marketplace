@@ -27,7 +27,7 @@ creation.
 `suggested_mapping.linear_target` is an `owner/repo` slug. This skill holds no `git ls-files` grant and cannot run
 the Local Override trust check in the workmanagement-kit plugin root's `FOUNDATION_CONTRACTS.md`, so it **does not read the override itself**.
 It asks `linear-work-management` to resolve the slug, which runs the trust check and returns the team and environment,
-or a rejection. That skill's `wmgt-linear-slug-resolution.md` reference is the only full statement of the rules
+or a rejection. That skill owns the rules
 (normalization, exact key, `verified` operation, the environment's team, the `team_ids` check). Stop with a structured
 handoff at the first rejection; never fuzzy-match and never default to `production_team_id`.
 
@@ -39,7 +39,7 @@ caller-asserted, is frozen into the hashed file and is shown in bold in the prev
 For `query`, `update` and a `records` batch, a `linear_target` that is not an `owner/repo` slug is an ambiguous
 target (structured handoff). A single-record `create` with `content` and a slug `linear_target` is resolved the same way
 (the environment from `test_run`, shown in bold in that record's own preview); one with any other `linear_target` form
-keeps the handling in `intake-payload-schema.md`'s validation rules.
+keeps the handling SKILL.md's payload validation gives it.
 
 ## Batch flow, in order
 
