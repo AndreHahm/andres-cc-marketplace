@@ -435,7 +435,8 @@ def pep440_satisfies(version, spec):
     return True if results and all(r is True for r in results) else None
 
 
-# Each version segment is 1 to 9 digits or one wildcard; a mixed segment such as 1.xx is not a range we read.
+# Each version segment is 1 to 9 digits or one wildcard; a mixed segment such as 1.xx is not a range
+# we read.
 NPM_SEGMENT = r"(?:[0-9]{1,9}|[xX*])"
 NPM_TOKEN_RE = re.compile(
     r"(>=|<=|>|<|=|\^|~)?v?(" + NPM_SEGMENT + r"(?:\." + NPM_SEGMENT + r"){0,2})"
@@ -751,7 +752,8 @@ def check_npm(meta, lock):
         if not locked or not isinstance(wanted, str):
             continue
         _judge(wanted, dependency, locked, [npm_satisfies(v, wanted) for v in locked], verdict)
-    # `engines` needs the Node version we run on, which is not known here. It is outside the lockfile
+    # `engines` needs the Node version we run on, which is not known here. It is outside the
+    # lockfile
     # check, so it is reported on its own and does not turn a version with no peer conflict unknown.
     verdict["engines_not_checked"] = bool(meta.get("engines"))
     return verdict
@@ -781,7 +783,10 @@ def version_meta(fetch, cache, eco, name, version):
 
 
 def compatibility(fetch, cache, eco, name, version, lock):
-    """Whether VERSION's declared constraints fit the lockfile: status compatible/incompatible/unknown."""
+    """Whether VERSION's declared constraints fit the lockfile.
+
+    The status is compatible, incompatible or unknown.
+    """
     if eco not in LOCK_FOR:
         return {"status": "unknown", "reason": "no dependency metadata for this ecosystem"}
     if lock is None:
@@ -796,7 +801,9 @@ def compatibility(fetch, cache, eco, name, version, lock):
     if verdict["ambiguous"]:
         return {
             "status": "unknown",
-            "reason": "a dependency is locked at several versions and only some satisfy the constraint",
+            "reason": (
+                "a dependency is locked at several versions and only some satisfy the constraint"
+            ),
             **verdict,
         }
     if verdict["checked"] == 0 and verdict["unevaluated"] > 0:
@@ -895,8 +902,9 @@ def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=N
 def comparable(a, b):
     """Whether risk() may rank results A and B against each other.
 
-    Ranking two non-empty advisory lists needs every advisory's severity to be recognized: an unknown
-    severity is not the lowest one, it is unknown. A list compared with an empty one needs no severity.
+    Ranking two non-empty advisory lists needs every advisory's severity to be recognized: an
+    unknown severity is not the lowest one, it is unknown. A list compared with an empty one needs
+    no severity.
     """
     if a["advisories"] and b["advisories"]:
         return all(item["severity"] in SEVERITY_RANK for item in a["advisories"] + b["advisories"])
