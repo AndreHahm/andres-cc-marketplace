@@ -411,6 +411,29 @@ def test_dispatch_redacts_token_shaped_secrets_from_a_failed_reviewers_error(
         assert r.error.endswith("[REDACTED] end")
 
 
+def test_dispatch_keeps_ordinary_bearer_prose_in_a_failed_reviewers_error(
+    monkeypatch, repo, change, dependency_index
+):
+    # "bearer" followed by an ordinary word is a diagnostic, not a credential
+    # (cross-model-review finding C3); only token-shaped values are redacted.
+    stderr = (
+        b"invalid Bearer authentication scheme; Missing bearer credentials in header; "
+        b"Authorization: Bearer abcdefghijkl; Bearer abcdefgh12345678WXYZ end"
+    )
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == (
+            "invalid Bearer authentication scheme; Missing bearer credentials in header; "
+            "[REDACTED]; [REDACTED] end"
+        )
+
+
 def test_dispatch_never_retries_malformed_bridge_output(
     monkeypatch, repo, change, dependency_index
 ):
