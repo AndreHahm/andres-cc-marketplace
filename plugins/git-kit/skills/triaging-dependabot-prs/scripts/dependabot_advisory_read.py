@@ -448,8 +448,14 @@ def _npm_token(have, token):
         return None
     op, text = match.group(1) or "=", match.group(2)
     nums = []
-    for part in text.split("."):
+    parts = text.split(".")
+    for index, part in enumerate(parts):
         if part in ("x", "X", "*"):
+            if any(later not in ("x", "X", "*") for later in parts[index + 1 :]):
+                # npm ignores a number that follows a wildcard (x.1 means *, 1.x.3 means 1.x); this
+                # module does not evaluate a range it would have to read that way, so it is unknown.
+                # Wildcards after a wildcard (1.x.x, x.x.x) say nothing new and are fine.
+                return None
             break
         nums.append(int(part))
     count = len(nums)
