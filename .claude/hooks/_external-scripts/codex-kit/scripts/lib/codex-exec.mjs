@@ -73,8 +73,9 @@ const TRACING_ERROR_LINE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ERROR /;
 // "unified exec process" alone is generic (fd/pty exhaustion fails the same way), so the `helper_`
 // marker of the sandbox helper seen in the one real capture is required; tied to that single sample.
 // `CreateProcessAsUserW` alone is not enough either: a tracing line can quote a command that merely
-// names the API (`rg "CreateProcessAsUserW" src`), so a failure must follow it.
-const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW failed|failed to create unified exec process:\s*helper_/i;
+// names the API or even the phrase (`rg "CreateProcessAsUserW failed" docs`), so the real error's
+// numeric code must follow it (`CreateProcessAsUserW failed: 1920`, KNOWN_ISSUES.md).
+const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW failed:\s*\d+|failed to create unified exec process:\s*helper_/i;
 
 // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
 // prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed

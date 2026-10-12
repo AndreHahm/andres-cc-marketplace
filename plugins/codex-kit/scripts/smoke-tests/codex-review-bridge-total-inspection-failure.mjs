@@ -96,7 +96,9 @@ console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final me
   for (const topical of [
     "Did not exercise the process creation error path at runtime",
     "Only reviewed the process creation error handling in spawn.c statically",
-    "Could not confirm whether process creation failed handling is covered by tests"
+    "Could not confirm whether process creation failed handling is covered by tests",
+    "Only reviewed the process creation failed\nhandling statically",
+    "Tests do not exercise the case where\nprocess creation failed\nin the spawn wrapper"
   ]) {
     check(
       `a topical note about the code under review does NOT match: "${topical}"`,
@@ -106,7 +108,7 @@ console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final me
   for (const [label, note] of [
     ["'because' branch alone", "Nothing ran because process creation failed in the sandbox"],
     ["punctuation branch alone, mid-note", "Every command failed: process creation failed, nothing ran"],
-    ["multi-line note", "`dir` could not run: process creation failed\nNo output line was produced."],
+    ["wrapped real note, via the 'because' branch", "`dir` could not run because process creation failed\nNo output line was produced."],
     ["followed by a parenthetical", "The tool call hit process creation failed (sandbox restriction)"],
     ["followed by 'with'", "Reviewer saw process creation failed with error 1920"]
   ]) {

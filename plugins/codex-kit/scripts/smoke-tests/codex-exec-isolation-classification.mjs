@@ -245,7 +245,7 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
     NON_ZERO_EXIT
   );
   {
-    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed\nEnd.";
+    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed: 1920\nEnd.";
     expectCategoryWithPrompt(
       "an LF-built prompt echoed back with CRLF line endings is still stripped (Windows)",
       `${REAL_WINDOWS_BANNER}\r\n${prompt.replace(/\n/g, "\r\n")}\r\n\r\n${CAPACITY}\r\n`,
@@ -260,13 +260,23 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
   );
   expectCategory(
     "documented residual: a column-0 tracing-shaped line from the model's own tool output still counts",
-    `${REAL_WINDOWS_BANNER}\nexec\ncat app.log\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed\n${CAPACITY}`,
+    `${REAL_WINDOWS_BANNER}\nexec\ncat app.log\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed: 1920\n${CAPACITY}`,
     ISOLATION_PROFILE_UNAVAILABLE
   );
   expectCategory(
     "a tracing line that merely quotes a command naming CreateProcessAsUserW is not isolation (review B)",
     `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=exec_command failed: rg "CreateProcessAsUserW" src\n${CAPACITY}`,
     NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a tracing line that quotes the phrase 'CreateProcessAsUserW failed' in a command is not isolation (round 3, both models)",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=exec_command failed: rg "CreateProcessAsUserW failed" docs\n${CAPACITY}`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "a real tracing 'CreateProcessAsUserW failed: <code>' line is still isolation",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::exec: windows sandbox: runner failed during SpawnChild: CreateProcessAsUserW failed: 1920\n${CAPACITY}`,
+    ISOLATION_PROFILE_UNAVAILABLE
   );
   expectCategory(
     "a generic unified-exec failure with no sandbox-helper marker is not isolation (fd/pty exhaustion)",
