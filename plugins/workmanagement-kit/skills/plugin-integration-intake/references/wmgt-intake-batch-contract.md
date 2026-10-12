@@ -175,6 +175,7 @@ never satisfies any of this. A calling plugin's own earlier approval never count
 - Whether the connector's `save_issue` would create an unknown label by name, and whether it accepts a string `priority`, has not been verified against the live connector; the label rule above avoids depending on the first, and the second is left to a follow-up check.
 - Linear has no conditional write, so a re-read before an update leaves a short race.
 - Symlink and hard-link refusal in the script is best effort on Windows.
+- `purge` deletes only a file an earlier `hash` registered. `hash` records each submission it hashes inside `<scratch-root>/wmgt-intake` in `manifest.wmgt` (name, hash, batch id; the newest 500 are kept), and a progress file is purgeable only when its hash and batch id match a registered submission, so an intake-named file that merely sits in the folder is not deleted. This is not authentication: anyone who can write to that folder can also write the manifest.
 - `purge` deletes relative to an open directory descriptor on POSIX, so swapping the file itself after the check cannot redirect the delete. A parent folder of the scratch root swapped between path resolution and opening it still can, and Windows has no descriptor-relative delete in Python at all, so there it checks the path and then removes it by name. Either way the worst case is deleting a regular file with an intake-generated name in another folder, and it needs a concurrent actor with write access to a parent of the scratch root.
 
 ## Result
