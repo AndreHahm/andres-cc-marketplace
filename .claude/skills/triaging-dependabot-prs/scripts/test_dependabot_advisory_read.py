@@ -1507,6 +1507,21 @@ class ConnectorReviewFixTests(unittest.TestCase):
         with self.assertRaises(mod.LookupFailed):
             mod.stable_releases(lambda url, **k: too_long, {}, "npm_and_yarn", "pkg")
 
+    def test_constraints_naming_post_or_epoch_versions_stay_unevaluated(self):
+        # the constraint check reads plain dotted numbers only; anything else is "could not tell"
+        for version, spec in (
+            ("1.0.post1", ">=1.0"),
+            ("1!2.0", ">=1.0"),
+            ("1.0", ">=1!2.0"),
+            ("1.0", ">=1.0.post1"),
+        ):
+            self.assertIsNone(mod.pep440_satisfies(version, spec), (version, spec))
+        lock = {"versions": {"dep": ["1.0"], "other": ["1.0.post1"]}, "requires_python": ">=3.9"}
+        meta = {"requires_python": None, "requires_dist": ["dep>=1!2.0", "other>=1.0"]}
+        verdict = mod.check_pypi(meta, lock)
+        self.assertEqual((verdict["checked"], verdict["unevaluated"]), (0, 2))
+        self.assertEqual(verdict["violations"], [])
+
     def test_a_final_release_too_long_to_order_makes_the_answer_unknown(self):
         too_long = "1." + "9" * (mod.MAX_ORDERED_VERSION_CHARS + 1)
         self.assertIsNone(mod.order_key("uv", too_long))
