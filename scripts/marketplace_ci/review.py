@@ -1439,8 +1439,17 @@ _SECRET_TOKEN_PATTERNS = re.compile(
 )
 
 
+# `NAME_PASSWORD=value`-shaped assignments. The bridge's own dotenv rule is
+# line-anchored, so once newlines are flattened to spaces it no longer matches;
+# this one replaces only the value token (up to the next space), keeping the name.
+_SECRET_ASSIGNMENT = re.compile(
+    r"(\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)\S+",
+    re.IGNORECASE,
+)
+
+
 def _redact_tokens(text: str) -> str:
-    return _SECRET_TOKEN_PATTERNS.sub("[REDACTED]", text)
+    return _SECRET_ASSIGNMENT.sub(r"\1[REDACTED]", _SECRET_TOKEN_PATTERNS.sub("[REDACTED]", text))
 
 
 def _report_error(text: str) -> str:

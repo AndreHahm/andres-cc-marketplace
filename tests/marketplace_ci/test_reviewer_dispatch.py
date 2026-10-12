@@ -451,6 +451,50 @@ def test_dispatch_redacts_a_fine_grained_github_token_from_a_failed_reviewers_er
         assert r.error == "crash with [REDACTED] in env"
 
 
+def test_dispatch_redacts_key_value_assignments_but_keeps_the_variable_name(
+    monkeypatch, repo, change, dependency_index
+):
+    # Mid-line NAME_PASSWORD=value assignments (cross-model-review finding M1): the bridge's
+    # dotenv rule is line-anchored, so flattened text needs its own value-only rule.
+    stderr = (
+        b"env dump DATABASE_PASSWORD=hunter2value then OPENAI_API_KEY=abc123 and key = plain end"
+    )
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == (
+            "env dump DATABASE_PASSWORD=[REDACTED] then OPENAI_API_KEY=[REDACTED] "
+            "and key = plain end"
+        )
+
+
+def test_a_failed_empty_review_redacts_an_assignment_in_the_first_inspection_limit(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope(
+                "Inconclusive", limits=["could not read DB_PASSWORD=hunter2value file"]
+            ),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.status == "failed"
+        assert r.error is not None and "hunter2value" not in r.error
+        assert r.error.endswith("could not read DB_PASSWORD=[REDACTED] file")
+
+
 def test_a_failed_empty_review_redacts_a_token_in_the_first_inspection_limit(
     monkeypatch, repo, change, dependency_index
 ):
