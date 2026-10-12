@@ -1461,11 +1461,44 @@ def _redact_tokens(text: str) -> str:
     return _SECRET_ASSIGNMENT.sub(r"\1[REDACTED]", _SECRET_TOKEN_PATTERNS.sub("[REDACTED]", text))
 
 
+def _redact_json_values(value: object) -> object:
+    if isinstance(value, str):
+        return _redact_tokens(value)
+    if isinstance(value, list):
+        return [_redact_json_values(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _redact_json_values(item) for key, item in value.items()}
+    return value
+
+
+def _redact_json_lines(text: str) -> str:
+    """Redact inside the string values of any line that is a JSON object, such as the
+    bridge's one-line failure on stderr. Serialized, a quote inside a value reads as
+    `\\"`, which the value regexes do not treat as a closing quote, so redacting the
+    flattened text would leave the tail of a quoted value behind. Redacting the parsed
+    value first avoids that; re-serialized compactly, as the bridge writes it. Lines that
+    are not a JSON object pass through unchanged."""
+    lines = []
+    for line in text.splitlines():
+        candidate = line.strip()
+        if candidate.startswith("{") and candidate.endswith("}"):
+            try:
+                parsed = json.loads(candidate)
+            except ValueError:
+                parsed = None
+            if isinstance(parsed, dict):
+                line = json.dumps(
+                    _redact_json_values(parsed), ensure_ascii=False, separators=(",", ":")
+                )
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _report_error(text: str) -> str:
     """Every error string that lands in a report (and so the CI log) goes through
     here: one line, tokens redacted, capped. Model- and tool-generated text
     included, so no call site has to remember the individual steps."""
-    return _clip_error(_redact_tokens(_sanitize_log_text(text)))
+    return _clip_error(_redact_tokens(_sanitize_log_text(_redact_json_lines(text))))
 
 
 def _run_bridge(
