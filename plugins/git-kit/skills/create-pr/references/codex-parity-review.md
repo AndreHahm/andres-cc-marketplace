@@ -15,7 +15,8 @@ pass; this step runs CI's own entry point so those findings surface before the p
 - Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable list --json` (it is a repository variable, not a workflow
   value). Unset, unreadable or malformed means the local Codex default runs, and the output says so.
 - Warns (does not fail) when the local `codex --version` differs from CI's pin.
-- Fetches `origin main` (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
+- Fetches `origin main` into `refs/remotes/origin/main` with an explicit refspec, so it works under any configured
+  fetch refspec (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
   run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
 
 Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2), a symlink is refused, and an existing

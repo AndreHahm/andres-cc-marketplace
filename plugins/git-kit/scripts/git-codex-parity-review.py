@@ -167,8 +167,10 @@ def main() -> int:
         print(f"PARITY WARNING: local Codex CLI {local_version} differs from CI's pin {pin}.")
 
     # CI diffs against the PR's current base; a stale local origin/main would widen the local diff.
+    # The explicit refspec updates the tracking ref this script reads next, whatever the remote's
+    # configured fetch refspec is (a plain `git fetch origin main` only does so under the default).
     fetch = _run(
-        ["git", "fetch", "--quiet", "origin", "main"],
+        ["git", "fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"],
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
     )
     if fetch is None or fetch.returncode != 0:
