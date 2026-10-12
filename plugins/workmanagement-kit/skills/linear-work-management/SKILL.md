@@ -44,7 +44,7 @@ update write, slug resolution, the dedup lookup, update scope and label reads). 
   taking an accepted Issue all the way to merge → `linear-github-lifecycle`.
 - Dispositioning open questions or follow-ups from a Report or completed Issue →
   `open-item-management`.
-- A request that originates from another plugin's workflow, envelope or not (batch, query, update) is outside this skill: the host routes it to `plugin-integration-intake` first, and only that gate's already-validated delegation reaches here; a user's own typed request stays.
+- A request that originates from another plugin's workflow, envelope or not (batch, query, update) is outside this skill: the host routes it to `plugin-integration-intake` first, and only that gate's already-validated delegation reaches here; a user's own typed request stays. This is host routing, not a callable dependency: this skill never invokes `plugin-integration-intake`, and a delegated write is never re-routed back to it.
 - Repairing Linear/GitHub drift → `linear-github-reconciliation` (a material scope, priority or
   date change it finds still comes back here); linking or drift-repairing a Notion record against
   its Linear record → `work-linking`.
