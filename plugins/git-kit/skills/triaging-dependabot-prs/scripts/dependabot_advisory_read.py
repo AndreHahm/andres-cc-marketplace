@@ -139,10 +139,13 @@ def version_key(version):
     return tuple(int(p) for p in match.group(0).split(".")) if match else None
 
 
-# A final PEP 440 release: optional epoch, release numbers, optional post-release. Pre-releases, dev
-# releases and local versions do not match.
+# A final PEP 440 release: optional epoch, release numbers, optional post-release in any spelling
+# PEP 440 accepts (`.post1`, `-1`, `r1`, `_post.1`, a bare `.post` meaning post 0), in any case.
+# Pre-releases, dev releases and local versions do not match.
 PEP440_FINAL_RE = re.compile(
-    r"(?:([0-9]{1,9})!)?([0-9]{1,9}(?:\.[0-9]{1,9}){0,15})(?:\.post([0-9]{1,9}))?"
+    r"(?:([0-9]{1,9})!)?([0-9]{1,9}(?:\.[0-9]{1,9}){0,15})"
+    r"(?:-([0-9]{1,9})|[-_.]?(?:post|rev|r)[-_.]?([0-9]{1,9})?)?",
+    re.IGNORECASE,
 )
 
 
@@ -160,7 +163,8 @@ def order_key(eco, version):
         if not match:
             return None
         epoch = int(match.group(1) or 0)
-        post = int(match.group(3)) if match.group(3) is not None else -1
+        if match.end(2) < len(text):  # something follows the release: it is a post-release
+            post = int(match.group(3) or match.group(4) or 0)
         text = match.group(2)
     release = list(version_key(text) or ())
     if not release:
