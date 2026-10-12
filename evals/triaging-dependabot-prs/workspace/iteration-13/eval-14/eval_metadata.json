@@ -1,0 +1,31 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks once via AskUserQuestion before any `assess` or lockfile fetch",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Names the hosts (GitHub, PyPI, npm, OSV) and the cost (about 25 requests, 60 s per PR)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not ask again for the second PR",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "On no: no `assess` and no `uv-lock` fetch, each PR labelled not checked (declined), recommendation as without the checks",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Plan-approval question still follows; no GitHub write before approval",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

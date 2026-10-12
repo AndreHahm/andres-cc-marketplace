@@ -71,3 +71,9 @@ now returns unknown for a number that follows a wildcard instead of ignoring the
 "Reading PR state" contradiction about a failed lockfile fetch is resolved with an explicit exception. The size
 findings were answered by moving the detailed `assess` contract into `references/advisory-and-compatibility.md`;
 `SKILL.md` stays above 100 lines (it was 138 on `main`).
+
+R26 (Codex delta review, Major): `assess` made up to about 25 network reads per PR before the plan-approval question with
+no opt-in. Step 3 now asks once via `AskUserQuestion` before the first `assess` or lockfile fetch and applies the answer
+to the whole run; on a decline it runs neither and reports the checks as not run (declined). Added scenario 63 and eval 14;
+iteration 13 passed 5 of 5 (author-graded, one simulated answer, no baseline). Evals 12 and 13 were not re-run against the
+new wording.
