@@ -99,6 +99,22 @@ console.log("\n=== REAL Windows Codex 0.162.1 (issue #545): exit 0, final messag
       !isTotalInspectionFailure({ findings: [], inspection_limits: [topical] })
     );
   }
+  for (const [label, note] of [
+    ["'because' branch alone", "Nothing ran because process creation failed in the sandbox"],
+    ["punctuation branch alone, mid-note", "Every command failed: process creation failed, nothing ran"],
+    ["multi-line note", "`dir` could not run: process creation failed\nNo output line was produced."],
+    ["followed by a parenthetical", "The tool call hit process creation failed (sandbox restriction)"],
+    ["followed by 'with'", "Reviewer saw process creation failed with error 1920"]
+  ]) {
+    check(
+      `recognized, ${label}`,
+      isTotalInspectionFailure({ findings: [], inspection_limits: [note] })
+    );
+  }
+  check(
+    "a CRLF-terminated note is recognized",
+    isTotalInspectionFailure({ findings: [], inspection_limits: ["The sandbox rejected every command: process creation failed\r\n"] })
+  );
   check(
     "'process creation failed' ending the note is recognized",
     isTotalInspectionFailure({ findings: [], inspection_limits: ["The sandbox rejected every command: process creation failed"] })

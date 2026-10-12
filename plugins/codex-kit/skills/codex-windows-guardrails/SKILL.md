@@ -17,7 +17,7 @@ disable-model-invocation: true
 # Codex Windows Guardrails
 
 `codex exec`'s sandbox modes (`read-only`/`workspace-write`) do not work on Windows — confirmed
-across two CLI versions (`plugins/plugin-devkit/KNOWN_ISSUES.md`). `danger-full-access` is the only
+across three CLI versions (the latest, 0.162.1, only with `read-only`) (`plugins/plugin-devkit/KNOWN_ISSUES.md`). `danger-full-access` is the only
 mode that executes at all on this platform. This skill is what a caller must run *instead of*
 `codex-review-bridge` for that one profile — the bridge's own CLI unconditionally refuses
 `danger-full-access` (correctly, for every other caller); this skill is a separate, narrowly-scoped
@@ -97,8 +97,9 @@ implementation (also used by `codex-review-bridge`'s own `--dry-run true`).
 ## When to Use
 
 - A caller (e.g. `plugin-auditor`'s Codex backend resolver, `references/codex-backend.md`) has
-  already determined the only available local execution profile is Windows `danger-full-access`,
-  and needs a bounded, disclosed way to proceed rather than skipping straight to it.
+  already determined the only available local execution profile is Windows `danger-full-access`
+  (a `read-only` attempt reported `isolation_profile_unavailable` and the user confirmed running
+  without a sandbox), and needs a bounded, disclosed way to proceed rather than skipping straight to it.
 
 ## When NOT to Use
 

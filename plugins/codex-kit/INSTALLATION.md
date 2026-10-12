@@ -36,7 +36,7 @@ If Codex CLI isn't installed and npm is available, `/codex-kit:cdx-setup` offers
 
 ## 4. If the sandbox check fails
 
-Codex's read-only/workspace-write sandbox can fail on some platforms (a known Windows issue: a `CreateProcessAsUserW` access-rights error in Codex's own sandboxing subsystem). If this happens, `/codex-kit:cdx-setup` reports it explicitly and every codex-kit component will fall back to `danger-full-access` when it needs a sandbox — and will tell you every time that happens, never silently. `/codex-kit:cdx-setup` also offers opt-in guidance toward fixing the underlying access-rights issue so real sandboxing works instead of requiring full access.
+Codex's read-only/workspace-write sandbox can fail on some platforms (a known Windows issue: Codex's own sandboxing subsystem cannot start processes; the error text varies by Codex version, and on 0.162.1 the run even exits 0, as recorded in `plugin-devkit`'s `KNOWN_ISSUES.md`). The `/codex-kit:cdx-setup` probe only asks Codex to reply with a word and does not run a command, so a sandbox that fails only when spawning one may still pass that probe (not verified live). If this happens, `/codex-kit:cdx-setup` reports it explicitly and every codex-kit component will fall back to `danger-full-access` when it needs a sandbox — and will tell you every time that happens, never silently. `/codex-kit:cdx-setup` also offers opt-in guidance toward fixing the underlying access-rights issue so real sandboxing works instead of requiring full access.
 
 ## Optional: enable the stop-time review gate
 

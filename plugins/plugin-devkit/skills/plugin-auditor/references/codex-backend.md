@@ -63,7 +63,9 @@ obligation to the calling component (its own SKILL.md's "Named exception to the 
 first-send gate" note), and `plugin-auditor` is exactly the interactive caller that note describes.
 
 No Codex dispatch — Codex Path or the Windows-Guarded profile below — may reach any later step
-without this gate having fired at least once in the session.
+without this gate having fired at least once in the session. This gate's wording describes the
+`read-only` profile only; the Windows-Guarded profile below additionally needs its own
+confirmation before it runs.
 
 ## Resolver
 
@@ -124,9 +126,9 @@ from its `ERROR` lines. Both are free-text heuristics tied to Codex's current wo
 changed between 0.146, 0.147 and 0.162.1), so the fallback below triggers automatically only while
 that wording stays recognized — it does not verify isolation first. This is real protection, but a fragile guarantee: if a
 future Codex CLI version silently degrades instead of failing loudly on an unsupported platform,
-this resolver would not catch it. Until an operator explicitly opts into the Windows-guarded path
-below, every dispatch on an unqualified platform costs one real (harmless — it fails before doing
-anything) subprocess attempt, not a skipped one.
+this resolver would not catch it. Every dispatch on an unqualified platform costs one real (harmless
+— it fails before doing anything) subprocess attempt, not a skipped one; opting into the
+Windows-guarded path below does not skip that attempt, because that path is only ever tried after it.
 
 ## Windows-Guarded Execution Profile (optional, independent gate)
 
@@ -135,6 +137,19 @@ by default, same trust-boundary pattern as this resolver's own config. When *and
 resolves `windows_guardrails.enabled: true` (checked internally by the script below, not by this
 resolver), this resolver may attempt `danger-full-access` on Windows instead of only ever falling
 back to Claude on that platform.
+
+**When this profile is attempted — reactive only, and never without its own confirmation.** Never
+first. Only when both hold: (a) the `read-only` attempt for this reviewer returned
+`isolation_profile_unavailable`, by either route in the previous section; and (b) the guardrails
+opt-in resolves enabled. Before calling the script below, ask a second `AskUserQuestion` — the
+First-Send gate above does not cover this profile, because it describes read access only. Name the
+reviewer(s) and target path(s), and state plainly that this profile has **no sandbox**: the Codex
+process can read, write and execute anything this user account can reach under the repository root,
+bounded only by best-effort, not enforced, guardrails. Options: "Run without a sandbox for this
+run" / "Stay Claude-native for this run". Ask once per audit run; the answer applies to every
+remaining reviewer in that run, and declining routes each of them to Claude-native (Codex Path
+step 8). The trigger in (a) is a free-text heuristic, which is why a live human sits between it and
+`danger-full-access`.
 
 **Steps 0 and 1 still apply regardless of profile** (First-Send Confirmation; reviewer-name
 validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward, this

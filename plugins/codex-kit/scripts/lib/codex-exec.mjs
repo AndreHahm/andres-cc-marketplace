@@ -54,7 +54,9 @@ export const ISOLATION_FAILURE_PATTERN =
 // Codex's tracing-log lines (`<ISO-8601 Z timestamp> ERROR <target>: ...`, real
 // Windows Codex 0.162.1 stderr, issue #545) are a separate, narrower scope: they
 // can copy repo paths and command text, so only specific spawn-failure shapes
-// (TRACING_ISOLATION_PATTERN) are read from them, never the bare keywords.
+// (TRACING_ISOLATION_PATTERN) are read from them, never the bare keywords. The
+// same tool-output residual applies to this form: a column-0 tracing-shaped line
+// inside a file Codex prints counts too, when the run also exits non-zero.
 // With no `ERROR:` line the remaining text may be the echoed prompt, which must
 // not decide a category (an echoed `landlock` mention would otherwise trigger the
 // privilege-widening isolation fallback), so the default is an empty scope. Only
@@ -66,17 +68,20 @@ export const ISOLATION_FAILURE_PATTERN =
 const PRE_SESSION_MAX_CHARS = 2000;
 const TRACING_ERROR_LINE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ERROR /;
 // Only specific spawn-failure shapes, not the bare landlock/seccomp/bwrap words
-// the plain-ERROR scope also accepts (a tracing line can carry a repo path).
-const TRACING_ISOLATION_PATTERN =
-  /CreateProcessAsUserW|failed to create unified exec process|sandbox (?:failed|error|denied|unavailable)/i;
+// the plain-ERROR scope also accepts, and not "sandbox error/failed/..." either:
+// a tracing line can carry a repo path or a command (`rg "sandbox error" src`).
+const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW|failed to create unified exec process/i;
 
 // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
 // prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed
 // (untrusted) prompt can then neither force nor hide a classification. If Codex ever
 // alters the echo, nothing matches and the rules below apply to the unstripped text.
+// Line endings are normalized on both sides first: on Windows Codex may echo the prompt
+// with CRLF while this process built it with LF, which would otherwise make the strip a no-op.
 function withoutPromptEcho(stderr, prompt) {
-  const needle = typeof prompt === "string" ? prompt.trim() : "";
-  return needle ? stderr.split(needle).join("") : stderr;
+  const text = stderr.replace(/\r\n/g, "\n");
+  const needle = typeof prompt === "string" ? prompt.replace(/\r\n/g, "\n").trim() : "";
+  return needle ? text.split(needle).join("") : text;
 }
 
 function tracingErrorScope(stderr, prompt = "") {
