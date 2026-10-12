@@ -91,3 +91,12 @@ still said each request times out after 30 s while the lockfile fetch the opt-in
 finding for Codex to cross-examine, and Claude's challenger pass confirmed F1 against the code. Fixed in `SKILL.md`,
 scenario 63 and eval 14; iteration 15 re-ran eval 14, 5 of 5 (author-graded, one simulated answer, no baseline). This
 last wording fix was not itself re-reviewed: the two-round limit was used up.
+
+Codex connector review of PR 539 (head f9e699b2), three P2 findings, each reproduced before fixing. (1) A constraint behind
+`extra == "..."` was dropped as inactive although the project may request that extra; it is now unevaluated when its
+dependency is in the lockfile. (2) Step 3 had no behavior for a grouped Dependabot title; a grouped update is now never
+assessed and is reported as not checked. (3) Final releases the check cannot order (post-releases such as `1.0.post1`, and
+epoch releases) were dropped from the release list, so an older version could be reported as the newest compatible; one that
+may outrank the PR's version now makes the newest compatible version unknown. Full PEP 440 ordering is not implemented. Seven
+new or updated tests fail against the previous script and pass now; scenario 64 and eval 15 added (iteration 16, 5 of 5,
+author-graded, one simulated answer, no baseline).
