@@ -1,0 +1,47 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Validates source and content, resolves the slug through linear-work-management and uses a NEW batch_id",
+      "passed": true,
+      "evidence": "Steps 0-2: allowlist, manifest and directory checks; Skill(linear-work-management) slug call; fresh batch_id resume-7c4e91ab52d0."
+    },
+    {
+      "text": "Never reads or relies on the old progress file, the old approval or the old submission file",
+      "passed": true,
+      "evidence": "Step 0: 'I do NOT open or Read the old submission file or the old progress file'; step 7 'Nothing from the earlier approval carries over'."
+    },
+    {
+      "text": "Runs exact-key dedup queries in groups of at most 50 keys against T-PROD (two groups for 58 keys)",
+      "passed": true,
+      "evidence": "Step 3: 'Group 1: records 0-49 (50 keys). Group 2: records 50-57 (8 keys)' via linear-work-management with team T-PROD."
+    },
+    {
+      "text": "Drops the 25 already-held records and lists each dropped key with its Issue ID in the preview",
+      "passed": true,
+      "evidence": "Step 3 result and Step 7: 25 dropped, 'each with its Issue ID ... ISS-101 through ISS-125, one per line'."
+    },
+    {
+      "text": "Flags the two records with no dedup_key as possible duplicates",
+      "passed": true,
+      "evidence": "Step 3 and Step 7 warning: records 58 and 59 carry no dedup_key and may duplicate; repeated in the approval question text."
+    },
+    {
+      "text": "Runs the pre-hash checks (labels exist, no closed status), writes a new file of the 35 remaining records, hashes it and asks ONE fresh approval",
+      "passed": true,
+      "evidence": "Steps 4-8: list_issue_labels and list_issue_statuses checks, new 35-record file, hash, show, preview, one AskUserQuestion. Caveat: record statuses are not in the eval prompt, so the walkthrough assumed open states."
+    },
+    {
+      "text": "Writes nothing before the approval",
+      "passed": true,
+      "evidence": "Step 8: 'Nothing has been written to Linear or Notion up to this point. The only file written is the scratchpad submission file.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  },
+  "notes": "Simulated dry run, single run, graded by the orchestrator (2026-10-12) against SKILL.md at commit 15ae4ff1 (its behavior text is unchanged in the working tree). Replaces the iteration-4 eval 11 record, which exercised the earlier design (old progress file read back; no envelope). Observations, not assertions: the walkthrough prints the hash command's output fields as 'hash' and 'record_count' while the script emits 'sha256' and 'record_count' (expected-output wording in a simulation, not a skill defect); the eval prompt gives no record statuses so the closed-status pre-hash check was assumed to pass."
+}

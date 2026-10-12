@@ -1,0 +1,32 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the free-text answer as a reject",
+      "passed": true,
+      "evidence": "Step 1: 'Result: the free-text answer is a reject. The batch is cancelled.' (quotes the skill: any answer other than 'approve all')."
+    },
+    {
+      "text": "Writes nothing for chunk 1",
+      "passed": true,
+      "evidence": "Step 2: no Linear tool call at all; report: '0 records created in Linear'."
+    },
+    {
+      "text": "Does not fall back to per-record approval prompts for this batch",
+      "passed": true,
+      "evidence": "Step 3: 'None. I do not fall back to my own per-record AskUserQuestion approval prompts for this batch.'"
+    },
+    {
+      "text": "Reports the cancellation to the caller",
+      "passed": true,
+      "evidence": "Step 4: 'Batch cancelled, nothing written.' with hash, reason and next step."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  },
+  "notes": "Simulated dry run, single run, graded by the orchestrator (2026-10-12) against SKILL.md at commit 15ae4ff1 (its behavior text is unchanged in the working tree). Replaces the iteration-11 eval 15 record, which was graded against the earlier 'fall back to per-write approval' wording and a same-hash resume scenario the current design cannot produce."
+}
