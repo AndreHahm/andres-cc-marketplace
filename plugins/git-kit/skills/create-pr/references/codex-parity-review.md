@@ -19,12 +19,13 @@ pass; this step runs CI's own entry point so those findings surface before the p
   fetch refspec (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
   run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
 
-Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2), a symlink is refused, and an existing
-file there is replaced only if it is a previous result of this tool (a JSON object with a boolean `blocking` and
-either a `mode` or run-codex-review's own failure `error`; otherwise exit 2, nothing deleted), so a retry after an
-exit 2 reuses the same path. A completed run's result must carry a `mode`. The
-CI entry point's per-reviewer scratch directory `.codex-review-instructions/` is removed after the run when the
-wrapper created it, and is also gitignored.
+Pass `--output` a **fresh** file in the session scratchpad on every run, a retry included (for example
+`codex-parity-<epoch>.json`). The script never deletes or overwrites: an existing path (file, directory or symlink,
+even a dangling one) is refused with exit 2, and a path inside the checkout is refused too. A completed run's
+result must be the full payload `run-codex-review` writes (a string `mode`, the list fields, a boolean
+`blocking`); anything else, including its `error` failure payload, counts as "could not run". The CI entry point's
+per-reviewer scratch directory `.codex-review-instructions/` is removed after the run when the wrapper created it,
+and is also gitignored.
 The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to;
 a value the bridge would reject (anything outside `[A-Za-z0-9._-]`, or over 64 characters) is ignored with the fallback warning.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as

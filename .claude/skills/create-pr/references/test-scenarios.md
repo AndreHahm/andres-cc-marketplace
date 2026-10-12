@@ -132,3 +132,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - A retry after an exit 2 to the same `--output` path → proceeds (run-codex-review's failure payload counts as a
   previous result); a model slug the bridge would reject (`/`, `:`, over 64 characters) → omitted with the
   documented fallback warning, not a failed run
+- `--output` already exists (a file, a previous result, a failure payload, an unrelated JSON, a directory or a
+  symlink) → exit 2, nothing deleted or overwritten, nothing dispatched; a retry with a fresh file name proceeds
+- A run that exits 0 or 1 but whose result is not the full payload (non-string `mode`, missing list fields, only an
+  `error`) → exit 2

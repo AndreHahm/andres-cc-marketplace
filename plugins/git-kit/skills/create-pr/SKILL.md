@@ -239,9 +239,10 @@ Before creating a PR, check for uncommitted changes:
 4.5. **CI-parity Codex delta review (this repository only).** After step 4 — whether it cleared or was
    bypassed with `--bypass-cross-model-review` — and before the first push, run the same job CI will:
    `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py"
-   --output <session scratchpad>/codex-parity-result.json`. It reads CI's timeout and Codex pin from the
+   --output <session scratchpad>/codex-parity-<epoch>.json`. It reads CI's timeout and Codex pin from the
    workflow, the model from the `CODEX_KIT_REVIEW_MODEL` repository variable, and wraps `run-codex-review`.
    Neither `--bypass-cross-model-review` nor `--bypass-codex-review` skips this step.
+   Use a fresh `--output` file name on every run (a retry included): the script refuses a path that already exists.
    **When `CLAUDE_PLUGIN_ROOT` is empty** (this repository's own sessions, where skills load from the
    `.claude/` mirror), that path resolves to `/scripts/...` and fails with exit 127: run
    `uv run python .claude/scripts/git-codex-parity-review.py --output ...` from the checkout root instead

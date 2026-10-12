@@ -15,7 +15,7 @@ settings that must match CI from the workflow file itself, so they cannot drift:
     and that is stated in the output.
 
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
-malformed or contradictory result file), 3 not applicable
+malformed or contradictory result file, or a pre-existing --output path), 3 not applicable
 (this checkout has no marketplace CI to mirror).
 
 This repository's own convention only.
@@ -137,8 +137,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, metavar="PATH", help="result JSON (scratch dir)")
     args = parser.parse_args()
-    # abspath, not resolve(): never follow a final-component symlink, or the delete guard below
-    # would act on the symlink's target instead of the path the caller named. (Before the chdir.)
+    # abspath, not resolve(): never follow a final-component symlink, so the existence check below
+    # sees the path the caller named (a symlink is refused), not its target. (Before the chdir.)
     output = Path(os.path.abspath(args.output))
 
     # Resolve paths against the checkout root, not the cwd: a session sitting in a subdirectory
@@ -197,16 +197,11 @@ def main() -> int:
     if (output.parent.resolve() / output.name).is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
         return 2
-    if output.is_symlink():
-        print(f"PARITY: --output {output} is a symlink; refusing to delete or write through it.")
+    # Never delete or overwrite anything: a pre-existing path (file, directory or symlink, even a
+    # dangling one) is refused. The caller names a fresh file per run, so no stale result exists.
+    if output.exists() or output.is_symlink():
+        print(f"PARITY: {output} already exists; pass a new --output path (nothing is deleted).")
         return 2
-
-    # A stale result from an earlier run must never be mistaken for this run's findings, but a
-    # wrong --output must never delete an unrelated file: only a previous result is removed.
-    if (output.exists() or output.is_symlink()) and not _is_previous_result(output):
-        print(f"PARITY: {output} exists and is not a previous result; refusing to overwrite it.")
-        return 2
-    output.unlink(missing_ok=True)
 
     env: dict[str, str] = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
     model = resolve_model()
@@ -246,28 +241,30 @@ def main() -> int:
     return result.returncode
 
 
-def _load_result(output: Path) -> dict | None:
-    """A JSON object with a boolean `blocking`, or None (missing, unreadable, malformed, other)."""
+# Keys every completed run-codex-review result carries (scripts/marketplace_ci/__main__.py
+# builds the payload; a drift test checks each is still written there).
+_RESULT_LIST_KEYS = ("reviewed_paths", "reviewers", "structural_findings", "findings")
+
+
+def _read_blocking(output: Path) -> bool | None:
+    """`blocking` of a completed run-codex-review result, or None if the file isn't one.
+
+    Completed means the payload `_handle_run_codex_review` writes: a non-empty string `mode`, the
+    list fields above, and a boolean `blocking`. Anything else (missing, unreadable, truncated, or
+    the entry point's `error` payload) is not evidence that a review ran.
+    """
     try:
         data = json.loads(output.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if not isinstance(data, dict) or not isinstance(data.get("blocking"), bool):
+    if not isinstance(data, dict):
         return None
-    return data
-
-
-def _read_blocking(output: Path) -> bool | None:
-    """`blocking` of a completed run-codex-review result (it carries a `mode`), or None."""
-    data = _load_result(output)
-    return data["blocking"] if data is not None and "mode" in data else None
-
-
-def _is_previous_result(output: Path) -> bool:
-    """Whether `output` looks like something run-codex-review wrote: a result (`mode`) or its
-    infrastructure-failure payload (`error`, no `mode`). An unrelated JSON file is neither."""
-    data = _load_result(output)
-    return data is not None and ("mode" in data or "error" in data)
+    mode, blocking = data.get("mode"), data.get("blocking")
+    if not (isinstance(mode, str) and mode and isinstance(blocking, bool)):
+        return None
+    if not all(isinstance(data.get(key), list) for key in _RESULT_LIST_KEYS):
+        return None
+    return blocking
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:
