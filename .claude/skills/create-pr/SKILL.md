@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(grep -zqxF:*), Bash(jq -n --arg:*), Bash(jq -n --rawfile:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-check-pr-title.py":*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/git-codex-parity-review.py":*), Bash(uv run python .claude/scripts/git-codex-parity-review.py:*), AskUserQuestion, Read, Write, Skill(commit), Skill(collaborating-on-a-pr), Skill(cross-model-review), Skill(github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -242,6 +242,10 @@ Before creating a PR, check for uncommitted changes:
    --output <session scratchpad>/codex-parity-result.json`. It reads CI's timeout and Codex pin from the
    workflow, the model from the `CODEX_KIT_REVIEW_MODEL` repository variable, and wraps `run-codex-review`.
    Neither `--bypass-cross-model-review` nor `--bypass-codex-review` skips this step.
+   **When `CLAUDE_PLUGIN_ROOT` is empty** (this repository's own sessions, where skills load from the
+   `.claude/` mirror), that path resolves to `/scripts/...` and fails with exit 127: run
+   `uv run python .claude/scripts/git-codex-parity-review.py --output ...` from the checkout root instead
+   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`).
    Procedure, exit-code handling, bypass and the "before flipping a draft to ready" re-run:
    `references/codex-parity-review.md`.
    - **Data egress:** the Codex reviewers run on this machine with read access to the working tree (and

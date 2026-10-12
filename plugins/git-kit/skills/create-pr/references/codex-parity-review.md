@@ -20,8 +20,10 @@ pass; this step runs CI's own entry point so those findings surface before the p
 
 Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2).
 The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to.
-In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so the script runs from the `.claude/scripts/` mirror
-(`.claude/rules/resolve-plugin-root-to-claude-mirror.md`); that path doesn't match the skill's grant, so expect a permission prompt.
+In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as
+`uv run python .claude/scripts/git-codex-parity-review.py` (the `.claude/` mirror; SKILL.md has a matching grant and
+`.claude/rules/resolve-plugin-root-to-claude-mirror.md` explains why). Every helper call (git, gh, codex) is bounded
+by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 
 ## Exit codes
 

@@ -34,6 +34,9 @@ ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
 RUN_TIMEOUT_SECONDS = 45 * 60
+# Bound for every helper call (git, gh, codex --version): a stalled network or a credential prompt
+# must fall through to the documented warning / exit 2 path instead of hanging the gate.
+_HELPER_TIMEOUT_SECONDS = 60
 # A model slug is data from a repository variable; only pass it on if it looks like one.
 _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
 _TIMEOUT_RE = re.compile(r'CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"?(\d+)"?')
@@ -67,6 +70,7 @@ def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
 
 
 def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str] | None:
+    kwargs.setdefault("timeout", _HELPER_TIMEOUT_SECONDS)
     try:
         return subprocess.run(argv, capture_output=True, text=True, check=False, **kwargs)
     except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -153,7 +157,10 @@ def main() -> int:
         print(f"PARITY WARNING: local Codex CLI {local_version} differs from CI's pin {pin}.")
 
     # CI diffs against the PR's current base; a stale local origin/main would widen the local diff.
-    fetch = _run(["git", "fetch", "--quiet", "origin", "main"])
+    fetch = _run(
+        ["git", "fetch", "--quiet", "origin", "main"],
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+    )
     if fetch is None or fetch.returncode != 0:
         print("PARITY WARNING: could not fetch origin/main; the local ref may be stale.")
 

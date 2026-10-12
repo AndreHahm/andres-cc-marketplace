@@ -7,6 +7,7 @@ neither network access nor a Codex account (issue #540).
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -271,3 +272,25 @@ def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path):
     assert result.returncode == 0
     assert "could not fetch" not in result.stdout
     assert git("rev-parse", "origin/main") == newer
+
+
+def test_helper_calls_time_out_instead_of_hanging(monkeypatch):
+    module = _load_module()
+    monkeypatch.setattr(module, "_HELPER_TIMEOUT_SECONDS", 0.3)
+    assert module._run(["sleep", "5"]) is None
+
+
+def test_fetch_runs_with_credential_prompts_disabled(repo, tmp_path):
+    real_git = shutil.which("git")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    log = tmp_path / "fetch-env.log"
+    _stub(
+        bin_dir,
+        "git",
+        f'[ "$1" = fetch ] && {{ echo "$GIT_TERMINAL_PROMPT" > "{log}"; exit 0; }}\n'
+        f'exec "{real_git}" "$@"',
+    )
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert log.read_text(encoding="utf-8").strip() == "0"
