@@ -7,8 +7,9 @@ description: >-
   allowlist appended to the reviewer instruction body Codex receives, and a
   validated findings envelope on success -- all in one script call. Invoked
   by codex-review-bridge's callers (e.g. plugin-auditor's Codex backend
-  resolver) when the resolved execution profile is Windows-guarded
-  danger-full-access -- not invoked directly by end users, and never a
+  resolver) after a read-only attempt reported isolation_profile_unavailable
+  and the user confirmed running without a sandbox (the Windows-guarded
+  danger-full-access profile) -- not invoked directly by end users, and never a
   substitute for a real OS sandbox.
 allowed-tools: ["Bash(node */codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)"]
 disable-model-invocation: true
@@ -17,15 +18,15 @@ disable-model-invocation: true
 # Codex Windows Guardrails
 
 `codex exec`'s sandbox modes (`read-only`/`workspace-write`) do not work on Windows — confirmed
-across three CLI versions (the latest, 0.162.1, only with `read-only`) (`plugins/plugin-devkit/KNOWN_ISSUES.md`). `danger-full-access` is the only
-mode that executes at all on this platform. This skill is what a caller must run *instead of*
+on 0.146 (both modes) and re-tested with `read-only` only on 0.147 and 0.162.1 (`plugins/plugin-devkit/KNOWN_ISSUES.md`). `danger-full-access` is the only
+mode that executed at all on 0.146 and 0.147 (not re-tested on 0.162.1). This skill is what a caller must run *instead of*
 `codex-review-bridge` for that one profile — the bridge's own CLI unconditionally refuses
 `danger-full-access` (correctly, for every other caller); this skill is a separate, narrowly-scoped
 entry point for exactly the one case that needs it.
 
 **This is not a sandbox.** Nothing here intercepts what Codex's own agent loop does once it starts
 running with `danger-full-access` — there is no `PreToolUse`-equivalent event in Codex's own hook
-system (confirmed this session: neither `codex-kit`'s `hooks.json` nor Codex CLI's own cached copy
+system (confirmed when this skill was built: neither `codex-kit`'s `hooks.json` nor Codex CLI's own cached copy
 of it exposes anything beyond `SessionStart`/`SessionEnd`/`Stop` — see
 `references/hooks-sync-investigation.md`). What follows narrows what gets *sent* to Codex before the
 dispatch starts, and asks Codex to self-restrict once running. Never describe this skill's output as
@@ -56,7 +57,7 @@ the first failure:
 3. **Secret-file check** — walks the actual filesystem under the **whole repository root** (not
    `git ls-files`, which would miss a `.env` precisely because `.env` is normally gitignored, and not
    just the caller's narrower `target-paths`, since `danger-full-access` grants Codex read access to
-   everything under the root regardless of what scope the caller declared) against `git-kit`'s
+   everything under the root regardless of what scope the caller declared -- its real reach is the whole account, not only the root; the scan covers the root because that is the part it can check) against `git-kit`'s
    sensitive-filename patterns. Typed failure `secret_file_in_scope` on any match. Untracked files the
    repository's own `.gitignore` ignores (a `.venv`, but equally a gitignored `.env`) are skipped by
    owner decision, and a file unchanged since the merge base that the base `.secretlintignore` lists
@@ -157,8 +158,8 @@ provenance field imply otherwise.
   verified live: rejected with `invalid_arguments` before any config/exec is attempted.
 - A `target-paths` entry that is empty or has leading/trailing whitespace (issue #533) — rejected with
   `invalid_arguments` as given, never trimmed or dropped. These scenarios are in the preflight suite, which
-  only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they have not been
-  run on Windows yet.
+  only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they ran and passed on Windows
+  (132 checks, 2026-10-12).
 - A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
   `invalid_arguments`, even when guardrails resolve as enabled relative to that passed root.
 - A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
@@ -175,7 +176,7 @@ provenance field imply otherwise.
   dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (123 checks, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (132 checks on Windows, 2026-10-12, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —

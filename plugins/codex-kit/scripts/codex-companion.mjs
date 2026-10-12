@@ -212,7 +212,7 @@ async function buildSetupReport(cwd, actionsTaken = []) {
   // scope-expansion gap #4: no silent fallback — surface this every time, not just once
   if (sandboxCheck.viable === false) {
     nextSteps.push(
-      "Codex's read-only sandbox is NOT working on this system — components will fall back to `danger-full-access` when needed, and will say so every time that happens. Opt-in remediation guidance is available; see the setup command's output for details."
+      "Codex's read-only sandbox is NOT working on this system — a component that offers the `danger-full-access` fallback uses it only after a read-only attempt reports `isolation_profile_unavailable` and you consent (plugin-auditor asks again at that moment, cross-model-review asks once up front), and says so every time. Opt-in remediation guidance is available; see the setup command's output for details."
     );
   }
 

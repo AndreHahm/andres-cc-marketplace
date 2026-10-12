@@ -97,6 +97,8 @@ console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final me
     "Did not exercise the process creation error path at runtime",
     "Only reviewed the process creation error handling in spawn.c statically",
     "Could not confirm whether process creation failed handling is covered by tests",
+    "Failed to create a temp file; the process doc was not reviewed",
+    "Could not start the review, then read the process notes",
     "Only reviewed the process creation failed\nhandling statically",
     "Tests do not exercise the case where\nprocess creation failed\nin the spawn wrapper"
   ]) {
@@ -110,7 +112,10 @@ console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final me
     ["punctuation branch alone, mid-note", "Every command failed: process creation failed, nothing ran"],
     ["wrapped real note, via the 'because' branch", "`dir` could not run because process creation failed\nNo output line was produced."],
     ["followed by a parenthetical", "The tool call hit process creation failed (sandbox restriction)"],
-    ["followed by 'with'", "Reviewer saw process creation failed with error 1920"]
+    ["followed by 'with'", "Reviewer saw process creation failed with error 1920"],
+    ["curly apostrophe (U+2019), couldn't", "Codex couldn’t create a process inside the workspace."],
+    ["curly apostrophe (U+2019), can't", "The sandbox can’t start a process for the requested tool."],
+    ["a dot inside a filename in the gap", "Unable to start pwsh.exe process in the sandbox."]
   ]) {
     check(
       `recognized, ${label}`,
@@ -137,7 +142,8 @@ console.log("\n=== Security review fix (M2): a PARTIAL read/access note no longe
   // access|read) the workspace/target/requested" -- no process-start or
   // totality semantics -- so an ordinary single-file skip note like this
   // one got misreclassified as a total sandbox failure. Narrowed to require
-  // an actual process-start/CreateProcessAsUserW/error-1920 signature.
+  // an actual process-start signature (the create/start-a-process phrasing or
+  // CreateProcessAsUserW); the bare error-1920 alternatives were later removed.
   const envelope = { findings: [], inspection_limits: ["could not read the requested file config.bin (binary, skipped)"] };
   check(
     "an ordinary partial read-failure note (no process-start signature) does NOT trigger reclassification",

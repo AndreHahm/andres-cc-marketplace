@@ -253,11 +253,9 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
       NON_ZERO_EXIT
     );
   }
-  expectCategory(
-    "CRLF stderr: the real tracing spawn-failure line is still recognized",
-    `${REAL_WINDOWS_BANNER}\r\nreview\r\n\r\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process: helper_unknown_error\r\n`,
-    ISOLATION_PROFILE_UNAVAILABLE
-  );
+  // CRLF only matters for the prompt-echo strip (covered above and by the LF-built prompt echoed with
+  // CRLF case); a plain CRLF-terminated stderr line classifies the same as an LF one, so no separate
+  // CRLF stderr case is kept (a review found it passed with or without any CRLF handling).
   expectCategory(
     "documented residual: a column-0 tracing-shaped line from the model's own tool output still counts",
     `${REAL_WINDOWS_BANNER}\nexec\ncat app.log\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed: 1920\n${CAPACITY}`,
@@ -290,16 +288,21 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
   );
   expectCategory(
     "a timestamp with a numeric offset instead of Z fails closed",
-    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755+00:00 ERROR codex_core::tools::router: Failed to create unified exec process`,
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755+00:00 ERROR codex_core::tools::router: Failed to create unified exec process: helper_unknown_error`,
     NON_ZERO_EXIT
   );
   {
-    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: sandbox failed\nEnd.";
+    const prompt = "Review this.\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed: 1920\nEnd.";
     expectCategoryWithPrompt(
       "a timestamped ERROR line inside the echoed prompt cannot force isolation",
       `${REAL_WINDOWS_BANNER}\n${prompt}\n\n${CAPACITY}`,
       prompt,
       NON_ZERO_EXIT
+    );
+    expectCategory(
+      "without the prompt the same stderr WOULD count (proves the case above is not vacuous)",
+      `${REAL_WINDOWS_BANNER}\n${prompt}\n\n${CAPACITY}`,
+      ISOLATION_PROFILE_UNAVAILABLE
     );
   }
   expectCategory(
@@ -309,7 +312,7 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
   );
   expectCategory(
     "an indented/prefixed copy of the timestamped line (echoed diff) cannot forge it",
-    `${REAL_WINDOWS_BANNER}\n+2026-10-12T16:32:29.966755Z ERROR x: Failed to create unified exec process\n ${RMCP_NOISE}\n${CAPACITY}`,
+    `${REAL_WINDOWS_BANNER}\n+2026-10-12T16:32:29.966755Z ERROR x: Failed to create unified exec process: helper_unknown_error\n ${RMCP_NOISE}\n${CAPACITY}`,
     NON_ZERO_EXIT
   );
 }
