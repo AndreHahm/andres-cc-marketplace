@@ -1417,6 +1417,28 @@ def _sanitize_log_text(text: str) -> str:
     return " ".join("".join(c if c.isprintable() else " " for c in text).split())
 
 
+# Token-shaped secrets only, applied to the already single-line sanitized text,
+# so the line-anchored patterns the bridge's own redactSecrets uses (an
+# `Authorization:` or `KEY=` line) are deliberately absent: on one line they
+# would swallow everything after the match. The bridge redacts before it
+# slices, but a few of its error contributors (a semantic-validation detail,
+# a Node crash trace) reach this point unredacted.
+_SECRET_TOKEN_PATTERNS = re.compile(
+    r"\bsk-[A-Za-z0-9-]{20,}"
+    r"|\bgh[pousr]_[A-Za-z0-9]{36,}"
+    r"|\bxox[baprs]-[A-Za-z0-9-]+"
+    r"|\bAKIA[0-9A-Z]{16}\b"
+    r"|\bAIza[0-9A-Za-z_-]{35}"
+    r"|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
+    r"|\bbearer\s+[A-Za-z0-9._~+/=-]{8,}",
+    re.IGNORECASE,
+)
+
+
+def _redact_tokens(text: str) -> str:
+    return _SECRET_TOKEN_PATTERNS.sub("[REDACTED]", text)
+
+
 def _run_bridge(
     argv: list[str], *, cwd: Path, timeout: float
 ) -> subprocess.CompletedProcess[bytes]:
@@ -1608,7 +1630,7 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
-                error=_clip_error(_sanitize_log_text(stderr)),
+                error=_clip_error(_redact_tokens(_sanitize_log_text(stderr))),
                 attempts=attempts,
             )
 
