@@ -296,14 +296,16 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // creation failed" -- no create/start verb before "process", no
 // CreateProcessAsUserW. "process creation failed" is therefore matched as its
 // own alternative, but only as the stated cause ("because process creation
-// failed", or followed by punctuation / the end of a line -- the `m` flag makes `$`
-// match at any line end, so a multi-line note can match mid-note), never inside a topical
-// note about the code under review ("did not exercise the process creation
-// failed handling", or any "process creation error" wording, which is dropped
-// entirely). That topical-vocabulary residual -- a PR touching subprocess code
-// can make a model write nearby wording -- is accepted alongside the totality
-// caveat above.
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/im;
+// failed", or followed by punctuation / the very end of the note -- there is no `m`
+// flag, so `$` is the end of the whole note and a wrapped topical note cannot match
+// at a mid-note line break; a wrapped REAL note is still caught through "because"),
+// never inside a topical note about the code under review ("did not exercise the
+// process creation failed handling", or any "process creation error" wording, which
+// is dropped entirely). That topical-vocabulary residual -- a PR touching subprocess
+// code can make a model write nearby wording -- is accepted alongside the totality
+// caveat above; so is the converse, a real note that wraps right after the phrase
+// without "because" or punctuation, which is read as clean.
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).
