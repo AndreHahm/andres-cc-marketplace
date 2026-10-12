@@ -137,7 +137,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, metavar="PATH", help="result JSON (scratch dir)")
     args = parser.parse_args()
-    output = Path(args.output).resolve()  # before the chdir below
+    # abspath, not resolve(): never follow a final-component symlink, or the delete guard below
+    # would act on the symlink's target instead of the path the caller named. (Before the chdir.)
+    output = Path(os.path.abspath(args.output))
 
     # Resolve paths against the checkout root, not the cwd: a session sitting in a subdirectory
     # must not look like "no marketplace CI here", the one outcome the caller treats as a skip.
@@ -190,8 +192,11 @@ def main() -> int:
             "clean result as non-authoritative."
         )
 
-    if output.is_relative_to(Path.cwd().resolve()):
+    if (output.parent.resolve() / output.name).is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
+        return 2
+    if output.is_symlink():
+        print(f"PARITY: --output {output} is a symlink; refusing to delete or write through it.")
         return 2
 
     # A stale result from an earlier run must never be mistaken for this run's findings, but a
@@ -240,11 +245,18 @@ def main() -> int:
 
 
 def _read_blocking(output: Path) -> bool | None:
-    """The result file's boolean `blocking`, or None if it is missing, unreadable or malformed."""
+    """The `blocking` flag of a run-codex-review result, or None if the file isn't one.
+
+    A result is a JSON object with a `mode` and a boolean `blocking` (both its success and its
+    failure payloads carry them), so an unrelated JSON file that merely has `blocking` is not one.
+    """
     try:
-        blocking = json.loads(output.read_text(encoding="utf-8")).get("blocking")
-    except (OSError, ValueError, AttributeError):
+        data = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
         return None
+    if not isinstance(data, dict) or "mode" not in data:
+        return None
+    blocking = data.get("blocking")
     return blocking if isinstance(blocking, bool) else None
 
 
