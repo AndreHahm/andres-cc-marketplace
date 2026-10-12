@@ -1455,13 +1455,15 @@ class ConnectorReviewFixTests(unittest.TestCase):
         rng = random.Random(440)
 
         def draw():
-            text = ".".join(str(rng.randint(0, 3)) for _ in range(rng.randint(1, 4)))
+            text = ".".join(
+                str(rng.choice([0, 1, 2, 3, 12, 10**10])) for _ in range(rng.randint(1, 8))
+            )
             if rng.random() < 0.4:
                 n = rng.randint(0, 3)
                 text += rng.choice(
                     [f".post{n}", f"-{n}", f"r{n}", f"_POST.{n}", f".rev{n}", ".post"]
                 )
-            return f"{rng.randint(1, 2)}!{text}" if rng.random() < 0.2 else text
+            return f"{rng.choice([1, 2, 10**12])}!{text}" if rng.random() < 0.2 else text
 
         for _ in range(3000):
             a, b = draw(), draw()
@@ -1469,6 +1471,28 @@ class ConnectorReviewFixTests(unittest.TestCase):
             self.assertEqual(
                 (ka > kb) - (ka < kb), (Version(a) > Version(b)) - (Version(a) < Version(b)), (a, b)
             )
+
+    def test_large_numbers_and_long_releases_are_ordered_not_dropped(self):
+        key = lambda v: mod.order_key("uv", v)  # noqa: E731
+        self.assertGreater(key("1234567890.1"), key("9.9"))
+        self.assertGreater(key("1234567890!1.0"), key("99.0"))
+        self.assertGreater(key("1." + ".".join(["0"] * 19) + ".1"), key("1.0"))
+        self.assertGreater(key("1.0.post1234567890"), key("1.0.post9"))
+        result = self.newest(["1.0", "1234567890.1"])
+        self.assertEqual((result["status"], result["version"]), ("found", "1234567890.1"))
+
+    def test_a_final_release_too_long_to_order_makes_the_answer_unknown(self):
+        too_long = "1." + "9" * (mod.MAX_ORDERED_VERSION_CHARS + 1)
+        self.assertIsNone(mod.order_key("uv", too_long))
+        result = self.newest(["1.0", too_long])
+        self.assertEqual((result["status"], result["version"]), ("unknown", None))
+        # a leading v does not hide a too-long final release from the guard
+        self.assertEqual(self.newest(["1.0", "v" + too_long])["status"], "unknown")
+        # case folding is ASCII only, so a look-alike letter is not a post-release marker
+        self.assertIsNone(mod.order_key("uv", "1.0.po\u017ft1"))
+        # a pre-release of any length is simply not a final release
+        doc = pypi_doc(["1.0", "1.1rc1" + "9" * 200], "1.0")
+        self.assertEqual(mod.stable_releases(lambda url, **k: doc, {}, "uv", "pkg"), ["1.0"])
 
     def test_a_post_release_spelled_with_a_dash_is_ranked_above_the_new_version(self):
         result = self.newest(["0.9", "1.0", "1.0-1"])
@@ -1484,6 +1508,7 @@ class ConnectorReviewFixTests(unittest.TestCase):
             return code, json.loads(out.getvalue())
 
         self.assertEqual(code_for("1!2.0")[0], 4)  # past validation, stopped at the missing gh
+        self.assertEqual(code_for("1234567890!2.0")[0], 4)
         for bad in ("1.0!2", "!1.0", "1!2!3", "1!"):
             code, result = code_for(bad)
             self.assertEqual(code, 2, bad)
