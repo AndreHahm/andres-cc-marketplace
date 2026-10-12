@@ -61,6 +61,16 @@ expectCategory(
   NON_ZERO_EXIT
 );
 expectCategory(
+  "an API permission error on an ERROR line (bare 'permission denied')",
+  `${BANNER}\nreview\n\nERROR: permission denied for model gpt-x`,
+  NON_ZERO_EXIT
+);
+expectCategory(
+  "an API 'access is denied' error on an ERROR line",
+  `${BANNER}\nreview\n\nERROR: access is denied for this account`,
+  NON_ZERO_EXIT
+);
+expectCategory(
   "an echoed reviewer prompt that mentions the sandbox and permissions",
   `${BANNER}\nCheck that the sandbox is read-only and report any permission denied handling.\n\n${CAPACITY}`,
   NON_ZERO_EXIT
@@ -100,6 +110,11 @@ expectCategory(
 expectCategory(
   "sandbox failure on an ERROR line",
   `${BANNER}\nreview\n\nERROR: sandbox failed to start`,
+  ISOLATION_PROFILE_UNAVAILABLE
+);
+expectCategory(
+  "a bubblewrap namespace failure on an ERROR line",
+  `${BANNER}\nreview\n\nERROR: bwrap: No permissions to create new namespace`,
   ISOLATION_PROFILE_UNAVAILABLE
 );
 expectCategory(

@@ -33,7 +33,11 @@ function typedFailure(category, detail) {
 
 const AUTH_FAILURE_PATTERN = /not authenticated|OPENAI_API_KEY|401 Unauthorized|Missing bearer/i;
 const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
-export const ISOLATION_FAILURE_PATTERN = /CreateProcessAsUserW|sandbox|permission denied|access is denied/i;
+// Concrete sandbox-failure shapes, not the bare words "sandbox" / "permission
+// denied" / "access is denied": those also appear in non-isolation errors (an
+// API 403 "permission denied for model ...").
+export const ISOLATION_FAILURE_PATTERN =
+  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)/i;
 
 // How many trailing stderr lines failureScope() looks at.
 const FAILURE_TAIL_LINES = 20;

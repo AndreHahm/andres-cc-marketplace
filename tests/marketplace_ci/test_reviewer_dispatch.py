@@ -390,6 +390,27 @@ def test_dispatch_keeps_the_head_and_the_tail_of_an_overlong_failure(
         assert len(r.error) <= 2000
 
 
+def test_dispatch_redacts_token_shaped_secrets_from_a_failed_reviewers_error(
+    monkeypatch, repo, change, dependency_index
+):
+    # A Node crash trace or a semantic-validation detail reaches review.py
+    # without the bridge's own redaction pass (issue #544, security review m5).
+    secret = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789"
+    stderr = f"crash while reading key {secret} then Bearer abcdefgh12345678 end".encode()
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error is not None
+        assert secret not in r.error and "abcdefgh12345678" not in r.error
+        assert r.error.startswith("crash while reading key [REDACTED]")
+        assert r.error.endswith("[REDACTED] end")
+
+
 def test_dispatch_never_retries_malformed_bridge_output(
     monkeypatch, repo, change, dependency_index
 ):
