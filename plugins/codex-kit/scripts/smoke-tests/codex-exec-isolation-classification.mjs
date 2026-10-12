@@ -255,13 +255,18 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
   }
   expectCategory(
     "CRLF stderr: the real tracing spawn-failure line is still recognized",
-    `${REAL_WINDOWS_BANNER}\r\nreview\r\n\r\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process\r\n`,
+    `${REAL_WINDOWS_BANNER}\r\nreview\r\n\r\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process: helper_unknown_error\r\n`,
     ISOLATION_PROFILE_UNAVAILABLE
   );
   expectCategory(
     "documented residual: a column-0 tracing-shaped line from the model's own tool output still counts",
     `${REAL_WINDOWS_BANNER}\nexec\ncat app.log\n2026-10-12T16:32:29.966755Z ERROR x: CreateProcessAsUserW failed\n${CAPACITY}`,
     ISOLATION_PROFILE_UNAVAILABLE
+  );
+  expectCategory(
+    "a generic unified-exec failure with no sandbox-helper marker is not isolation (fd/pty exhaustion)",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process: too many open files\n${CAPACITY}`,
+    NON_ZERO_EXIT
   );
   expectCategory(
     "a column-0 'ERROR ' line without a timestamp is not trusted",

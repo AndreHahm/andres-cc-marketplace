@@ -149,7 +149,9 @@ bounded only by best-effort, not enforced, guardrails. Options: "Run without a s
 run" / "Stay Claude-native for this run". Ask once per audit run; the answer applies to every
 remaining reviewer in that run, and declining routes each of them to Claude-native (Codex Path
 step 8). The trigger in (a) is a free-text heuristic, which is why a live human sits between it and
-`danger-full-access`.
+`danger-full-access`. (`cross-model-review` differs on purpose: its own First-Send Confirmation
+already discloses the no-sandbox fallback up front, covering both outcomes, so it has no second
+prompt.)
 
 **Steps 0 and 1 still apply regardless of profile** (First-Send Confirmation; reviewer-name
 validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward, this

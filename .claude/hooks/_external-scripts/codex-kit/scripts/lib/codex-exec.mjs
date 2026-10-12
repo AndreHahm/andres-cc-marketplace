@@ -37,7 +37,7 @@ const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
 // denied" / "access is denied": those also appear in non-isolation errors (an
 // API 403 "permission denied for model ...").
 export const ISOLATION_FAILURE_PATTERN =
-  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)|failed to create unified exec process/i;
+  /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)|failed to create unified exec process:\s*helper_/i;
 
 // The slice of stderr the failure patterns are tested against -- not the whole
 // stream. Once a session starts, Codex prints a banner ("sandbox: read-only",
@@ -70,7 +70,9 @@ const TRACING_ERROR_LINE_PATTERN = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z ERROR /;
 // Only specific spawn-failure shapes, not the bare landlock/seccomp/bwrap words
 // the plain-ERROR scope also accepts, and not "sandbox error/failed/..." either:
 // a tracing line can carry a repo path or a command (`rg "sandbox error" src`).
-const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW|failed to create unified exec process/i;
+// "unified exec process" alone is generic (fd/pty exhaustion fails the same way), so the `helper_`
+// marker of the sandbox helper seen in the one real capture is required; tied to that single sample.
+const TRACING_ISOLATION_PATTERN = /CreateProcessAsUserW|failed to create unified exec process:\s*helper_/i;
 
 // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
 // prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed
