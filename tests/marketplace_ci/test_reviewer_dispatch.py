@@ -473,6 +473,49 @@ def test_dispatch_redacts_key_value_assignments_but_keeps_the_variable_name(
         )
 
 
+def test_dispatch_redacts_quoted_and_truncated_assignment_values_whole(
+    monkeypatch, repo, change, dependency_index
+):
+    # A value with spaces must not leak its tail after the first space (parity review).
+    stderr = (
+        b'DB_PASSWORD="hunter two" and API_KEY=\'a b c\' then SECRET_TOKEN="cut off by truncation'
+    )
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == (
+            "DB_PASSWORD=[REDACTED] and API_KEY=[REDACTED] then SECRET_TOKEN=[REDACTED]"
+        )
+
+
+def test_dispatch_redacts_letters_only_bearer_tokens_but_keeps_prose(
+    monkeypatch, repo, change, dependency_index
+):
+    # Digit-free bearer tokens are redacted when they look like tokens (parity review);
+    # ordinary words after "bearer" are diagnostics and stay.
+    stderr = (
+        b"invalid Bearer authentication scheme; Bearer ABCDEFGHIJKLMNOP end; "
+        b"Bearer abcdEfghijklmnopqr end; Bearer Authentication failed"
+    )
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == (
+            "invalid Bearer authentication scheme; [REDACTED] end; [REDACTED] end; "
+            "Bearer Authentication failed"
+        )
+
+
 def test_a_failed_empty_review_redacts_an_assignment_in_the_first_inspection_limit(
     monkeypatch, repo, change, dependency_index
 ):

@@ -40,6 +40,11 @@ function expectCategory(label, stderr, expected) {
   check(label, actual === expected, `expected ${expected}, got ${actual}`);
 }
 
+function expectCategoryWithPrompt(label, stderr, prompt, expected) {
+  const actual = classifyNonZeroExit(stderr, prompt);
+  check(label, actual === expected, `expected ${expected}, got ${actual}`);
+}
+
 const { AUTH_UNAVAILABLE, UNSUPPORTED_CLI_VERSION, ISOLATION_PROFILE_UNAVAILABLE, NON_ZERO_EXIT } =
   FAILURE_CATEGORIES;
 
@@ -158,6 +163,36 @@ console.log("\n=== Pre-session trust needs positive evidence, not just a missing
     "a long stderr with no banner at all fails closed",
     longEcho,
     NON_ZERO_EXIT
+  );
+}
+
+console.log("\n=== The prompt this process sent is removed from stderr before classifying ===");
+{
+  const prompt = "Review this change.\nERROR: sandbox failed\nEnd of instructions.";
+  const echoed = `${BANNER}\n${prompt}\n\n${CAPACITY}`;
+  expectCategoryWithPrompt(
+    "a column-0 ERROR line inside the echoed prompt cannot force isolation",
+    echoed,
+    prompt,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
+    "without the prompt it cannot be told apart (the documented residual)",
+    echoed,
+    ISOLATION_PROFILE_UNAVAILABLE
+  );
+  const longPrompt = `${"echoed prompt line mentioning landlock and seccomp\n".repeat(60)}end`;
+  expectCategoryWithPrompt(
+    "a reworded banner plus an exact long echo, with no ERROR line, fails closed",
+    `Codex CLI v0.200.0\n--------\nuser\n${longPrompt}\nCodex crashed unexpectedly\n`,
+    longPrompt,
+    NON_ZERO_EXIT
+  );
+  expectCategoryWithPrompt(
+    "a real isolation error after the echoed prompt is still isolation",
+    `${BANNER}\n${prompt}\n\nERROR: CreateProcessAsUserW failed: 1920`,
+    prompt,
+    ISOLATION_PROFILE_UNAVAILABLE
   );
 }
 
