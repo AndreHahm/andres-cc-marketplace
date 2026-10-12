@@ -220,9 +220,9 @@ existing reactive-fallback behavior in the previous section is unchanged.
    normally gitignored and would be silently absent from a tracked-only listing (this is the exact
    gap `codex-windows-guardrails`' own check was rewritten to close; see
    `references/preflight-checks.md`'s history there) — and check every returned basename against
-   this exact pattern list, copied in full rather than abbreviated (the canonical copy lives in
-   `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s `SECRET_FILENAME_PATTERNS`; keep both in
-   sync if either changes):
+   this exact pattern list, copied in full rather than abbreviated (the canonical copy is
+   `SECRET_FILENAME_PATTERNS` in `codex-kit/scripts/lib/cdx-secret-filenames.mjs`, which
+   `codex-windows-guardrails/scripts/guarded-dispatch.mjs` imports; keep both in sync if either changes):
    `^\.env(\..*)?$`, `secret`, `credential`, `\.key$`, `\.pem$`, `password`, `token`, `^id_rsa$`,
    `^id_ed25519$`, `^id_ecdsa$`, `^id_dsa$`, `^service-account\.json$`, `\.p12$`, `\.pfx$`, `\.jks$`,
    `^\.npmrc$`, `^\.pgpass$`, `^\.netrc$`. If any match is found anywhere under a target path, do not

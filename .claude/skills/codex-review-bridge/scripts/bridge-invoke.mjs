@@ -220,7 +220,8 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // fabricating findings, but that leaves this total-failure mode looking
 // identical to a genuine clean pass to anything that only checks
 // `result.ok`/`findings.length` -- the resolver's documented "on
-// isolation_profile_unavailable, fall back to Step 2" behavior
+// isolation_profile_unavailable, fall back to Step 2 (cross-model-review's own
+// Step 2, the Windows-guarded fallback)" behavior
 // (SKILL.md's Codex dispatch resolver) never triggers. Reclassifying just
 // this narrow case (zero findings AND an inspection_limits note that itself
 // reports the sandbox couldn't start/use a process) back into the
@@ -278,7 +279,7 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // own process-spawn API), never a plain file-read failure -- a
 // meaningfully tighter signal, even though it still doesn't fully prove
 // scope. The residual risk is bounded regardless: an over-eager
-// escalation still passes through Step 2's own independent gates
+// escalation still passes through cross-model-review Step 2's own independent gates
 // (repository-boundary, secret-file content-scan, instruction-
 // containment) before any `danger-full-access` dispatch actually runs,
 // and `cross-model-review`'s own durable fix (embedding the diff instead
