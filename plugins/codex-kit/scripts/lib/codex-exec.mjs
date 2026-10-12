@@ -31,6 +31,50 @@ function typedFailure(category, detail) {
   return { ok: false, category, detail };
 }
 
+const AUTH_FAILURE_PATTERN = /not authenticated|OPENAI_API_KEY|401 Unauthorized|Missing bearer/i;
+const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
+export const ISOLATION_FAILURE_PATTERN = /CreateProcessAsUserW|sandbox|permission denied|access is denied/i;
+
+// How many trailing stderr lines failureScope() looks at.
+const FAILURE_TAIL_LINES = 20;
+
+// The slice of stderr the failure patterns are tested against -- not the whole
+// stream. Codex always prints a banner ("sandbox: read-only", ...) and echoes
+// the full reviewer prompt (which carries the PR diff), so words like
+// "sandbox" or "OPENAI_API_KEY" can appear in every failing run, whatever the
+// cause (a model at capacity or rejected for the account matched "sandbox" and
+// was reported as a sandbox failure -- issue #544). The cause is on the
+// `ERROR:` lines Codex prints last, unindented; take only those from the tail,
+// so an indented or earlier `ERROR:` line in the echoed prompt can neither
+// force nor hide a classification. With none, use the tail itself, minus the
+// banner's `sandbox:` line.
+export function failureScope(stderr) {
+  const tail = stderr.split(/\r?\n/).slice(-FAILURE_TAIL_LINES);
+  const errorLines = tail.filter((line) => line.startsWith("ERROR:"));
+  if (errorLines.length > 0) {
+    return errorLines.join("\n");
+  }
+  return tail.filter((line) => !/^\s*sandbox:\s/i.test(line)).join("\n");
+}
+
+// Auth is checked first, ahead of isolation: a benign "could not find
+// bubblewrap... sandbox prerequisites" fallback warning can appear ahead of a
+// real 401 auth failure, and its use of the word "sandbox" would otherwise
+// misreport an expired/invalid API key as a sandbox failure.
+export function classifyNonZeroExit(stderr) {
+  const scope = failureScope(stderr);
+  if (AUTH_FAILURE_PATTERN.test(scope)) {
+    return FAILURE_CATEGORIES.AUTH_UNAVAILABLE;
+  }
+  if (UNSUPPORTED_OPTION_PATTERN.test(scope)) {
+    return FAILURE_CATEGORIES.UNSUPPORTED_CLI_VERSION;
+  }
+  if (ISOLATION_FAILURE_PATTERN.test(scope)) {
+    return FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE;
+  }
+  return FAILURE_CATEGORIES.NON_ZERO_EXIT;
+}
+
 // Ported pattern set (not the file itself -- codex-kit stays JS per
 // require-declared-plugin-language.md) from analysis-kit's
 // scripts/anls_redact_secrets.py, applied to the raw Codex stderr tail before it
@@ -512,22 +556,8 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         // and cut off before the actual failure line every time this was hit
         // in practice -- the real error text is near the end of stderr.
         const detail = redactSecrets(stderr).trim().slice(-4000);
-        // Checked first, ahead of the sandbox pattern below: a benign
-        // "could not find bubblewrap... sandbox prerequisites" fallback
-        // warning can appear in stderr ahead of a real 401 auth failure,
-        // and its own use of the word "sandbox" previously matched the
-        // isolation-profile pattern before this one ever got a chance --
-        // misreporting an expired/invalid API key as a sandbox failure.
-        if (/not authenticated|OPENAI_API_KEY|401 Unauthorized|Missing bearer/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.AUTH_UNAVAILABLE, detail));
-        }
-        if (/unknown option|unrecognized/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.UNSUPPORTED_CLI_VERSION, detail));
-        }
-        if (/CreateProcessAsUserW|sandbox|permission denied|access is denied/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE, detail));
-        }
-        return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, detail || `exit ${code}`));
+        const category = classifyNonZeroExit(stderr);
+        return finish(typedFailure(category, category === FAILURE_CATEGORIES.NON_ZERO_EXIT ? detail || `exit ${code}` : detail));
       }
 
       if (!fs.existsSync(scratch.lastMessageFile)) {

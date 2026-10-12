@@ -5,9 +5,9 @@ Shared by every codex-kit component's error handling. This is the same category 
 | Category | Meaning | Typical trigger |
 |---|---|---|
 | `cli_unavailable` | Codex binary not found on PATH | `ENOENT` spawning `codex` |
-| `auth_unavailable` | Codex CLI not authenticated | stderr matches "not authenticated" / "OPENAI_API_KEY" |
-| `unsupported_cli_version` | Codex CLI rejected a flag this call sent | stderr matches "unknown option" / "unrecognized" |
-| `isolation_profile_unavailable` | Requested sandbox/execution profile failed | stderr matches `CreateProcessAsUserW` / "sandbox" / "permission denied" / "access is denied" |
+| `auth_unavailable` | Codex CLI not authenticated | the failure scope of stderr (see the isolation row) matches "not authenticated" / "OPENAI_API_KEY" |
+| `unsupported_cli_version` | Codex CLI rejected a flag this call sent | the failure scope of stderr (see the isolation row) matches "unknown option" / "unrecognized" |
+| `isolation_profile_unavailable` | Requested sandbox/execution profile failed | the failure scope of stderr — the unindented `ERROR:` lines among its last 20 lines, or with none those 20 lines minus the banner's `sandbox:` line — matches `CreateProcessAsUserW` / "sandbox" / "permission denied" / "access is denied" — never the whole stream, since Codex's banner and echoed prompt always contain "sandbox" and can contain any other pattern word (issue #544); auth is checked first, then unknown-option, then isolation |
 | `timeout` | Exceeded the caller-supplied timeout | process killed after `timeoutMs` |
 | `non_zero_exit` | Non-zero exit for an unclassified reason | none of the above patterns matched |
 | `missing_final_message` | Exited 0 but no `--output-last-message` file was written | file missing after exit |

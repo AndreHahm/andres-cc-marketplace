@@ -1386,6 +1386,17 @@ _PROCESS_SLACK_SECONDS = 60
 # bridge's own error line is a few hundred characters, so this only ever trims
 # a runaway one.
 _MAX_ERROR_CHARS = 2000
+# The bridge's stderr is one JSON line: `category` at the head, and a `detail`
+# that ends with the real cause (Codex's own stderr tail, which starts
+# mid-way through the echoed reviewer prompt). A head-only cut loses the cause.
+_ERROR_HEAD_CHARS = 200
+
+
+def _clip_error(text: str) -> str:
+    """Cap `text` at `_MAX_ERROR_CHARS`, keeping its head and its tail."""
+    if len(text) <= _MAX_ERROR_CHARS:
+        return text
+    return f"{text[:_ERROR_HEAD_CHARS]} ... {text[-(_MAX_ERROR_CHARS - _ERROR_HEAD_CHARS - 5) :]}"
 
 
 def _per_call_seconds() -> float:
@@ -1597,7 +1608,7 @@ def _dispatch_one(
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
-                error=_sanitize_log_text(stderr)[:_MAX_ERROR_CHARS],
+                error=_clip_error(_sanitize_log_text(stderr)),
                 attempts=attempts,
             )
 
