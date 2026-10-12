@@ -79,6 +79,36 @@ console.log("\n=== A CreateProcessAsUserW-shaped note (the other sandbox-failure
   check("the CreateProcessAsUserW phrasing is also recognized", isTotalInspectionFailure(envelope));
 }
 
+console.log("\n=== REAL Windows Codex 0.162.1 (issue #545): exit 0, final message names 'process creation failed' ===");
+{
+  // Captured live 2026-10-12: the read-only sandbox could not spawn `dir`; Codex exited 0
+  // and its final message was this sentence -- no create/start verb, no CreateProcessAsUserW.
+  const note = "`dir` could not run because process creation failed; no output line was produced.";
+  check("the real 0.162.1 Windows phrasing is recognized", isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
+  check(
+    "'process creation failed' with findings present is never reclassified",
+    !isTotalInspectionFailure({ findings: [{ id: "F1" }], inspection_limits: [note] })
+  );
+  for (const topical of [
+    "Did not exercise the process creation error path at runtime",
+    "Only reviewed the process creation error handling in spawn.c statically",
+    "Could not confirm whether process creation failed handling is covered by tests"
+  ]) {
+    check(
+      `a topical note about the code under review does NOT match: "${topical}"`,
+      !isTotalInspectionFailure({ findings: [], inspection_limits: [topical] })
+    );
+  }
+  check(
+    "'process creation failed' ending the note is recognized",
+    isTotalInspectionFailure({ findings: [], inspection_limits: ["The sandbox rejected every command: process creation failed"] })
+  );
+  check(
+    "an unrelated 'process' mention does not match",
+    !isTotalInspectionFailure({ findings: [], inspection_limits: ["Reviewed the build process documentation only; no source files changed."] })
+  );
+}
+
 console.log("\n=== Security review fix (M2): a PARTIAL read/access note no longer over-matches ===");
 {
   // An earlier draft's pattern also matched a bare "could not (inspect|
