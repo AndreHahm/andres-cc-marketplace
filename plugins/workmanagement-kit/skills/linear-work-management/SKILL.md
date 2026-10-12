@@ -4,8 +4,7 @@ description: >-
   Read and update accepted Projects, Milestones, Issues and Issue labels in Linear (Goals and Roadmaps
   are handoff-only), and read Initiatives (read-only, via a separately installed connector) — this
   plugin's execution authority for direct Linear requests. Use when asked to create/refine a Linear
-  Issue, revise a Milestone, check Linear project/issue/Initiative status (answered live in chat, no
-  Notion write), or change owner/priority/scope/date/status on accepted work directly (merge-driven closure is
+  Issue, revise a Milestone, check Linear project/issue/Initiative status, or change owner/priority/scope/date/status on accepted work directly (merge-driven closure is
   `merge-to-completion`). Reads
   and status checks need no approval; material changes need the plugin's live approval gate, and
   refinement never derives priority from Notion or other external content without it. Starting, merging
@@ -45,7 +44,7 @@ update write, slug resolution, the dedup lookup, update scope and label reads). 
   taking an accepted Issue all the way to merge → `linear-github-lifecycle`.
 - Dispositioning open questions or follow-ups from a Report or completed Issue →
   `open-item-management`.
-- A request that originates from another plugin's workflow, envelope or not (batch, query, update) → `plugin-integration-intake`; only a user's own typed request stays.
+- A request that originates from another plugin's workflow, envelope or not (batch, query, update) → `plugin-integration-intake`; only a user's own typed request stays, and work intake already validated and delegated here.
 - Repairing Linear/GitHub drift → `linear-github-reconciliation` (a material scope, priority or
   date change it finds still comes back here); linking or drift-repairing a Notion record against
   its Linear record → `work-linking`.

@@ -573,6 +573,26 @@ def main() -> int:
                 rc == 1 and target.exists() and link.is_symlink(),
             )
 
+        linkdir_root = tmp_path / "linked-root"
+        linkdir_root.mkdir()
+        linkdir_target = tmp_path / "linkdir-target"
+        linkdir_target.mkdir()
+        victim = linkdir_target / "12345678.json"
+        victim.write_text("{}", encoding="utf-8")
+        try:
+            (linkdir_root / "wmgt-intake").symlink_to(linkdir_target, target_is_directory=True)
+            linked = True
+        except (OSError, NotImplementedError):
+            linked = False  # this platform cannot create a symlink here; the case is skipped
+        if linked:
+            rc, out = run(
+                "purge", str(linkdir_root), str(linkdir_root / "wmgt-intake" / "12345678.json")
+            )
+            check(
+                "purge refuses a linked wmgt-intake directory and leaves the target file alone",
+                rc == 1 and victim.exists(),
+            )
+
         odd = scratch / "notes.txt"
         odd.write_text("x", encoding="utf-8")
         rc, out = run("purge", str(tmp_path), str(odd))

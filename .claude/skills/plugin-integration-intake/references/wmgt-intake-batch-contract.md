@@ -109,7 +109,7 @@ for the rows, never from the set held in memory, so what the person sees is the 
 most 100 rows and 20000 bytes per call, and `preview` and `chunk` output carries a `bytes` field: if a result looks cut short
 (its `bytes` is larger than what arrived), request smaller ranges. Page through every record and put the whole table in
 the reply before the question, so it is in the transcript. `preview` already makes every cell inert (record text cannot forge or split a row, though a few invisible filler characters outside the control and format classes are not made visible: line breaks, pipes, angle brackets,
-backticks, `&`, markdown punctuation and control or bidi characters are neutralised or shown as visible escapes): render the
+backticks, `&`, markdown punctuation and control or bidi characters are neutralised or shown as visible escapes; bare URLs, `$` and `:` are left as text, so a renderer with autolink or math extensions may still link them): render the
 cells exactly as printed, end the table with a count line, "table shows N rows; script record_count = M", taken from the
 script's output, and render each full description inside the `fence` string printed with it. The preview is display-normalised;
 the write uses the exact text in the hashed file, which the person may open first. The preview shows:
