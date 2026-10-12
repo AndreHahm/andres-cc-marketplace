@@ -204,7 +204,10 @@ def main() -> int:
         return 2
     # Never delete or overwrite anything: a pre-existing path (file, directory or symlink, even a
     # dangling one) is refused. The caller names a fresh file per run, so no stale result exists.
-    if output.exists() or output.is_symlink():
+    if output.is_symlink():
+        print(f"PARITY: --output is a symlink ({output}); pass a new path (nothing is followed).")
+        return 2
+    if output.exists():
         print(f"PARITY: {output} already exists; pass a new --output path (nothing is deleted).")
         return 2
 
