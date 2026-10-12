@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -255,7 +255,8 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    sandboxes are confirmed non-functional there), **fall back to Step 2**. This path is **disabled by
    default** (`assets/settings.json` ships disabled; requires an untracked
    `.claude/codex-windows-guardrails.local.json` override to enable) — do not enable it yourself. A
-   `guardrails_disabled` typed failure here is expected, not a bug.
+   `guardrails_disabled` typed failure here is expected, not a bug. The fallback script is deliberately not
+   pre-approved in `allowed-tools`, so its first call raises Claude Code's own permission prompt.
 3. **On any other typed failure from either path** — including `guardrails_disabled`, the `codex`
    CLI itself missing, and **`codex-kit` not being installed at all** (`node` then fails at the OS
    level before either script produces its own typed-failure JSON — the same `cli_unavailable`
@@ -274,7 +275,9 @@ later, separate invocation always asks again — before the *first* real Codex d
 `AskUserQuestion` — name the reviewer persona and target paths, and disclose plainly: (a) the
 dispatched process can read anything under the repository root regardless of `--target-paths`, which
 only scopes what it's checked against; (b) **if Step 2 triggers, the dispatch runs
-`danger-full-access` — no sandbox, read *and* write/execute** — not Step 1's `read-only` profile;
+`danger-full-access` — no sandbox, read *and* write/execute with this account's permissions anywhere on the
+machine (not only under the repository root), with network access** — not Step 1's `read-only` profile, and
+Claude Code asks for permission again before it runs the fallback script;
 (c) if Preflight step 6 set `DISPATCHER_TOUCHED=1`, that it wasn't
 trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working

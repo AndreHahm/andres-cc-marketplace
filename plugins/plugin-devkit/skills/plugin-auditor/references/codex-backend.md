@@ -167,7 +167,8 @@ step 8). If the question cannot be asked (a headless or subagent context, or the
 treat that as declined, never as consent. The trigger in (a) is a free-text heuristic, which is why a live human sits between it and
 `danger-full-access`. (`cross-model-review` differs on purpose: its own First-Send Confirmation
 already discloses the no-sandbox fallback up front, covering both outcomes, for a run the user started
-themselves, so it has no second prompt; its disclosure should state the same account-wide reach.)
+themselves, so it has no second `AskUserQuestion`; that disclosure states the same account-wide reach, and the
+fallback script is not pre-approved there either, so Claude Code's permission prompt still appears.)
 
 **Steps 0 and 1 still apply regardless of profile** (First-Send Confirmation; reviewer-name
 validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward,
@@ -176,9 +177,11 @@ instruction body from `agents/<reviewer>.md`) and step 3 (write it to the scratc
 invoking it, exactly as for the `read-only` profile; steps 4 (`authentication_mode`) through 6
 (bridge invocation) are what that skill's own script performs internally, not skipped. `codex-review-bridge` itself unconditionally refuses `--execution-profile danger-full-access` (a correct,
 unchanged safety invariant for every other caller); routing through it for this profile would always
-fail. Instead, after completing steps 0-3, invoke the scoped
-`Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)`
-tool directly:
+fail. Instead, after completing steps 0-3, invoke
+`plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs` through Bash directly. It is
+deliberately not in this skill's `allowed-tools`, so Claude Code's own permission prompt appears for every call (the
+dry run and the real run) as a second human gate behind the `AskUserQuestion` above; never add a pre-approved grant
+for it:
 
 ```bash
 node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs \

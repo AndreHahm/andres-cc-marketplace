@@ -1,22 +1,15 @@
 ---
 name: plugin-auditor
 description: >-
-  Dispatches this plugin's review agents (skilldir-reviewer, the type-matched
-  *-reviewer, completeness-reviewer, activation-reviewer, security-reviewer,
-  dependency-reviewer, authority-reviewer, scripts-reviewer, hook-reviewer,
-  plugin-rulebook-checker, plus consistency-reviewer and plugin-validator in
-  whole-plugin/scoped mode)
-  against a single component, a whole plugin, or a declared multi-component
-  scope that may span more than one plugin, and normalizes every finding
-  into plugin-rulebook's shared evidence schema. Produces evidence only — no
-  score, no gates, no SWOT. Use when the user asks to 'audit this plugin',
-  'gather findings without scoring', 'run just the reviewer fan-out', or when
-  plugin-lifecycle-downstream's Audit phase or plugin-grader need raw evidence
-  instead of a computed score. For just R1-R37 naming/formatting/tool-scoping
-  compliance, without the full multi-axis reviewer fan-out, use plugin-rulebook
-  instead.
+  Runs this plugin's review agents against a single component, a whole plugin, or a declared
+  multi-component scope that may span more than one plugin, and normalizes every finding into
+  plugin-rulebook's shared evidence schema. Produces evidence only: no score, no gates, no SWOT.
+  Use when the user asks to 'audit this plugin', 'gather findings without scoring', or 'run just
+  the reviewer fan-out', or when plugin-lifecycle-downstream's Audit phase or plugin-grader need
+  raw evidence instead of a computed score. For a computed score use plugin-grader; for just
+  naming/formatting/tool-scoping rule compliance, without the full fan-out, use plugin-rulebook.
 argument-hint: "[target]"
-allowed-tools: Read Glob Agent Write AskUserQuestion Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*) Bash(git ls-files:*) Bash(python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py:*)
+allowed-tools: Read Glob Agent Write AskUserQuestion Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(git ls-files:*) Bash(python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py:*)
 ---
 
 # Plugin Auditor
@@ -108,6 +101,9 @@ every applicable reviewer runs as documented below.
   (evidence-only mode) instead of dispatching anything itself
 - The user wants the full reviewer fan-out's findings, not a weighted score — "audit this
   plugin," "gather every finding," "run the reviewers without grading"
+- A standalone audit pass outside either pipeline: this skill is also invocable directly by name, and its
+  dispatch logic doesn't depend on either caller (today's two live callers are `plugin-lifecycle-downstream`'s
+  Phase 5 and `plugin-grader`'s Step 3, in both its standalone and evidence-only modes)
 
 ## When NOT to Use
 
@@ -196,6 +192,17 @@ rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped 
     `source: check-evals` entry with `severity: REQUIRED`, and a clean component (no `evals.json`/
     `smoke_test.*`) produces no `check-evals`-sourced finding at all rather than a spurious one.
 
+13. **No-sandbox escalation is gated twice (added 2026-10-12, not yet run live)** — with the Codex backend enabled, the
+    Windows guardrails opt-in enabled, and a `read-only` attempt that returned `isolation_profile_unavailable`, confirm
+    the resolver first calls `guarded-dispatch.mjs` with `--dry-run true`; routes to Claude-native with no prompt on any
+    typed failure from it (`guardrails_disabled` included); asks the second `AskUserQuestion` only after a passing dry
+    run; treats an unavailable or declined prompt as Claude-native; and that Claude Code's own permission prompt also
+    appears for the script because it is deliberately absent from `allowed-tools`.
+14. **Exit-0 total failure is not a clean pass (added 2026-10-12, not yet run live)** — feed the resolver a Codex result
+    that is a schema-valid envelope with zero findings whose `inspection_limits` states process creation failed
+    (the real Windows Codex 0.162.1 shape); confirm it is treated as `isolation_profile_unavailable` (the bridge
+    reclassifies it) and falls back, never recorded as a clean review.
+
 **Verify this skill activates on:**
 - "audit this plugin"
 - "gather findings without scoring"
@@ -237,14 +244,10 @@ rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped 
 - [ ] Step 4a invokes `check_evals.py` only by its full, anchored repo-relative path
       (`python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py`) — never a bare
       filename or a path that could resolve inside the audited target plugin instead of this one
-
-## When to Invoke
-
-Dispatched by two live production callers: `plugin-lifecycle-downstream`'s Phase 5 (Audit) dispatches
-this skill as part of its twelve-phase pipeline, and `plugin-grader`'s Step 3 ("Dispatch Reviewers")
-delegates to it for both standalone (fresh dispatch) and evidence-only (pre-gathered) scoring modes.
-Also still invocable directly by name for a standalone audit pass outside either pipeline — this skill's
-own dispatch logic doesn't depend on either caller.
+- [ ] `guarded-dispatch.mjs` is never listed in this skill's `allowed-tools` — a pre-approved grant would remove the
+      Claude Code permission prompt that stands behind the no-sandbox `AskUserQuestion`
+- [ ] The Codex path is skipped for the whole dispatch whenever the audited scope includes `plugin-devkit` or
+      `codex-kit` (the dispatcher and classifier would otherwise run from the tree under audit)
 
 ## Reference Guide
 
