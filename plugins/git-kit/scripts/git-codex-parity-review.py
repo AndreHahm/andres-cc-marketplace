@@ -8,8 +8,9 @@ settings that must match CI from the workflow file itself, so they cannot drift:
 
   - CODEX_KIT_REVIEW_TIMEOUT_MS: parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
-  - Warns when the branch changed a Tier-1 file (list read from the merge-base copy).
-  - Base: `origin/main` is fetched first (best effort) and the merge-base SHA used is printed.
+  - Warns when the branch changed a Tier-1 file (list read from the base-tip copy).
+  - Base: `origin/main` is fetched first (best effort); its tip SHA, used as CI's base.sha, is
+    printed.
   - CODEX_KIT_REVIEW_MODEL: a repository variable (vars.*), not a workflow value, so it is
     read with `gh variable list --json`; when unset or unreadable the local Codex default is used
     and that is stated in the output.
@@ -106,8 +107,13 @@ def _run_in_group(
         if os.name == "posix":
             os.killpg(proc.pid, signal.SIGKILL)
         else:
+            # Without /T only the direct child dies; a surviving descendant keeps the pipes open.
+            _run(["taskkill", "/F", "/T", "/PID", str(proc.pid)])
             proc.kill()
-        proc.communicate()
+        try:
+            proc.communicate(timeout=_HELPER_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            pass  # a descendant still holds the pipes; the run is already abandoned
         return None
     return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
 
@@ -284,7 +290,7 @@ def tier1_touches(base_sha: str) -> list[str] | None:
     """Tier-1 (review-dispatch-critical) files this branch changed since `base_sha`, or None.
 
     CI hard-refuses to dispatch when a PR changes these, because the PR would control the code
-    that runs with the review credentials. The file list is read from the merge-base copy of
+    that runs with the review credentials. The file list is read from the `base_sha` copy of
     trust_boundary.py, never the branch's own copy, so the branch cannot shrink it.
     """
     shown = _run(["git", "show", f"{base_sha}:{TRUST_BOUNDARY}"])

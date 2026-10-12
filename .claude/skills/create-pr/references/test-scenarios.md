@@ -111,14 +111,14 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
 - Egress question is asked again on a re-run after a fix, not only on the first run
 - `--output` pointing inside the checkout → refused with exit 2 (treated as "could not run"), never written
-- A timed-out run → on POSIX the whole process group is killed, so no `codex` process lingers; on other platforms only the
-  direct child is killed and a stray `codex` process may linger (the reference states this limit)
+- A timed-out run → on POSIX the whole process group is killed, so no `codex` process lingers; on Windows the tree is killed with
+  `taskkill /F /T` and the wait for the pipes is bounded, so a surviving descendant cannot hang the run
 - `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) → step 4.5 runs `.claude/scripts/git-codex-parity-review.py`
   from the checkout root, matching the second grant, instead of failing with exit 127
 - A stalled `git fetch` / `gh` / `codex --version` → bounded by a 60 s timeout, then a warning or exit 2, never a hang
-- Branch changed a Tier-1 (review-dispatch-critical) file since the merge-base → loud warning naming it, run still
-  proceeds; the Tier-1 list is read from the merge-base copy, so the branch cannot shrink it
-- Merge-base has no readable trust_boundary.py → "could not check" warning, run still proceeds
+- Branch changed a Tier-1 (review-dispatch-critical) file since the base → loud warning naming it, run still
+  proceeds; the Tier-1 list is read from the base-tip copy, so the branch cannot shrink it
+- The base tip has no readable trust_boundary.py → "could not check" warning, run still proceeds
 - The run exits 0 or 1 but the result file is missing, malformed, or its `blocking` contradicts the exit code → exit 2
   ("could not run"), never a pass
 - The run creates `.codex-review-instructions/` in the checkout → removed afterwards; a directory that already
@@ -126,7 +126,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched
 - The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
 - The remote has no (or an unrelated) fetch refspec configured → the explicit-refspec fetch still refreshes
-  `origin/main` before the merge-base is taken
+  `origin/main` before its tip is resolved as the base
 - A retry after an exit 2 uses a fresh `--output` file name (the earlier file is never touched) and proceeds
 - A model slug the bridge would reject (`/`, `:`, over 64 characters) → omitted with the documented fallback
   warning, not a failed run

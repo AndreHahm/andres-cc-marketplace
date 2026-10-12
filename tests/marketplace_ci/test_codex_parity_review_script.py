@@ -73,6 +73,33 @@ def test_run_in_group_kills_the_whole_process_tree_on_timeout(tmp_path):
         os.kill(child, 0)
 
 
+def test_windows_timeout_kills_the_tree_and_does_not_wait_forever(monkeypatch):
+    # A descendant that keeps the pipes open must not turn the post-kill drain into a hang.
+    import types
+
+    module = _load_module()
+    calls = []
+
+    class FakeProc:
+        pid = 4242
+
+        def communicate(self, timeout: float | None = None):
+            calls.append(("communicate", timeout))
+            raise subprocess.TimeoutExpired("uv", timeout or 0)
+
+        def kill(self):
+            calls.append(("kill",))
+
+    monkeypatch.setattr(module, "os", types.SimpleNamespace(name="nt"))
+    monkeypatch.setattr(module.subprocess, "Popen", lambda *a, **k: FakeProc())
+    monkeypatch.setattr(module, "_run", lambda argv, **k: calls.append(tuple(argv)))
+    assert module._run_in_group(["uv"], env={}, timeout=1) is None
+    assert ("taskkill", "/F", "/T", "/PID", "4242") in calls
+    assert ("kill",) in calls
+    drains = [c for c in calls if c[0] == "communicate"]
+    assert len(drains) == 2 and drains[1][1] is not None  # the second drain is bounded
+
+
 def _stub(bin_dir: Path, name: str, body: str) -> None:
     path = bin_dir / name
     path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
@@ -588,3 +615,10 @@ def test_a_malformed_tier1_list_only_warns(repo, tmp_path, tier1_source):
     assert result.returncode == 0
     assert "could not check whether review-dispatch files changed" in result.stdout
     assert args  # the run still happened
+
+
+@pytest.mark.parametrize("root", ["plugins/git-kit", ".claude"])
+def test_the_script_and_its_mirror_are_executable(root):
+    # create-pr's grants name this script by path; plugin-rulebook R37 wants it committed as 100755.
+    copy = SCRIPT.parents[3] / root / "scripts" / SCRIPT.name
+    assert os.access(copy, os.X_OK), f"{copy} is not executable"
