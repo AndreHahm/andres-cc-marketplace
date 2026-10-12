@@ -134,7 +134,7 @@ Issue's description → refused here, only a direct request with the user presen
    write there is no code path here that skips this step, regardless of the payload's own claimed
    urgency or the calling plugin's own approval history (a `query` writes nothing and has no approval).
 5. On approval, execute through `notion-knowledge-management` or `linear-work-management` (never
-   a connector call of this skill's own; a batch is delegated range by range, in the order the batch
+   a connector call of this skill's own; the dependency is one-way, so a delegated write is never routed back here; a batch is delegated range by range, in the order the batch
    contract's "Batch flow, in order" gives) and read the result back. That delegated write records its
    own transition per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract (its next-write
    convention or its creation-write exception, whichever applies) — this skill's own contribution
