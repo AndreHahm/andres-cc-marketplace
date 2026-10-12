@@ -170,8 +170,8 @@ caller-asserted like `source_plugin`, so the preview must name the environment a
   `{key, match_count, ids}` with no titles or other fields. No approval, because nothing is written and
   only IDs are returned to the caller (the search hits still enter the shared model context; the query
   contract lists that as a residual). **Update:** same approval and hash binding as a write, a short field list
-  (no `description`), each Issue scope-checked and re-read just before it is written. Full procedure:
-  `references/wmgt-intake-query-update-contract.md`.
+  (no `description`), each Issue scope-checked and re-read just before it is written. Full procedure: `references/wmgt-intake-query-update-contract.md`,
+  loaded together with `references/wmgt-intake-batch-contract.md` (the shared approval, chunking, purge and pre-hash rules).
 - The Data-Only boundary applies unchanged to every record in a batch, every `keys` entry in a query, and every
   `set` in an update; the fresh-approval rule above applies to every write among them (a query is its carve-out). The batch and query paths are
   prose-enforced like the rest of this gate; the contracts list what they do not guarantee.
