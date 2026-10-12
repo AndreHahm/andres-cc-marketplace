@@ -20,11 +20,13 @@ pass; this step runs CI's own entry point so those findings surface before the p
   run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
 
 Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2), a symlink is refused, and an existing
-file there is replaced only if it is a previous result of this tool (a JSON object with a `mode` and a boolean
-`blocking`; otherwise exit 2, nothing deleted). The
+file there is replaced only if it is a previous result of this tool (a JSON object with a boolean `blocking` and
+either a `mode` or run-codex-review's own failure `error`; otherwise exit 2, nothing deleted), so a retry after an
+exit 2 reuses the same path. A completed run's result must carry a `mode`. The
 CI entry point's per-reviewer scratch directory `.codex-review-instructions/` is removed after the run when the
 wrapper created it, and is also gitignored.
-The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to.
+The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to;
+a value the bridge would reject (anything outside `[A-Za-z0-9._-]`, or over 64 characters) is ignored with the fallback warning.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as
 `uv run python .claude/scripts/git-codex-parity-review.py` (the `.claude/` mirror; SKILL.md has a matching grant and
 `.claude/rules/resolve-plugin-root-to-claude-mirror.md` explains why). Every helper call (git, gh, codex) is bounded

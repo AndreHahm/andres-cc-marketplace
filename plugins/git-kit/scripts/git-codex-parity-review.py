@@ -45,8 +45,8 @@ RUN_TIMEOUT_SECONDS = 45 * 60
 # Bound for every helper call (git, gh, codex --version): a stalled network or a credential prompt
 # must fall through to the documented warning / exit 2 path instead of hanging the gate.
 _HELPER_TIMEOUT_SECONDS = 60
-# A model slug is data from a repository variable; only pass it on if it looks like one.
-_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
+# A model slug is data from a repository variable; pass it on only if the bridge would accept it.
+_MODEL_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")  # identical to bridge-invoke.mjs
 _TIMEOUT_RE = re.compile(r'CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"?(\d+)"?')
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
@@ -203,7 +203,7 @@ def main() -> int:
 
     # A stale result from an earlier run must never be mistaken for this run's findings, but a
     # wrong --output must never delete an unrelated file: only a previous result is removed.
-    if (output.exists() or output.is_symlink()) and _read_blocking(output) is None:
+    if (output.exists() or output.is_symlink()) and not _is_previous_result(output):
         print(f"PARITY: {output} exists and is not a previous result; refusing to overwrite it.")
         return 2
     output.unlink(missing_ok=True)
@@ -246,20 +246,28 @@ def main() -> int:
     return result.returncode
 
 
-def _read_blocking(output: Path) -> bool | None:
-    """The `blocking` flag of a run-codex-review result, or None if the file isn't one.
-
-    A result is a JSON object with a `mode` and a boolean `blocking` (both its success and its
-    failure payloads carry them), so an unrelated JSON file that merely has `blocking` is not one.
-    """
+def _load_result(output: Path) -> dict | None:
+    """A JSON object with a boolean `blocking`, or None (missing, unreadable, malformed, other)."""
     try:
         data = json.loads(output.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if not isinstance(data, dict) or "mode" not in data:
+    if not isinstance(data, dict) or not isinstance(data.get("blocking"), bool):
         return None
-    blocking = data.get("blocking")
-    return blocking if isinstance(blocking, bool) else None
+    return data
+
+
+def _read_blocking(output: Path) -> bool | None:
+    """`blocking` of a completed run-codex-review result (it carries a `mode`), or None."""
+    data = _load_result(output)
+    return data["blocking"] if data is not None and "mode" in data else None
+
+
+def _is_previous_result(output: Path) -> bool:
+    """Whether `output` looks like something run-codex-review wrote: a result (`mode`) or its
+    infrastructure-failure payload (`error`, no `mode`). An unrelated JSON file is neither."""
+    data = _load_result(output)
+    return data is not None and ("mode" in data or "error" in data)
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:
