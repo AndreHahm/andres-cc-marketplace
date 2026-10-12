@@ -178,7 +178,7 @@ export function renderSetupReport(report) {
   const sandboxLine =
     report.sandboxCheck?.viable === null
       ? "- sandbox mode: skipped (Codex unavailable)"
-      : `- sandbox mode: ${report.sandboxCheck.viable ? "working" : "NOT working — will fall back to danger-full-access, and will say so every time"} (${report.sandboxCheck.detail})`;
+      : `- sandbox mode: ${report.sandboxCheck.viable ? "working" : "NOT working — danger-full-access is offered only after a read-only attempt fails and you consent, and is named every time"} (${report.sandboxCheck.detail})`;
 
   const lines = [
     "# Codex Setup",

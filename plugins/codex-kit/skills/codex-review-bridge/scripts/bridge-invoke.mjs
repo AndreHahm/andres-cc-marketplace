@@ -302,8 +302,8 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // exits 0, and Codex's final message said "`dir` could not run because process
 // creation failed" -- no create/start verb before "process", no
 // CreateProcessAsUserW. "process creation failed" is therefore matched as its
-// own alternative, but only as the stated cause ("because process creation
-// failed", or followed by `; : , . ( -`, the word "with", or the very end of the note --
+// own alternative, but only as the stated cause ("because/since/as/due to/after/when
+// process creation failed", a clause opened by `;` or `:`, or followed by `; : , . ( -`, the word "with", or the very end of the note --
 // there is no `m` flag, so `$` is the end of the whole note and a wrapped topical note
 // cannot match at a mid-note line break; a wrapped REAL note is still caught through
 // "because"; a topical note whose sentence ends right after the phrase still matches),
@@ -313,7 +313,7 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // code can make a model write nearby wording -- is accepted alongside the totality
 // caveat above; so is the converse, a real note that wraps right after the phrase
 // without "because" or punctuation, which is read as clean.
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|\bbecause process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|(?:\b(?:because|since|as|due to|after|when)\s+|[;:]\s*)process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).

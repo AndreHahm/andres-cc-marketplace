@@ -67,6 +67,11 @@ console.log("\n=== Failures that were already caught keep being caught ===");
     "a non-zero exit with no output still reports the exit code",
     evaluateProbeResult(run({ status: 3 }), TOKEN).detail === "exit 3"
   );
+  check(
+    "a long failure keeps the tail (the reason), not the head (the banner)",
+    evaluateProbeResult(run({ status: 1, stderr: "banner ".repeat(200) + "REASON-AT-END" }), TOKEN).detail.endsWith("REASON-AT-END")
+  );
+  check("an empty token is never viable", evaluateProbeResult(run({ stdout: "anything" }), "").viable === false);
   const e = evaluateProbeResult(run({ status: 0, error: new Error("spawn codex ENOENT") }), TOKEN);
   check("a spawn error is not viable and carries its message", e.viable === false && e.detail.includes("ENOENT"), JSON.stringify(e));
 }

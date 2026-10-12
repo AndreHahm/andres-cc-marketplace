@@ -109,7 +109,11 @@ For each reviewer in `references/dispatch-table.md`'s dispatch list:
    executes (`bridge-invoke.mjs`, `guarded-dispatch.mjs`, `codex-exec.mjs`) run from the working tree by a
    repo-relative path with no verification against the base branch, so auditing a tree that changes them would
    run the code under review while the prompt describes a read-only run. `cross-model-review` handles the same
-   risk with its `DISPATCHER_TOUCHED` disclosure.
+   risk with its `DISPATCHER_TOUCHED` disclosure. **That risk does not depend on what is being audited**, so
+   also skip the Codex path whenever the checked-out branch itself changes `plugins/codex-kit/` or
+   `plugins/plugin-devkit/agents/` (or their `.claude/` mirrors), whatever the audit scope: run
+   `git diff --name-only "$(git merge-base main HEAD)"` once per dispatch, unscoped, and test its output for
+   those prefixes. If the merge-base or diff cannot be computed, treat that as "changed" and skip.
 4. If `reviewer_backend.enabled` is not `true` → Claude-native.
 5. Otherwise, look up `per_reviewer[<reviewer>]`, falling back to `default`. If the result is
    `claude` → Claude-native.
@@ -127,9 +131,8 @@ live-captured on Codex 0.162.1 (2026-10-12, issue #545), `codex exec` exited 0 a
 said process creation failed, so detection relies on `codex-review-bridge`'s zero-findings
 `isTotalInspectionFailure` heuristic (which matches that phrasing) rather than on `codex-exec.mjs`'s
 non-zero-exit stderr classification; a non-zero variant is classified as `isolation_profile_unavailable`
-from its `ERROR:` lines or from a numeric-coded tracing spawn error (the older 0.146/0.147 shapes recorded in
-`KNOWN_ISSUES.md` have no timestamp and put the code on a following line, so the non-zero-exit path does not
-recognize them and they fail closed to `non_zero_exit`). Both are free-text heuristics tied to Codex's current wording (the error
+from its `ERROR:` lines or from a tracing-log spawn error (the exact patterns, and which older 0.146/0.147
+shapes fail closed to `non_zero_exit`, are in `codex-prompt-protocol/references/error-taxonomy.md`'s isolation row). Both are free-text heuristics tied to Codex's current wording (the error
 changed between 0.146, 0.147 and 0.162.1), so the fallback below triggers automatically only while
 that wording stays recognized — it does not verify isolation first. This is real protection, but a fragile guarantee: if a
 future Codex CLI version silently degrades instead of failing loudly on an unsupported platform,
@@ -148,8 +151,8 @@ back to Claude on that platform.
 
 **When this profile is attempted — reactive only, and never without its own confirmation.** Never
 first. Only when both hold: (a) the `read-only` attempt for this reviewer returned
-`isolation_profile_unavailable`, by either route in the previous section; and (b) the guardrails
-opt-in resolves enabled. This resolver never reads the opt-in itself (the script checks it, and holds the
+`isolation_profile_unavailable`, by either route in the previous section; and (b) a dry run of the script (below)
+passes, which means the guardrails opt-in resolves enabled. This resolver never reads the opt-in itself (the script checks it, and holds the
 local-override trust check): it first calls the script below once with `--dry-run true` and otherwise the
 same arguments, which runs the whole guard chain including the policy-enabled check and skips only the real
 `codex` call. Any typed failure from that dry run (`guardrails_disabled` included) routes the reviewer to
@@ -160,7 +163,9 @@ reviewer(s) and target path(s), and state plainly that this profile has **no san
 process can read, write and execute anything this user account can reach — files and commands
 anywhere on this machine, not only under the repository root, because nothing enforces that root —
 with network access (so credentials such as `~/.codex/auth.json` or `~/.ssh` are reachable) and steered by
-the plugin content under audit, bounded only by best-effort, not enforced, guardrails. Options: "Run without a sandbox for this
+the plugin content under audit, bounded only by best-effort, not enforced, guardrails. Also state that the
+script's secret-file screen skips untracked files the repository itself ignores (a gitignored `.env` is not
+caught) unless the owner opted into `scan_ignored_high_risk`. Options: "Run without a sandbox for this
 run" / "Stay Claude-native for this run". Ask once per audit run; the answer applies to every
 remaining reviewer in that run, and declining routes each of them to Claude-native (Codex Path
 step 8). If the question cannot be asked (a headless or subagent context, or the tool is unavailable),
@@ -179,9 +184,12 @@ invoking it, exactly as for the `read-only` profile; steps 4 (`authentication_mo
 unchanged safety invariant for every other caller); routing through it for this profile would always
 fail. Instead, after completing steps 0-3, invoke
 `plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs` through Bash directly. It is
-deliberately not in this skill's `allowed-tools`, so Claude Code's own permission prompt appears for every call (the
-dry run and the real run) as a second human gate behind the `AskUserQuestion` above; never add a pre-approved grant
-for it:
+deliberately not in this skill's `allowed-tools`, so Claude Code's own permission prompt appears for each call (the
+dry run and the real run) unless your own permission settings already allow it; the dry run's prompt is the first
+gate and the real run's is a backstop behind the `AskUserQuestion` above. Do not choose "don't ask again" for this
+script, and never add a pre-approved grant for it. If the user denies the permission prompt for either call, treat
+that reviewer as declined and route it to Claude-native, recording the reason. Dry run first (`--dry-run true` added
+to the same arguments), then the real call:
 
 ```bash
 node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs \
@@ -195,8 +203,8 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
 This one call does everything Codex Path's steps 4-6 do separately for the `read-only` profile:
 determines `authentication_mode` internally rather than requiring the caller to do so first,
 resolves and checks the guardrail policy, runs its own repository-boundary/secret-file/instruction-
-containment pre-flight checks (superseding step 5's read-only-path secret-file check with its own
-equivalent), appends the dangerous-command instructions itself (no separate append step on this
+containment pre-flight checks (its secret-file screen is not a strict superset of step 5's: it skips untracked
+gitignored files unless `scan_ignored_high_risk` is on, so the second question above discloses that), appends the dangerous-command instructions itself (no separate append step on this
 resolver's side), dispatches with `sandbox: "danger-full-access"`, and validates the result —
 returning the identical envelope shape `codex-review-bridge` would, so the Adapter below needs no
 second code path.
@@ -237,9 +245,9 @@ existing reactive-fallback behavior in the previous section is unchanged.
    *write*, not what it can *read*, and (per the corrected First-Send Confirmation above) the process
    runs with the repo root as cwd. Before invoking the bridge, run `Glob("**/*")` under each
    `--target-paths` entry — **not** `git ls-files`/a tracked-only enumeration, since a `.env` is
-   normally gitignored and would be silently absent from a tracked-only listing (this is the exact
-   gap `codex-windows-guardrails`' own check was rewritten to close; see
-   `references/preflight-checks.md`'s history there) — and check every returned basename against
+   normally gitignored and would be silently absent from a tracked-only listing (this is the gap
+   `codex-windows-guardrails`' own check was rewritten to close for tracked and untracked files, but it still
+   skips gitignored ones by default; see `references/preflight-checks.md`) — and check every returned basename against
    this exact pattern list, copied in full rather than abbreviated (the canonical copy is
    `SECRET_FILENAME_PATTERNS` in `codex-kit/scripts/lib/cdx-secret-filenames.mjs`, which
    `codex-windows-guardrails/scripts/guarded-dispatch.mjs` imports; keep both in sync if either changes):

@@ -9,7 +9,7 @@ description: >-
   raw evidence instead of a computed score. For a computed score use plugin-grader; for just
   naming/formatting/tool-scoping rule compliance, without the full fan-out, use plugin-rulebook.
 argument-hint: "[target]"
-allowed-tools: Read Glob Agent Write AskUserQuestion Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(git ls-files:*) Bash(python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py:*)
+allowed-tools: Read Glob Agent Write AskUserQuestion Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(git ls-files:*) Bash(git diff:*) Bash(git merge-base:*) Bash(python plugins/plugin-devkit/skills/reviewing-evals/scripts/check_evals.py:*)
 ---
 
 # Plugin Auditor
@@ -247,7 +247,8 @@ rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped 
 - [ ] `guarded-dispatch.mjs` is never listed in this skill's `allowed-tools` — a pre-approved grant would remove the
       Claude Code permission prompt that stands behind the no-sandbox `AskUserQuestion`
 - [ ] The Codex path is skipped for the whole dispatch whenever the audited scope includes `plugin-devkit` or
-      `codex-kit` (the dispatcher and classifier would otherwise run from the tree under audit)
+      `codex-kit`, or the checked-out branch itself changes `plugins/codex-kit/` or `plugins/plugin-devkit/agents/`
+      (the dispatcher and classifier would otherwise run from the tree under audit)
 
 ## Reference Guide
 
