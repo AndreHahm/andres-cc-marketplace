@@ -65,7 +65,8 @@ ECOSYSTEMS = {
         re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}"),
     ),
 }
-VERSION_RE = re.compile(r"v?[0-9][0-9A-Za-z.+_-]{0,63}")
+# An optional PEP 440 epoch (`1!2.0`) may lead the version; `!` is allowed nowhere else.
+VERSION_RE = re.compile(r"v?(?:[0-9]{1,9}!)?[0-9][0-9A-Za-z.+_-]{0,63}")
 SHA_LIKE_RE = re.compile(r"[0-9a-f]{7,40}")
 HEX_LETTER_RE = re.compile(r"[a-f]")
 ADVISORY_ID_RE = re.compile(r"[A-Z][A-Z0-9]*-[A-Za-z0-9-]{1,60}")
@@ -136,6 +137,37 @@ def version_key(version):
     """A comparable tuple for a plain dotted-number version, or None when it is not one."""
     match = re.fullmatch(r"[0-9]{1,9}(?:\.[0-9]{1,9}){0,15}", normalize_version(version))
     return tuple(int(p) for p in match.group(0).split(".")) if match else None
+
+
+# A final PEP 440 release: optional epoch, release numbers, optional post-release. Pre-releases, dev
+# releases and local versions do not match.
+PEP440_FINAL_RE = re.compile(
+    r"(?:([0-9]{1,9})!)?([0-9]{1,9}(?:\.[0-9]{1,9}){0,15})(?:\.post([0-9]{1,9}))?"
+)
+
+
+def order_key(eco, version):
+    """A tuple that orders final releases of one ecosystem with plain `<` and `>`, or None.
+
+    For uv it is PEP 440's (epoch, release, post) order; for the others plain dotted numbers. A
+    release without a post segment ranks below any post-release of it. Trailing zeros of the release
+    are dropped so that 1.0 and 1.0.0 are equal.
+    """
+    text = normalize_version(version)
+    epoch, post = 0, -1
+    if eco == "uv":
+        match = PEP440_FINAL_RE.fullmatch(text)
+        if not match:
+            return None
+        epoch = int(match.group(1) or 0)
+        post = int(match.group(3)) if match.group(3) is not None else -1
+        text = match.group(2)
+    release = list(version_key(text) or ())
+    if not release:
+        return None
+    while release and release[-1] == 0:
+        release.pop()
+    return (epoch, tuple(release), post)
 
 
 def scrubbed_env(environ):
@@ -815,22 +847,10 @@ def compatibility(fetch, cache, eco, name, version, lock):
     return {"status": "compatible", **verdict}
 
 
-# Final PEP 440 releases this module cannot order: a post-release (1.0.post1) or one with an epoch.
-POST_RELEASE_RE = re.compile(r"([0-9]+(?:\.[0-9]+)*)\.post[0-9]+")
-UNORDERED_RELEASE_RE = re.compile(r"(?:[0-9]+!)?[0-9]+(?:\.[0-9]+)*(?:\.post[0-9]+)?")
-
-
-def may_outrank(version, new_key):
-    """Whether an unorderable final release may be at or above NEW_KEY (an epoch always may)."""
-    post = POST_RELEASE_RE.fullmatch(version)
-    base = version_key(post.group(1)) if post else None
-    return base is None or cmp_release(base, new_key) >= 0
-
-
 def stable_releases(fetch, cache, eco, name):
-    """(plain-number releases of NAME, newest first; final releases it cannot order).
+    """The final releases of NAME this module can order, newest first.
 
-    Yanked and deprecated releases are left out of both lists.
+    Yanked and deprecated releases are left out, and so are pre-releases and dev releases.
     """
     if eco == "uv":
         releases = pypi_document(fetch, cache, name).get("releases")
@@ -852,11 +872,8 @@ def stable_releases(fetch, cache, eco, name):
             for v, entry in versions.items()
             if isinstance(entry, dict) and not entry.get("deprecated")
         ]
-    plain = [v for v in names if re.fullmatch(r"[0-9.]{1,64}", v) and version_key(v) is not None]
-    unordered = [
-        v for v in names if v not in plain and len(v) <= 64 and UNORDERED_RELEASE_RE.fullmatch(v)
-    ]
-    return sorted(plain, key=version_key, reverse=True), unordered
+    ordered = [v for v in names if len(v) <= 64 and order_key(eco, v) is not None]
+    return sorted(ordered, key=lambda v: order_key(eco, v), reverse=True)
 
 
 def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=None):
@@ -868,14 +885,13 @@ def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=N
     """
     if eco not in LOCK_FOR or lock is None:
         return {"status": "unknown", "version": None, "newer_incompatible": []}
-    new_key = version_key(new)
+    new_key = order_key(eco, new)
     try:
-        plain, unordered = stable_releases(fetch, cache, eco, name)
-        newer = [v for v in plain if new_key and cmp_release(version_key(v), new_key) > 0]
-        # A post-release or epoch release this module cannot order might be the newest one, and
-        # leaving it out would report an older version as the newest compatible. That is unknown.
-        if new_key and any(may_outrank(v, new_key) for v in unordered):
-            return {"status": "unknown", "version": None, "newer_incompatible": []}
+        newer = [
+            v
+            for v in stable_releases(fetch, cache, eco, name)
+            if new_key and order_key(eco, v) > new_key
+        ]
     except (LookupFailed, AttributeError, TypeError, ValueError):
         return {"status": "unknown", "version": None, "newer_incompatible": []}
     incompatible = []
@@ -926,7 +942,7 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
     advisory result.
     """
     cache = {}
-    new_key = version_key(new)
+    new_key = order_key(eco, new)
     out = {"dependency": name, "ecosystem": eco, "versions": {}}
     for role, version in (("old", old), ("new", new)):
         out["versions"][role] = {
@@ -948,7 +964,7 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
     out["compatibility"] = compat
     out["newest_compatible"] = newest
     target = newest["version"]
-    if target and (new_key is None or version_key(target) != new_key):
+    if target and (new_key is None or order_key(eco, target) != new_key):
         out["versions"]["newest_compatible"] = {
             "version": target,
             **advisories_for(run, gh, environ, fetch, eco, name, target),
@@ -957,11 +973,11 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
     v = out["versions"]
     # A truncated list (a full first page) is not the whole answer, so no comparison may rest on it.
     known = {role: info["status"] == "ok" and not info.get("truncated") for role, info in v.items()}
-    latest_key = version_key(latest) if latest else None
-    if target is None or new_key is None or version_key(target) is None:
+    latest_key = order_key(eco, latest) if latest else None
+    if target is None or new_key is None or order_key(eco, target) is None:
         new_is_newest_compatible = None
     else:
-        new_is_newest_compatible = cmp_release(new_key, version_key(target)) >= 0
+        new_is_newest_compatible = new_key >= order_key(eco, target)
     out["signals"] = {
         "new_vulnerable_not_safer_than_old": (
             bool(v["new"]["advisories"]) and risk(v["new"]) >= risk(v["old"])
@@ -977,9 +993,7 @@ def assess(run, gh, environ, fetch, eco, name, old, new, lock=None):
             and comparable(v["new"], v["newest_compatible"])
             else None
         ),
-        "new_is_latest": (
-            None if new_key is None or latest_key is None else cmp_release(new_key, latest_key) >= 0
-        ),
+        "new_is_latest": (None if new_key is None or latest_key is None else new_key >= latest_key),
     }
     return out
 
