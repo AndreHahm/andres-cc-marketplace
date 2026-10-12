@@ -500,7 +500,8 @@ def test_dispatch_redacts_letters_only_bearer_tokens_but_keeps_prose(
     # ordinary words after "bearer" are diagnostics and stay.
     stderr = (
         b"invalid Bearer authentication scheme; Bearer ABCDEFGHIJKLMNOP end; "
-        b"Bearer abcdEfghijklmnopqr end; Bearer Authentication failed"
+        b"Bearer abcdEfghijklmnopqr end; Bearer Authentication failed; "
+        b"Bearer abcdefghijklmnop kept; Bearer abcdefghijklmnopqrst end"
     )
 
     def on_call(reviewer, argv):
@@ -512,7 +513,7 @@ def test_dispatch_redacts_letters_only_bearer_tokens_but_keeps_prose(
     for r in reports:
         assert r.error == (
             "invalid Bearer authentication scheme; [REDACTED] end; [REDACTED] end; "
-            "Bearer Authentication failed"
+            "Bearer Authentication failed; Bearer abcdefghijklmnop kept; [REDACTED] end"
         )
 
 
