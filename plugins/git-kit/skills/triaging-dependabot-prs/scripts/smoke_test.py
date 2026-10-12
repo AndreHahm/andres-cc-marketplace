@@ -553,6 +553,7 @@ def check_advisory_step_is_wired():
         "never read it as safe or compatible",
         "recommend skip (hold) for that PR so the user decides",
         "pnpm-lock",
+        "ask once via `AskUserQuestion` whether to run the advisory and compatibility checks",
     ]
     missing = [n for n in needed if n not in body]
     if missing:
