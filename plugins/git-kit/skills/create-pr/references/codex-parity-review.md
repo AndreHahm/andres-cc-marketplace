@@ -31,7 +31,7 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 |---|---|---|
 | 0 | Clean | Continue to the push |
 | 1 | Blocking findings (a missing result file, or `blocking` not true, counts as exit 2) | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
-| 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout) | **Never a pass.** Ask retry / bypass |
+| 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout, or a missing, malformed or contradictory result file) | **Never a pass.** Ask retry / bypass |
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 
 After a fix, commit through `Skill(commit)` with the same skip-Auto-PR and skip-push instructions as step 2,
@@ -57,6 +57,8 @@ alongside `cross-model-review`.
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
 - On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX; elsewhere only the direct child).
+- The wrapper is a working-tree script like any other (tests, hooks): a branch can edit it, and the Tier-1
+  warning covers only CI's dispatch files. Treat a clean result as advisory, not authoritative.
 - Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
 - Windows: Codex's read-only sandbox may be unavailable. The run then exits 2; offer WSL or a bypass.
 - Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.

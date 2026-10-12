@@ -14,7 +14,8 @@ settings that must match CI from the workflow file itself, so they cannot drift:
     read with `gh variable list --json`; when unset or unreadable the local Codex default is used
     and that is stated in the output.
 
-Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass), 3 not applicable
+Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
+malformed or contradictory result file), 3 not applicable
 (this checkout has no marketplace CI to mirror).
 
 This repository's own convention only.
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import os
 import re
 import signal
@@ -211,7 +213,26 @@ def main() -> int:
         return 2
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
-    return result.returncode if result.returncode in (0, 1) else 2
+    if result.returncode not in (0, 1):
+        return 2
+    # Fail closed: an exit status alone is not evidence that a review ran and what it concluded.
+    blocking = _read_blocking(output)
+    if blocking is None:
+        print(f"PARITY: exit {result.returncode} but no valid result at {output}; cannot run.")
+        return 2
+    if blocking != (result.returncode == 1):
+        print(f"PARITY: exit {result.returncode} contradicts the result (blocking={blocking}).")
+        return 2
+    return result.returncode
+
+
+def _read_blocking(output: Path) -> bool | None:
+    """The result file's boolean `blocking`, or None if it is missing, unreadable or malformed."""
+    try:
+        blocking = json.loads(output.read_text(encoding="utf-8")).get("blocking")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return blocking if isinstance(blocking, bool) else None
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:
