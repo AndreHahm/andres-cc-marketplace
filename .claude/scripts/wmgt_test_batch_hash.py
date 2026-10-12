@@ -52,6 +52,14 @@ def submission(records, **overrides):
     return json.dumps(base)
 
 
+def manifest_add(directory, *names):
+    """Register ``names`` in ``directory``'s manifest, as an earlier hash would have."""
+    path = Path(directory) / "manifest.wmgt"
+    entries = json.loads(path.read_text(encoding="utf-8"))["entries"] if path.exists() else []
+    entries += [{"name": n, "sha256": "0" * 64, "batch_id": "batch-0001"} for n in names]
+    path.write_text(json.dumps({"entries": entries}), encoding="utf-8")
+
+
 def rec(title="t", **extra):
     """A valid create record: title, description and status are required."""
     record = {"title": title, "description": "d", "status": "Backlog"}
@@ -519,9 +527,29 @@ def main() -> int:
         scratch = tmp_path / "wmgt-intake"
         scratch.mkdir()
         sub_file = scratch / "batch-0001.json"
-        sub_file.write_text("{}", encoding="utf-8")
-        progress = scratch / ("a" * 64 + "-batch-0001.progress.json")
+        sub_file.write_text(submission([rec()]), encoding="utf-8")
+        rc, out = run("hash", str(sub_file))
+        check("hash registers a submission inside wmgt-intake", rc == 0 and out["registered"])
+        progress = scratch / (out["sha256"] + "-batch-0001.progress.json")
         progress.write_text("[]", encoding="utf-8")
+        unhashed = scratch / "planted-01.json"
+        unhashed.write_text("{}", encoding="utf-8")
+        rc, out = run("purge", str(tmp_path), str(unhashed))
+        check(
+            "purge refuses an intake-named file no hash registered",
+            rc == 1 and unhashed.exists(),
+        )
+        stray_progress = scratch / ("b" * 64 + "-batch-0001.progress.json")
+        stray_progress.write_text("[]", encoding="utf-8")
+        rc, out = run("purge", str(tmp_path), str(stray_progress))
+        check(
+            "purge refuses a progress file whose hash no submission registered",
+            rc == 1 and stray_progress.exists(),
+        )
+        rc, out = run("purge", str(tmp_path), str(scratch / "manifest.wmgt"))
+        check("purge never deletes the manifest", rc == 1 and (scratch / "manifest.wmgt").exists())
+        rc, out = run("hash", write("outside-scratch.json", submission([rec()])))
+        check("hash outside wmgt-intake registers nothing", rc == 0 and not out["registered"])
         rc, out = run("purge", str(tmp_path), str(sub_file))
         check(
             "purge deletes an intake-named submission file",
@@ -556,12 +584,14 @@ def main() -> int:
                 rc == 1 and short_file.exists(),
             )
         eight = scratch / "12345678.json"
-        eight.write_text("{}", encoding="utf-8")
+        eight.write_text(submission([rec()], batch_id="12345678"), encoding="utf-8")
+        run("hash", str(eight))
         rc, out = run("purge", str(tmp_path), str(eight))
         check("purge accepts an 8-character batch id", rc == 0 and not eight.exists())
 
         target = Path(write("symlink-target.json", "{}"))
         link = scratch / "12345678-link.json"
+        manifest_add(scratch, link.name)
         try:
             link.symlink_to(target)
         except (OSError, NotImplementedError):
@@ -579,6 +609,7 @@ def main() -> int:
         linkdir_target.mkdir()
         victim = linkdir_target / "12345678.json"
         victim.write_text("{}", encoding="utf-8")
+        manifest_add(linkdir_target, victim.name)
         try:
             (linkdir_root / "wmgt-intake").symlink_to(linkdir_target, target_is_directory=True)
             linked = True
@@ -603,6 +634,7 @@ def main() -> int:
         check("purge refuses a name outside the generated pattern", rc == 1 and settings.exists())
         folder_named_like_a_file = scratch / "dir-12345.json"
         folder_named_like_a_file.mkdir()
+        manifest_add(scratch, folder_named_like_a_file.name)
         rc, out = run("purge", str(tmp_path), str(folder_named_like_a_file))
         check(
             "purge refuses a folder named like an intake file",

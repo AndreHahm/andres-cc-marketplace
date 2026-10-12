@@ -23,8 +23,10 @@ Subcommands:
                                            records and 20000 bytes), so a write is built from
                                            verified output and not from a second read
     purge   <scratch-root> <file>          delete a submission or progress file, only when it is
-                                           directly inside <scratch-root>/wmgt-intake and has an
-                                           intake-generated name (the only mutating command)
+                                           directly inside <scratch-root>/wmgt-intake, has an
+                                           intake-generated name and was registered by an earlier
+                                           hash (a submission) or belongs to a hashed submission (a
+                                           progress file). Mutating, like hash's manifest entry
 
 The preview and chunk outputs carry "bytes" (the size of what was printed) so a truncated
 tool result can be recognised.
@@ -79,6 +81,10 @@ _CREATE_REQUIRED = ("title", "description", "status")
 _PURGE_NAME_RE = re.compile(
     r"^(?:[A-Za-z0-9._-]{8,64}\.json|[0-9a-f]{64}-[A-Za-z0-9._-]{8,64}\.progress\.json)$"
 )
+MANIFEST_NAME = "manifest.wmgt"  # not an intake-generated name, so purge can never target it
+MAX_MANIFEST_BYTES = 256 * 1024
+MAX_MANIFEST_ENTRIES = 500
+_PROGRESS_NAME_RE = re.compile(r"^([0-9a-f]{64})-([A-Za-z0-9._-]{8,64})\.progress\.json$")
 _OPERATIONS = {"create", "update"}
 _ENVIRONMENTS = {"production", "test"}
 _CREATE_FIELDS = {"title", "description", "status", "priority", "labels"}
@@ -427,6 +433,8 @@ def run(args) -> dict:
     digest = digest_of(data)
     records = data["records"]
     result = {"ok": True, "sha256": digest, "record_count": len(records)}
+    if args.command == "hash":
+        result["registered"] = _register(args.file, digest, data["batch_id"])
     if args.command in ("verify", "show", "preview", "chunk"):
         _require_hash(args.sha256)
         if digest != args.sha256:
@@ -494,6 +502,64 @@ def _is_link_or_junction(path: str) -> bool:
     )
 
 
+def _read_manifest(directory: str) -> list:
+    """Entries of <directory>/manifest.wmgt; an absent, linked, big or malformed one is empty."""
+    path = os.path.join(directory, MANIFEST_NAME)
+    try:
+        if _is_link_or_junction(path) or not os.path.isfile(path):
+            return []
+        if os.path.getsize(path) > MAX_MANIFEST_BYTES:
+            return []
+        with open(path, encoding="utf-8") as handle:
+            raw = json.load(handle)
+    except (OSError, ValueError):
+        return []
+    entries = raw.get("entries") if isinstance(raw, dict) else None
+    if not isinstance(entries, list):
+        return []
+    return [
+        e
+        for e in entries
+        if isinstance(e, dict)
+        and isinstance(e.get("name"), str)
+        and isinstance(e.get("sha256"), str)
+        and _SHA256_RE.fullmatch(e["sha256"])
+        and isinstance(e.get("batch_id"), str)
+        and _BATCH_ID_RE.fullmatch(e["batch_id"])
+    ]
+
+
+def _register(file_path: str, digest: str, batch_id: str) -> bool:
+    """Record a hashed submission in its folder's manifest when that folder is wmgt-intake."""
+    directory = os.path.dirname(os.path.abspath(file_path))
+    name = os.path.basename(file_path)
+    if os.path.basename(directory) != SCRATCH_DIR_NAME or _is_link_or_junction(directory):
+        return False
+    if not _PURGE_NAME_RE.fullmatch(name):
+        return False
+    entry = {"name": name, "sha256": digest, "batch_id": batch_id}
+    entries = [e for e in _read_manifest(directory) if e != entry] + [entry]
+    tmp = os.path.join(directory, MANIFEST_NAME + ".tmp")
+    try:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+        with os.fdopen(os.open(tmp, flags, 0o600), "w", encoding="utf-8") as handle:
+            json.dump({"entries": entries[-MAX_MANIFEST_ENTRIES:]}, handle)
+        os.replace(tmp, os.path.join(directory, MANIFEST_NAME))
+    except OSError:
+        return False
+    return True
+
+
+def _is_registered(entries: list, name: str) -> bool:
+    """A submission is registered by name; a progress file by its hash and batch id."""
+    progress = _PROGRESS_NAME_RE.fullmatch(name)
+    if progress:
+        return any(
+            e["sha256"] == progress.group(1) and e["batch_id"] == progress.group(2) for e in entries
+        )
+    return any(e["name"] == name for e in entries)
+
+
 def purge(scratch_root: str, path_str: str) -> dict:
     """Delete one intake-generated scratch file, only inside ``<scratch_root>/wmgt-intake``."""
     intake_dir = os.path.join(scratch_root, SCRATCH_DIR_NAME)
@@ -506,6 +572,8 @@ def purge(scratch_root: str, path_str: str) -> dict:
     name = os.path.basename(path)
     if not _PURGE_NAME_RE.fullmatch(name):
         raise HashError("refused: not an intake-generated file name")
+    if not _is_registered(_read_manifest(expected_dir), name):
+        raise HashError("refused: not registered by an earlier hash")
     try:
         _unlink_in_dir(expected_dir, name)
     except OSError as exc:
