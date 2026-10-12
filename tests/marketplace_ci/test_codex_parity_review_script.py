@@ -1,0 +1,177 @@
+"""git-kit's git-codex-parity-review.py mirrors CI's settings and never reports an unearned pass.
+
+Stub `gh`, `codex` and `uv` executables on PATH stand in for the real tools, so these tests need
+neither network access nor a Codex account (issue #540).
+"""
+
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-codex-parity-review.py"
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32", reason="stub executables are POSIX shell scripts"
+)
+
+WORKFLOW = """\
+      - run: npm install -g @openai/codex@0.147.0
+        env:
+          CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
+          CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
+"""
+
+
+def _load_module():
+    spec = importlib.util.spec_from_file_location("git_codex_parity_review", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_parse_ci_settings_reads_timeout_and_pin():
+    assert _load_module().parse_ci_settings(WORKFLOW) == ("600000", "0.147.0")
+
+
+def test_parse_ci_settings_returns_none_when_either_is_missing():
+    module = _load_module()
+    assert module.parse_ci_settings("CODEX_KIT_REVIEW_TIMEOUT_MS: 1\n") is None
+    assert module.parse_ci_settings("npm install -g @openai/codex@1.2.3\n") is None
+
+
+def _stub(bin_dir: Path, name: str, body: str) -> None:
+    path = bin_dir / name
+    path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+    path.chmod(0o755)
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    (repo / ".github/workflows").mkdir(parents=True)
+    (repo / "scripts/marketplace_ci").mkdir(parents=True)
+    (repo / ".github/workflows/marketplace-ci.yml").write_text(WORKFLOW, encoding="utf-8")
+    (repo / "scripts/marketplace_ci/__main__.py").write_text("", encoding="utf-8")
+    for cmd in (["init", "-q"], ["add", "-A"]):
+        subprocess.run(["git", *cmd], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, check=True)
+    return repo
+
+
+def _run(
+    repo: Path,
+    tmp_path: Path,
+    *,
+    uv_rc: int = 0,
+    codex: str | None = "codex-cli 0.147.0",
+    model: str = "gpt-x",
+):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    log = tmp_path / "uv.json"
+    _stub(bin_dir, "uv", f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\nexit {uv_rc}')
+    _stub(bin_dir, "gh", f'[ -n "{model}" ] && echo "{model}" && exit 0\nexit 1')
+    # codex=None stands in for a Codex CLI that fails to run (a real one may be on PATH here).
+    _stub(bin_dir, "codex", "exit 127" if codex is None else f'echo "{codex}"')
+    env: dict[str, str] = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    env.pop("CODEX_KIT_REVIEW_MODEL", None)
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--output", str(tmp_path / "out.json")],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    args = Path(f"{log}.args")
+    uv_env = Path(f"{log}.env")
+    return (
+        result,
+        args.read_text() if args.exists() else "",
+        (uv_env.read_text() if uv_env.exists() else ""),
+    )
+
+
+def test_clean_run_uses_ci_settings(repo, tmp_path):
+    result, args, uv_env = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "run-codex-review --base-sha" in args
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
+    assert "CODEX_KIT_REVIEW_MODEL=gpt-x" in uv_env
+
+
+def test_blocking_findings_exit_1(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, uv_rc=1)
+    assert result.returncode == 1
+
+
+def test_infrastructure_failure_is_never_a_pass(repo, tmp_path):
+    for rc in (2, 3, 127):
+        result, _, _ = _run(repo, tmp_path, uv_rc=rc)
+        assert result.returncode == 2, rc
+
+
+def test_missing_codex_cannot_run(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path, codex=None)
+    assert result.returncode == 2
+    assert args == ""
+
+
+def test_version_skew_warns_but_still_runs(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path, codex="codex-cli 0.150.0")
+    assert result.returncode == 0
+    assert "0.150.0 differs from CI's pin 0.147.0" in result.stdout
+    assert args
+
+
+def test_unreadable_model_falls_back_with_a_warning(repo, tmp_path):
+    result, _, uv_env = _run(repo, tmp_path, model="")
+    assert result.returncode == 0
+    assert "unset or unreadable" in result.stdout
+    assert "CODEX_KIT_REVIEW_MODEL" not in uv_env
+
+
+def test_malformed_model_value_is_not_passed_on(repo, tmp_path):
+    result, _, uv_env = _run(repo, tmp_path, model="gpt x;rm")
+    assert "CODEX_KIT_REVIEW_MODEL" not in uv_env
+    assert "unset or unreadable" in result.stdout
+
+
+def test_no_marketplace_ci_is_not_applicable(tmp_path):
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--output", str(tmp_path / "o.json")],
+        cwd=bare,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 3
+
+
+def test_stale_output_file_is_removed_before_the_run(repo, tmp_path):
+    out = tmp_path / "out.json"
+    out.write_text(json.dumps({"blocking": False}), encoding="utf-8")
+    _run(repo, tmp_path)
+    assert not out.exists()
+
+
+def test_runs_from_a_subdirectory_of_the_checkout(repo, tmp_path):
+    sub = repo / "plugins" / "x"
+    sub.mkdir(parents=True)
+    result, args, _ = _run(sub, tmp_path)
+    assert result.returncode == 0
+    assert "run-codex-review" in args

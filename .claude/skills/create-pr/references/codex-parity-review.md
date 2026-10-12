@@ -1,0 +1,53 @@
+# CI-Parity Codex Delta Review (step 4.5)
+
+Why: a PR can pass every local gate and still fail CI's `Codex delta review` with new blocking findings
+(issue #540, PR #505). CI runs four fixed reviewers (`plugin-rulebook-checker`, `dependency-reviewer`,
+`security-reviewer`, `skill-reviewer`) as Codex exports on a GPT model, cold, over the whole diff, and
+blocks on any Major or Critical on a changed line. Step 4's `cross-model-review` is a different, report-only
+pass; this step runs CI's own entry point so those findings surface before the push.
+
+## What the script does
+
+`scripts/git-codex-parity-review.py --output <path>` (this repository only):
+
+- Reads `CODEX_KIT_REVIEW_TIMEOUT_MS` and the Codex CLI pin from `.github/workflows/marketplace-ci.yml`, so
+  they cannot drift from CI.
+- Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable get` (it is a repository variable, not a workflow
+  value). Unset, unreadable or malformed means the local Codex default runs, and the output says so.
+- Warns (does not fail) when the local `codex --version` differs from CI's pin.
+- Runs `uv run python -m scripts.marketplace_ci run-codex-review --base-sha <merge-base with origin/main>`.
+
+Pass `--output` a file in the session scratchpad, never the repo root.
+
+## Exit codes
+
+| Exit | Meaning | What to do |
+|---|---|---|
+| 0 | Clean | Continue to the push |
+| 1 | Blocking findings (a missing result file, or `blocking` not true, counts as exit 2) | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
+| 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout) | **Never a pass.** Ask retry / bypass |
+| 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
+
+After a fix, commit through `Skill(commit)` with the same skip-Auto-PR and skip-push instructions as step 2,
+then re-run step 4.5 (and step 4 if the fix is non-trivial).
+
+## Bypass
+
+Only the user chooses it: at the `AskUserQuestion` shown on exit 1 or 2, or by declining the data-egress question (recorded as "egress declined"). Neither `--bypass-*` flag skips this step, and it runs even when step 4 was bypassed. Report it in session output and add
+one line to the PR body's existing "Open Items" section naming the exit code and that the local parity round
+was bypassed. Do not add a section to the template.
+
+## Before flipping a draft to ready
+
+A raw `gh pr ready` has no git-kit guard, so this is a documented step, not an enforced one. Before flipping
+a draft that was not just created by this run, re-run `git-codex-parity-review.py` and apply the table above,
+alongside `cross-model-review`.
+
+## Limits
+
+- Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
+  they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
+- On timeout only the direct child is killed; stray `codex` processes may linger (unverified).
+- Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
+- Windows: Codex's read-only sandbox may be unavailable. The run then exits 2; offer WSL or a bypass.
+- Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.
