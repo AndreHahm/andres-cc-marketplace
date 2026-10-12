@@ -120,18 +120,15 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Merge-base has no readable trust_boundary.py → "could not check" warning, run still proceeds
 - The run exits 0 or 1 but the result file is missing, malformed, or its `blocking` contradicts the exit code → exit 2
   ("could not run"), never a pass
-- `--output` names an existing file that is not a previous result (or a directory) → exit 2, nothing deleted and
-  nothing dispatched; a previous result file is replaced
 - The run creates `.codex-review-instructions/` in the checkout → removed afterwards; a directory that already
   existed is left untouched
-- `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched;
-  an unrelated JSON that merely has a `blocking` field is not a previous result (a result needs `mode` too)
+- `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched
 - The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
 - The remote has no (or an unrelated) fetch refspec configured → the explicit-refspec fetch still refreshes
   `origin/main` before the merge-base is taken
-- A retry after an exit 2 to the same `--output` path → proceeds (run-codex-review's failure payload counts as a
-  previous result); a model slug the bridge would reject (`/`, `:`, over 64 characters) → omitted with the
-  documented fallback warning, not a failed run
+- A retry after an exit 2 uses a fresh `--output` file name (the earlier file is never touched) and proceeds
+- A model slug the bridge would reject (`/`, `:`, over 64 characters) → omitted with the documented fallback
+  warning, not a failed run
 - `--output` already exists (a file, a previous result, a failure payload, an unrelated JSON, a directory or a
   symlink) → exit 2, nothing deleted or overwritten, nothing dispatched; a retry with a fresh file name proceeds
 - A run that exits 0 or 1 but whose result is not the full payload (non-string `mode`, missing list fields, only an

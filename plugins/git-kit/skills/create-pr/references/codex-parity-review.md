@@ -42,8 +42,8 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 | 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout, or a missing, malformed or contradictory result file) | **Never a pass.** Ask retry / bypass |
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 
-After a fix, commit through `Skill(commit)` with the same skip-Auto-PR and skip-push instructions as step 2,
-then re-run step 4.5 (and step 4 if the fix is non-trivial).
+After a fix, commit it the way SKILL.md's Pre-flight step 2 already does (that step carries the skip-Auto-PR and
+skip-push instructions), then re-run step 4.5 (and step 4 if the fix is non-trivial).
 
 ## Bypass
 
