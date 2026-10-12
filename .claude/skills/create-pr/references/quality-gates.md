@@ -30,6 +30,12 @@ to keep SKILL.md under R13's line budget (R30). SKILL.md keeps the key gates inl
       recent, never substitutes for this gate
 - [ ] `--bypass-cross-model-review` with an empty or missing reason is always rejected before step 1
       runs — never silently bypassed with a blank reason
+- [ ] Step 4.5 (CI-parity Codex delta review) runs after step 4 and before step 1 (push); its exit 2 is
+      never treated as a pass, exit 3 skips it, and a bypass is only ever the user's own
+      `AskUserQuestion` answer, recorded in session output and the PR body's "Open Items" section
+- [ ] Step 4.5 asks its own data-egress `AskUserQuestion` on every run — `cross-model-review`'s First-Send
+      Confirmation never stands in for it; declining is a recorded bypass, and neither `--bypass-*` flag
+      (nor a bypassed step 4) skips the step
 - [ ] A `--bypass-cross-model-review` bypass never triggers a GitHub comment, label, or permission check,
       and never edits the PR body — it is reported in session output only
 - [ ] Step 4 never answers `cross-model-review`'s own First-Send Confirmation on the user's behalf — that

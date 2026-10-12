@@ -95,3 +95,18 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   never auto-created
 - Flag omitted entirely → no attestation step runs, PR creation behaves exactly as before this flag
   existed
+
+**Verify step 4.5 (CI-parity Codex delta review, issue #540):**
+- Step 4 cleared → `git-codex-parity-review.py` runs before the first push, after a data-egress
+  `AskUserQuestion` that is separate from `cross-model-review`'s First-Send Confirmation
+- Exit 0 → continues to the push; exit 1 → blocking findings shown with fix / re-run / bypass; exit 2 → treated
+  as "could not run" (retry / bypass), never as a pass; exit 3 → step skipped, with the skip stated in session output
+- Bypass chosen → reported in session output and recorded under the PR body's "Open Items" section; never
+  chosen without the user's answer
+- Local Codex version differs from CI's pin → warning shown, run still proceeds
+- Draft flipped to ready later → the references file's "Before flipping" section re-runs the same script
+- Egress question declined → treated as a bypass: reported, and "egress declined" recorded under the PR
+  body's "Open Items"; never a quiet skip
+- Step 4 bypassed with `--bypass-cross-model-review`, or `--bypass-codex-review` given → step 4.5 still runs
+- Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
+- Egress question is asked again on a re-run after a fix, not only on the first run
