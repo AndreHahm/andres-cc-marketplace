@@ -27,6 +27,7 @@ reports/events/
 .github\instructions\codacy.instructions.md
 
 #Repo-specific files and directories
+.codex-review-instructions/
 *.local
 *.local.*
 **/*.local.*

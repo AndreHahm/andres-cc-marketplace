@@ -106,6 +106,7 @@ def _run(
     codex: str | None = "codex-cli 0.147.0",
     model: str = "gpt-x",
     result_json: str | None = "auto",
+    uv_prelude: str = "",
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -118,7 +119,7 @@ def _run(
     _stub(
         bin_dir,
         "uv",
-        f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\n{write_result}exit {uv_rc}',
+        f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\n{uv_prelude}{write_result}exit {uv_rc}',
     )
     # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
@@ -386,3 +387,44 @@ def test_unreadable_base_trust_boundary_warns(repo, tmp_path):
     result, _, _ = _run(repo, tmp_path)  # the fixture's base has no trust_boundary.py
     assert result.returncode == 0
     assert "could not check whether review-dispatch files changed" in result.stdout
+
+
+def test_an_existing_non_result_output_file_is_never_deleted(repo, tmp_path):
+    precious = tmp_path / "out.json"
+    precious.write_text("keep me", encoding="utf-8")
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "not a previous result" in result.stdout
+    assert precious.read_text(encoding="utf-8") == "keep me"
+    assert args == ""  # refused before dispatching anything
+
+
+def test_a_previous_result_file_is_replaced(repo, tmp_path):
+    (tmp_path / "out.json").write_text('{"blocking": true}', encoding="utf-8")
+    result, _, _ = _run(repo, tmp_path)  # the stub writes a fresh clean result
+    assert result.returncode == 0
+    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8")) == {"blocking": False}
+
+
+def test_an_output_path_that_is_a_directory_is_refused(repo, tmp_path):
+    (tmp_path / "out.json").mkdir()
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert (tmp_path / "out.json").is_dir()
+
+
+SCRATCH_STUB = "mkdir -p .codex-review-instructions && echo x > .codex-review-instructions/a.txt\n"
+
+
+def test_scratch_dir_created_by_the_run_is_removed(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, uv_prelude=SCRATCH_STUB)
+    assert result.returncode == 0
+    assert not (repo / ".codex-review-instructions").exists()
+
+
+def test_a_pre_existing_scratch_dir_is_left_alone(repo, tmp_path):
+    (repo / ".codex-review-instructions").mkdir()
+    (repo / ".codex-review-instructions" / "mine.txt").write_text("x", encoding="utf-8")
+    result, _, _ = _run(repo, tmp_path, uv_prelude=SCRATCH_STUB)
+    assert result.returncode == 0
+    assert (repo / ".codex-review-instructions" / "mine.txt").exists()
