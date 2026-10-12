@@ -28,6 +28,7 @@ import ast
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -36,6 +37,8 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
+# run-codex-review writes its per-reviewer instruction files here by default (review.py).
+INSTRUCTIONS_DIR = Path(".codex-review-instructions")
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
 RUN_TIMEOUT_SECONDS = 45 * 60
@@ -191,7 +194,11 @@ def main() -> int:
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
         return 2
 
-    # A stale result from an earlier run must never be mistaken for this run's findings.
+    # A stale result from an earlier run must never be mistaken for this run's findings, but a
+    # wrong --output must never delete an unrelated file: only a previous result is removed.
+    if (output.exists() or output.is_symlink()) and _read_blocking(output) is None:
+        print(f"PARITY: {output} exists and is not a previous result; refusing to overwrite it.")
+        return 2
     output.unlink(missing_ok=True)
 
     env: dict[str, str] = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
@@ -207,7 +214,13 @@ def main() -> int:
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
         "--base-sha", base_sha, "--output", str(output),
     ]  # fmt: skip
-    result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
+    had_instructions_dir = INSTRUCTIONS_DIR.exists() or INSTRUCTIONS_DIR.is_symlink()
+    try:
+        result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
+    finally:
+        # Leave no scratch behind in the checkout (the directory is not part of the change).
+        if not had_instructions_dir and INSTRUCTIONS_DIR.is_dir():
+            shutil.rmtree(INSTRUCTIONS_DIR, ignore_errors=True)
     if result is None:
         print("PARITY: run-codex-review could not be started or timed out.", file=sys.stderr)
         return 2

@@ -120,3 +120,7 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Merge-base has no readable trust_boundary.py → "could not check" warning, run still proceeds
 - The run exits 0 or 1 but the result file is missing, malformed, or its `blocking` contradicts the exit code → exit 2
   ("could not run"), never a pass
+- `--output` names an existing file that is not a previous result (or a directory) → exit 2, nothing deleted and
+  nothing dispatched; a previous result file is replaced
+- The run creates `.codex-review-instructions/` in the checkout → removed afterwards; a directory that already
+  existed is left untouched

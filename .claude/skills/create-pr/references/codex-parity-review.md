@@ -18,7 +18,10 @@ pass; this step runs CI's own entry point so those findings surface before the p
 - Fetches `origin main` (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
   run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
 
-Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2).
+Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2), and an existing
+file there is replaced only if it is a previous result of this tool (otherwise exit 2, nothing deleted). The
+CI entry point's per-reviewer scratch directory `.codex-review-instructions/` is removed after the run when the
+wrapper created it, and is also gitignored.
 The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as
 `uv run python .claude/scripts/git-codex-parity-review.py` (the `.claude/` mirror; SKILL.md has a matching grant and
