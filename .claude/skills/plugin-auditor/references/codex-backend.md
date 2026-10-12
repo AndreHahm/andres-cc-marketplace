@@ -144,7 +144,8 @@ first. Only when both hold: (a) the `read-only` attempt for this reviewer return
 opt-in resolves enabled. Before calling the script below, ask a second `AskUserQuestion` — the
 First-Send gate above does not cover this profile, because it describes read access only. Name the
 reviewer(s) and target path(s), and state plainly that this profile has **no sandbox**: the Codex
-process can read, write and execute anything this user account can reach under the repository root,
+process can read, write and execute anything this user account can reach — files and commands
+anywhere on this machine, not only under the repository root, because nothing enforces that root —
 bounded only by best-effort, not enforced, guardrails. Options: "Run without a sandbox for this
 run" / "Stay Claude-native for this run". Ask once per audit run; the answer applies to every
 remaining reviewer in that run, and declining routes each of them to Claude-native (Codex Path

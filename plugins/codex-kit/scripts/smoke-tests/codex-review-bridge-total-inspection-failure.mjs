@@ -79,10 +79,14 @@ console.log("\n=== A CreateProcessAsUserW-shaped note (the other sandbox-failure
   check("the CreateProcessAsUserW phrasing is also recognized", isTotalInspectionFailure(envelope));
 }
 
-console.log("\n=== REAL Windows Codex 0.162.1 (issue #545): exit 0, final message names 'process creation failed' ===");
+console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final message (issue #545) ===");
 {
   // Captured live 2026-10-12: the read-only sandbox could not spawn `dir`; Codex exited 0
   // and its final message was this sentence -- no create/start verb, no CreateProcessAsUserW.
+  // Classifier-only coverage: the sentence is the real captured text, but no stored capture of a full
+  // `--output-schema` bridge response shows it in `inspection_limits`. A later local CI-parity run
+  // supports that placement (its typed-failure detail quoted the model's note in that shape), yet is
+  // not recorded as a fixture.
   const note = "`dir` could not run because process creation failed; no output line was produced.";
   check("the real 0.162.1 Windows phrasing is recognized", isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
   check(
