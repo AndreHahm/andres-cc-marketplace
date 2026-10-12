@@ -112,3 +112,6 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Egress question is asked again on a re-run after a fix, not only on the first run
 - `--output` pointing inside the checkout → refused with exit 2 (treated as "could not run"), never written
 - A timed-out run → the whole process group is killed, so no `codex` process lingers
+- `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) → step 4.5 runs `.claude/scripts/git-codex-parity-review.py`
+  from the checkout root, matching the second grant, instead of failing with exit 127
+- A stalled `git fetch` / `gh` / `codex --version` → bounded by a 60 s timeout, then a warning or exit 2, never a hang
