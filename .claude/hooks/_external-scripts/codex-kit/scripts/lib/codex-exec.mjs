@@ -39,26 +39,26 @@ const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
 export const ISOLATION_FAILURE_PATTERN =
   /CreateProcessAsUserW|\bbwrap\b|landlock|seccomp|sandbox (?:failed|error|denied|unavailable)|failed to (?:set up|create|start)[^\n]*sandbox|(?:sandbox|bwrap)[^\n]*(?:permission denied|access is denied)/i;
 
-// How many trailing stderr lines failureScope() looks at.
-const FAILURE_TAIL_LINES = 20;
-
 // The slice of stderr the failure patterns are tested against -- not the whole
-// stream. Codex always prints a banner ("sandbox: read-only", ...) and echoes
-// the full reviewer prompt (which carries the PR diff), so words like
-// "sandbox" or "OPENAI_API_KEY" can appear in every failing run, whatever the
-// cause (a model at capacity or rejected for the account matched "sandbox" and
-// was reported as a sandbox failure -- issue #544). The cause is on the
-// `ERROR:` lines Codex prints last, unindented; take only those from the tail,
-// so an indented or earlier `ERROR:` line in the echoed prompt can neither
-// force nor hide a classification. With none, use the tail itself, minus the
-// banner's `sandbox:` line.
+// stream. Once a session starts, Codex prints a banner ("sandbox: read-only",
+// ...) and echoes the full reviewer prompt (which carries the PR diff), so words
+// like "sandbox" or "OPENAI_API_KEY" can appear in every failing run, whatever
+// the cause (a model at capacity or rejected for the account matched "sandbox"
+// and was reported as a sandbox failure -- issue #544). Codex's own cause is on
+// its `ERROR:` lines, unindented; echoed diff lines are always prefixed, so only
+// the unindented ones count -- from anywhere in the stream, since output after
+// the error can run past any fixed window.
+// A started session with no `ERROR:` line has nothing attributable to Codex: the
+// remaining text is the echoed prompt, which must not decide a category (an
+// echoed `landlock` mention would otherwise trigger the privilege-widening
+// isolation fallback). A failure before the session starts (no banner, e.g. an
+// argument error) echoes nothing, so its whole stderr is Codex's own.
 export function failureScope(stderr) {
-  const tail = stderr.split(/\r?\n/).slice(-FAILURE_TAIL_LINES);
-  const errorLines = tail.filter((line) => line.startsWith("ERROR:"));
+  const errorLines = stderr.split(/\r?\n/).filter((line) => line.startsWith("ERROR:"));
   if (errorLines.length > 0) {
     return errorLines.join("\n");
   }
-  return tail.filter((line) => !/^\s*sandbox:\s/i.test(line)).join("\n");
+  return /^OpenAI Codex v\S+/m.test(stderr) ? "" : stderr;
 }
 
 // Auth is checked first, ahead of isolation: a benign "could not find

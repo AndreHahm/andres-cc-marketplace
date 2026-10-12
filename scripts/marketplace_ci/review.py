@@ -1430,7 +1430,10 @@ _SECRET_TOKEN_PATTERNS = re.compile(
     r"|\bAKIA[0-9A-Z]{16}\b"
     r"|\bAIza[0-9A-Za-z_-]{35}"
     r"|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
-    r"|\bbearer\s+[A-Za-z0-9._~+/=-]{8,}",
+    r"|\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]{8,}"
+    # A bare "Bearer <word>" is usually prose ("invalid Bearer authentication
+    # scheme"), so a bare value must look like a token: 16+ characters with a digit.
+    r"|\bbearer\s+(?=[A-Za-z0-9._~+/=-]*\d)[A-Za-z0-9._~+/=-]{16,}",
     re.IGNORECASE,
 )
 

@@ -4,15 +4,19 @@
 // A non-zero Codex exit whose cause is not a sandbox problem (a model at
 // capacity, a model the account cannot use) must not be reported as
 // `isolation_profile_unavailable` -- that category is the resolver's trigger
-// to fall back to a wider sandbox (issue #544). Codex prints a banner with
-// "sandbox: read-only" and echoes the reviewer prompt (which carries the PR
-// diff) on every run, so words like "sandbox" or "OPENAI_API_KEY" are in every
-// failing stderr. The auth and unknown-option checks are scoped the same way.
+// to fall back to a wider sandbox (issue #544). Once a session starts, Codex
+// prints a banner with "sandbox: read-only" and echoes the reviewer prompt
+// (which carries the PR diff), so words like "sandbox" or "OPENAI_API_KEY" are
+// in every failing stderr. Only Codex's own unindented `ERROR:` lines decide a
+// category; a started session with no such line fails closed to
+// `non_zero_exit`; a failure before the session starts (no banner) echoes
+// nothing, so its whole stderr is trusted. The auth and unknown-option checks
+// use the same scope.
 //
 // The banner and error shapes below are real Codex 0.162.1 stderr for an
 // unservable model. The capacity line is the text from the issue, and the
 // CreateProcessAsUserW / bubblewrap lines are synthetic (no Windows Codex
-// stderr was captured).
+// stderr was captured -- issue #545).
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-exec-isolation-classification.mjs
 
@@ -52,6 +56,7 @@ const BANNER = [
 ].join("\n");
 
 const CAPACITY = "ERROR: Selected model is at capacity";
+const TRAILING = Array.from({ length: 25 }, (_, i) => `usage line ${i}`).join("\n");
 
 console.log("=== Banner plus a non-sandbox error is not an isolation failure ===");
 expectCategory("model at capacity", `${BANNER}\nreview the diff\n\n${CAPACITY}`, NON_ZERO_EXIT);
@@ -81,25 +86,17 @@ expectCategory(
   NON_ZERO_EXIT
 );
 
-console.log("\n=== Echoed prompt or diff content cannot forge or hide an ERROR line ===");
+console.log("\n=== Echoed diff content cannot forge an ERROR line ===");
 expectCategory(
-  "an indented ' ERROR: sandbox failed' diff line above the real error",
+  "an indented ' ERROR: sandbox failed' diff context line above the real error",
   `${BANNER}\n ERROR: sandbox failed\nmore prompt\n${CAPACITY}`,
   NON_ZERO_EXIT
 );
-{
-  const tail = Array.from({ length: 25 }, (_, i) => `unrelated line ${i}`).join("\n");
-  expectCategory(
-    "an unindented 'ERROR: sandbox failed' echoed far above the tail",
-    `${BANNER}\nERROR: sandbox failed\n${tail}`,
-    NON_ZERO_EXIT
-  );
-  expectCategory(
-    "a stray early ERROR line does not hide a real isolation failure at the tail",
-    `${BANNER}\nERROR: something benign\n${tail}\nERROR: CreateProcessAsUserW failed: 1920`,
-    ISOLATION_PROFILE_UNAVAILABLE
-  );
-}
+expectCategory(
+  "a '+ERROR: sandbox failed' added diff line above the real error",
+  `${BANNER}\n+ERROR: sandbox failed\nmore prompt\n${CAPACITY}`,
+  NON_ZERO_EXIT
+);
 
 console.log("\n=== A real isolation failure is still classified as one ===");
 expectCategory(
@@ -118,23 +115,38 @@ expectCategory(
   ISOLATION_PROFILE_UNAVAILABLE
 );
 expectCategory(
-  "permission denied in the last lines when there is no ERROR line",
-  `${BANNER}\nreview\n\nbwrap: permission denied`,
+  "a stray early ERROR line does not hide a real isolation failure at the end",
+  `${BANNER}\nERROR: something benign\n${TRAILING}\nERROR: CreateProcessAsUserW failed: 1920`,
   ISOLATION_PROFILE_UNAVAILABLE
 );
 
-console.log("\n=== Without an ERROR line, only the last lines are inspected ===");
-{
-  const tail = Array.from({ length: 25 }, (_, i) => `unrelated line ${i}`).join("\n");
-  expectCategory(
-    "a sandbox mention above the last-lines window is ignored",
-    `${BANNER}\nthe prompt mentions the sandbox\n${tail}`,
-    NON_ZERO_EXIT
-  );
-  expectCategory("the banner's own sandbox line alone is ignored", `${BANNER}\nsomething unrelated went wrong`, NON_ZERO_EXIT);
-}
+console.log("\n=== A started session with no ERROR line fails closed ===");
+expectCategory(
+  "an isolation keyword in the echoed prompt tail (landlock)",
+  `${BANNER}\n+ landlock mention in echoed diff\nCodex crashed unexpectedly\n`,
+  NON_ZERO_EXIT
+);
+expectCategory(
+  "a bwrap permission-denied line with no ERROR prefix",
+  `${BANNER}\nreview\n\nbwrap: permission denied`,
+  NON_ZERO_EXIT
+);
+expectCategory("the banner's own sandbox line alone", `${BANNER}\nsomething unrelated went wrong`, NON_ZERO_EXIT);
 
-console.log("\n=== Auth and unknown-option checks are scoped the same way ===");
+console.log("\n=== A failure before the session starts is classified from its whole stderr ===");
+expectCategory(
+  "a bubblewrap failure with no banner",
+  "bwrap: No permissions to create new namespace\n",
+  ISOLATION_PROFILE_UNAVAILABLE
+);
+expectCategory(
+  "an unknown option with no banner",
+  "error: unknown option '--foo'\n",
+  UNSUPPORTED_CLI_VERSION
+);
+expectCategory("an unrelated early failure with no banner", "error: something else broke\n", NON_ZERO_EXIT);
+
+console.log("\n=== Auth and unknown-option checks use the same scope ===");
 expectCategory(
   "OPENAI_API_KEY in the echoed prompt does not make a capacity error an auth failure",
   `${BANNER}\nRead OPENAI_API_KEY handling in the diff.\n\n${CAPACITY}`,
@@ -151,8 +163,18 @@ expectCategory(
   AUTH_UNAVAILABLE
 );
 expectCategory(
+  "a 401 followed by 25 more lines is still an auth failure",
+  `${BANNER}\nreview\n\nERROR: 401 Unauthorized\n${TRAILING}`,
+  AUTH_UNAVAILABLE
+);
+expectCategory(
   "an unknown option on an ERROR line is a version failure",
   `${BANNER}\nreview\n\nERROR: unknown option '--foo'`,
+  UNSUPPORTED_CLI_VERSION
+);
+expectCategory(
+  "an unknown option followed by 25 more lines is still a version failure",
+  `${BANNER}\nreview\n\nERROR: unknown option '--foo'\n${TRAILING}`,
   UNSUPPORTED_CLI_VERSION
 );
 expectCategory(
