@@ -481,3 +481,43 @@ def test_the_scratch_dir_name_matches_the_ci_entry_point_and_gitignore():
     name = str(_load_module().INSTRUCTIONS_DIR)
     assert f'repo / "{name}"' in (root / "scripts/marketplace_ci/review.py").read_text("utf-8")
     assert f"{name}/" in (root / ".gitignore").read_text("utf-8").splitlines()
+
+
+def test_a_previous_failure_payload_does_not_block_a_retry(repo, tmp_path):
+    # run-codex-review's infrastructure-failure payload has `error` and no `mode`.
+    failed, _, _ = _run(
+        repo, tmp_path, uv_rc=2, result_json='{"blocking": true, "error": "could not resolve base"}'
+    )
+    assert failed.returncode == 2
+    retry, args, _ = _run(repo, tmp_path)  # same --output path, as the skill's retry does
+    assert retry.returncode == 0
+    assert args  # the retry actually dispatched
+
+
+def test_an_error_payload_is_a_previous_result_but_not_a_completed_one(repo, tmp_path):
+    (tmp_path / "out.json").write_text('{"blocking": true, "error": "x"}', encoding="utf-8")
+    ok, _, _ = _run(repo, tmp_path)
+    assert ok.returncode == 0
+    # ...but a run that exits 0 while writing only an error payload is not a valid completed result.
+    bad, _, _ = _run(repo, tmp_path, result_json='{"blocking": false, "error": "x"}')
+    assert bad.returncode == 2
+
+
+@pytest.mark.parametrize("model", ["a/b", "a:b", "m" * 65])
+def test_a_model_the_bridge_would_reject_falls_back_instead_of_failing(repo, tmp_path, model):
+    result, _, uv_env = _run(repo, tmp_path, model=model)
+    assert result.returncode == 0
+    assert "unset or unreadable" in result.stdout
+    assert "CODEX_KIT_REVIEW_MODEL" not in uv_env
+
+
+def test_a_model_the_bridge_accepts_is_passed_on(repo, tmp_path):
+    _, _, uv_env = _run(repo, tmp_path, model="gpt-6.1_luna-2")
+    assert "CODEX_KIT_REVIEW_MODEL=gpt-6.1_luna-2" in uv_env
+
+
+def test_the_model_pattern_matches_the_bridges_own():
+    root = Path(__file__).resolve().parents[2]
+    bridge = root / "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs"
+    pattern = _load_module()._MODEL_RE.pattern
+    assert pattern in bridge.read_text("utf-8")  # a change on either side must fail here

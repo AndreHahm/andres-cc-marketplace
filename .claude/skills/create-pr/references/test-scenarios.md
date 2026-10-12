@@ -129,3 +129,6 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
 - The remote has no (or an unrelated) fetch refspec configured → the explicit-refspec fetch still refreshes
   `origin/main` before the merge-base is taken
+- A retry after an exit 2 to the same `--output` path → proceeds (run-codex-review's failure payload counts as a
+  previous result); a model slug the bridge would reject (`/`, `:`, over 64 characters) → omitted with the
+  documented fallback warning, not a failed run
