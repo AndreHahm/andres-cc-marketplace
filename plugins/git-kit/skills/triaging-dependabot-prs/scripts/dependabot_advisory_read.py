@@ -467,7 +467,11 @@ def _pep440_clause(op, have, want, star):
 
 
 def pep440_satisfies(version, spec):
-    """Whether a plain-release VERSION meets the PEP 440 specifier SPEC (True/False/None)."""
+    """Whether a plain-release VERSION meets the PEP 440 specifier SPEC (True/False/None).
+
+    Only plain dotted numbers are compared: a post-release or epoch version on either side gives
+    None ("could not tell"), which callers count as unevaluated, never as a pass or a violation.
+    """
     have = version_key(version)
     if have is None or len(spec) > MAX_CONSTRAINT_CHARS:
         return None
