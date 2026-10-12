@@ -109,10 +109,13 @@ def _run(
     bin_dir.mkdir(exist_ok=True)
     log = tmp_path / "uv.json"
     _stub(bin_dir, "uv", f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\nexit {uv_rc}')
+    # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
         bin_dir,
         "gh",
-        f'echo "$@" > "{log}.gh"\n[ -n "{model}" ] && echo "{model}" && exit 0\nexit 1',
+        f'echo "$@" > "{log}.gh"\n'
+        '[ "$2" = "list" ] || { echo "unknown command" >&2; exit 1; }\n'
+        f'[ -n "{model}" ] && echo "{model}"\nexit 0',
     )
     # codex=None stands in for a Codex CLI that fails to run (a real one may be on PATH here).
     _stub(bin_dir, "codex", "exit 127" if codex is None else f'echo "{codex}"')
@@ -234,3 +237,37 @@ def test_output_inside_the_checkout_is_refused(repo, tmp_path):
     )
     assert result.returncode == 2
     assert "inside the checkout" in result.stdout
+
+
+def test_base_is_printed_and_a_missing_origin_only_warns(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "could not fetch origin/main" in result.stdout
+    assert "PARITY: base " in result.stdout
+
+
+def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path):
+    def git(*args: str) -> str:
+        done = subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return done.stdout.strip()
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    git("remote", "add", "origin", str(bare))
+    git("push", "-q", "origin", "HEAD:refs/heads/main")
+    stale = git("rev-parse", "HEAD")
+    git("update-ref", "refs/remotes/origin/main", stale)
+    git("commit", "-q", "--allow-empty", "-m", "newer")
+    git("push", "-q", "origin", "HEAD:refs/heads/main")
+    newer = git("rev-parse", "HEAD")
+    git("update-ref", "refs/remotes/origin/main", stale)  # make the local ref stale again
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "could not fetch" not in result.stdout
+    assert git("rev-parse", "origin/main") == newer
