@@ -41,8 +41,13 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
 - **`open-item-management`** — revalidation and disposition of open questions, decisions, and
   follow-ups; not every question becomes a Linear Issue.
 - **`plugin-integration-intake`** — the sole host-invoked entry point another plugin's own
-  workflow uses to submit content for Notion/Linear storage or action, under the same live
-  approval gate as a direct user request.
+  workflow uses to submit content for Notion/Linear storage or action, under a live approval
+  gate for every write. A single record gets the same preview and approval as a direct user
+  request. Batch, query and update are Linear-only: a batch of create or update records gets
+  one hash-bound approval for the whole set, shown as a table rather than per record (a reject
+  cancels it), and an update cannot edit descriptions or close Issues. The one carve-out is an
+  exact dedup-key query: it writes nothing, needs no approval and returns only match counts and
+  Issue IDs, never titles or other fields.
 - **`work-transition-reviewer`** and **`work-intake-classifier`** — read-only Codex reviewer
   personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
   Codex CLI use) is built and live; the live in-session path (via this plugin's own
@@ -164,7 +169,9 @@ Items still open from Wave 1:
   runtime yet. Until such an invocation exists, envelope validation happens only through
   `plugin-integration-intake`'s own step 2 procedure (the model reasoning through the schema's
   rules directly) or an ad-hoc check like `jsonschema` run by hand; see `intake-payload-schema.md`
-  for what the schema defines and deliberately does not validate.
+  for what the schema defines and deliberately does not validate. Batch approval is backed by a
+  separate script, `scripts/wmgt_batch_hash.py`, which hashes the previewed file, caps and checks its
+  records, and fails closed (a script failure stops the batch).
 - **The Codex bridge-caller script (`scripts/wmgt_bridge_caller.py`) that dispatches
   `work-transition-reviewer`/`work-intake-classifier` live is built and has run live, for real,
   against both agents** — see each agent's own body for its exact invocation. Known reliability
@@ -180,8 +187,10 @@ Items still open from Wave 1:
   read/write entity types) have no direct read or write path today.
 - `plugin-integration-intake`'s trust-boundary gate had its first `security-reviewer` pass during
   this plugin's `plugin-lifecycle-downstream` QA run (2026-08-30); the Critical and Major findings
-  from that pass are fixed in that skill's own file. Re-run the pass again before this gate is
-  wired to a live connector.
+  from that pass are fixed in that skill's own file. The batch, query and update operations had
+  separate `security-reviewer` passes during development (2026-10-09 onward); their final sign-off
+  is tracked in that skill's Testing & Validation quality gates and is not yet closed. Re-run the
+  pass again before this gate is wired to a live connector.
 
 ## Contributing
 
