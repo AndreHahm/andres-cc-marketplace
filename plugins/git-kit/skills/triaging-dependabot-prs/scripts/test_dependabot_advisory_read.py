@@ -13,11 +13,10 @@ import io
 import json
 import os
 import pathlib
-import random
 import shutil
-import subprocess
 import tempfile
 import time
+import types
 import unittest
 import urllib.error
 from contextlib import redirect_stdout
@@ -52,6 +51,28 @@ SYMLINKS_OK = symlinks_supported()
 GH = "/opt/bin/gh"
 
 
+def completed(args, returncode, stdout, stderr):
+    """A stand-in for the result of one gh call: the script reads only these four attributes."""
+    return types.SimpleNamespace(args=args, returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+class SeededChoice:
+    """A tiny deterministic generator for the property test; nothing here is security related."""
+
+    def __init__(self, seed):
+        self.state = seed & 0xFFFFFFFFFFFFFFFF
+
+    def next(self):
+        self.state = (self.state * 6364136223846793005 + 1442695040888963407) & 0xFFFFFFFFFFFFFFFF
+        return self.state >> 33
+
+    def randint(self, low, high):
+        return low + self.next() % (high - low + 1)
+
+    def choice(self, seq):
+        return seq[self.next() % len(seq)]
+
+
 def which(name):
     return GH if name == "gh" else None
 
@@ -81,15 +102,15 @@ class FakeGh:
         self.envs.append(kwargs.get("env"))
         endpoint = argv[argv.index("GET") + 1]
         if endpoint in self.fail:
-            return subprocess.CompletedProcess(argv, 1, "", "boom")
+            return completed(argv, 1, "", "boom")
         if endpoint == "advisories":
             affects = next(a for a in argv if a.startswith("affects="))[len("affects=") :]
             body = self.advisories.get(affects, [])
         elif endpoint.endswith("/releases/latest"):
             body = {"tag_name": self.release}
         else:
-            return subprocess.CompletedProcess(argv, 1, "", "unexpected endpoint")
-        return subprocess.CompletedProcess(argv, 0, json.dumps(body), "")
+            return completed(argv, 1, "", "unexpected endpoint")
+        return completed(argv, 0, json.dumps(body), "")
 
 
 class FakeFetch:
@@ -841,7 +862,7 @@ class EvaluatorContractTests(unittest.TestCase):
         self.assertTrue(mod.npm_satisfies("5.0.0", "*"))
 
     def test_seeded_random_input_never_raises_or_returns_a_fourth_value(self):
-        rng = random.Random(20261012)
+        rng = SeededChoice(20261012)
         atoms = [
             "0",
             "1",
