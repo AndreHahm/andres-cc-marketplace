@@ -98,6 +98,21 @@ def repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _result(blocking: bool = False, **overrides) -> str:
+    """A completed run-codex-review result, as `_handle_run_codex_review` writes it."""
+    payload = {
+        "mode": "delta",
+        "reviewed_paths": [],
+        "reviewers": ["security-reviewer"],
+        "reviewer_attempts": {},
+        "structural_findings": [],
+        "diff_scoped": True,
+        "findings": [],
+        "blocking": blocking,
+    }
+    return json.dumps({**payload, **overrides})
+
+
 def _run(
     repo: Path,
     tmp_path: Path,
@@ -107,16 +122,13 @@ def _run(
     model: str = "gpt-x",
     result_json: str | None = "auto",
     uv_prelude: str = "",
+    output_name: str = "out.json",
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     log = tmp_path / "uv.json"
     # The stub plays run-codex-review: it writes the result file (last argument) unless told not to.
-    payload = (
-        json.dumps({"mode": "delta", "blocking": uv_rc == 1})
-        if result_json == "auto"
-        else result_json
-    )
+    payload = _result(uv_rc == 1) if result_json == "auto" else result_json
     write_result = (
         f"for a; do last=$a; done\nprintf '%s' '{payload}' > \"$last\"\n" if payload else ""
     )
@@ -138,7 +150,7 @@ def _run(
     env: dict[str, str] = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
     env.pop("CODEX_KIT_REVIEW_MODEL", None)
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--output", str(tmp_path / "out.json")],
+        [sys.executable, str(SCRIPT), "--output", str(tmp_path / output_name)],
         cwd=repo,
         env=env,
         capture_output=True,
@@ -210,14 +222,6 @@ def test_no_marketplace_ci_is_not_applicable(tmp_path):
         check=False,
     )
     assert result.returncode == 3
-
-
-def test_stale_output_file_is_never_mistaken_for_this_runs_result(repo, tmp_path):
-    out = tmp_path / "out.json"
-    out.write_text(json.dumps({"mode": "delta", "blocking": False}), encoding="utf-8")
-    result, _, _ = _run(repo, tmp_path, result_json=None)  # the run writes nothing
-    assert not out.exists()
-    assert result.returncode == 2
 
 
 def test_missing_result_file_is_never_a_clean_pass(repo, tmp_path):
@@ -408,26 +412,6 @@ def test_unreadable_base_trust_boundary_warns(repo, tmp_path):
     assert "could not check whether review-dispatch files changed" in result.stdout
 
 
-def test_an_existing_non_result_output_file_is_never_deleted(repo, tmp_path):
-    precious = tmp_path / "out.json"
-    precious.write_text("keep me", encoding="utf-8")
-    result, args, _ = _run(repo, tmp_path)
-    assert result.returncode == 2
-    assert "not a previous result" in result.stdout
-    assert precious.read_text(encoding="utf-8") == "keep me"
-    assert args == ""  # refused before dispatching anything
-
-
-def test_a_previous_result_file_is_replaced(repo, tmp_path):
-    (tmp_path / "out.json").write_text('{"mode": "delta", "blocking": true}', encoding="utf-8")
-    result, _, _ = _run(repo, tmp_path)  # the stub writes a fresh clean result
-    assert result.returncode == 0
-    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8")) == {
-        "mode": "delta",
-        "blocking": False,
-    }
-
-
 def test_an_output_path_that_is_a_directory_is_refused(repo, tmp_path):
     (tmp_path / "out.json").mkdir()
     result, _, _ = _run(repo, tmp_path)
@@ -466,14 +450,6 @@ def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
     assert args == ""
 
 
-def test_an_unrelated_json_with_a_blocking_field_is_not_a_previous_result(repo, tmp_path):
-    other = tmp_path / "out.json"
-    other.write_text('{"blocking": false, "owner": "someone else"}', encoding="utf-8")
-    result, _, _ = _run(repo, tmp_path)
-    assert result.returncode == 2
-    assert other.exists()
-
-
 def test_the_scratch_dir_name_matches_the_ci_entry_point_and_gitignore():
     # The wrapper's cleanup and the .gitignore entry duplicate a default in review.py; a rename
     # there must fail here instead of silently bringing the stray directory back.
@@ -481,26 +457,6 @@ def test_the_scratch_dir_name_matches_the_ci_entry_point_and_gitignore():
     name = str(_load_module().INSTRUCTIONS_DIR)
     assert f'repo / "{name}"' in (root / "scripts/marketplace_ci/review.py").read_text("utf-8")
     assert f"{name}/" in (root / ".gitignore").read_text("utf-8").splitlines()
-
-
-def test_a_previous_failure_payload_does_not_block_a_retry(repo, tmp_path):
-    # run-codex-review's infrastructure-failure payload has `error` and no `mode`.
-    failed, _, _ = _run(
-        repo, tmp_path, uv_rc=2, result_json='{"blocking": true, "error": "could not resolve base"}'
-    )
-    assert failed.returncode == 2
-    retry, args, _ = _run(repo, tmp_path)  # same --output path, as the skill's retry does
-    assert retry.returncode == 0
-    assert args  # the retry actually dispatched
-
-
-def test_an_error_payload_is_a_previous_result_but_not_a_completed_one(repo, tmp_path):
-    (tmp_path / "out.json").write_text('{"blocking": true, "error": "x"}', encoding="utf-8")
-    ok, _, _ = _run(repo, tmp_path)
-    assert ok.returncode == 0
-    # ...but a run that exits 0 while writing only an error payload is not a valid completed result.
-    bad, _, _ = _run(repo, tmp_path, result_json='{"blocking": false, "error": "x"}')
-    assert bad.returncode == 2
 
 
 @pytest.mark.parametrize("model", ["a/b", "a:b", "m" * 65])
@@ -521,3 +477,42 @@ def test_the_model_pattern_matches_the_bridges_own():
     bridge = root / "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs"
     pattern = _load_module()._MODEL_RE.pattern
     assert pattern in bridge.read_text("utf-8")  # a change on either side must fail here
+
+
+@pytest.mark.parametrize(
+    "content",
+    ["keep me", _result(False), '{"blocking": true, "error": "x"}', '{"blocking": false, "o": 1}'],
+    ids=["text", "previous-result", "failure-payload", "unrelated-json"],
+)
+def test_any_pre_existing_output_is_refused_and_left_untouched(repo, tmp_path, content):
+    existing = tmp_path / "out.json"
+    existing.write_text(content, encoding="utf-8")
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "already exists" in result.stdout
+    assert existing.read_text(encoding="utf-8") == content
+    assert args == ""  # refused before dispatching anything
+
+
+def test_a_retry_after_a_failed_run_uses_a_fresh_output_path(repo, tmp_path):
+    failed, _, _ = _run(
+        repo, tmp_path, uv_rc=2, result_json='{"blocking": true, "error": "could not resolve base"}'
+    )
+    assert failed.returncode == 2
+    retry, args, _ = _run(repo, tmp_path, output_name="out-2.json")
+    assert retry.returncode == 0
+    assert args  # the retry actually dispatched
+    assert (tmp_path / "out.json").exists()  # the earlier file was never touched
+
+
+def test_a_completed_run_that_only_wrote_an_error_payload_is_could_not_run(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, result_json='{"blocking": false, "error": "x"}')
+    assert result.returncode == 2
+
+
+def test_the_required_result_keys_are_still_written_by_the_entry_point():
+    root = Path(__file__).resolve().parents[2]
+    source = (root / "scripts/marketplace_ci/__main__.py").read_text("utf-8")
+    module = _load_module()
+    for key in ("mode", "blocking", *module._RESULT_LIST_KEYS):
+        assert f'"{key}":' in source, key
