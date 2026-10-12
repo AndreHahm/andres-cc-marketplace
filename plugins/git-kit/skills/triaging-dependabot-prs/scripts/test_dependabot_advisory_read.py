@@ -13,6 +13,7 @@ import io
 import json
 import os
 import pathlib
+import random
 import shutil
 import tempfile
 import time
@@ -1400,25 +1401,72 @@ class ConnectorReviewFixTests(unittest.TestCase):
         lock = {"versions": {}, "requires_python": ">=3.9"}
         return mod.newest_compatible(FakeFetch(table), {}, "uv", "pkg", new, "compatible", lock)
 
-    def test_a_newer_post_release_makes_the_newest_compatible_version_unknown(self):
+    def test_a_newer_post_release_is_ranked_and_checked(self):
         for releases in (["0.9", "1.0", "1.0.post1"], ["1.0", "1.1.post2"]):
             result = self.newest(releases)
-            self.assertEqual((result["status"], result["version"]), ("unknown", None), releases)
+            self.assertEqual((result["status"], result["version"]), ("found", releases[-1]))
 
-    def test_an_epoch_release_makes_the_newest_compatible_version_unknown(self):
-        result = self.newest(["1.0", "1!0.5"])
-        self.assertEqual((result["status"], result["version"]), ("unknown", None))
+    def test_an_epoch_release_outranks_every_release_without_one(self):
+        result = self.newest(["1.0", "9.0", "1!0.5"])
+        self.assertEqual((result["status"], result["version"]), ("found", "1!0.5"))
 
     def test_releases_that_cannot_outrank_the_new_version_do_not_matter(self):
         # an older post-release, a pre-release and a dev release sort below or outside the ordering
         result = self.newest(["0.9", "0.9.post1", "1.0", "1.1rc1", "1.1.dev1"])
         self.assertEqual((result["status"], result["version"]), ("found", "1.0"))
 
-    def test_stable_releases_reports_the_unordered_ones_it_leaves_out(self):
-        doc = pypi_doc(["1.0", "1.0.post1", "1!2.0", "1.1rc1"], "1.0")
-        plain, unordered = mod.stable_releases(lambda url, **k: doc, {}, "uv", "pkg")
-        self.assertEqual(plain, ["1.0"])
-        self.assertEqual(sorted(unordered), ["1!2.0", "1.0.post1"])
+    def test_stable_releases_orders_post_and_epoch_releases_and_leaves_out_the_rest(self):
+        doc = pypi_doc(["1.0", "1.0.post1", "1!2.0", "1.1rc1", "1.1.dev1", "1.0+local"], "1.0")
+        self.assertEqual(
+            mod.stable_releases(lambda url, **k: doc, {}, "uv", "pkg"),
+            ["1!2.0", "1.0.post1", "1.0"],
+        )
+
+    def test_order_key_follows_pep440(self):
+        key = lambda v: mod.order_key("uv", v)  # noqa: E731
+        self.assertEqual(key("1.0"), key("1.0.0"))
+        self.assertLess(key("1.0"), key("1.0.post0"))
+        self.assertLess(key("1.0.post1"), key("1.0.post2"))
+        self.assertLess(key("1.0.post9"), key("1.0.1"))
+        self.assertLess(key("9.9"), key("1!0.1"))
+        for text in ("1.0rc1", "1.0.dev1", "1.0+local", "1.0.post", "x", "1!", ""):
+            self.assertIsNone(key(text), text)
+        self.assertEqual(
+            mod.order_key("npm_and_yarn", "v1.2.0"), mod.order_key("npm_and_yarn", "1.2")
+        )
+        self.assertIsNone(mod.order_key("npm_and_yarn", "1.0.post1"))
+
+    @unittest.skipUnless(importlib.util.find_spec("packaging"), "packaging is not installed")
+    def test_order_key_agrees_with_packaging_on_random_final_releases(self):
+        from packaging.version import Version
+
+        rng = random.Random(440)
+
+        def draw():
+            text = ".".join(str(rng.randint(0, 3)) for _ in range(rng.randint(1, 4)))
+            if rng.random() < 0.4:
+                text += f".post{rng.randint(0, 3)}"
+            return f"{rng.randint(1, 2)}!{text}" if rng.random() < 0.2 else text
+
+        for _ in range(3000):
+            a, b = draw(), draw()
+            ka, kb = mod.order_key("uv", a), mod.order_key("uv", b)
+            self.assertEqual(
+                (ka > kb) - (ka < kb), (Version(a) > Version(b)) - (Version(a) < Version(b)), (a, b)
+            )
+
+    def test_assess_signals_use_a_post_release_as_the_newest_compatible_version(self):
+        releases = ["0.9", "1.0", "1.0.post1"]
+        table = {mod.PYPI_URL.format(name="pkg"): pypi_doc(releases, "1.0.post1")}
+        for version in releases:
+            table[mod.PYPI_VERSION_URL.format(name="pkg", version=version)] = pypi_meta([])
+        lock = {"versions": {}, "requires_python": ">=3.9"}
+        result = mod.assess(
+            FakeGh(), "/usr/bin/gh", {}, FakeFetch(table), "uv", "pkg", "0.9", "1.0", lock
+        )
+        self.assertEqual(result["newest_compatible"]["version"], "1.0.post1")
+        self.assertIs(result["signals"]["new_is_newest_compatible"], False)
+        self.assertIs(result["signals"]["new_is_latest"], False)
 
 
 if __name__ == "__main__":
