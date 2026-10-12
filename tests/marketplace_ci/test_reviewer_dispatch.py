@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -490,6 +491,33 @@ def test_dispatch_redacts_quoted_and_truncated_assignment_values_whole(
     for r in reports:
         assert r.error == (
             "DB_PASSWORD=[REDACTED] and API_KEY=[REDACTED] then SECRET_TOKEN=[REDACTED]"
+        )
+
+
+def test_dispatch_redacts_a_quoted_value_inside_the_bridges_json_failure(
+    monkeypatch, repo, change, dependency_index
+):
+    # The bridge writes its failure as one JSON line, so a double-quoted value with a space
+    # reaches review.py with its quotes escaped (`\\"`). A model-controlled finding id lands
+    # in that detail (Codex review finding on PR #547).
+    detail = 'semantic check failed: duplicate finding id DB_PASSWORD="hunter two" in envelope'
+    bridge_line = json.dumps(
+        {"ok": False, "category": "semantic_validation_failure", "detail": detail},
+        separators=(",", ":"),
+    )
+    stderr = f"(node:1) ExperimentalWarning: noise\n{bridge_line}\n".encode()
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == (
+            "(node:1) ExperimentalWarning: noise "
+            '{"ok":false,"category":"semantic_validation_failure","detail":'
+            '"semantic check failed: duplicate finding id DB_PASSWORD=[REDACTED] in envelope"}'
         )
 
 
