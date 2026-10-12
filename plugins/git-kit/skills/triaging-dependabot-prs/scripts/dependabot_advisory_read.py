@@ -66,7 +66,7 @@ ECOSYSTEMS = {
     ),
 }
 # An optional PEP 440 epoch (`1!2.0`) may lead the version; `!` is allowed nowhere else.
-VERSION_RE = re.compile(r"v?(?:[0-9]{1,9}!)?[0-9][0-9A-Za-z.+_-]{0,63}")
+VERSION_RE = re.compile(r"v?(?:[0-9]{1,64}!)?[0-9][0-9A-Za-z.+_-]{0,63}")
 SHA_LIKE_RE = re.compile(r"[0-9a-f]{7,40}")
 HEX_LETTER_RE = re.compile(r"[a-f]")
 ADVISORY_ID_RE = re.compile(r"[A-Z][A-Z0-9]*-[A-Za-z0-9-]{1,60}")
@@ -141,12 +141,13 @@ def version_key(version):
 
 # A final PEP 440 release: optional epoch, release numbers, optional post-release in any spelling
 # PEP 440 accepts (`.post1`, `-1`, `r1`, `_post.1`, a bare `.post` meaning post 0), in any case.
-# Pre-releases, dev releases and local versions do not match.
+# Pre-releases, dev releases and local versions do not match. The numbers are not capped one by one;
+# MAX_ORDERED_VERSION_CHARS bounds the whole string instead.
 PEP440_FINAL_RE = re.compile(
-    r"(?:([0-9]{1,9})!)?([0-9]{1,9}(?:\.[0-9]{1,9}){0,15})"
-    r"(?:-([0-9]{1,9})|[-_.]?(?:post|rev|r)[-_.]?([0-9]{1,9})?)?",
-    re.IGNORECASE,
+    r"(?:([0-9]+)!)?([0-9]+(?:\.[0-9]+)*)(?:-([0-9]+)|[-_.]?(?:post|rev|r)[-_.]?([0-9]+)?)?",
+    re.IGNORECASE | re.ASCII,
 )
+MAX_ORDERED_VERSION_CHARS = 128
 
 
 def order_key(eco, version):
@@ -154,9 +155,12 @@ def order_key(eco, version):
 
     For uv it is PEP 440's (epoch, release, post) order; for the others plain dotted numbers. A
     release without a post segment ranks below any post-release of it. Trailing zeros of the release
-    are dropped so that 1.0 and 1.0.0 are equal.
+    are dropped so that 1.0 and 1.0.0 are equal. A string longer than MAX_ORDERED_VERSION_CHARS is
+    not ordered.
     """
     text = normalize_version(version)
+    if len(text) > MAX_ORDERED_VERSION_CHARS:
+        return None
     epoch, post = 0, -1
     if eco == "uv":
         match = PEP440_FINAL_RE.fullmatch(text)
@@ -165,8 +169,9 @@ def order_key(eco, version):
         epoch = int(match.group(1) or 0)
         if match.end(2) < len(text):  # something follows the release: it is a post-release
             post = int(match.group(3) or match.group(4) or 0)
-        text = match.group(2)
-    release = list(version_key(text) or ())
+        release = [int(part) for part in match.group(2).split(".")]
+    else:
+        release = list(version_key(text) or ())
     if not release:
         return None
     while release and release[-1] == 0:
@@ -854,7 +859,9 @@ def compatibility(fetch, cache, eco, name, version, lock):
 def stable_releases(fetch, cache, eco, name):
     """The final releases of NAME this module can order, newest first.
 
-    Yanked and deprecated releases are left out, and so are pre-releases and dev releases.
+    Yanked and deprecated releases are left out, and so are pre-releases and dev releases. A uv
+    release that is final but too long to order raises LookupFailed: leaving it out could report an
+    older version as the newest, so the answer is unknown instead.
     """
     if eco == "uv":
         releases = pypi_document(fetch, cache, name).get("releases")
@@ -876,7 +883,12 @@ def stable_releases(fetch, cache, eco, name):
             for v, entry in versions.items()
             if isinstance(entry, dict) and not entry.get("deprecated")
         ]
-    ordered = [v for v in names if len(v) <= 64 and order_key(eco, v) is not None]
+    ordered = []
+    for v in names:
+        if order_key(eco, v) is not None:
+            ordered.append(v)
+        elif eco == "uv" and PEP440_FINAL_RE.fullmatch(normalize_version(v)):
+            raise LookupFailed("a final release is too long to order")
     return sorted(ordered, key=lambda v: order_key(eco, v), reverse=True)
 
 
