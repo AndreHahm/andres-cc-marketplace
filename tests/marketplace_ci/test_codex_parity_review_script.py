@@ -292,7 +292,8 @@ def test_base_is_printed_and_a_missing_origin_only_warns(repo, tmp_path):
     assert "PARITY: base " in result.stdout
 
 
-def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path):
+@pytest.mark.parametrize("default_refspec", [True, False], ids=["default-refspec", "no-refspec"])
+def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path, default_refspec):
     def git(*args: str) -> str:
         done = subprocess.run(
             ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
@@ -306,6 +307,10 @@ def test_origin_main_is_fetched_before_the_merge_base(repo, tmp_path):
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
     git("remote", "add", "origin", str(bare))
+    if not default_refspec:
+        git(
+            "config", "--unset-all", "remote.origin.fetch"
+        )  # a plain `fetch origin main` then skips the ref
     git("push", "-q", "origin", "HEAD:refs/heads/main")
     stale = git("rev-parse", "HEAD")
     git("update-ref", "refs/remotes/origin/main", stale)

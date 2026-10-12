@@ -127,3 +127,5 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched;
   an unrelated JSON that merely has a `blocking` field is not a previous result (a result needs `mode` too)
 - The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
+- The remote has no (or an unrelated) fetch refspec configured → the explicit-refspec fetch still refreshes
+  `origin/main` before the merge-base is taken
