@@ -58,21 +58,27 @@ export const ISOLATION_FAILURE_PATTERN =
 // reworded banner with a prompt under the size cap is read as pre-session.
 const PRE_SESSION_MAX_CHARS = 2000;
 
-export function failureScope(stderr) {
-  const errorLines = stderr.split(/\r?\n/).filter((line) => line.startsWith("ERROR:"));
+export function failureScope(stderr, prompt = "") {
+  // Codex echoes the prompt it was sent, verbatim, into stderr. This process wrote that
+  // prompt itself, so remove exactly that text first: an `ERROR:` line inside the echoed
+  // (untrusted) prompt can then neither force nor hide a classification. If Codex ever
+  // alters the echo, nothing matches and the rules below apply to the unstripped text.
+  const needle = typeof prompt === "string" ? prompt.trim() : "";
+  const text = needle ? stderr.split(needle).join("") : stderr;
+  const errorLines = text.split(/\r?\n/).filter((line) => line.startsWith("ERROR:"));
   if (errorLines.length > 0) {
     return errorLines.join("\n");
   }
-  const preSession = !/^OpenAI Codex v\S+/m.test(stderr) && stderr.length <= PRE_SESSION_MAX_CHARS;
-  return preSession ? stderr : "";
+  const preSession = !/^OpenAI Codex v\S+/m.test(text) && text.length <= PRE_SESSION_MAX_CHARS;
+  return preSession ? text : "";
 }
 
 // Auth is checked first, ahead of isolation: a benign "could not find
 // bubblewrap... sandbox prerequisites" fallback warning can appear ahead of a
 // real 401 auth failure, and its use of the word "sandbox" would otherwise
 // misreport an expired/invalid API key as a sandbox failure.
-export function classifyNonZeroExit(stderr) {
-  const scope = failureScope(stderr);
+export function classifyNonZeroExit(stderr, prompt = "") {
+  const scope = failureScope(stderr, prompt);
   if (AUTH_FAILURE_PATTERN.test(scope)) {
     return FAILURE_CATEGORIES.AUTH_UNAVAILABLE;
   }
@@ -567,7 +573,7 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         // and cut off before the actual failure line every time this was hit
         // in practice -- the real error text is near the end of stderr.
         const detail = redactSecrets(stderr).trim().slice(-4000);
-        const category = classifyNonZeroExit(stderr);
+        const category = classifyNonZeroExit(stderr, prompt);
         return finish(typedFailure(category, category === FAILURE_CATEGORIES.NON_ZERO_EXIT ? detail || `exit ${code}` : detail));
       }
 

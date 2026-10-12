@@ -1433,8 +1433,12 @@ _SECRET_TOKEN_PATTERNS = re.compile(
     r"|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
     r"|\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]{8,}"
     # A bare "Bearer <word>" is usually prose ("invalid Bearer authentication
-    # scheme"), so a bare value must look like a token: 16+ characters with a digit.
-    r"|\bbearer\s+(?=[A-Za-z0-9._~+/=-]*\d)[A-Za-z0-9._~+/=-]{16,}",
+    # scheme"), so a bare value must look like a token: 16+ characters containing a
+    # digit, a lower-to-upper step or two capitals in a row, or any 20+ run (the
+    # bridge redactor's own threshold).
+    r"|\bbearer\s+(?:"
+    r"(?=[A-Za-z0-9._~+/=-]*(?:\d|[a-z][A-Z]|[A-Z]{2}))[A-Za-z0-9._~+/=-]{16,}"
+    r"|[A-Za-z0-9._~+/=-]{20,})",
     re.IGNORECASE,
 )
 
@@ -1443,7 +1447,10 @@ _SECRET_TOKEN_PATTERNS = re.compile(
 # line-anchored, so once newlines are flattened to spaces it no longer matches;
 # this one replaces only the value token (up to the next space), keeping the name.
 _SECRET_ASSIGNMENT = re.compile(
-    r"(\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)\S+",
+    r"(\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)"
+    # a quoted value runs to its closing quote (or the end of the text, for a truncated
+    # one), so a value containing spaces is redacted whole
+    r"""(?:"(?:[^"\\]|\\.)*(?:"|$)|'(?:[^'\\]|\\.)*(?:'|$)|\S+)""",
     re.IGNORECASE,
 )
 
