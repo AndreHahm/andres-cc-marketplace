@@ -8,6 +8,7 @@ settings that must match CI from the workflow file itself, so they cannot drift:
 
   - CODEX_KIT_REVIEW_TIMEOUT_MS: parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
+  - Warns when the branch changed a Tier-1 file (list read from the merge-base copy).
   - Base: `origin/main` is fetched first (best effort) and the merge-base SHA used is printed.
   - CODEX_KIT_REVIEW_MODEL: a repository variable (vars.*), not a workflow value, so it is
     read with `gh variable list --json`; when unset or unreadable the local Codex default is used
@@ -22,6 +23,7 @@ This repository's own convention only.
 from __future__ import annotations
 
 import argparse
+import ast
 import os
 import re
 import signal
@@ -31,6 +33,7 @@ from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
+TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
 RUN_TIMEOUT_SECONDS = 45 * 60
@@ -171,6 +174,17 @@ def main() -> int:
         return 2
     print(f"PARITY: base {base_sha[:12]} (merge-base with origin/main).")
 
+    touched = tier1_touches(base_sha)
+    if touched is None:
+        print("PARITY WARNING: could not check whether review-dispatch files changed.")
+    elif touched:
+        print(
+            "PARITY WARNING: this branch changes review-dispatch-critical files "
+            f"({', '.join(touched)}). CI hard-refuses to dispatch on these, and this local run "
+            "executes the branch's own copy of that code with your Codex credentials; treat a "
+            "clean result as non-authoritative."
+        )
+
     if output.is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
         return 2
@@ -198,6 +212,35 @@ def main() -> int:
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
     return result.returncode if result.returncode in (0, 1) else 2
+
+
+def tier1_touches(base_sha: str) -> list[str] | None:
+    """Tier-1 (review-dispatch-critical) files this branch changed since `base_sha`, or None.
+
+    CI hard-refuses to dispatch when a PR changes these, because the PR would control the code
+    that runs with the review credentials. The file list is read from the merge-base copy of
+    trust_boundary.py, never the branch's own copy, so the branch cannot shrink it.
+    """
+    shown = _run(["git", "show", f"{base_sha}:{TRUST_BOUNDARY}"])
+    if shown is None or shown.returncode != 0:
+        return None
+    try:
+        for node in ast.parse(shown.stdout).body:
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Call)
+                and any(isinstance(t, ast.Name) and t.id == "TIER1_FILES" for t in node.targets)
+            ):
+                paths = sorted(ast.literal_eval(node.value.args[0]))  # frozenset({...})
+                break
+        else:
+            return None
+    except (SyntaxError, ValueError, AttributeError, IndexError):
+        return None
+    diff = _run(["git", "diff", "--name-only", f"{base_sha}...HEAD", "--", *paths])
+    if diff is None or diff.returncode != 0:
+        return None
+    return [line for line in diff.stdout.splitlines() if line]
 
 
 def _guarded_main() -> int:

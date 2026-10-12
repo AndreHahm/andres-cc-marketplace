@@ -115,3 +115,6 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) → step 4.5 runs `.claude/scripts/git-codex-parity-review.py`
   from the checkout root, matching the second grant, instead of failing with exit 127
 - A stalled `git fetch` / `gh` / `codex --version` → bounded by a 60 s timeout, then a warning or exit 2, never a hang
+- Branch changed a Tier-1 (review-dispatch-critical) file since the merge-base → loud warning naming it, run still
+  proceeds; the Tier-1 list is read from the merge-base copy, so the branch cannot shrink it
+- Merge-base has no readable trust_boundary.py → "could not check" warning, run still proceeds
