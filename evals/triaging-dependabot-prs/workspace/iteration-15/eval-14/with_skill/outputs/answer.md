@@ -1,0 +1,5 @@
+# Eval 14 answer, iteration 15 (condensed from the subagent's simulated run)
+
+Steps 1-2 as normal. Step 3: the skill asks once via `AskUserQuestion`, before the first `assess`, whether to run the advisory and compatibility checks for the run; the answer applies to both PRs and it is not asked per PR. The question names the hosts (GitHub for advisories, the latest release and the lockfile fetch; PyPI; npm; OSV as fallback) and the cost: read-only, up to about 25 requests per PR, each lookup request timing out after 30 s, each lockfile fetch after 60 s, and the compatibility stage stopping new lookups after about 60 s.
+
+On no: no `assess` and no lockfile fetch (no base-uv.lock written); each of #401 and #402 is reported as "advisory and compatibility not checked (declined)" and recommended as if the checks did not exist (rules a to c never fire). Steps 4 and 5 proceed (table with advisory column "not checked (declined)", merge-pr prompt heads-up, plan-approval AskUserQuestion that approves the plan only), then the step 6 loop and step 7 wrap-up.
