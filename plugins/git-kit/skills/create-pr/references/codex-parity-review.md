@@ -17,7 +17,7 @@ pass; this step runs CI's own entry point so those findings surface before the p
 - Warns (does not fail) when the local `codex --version` differs from CI's pin.
 - Fetches `origin main` into `refs/remotes/origin/main` with an explicit refspec, so it works under any configured
   fetch refspec (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
-  run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
+  run-codex-review --base-sha <tip of origin/main>` (CI's `base.sha`) and prints the base SHA it used.
 
 Pass `--output` a **fresh** file in the session scratchpad on every run, a retry included (for example
 `codex-parity-<epoch>.json`). The script never deletes or overwrites: an existing path (file, directory or symlink,
@@ -39,7 +39,7 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 |---|---|---|
 | 0 | Clean | Continue to the push |
 | 1 | A valid result with `blocking: true` | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
-| 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout, or a missing, malformed or contradictory result file) | **Never a pass.** Ask retry / bypass |
+| 2 | Could not run (Codex missing, `origin/main` unresolved, dispatch failed, timeout, or a missing, malformed or contradictory result file) | **Never a pass.** Ask retry / bypass |
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 
 After a fix, commit it the way SKILL.md's Pre-flight step 2 already does (that step carries the skip-Auto-PR and
@@ -64,7 +64,8 @@ alongside `cross-model-review`.
   credentials, so treat a clean result as non-authoritative.
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
-- On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX; elsewhere only the direct child).
+- On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX), or the whole tree via `taskkill /F /T` (Windows, not exercised on a real Windows host); the wait
+  for the pipes to close afterwards is bounded.
 - The wrapper is a working-tree script like any other (tests, hooks): a branch can edit it, and the Tier-1
   warning covers only CI's dispatch files. Treat a clean result as advisory, not authoritative.
 - Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
