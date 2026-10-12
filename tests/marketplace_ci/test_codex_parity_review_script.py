@@ -112,7 +112,11 @@ def _run(
     bin_dir.mkdir(exist_ok=True)
     log = tmp_path / "uv.json"
     # The stub plays run-codex-review: it writes the result file (last argument) unless told not to.
-    payload = json.dumps({"blocking": uv_rc == 1}) if result_json == "auto" else result_json
+    payload = (
+        json.dumps({"mode": "delta", "blocking": uv_rc == 1})
+        if result_json == "auto"
+        else result_json
+    )
     write_result = (
         f"for a; do last=$a; done\nprintf '%s' '{payload}' > \"$last\"\n" if payload else ""
     )
@@ -210,7 +214,7 @@ def test_no_marketplace_ci_is_not_applicable(tmp_path):
 
 def test_stale_output_file_is_never_mistaken_for_this_runs_result(repo, tmp_path):
     out = tmp_path / "out.json"
-    out.write_text(json.dumps({"blocking": False}), encoding="utf-8")
+    out.write_text(json.dumps({"mode": "delta", "blocking": False}), encoding="utf-8")
     result, _, _ = _run(repo, tmp_path, result_json=None)  # the run writes nothing
     assert not out.exists()
     assert result.returncode == 2
@@ -223,15 +227,25 @@ def test_missing_result_file_is_never_a_clean_pass(repo, tmp_path):
 
 
 def test_malformed_or_non_boolean_result_is_could_not_run(repo, tmp_path):
-    for bad in ("not json", "[]", '{"blocking": "no"}', "{}"):
+    for bad in (
+        "not json",
+        "[]",
+        '{"mode": "delta", "blocking": "no"}',
+        "{}",
+        '{"blocking": false}',
+    ):
         result, _, _ = _run(repo, tmp_path, result_json=bad)
         assert result.returncode == 2, bad
 
 
 def test_result_contradicting_the_exit_code_is_could_not_run(repo, tmp_path):
-    clean_but_blocking, _, _ = _run(repo, tmp_path, uv_rc=0, result_json='{"blocking": true}')
+    clean_but_blocking, _, _ = _run(
+        repo, tmp_path, uv_rc=0, result_json='{"mode": "delta", "blocking": true}'
+    )
     assert clean_but_blocking.returncode == 2
-    blocking_but_clean, _, _ = _run(repo, tmp_path, uv_rc=1, result_json='{"blocking": false}')
+    blocking_but_clean, _, _ = _run(
+        repo, tmp_path, uv_rc=1, result_json='{"mode": "delta", "blocking": false}'
+    )
     assert blocking_but_clean.returncode == 2
 
 
@@ -400,10 +414,13 @@ def test_an_existing_non_result_output_file_is_never_deleted(repo, tmp_path):
 
 
 def test_a_previous_result_file_is_replaced(repo, tmp_path):
-    (tmp_path / "out.json").write_text('{"blocking": true}', encoding="utf-8")
+    (tmp_path / "out.json").write_text('{"mode": "delta", "blocking": true}', encoding="utf-8")
     result, _, _ = _run(repo, tmp_path)  # the stub writes a fresh clean result
     assert result.returncode == 0
-    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8")) == {"blocking": False}
+    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8")) == {
+        "mode": "delta",
+        "blocking": False,
+    }
 
 
 def test_an_output_path_that_is_a_directory_is_refused(repo, tmp_path):
@@ -428,3 +445,34 @@ def test_a_pre_existing_scratch_dir_is_left_alone(repo, tmp_path):
     result, _, _ = _run(repo, tmp_path, uv_prelude=SCRATCH_STUB)
     assert result.returncode == 0
     assert (repo / ".codex-review-instructions" / "mine.txt").exists()
+
+
+def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
+    target = tmp_path / "precious.json"
+    target.write_text(
+        '{"mode": "delta", "blocking": false, "owner": "someone else"}', encoding="utf-8"
+    )
+    (tmp_path / "out.json").symlink_to(target)
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "symlink" in result.stdout
+    assert target.exists()
+    assert (tmp_path / "out.json").is_symlink()
+    assert args == ""
+
+
+def test_an_unrelated_json_with_a_blocking_field_is_not_a_previous_result(repo, tmp_path):
+    other = tmp_path / "out.json"
+    other.write_text('{"blocking": false, "owner": "someone else"}', encoding="utf-8")
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert other.exists()
+
+
+def test_the_scratch_dir_name_matches_the_ci_entry_point_and_gitignore():
+    # The wrapper's cleanup and the .gitignore entry duplicate a default in review.py; a rename
+    # there must fail here instead of silently bringing the stray directory back.
+    root = Path(__file__).resolve().parents[2]
+    name = str(_load_module().INSTRUCTIONS_DIR)
+    assert f'repo / "{name}"' in (root / "scripts/marketplace_ci/review.py").read_text("utf-8")
+    assert f"{name}/" in (root / ".gitignore").read_text("utf-8").splitlines()

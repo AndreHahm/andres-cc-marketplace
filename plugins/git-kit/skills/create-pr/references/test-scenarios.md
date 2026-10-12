@@ -124,3 +124,6 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   nothing dispatched; a previous result file is replaced
 - The run creates `.codex-review-instructions/` in the checkout → removed afterwards; a directory that already
   existed is left untouched
+- `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched;
+  an unrelated JSON that merely has a `blocking` field is not a previous result (a result needs `mode` too)
+- The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
