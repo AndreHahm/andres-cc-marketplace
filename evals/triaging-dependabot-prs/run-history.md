@@ -84,3 +84,10 @@ times out after 30 s) was confirmed by Codex; N1 (nothing pinned the opt-in) was
 `SKILL.md`, scenario 63 and eval 14, a smoke-test check for the opt-in sentence (shown to fail on a copy without it), and
 one clause in `references/advisory-and-compatibility.md`. Eval 14 re-run as iteration 14, 5 of 5 (author-graded, one
 simulated answer, no baseline).
+
+Cross-model review round 2 (fix delta only, Codex plus Claude): Codex's fresh-eyes pass found F1, the corrected cost text
+still said each request times out after 30 s while the lockfile fetch the opt-in also covers has a 60 s timeout
+(verified in `dependabot_pr_read.py`); Claude's pass on the delta found nothing of its own, so there was no Claude
+finding for Codex to cross-examine, and Claude's challenger pass confirmed F1 against the code. Fixed in `SKILL.md`,
+scenario 63 and eval 14; iteration 15 re-ran eval 14, 5 of 5 (author-graded, one simulated answer, no baseline). This
+last wording fix was not itself re-reviewed: the two-round limit was used up.
