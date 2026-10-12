@@ -12,13 +12,14 @@ pass; this step runs CI's own entry point so those findings surface before the p
 
 - Reads `CODEX_KIT_REVIEW_TIMEOUT_MS` and the Codex CLI pin from `.github/workflows/marketplace-ci.yml`, so
   they cannot drift from CI.
-- Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable get` (it is a repository variable, not a workflow
+- Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable list --json` (it is a repository variable, not a workflow
   value). Unset, unreadable or malformed means the local Codex default runs, and the output says so.
 - Warns (does not fail) when the local `codex --version` differs from CI's pin.
-- Runs `uv run python -m scripts.marketplace_ci run-codex-review --base-sha <merge-base with origin/main>`.
+- Fetches `origin main` (best effort; a warning if it fails), then runs `uv run python -m scripts.marketplace_ci
+  run-codex-review --base-sha <merge-base with origin/main>` and prints the base SHA it used.
 
 Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2).
-The model variable is looked up on `origin`'s repository (`gh variable get --repo`), the repo this branch is pushed to.
+The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so the script runs from the `.claude/scripts/` mirror
 (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`); that path doesn't match the skill's grant, so expect a permission prompt.
 

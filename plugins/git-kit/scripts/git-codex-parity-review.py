@@ -8,9 +8,10 @@ settings that must match CI from the workflow file itself, so they cannot drift:
 
   - CODEX_KIT_REVIEW_TIMEOUT_MS: parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
+  - Base: `origin/main` is fetched first (best effort) and the merge-base SHA used is printed.
   - CODEX_KIT_REVIEW_MODEL: a repository variable (vars.*), not a workflow value, so it is
-    read with `gh variable get`; when unset or unreadable the local Codex default is used and
-    that is stated in the output.
+    read with `gh variable list --json`; when unset or unreadable the local Codex default is used
+    and that is stated in the output.
 
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass), 3 not applicable
 (this checkout has no marketplace CI to mirror).
@@ -111,7 +112,9 @@ def _origin_slug() -> str | None:
 def resolve_model() -> str | None:
     slug = _origin_slug()
     repo_args = ["--repo", slug] if slug else []
-    result = _run(["gh", "variable", "get", MODEL_VARIABLE, *repo_args])
+    # `gh variable get` only exists in newer gh releases (absent in 2.45.0); `list --json` is older.
+    selector = f'.[] | select(.name == "{MODEL_VARIABLE}") | .value'
+    result = _run(["gh", "variable", "list", "--json", "name,value", "--jq", selector, *repo_args])
     if result is None or result.returncode != 0:
         return None
     model = result.stdout.strip()
@@ -149,11 +152,17 @@ def main() -> int:
     if local_version != pin:
         print(f"PARITY WARNING: local Codex CLI {local_version} differs from CI's pin {pin}.")
 
+    # CI diffs against the PR's current base; a stale local origin/main would widen the local diff.
+    fetch = _run(["git", "fetch", "--quiet", "origin", "main"])
+    if fetch is None or fetch.returncode != 0:
+        print("PARITY WARNING: could not fetch origin/main; the local ref may be stale.")
+
     merge_base = _run(["git", "merge-base", "origin/main", "HEAD"])
     base_sha = merge_base.stdout.strip() if merge_base and merge_base.returncode == 0 else ""
     if not base_sha:
         print("PARITY: could not resolve the merge base with origin/main.", file=sys.stderr)
         return 2
+    print(f"PARITY: base {base_sha[:12]} (merge-base with origin/main).")
 
     if output.is_relative_to(Path.cwd().resolve()):
         print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
