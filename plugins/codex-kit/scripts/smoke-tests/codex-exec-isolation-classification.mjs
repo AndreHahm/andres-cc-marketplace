@@ -264,6 +264,11 @@ console.log("\n=== REAL WINDOWS Codex 0.162.1 stderr (issue #545): timestamped t
     ISOLATION_PROFILE_UNAVAILABLE
   );
   expectCategory(
+    "a tracing line that merely quotes a command naming CreateProcessAsUserW is not isolation (review B)",
+    `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: error=exec_command failed: rg "CreateProcessAsUserW" src\n${CAPACITY}`,
+    NON_ZERO_EXIT
+  );
+  expectCategory(
     "a generic unified-exec failure with no sandbox-helper marker is not isolation (fd/pty exhaustion)",
     `${REAL_WINDOWS_BANNER}\nreview\n\n2026-10-12T16:32:29.966755Z ERROR codex_core::tools::router: Failed to create unified exec process: too many open files\n${CAPACITY}`,
     NON_ZERO_EXIT
