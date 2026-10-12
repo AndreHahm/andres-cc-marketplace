@@ -434,6 +434,47 @@ def test_dispatch_keeps_ordinary_bearer_prose_in_a_failed_reviewers_error(
         )
 
 
+def test_dispatch_redacts_a_fine_grained_github_token_from_a_failed_reviewers_error(
+    monkeypatch, repo, change, dependency_index
+):
+    # `github_pat_` tokens have no `gh[pousr]_` prefix (cross-model-review finding F1).
+    secret = "github_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    stderr = f"crash with {secret} in env".encode()
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(args=argv, returncode=1, stdout=b"", stderr=stderr)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.error == "crash with [REDACTED] in env"
+
+
+def test_a_failed_empty_review_redacts_a_token_in_the_first_inspection_limit(
+    monkeypatch, repo, change, dependency_index
+):
+    # The inspection limit is reviewer (model) output; it reaches the CI log like any
+    # other report error, so it gets the same redaction (finding D2).
+    secret = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789"
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Inconclusive", limits=[f"could not read {secret} in file"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    for r in reports:
+        assert r.status == "failed"
+        assert r.error is not None and secret not in r.error
+        assert r.error.endswith("could not read [REDACTED] in file")
+
+
 def test_dispatch_never_retries_malformed_bridge_output(
     monkeypatch, repo, change, dependency_index
 ):
