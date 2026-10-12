@@ -21,7 +21,12 @@ export function evaluateProbeResult(result, token) {
   const combined = redactSecrets(`${stdout}\n${result.stderr ?? ""}`).trim();
 
   if (result.status !== 0) {
-    return { viable: false, detail: combined.slice(0, 500) || `exit ${result.status}` };
+    // Tail, not head: Codex prints its banner first and the failure reason last.
+    return { viable: false, detail: combined.slice(-500) || `exit ${result.status}` };
+  }
+
+  if (!token) {
+    return { viable: false, detail: "the probe had no token to look for" };
   }
 
   // Exit 0 is not proof: on Windows with Codex 0.162.1 a sandbox that cannot start a process
@@ -69,6 +74,12 @@ export function checkSandboxViability() {
 
     return evaluateProbeResult(result, token);
   } finally {
-    fs.rmSync(probeDir, { recursive: true, force: true });
+    // Best-effort: on Windows a timed-out Codex grandchild can still hold the directory (EBUSY/
+    // EPERM), and a throw here would replace the result and crash the setup report.
+    try {
+      fs.rmSync(probeDir, { recursive: true, force: true });
+    } catch {
+      // leave the throwaway directory for the OS temp cleaner
+    }
   }
 }

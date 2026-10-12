@@ -193,7 +193,7 @@ async function buildSetupReport(cwd, actionsTaken = []) {
   // decision #7: config.toml is the default model/effort source of truth
   const codexConfig = readCodexConfig();
   // scope-expansion gap #5: always test, never assume sandbox mode works
-  const sandboxCheck = codexStatus.available ? checkSandboxViability(cwd) : { viable: null, detail: "skipped — Codex CLI unavailable" };
+  const sandboxCheck = codexStatus.available ? checkSandboxViability() : { viable: null, detail: "skipped — Codex CLI unavailable" };
 
   const nextSteps = [];
   if (!codexStatus.available) {

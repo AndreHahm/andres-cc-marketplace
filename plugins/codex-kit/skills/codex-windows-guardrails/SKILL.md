@@ -8,8 +8,8 @@ description: >-
   validated findings envelope on success -- all in one script call. Invoked
   by codex-review-bridge's callers (e.g. plugin-auditor's Codex backend
   resolver) after a read-only attempt reported isolation_profile_unavailable
-  and the user confirmed running without a sandbox (the Windows-guarded
-  danger-full-access profile) -- not invoked directly by end users, and never a
+  (a --dry-run true call may precede the user's consent; a real call, in the
+  Windows-guarded danger-full-access profile with no sandbox, only follows it) -- not invoked directly by end users, and never a
   substitute for a real OS sandbox.
 allowed-tools: ["Bash(node */codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)"]
 disable-model-invocation: true
@@ -99,8 +99,8 @@ implementation (also used by `codex-review-bridge`'s own `--dry-run true`).
 
 - A caller (e.g. `plugin-auditor`'s Codex backend resolver, `references/codex-backend.md`) has
   already determined the only available local execution profile is Windows `danger-full-access`
-  (a `read-only` attempt reported `isolation_profile_unavailable` and the user confirmed running
-  without a sandbox), and needs a bounded, disclosed way to proceed rather than skipping straight to it.
+  (a `read-only` attempt reported `isolation_profile_unavailable`; a `--dry-run true` call may precede the
+  user's confirmation to run without a sandbox, but a real call only follows it), and needs a bounded, disclosed way to proceed rather than skipping straight to it.
 
 ## When NOT to Use
 
