@@ -28,5 +28,5 @@
     "assertions_passed": 4,
     "pass_rate": 1.0
   },
-  "notes": "Simulated dry run, single run, graded by the orchestrator (2026-10-12) against SKILL.md at commit 15ae4ff1 (its behavior text is unchanged in the working tree). Replaces the iteration-11 eval 15 record, which was graded against the earlier 'fall back to per-write approval' wording and a same-hash resume scenario the current design cannot produce."
+  "notes": "Simulated dry run, single run, graded by the orchestrator (2026-10-12) against SKILL.md at commit 15ae4ff1 (later commits do not change what this eval exercises; the final commit tightens condition 3's wording to require the approve-all option and adds a write-time status re-check to condition 5). Replaces the iteration-11 eval 15 record, which was graded against the earlier 'fall back to per-write approval' wording and a same-hash resume scenario the current design cannot produce."
 }
