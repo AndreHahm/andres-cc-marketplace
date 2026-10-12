@@ -147,6 +147,8 @@ PEP440_FINAL_RE = re.compile(
     r"(?:([0-9]+)!)?([0-9]+(?:\.[0-9]+)*)(?:-([0-9]+)|[-_.]?(?:post|rev|r)[-_.]?([0-9]+)?)?",
     re.IGNORECASE | re.ASCII,
 )
+# A final release of the other ecosystems: plain dotted numbers, no per-number cap.
+PLAIN_RELEASE_RE = re.compile(r"[0-9]+(?:\.[0-9]+)*")
 MAX_ORDERED_VERSION_CHARS = 128
 
 
@@ -171,7 +173,9 @@ def order_key(eco, version):
             post = int(match.group(3) or match.group(4) or 0)
         release = [int(part) for part in match.group(2).split(".")]
     else:
-        release = list(version_key(text) or ())
+        if not PLAIN_RELEASE_RE.fullmatch(text):
+            return None
+        release = [int(part) for part in text.split(".")]
     if not release:
         return None
     while release and release[-1] == 0:
@@ -239,13 +243,23 @@ def gh_get(run, gh, environ, endpoint, *fields):
         raise LookupFailed("gh api returned non-JSON") from exc
 
 
+def fixed_version_text(value):
+    """VALUE as a fixed-in version, or "" when it is not one.
+
+    A value longer than 64 characters is refused, not cut to 64 first: a truncated prefix could
+    pass VERSION_RE and be shown as a version the advisory never named.
+    """
+    text = clean(value, 65)
+    return text if len(text) <= 64 and VERSION_RE.fullmatch(text) else ""
+
+
 def _fixed_versions(events_owner):
     fixed = []
     for rng in events_owner.get("ranges") or []:
         for event in rng.get("events") or []:
             if isinstance(event, dict) and event.get("fixed"):
-                value = clean(event["fixed"], 64)
-                if VERSION_RE.fullmatch(value):
+                value = fixed_version_text(event["fixed"])
+                if value:
                     fixed.append(value)
     return fixed
 
@@ -281,11 +295,8 @@ def github_advisories(run, gh, environ, eco, name, version):
             raw_package = vuln.get("package")
             package = raw_package if isinstance(raw_package, dict) else {}
             patched = vuln.get("first_patched_version")
-            patched = clean(patched, 64) if patched else ""
-            if (
-                VERSION_RE.fullmatch(patched)
-                and str(package.get("name", "")).lower() == name.lower()
-            ):
+            patched = fixed_version_text(patched) if patched else ""
+            if patched and str(package.get("name", "")).lower() == name.lower():
                 fixed.append(patched)
         found.append(
             {
@@ -859,7 +870,7 @@ def compatibility(fetch, cache, eco, name, version, lock):
 def stable_releases(fetch, cache, eco, name):
     """The final releases of NAME this module can order, newest first.
 
-    Yanked and deprecated releases are left out, and so are pre-releases and dev releases. A uv
+    Yanked and deprecated releases are left out, and so are pre-releases and dev releases. A
     release that is final but too long to order raises LookupFailed: leaving it out could report an
     older version as the newest, so the answer is unknown instead.
     """
@@ -887,7 +898,7 @@ def stable_releases(fetch, cache, eco, name):
     for v in names:
         if order_key(eco, v) is not None:
             ordered.append(v)
-        elif eco == "uv" and PEP440_FINAL_RE.fullmatch(normalize_version(v)):
+        elif (PEP440_FINAL_RE if eco == "uv" else PLAIN_RELEASE_RE).fullmatch(normalize_version(v)):
             raise LookupFailed("a final release is too long to order")
     return sorted(ordered, key=lambda v: order_key(eco, v), reverse=True)
 

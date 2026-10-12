@@ -1448,6 +1448,24 @@ class ConnectorReviewFixTests(unittest.TestCase):
         )
         self.assertIsNone(mod.order_key("npm_and_yarn", "1.0.post1"))
 
+    def test_order_key_matches_a_fixed_pep440_ordering(self):
+        # always runs, unlike the packaging cross-check below
+        ascending = [
+            "0.9", "1.0", "1.0.post0", "1.0.post1", "1.0.post12", "1.0.1", "1.1", "2.0",
+            "10.0", "1234567890.1", "1!0.1", "1!0.2", "2!0.0",
+        ]  # fmt: skip
+        keys = [mod.order_key("uv", v) for v in ascending]
+        self.assertNotIn(None, keys)
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(len(set(keys)), len(keys))
+
+    def test_a_fixed_in_version_longer_than_64_characters_is_refused_not_truncated(self):
+        long_text = "1." + "9" * 78
+        self.assertEqual(mod.fixed_version_text(long_text), "")
+        self.assertEqual(mod.fixed_version_text("1." + "9" * 62), "1." + "9" * 62)
+        self.assertEqual(mod.fixed_version_text("1.2.3"), "1.2.3")
+        self.assertEqual(mod._fixed_versions({"ranges": [{"events": [{"fixed": long_text}]}]}), [])
+
     @unittest.skipUnless(importlib.util.find_spec("packaging"), "packaging is not installed")
     def test_order_key_agrees_with_packaging_on_random_final_releases(self):
         from packaging.version import Version
@@ -1480,6 +1498,14 @@ class ConnectorReviewFixTests(unittest.TestCase):
         self.assertGreater(key("1.0.post1234567890"), key("1.0.post9"))
         result = self.newest(["1.0", "1234567890.1"])
         self.assertEqual((result["status"], result["version"]), ("found", "1234567890.1"))
+
+    def test_npm_releases_with_large_numbers_are_ordered_not_dropped(self):
+        doc = {"versions": {"1.0.0": {}, "1.0.1234567890": {}, "1.0.2-beta.1": {}}}
+        ordered = mod.stable_releases(lambda url, **k: doc, {}, "npm_and_yarn", "pkg")
+        self.assertEqual(ordered, ["1.0.1234567890", "1.0.0"])
+        too_long = {"versions": {"1.0.0": {}, "1." + "9" * 200: {}}}
+        with self.assertRaises(mod.LookupFailed):
+            mod.stable_releases(lambda url, **k: too_long, {}, "npm_and_yarn", "pkg")
 
     def test_a_final_release_too_long_to_order_makes_the_answer_unknown(self):
         too_long = "1." + "9" * (mod.MAX_ORDERED_VERSION_CHARS + 1)
