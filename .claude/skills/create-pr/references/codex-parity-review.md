@@ -17,7 +17,10 @@ pass; this step runs CI's own entry point so those findings surface before the p
 - Warns (does not fail) when the local `codex --version` differs from CI's pin.
 - Runs `uv run python -m scripts.marketplace_ci run-codex-review --base-sha <merge-base with origin/main>`.
 
-Pass `--output` a file in the session scratchpad, never the repo root.
+Pass `--output` a file in the session scratchpad; a path inside the checkout is refused (exit 2).
+The model variable is looked up on `origin`'s repository (`gh variable get --repo`), the repo this branch is pushed to.
+In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so the script runs from the `.claude/scripts/` mirror
+(`.claude/rules/resolve-plugin-root-to-claude-mirror.md`); that path doesn't match the skill's grant, so expect a permission prompt.
 
 ## Exit codes
 
@@ -47,7 +50,7 @@ alongside `cross-model-review`.
 
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
-- On timeout only the direct child is killed; stray `codex` processes may linger (unverified).
+- On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX; elsewhere only the direct child).
 - Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
 - Windows: Codex's read-only sandbox may be unavailable. The run then exits 2; offer WSL or a bypass.
 - Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.
