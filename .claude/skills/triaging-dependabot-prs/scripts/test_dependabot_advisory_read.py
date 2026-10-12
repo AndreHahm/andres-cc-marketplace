@@ -517,7 +517,7 @@ class EvaluatorTests(unittest.TestCase):
     def test_markers(self):
         py = (3, 11)
         self.assertTrue(mod.marker_applies(None, py))
-        self.assertFalse(mod.marker_applies('extra == "dev"', py))
+        self.assertIsNone(mod.marker_applies('extra == "dev"', py))  # requested extras unknown
         self.assertIsNone(mod.marker_applies('python_version >= "3" or extra == "x"', py))
         self.assertIsNone(mod.marker_applies('extra != "slim"', py))
         self.assertFalse(mod.marker_applies('python_version < "3.9"', py))
@@ -1083,7 +1083,8 @@ class CheckTests(unittest.TestCase):
         }
         verdict = mod.check_pypi(meta, self.lock)
         self.assertEqual(verdict["violations"], [])
-        self.assertEqual(verdict["unevaluated"], 2)
+        # the win32 marker, the unparseable line and the extra-guarded constraint on a locked dep
+        self.assertEqual(verdict["unevaluated"], 3)
 
     def test_npm_peer_checks(self):
         lock = {"versions": {"react": ["18.2.0"], "@scope/pkg": ["3.1.0"]}, "requires_python": None}
@@ -1356,6 +1357,64 @@ class HelperTests(unittest.TestCase):
         for needle in ('"POST"', '--method", "POST', "PATCH", "DELETE", "shell=True", "os.system"):
             self.assertNotIn(needle, text)
         self.assertEqual(text.count('"--method", "GET"'), 1)
+
+
+class ConnectorReviewFixTests(unittest.TestCase):
+    """Codex connector review of PR 539: extras, and post-release or epoch releases."""
+
+    lock = {"versions": {"dep": ["2.0.0"], "other": ["1.0.0"]}, "requires_python": ">=3.9"}
+
+    def test_extra_guarded_constraint_on_a_locked_dependency_is_unevaluated_not_inactive(self):
+        guarded = {"requires_dist": ["dep<2; extra == 'feature'", "other>=1"]}
+        verdict = mod.check_pypi(guarded, self.lock)
+        self.assertEqual(verdict["violations"], [])
+        self.assertEqual((verdict["checked"], verdict["unevaluated"]), (1, 1))
+        # the same constraint without the guard is a violation, so the gap is the guard alone
+        plain = mod.check_pypi({"requires_dist": ["dep<2", "other>=1"]}, self.lock)
+        self.assertEqual(plain["violations"][0]["dependency"], "dep")
+
+    def test_extra_guarded_constraint_alone_leaves_compatibility_unknown(self):
+        cache = {}
+        fetch = FakeFetch(
+            {
+                mod.PYPI_VERSION_URL.format(name="foo", version="1.0.0"): pypi_meta(
+                    ["dep<2; extra == 'feature'"], requires_python=None
+                )
+            }
+        )
+        result = mod.compatibility(fetch, cache, "uv", "foo", "1.0.0", self.lock)
+        self.assertEqual(result["status"], "unknown")
+
+    def test_extra_guarded_constraint_on_an_unlocked_dependency_is_ignored(self):
+        verdict = mod.check_pypi({"requires_dist": ["absent<2; extra == 'feature'"]}, self.lock)
+        self.assertEqual((verdict["checked"], verdict["unevaluated"]), (0, 0))
+
+    def newest(self, releases, new="1.0"):
+        table = {mod.PYPI_URL.format(name="pkg"): pypi_doc(releases, releases[-1])}
+        for version in releases:
+            table[mod.PYPI_VERSION_URL.format(name="pkg", version=version)] = pypi_meta([])
+        lock = {"versions": {}, "requires_python": ">=3.9"}
+        return mod.newest_compatible(FakeFetch(table), {}, "uv", "pkg", new, "compatible", lock)
+
+    def test_a_newer_post_release_makes_the_newest_compatible_version_unknown(self):
+        for releases in (["0.9", "1.0", "1.0.post1"], ["1.0", "1.1.post2"]):
+            result = self.newest(releases)
+            self.assertEqual((result["status"], result["version"]), ("unknown", None), releases)
+
+    def test_an_epoch_release_makes_the_newest_compatible_version_unknown(self):
+        result = self.newest(["1.0", "1!0.5"])
+        self.assertEqual((result["status"], result["version"]), ("unknown", None))
+
+    def test_releases_that_cannot_outrank_the_new_version_do_not_matter(self):
+        # an older post-release, a pre-release and a dev release sort below or outside the ordering
+        result = self.newest(["0.9", "0.9.post1", "1.0", "1.1rc1", "1.1.dev1"])
+        self.assertEqual((result["status"], result["version"]), ("found", "1.0"))
+
+    def test_stable_releases_reports_the_unordered_ones_it_leaves_out(self):
+        doc = pypi_doc(["1.0", "1.0.post1", "1!2.0", "1.1rc1"], "1.0")
+        plain, unordered = mod.stable_releases(lambda url, **k: doc, {}, "uv", "pkg")
+        self.assertEqual(plain, ["1.0"])
+        self.assertEqual(sorted(unordered), ["1!2.0", "1.0.post1"])
 
 
 if __name__ == "__main__":

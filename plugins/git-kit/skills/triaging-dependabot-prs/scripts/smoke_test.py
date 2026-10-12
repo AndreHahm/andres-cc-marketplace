@@ -554,6 +554,7 @@ def check_advisory_step_is_wired():
         "recommend skip (hold) for that PR so the user decides",
         "pnpm-lock",
         "ask once via `AskUserQuestion` whether to run the advisory and compatibility checks",
+        "advisory and compatibility not checked (grouped update)",
     ]
     missing = [n for n in needed if n not in body]
     if missing:

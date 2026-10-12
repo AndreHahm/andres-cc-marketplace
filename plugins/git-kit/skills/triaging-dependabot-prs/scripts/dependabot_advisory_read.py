@@ -654,8 +654,6 @@ def marker_applies(marker, min_python):
     marker = marker.strip()
     if len(marker) > MAX_CONSTRAINT_CHARS:
         return None
-    if EXTRA_MARKER_RE.fullmatch(marker):
-        return False  # an optional extra is installed only when asked for
     match = PYTHON_MARKER_RE.fullmatch(marker)
     if not match or min_python is None:
         return None
@@ -727,13 +725,19 @@ def check_pypi(meta, lock):
             verdict["unevaluated"] += 1
             continue
         dependency, spec, marker = parsed
+        locked = lock["versions"].get(python_name(dependency))
+        if marker is not None and EXTRA_MARKER_RE.fullmatch(marker.strip()):
+            # Which extras the project requests is not read from the lockfile, so a constraint
+            # behind one may be active: when it touches the lock it is unevaluated, not inactive.
+            if locked and spec:
+                verdict["unevaluated"] += 1
+            continue
         applies = marker_applies(marker, min_python)
         if applies is False:
             continue
         if applies is None:
             verdict["unevaluated"] += 1
             continue
-        locked = lock["versions"].get(python_name(dependency))
         if locked and spec:
             _judge(spec, dependency, locked, [pep440_satisfies(v, spec) for v in locked], verdict)
     return verdict
@@ -804,8 +808,23 @@ def compatibility(fetch, cache, eco, name, version, lock):
     return {"status": "compatible", **verdict}
 
 
+# Final PEP 440 releases this module cannot order: a post-release (1.0.post1) or one with an epoch.
+POST_RELEASE_RE = re.compile(r"([0-9]+(?:\.[0-9]+)*)\.post[0-9]+")
+UNORDERED_RELEASE_RE = re.compile(r"(?:[0-9]+!)?[0-9]+(?:\.[0-9]+)*(?:\.post[0-9]+)?")
+
+
+def may_outrank(version, new_key):
+    """Whether an unorderable final release may be at or above NEW_KEY (an epoch always may)."""
+    post = POST_RELEASE_RE.fullmatch(version)
+    base = version_key(post.group(1)) if post else None
+    return base is None or cmp_release(base, new_key) >= 0
+
+
 def stable_releases(fetch, cache, eco, name):
-    """Plain-number releases of NAME, newest first (yanked and deprecated ones left out)."""
+    """(plain-number releases of NAME, newest first; final releases it cannot order).
+
+    Yanked and deprecated releases are left out of both lists.
+    """
     if eco == "uv":
         releases = pypi_document(fetch, cache, name).get("releases")
         if not isinstance(releases, dict):
@@ -827,7 +846,10 @@ def stable_releases(fetch, cache, eco, name):
             if isinstance(entry, dict) and not entry.get("deprecated")
         ]
     plain = [v for v in names if re.fullmatch(r"[0-9.]{1,64}", v) and version_key(v) is not None]
-    return sorted(plain, key=version_key, reverse=True)
+    unordered = [
+        v for v in names if v not in plain and len(v) <= 64 and UNORDERED_RELEASE_RE.fullmatch(v)
+    ]
+    return sorted(plain, key=version_key, reverse=True), unordered
 
 
 def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=None):
@@ -841,11 +863,12 @@ def newest_compatible(fetch, cache, eco, name, new, new_compat, lock, deadline=N
         return {"status": "unknown", "version": None, "newer_incompatible": []}
     new_key = version_key(new)
     try:
-        newer = [
-            v
-            for v in stable_releases(fetch, cache, eco, name)
-            if new_key and cmp_release(version_key(v), new_key) > 0
-        ]
+        plain, unordered = stable_releases(fetch, cache, eco, name)
+        newer = [v for v in plain if new_key and cmp_release(version_key(v), new_key) > 0]
+        # A post-release or epoch release this module cannot order might be the newest one, and
+        # leaving it out would report an older version as the newest compatible. That is unknown.
+        if new_key and any(may_outrank(v, new_key) for v in unordered):
+            return {"status": "unknown", "version": None, "newer_incompatible": []}
     except (LookupFailed, AttributeError, TypeError, ValueError):
         return {"status": "unknown", "version": None, "newer_incompatible": []}
     incompatible = []

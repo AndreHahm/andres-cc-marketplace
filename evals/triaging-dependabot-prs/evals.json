@@ -128,6 +128,15 @@
       "files": [
         "outputs/answer.md"
       ]
+    },
+    {
+      "id": 15,
+      "name": "Grouped update: no assess, no invented arguments, single PRs still assessed",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT run any `gh`/`git`/shell command, post any comment, run any script or invoke any other skill -- describe exactly what the skill would do, in order. The user already said yes to the one-time question about running the advisory and compatibility checks. Two open uv dependabot PRs are in the plan: #501 has the title `chore(deps): bump the uv-minor group with 3 updates` (a Dependabot group) and #502 has the title `chore(deps): bump gamma from 1.0.0 to 1.0.1`. Describe what step 3 does for each of the two PRs.",
+      "expected_output": "#501 (grouped): runs no `assess` and no lockfile fetch, does not invent a dependency name or an old/new version pair, says advisory and compatibility were not checked because it is a grouped update, and recommends as it would without the checks. #502 (single dependency): fetches the base lockfile and runs `assess` with dependency gamma, old 1.0.0, new 1.0.1, and applies the three rules from the result. The one-time question is not asked again.",
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {

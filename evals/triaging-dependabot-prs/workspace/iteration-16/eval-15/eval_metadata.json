@@ -1,0 +1,31 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/git-kit/skills/triaging-dependabot-prs/SKILL.md",
+  "assertions": [
+    {
+      "text": "#501 (grouped): no `assess` and no lockfile fetch",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not invent a dependency name or an old/new version pair for #501",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Says advisory and compatibility were not checked because it is a grouped update, and recommends as without the checks",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "#502 (single dependency): fetches the base lockfile and runs `assess` with gamma, 1.0.0, 1.0.1 and applies the three rules",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "The one-time question is not asked again",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
