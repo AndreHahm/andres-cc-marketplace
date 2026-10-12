@@ -201,7 +201,7 @@ class GhCallShapeTests(unittest.TestCase):
         env = {"GH_HOST": "evil.example", "GH_REPO": "x/y", "PATH": "/bin"}
         run_main(base_args(), gh, FakeFetch(), env)
         self.assertTrue(gh.calls)
-        for argv, used_env in zip(gh.calls, gh.envs):
+        for argv, used_env in zip(gh.calls, gh.envs, strict=True):
             self.assertEqual(argv[:2], [GH, "api"])
             self.assertEqual(argv[argv.index("--hostname") + 1], "github.com")
             self.assertEqual(argv[argv.index("--method") + 1], "GET")
@@ -573,7 +573,7 @@ class HostileInputTests(unittest.TestCase):
 
 
 class ContainmentTests(unittest.TestCase):
-    """The compatibility stage can fail or be fed hostile data without costing the advisory result."""
+    """The compatibility stage can fail or get hostile data without costing the advisory result."""
 
     def test_short_hostile_requirement_strings_are_fast(self):
         lock = {"versions": {"dep-a": ["2.1.0"]}, "requires_python": ">=3.11"}
@@ -681,7 +681,7 @@ class ContainmentTests(unittest.TestCase):
 
 
 class ReviewRoundTests(unittest.TestCase):
-    """Fixes from the cross-model review: peer-suffixed pnpm keys, mixed locked versions, commit-like."""
+    """Fixes from the cross-model review: peer-suffixed pnpm keys, mixed locked versions, etc."""
 
     PNPM_V6 = """lockfileVersion: '6.0'
 
@@ -857,7 +857,7 @@ class EvaluatorContractTests(unittest.TestCase):
     def test_mixed_digit_and_wildcard_segments_are_not_ranges(self):
         for bad in ("1.xx", "1.x11", "*1", "2x", "x1", "1.2.*x", "x*", "10X", "1.x.3x"):
             self.assertIsNone(mod.npm_satisfies("1.0.0", bad), bad)
-        # npm ignores what follows a wildcard (x.1 is *, 1.x.3 is 1.x); we do not evaluate those forms
+        # npm ignores what follows a wildcard (x.1 is *, 1.x.3 is 1.x); we do not evaluate them
         for unevaluated in ("x.1", "1.x.3", "1.*.3", "x.x.1", "^1.x.3", ">=x.1", "1.2.x.3"):
             self.assertIsNone(mod.npm_satisfies("1.2.3", unevaluated), unevaluated)
             self.assertIsNone(mod.npm_satisfies("99.0.0", unevaluated), unevaluated)
@@ -1281,7 +1281,7 @@ class WalkBackTests(unittest.TestCase):
         _, fetch = self.uv_run(["1.0.0", "2.0.0"], {"2.0.0": pypi_meta()})
         listing = [
             k
-            for (u, _b), k in zip(fetch.calls, fetch.kwargs)
+            for (u, _b), k in zip(fetch.calls, fetch.kwargs, strict=True)
             if u == mod.PYPI_URL.format(name="foo")
         ]
         self.assertEqual(listing[0].get("max_bytes"), mod.LISTING_MAX_BYTES)
@@ -1307,7 +1307,11 @@ class WalkBackTests(unittest.TestCase):
             [x["version"] for x in result["newest_compatible"]["newer_incompatible"]], ["3.0.0"]
         )
         self.assertEqual([c[0] for c in fetch.calls].count(url), 1)
-        accepts = [k.get("accept") for (u, _b), k in zip(fetch.calls, fetch.kwargs) if u == url]
+        accepts = [
+            k.get("accept")
+            for (u, _b), k in zip(fetch.calls, fetch.kwargs, strict=True)
+            if u == url
+        ]
         self.assertEqual(accepts, [mod.NPM_ABBREVIATED])
 
     def test_github_actions_have_no_compatibility_data(self):

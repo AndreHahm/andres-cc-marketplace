@@ -542,7 +542,7 @@ def check_advisory_tests_pass():
 
 
 def check_advisory_step_is_wired():
-    """Step 3 names the script, the three rules' signals, and the never-read-unknown-as-safe rule."""
+    """Step 3 names the script, the three rules' signals and the unknown-is-never-safe rule."""
     _, body = split_skill()
     needed = [
         "`dependabot_advisory_read.py assess`",
@@ -561,7 +561,7 @@ def check_advisory_step_is_wired():
         return False, f"SKILL.md is missing: {missing}"
     return (
         True,
-        "step 3 wires the advisory script, the three rule signals, the lockfile fetch and the unknown rule",
+        "step 3 wires the advisory script, rule signals, lockfile fetch and the unknown rule",
     )
 
 
