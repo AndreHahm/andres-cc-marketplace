@@ -38,7 +38,7 @@ by a 60 s timeout, so a stalled network falls through to a warning or exit 2.
 | Exit | Meaning | What to do |
 |---|---|---|
 | 0 | Clean | Continue to the push |
-| 1 | Blocking findings (a missing result file, or `blocking` not true, counts as exit 2) | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
+| 1 | A valid result with `blocking: true` | Read the `--output` JSON: `findings[]` with `blocking: true`, plus `structural_findings[]`. Show path, line, severity, rule. Ask fix / re-run / bypass |
 | 2 | Could not run (Codex missing, merge base unresolved, dispatch failed, timeout, or a missing, malformed or contradictory result file) | **Never a pass.** Ask retry / bypass |
 | 3 | No marketplace CI in this checkout | Skip the step and state that in session output |
 

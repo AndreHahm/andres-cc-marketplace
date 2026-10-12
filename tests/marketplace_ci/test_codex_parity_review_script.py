@@ -444,7 +444,10 @@ def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
     (tmp_path / "out.json").symlink_to(target)
     result, args, _ = _run(repo, tmp_path)
     assert result.returncode == 2
-    assert "symlink" in result.stdout
+    # Match the wrapper's own words: the printed path also contains this test's name (and so the
+    # word "symlink"), which would make a bare substring check pass for the wrong reason.
+    assert "--output is a symlink" in result.stdout
+    assert "already exists" not in result.stdout
     assert target.exists()
     assert (tmp_path / "out.json").is_symlink()
     assert args == ""
