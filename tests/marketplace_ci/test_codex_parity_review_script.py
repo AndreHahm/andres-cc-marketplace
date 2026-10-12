@@ -105,11 +105,21 @@ def _run(
     uv_rc: int = 0,
     codex: str | None = "codex-cli 0.147.0",
     model: str = "gpt-x",
+    result_json: str | None = "auto",
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     log = tmp_path / "uv.json"
-    _stub(bin_dir, "uv", f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\nexit {uv_rc}')
+    # The stub plays run-codex-review: it writes the result file (last argument) unless told not to.
+    payload = json.dumps({"blocking": uv_rc == 1}) if result_json == "auto" else result_json
+    write_result = (
+        f"for a; do last=$a; done\nprintf '%s' '{payload}' > \"$last\"\n" if payload else ""
+    )
+    _stub(
+        bin_dir,
+        "uv",
+        f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\n{write_result}exit {uv_rc}',
+    )
     # Mirrors gh 2.45.0: `variable list --json` exists, `variable get` does not.
     _stub(
         bin_dir,
@@ -197,11 +207,31 @@ def test_no_marketplace_ci_is_not_applicable(tmp_path):
     assert result.returncode == 3
 
 
-def test_stale_output_file_is_removed_before_the_run(repo, tmp_path):
+def test_stale_output_file_is_never_mistaken_for_this_runs_result(repo, tmp_path):
     out = tmp_path / "out.json"
     out.write_text(json.dumps({"blocking": False}), encoding="utf-8")
-    _run(repo, tmp_path)
+    result, _, _ = _run(repo, tmp_path, result_json=None)  # the run writes nothing
     assert not out.exists()
+    assert result.returncode == 2
+
+
+def test_missing_result_file_is_never_a_clean_pass(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, result_json=None)
+    assert result.returncode == 2
+    assert "no valid result" in result.stdout
+
+
+def test_malformed_or_non_boolean_result_is_could_not_run(repo, tmp_path):
+    for bad in ("not json", "[]", '{"blocking": "no"}', "{}"):
+        result, _, _ = _run(repo, tmp_path, result_json=bad)
+        assert result.returncode == 2, bad
+
+
+def test_result_contradicting_the_exit_code_is_could_not_run(repo, tmp_path):
+    clean_but_blocking, _, _ = _run(repo, tmp_path, uv_rc=0, result_json='{"blocking": true}')
+    assert clean_but_blocking.returncode == 2
+    blocking_but_clean, _, _ = _run(repo, tmp_path, uv_rc=1, result_json='{"blocking": false}')
+    assert blocking_but_clean.returncode == 2
 
 
 def test_runs_from_a_subdirectory_of_the_checkout(repo, tmp_path):

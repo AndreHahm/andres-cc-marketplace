@@ -118,3 +118,5 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Branch changed a Tier-1 (review-dispatch-critical) file since the merge-base → loud warning naming it, run still
   proceeds; the Tier-1 list is read from the merge-base copy, so the branch cannot shrink it
 - Merge-base has no readable trust_boundary.py → "could not check" warning, run still proceeds
+- The run exits 0 or 1 but the result file is missing, malformed, or its `blocking` contradicts the exit code → exit 2
+  ("could not run"), never a pass
