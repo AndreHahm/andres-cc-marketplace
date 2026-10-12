@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -20,10 +21,18 @@ pytestmark = pytest.mark.skipif(
 )
 
 WORKFLOW = """\
-      - run: npm install -g @openai/codex@0.147.0
+      # decoy: npm install -g @openai/codex@9.9.9 and CODEX_KIT_REVIEW_TIMEOUT_MS: "1"
+      - name: Install Codex CLI (pinned version, never floating latest)
+        run: npm install -g @openai/codex@0.147.0
+
+      - name: Dispatch reviewers directly, validate output, aggregate findings
         env:
           CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
           CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
+        run: uv run python -m scripts.marketplace_ci run-codex-review
+
+      - name: Upload review result
+        run: echo "npm install -g @openai/codex@8.8.8"
 """
 
 
@@ -39,10 +48,28 @@ def test_parse_ci_settings_reads_timeout_and_pin():
     assert _load_module().parse_ci_settings(WORKFLOW) == ("600000", "0.147.0")
 
 
+def test_parse_ci_settings_ignores_matches_outside_the_named_steps():
+    # The decoy comment before the steps and the later step's text must not be picked up.
+    assert _load_module().parse_ci_settings(WORKFLOW) == ("600000", "0.147.0")
+
+
 def test_parse_ci_settings_returns_none_when_either_is_missing():
     module = _load_module()
     assert module.parse_ci_settings("CODEX_KIT_REVIEW_TIMEOUT_MS: 1\n") is None
     assert module.parse_ci_settings("npm install -g @openai/codex@1.2.3\n") is None
+    no_pin = WORKFLOW.replace("npm install -g @openai/codex@0.147.0", "true")
+    assert module.parse_ci_settings(no_pin) is None
+
+
+def test_run_in_group_kills_the_whole_process_tree_on_timeout(tmp_path):
+    pidfile = tmp_path / "child.pid"
+    cmd = f"sleep 30 & echo $! > {pidfile}; wait"
+    result = _load_module()._run_in_group(["sh", "-c", cmd], env=dict(os.environ), timeout=1)
+    assert result is None
+    child = int(pidfile.read_text())
+    time.sleep(0.3)
+    with pytest.raises(ProcessLookupError):
+        os.kill(child, 0)
 
 
 def _stub(bin_dir: Path, name: str, body: str) -> None:
@@ -82,7 +109,11 @@ def _run(
     bin_dir.mkdir(exist_ok=True)
     log = tmp_path / "uv.json"
     _stub(bin_dir, "uv", f'echo "$@ " > "{log}.args"\nenv > "{log}.env"\nexit {uv_rc}')
-    _stub(bin_dir, "gh", f'[ -n "{model}" ] && echo "{model}" && exit 0\nexit 1')
+    _stub(
+        bin_dir,
+        "gh",
+        f'echo "$@" > "{log}.gh"\n[ -n "{model}" ] && echo "{model}" && exit 0\nexit 1',
+    )
     # codex=None stands in for a Codex CLI that fails to run (a real one may be on PATH here).
     _stub(bin_dir, "codex", "exit 127" if codex is None else f'echo "{codex}"')
     env: dict[str, str] = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
@@ -175,3 +206,31 @@ def test_runs_from_a_subdirectory_of_the_checkout(repo, tmp_path):
     result, args, _ = _run(sub, tmp_path)
     assert result.returncode == 0
     assert "run-codex-review" in args
+
+
+def test_variable_lookup_targets_the_origin_repository(repo, tmp_path):
+    subprocess.run(
+        ["git", "remote", "add", "origin", "git@github.com:acme/widgets.git"],
+        cwd=repo,
+        check=True,
+    )
+    _run(repo, tmp_path)
+    assert "--repo acme/widgets" in (tmp_path / "uv.json.gh").read_text(encoding="utf-8")
+
+
+def test_output_inside_the_checkout_is_refused(repo, tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    for name, body in (("uv", "exit 0"), ("gh", "exit 1"), ("codex", "echo codex-cli 0.147.0")):
+        _stub(bin_dir, name, body)
+    env = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--output", str(repo / "out.json")],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "inside the checkout" in result.stdout

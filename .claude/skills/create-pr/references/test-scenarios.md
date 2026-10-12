@@ -110,3 +110,5 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - Step 4 bypassed with `--bypass-cross-model-review`, or `--bypass-codex-review` given → step 4.5 still runs
 - Session cwd is a subdirectory of the checkout → the script resolves the repo root and still runs
 - Egress question is asked again on a re-run after a fix, not only on the first run
+- `--output` pointing inside the checkout → refused with exit 2 (treated as "could not run"), never written
+- A timed-out run → the whole process group is killed, so no `codex` process lingers

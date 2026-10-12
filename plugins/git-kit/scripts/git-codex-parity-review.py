@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -37,12 +38,28 @@ _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
 _TIMEOUT_RE = re.compile(r'CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"?(\d+)"?')
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
+_SLUG_RE = re.compile(r"^(?:https://github\.com/|git@github\.com:)([\w.-]+/[\w.-]+?)(?:\.git)?$")
+
+
+_STEP_RE = re.compile(r"^\s*- name:", re.MULTILINE)
+
+
+def _step_block(workflow_text: str, name_prefix: str) -> str:
+    """The text of the workflow step whose `- name:` starts with `name_prefix` ("" if absent)."""
+    start = re.search(rf"^\s*- name: {re.escape(name_prefix)}", workflow_text, re.MULTILINE)
+    if not start:
+        return ""
+    following = _STEP_RE.search(workflow_text, start.end())
+    return workflow_text[start.start() : following.start() if following else len(workflow_text)]
 
 
 def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
-    """Return (timeout_ms, codex_pin) from the workflow text, or None if either is missing."""
-    timeout = _TIMEOUT_RE.search(workflow_text)
-    pin = _PIN_RE.search(workflow_text)
+    """Return (timeout_ms, codex_pin) from the codex-review job's own steps, or None if missing.
+
+    Anchored to the named steps so a comment or another job elsewhere in the file can't match.
+    """
+    timeout = _TIMEOUT_RE.search(_step_block(workflow_text, "Dispatch reviewers directly"))
+    pin = _PIN_RE.search(_step_block(workflow_text, "Install Codex CLI"))
     if not timeout or not pin:
         return None
     return timeout.group(1), pin.group(1)
@@ -55,8 +72,46 @@ def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str] | None:
         return None
 
 
+def _run_in_group(
+    argv: list[str], *, env: dict[str, str], timeout: float
+) -> subprocess.CompletedProcess[str] | None:
+    """Run `argv` in its own session so a timeout kills the whole tree (uv, node, codex)."""
+    try:
+        proc = subprocess.Popen(
+            argv,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=os.name == "posix",
+        )
+    except FileNotFoundError:
+        return None
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if os.name == "posix":
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            proc.kill()
+        proc.communicate()
+        return None
+    return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
+
+
+def _origin_slug() -> str | None:
+    """`owner/repo` of `origin`, so the variable lookup targets where this branch is pushed."""
+    result = _run(["git", "remote", "get-url", "origin"])
+    if result is None or result.returncode != 0:
+        return None
+    match = _SLUG_RE.match(result.stdout.strip())
+    return match.group(1) if match else None
+
+
 def resolve_model() -> str | None:
-    result = _run(["gh", "variable", "get", MODEL_VARIABLE])
+    slug = _origin_slug()
+    repo_args = ["--repo", slug] if slug else []
+    result = _run(["gh", "variable", "get", MODEL_VARIABLE, *repo_args])
     if result is None or result.returncode != 0:
         return None
     model = result.stdout.strip()
@@ -67,6 +122,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, metavar="PATH", help="result JSON (scratch dir)")
     args = parser.parse_args()
+    output = Path(args.output).resolve()  # before the chdir below
 
     # Resolve paths against the checkout root, not the cwd: a session sitting in a subdirectory
     # must not look like "no marketplace CI here", the one outcome the caller treats as a skip.
@@ -99,10 +155,14 @@ def main() -> int:
         print("PARITY: could not resolve the merge base with origin/main.", file=sys.stderr)
         return 2
 
-    # A stale result from an earlier run must never be mistaken for this run's findings.
-    Path(args.output).unlink(missing_ok=True)
+    if output.is_relative_to(Path.cwd().resolve()):
+        print(f"PARITY: --output {output} is inside the checkout; use a scratch directory.")
+        return 2
 
-    env = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
+    # A stale result from an earlier run must never be mistaken for this run's findings.
+    output.unlink(missing_ok=True)
+
+    env: dict[str, str] = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
     model = resolve_model()
     if model:
         env[MODEL_VARIABLE] = model
@@ -113,9 +173,9 @@ def main() -> int:
 
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
-        "--base-sha", base_sha, "--output", args.output,
+        "--base-sha", base_sha, "--output", str(output),
     ]  # fmt: skip
-    result = _run(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
+    result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
     if result is None:
         print("PARITY: run-codex-review could not be started or timed out.", file=sys.stderr)
         return 2
