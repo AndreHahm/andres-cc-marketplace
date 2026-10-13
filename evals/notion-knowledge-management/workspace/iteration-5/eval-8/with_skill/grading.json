@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output includes a repo property in the Idea record with the value andres-cc-marketplace",
+      "passed": true,
+      "evidence": "Preview table row: repo = andres-cc-marketplace (from notion.repo; matches an existing option); create-pages call lists \"repo\": \"andres-cc-marketplace\""
+    },
+    {
+      "text": "Output sources the repo value from the configured notion.repo, not from the git remote, directory name or a guess",
+      "passed": true,
+      "evidence": "Step 2: 'I take the value from configuration, never from the idea's content.'"
+    },
+    {
+      "text": "Output previews the record and states live approval via AskUserQuestion is required before writing",
+      "passed": true,
+      "evidence": "Step 6: AskUserQuestion Create / Edit first / Cancel before the write; preview shown"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "Opens with 'No Notion or Linear tool was called. This describes the calls I would make.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output keeps the Report body property to a short note and does not put the 7,000-character text into a text property",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output writes the full text into page content as blocks of at most 2,000 characters using wmgt_split_blocks.py split",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output saves the full text to a scratchpad file, not the repository root",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output states the block count in the preview and plans a read-back confirming the block count and that nothing was cut",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output still requires live approval before the write",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
