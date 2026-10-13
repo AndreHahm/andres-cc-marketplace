@@ -402,10 +402,9 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 | `${CLAUDE_SKILL_DIR}/references/skill-categories.md` | 9 categories with templates and improvement patterns | Phase 1 (identify category) and Phase 4 (improve) |
 | `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` | Detection, mapping, conversion logic, validation | Phase 1 — Convert entry path |
 | `${CLAUDE_SKILL_DIR}/references/web-search-research.md` | Web search research for unfamiliar domains | Phase 1 (understand) |
-| `${CLAUDE_SKILL_DIR}/references/skill-template.md` | Token-optimized skill template (minimal, <100 lines) | Phase 1 (Greenfield — token-budget focus) |
 | `${CLAUDE_SKILL_DIR}/references/platform-reference.md` | Frontmatter fields, string substitutions, hook system, platform gotchas | Phase 2 (design) |
 | `${CLAUDE_SKILL_DIR}/references/design-patterns.md` | Gotchas patterns, progressive disclosure, hooks, setup, composability | Phase 2 (design) |
-| `${CLAUDE_SKILL_DIR}/references/templates.md` | Full skill creation templates (Basic, Complex, patterns, description examples) | Phase 2 (design) — comprehensive scaffold |
+| `${CLAUDE_SKILL_DIR}/references/templates.md` | Full skill creation templates (token-optimized Basic, Complex, patterns, description examples) | Phase 1 (Greenfield) and Phase 2 (design) — scaffold |
 | `${CLAUDE_SKILL_DIR}/references/skill-workflow.md` | 80% Rule, content distribution, preservation gates | Phase 2 (design) — content placement decisions |
 | `${CLAUDE_SKILL_DIR}/references/resource-organization.md` | Content placement decision framework | Phase 2 (design) |
 | `${CLAUDE_SKILL_DIR}/references/content-guidelines.md` | Description formulas, phrase library, activation examples | Phase 2 (design) and Phase 5 (polish) |
