@@ -276,6 +276,10 @@ jobs:
       - run: uv run ruff check scripts tests
       - run: uv run ty check scripts tests
       - run: uv run pytest -q
+      # Local pre-commit hooks are opt-in per clone (never installed by CI or on clone), so a
+      # machine without them can land a file with no final newline that end-of-file-fixer then
+      # rewrites on every other machine's next merge. Check it here so it can't reach main.
+      - run: uv run pre-commit run end-of-file-fixer --all-files --show-diff-on-failure
 
   marketplace-parity:
     name: Marketplace mirror/export parity
