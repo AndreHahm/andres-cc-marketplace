@@ -170,7 +170,7 @@ const SECRET_PATTERNS = [
 // quote cannot swallow the lines after it. The lookahead leaves a value the
 // line-anchored rule already replaced alone.
 const SECRET_ASSIGNMENT_PATTERN =
-  /(\b(?:[A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)\s*=\s*)(?!\[REDACTED\])(?:"(?:[^"\\\r\n]|\\.)*(?:"|(?=[\r\n])|$)|'(?:[^'\\\r\n]|\\.)*(?:'|(?=[\r\n])|$)|\S+)/gi;
+  /(\b(?:[A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)\s*=\s*)(?!\[REDACTED\])(?:"(?:[^"\\\r\n]|\\[^\r\n]?)*(?:"|(?=[\r\n])|$)|'(?:[^'\\\r\n]|\\[^\r\n]?)*(?:'|(?=[\r\n])|$)|\S+)/gi;
 
 // Exported so a smoke test can exercise the pattern set directly, matching
 // the existing findSchemaViolation export pattern below.

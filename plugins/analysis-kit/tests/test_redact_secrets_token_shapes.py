@@ -64,6 +64,25 @@ def test_unterminated_quote_redacts_only_the_rest_of_its_line():
     assert redacted.endswith("\nmore")
 
 
+def test_quoted_value_ending_in_a_lone_backslash_is_redacted_whole():
+    bs = chr(92)
+    for quote in ('"', "'"):
+        at_end, _ = redact_secrets.redact(f"diag: API_KEY={quote}two words{bs}")
+        assert "words" not in at_end, quote
+        before_newline, _ = redact_secrets.redact(
+            f"diag: DB_PASSWORD={quote}top secret{bs}\nnext line stays"
+        )
+        assert "secret" not in before_newline, quote
+        assert before_newline.endswith("\nnext line stays"), quote
+
+
+def test_escaped_quote_inside_a_quoted_value_still_redacts_through_the_closing_quote():
+    bs = chr(92)
+    redacted, _ = redact_secrets.redact(f'diag: DB_PASSWORD="top {bs}"secret" tail')
+    assert "secret" not in redacted
+    assert redacted.endswith(" tail")
+
+
 def test_prose_without_an_assignment_is_untouched():
     text = "the password was rotated and the key is stored elsewhere"
     redacted, counts = redact_secrets.redact(text)
