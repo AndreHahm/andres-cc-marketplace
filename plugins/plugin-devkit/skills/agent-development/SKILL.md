@@ -274,13 +274,36 @@ After creating the first agent file in a new `agents/` directory, restart Claude
 
 **Scope:** Always work within the project directory. Never edit `~/.claude/agents/` (user-space) — those agents affect all Claude Code projects globally.
 
-## Testing
+## Testing & Validation
+
+Testing an agent you are authoring:
 
 1. Write the agent with specific trigger conditions in the "When to invoke" section
 2. Use similar phrasing in test prompts to verify the agent fires correctly
 3. Confirm the agent follows its process steps
 4. Verify output format matches the specification
 5. Test edge cases from the system prompt
+
+Eval suite: `evals/agent-development/` — 2 scenarios (create a minimal read-only reviewer agent, review an over-privileged read-only agent), `skill-tester` blind comparison against a baseline. `scripts/smoke_test.py` is the structural self-check, and `scripts/test-agent-trigger.sh` runs a trigger-phrase battery against a target agent.
+
+**Last dated run record:** `evals/agent-development/workspace/iteration-1/benchmark.json`, 2026-08-25.
+
+**Verify this skill activates on:**
+- "create an agent for this plugin" / "write an agent file by hand"
+- "validate this agent's frontmatter and tool scoping"
+- "my agent never gets delegated to, fix its description"
+
+**Verify it does NOT activate on:**
+- "generate a new agent from this description" (one-shot generation) → `agent-creator`
+- "review this agent's quality against the checklist" → `subagent-reviewer`
+- "do these two agent descriptions collide?" → `activation-reviewer`
+- "check this plugin for R1-R37 compliance" → `plugin-rulebook`
+
+**Quality gates:**
+- [ ] A new or edited agent's `tools` list is explicit and least-privilege (bare tool names, no `Bash(...)` scoping)
+- [ ] The description is one sentence with no `<example>` blocks; trigger scenarios live in the body's `## When to invoke`
+- [ ] `scripts/validate-agent.sh` passes on the agent file
+- [ ] `plugin-rulebook` was run on the final state before reporting done
 
 ## Validate & Refine
 
@@ -324,7 +347,7 @@ See [`references/templates.md`](references/templates.md) → **Plugin Agent Temp
 
 **DON'T:** Verbose `<example>` blocks in description · Generic triggering conditions · Same color for related agents · Unnecessary tool permissions · Vague system prompts · Skip testing
 
-## Additional Resources
+## Reference Guide
 
 | Topic | File | Purpose |
 |-------|------|---------|

@@ -206,7 +206,18 @@ Close with **Top 5 Actions**: the five highest-impact suggestions across all com
 
 ## Testing & Validation
 
-After Phase 6, verify these gates before presenting output as final:
+**Verify this skill activates on:**
+- "run a retrospective on this session"
+- "analyze my sessions since 2026-07-10"
+- "which skills and agents underperformed this week?"
+
+**Verify it does NOT activate on:**
+- "review this one skill" → `skill-reviewer`
+- "review this diff for bugs" → `/code-review`
+- "apply the retro's suggestions and commit them" → `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow
+- "find permission rules I keep approving" → `pdk-find-permissions`
+
+**Quality gates** — after Phase 6, verify these before presenting output as final:
 
 - [ ] Inventory names at least one component per category present in the session
 - [ ] Every SWOT quadrant has at least one observation (no empty rows)
