@@ -119,6 +119,14 @@ def test_load_shapes_requires_a_boundary_and_literal_prefix(pattern):
         BS + "N{DIGIT ONE}",
         BS + "0",
         BS + "1",
+        "|(?=z)",  # a top-level branch that escapes the required prefix and is zero-width
+        "|ab",
+        BS + "s",  # JavaScript counts NBSP and BOM as whitespace; Python with re.ASCII does not
+        BS + "S",
+        ".",  # JavaScript's dot excludes CR, U+2028 and U+2029; Python's excludes only a newline
+        "$",  # Python matches before a trailing newline; JavaScript does not
+        "[]x]",  # Python reads a leading ] as a literal; JavaScript reads an empty class
+        "[^]x]",
     ],
 )
 def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(construct):
@@ -376,7 +384,12 @@ def test_review_loader_refuses_an_unusable_shapes_file(tmp_path, document):
         "(?<!x)abc",
         "abc" + BS + "(?x",  # a literal escaped parenthesis followed by a quantifier
         "c" + BS + "." + BS + "d+" + BS + "w*[" + BS + "-_]",  # the escapes both engines share
-        "c" + BS + "B" + BS + "s" + BS + "S" + BS + "W" + BS + "D",
+        "c" + BS + "B" + BS + "W" + BS + "D",
+        "(?:c|d)e",  # alternation inside a group cannot bypass the mandatory prefix
+        "[.$|]x",  # . $ and | are literals inside a character class
+        BS + "." + BS + "$" + BS + "|",
+        "[" + BS + "]a]b",  # an escaped ] inside a class
+        "[^a]b",
     ],
 )
 def test_load_shapes_accepts_the_syntax_both_engines_share(construct):

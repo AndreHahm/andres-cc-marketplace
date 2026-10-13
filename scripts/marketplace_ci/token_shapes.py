@@ -45,23 +45,50 @@ _SHAPE_PREFIX = re.compile(r"\\b[A-Za-z0-9_-]{2}")
 # so an escaped "(" or "+" is not mistaken for syntax.
 _PYTHON_ONLY_SYNTAX = re.compile(r"(?<!\\)(?:\\\\)*(?:\(\?(?![:=!]|<[=!])|[*+?}]\+)")
 
-# Backslash-letter escapes that mean the same in both engines. Any other alphanumeric escape is
-# rejected: some differ ("\a" is the BEL character in Python and the letter "a" in JavaScript),
-# and the shared ones are not needed by a prefix-based token shape.
-_SHARED_LETTER_ESCAPES = frozenset("bBdDsSwW")
+# Backslash-letter escapes that mean the same in both engines (with Python's re.ASCII). Any other
+# alphanumeric escape is rejected: some differ ("\a" is the BEL character in Python and the letter
+# "a" in JavaScript; "\s" counts NBSP and BOM as whitespace only in JavaScript), and the rest are
+# not needed by a prefix-based token shape.
+_SHARED_LETTER_ESCAPES = frozenset("bBdDwW")
 
 
-def _unportable_escape(pattern: str) -> str | None:
-    """The first backslash escape whose meaning differs between the two engines, if any."""
+def _unportable_construct(pattern: str) -> str | None:
+    """Describe the first construct whose meaning differs between the two engines, if any.
+
+    One walk over the pattern, tracking character classes and group depth, so each rule sees only
+    what it applies to: an escape anywhere, a top-level "|" (a branch there is not covered by the
+    mandatory literal prefix), an unescaped "." or "$" outside a class (JavaScript's dot excludes
+    CR, U+2028 and U+2029, Python's excludes only a newline; Python's "$" also matches before a
+    trailing newline), and a class that starts with "]" (a literal in Python, an empty class in
+    JavaScript).
+    """
+    in_class = False
+    depth = 0
     index = 0
     while index < len(pattern):
-        if pattern[index] == "\\":
+        char = pattern[index]
+        if char == "\\":
             following = pattern[index + 1 : index + 2]
             if following.isalnum() and following not in _SHARED_LETTER_ESCAPES:
-                return "\\" + following
+                return "the escape \\" + following
             index += 2
-        else:
-            index += 1
+            continue
+        if in_class:
+            if char == "]":
+                in_class = False
+        elif char == "[":
+            in_class = True
+            if pattern.startswith("]", index + 1) or pattern.startswith("^]", index + 1):
+                return "a character class that starts with ]"
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "|" and depth == 0:
+            return "a top-level alternation"
+        elif char in ".$":
+            return f"an unescaped {char}"
+        index += 1
     return None
 
 
@@ -97,11 +124,11 @@ def load_shapes(text: str) -> list[tuple[str, str]]:
             )
         if _PYTHON_ONLY_SYNTAX.search(pattern):
             raise SyncError(f"token shapes: shape {name!r} uses syntax JavaScript does not share")
-        escape = _unportable_escape(pattern)
-        if escape is not None:
+        problem = _unportable_construct(pattern)
+        if problem is not None:
             raise SyncError(
-                f"token shapes: shape {name!r} uses the escape {escape}, which the two engines "
-                "do not read the same way"
+                f"token shapes: shape {name!r} uses {problem}, which the two engines do not read "
+                "the same way"
             )
         seen.add(name)
         result.append((name, pattern))
