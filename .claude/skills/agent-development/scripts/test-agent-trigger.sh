@@ -263,6 +263,10 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
     # ("env-command") is trusted by the user who set it up and may need its own
     # credential env vars (e.g. OPENAI_API_KEY) to authenticate -- stripping those
     # unconditionally breaks the runner rather than closing a real leak.
+    # The built-in `claude` path runs from an empty temp dir, not the caller's cwd: a
+    # project's own Stop/SessionStart hooks would otherwise fire in the child and replace
+    # the classifier's JSON reply with hook output.
+    scratch_dir = tempfile.mkdtemp(prefix="agent-trigger-fallback-") if provider == "claude" else None
     try:
         completed = subprocess.run(
             command,
@@ -272,10 +276,14 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
             capture_output=True,
             timeout=timeout,
             check=False,
+            cwd=scratch_dir,
             env=_child_env() if provider == "claude" else None,
         )
     except subprocess.TimeoutExpired as exc:
         raise LLMProviderError(f"LLM command timed out after {timeout}s") from exc
+    finally:
+        if scratch_dir is not None:
+            shutil.rmtree(scratch_dir, ignore_errors=True)
 
     if completed.returncode != 0:
         stderr = (completed.stderr or "").strip()
@@ -295,8 +303,26 @@ def parse_phrase_line(line: str) -> tuple[bool, str] | None:
     return True, line
 
 
+def _drop_allowed_rate_limit_events(text: str) -> str:
+    # `claude -p --output-format stream-json` emits a routine rate_limit_event
+    # (status "allowed") on every call -- usage reporting, not a failure. Left in,
+    # it matches the "rate_limit" retry pattern and forces every run into fallback.
+    kept = []
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            kept.append(line)
+            continue
+        info = event.get("rate_limit_info") if isinstance(event, dict) else None
+        if isinstance(event, dict) and event.get("type") == "rate_limit_event" and isinstance(info, dict) and info.get("status") == "allowed":
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def requires_fallback(text: str) -> bool:
-    lowered = text.lower()
+    lowered = _drop_allowed_rate_limit_events(text).lower()
     return any(pattern in lowered for pattern in RETRYABLE_PATTERNS)
 
 
@@ -317,6 +343,28 @@ def _child_env() -> dict[str, str]:
         for k, v in os.environ.items()
         if k != "CLAUDECODE" and not any(marker in k.upper() for marker in _CREDENTIAL_ENV_MARKERS)
     }
+
+
+def _delegated_to_agent(stream_output: str, agent_name: str) -> bool:
+    for line in stream_output.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        message = event.get("message") if isinstance(event, dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "tool_use"
+                and block.get("name") in ("Agent", "Task")
+                and isinstance(block.get("input"), dict)
+                and str(block["input"].get("subagent_type", "")).lower() == agent_name.lower()
+            ):
+                return True
+    return False
 
 
 def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_seconds: int) -> bool | None:
@@ -360,8 +408,11 @@ def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_se
         output = "\n".join(part for part in (result.stdout, result.stderr) if part)
         if requires_fallback(output):
             return None
-        normalized = output.lower()
-        return agent_name.lower() in normalized or target.name.lower() in normalized
+        # The stream's init event lists every available agent, so a bare name match is
+        # always true. Only a real Agent/Task delegation counts as "triggered"; no
+        # delegation is inconclusive (the child may simply have answered itself), so
+        # the caller falls back to the semantic classifier.
+        return True if _delegated_to_agent(output, agent_name) else None
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
