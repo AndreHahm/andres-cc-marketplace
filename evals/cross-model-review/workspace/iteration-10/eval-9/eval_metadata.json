@@ -1,0 +1,10 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response passes --prior-manifest with the earlier manifest path (outside the repository) and --completed-slice protected and --completed-slice tests", "type": "functionality", "target": "scoped-review.md section 5"},
+    {"text": "Response does NOT pass --completed-slice scripts, and says the scripts slice is reviewed again", "type": "functionality", "target": "scoped-review.md section 5"},
+    {"text": "Response says the new manifest goes to the new $RUN and files unchanged since a completed slice are skipped", "type": "presence", "target": "scoped-review.md section 5"},
+    {"text": "Response says that if the earlier manifest path is not known the run is treated as round one", "type": "presence", "target": "scoped-review.md section 5"}
+  ]
+}

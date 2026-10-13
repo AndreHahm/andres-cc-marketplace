@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response says the user is asked once whether to retry that batch with CODEX_KIT_REVIEW_TIMEOUT_MS=480000, after the default 240 s limit was used first", "type": "functionality", "target": "scoped-review.md section 4"},
+    {"text": "Response says a decline or a failed retry leaves the batch unfinished, its Claude findings single-sided (Medium), and the unfinished batch disclosed in inspection_limits", "type": "functionality", "target": "scoped-review.md section 4"},
+    {"text": "Response says envelopes from batches that already finished are kept, not discarded", "type": "presence", "target": "scoped-review.md section 4"},
+    {"text": "Response says the timed-out batch's slices are not completed and are not passed as --completed-slice", "type": "functionality", "target": "scoped-review.md section 5"}
+  ]
+}

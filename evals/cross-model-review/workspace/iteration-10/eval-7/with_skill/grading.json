@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response says Preflight step 1 runs python3 plugins/git-kit/scripts/git-review-scope.py and sends the full diff to $RUN/full.diff so its text stays out of context", "passed": true, "evidence": "Answer quotes the planner command and '\"${DIFF[@]}\" > \"$RUN/full.diff\"', noting 'so its text stays out of context'."},
+    {"text": "Response says the 5 files form one batch, so there is one Codex Phase 1 dispatch and one Phase 2 dispatch (unchanged from before)", "passed": true, "evidence": "'A diff within budget is one batch, so the run is a single dispatch pair as before'; Phase 1: 1 Codex dispatch, Phase 2: 1 Codex dispatch. It hedges that the numeric max_slice_bytes is not in the files, which is true: it comes from the manifest."},
+    {"text": "Response says no folder question is asked, because it fires only when dropped_slices is non-empty or the request names folders", "passed": true, "evidence": "'The user is asked about folders only when dropped_slices is non-empty, or the request itself named folders... nothing is asked'."},
+    {"text": "Response says a planner exit of 2 sets PLAN_FAILED=1 without aborting the chain, is never treated as a pass, and the user chooses via AskUserQuestion between unscoped review and stop", "passed": true, "evidence": "'The || PLAN_FAILED=1 fallback sets the flag', 'A planner failure is never a pass', AskUserQuestion with 'Review the whole diff unscoped' or 'Stop'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response passes --prior-manifest with the earlier manifest path (outside the repository) and --completed-slice protected and --completed-slice tests", "passed": true, "evidence": "Quotes the planner command with --prior-manifest \"<round-one manifest path>\" --completed-slice protected --completed-slice tests; notes the planner refuses a prior manifest inside the repository."},
+    {"text": "Response does NOT pass --completed-slice scripts, and says the scripts slice is reviewed again", "passed": true, "evidence": "'Only protected and tests are passed... Never list a slice that timed out or failed' and 'The whole scripts slice is reviewed again, because it was never completed.'"},
+    {"text": "Response says the new manifest goes to the new $RUN and files unchanged since a completed slice are skipped", "passed": true, "evidence": "'--output \"$RUN/manifest-1.json\"' in the new $RUN; 'the planner skips files unchanged since a round that really reviewed them'."},
+    {"text": "Response says that if the earlier manifest path is not known the run is treated as round one", "passed": true, "evidence": "'If the earlier manifest path is not known, run as round one.' Omit --prior-manifest and --completed-slice; everything is reviewed again."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -114,7 +114,7 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     `codex-review-bridge`'s sandboxed Step 1 with a real, substantive finding returned — confirming
     the fix works via the actual resolver Step 1 path, not a special-cased workaround.
 
-Scenarios 28-35 cover the scoped review (issue #541, `scoped-review.md`). They are checked by
+Scenarios 28-36 cover the scoped review (issue #541, `scoped-review.md`). They are checked by
 reading the skill against each case; 28 and 29 are also exercised by `scripts/preflight_fixtures_test.py`.
 
 28. A diff within the byte budget, no exclusions configured, Claude plus Codex only → the planner runs,
@@ -144,8 +144,15 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     those files are never excluded by config, a folder pick or a lockfile rule.
 35. A PR adds a `.gitattributes` `-diff` rule for a file it also changes → because the canonical diff
     uses `--text --no-ext-diff --no-textconv`, reviewers see the real change, not "Binary files
-    differ". A changed path with an unusual character (outside the charset) is read from
-    `$RUN/full.diff` for Claude and kept out of Codex's batch, with the exclusion disclosed.
+    differ". A changed path with an unusual character (outside the charset) has `codex_eligible: false`:
+    its diff is in the slice's `.diff` file for Claude, absent from the `.codex.diff` file and from Codex's
+    target paths, and the exclusion is disclosed.
+36. The diff changes anything under `plugins/git-kit/scripts/` or `skills/cross-model-review/` (also in a
+    different letter case) → `PLANNER_TOUCHED=1`, the planner has NOT run, and the user is asked before
+    the working-tree planner runs (an explicit yes runs it as `python3 -I`; otherwise review unscoped).
+    The manifest is cross-checked against the real changed-file list: a changed path in none of `files`,
+    `excluded` or `dropped_slices` is `PLAN_FAILED`. Folder picks offer only names matching
+    `^[A-Za-z0-9._-]+/$`. The First-Send Confirmation lists every batch's paths and the dispatch count.
 
 ## Quality gates
 
@@ -235,10 +242,10 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       count — never left stale after a scenario is added or removed
 - [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
       deletion must never abort the chained Preflight invocation before `git diff` runs
-- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 plugins/git-kit/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array
+- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 -I plugins/git-kit/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
 - [ ] A dropped slice is always listed in the report and marked as needing a direct read
 - [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
 - [ ] Every diff command uses `--no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none`
-- [ ] A path from the manifest is never typed into a command; it travels in a pathspec file
+- [ ] A path from the manifest is never typed into a command; it is never typed: slice diffs come from files the planner wrote

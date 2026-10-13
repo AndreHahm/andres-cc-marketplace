@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 plugins/git-kit/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I plugins/git-kit/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -33,6 +33,14 @@ this skill never enables that override on the user's behalf (see "Deliberately N
 deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
 repository's real index: it runs against a throwaway `GIT_INDEX_FILE`, so no state from this skill's
 run persists anywhere the user's own later `git add`/`git commit` could see it.
+
+## Quick Start
+
+1. Preflight: build the throwaway index, plan the scope (the planner decides which files each reviewer
+   reads and what is left out), and materialize trusted reviewer instructions from `$BASE`.
+2. Phase 1: Claude and Codex review independently; Codex gets one dispatch per batch of slices.
+3. Phase 2: each side cross-examines the other's findings.
+4. Phase 3: a ranked, confidence-scored table with every exclusion disclosed; nothing is edited.
 
 ## When to Use
 
@@ -130,27 +138,34 @@ an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_ST
 literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`/
 `Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
 
-1. **Plan the scope and check the diff exists.** In this same chained call, run the review scope planner
-   and send the diff to a file, so its text stays out of context (details: `references/scoped-review.md`
-   section 1):
+1. **Plan the scope and check the diff exists.** In this same chained call, first check whether the diff
+   changes the planner or this skill, then run the review scope planner, and send the diff to a file so its
+   text stays out of context (details: `references/scoped-review.md` section 1):
 
    ```bash
-   python3 plugins/git-kit/scripts/git-review-scope.py --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --output "$RUN/manifest-1.json" || PLAN_FAILED=1
+   UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
+   echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
+   [ -z "$PLANNER_TOUCHED" ] && { python3 -I plugins/git-kit/scripts/git-review-scope.py --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; }
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
-   A non-zero
-   `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a Preflight failure, not
-   an empty scope: report the Git error and ask for a valid `$BASE`. Only exit 0 with an empty
-   `$RUN/full.diff` means "nothing to review against $BASE" (mention `$SCOPE` if set): stop. A planner
-   failure (`PLAN_FAILED=1`) is never a pass; follow that section's fallback.
+   **`PLANNER_TOUCHED=1` means the planner has not run**: it executes code from the working tree, which may
+   be the branch under review, so ask via `AskUserQuestion` before running it (`references/scoped-review.md`
+   section 1). A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a
+   Preflight failure, not an empty scope: report the Git error and ask for a valid `$BASE`. Only exit 0
+   with an empty `$RUN/full.diff` means "nothing to review against $BASE" (mention `$SCOPE` if set): stop.
+   A planner failure (`PLAN_FAILED=1`) is never a pass; follow that section's fallback. Cross-check the
+   manifest against the real changed files before using it.
 2. **Fix the reviewed files and group them.** The manifest's `files` are what the reviewers read, packed
-   into dispatch batches (`references/scoped-review.md` section 3). A pick of folders to leave out, a
-   timeout retry and round two are in the same reference. Per batch, narrow what goes to Codex and build
-   its target paths, Codex-scoped diff and instruction files as `references/codex-pass-assembly.md`
-   says: drop a path that fails `^[A-Za-z0-9._/-]+$` or no longer exists, and a symlink resolving outside
-   the repository (`realpath -- <path>`, `references/symlink-exclusion-rationale.md`). Those paths stay in Claude's native
-   review. Use each batch's Codex-scoped diff, never Claude's, in a Codex-bound file. A batch with no
+   into dispatch batches, with each slice's diff already written to `$RUN/diffs-1/` by the planner
+   (`references/scoped-review.md` section 3). A pick of folders to leave out, a timeout retry and round
+   two are in the same reference. Per batch, build the Codex target paths and instruction files as
+   `references/codex-pass-assembly.md` says: only manifest entries with `codex_eligible: true` go to
+   Codex (the planner checks `^[A-Za-z0-9._/-]+$`, that the file still exists, and that no symlink is
+   on the path). Other paths stay in Claude's native review. Use a batch's `.codex.diff` text, never a
+   `.diff` file, in a Codex-bound file, and never type a manifest path into a command. Filter
+   `$UNTRACKED_FILES` the same way (pattern check, then `realpath -- <path>`; see
+   `references/symlink-exclusion-rationale.md`). A batch with no
    eligible path skips Codex ("zero Codex-eligible paths in this batch"); if every batch is empty, enter
    single-model mode now with that reason, before any dispatch. Echo each batch's `$TARGET_PATHS`.
 3. `$RUN` — already resolved above (needed early for the throwaway index), also the scratch dir for
@@ -186,17 +201,17 @@ literal, already-resolved value — substitute the concrete string into every la
    `${CLAUDE_PLUGIN_ROOT}`.
 6. **Check whether the diff itself touches the Codex dispatcher scripts (or their non-script trust
    inputs) this skill is about to execute** — against the **unscoped** changed-file list
-   (`UNSCOPED_CHANGED_FILES=$(git diff --name-only "$MERGE_BASE")`, deliberately without
-   `-- "$SCOPE"`), never Preflight step 2's `$SCOPE`-filtered list:
+   (`UNSCOPED_CHANGED_FILES`, already computed in step 1 with `--no-renames` and deliberately without
+   `-- "$SCOPE"`), never a `$SCOPE`-filtered list:
 
    ```bash
-   echo "$UNSCOPED_CHANGED_FILES" | grep -qE 'plugins/codex-kit/(.*/)?(scripts|assets)/' && DISPATCHER_TOUCHED=1 || true
+   echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/codex-kit/(.*/)?(scripts|assets)/' && DISPATCHER_TOUCHED=1 || true
    ```
 
    Both `-E` and the trailing `|| true` are required — see `references/dispatcher-trust-pattern.md`
    for why (verified `grep` behavior, and why a no-match here must not abort the chain).
-   Do the same for the planner (`PLANNER_TOUCHED`, `references/scoped-review.md` section 1).
-   `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
+   `PLANNER_TOUCHED` is the same kind of check for the planner, done in step 1 because the planner runs
+   there. `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
    Confirmation's clause (c) checks — a property of the *whole diff*, which is why a `$SCOPE` excluding
    `plugins/codex-kit` (e.g. `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made
    elsewhere in the same diff. The pattern's `(.*/)?` group and `assets/` alternative are both
@@ -256,7 +271,9 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
 
 **First-Send Confirmation (mandatory, once per *invocation of this skill*, not once per session — a
 later, separate invocation always asks again — before the *first* real Codex dispatch this run):**
-`AskUserQuestion` — name the reviewer persona and target paths, and disclose plainly: (a) the
+`AskUserQuestion` — name the reviewer persona and the target paths of **every batch** (or their union
+plus the batch count), state the **number of Codex dispatches** this answer covers (two per batch that has Codex-eligible
+paths, plus a possible timeout retry per batch) and that the one answer covers all of them, and disclose plainly: (a) the
 dispatched process can read anything this account can read, not only the repository, regardless of
 `--target-paths`, which only scopes what it's checked against; (b) **if Step 2 triggers, the dispatch runs
 `danger-full-access` — no sandbox, read *and* write/execute with this account's permissions anywhere on the
@@ -294,8 +311,8 @@ field, not something the schema itself enumerates).
 
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
-batch, using the pathspec-file command in `references/scoped-review.md` section 3: Preflight step 1
-deliberately did not put the diff text in context. Review every manifest `files` entry. Hold the findings in that envelope shape; write to `$RUN/claude_fresh_eyes.json`
+batch, `Read`ing the batch's `.diff` files in `$RUN/diffs-1/` (`references/scoped-review.md` section 3):
+Preflight step 1 deliberately did not put the diff text in context. Review every manifest `files` entry. Hold the findings in that envelope shape; write to `$RUN/claude_fresh_eyes.json`
 (`dispatch.reviewer: "claude-fresh-eyes"`, `dispatch.backend: "claude"`, and every other field —
 nothing fills `dispatch`/`provenance`/`contract_version` automatically the way Codex's dispatch does
 — set explicitly per `references/self-authored-envelope-fields.md`).
@@ -401,12 +418,24 @@ cross-examined list, not to declare the diff clean.
 
 `$RUN` is not deleted after this — both models' findings JSON, which may quote diff content, persist
 under the OS temp directory until cleaned up. This skill has no scoped delete capability; say so rather
-than implying cleanup, and treat the envelopes as needing review before they are shared. The throwaway
-`$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
+than implying cleanup, and treat the envelopes as needing review before they are shared. The same goes
+for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
+`diffs-*` folders and the instruction files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
 
 ## Deliberately NOT done
 
 See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 line-count threshold).
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
+| `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
+| `references/testing-scenarios.md` | The 36 scenarios and the quality-gate checklist |
+| `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; dispatcher and planner trust |
+| `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
+| `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
 
 ## Testing & Validation
 
@@ -422,8 +451,18 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the
-35 numbered scenarios and full quality-gate checklist live there, covering every behavior described
+36 numbered scenarios and full quality-gate checklist live there, covering every behavior described
 above (single-model mode, `$MERGE_BASE` diff containment, dispatcher-trust matching, reviewer
 identity, closing-tag neutralization, partial-failure preservation, scoped review, and more).
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
 repositories.
+
+**Last dated run record:** `2026-10-13, evals/cross-model-review/workspace/iteration-10/` — evals 7-9
+(scoped review: one batch for a small diff, a batch timeout, round two with an unfinished slice), Quick
+Workflow, `with_skill` only, no baseline: 12/12 assertions. These are reasoning-based dry runs of the
+committed text, not live dispatches; no live `cross-model-review` run of the scoped flow has been done.
+Eval 8 showed `references/scoped-review.md` section 4 did not say what follows a successful retry; that
+sentence was added after the run and has not been re-run. A security review after that run also found
+that `git diff` has no pathspec-file option (checked live), so per-batch diffs now come from files the
+planner writes (`--diff-dir`), and the planner is skipped with a question when the diff changes it. Those
+changes came after the eval run and are covered by the Preflight fixtures and planner tests, not by evals.

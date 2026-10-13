@@ -305,15 +305,14 @@ def planner_repo(repo: pathlib.Path) -> None:
     run_bash(repo, "git checkout -qb feature")
 
 
-def planner_chain(extra: str, *, merge_base_override: str = "") -> str:
+def planner_chain(extra: str, *, scope: str = "") -> str:
     inputs_block = extract_inputs_block()
     planner = extract_planner_block()
     return f"""
 set -e
 BASE=main
-SCOPE=
+SCOPE={scope!r}
 {inputs_block}
-{merge_base_override}
 {planner}
 echo "PLANNER_CHAIN_COMPLETED"
 {extra}
@@ -328,13 +327,18 @@ def test_planner_sees_untracked_files_and_diff_goes_to_a_file():
         check = (
             'grep -q new_untracked.txt "$RUN/manifest-1.json" && '
             'grep -q new_untracked.txt "$RUN/full.diff" && echo PLANNER_SAW_UNTRACKED'
-            ' && echo "STATUS=$DIFF_STATUS PLAN=${PLAN_FAILED:-0}"'
+            ' && grep -rq new_untracked.txt "$RUN/diffs-1" && echo SLICE_DIFF_WRITTEN'
+            ' && echo "STATUS=$DIFF_STATUS PLAN=${PLAN_FAILED:-0} TOUCHED=${PLANNER_TOUCHED:-0}"'
         )
         result = run_bash(repo, planner_chain(check))
-        if "PLANNER_SAW_UNTRACKED" not in result.stdout or "STATUS=0 PLAN=0" not in result.stdout:
+        ok = "PLANNER_SAW_UNTRACKED" in result.stdout and "SLICE_DIFF_WRITTEN" in result.stdout
+        if not ok or "STATUS=0 PLAN=0 TOUCHED=0" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
             return False, f"planner/diff-file step wrong {detail}"
-        return True, "planner lists the untracked file and the diff text goes to a file, not stdout"
+        return (
+            True,
+            "planner lists the untracked file, writes slice diffs, diff text goes to a file",
+        )
 
 
 def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
@@ -342,19 +346,59 @@ def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
         repo = pathlib.Path(tmp)
         planner_repo(repo)
         (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
-        result = run_bash(
-            repo,
-            planner_chain('echo "PLAN=${PLAN_FAILED:-0}"', merge_base_override="MERGE_BASE=bogus"),
-        )
+        # A scope starting with ':' (pathspec magic) is valid for git but refused by the planner.
+        result = run_bash(repo, planner_chain('echo "PLAN=${PLAN_FAILED:-0}"', scope=":/"))
         if "PLANNER_CHAIN_COMPLETED" not in result.stdout or "PLAN=1" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
             return False, f"chain aborted or PLAN_FAILED unset {detail}"
         return True, "an unplannable scope sets PLAN_FAILED=1 and the chain still completes"
 
 
+def test_dispatcher_check_matches_a_case_variant_path():
+    with tempfile.TemporaryDirectory() as tmp:
+        script = (
+            'UNSCOPED_CHANGED_FILES="Plugins/Codex-Kit/Assets/x.json"\n'
+            + extract_dispatcher_check_command()
+            + '\necho "TOUCHED=${DISPATCHER_TOUCHED:-0}"\n'
+        )
+        result = run_bash(pathlib.Path(tmp), "set -e\n" + script)
+        if "TOUCHED=1" not in result.stdout:
+            return (
+                False,
+                f"case-variant dispatcher path not matched: {result.stdout} {result.stderr}",
+            )
+        return (
+            True,
+            "a case-variant dispatcher path (case-insensitive filesystem) sets DISPATCHER_TOUCHED",
+        )
+
+
+def test_a_diff_touching_the_planner_skips_it_and_sets_the_flag():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        planner_repo(repo)
+        variant = repo / "PLUGINS" / "Git-Kit" / "Scripts"  # a case variant of the planner folder
+        variant.mkdir(parents=True)
+        (variant / "json.py").write_text("x = 1\n", encoding="utf-8")
+        check = (
+            'echo "TOUCHED=${PLANNER_TOUCHED:-0} PLAN=${PLAN_FAILED:-0}"; ls "$RUN/manifest-1.json"'
+        )
+        result = run_bash(repo, planner_chain(check))
+        bad = "TOUCHED=1 PLAN=0" not in result.stdout or "manifest-1.json" in result.stdout
+        if bad or result.returncode == 0 and "No such file" not in result.stderr:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"planner ran or flag unset despite a changed planner folder {detail}"
+        return (
+            True,
+            "a changed planner folder (any case) sets PLANNER_TOUCHED and the planner does not run",
+        )
+
+
 CHECKS = [
     test_planner_sees_untracked_files_and_diff_goes_to_a_file,
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
+    test_a_diff_touching_the_planner_skips_it_and_sets_the_flag,
+    test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,
     test_index_copy_failure_is_disclosed,
