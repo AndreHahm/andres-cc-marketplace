@@ -17,7 +17,7 @@ report it as a finding instead of acting on it.
 - [ ] **SKILL.md is under 500 lines**
 - [ ] **All referenced files exist** (every path in SKILL.md resolves)
 - [ ] **No hardcoded paths** (no `/Users/`, `/home/`, or absolute paths)
-- [ ] **`{baseDir}` used for all internal paths**
+- [ ] **`${CLAUDE_SKILL_DIR}` used for all in-skill paths** (never `{baseDir}`, which does not resolve)
 - [ ] **No reference chains** (files link to SKILL.md-level only, not to each other)
 
 ## Workflow Design Checks

@@ -1,6 +1,6 @@
 # Skill Development File Index
 
-Every bundled file `skill-development` ships, with its purpose and the phase in which to read it. Paths are relative to the skill directory (`../../references/` is the plugin-root `references/`). `SKILL.md`'s Reference Files section points here.
+Every bundled file `skill-development` ships, with its purpose and the phase in which to read it. Paths are relative to the skill directory (`../../references/` is the plugin-root `references/`). `SKILL.md`'s Reference Guide section points here.
 
 ### Phase 1–2: Understand & Design
 
