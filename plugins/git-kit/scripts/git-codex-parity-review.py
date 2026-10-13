@@ -218,6 +218,12 @@ def main() -> int:
     if output.exists():
         print(f"PARITY: {output} already exists; pass a new --output path (nothing is deleted).")
         return 2
+    # Beside --output, so the per-reviewer instruction files never touch the checkout. Refused when
+    # it already exists (symlinks included): the child would write through it.
+    instructions_dir = output.with_name(f"{output.stem}-instructions")
+    if instructions_dir.is_symlink() or instructions_dir.exists():
+        print(f"PARITY: {instructions_dir} already exists; pass a new --output path.")
+        return 2
 
     env: dict[str, str] = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
     model = resolve_model()
@@ -228,8 +234,6 @@ def main() -> int:
         env.pop(MODEL_VARIABLE, None)
         print(f"PARITY WARNING: {MODEL_VARIABLE} unset or unreadable; using the local default.")
 
-    # Beside --output, so the per-reviewer instruction files never touch the checkout.
-    instructions_dir = output.with_name(f"{output.stem}-instructions")
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
         "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),

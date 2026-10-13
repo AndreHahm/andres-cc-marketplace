@@ -470,6 +470,25 @@ def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
     assert args == ""
 
 
+@pytest.mark.parametrize("kind", ["dir", "symlink", "dangling_symlink"])
+def test_a_pre_existing_instructions_path_is_refused_and_left_untouched(repo, tmp_path, kind):
+    instructions = tmp_path / "out-instructions"
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    if kind == "dir":
+        instructions.mkdir()
+    elif kind == "symlink":
+        instructions.symlink_to(victim, target_is_directory=True)
+    else:
+        instructions.symlink_to(tmp_path / "missing")
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert "already exists" in result.stdout
+    assert args == ""
+    assert instructions.is_symlink() or instructions.is_dir()
+    assert list(victim.iterdir()) == []
+
+
 @pytest.mark.parametrize("model", ["a/b", "a:b", "m" * 65])
 def test_a_model_the_bridge_would_reject_falls_back_instead_of_failing(repo, tmp_path, model):
     result, _, uv_env = _run(repo, tmp_path, model=model)
