@@ -45,4 +45,4 @@
 No Linear or Notion tool was called. Nothing is created in Linear from this Report.
 
 ## Files
-- Scratch input (not in repo): `C:\Users\andre\AppData\Local\Temp\claude\C--Dev-Repos-andres-cc-marketplace\539736ec-0abc-4a48-95ac-717b25c8e010\scratchpad\report.txt` (6,893 chars)
+- Scratch input (not in repo): `<session scratchpad>/report.txt` (6,893 chars)
