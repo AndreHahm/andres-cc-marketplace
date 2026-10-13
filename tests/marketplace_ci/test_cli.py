@@ -1238,6 +1238,20 @@ def test_run_codex_review_refuses_an_unsafe_instructions_dir(
         assert list((outside / "victim").iterdir()) == []
 
 
+def test_run_codex_review_refuses_an_instructions_dir_equal_to_output(
+    monkeypatch, git_repo, tmp_path_factory, capsys
+):
+    same = tmp_path_factory.mktemp("outside") / "result"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        ["run-codex-review", "--base-sha", "deadbeef", "--output", str(same)]
+        + ["--instructions-dir", str(same)]
+    )
+    assert rc == 2
+    assert "--output" in capsys.readouterr().err
+    assert same.is_file()  # the failure payload went to --output; it was not made a directory
+
+
 def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git_repo):
     import subprocess as subprocess_module
 

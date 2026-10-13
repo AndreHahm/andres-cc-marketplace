@@ -470,6 +470,14 @@ def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
     assert args == ""
 
 
+def test_the_instructions_path_never_equals_an_extensionless_output(repo, tmp_path):
+    # An --output already named "*-instructions" must not collide with the derived directory.
+    result, args, _ = _run(repo, tmp_path, output_name="review-instructions")
+    assert result.returncode == 0
+    assert f"--instructions-dir {tmp_path}/review-instructions-instructions" in args
+    assert f"--output {tmp_path}/review-instructions" in args
+
+
 @pytest.mark.parametrize("kind", ["dir", "symlink", "dangling_symlink"])
 def test_a_pre_existing_instructions_path_is_refused_and_left_untouched(repo, tmp_path, kind):
     instructions = tmp_path / "out-instructions"
