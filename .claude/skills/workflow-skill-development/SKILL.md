@@ -35,7 +35,7 @@ For a full 6-phase process, see [design-a-workflow-skill.md](workflows/design-a-
 
 Claude decides whether to load a skill based solely on its frontmatter `description`. The body of SKILL.md — including "When to Use" and "When NOT to Use" sections — is only read AFTER the skill is already active. Put your trigger keywords, use cases, and exclusions in the description. A bad description means wrong activations or missed activations regardless of what the body says.
 
-"When to Use" and "When NOT to Use" sections are optional organizational aids, not activation mechanisms — they only scope the LLM's behavior once the skill is already active. Prefer packing use cases and exclusions into the `description` rather than relying on body sections to do that job. "When NOT to Use" should name specific alternatives: "use Semgrep for simple pattern matching" not "not for simple tasks."
+"When to Use" and "When NOT to Use" body sections are required (plugin-rulebook R35) but are not activation mechanisms — they only scope the LLM's behavior once the skill is already active. Put the triggers and exclusions in the `description` AND carry the standard sections; neither replaces the other. "When NOT to Use" should name specific alternatives: "use Semgrep for simple pattern matching" not "not for simple tasks."
 
 ### numbered-phases
 
@@ -53,7 +53,7 @@ Unnumbered prose instructions produce unreliable execution order. Every phase ne
 
 Skills use `allowed-tools:` in frontmatter. Agents use `tools:` in frontmatter. Subagents get tools from their `subagent_type`. Never list tools the component doesn't use. Never use Bash for operations that have dedicated tools (Glob, Grep, Read, Write, Edit).
 
-Most skills and agents should include `TodoRead` and `TodoWrite` in their tool list — these enable progress tracking during multi-step execution and are useful even for skills that don't explicitly manage tasks.
+Add a progress-tracking tool only when the instructions actually call it (a long multi-step pipeline that tracks tasks). A tool listed but never used violates least privilege like any other. The todo tool names are unverified against the current Claude Code tool list — check the live tool list before granting one.
 
 ### progressive-disclosure
 
@@ -204,7 +204,7 @@ Launch general-purpose agent:
 Confirm the workflow actually works before considering it done:
 1. Walk through the Validation Checklist above end-to-end against the finished skill/command.
 2. Invoke `plugin-rulebook` for naming, tool-scoping, and formatting compliance.
-3. Run `scripts/smoke_test.py` if the target skill has one persisted.
+3. If the target skill has a persisted `scripts/smoke_test.py`, ask the user to run it (this skill holds no `Bash` grant) and review the output.
 4. Test at least one real invocation through the orchestrator command, confirming each step's captured
    output matches what the next step expects.
 
@@ -271,10 +271,10 @@ The most common mistakes. Full catalog with before/after fixes: [anti-patterns-s
 
 | AP | Anti-Pattern | One-Line Fix |
 |----|-------------|-------------|
-| AP-1 | Missing goals/anti-goals | Put use cases and exclusions in `description`; When to Use/When NOT to Use body sections are optional |
+| AP-1 | Missing goals/anti-goals | Put use cases and exclusions in `description` AND carry the required When to Use/When NOT to Use sections (R35) |
 | AP-2 | Monolithic SKILL.md (>500 lines) | Split into references/ and workflows/ |
 | AP-3 | Reference chains (A -> B -> C) | All files one hop from SKILL.md |
-| AP-4 | Hardcoded paths | Use `{baseDir}` for all internal paths |
+| AP-4 | Hardcoded paths | Use the `CLAUDE_SKILL_DIR` variable for a skill's own files, `CLAUDE_PLUGIN_ROOT` in command files (dollar-brace form) |
 | AP-5 | Broken file references | Verify every path resolves before submitting |
 | AP-6 | Unnumbered phases | Number every phase with entry/exit criteria |
 | AP-7 | Missing exit criteria | Define what "done" means for every phase |
@@ -298,12 +298,12 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 
 | Component Type | Typical Tools |
 |---------------|---------------|
-| Read-only analysis skill | Read, Glob, Grep, TodoRead, TodoWrite |
-| Interactive analysis skill | Read, Glob, Grep, AskUserQuestion, TodoRead, TodoWrite |
-| Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked), TodoRead, TodoWrite |
-| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate, TodoRead, TodoWrite |
-| Read-only agent | Read, Grep, Glob, TodoRead, TodoWrite |
-| Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below), TodoRead, TodoWrite |
+| Read-only analysis skill | Read, Glob, Grep |
+| Interactive analysis skill | Read, Glob, Grep, AskUserQuestion |
+| Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked) |
+| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate |
+| Read-only agent | Read, Grep, Glob |
+| Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below) |
 
 **Key rules:**
 - Use Glob (not `find`), Grep (not `grep`), Read (not `cat`) — always prefer dedicated tools
@@ -343,12 +343,12 @@ When designing workflow skills, reject these shortcuts:
 
 A well-designed workflow skill or command:
 
-- [ ] Has an activation-focused `description`; When to Use/When NOT to Use body sections, if present, are optional organizational aids
+- [ ] Has an activation-focused `description` AND the required When to Use/When NOT to Use body sections (R35)
 - [ ] Uses a recognizable pattern (routing, pipeline, linear, safety gate, or task-driven)
 - [ ] Numbers all phases with entry and exit criteria
 - [ ] Lists only the tools it actually uses (least privilege)
 - [ ] Keeps SKILL.md under 500 lines with details in references/workflows
-- [ ] Has no hardcoded paths (uses `{baseDir}`)
+- [ ] Has no hardcoded paths (uses the `CLAUDE_SKILL_DIR` variable for in-skill paths)
 - [ ] Has no broken file references
 - [ ] Has no reference chains (all links one hop from SKILL.md)
 - [ ] Includes a verification step at the end of the workflow

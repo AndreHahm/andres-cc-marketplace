@@ -66,9 +66,11 @@ There are three substitution types:
 **When documenting these patterns in a skill:** Describe the syntax textually (as this file does) rather than using the raw patterns. Code fences and inline code do NOT prevent substitution — the loader processes the raw file content before any Markdown parsing.
 
 **Path variables by component type:**
+This is the one place the path conventions are stated; the other files point here.
+- **A skill's own files** (scripts, references, assets, in grants and instructions): the dollar-brace `CLAUDE_SKILL_DIR` variable. In a reference file or example, write it literally; in SKILL.md prose, name the variable in words, since the loader substitutes the dollar-brace form there.
 - **In command files** (`commands/*.md`): Use the dollar-brace `CLAUDE_PLUGIN_ROOT` variable to reference files within the plugin directory at runtime.
-- **In SKILL.md documentation examples**: Use `<PLUGIN_ROOT>` as a static placeholder — the loader would substitute the dollar-brace form, corrupting example code.
-- **In anti-pattern examples and scripts** (`{baseDir}`): A human-readable stand-in for project-relative paths. Not a resolved variable — document the actual path construction for your runtime.
+- **In SKILL.md documentation examples of a command's paths**: Use `<PLUGIN_ROOT>` as a static placeholder — the loader would substitute the dollar-brace form, corrupting example code. Write the real `CLAUDE_PLUGIN_ROOT` variable in the command file itself.
+- **Never use `{baseDir}`**: it is not a resolved variable in Claude Code, so a path written that way does not work.
 
 ---
 
@@ -85,7 +87,7 @@ There are three substitution types:
 | **AskUserQuestion** | Get user input | Disambiguation, confirmation, preferences |
 | **Task** | Spawn subagents | Delegating complex subtasks |
 | **TaskCreate/TaskUpdate/TaskList** | Track progress | Multi-step workflows with dependencies |
-| **TodoRead/TodoWrite** | Track progress via todo list | Most skills and agents — enables progress tracking during execution |
+| **Todo tools** (names unverified; check the live tool list) | Track progress via todo list | Only a long pipeline whose instructions actually call them |
 | **WebFetch** | Fetch URL content | Reading web pages |
 | **WebSearch** | Search the web | Finding current information |
 
@@ -123,11 +125,11 @@ Agents declare tools in frontmatter with `tools:` (not `allowed-tools:`):
 ---
 name: my-agent
 description: "What it does"
-tools: Read, Grep, Glob, TodoRead, TodoWrite
+tools: Read, Grep, Glob
 ---
 ```
 
-**Agent tool principle:** Agents should have the minimum tools needed for their specific task. A read-only analysis agent should not have Write or Bash. Most agents should include `TodoRead` and `TodoWrite` for progress tracking.
+**Agent tool principle:** Agents should have the minimum tools needed for their specific task. A read-only analysis agent should not have Write or Bash. Add a progress-tracking tool only if the agent's instructions call it.
 
 ---
 

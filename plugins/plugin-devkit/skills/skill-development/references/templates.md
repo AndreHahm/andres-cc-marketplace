@@ -374,10 +374,10 @@ skill-development/
 ```
 
 ### Filename Conventions
-- **Main guide:** `complete-guide.md`, `guide.md`, or `reference.md`
+- **Main guide:** `complete-guide.md` or a topic name (e.g. `refinement-workflow.md`) — never bare `guide.md` or `reference.md`
 - **Task-specific:** `deployment-guide.md`, `troubleshooting.md`
 - **Curated lists:** `checklist.md`, `templates.md`, `patterns.md`
-- **Data:** `config.md`, `environment-variables.md`
+- **Data:** `environment-variables.md`, `hook-configuration.md` (never bare `config.md`)
 
 ## Token Efficiency Tips
 

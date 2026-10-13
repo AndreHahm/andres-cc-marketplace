@@ -360,7 +360,7 @@ Adapt technical vocabulary to the user's apparent familiarity:
 - **Don't use other testing skills during Phase 3.** `/skill-test` or similar skills will conflict with this skill's eval workflow. Run evals using the steps in Phase 3 directly.
 - **Skipping RED in compliance testing.** Writing compliance rules before watching an agent fail without the skill reveals what YOU think needs preventing, not what actually does. Always run no-skill baseline scenarios first.
 - **Snapshot before improving.** Always `cp -r` the skill before making changes in Phase 4. Without a snapshot, there's no meaningful baseline comparison — the "before" is gone.
-- **Create the workspace before spawning subagents.** `mkdir -p <skill-name>-workspace/iteration-N/<eval-name>` upfront. If each subagent tries to create the same parent directory, race conditions produce half-populated directories.
+- **Create the workspace before spawning subagents.** `mkdir -p <skill-name>-workspace/iteration-N/eval-N` upfront. If each subagent tries to create the same parent directory, race conditions produce half-populated directories.
 - **Don't reuse iteration numbers.** When improving, always bump to `iteration-<N+1>/`. Rerunning into a previous iteration silently overwrites the baseline needed for comparison.
 - **`benchmark-log.md` is append-only.** It's the one cumulative file spanning all iterations — never rewrite or delete a past entry by hand. `scripts/aggregate_benchmark.py` appends automatically; only ever add to it, matching the same discipline as not reusing iteration numbers.
 - **Kill the eval viewer.** The viewer process stays alive after review. Forgetting `kill $VIEWER_PID` causes port conflicts or zombie processes on subsequent launches.
@@ -401,7 +401,7 @@ assertions, with_skill only, no baseline. Covers 3 of the 7 bullets above; the o
 
 Run `quick_validate.py`, then work through the full pre-release checklist at `${CLAUDE_SKILL_DIR}/references/checklist.md`. Invoke `plugin-rulebook` to verify naming, language, formatting, and tool-scoping compliance. Before finalizing, verify the current official platform specification for the component type — treat current docs as authoritative over cached or rulebook-cached assumptions.
 
-## Reference Files
+## Reference Guide
 
 The full index of every bundled reference, agent and script, with its purpose and the phase to read it in, is [`file-index.md`](references/file-index.md). Read the phase-matched file before each phase.
 
