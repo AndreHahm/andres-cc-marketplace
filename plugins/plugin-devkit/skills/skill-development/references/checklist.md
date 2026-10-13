@@ -30,7 +30,7 @@ Use this checklist to validate new or improved skills against best practices.
 - [ ] Action-oriented when possible (gerund form: `processing-pdfs`, `managing-databases`)
 
 ### Description Validation
-- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `../../references/pdk-size-limits.md`)
+- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`)
 - [ ] Third person voice ("Processes files", not "I can help you")
 - [ ] Includes specific trigger phrases (what it does AND when to use)
 - [ ] No XML/HTML tags (scoped to the `description` field only — see `troubleshooting-guide.md`'s "XML angle brackets" section for why, and its Codex-prompt-scaffolding note for why this does not extend to skill body content)
