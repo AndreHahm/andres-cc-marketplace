@@ -1811,6 +1811,12 @@ def dispatch_reviewers(
                     )
                 )
             )
+            # tempfile honors TMPDIR, which may point into the checkout.
+            if instructions_dir.resolve().is_relative_to(repo.resolve()):
+                raise OSError(
+                    f"default instruction directory {instructions_dir} is inside the checkout; "
+                    "point TMPDIR elsewhere or pass --instructions-dir"
+                )
         futures = [
             pool.submit(
                 _dispatch_one,

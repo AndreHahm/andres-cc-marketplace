@@ -1097,14 +1097,20 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     structural_findings = run_delta_structural_checks(repo, changed)
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
-    reports = dispatch_reviewers(
-        scope,
-        base_sha=base_sha,
-        repo=repo,
-        instructions_dir=instructions_dir,
-        changed_ranges=changed_ranges,
-        changed_paths=_changed_path_set(changed),
-    )
+    try:
+        reports = dispatch_reviewers(
+            scope,
+            base_sha=base_sha,
+            repo=repo,
+            instructions_dir=instructions_dir,
+            changed_ranges=changed_ranges,
+            changed_paths=_changed_path_set(changed),
+        )
+    except OSError as exc:
+        # Raised only before any reviewer starts (e.g. the default instruction
+        # directory would land inside the checkout); per-reviewer faults are
+        # already reported as failed reports.
+        return _fail_run_codex_review(args, f"cannot prepare reviewer dispatch: {exc}")
 
     failed_reports = [r for r in reports if r.status == "failed"]
     if failed_reports:

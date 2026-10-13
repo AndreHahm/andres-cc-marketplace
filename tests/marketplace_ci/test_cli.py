@@ -1238,6 +1238,42 @@ def test_run_codex_review_refuses_an_unsafe_instructions_dir(
         assert list((outside / "victim").iterdir()) == []
 
 
+def test_run_codex_review_fails_cleanly_when_the_default_temp_dir_is_in_the_checkout(
+    monkeypatch, git_repo, capsys
+):
+    import subprocess as subprocess_module
+    import tempfile
+
+    for name in (
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+        "skill-reviewer",
+    ):
+        git_repo.write(
+            f".codex/agents/{name}.toml",
+            f'name = "{name}"\ndeveloper_instructions = """\ncheck\n"""\n',
+        )
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    inside = git_repo.root / "scratch-tmp"
+    inside.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(inside))
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 2
+    assert "inside the checkout" in capsys.readouterr().err
+    assert list(inside.iterdir()) == []
+
+
 def test_run_codex_review_refuses_an_instructions_dir_equal_to_output(
     monkeypatch, git_repo, tmp_path_factory, capsys
 ):
