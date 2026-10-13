@@ -46,6 +46,34 @@
         "prompts/eval-2-baseline.txt",
         "dispatch.md"
       ]
+    },
+    {
+      "id": "5",
+      "name": "step-2-3-eval-metadata-newline",
+      "prompt": "Follow the document you are given and carry out this task. Task: you are setting up evaluations for a skill named `fixture-skill` (`skills/fixture-skill/SKILL.md`). Two evals exist. Eval 1, name `creates-greeting`, prompt 'Greet the user by name': one assertion, text 'Output contains the word hello', type `presence`, target `output`. Eval 2, name `rejects-empty-input`, prompt 'Greet the user, but the name is empty': one assertion, text 'Output refuses the empty input', type `quality`, target `output`. Follow the document's Phase 2 step that creates the per-eval metadata files. Treat <OUT> as the `workspace/iteration-1/` directory.",
+      "expected_output": "2 JSON file(s) written, each valid JSON and each ending with a trailing newline (last byte 0x0A), checked by script.",
+      "files": []
+    },
+    {
+      "id": "6",
+      "name": "step-4-2-grading-newline",
+      "prompt": "Follow the document you are given and carry out this task. Task: grading for eval 1 of `fixture-skill` is finished and you must now record it. Facts: assertions are 'Output contains the word hello' and 'Output is under 50 words'. with_skill: both passed (evidence: 'line 1: hello world'; '3 words'). baseline: the first failed (evidence: 'output was: greetings'), the second passed (evidence: '1 word'). Follow the document's step that writes the grading files. Treat <OUT> as the `workspace/iteration-1/eval-1/` directory.",
+      "expected_output": "2 JSON file(s) written, each valid JSON and each ending with a trailing newline (last byte 0x0A), checked by script.",
+      "files": []
+    },
+    {
+      "id": "7",
+      "name": "grader-step-8-grading-newline",
+      "prompt": "Follow the document you are given and carry out this task. Task: you are the grader the document describes. Inputs: expectations = ['The output greets the user by saying hello', 'The output is under 50 words']; transcript_path = <OUT>/transcript.md; outputs_dir = <OUT>. Grade the run as the document directs and save the grading results where the document says to save them.",
+      "expected_output": "1 JSON file(s) written, each valid JSON and each ending with a trailing newline (last byte 0x0A), checked by script.",
+      "files": []
+    },
+    {
+      "id": "8",
+      "name": "eval-workflow-both-files-newline",
+      "prompt": "Follow the document you are given and carry out this task. Task: you are running the document's workflow for a skill named `fixture-skill`. Two eval cases: `basic-greeting` (eval_id 0, prompt 'Greet the user by name') and `empty-name` (eval_id 1, prompt 'Greet the user, but the name is empty'). Do the step that writes the per-eval metadata for both cases now. Then the with-skill run of `basic-greeting` has been graded: its assertions 'Output contains hello' (passed, evidence 'hello world') and 'Output is under 50 words' (passed, evidence '2 words'); follow the document's grading step and save that grading result. Treat <OUT> as the `fixture-skill-workspace/iteration-1/` directory.",
+      "expected_output": "3 JSON file(s) written, each valid JSON and each ending with a trailing newline (last byte 0x0A), checked by script.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

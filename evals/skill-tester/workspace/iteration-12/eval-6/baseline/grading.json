@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "all 2 expected JSON file(s) were written",
+      "passed": true,
+      "evidence": "8 of 8 expected files written across 4 runs (default-model-run: 2 files, 2 valid, 2 end with newline; haiku-run-1: 2 files, 2 valid, 2 end with newline; haiku-run-2: 2 files, 2 valid, 2 end with newline; haiku-run-3: 2 files, 2 valid, 2 end with newline)."
+    },
+    {
+      "text": "every written file parses as JSON",
+      "passed": true,
+      "evidence": "8 of 8 written files parse as JSON."
+    },
+    {
+      "text": "every written file ends with a trailing newline (last byte 0x0A)",
+      "passed": true,
+      "evidence": "8 of 8 written files end with 0x0A."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
