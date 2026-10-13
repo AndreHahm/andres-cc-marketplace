@@ -127,6 +127,9 @@ def test_load_shapes_requires_a_boundary_and_literal_prefix(pattern):
         "$",  # Python matches before a trailing newline; JavaScript does not
         "[]x]",  # Python reads a leading ] as a literal; JavaScript reads an empty class
         "[^]x]",
+        "\U0001f600{2}",  # quantified astral literal: Python counts code points, Node UTF-16 units
+        "\U0001f600",  # non-ASCII is rejected as a class: token shapes are ASCII prefixes
+        "é{2}",
     ],
 )
 def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(construct):

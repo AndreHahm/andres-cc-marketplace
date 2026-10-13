@@ -62,6 +62,11 @@ def _unportable_construct(pattern: str) -> str | None:
     trailing newline), and a class that starts with "]" (a literal in Python, an empty class in
     JavaScript).
     """
+    if not pattern.isascii():
+        # Node compiles without the "u" flag, so a non-BMP literal is two UTF-16 units there and
+        # one code point in Python: a quantifier then applies to different things. Token shapes
+        # are ASCII prefixes, so ASCII-only closes the whole class instead of just astral literals.
+        return "a non-ASCII character"
     in_class = False
     depth = 0
     index = 0
