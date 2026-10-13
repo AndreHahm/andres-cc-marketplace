@@ -52,13 +52,13 @@ Use when: Pure git operations (commit, push, branch management).
 
 ### Example 4: Multiple bash commands
 ```yaml
-allowed-tools: Bash(grep:*,ls:*,find:*)
+allowed-tools: Bash(grep:*),Bash(ls:*),Bash(find:*)
 ```
 Use when: Shell utilities for searching and listing files.
 
 ### Example 5: Combined: bash + built-in tools
 ```yaml
-allowed-tools: Read,Glob,Bash(curl:*,wget:*)
+allowed-tools: Read,Glob,Bash(curl:*),Bash(wget:*)
 ```
 Use when: Fetching remote content and analyzing local files.
 
@@ -71,7 +71,7 @@ Use when: Fetching remote content and analyzing local files.
 **Wildcard filtering**:
 - `Bash(git:*)` — allows all git commands
 - `Bash(python:*)` — pre-approves python commands only
-- `Bash(grep:*,ls:*)` — allows multiple specific commands
+- `Bash(grep:*),Bash(ls:*)` — allows multiple specific commands; each command is its own `Bash(...)` entry, since a comma inside the parentheses is not a separator and `:*` is only recognized at the end of a pattern
 
 **Case-sensitive**: Use exact names (e.g., `Read` not `read`)
 
