@@ -14,6 +14,11 @@
   "review_findings_generate_issues": false,
   "review_findings_min_rounds": 1,
   "review_findings_max_rounds": 3,
+  "cross_model_review_exclude_dirs": ["issues/"],
+  "cross_model_review_exclude_extensions": [],
+  "cross_model_review_exclude_globs": [],
+  "cross_model_review_budget_bytes": 250000,
+  "cross_model_review_max_slice_bytes": 80000,
   "review_findings_reviewers": [
     {
       "name": "codex",

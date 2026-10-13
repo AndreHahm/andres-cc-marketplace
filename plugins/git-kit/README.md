@@ -71,6 +71,11 @@ cc --plugin-dir /path/to/git-kit
   "review_findings_generate_issues": false,
   "review_findings_min_rounds": 1,
   "review_findings_max_rounds": 3,
+  "cross_model_review_exclude_dirs": ["issues/"],
+  "cross_model_review_exclude_extensions": [],
+  "cross_model_review_exclude_globs": [],
+  "cross_model_review_budget_bytes": 250000,
+  "cross_model_review_max_slice_bytes": 80000,
   "review_findings_reviewers": [
     {"name": "codex", "enabled": true, "default_review_trigger": "@codex review", "full_review_trigger": "@codex full review"},
     {"name": "coderabbit", "enabled": true, "default_review_trigger": "@coderabbitai review", "full_review_trigger": "@coderabbitai full review"},
@@ -97,6 +102,8 @@ To override any of these per project, run `/git-create-git-kit-local-json` — i
 | `review_findings_severity_gate` | `false` | `true` restricts `handling-review-findings`'s fix/file pipeline to Critical/Major findings only — a Minor/nit finding is declined outright (unless explicitly requested) instead of being fixed or filed |
 | `review_findings_generate_issues` | `false` | Whether a finding that shows up after `handling-review-findings`'s own round budget is exhausted may be filed as an issue (`true`) instead of fixed anyway (`false`, the default) |
 | `review_findings_min_rounds` / `review_findings_max_rounds` | `1` / `3` | Floor/ceiling on how many review cycles `handling-review-findings` proactively triggers |
+| `cross_model_review_exclude_dirs` / `_extensions` / `_globs` | `["issues/"]` / `[]` / `[]` | Paths `cross-model-review` leaves out of what its reviewers read; every exclusion is listed in the report. A local file can only add exclusions |
+| `cross_model_review_budget_bytes` / `cross_model_review_max_slice_bytes` | `250000` / `80000` | Total diff size per round and the size of one slice; slices over budget are dropped lowest-priority first and always disclosed |
 | `review_findings_reviewers` | (array, seeded with codex/coderabbit/devin) | Per-reviewer `name`/`enabled`/`default_review_trigger`/`full_review_trigger` config `handling-review-findings` uses to post the next round's trigger comment |
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
