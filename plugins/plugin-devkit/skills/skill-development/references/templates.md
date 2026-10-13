@@ -19,40 +19,75 @@ For the authoritative decision tree (which specific content goes in SKILL.md vs.
 
 Use this template as your starting point. Customize the sections based on your skill's complexity.
 
-### Basic Template (Minimal)
+### Basic Template
+
+Token-optimized: carries the five standard sections the rulebook expects (Quick Start, When to Use, When NOT to Use, Testing & Validation, Reference Guide).
 
 ````markdown
 ---
-name: skill-name
+name: {skill-name}
 description: >-
-  What the skill does. Use when [specific trigger contexts].
-  [Optional: key constraints or scope].
+  {What it does — start with action verbs}. Use when {primary trigger conditions}:
+  {keywords}, {trigger phrases}, {file patterns}. {Optional: explicit scope or constraints}.
+allowed-tools: Read Edit Write Glob
 ---
 
-# Skill Name
+# {Skill Name}
+
+{One-line imperative summary of what to do}.
 
 ## Quick Start
-[Minimal example showing immediate usage. Code-first, 5-10 lines.]
 
-```bash
-# Example command or workflow
-command example here
-```
+1. **{Step 1}** — {brief instruction}
+2. **{Step 2}** — {brief instruction}
+3. **{Step 3}** — {brief instruction}
 
-## Core Workflow
-[Main 3-5 step workflow. Imperative style: "Do X", "Run Y", "Configure Z"]
+## When to Use
 
-## Advanced Options
-[Optional: specific variations, edge cases, configuration]
+- {Primary trigger condition}
+- {Secondary trigger condition}
+- {Specific scenario where this skill applies}
 
-## Key Notes
-- Important assumption or constraint
-- Common gotcha or best practice
-- Deployment location or integration point
+## When NOT to Use
 
-## Full Reference
-For detailed configuration, see `references/complete-guide.md`
+- {Exclusion 1} → use `{alternative-skill}` instead
+- {Exclusion 2} → {reason or alternative approach}
+
+## {Core Workflow}
+
+{Procedural steps or rules for the main use case.}
+
+- **{Rule 1}**: {Imperative constraint}.
+- **{Rule 2}**: {Imperative constraint}.
+
+---
+
+## Testing & Validation
+
+1. **{Check 1}** — {what to verify}
+2. **{Check 2}** — {what to verify}
+
+**Quality gates:**
+- [ ] {Gate 1}
+- [ ] {Gate 2}
+
+---
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/{file}.md` | {What it contains and when to read it} |
 ````
+
+#### Token Budget Checklist
+
+- [ ] SKILL.md under 500 lines total.
+- [ ] Description uses `>-` multiline format with trigger phrases ("Use when...").
+- [ ] Quick Start, When to Use, When NOT to Use, Testing & Validation, Reference Guide present.
+- [ ] No YAML metadata arrays (`keywords:`, `files:`, `version:`, `argument-hint:` removed).
+- [ ] No emoji section prefixes; no Priority tags.
+- [ ] Complex reference material (>80 lines, <20% usage) moved to `references/` directory.
 
 ### Complex Skills Template
 
