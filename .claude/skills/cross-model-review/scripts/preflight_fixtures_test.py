@@ -352,6 +352,30 @@ def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
         return True, "an unplannable scope sets PLAN_FAILED=1 and the chain still completes"
 
 
+def test_the_planner_skip_branch_survives_a_block_joined_with_and_and():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        planner_repo(repo)
+        variant = repo / "plugins" / "git-kit" / "scripts"  # a change to the planner's own folder
+        variant.mkdir(parents=True)
+        (variant / "json.py").write_text("x = 1\n", encoding="utf-8")
+        lines = [ln for ln in extract_planner_block().splitlines() if ln.strip()]
+        plugin_root = str(SKILL_DIR.parent.parent)
+        script = (
+            f"set -e\nexport CLAUDE_PLUGIN_ROOT={plugin_root!r}\nBASE=main\nSCOPE=\n"
+            f"{extract_inputs_block()}\n" + " && ".join(lines) + "\n"
+            'echo "CHAIN_DONE TOUCHED=${PLANNER_TOUCHED:-0}"\nls "$RUN/full.diff"\n'
+        )
+        result = run_bash(repo, script)
+        if "CHAIN_DONE TOUCHED=1" not in result.stdout or "full.diff" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"a skipped planner aborted the && chained block {detail}"
+        return (
+            True,
+            "with the planner skipped, a block joined with && still reaches its closing echo",
+        )
+
+
 def test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -428,6 +452,7 @@ CHECKS = [
     test_planner_sees_untracked_files_and_diff_goes_to_a_file,
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
     test_a_diff_touching_the_planner_skips_it_and_sets_the_flag,
+    test_the_planner_skip_branch_survives_a_block_joined_with_and_and,
     test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,
