@@ -1004,13 +1004,16 @@ def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
     return 2
 
 
-def _instructions_dir_problem(path: Path, repo: Path) -> str | None:
+def _instructions_dir_problem(path: Path, repo: Path, output: str | None) -> str | None:
     """Why `--instructions-dir` can't be used, or None. The reviewers write files
     into it, so it must be a new path outside the checkout: an existing directory
-    or symlink would be written through, and one inside the checkout would leave
-    scratch files in a shippable location."""
+    or symlink would be written through, one inside the checkout would leave
+    scratch files in a shippable location, and one equal to `--output` would turn
+    the result file's path into a directory."""
     if path.is_symlink() or path.exists():
         return f"--instructions-dir {str(path)!r} already exists; pass a new path"
+    if output and path.resolve() == Path(output).resolve():
+        return "--instructions-dir must differ from --output"
     if (path.parent.resolve() / path.name).is_relative_to(repo.resolve()):
         return f"--instructions-dir {str(path)!r} is inside the checkout; use a scratch directory"
     return None
@@ -1044,7 +1047,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
     if instructions_dir is not None:
-        problem = _instructions_dir_problem(instructions_dir, repo)
+        problem = _instructions_dir_problem(instructions_dir, repo, args.output)
         if problem:
             return _fail_run_codex_review(args, problem)
 
