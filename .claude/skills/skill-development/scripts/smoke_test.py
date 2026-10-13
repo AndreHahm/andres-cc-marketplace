@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Persisted smoke test for skill-development: frontmatter validity, referenced-file
 existence, and Bash-scope grant usage consistency."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -46,15 +47,22 @@ def check_bash_grants():
     # word-boundary command mention in the body? An unused grant is an R6 least-privilege
     # smell even when nothing in the body's own phrasing names the grant explicitly.
     text = SKILL_MD.read_text(encoding="utf-8")
-    header_end = text.find("\n---\n", 4) + 5
-    frontmatter, body = text[:header_end], text[header_end:]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not fm_line_match:
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return False, "frontmatter block is never closed"
+    frontmatter, body = text[:end], text[end + 5 :]
+    # Single-line value, or a YAML block scalar (>- / |) whose indented lines continue it.
+    fm_line_match = re.search(
+        r"^allowed-tools:[ \t]*((?:[>|][+-]?)?[ \t]*.*(?:\n[ \t]+.*)*)", frontmatter, re.MULTILINE
+    )
+    if not fm_line_match or not fm_line_match.group(1).strip():
         return True, "no allowed-tools line found (skip)"
     granted_cmds = re.findall(r"Bash\(([\w.-]+):", fm_line_match.group(1))
     unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
+            sorted(set(unused))
+        )
     return True, "every granted Bash command is invoked somewhere in the body"
 
 
