@@ -293,13 +293,9 @@ def extract_planner_block() -> str:
 
 
 def planner_repo(repo: pathlib.Path) -> None:
-    # The planner is run by its repo-relative path, so the scratch repo carries a copy of it on
-    # main, committed before the branch, so it is not part of the diff under review.
+    # The planner runs from the installed plugin root (planner_chain exports it), never from a
+    # path inside the repository under review, so the scratch repo carries no copy of it.
     init_repo(repo)
-    script = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
-    dest = repo / "plugins" / "git-kit" / "scripts"
-    dest.mkdir(parents=True)
-    (dest / "git-review-scope.py").write_bytes(script.read_bytes())
     (repo / "f.txt").write_text("line1\n", encoding="utf-8")
     commit_all(repo, "init")
     run_bash(repo, "git checkout -qb feature")
@@ -308,8 +304,10 @@ def planner_repo(repo: pathlib.Path) -> None:
 def planner_chain(extra: str, *, scope: str = "") -> str:
     inputs_block = extract_inputs_block()
     planner = extract_planner_block()
+    plugin_root = SKILL_DIR.parent.parent
     return f"""
 set -e
+export CLAUDE_PLUGIN_ROOT={str(plugin_root)!r}
 BASE=main
 SCOPE={scope!r}
 {inputs_block}

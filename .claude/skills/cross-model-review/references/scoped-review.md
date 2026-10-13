@@ -14,12 +14,15 @@ the checks below.
 
 ## 1. Plan (Preflight, inside the same chained Bash call as the throwaway-index export)
 
-**Scope of use.** Like the Codex dispatch it sits beside, this skill runs scripts by a path relative to
-the repository (`plugins/git-kit/scripts/git-review-scope.py`, `plugins/codex-kit/.../bridge-invoke.mjs`)
-under pre-approved grants, so it is meant for this marketplace's own repository, as the planner's own
-docstring says. In an unrelated repository that happens to contain a file at one of those paths, that
-file would run: do not run this skill there. The `PLANNER_TOUCHED` check below covers a diff that
-*changes* the planner; it cannot cover a planner file that is already on `$BASE`.
+**Scope of use.** The planner runs from the installed git-kit plugin (`${CLAUDE_PLUGIN_ROOT}/scripts/`),
+outside the repository under review, so a file a third-party repository keeps at some path of its own is
+never what runs. In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty and the `.claude/`
+mirror is used instead (`$PWD/.claude/scripts/git-review-scope.py`, from the checkout root). **Not
+covered:** the Codex dispatch beside it still runs `plugins/codex-kit/.../bridge-invoke.mjs` by a path
+relative to the repository, under its own pre-approved grant. In an unrelated repository that happens to
+contain a file at that path, that file would run, so do not run this skill's Codex pass there. That is
+codex-kit's own exposure, outside this change, and is reported as an open item. The `PLANNER_TOUCHED`
+check below covers a diff that *changes* the planner or its mirror.
 
 The planner must run in the call that exports `GIT_INDEX_FILE`, so intent-added untracked files are
 seen. **Check whether the diff changes the planner or this skill before running it**, because the planner
@@ -27,13 +30,14 @@ executes code from the working tree, which may be the branch under review:
 
 ```bash
 UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
-echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-[ -z "$PLANNER_TOUCHED" ] && { python3 -I plugins/git-kit/scripts/git-review-scope.py --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; }
+echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
+[ -z "$PLANNER_TOUCHED" ] && { python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; }
 "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
 ```
 
 The planner command is spelled out literally (not through an array) so the `allowed-tools` grant
-`Bash(python3 -I plugins/git-kit/scripts/git-review-scope.py:*)` can match it. `-I` keeps the script's
+`Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)` can match it (with the mirror
+substitution for this repository's own sessions, described above). `-I` keeps the script's
 own folder off the import path, so a file such as `json.py` added to that folder is not imported. The
 `grep -i` pattern covers the whole scripts folder and is case-insensitive.
 
@@ -123,7 +127,7 @@ slice, and write the new manifest and diffs to the new `$RUN`. A slice name must
 those:
 
 ```bash
-python3 -I plugins/git-kit/scripts/git-review-scope.py --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1
 ```
 
 Never list a slice that timed out or failed. The planner then skips files unchanged since a round that
