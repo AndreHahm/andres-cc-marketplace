@@ -593,10 +593,17 @@ def plan_scope(
     }
 
 
-def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+def _git(
+    repo: Path, *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[bytes]:
     try:
         return subprocess.run(
-            ["git", *args], cwd=repo, capture_output=True, timeout=_GIT_TIMEOUT_SECONDS, check=False
+            ["git", *args],
+            cwd=repo,
+            env=env,
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return subprocess.CompletedProcess(["git", *args], 124, b"", b"git timed out")
@@ -843,11 +850,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     def file_diff(path: str) -> bytes | None:
         if path not in diff_cache:
-            # A changed file's name is data: with literal pathspecs a name such as ":(glob)x" or
-            # "*" selects exactly that file, not pathspec magic that matches nothing or more.
+            # A changed file's name is data: GIT_LITERAL_PATHSPECS makes a name such as ":(glob)x"
+            # or "*" select exactly that file, not pathspec magic that matches nothing or more.
             result = _git(
                 repo,
-                "--literal-pathspecs",
                 "diff",
                 "--no-color",
                 "--no-renames",
@@ -858,6 +864,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.merge_base,
                 "--",
                 path,
+                env={**os.environ, "GIT_LITERAL_PATHSPECS": "1"},
             )
             diff_cache[path] = result.stdout if result.returncode == 0 else None
         return diff_cache[path]
