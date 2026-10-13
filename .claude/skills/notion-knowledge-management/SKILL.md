@@ -250,7 +250,11 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-3/ (2026-09-12) —
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-5/ (2026-10-13) — Quick
+Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json): evals 8-11 covering the
+org-level migration behavior (required `repo` from `notion.repo`, stop when it is unset, two-scope Bootstrap
+with a move candidate, long-text page-content blocks), 18/18 assertions; prior runs:
+evals/notion-knowledge-management/workspace/iteration-3/ (2026-09-12) —
 closed the 2 uncovered trigger phrases ("propose a goal for Q3", "log this as a research note"); prior
 runs: evals/notion-knowledge-management/workspace/iteration-2/ (2026-09-11) — Phase 7 Deep Test re-run
 verifying the Write/`Bash(wmgt_bridge_caller.py:*)` grants and the restructured classification-help approval

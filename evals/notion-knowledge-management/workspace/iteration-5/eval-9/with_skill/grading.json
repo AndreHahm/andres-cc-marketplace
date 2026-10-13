@@ -1,0 +1,31 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output stops and reports that notion.repo is unset",
+      "passed": true,
+      "evidence": "Opens 'Outcome: write blocked, nothing sent, no approval requested'; cites the stop-and-report rule for a null notion.repo"
+    },
+    {
+      "text": "Output does not invent or infer a repo value (from the git remote, the directory name or the plugin name) to proceed",
+      "passed": true,
+      "evidence": "'I will not infer a repo from the working directory or git remote'"
+    },
+    {
+      "text": "Output does not present a write as ready for approval or claim to have written the record",
+      "passed": true,
+      "evidence": "'I will not ask for write approval and I make no write call'; AskUserQuestion appears only under 'calls I would make once unblocked'"
+    },
+    {
+      "text": "Output tells the user how to resolve it (set notion.repo, via the local configuration override or activation)",
+      "passed": true,
+      "evidence": "'What I need from you to unblock': set notion.repo in .claude/workmanagement-kit.local.json"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

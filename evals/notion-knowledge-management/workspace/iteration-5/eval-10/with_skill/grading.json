@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output distinguishes the organization-level scope (Note, Research, Outcome-Learning) from the repository-level scope (Idea, Decision, Proposed Goal, Report)",
+      "passed": true,
+      "evidence": "Plan table separates Org AndreHahm / prod (Note, Research, Outcome-Learning) from Repo AndreHahm / andres-cc-marketplace / prod (Idea, Decision, Proposed Goal, Report)"
+    },
+    {
+      "text": "Output adopts already-present databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "Existing databases marked Adopt by stable ID; nothing recreated"
+    },
+    {
+      "text": "Output reports the Outcome-Learning database found at the repository-level path as a move candidate for user approval and does not move or recreate it silently",
+      "passed": true,
+      "evidence": "Outcome-Learning reported as 'Move candidate, your decision'; 'I never move it, or recreate it, silently'"
+    },
+    {
+      "text": "Output requires the repo select property on every database, with andres-cc-marketplace as an option",
+      "passed": true,
+      "evidence": "Schema checks: repo select present on all 7, option andres-cc-marketplace present; adds it if missing"
+    },
+    {
+      "text": "Output asks for plan-level approval before creating or changing anything",
+      "passed": true,
+      "evidence": "Plan-level AskUserQuestion approval ('Approve this exact bounded set of changes?') before any write"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

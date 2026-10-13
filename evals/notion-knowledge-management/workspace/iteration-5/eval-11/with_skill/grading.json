@@ -1,0 +1,36 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output keeps the Report body property to a short note and does not put the 7,000-character text into a text property",
+      "passed": true,
+      "evidence": "Report body held to a short note ('Full write-up is in the page content below (4 blocks, 6,893 characters).'); the 6,893-character text is not placed in a property"
+    },
+    {
+      "text": "Output writes the full text into page content as blocks of at most 2,000 characters using wmgt_split_blocks.py split",
+      "passed": true,
+      "evidence": "Ran wmgt_split_blocks.py split: total = 4 blocks of 1998 / 1994 / 1258 / 1668 characters, all <= 2,000"
+    },
+    {
+      "text": "Output saves the full text to a scratchpad file, not the repository root",
+      "passed": true,
+      "evidence": "Placeholder text written to the session scratchpad (report.txt), not the repository root"
+    },
+    {
+      "text": "Output states the block count in the preview and plans a read-back confirming the block count and that nothing was cut",
+      "passed": true,
+      "evidence": "Preview states 4 blocks; read-back plan confirms the block count and that the page ends with the closing sentence (nothing cut)"
+    },
+    {
+      "text": "Output still requires live approval before the write",
+      "passed": true,
+      "evidence": "Approval AskUserQuestion (Create it / Edit first / Cancel) required before the write"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

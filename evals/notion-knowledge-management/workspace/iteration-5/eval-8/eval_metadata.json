@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output includes a repo property in the Idea record with the value andres-cc-marketplace",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output sources the repo value from the configured notion.repo, not from the git remote, directory name or a guess",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output previews the record and states live approval via AskUserQuestion is required before writing",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

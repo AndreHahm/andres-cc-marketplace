@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output distinguishes the organization-level scope (Note, Research, Outcome-Learning) from the repository-level scope (Idea, Decision, Proposed Goal, Report)",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output adopts already-present databases by stable ID instead of recreating them",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output reports the Outcome-Learning database found at the repository-level path as a move candidate for user approval and does not move or recreate it silently",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output requires the repo select property on every database, with andres-cc-marketplace as an option",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output asks for plan-level approval before creating or changing anything",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

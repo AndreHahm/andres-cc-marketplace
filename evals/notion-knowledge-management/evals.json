@@ -53,12 +53,49 @@
       "files": [
         "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
       ]
+    },
+    {
+      "id": 8,
+      "name": "Required repo select sourced from notion.repo",
+      "prompt": "Capture this as an idea in Notion: add a --dry-run flag to the bulk exporter. The plugin's resolved configuration has notion.repo set to \"andres-cc-marketplace\" and the Idea database's repo select has that option. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview you would put in front of me.",
+      "expected_output": "The Idea record includes a repo property set to andres-cc-marketplace (from notion.repo), previewed before an approval-gated write.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Stop when notion.repo is unset",
+      "prompt": "Record a decision: we're moving the transition history export to a background job. The plugin's resolved configuration has notion.repo set to null (the shipped default; nothing has overridden it). This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview you would put in front of me.",
+      "expected_output": "The skill stops and reports that notion.repo is unset instead of writing a Decision without repo; it does not invent a value.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Two-scope bootstrap with move-candidate reporting",
+      "prompt": "Bootstrap the Notion databases for the prod environment. Repository name is andres-cc-marketplace. Findings so far: the organization-level page 'AndreHahm / prod' holds a Note and a Research database; an Outcome-Learning database exists only under the repository-level page 'AndreHahm / andres-cc-marketplace / prod'; the four repository-level databases (Idea, Decision, Proposed Goal, Report) already exist under the repository-level page. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview you would put in front of me.",
+      "expected_output": "The plan resolves two scopes, adopts existing databases by stable ID, reports the repo-level Outcome-Learning as a move candidate for approval, and ensures repo select on all.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Long text goes into page content blocks of at most 2,000 characters",
+      "prompt": "Log this as a Report in Notion: the full quarterly export-performance write-up. It is about 7,000 characters of prose (no tables or code). notion.repo is \"andres-cc-marketplace\". This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview you would put in front of me.",
+      "expected_output": "The body property holds only a short note; the full text goes into page content split into blocks of at most 2,000 characters via wmgt_split_blocks.py, with block count in the preview and a read-back.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
     "declared_scenarios_covered": 4,
-    "uncovered": []
+    "uncovered": [],
+    "methodology_note_iteration_5": "Evals 8-11 cover the 2026-10-13 org-level migration behavior (repo select, unset notion.repo, two-scope bootstrap, long-text blocks). Simulation only: agents were told not to call Notion."
   },
   "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }
