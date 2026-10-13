@@ -40,8 +40,20 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
             r"(?im)^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$"
         ),
     ),
+    # The line-anchored rule above misses an assignment that is not at the start of a
+    # line, and swallowing the rest of a mid-line match would eat surrounding prose, so
+    # this one replaces only the value (the `keep` group is the name and stays).
+    (
+        "dotenv_secret_assignment",
+        re.compile(
+            r"(?i)(?P<keep>\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)"
+            r"(?!\[REDACTED\])"
+            r"""(?:"(?:[^"\\]|\\.)*(?:"|$)|'(?:[^'\\]|\\.)*(?:'|$)|\S+)"""
+        ),
+    ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
+    ("github_pat_token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}\b")),
     ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]+\b")),
     # Anthropic keys (sk-ant-api03-...) contain hyphens, so the character class
     # must span them -- unlike the removed high-entropy catch-all (see the note
@@ -87,7 +99,7 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
         def _sub(match: re.Match, _name=name) -> str:
             counts[_name] = counts.get(_name, 0) + 1
-            return "[REDACTED]"
+            return (match.groupdict().get("keep") or "") + "[REDACTED]"
 
         result = pattern.sub(_sub, result)
     return result, counts
