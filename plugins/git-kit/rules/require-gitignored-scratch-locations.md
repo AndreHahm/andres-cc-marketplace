@@ -36,7 +36,8 @@ inspected after the fact:
    tooling — nothing in the test run itself pointed it at a gitignored directory.
 2. `.codex-review-instructions/` — created at repo root by `dispatch_reviewers()`'s own default
    `instructions_dir = repo / ".codex-review-instructions"` parameter in
-   `scripts/marketplace_ci/review.py`, surfaced the moment a local `pytest` run exercised that code path.
+   `scripts/marketplace_ci/review.py`, surfaced the moment a local `pytest` run exercised that code path. Fixed in #543: the default is now a
+   temporary directory, and `run-codex-review` takes `--instructions-dir`.
 
 Both had to be manually flagged mid-session and left for the user to delete by hand, rather than being
 caught structurally before they existed. This generalizes CLAUDE.md's existing "No Scratch Files at Repo

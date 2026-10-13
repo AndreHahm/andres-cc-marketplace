@@ -29,7 +29,6 @@ import ast
 import json
 import os
 import re
-import shutil
 import signal
 import subprocess
 import sys
@@ -38,8 +37,6 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
-# run-codex-review writes its per-reviewer instruction files here by default (review.py).
-INSTRUCTIONS_DIR = Path(".codex-review-instructions")
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
 RUN_TIMEOUT_SECONDS = 45 * 60
@@ -231,17 +228,14 @@ def main() -> int:
         env.pop(MODEL_VARIABLE, None)
         print(f"PARITY WARNING: {MODEL_VARIABLE} unset or unreadable; using the local default.")
 
+    # Beside --output, so the per-reviewer instruction files never touch the checkout.
+    instructions_dir = output.with_name(f"{output.stem}-instructions")
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
-        "--base-sha", base_sha, "--output", str(output),
+        "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),
+        "--output", str(output),
     ]  # fmt: skip
-    had_instructions_dir = INSTRUCTIONS_DIR.exists() or INSTRUCTIONS_DIR.is_symlink()
-    try:
-        result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
-    finally:
-        # Leave no scratch behind in the checkout (the directory is not part of the change).
-        if not had_instructions_dir and INSTRUCTIONS_DIR.is_dir():
-            shutil.rmtree(INSTRUCTIONS_DIR, ignore_errors=True)
+    result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
     if result is None:
         print("PARITY: run-codex-review could not be started or timed out.", file=sys.stderr)
         return 2

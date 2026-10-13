@@ -24,8 +24,8 @@ Pass `--output` a **fresh** file in the session scratchpad on every run, a retry
 even a dangling one) is refused with exit 2, and a path inside the checkout is refused too. A completed run's
 result must be the full payload `run-codex-review` writes (a string `mode`, the list fields, a boolean
 `blocking`); anything else, including its `error` failure payload, counts as "could not run". The CI entry point's
-per-reviewer scratch directory `.codex-review-instructions/` is removed after the run when the wrapper created it,
-and is also gitignored.
+per-reviewer instruction files go to `<output stem>-instructions/` beside `--output` (via `--instructions-dir`), so
+nothing is written into the checkout; the script leaves that directory in place.
 The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to;
 a value the bridge would reject (anything outside `[A-Za-z0-9._-]`, or over 64 characters) is ignored with the fallback warning.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as
