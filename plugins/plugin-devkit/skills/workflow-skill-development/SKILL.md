@@ -9,7 +9,7 @@ description: >-
   Not for simple single-purpose skills with no multi-step workflow — use skill-development
   directly for those; this skill covers workflow/orchestration architecture only, not domain
   content authoring.
-allowed-tools: Read Glob Grep Write TodoRead TodoWrite Skill
+allowed-tools: Read Glob Grep Write Skill
 ---
 
 # Workflow Skill Development

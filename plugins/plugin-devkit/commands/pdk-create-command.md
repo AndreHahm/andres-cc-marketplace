@@ -1,6 +1,6 @@
 ---
 description: Create a new Claude Code slash command with full feature support
-allowed-tools: Write, Read, Bash(mkdir:*)
+allowed-tools: Write, Bash(mkdir:*)
 argument-hint: '[command-name] [description]'
 version: 1.0.1
 ---
