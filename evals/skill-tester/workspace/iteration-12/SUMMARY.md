@@ -20,6 +20,20 @@ Both arms wrote a final newline every time, so this run cannot show that the sen
 
 The failure is rare in practice: before the 35-file data fix, 27 of 1,747 tracked `eval_metadata.json` and `grading.json` files (about 1.5%) lacked the newline, all from the most recent `triaging-dependabot-prs` and `plugin-rulebook` iterations. At that rate about 0.5 failures would be expected among the baseline's 32 files, so the sample is far too small to detect an effect. The writer that produced the missing newlines was not identified.
 
+## Reproducing
+
+- **The two document versions per scenario.** `with_skill` is the file at its current path in
+  `HEAD`; `baseline` is the same file as it was before the commit titled "tell eval writers to
+  end JSON files with a newline" (`git show <that commit>^:<path>`). The paths are
+  `plugins/plugin-devkit/skills/skill-tester/SKILL.md` (evals 5 and 6),
+  `plugins/plugin-devkit/skills/skill-development/agents/grader.md` (eval 7) and
+  `plugins/plugin-devkit/skills/skill-development/references/eval-workflow.md` (eval 8).
+- **The task.** The `prompt` of each eval in `evals.json`, with `<OUT>` replaced by an empty
+  scratch directory the agent writes to and the document copied to a neutrally named file.
+  Eval 7 also needs a one-line `answer.md` and a short `transcript.md` in that directory.
+- **The pass check.** `python check_trailing_newline.py <output-dir> <expected-file-count>`
+  (counts: 2, 2, 1 and 3 for evals 5 to 8). This checker is the only script persisted here.
+
 ## Not recorded
 
 - Raw agent outputs are not persisted: they are trivial fixture JSON, and files in `outputs/` that lack a newline would be rewritten by the repository's end-of-file hook, destroying the very property under test.
