@@ -9,8 +9,9 @@ description: >-
   skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
   Also covers skill structure, progressive disclosure, skill categories, testing, compliance
   testing, and slash-command conversion for Claude Code plugins. Not for refining a working skill
-  with operator checkpoints (skill-refiner-interactive) or unattended review-fix cycles
-  (skill-improver-loop): this skill authors and repairs, those two refine.
+  (skill-refiner-interactive, skill-improver-loop), auditing an existing evals.json
+  (reviewing-evals) or multi-step workflow skills (workflow-skill-development): this skill
+  authors and repairs.
 allowed-tools: Read Write Edit Glob Grep Agent Skill Bash(python:*) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
 ---
 
@@ -40,6 +41,7 @@ Identify the entry path and jump in:
 - **Refining an existing skill only** → use `/skill-refiner-interactive`
 - **Reviewing skill quality** (assessing and scoring only, with no edits) → use the `skill-reviewer` agent; this skill edits
 - **Plain reusable instruction text with no script, tool or bundled-file needs** (a prompt to store and re-run, not a skill) → tell the user to run `/prompt-library` (promptlibrary-kit; it is user-invoked only, so do not invoke it yourself), which stores it as a record in the project catalog. This skill creates skills: content that needs scripts, tool restrictions, bundled references or automatic activation.
+- **Auditing a skill's `evals.json` or `smoke_test.*` for defects** (vacuous assertions, wrong coverage claims, missing run records) → use `reviewing-evals`. This skill creates the evals as part of authoring a skill (Phase 3); `reviewing-evals` only checks existing eval artifacts and never edits the skill.
 - **Quick standalone repair (issue already diagnosed)** → run `python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py` directly; skip the full skill workflow
 - **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass. Phase 3.5 compliance testing is the compatible exception: it measures a different axis and can run after or alongside either.
 - **A skill with multi-step phases, sub-agent orchestration, decision trees, or progressive disclosure across `references/`/`workflows/`** → use `workflow-skill-development` instead. This skill covers single-purpose skills with no multi-step workflow (just guidance); `workflow-skill-development` covers workflow/orchestration architecture — sequential pipelines, routing patterns, safety gates, task tracking, or phased execution.

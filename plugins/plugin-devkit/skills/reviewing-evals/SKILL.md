@@ -34,6 +34,7 @@ instead of over multiple review rounds.
 
 - **Running evals or benchmarking** — use `skill-tester` (it executes evals with_skill vs baseline; this skill only checks `evals.json`'s structure — it does not execute the evals themselves, though it does execute the target's own `scripts/smoke_test.*` as part of Check 1, under the trust boundary in step 2 below)
 - **Reviewing skill quality** — use `skill-reviewer` (structure, content, clarity; this skill checks eval artifacts only)
+- **Creating, repairing or rewriting a skill or its evals** — use `skill-development` (it authors skills and writes their evals; this skill only audits existing eval artifacts and never edits)
 - **Fixing eval defects** — this skill finds and reports only; it cannot invoke `skill-development` itself (its `Skill` grant is scoped to `plugin-auditor` only). The caller/session applies the fix — via `skill-development` or a direct edit — then re-runs this check
 
 ## Quick Start

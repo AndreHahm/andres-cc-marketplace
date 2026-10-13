@@ -112,7 +112,7 @@ plugins/<plugin-name>/
 
 ## When NOT to Use
 
-- Simple single-purpose skills with no workflow (just guidance) — write the SKILL.md directly
+- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture
 - Writing the actual domain content of a skill (this teaches structure, not domain expertise)
 - Plugin configuration (plugin.json, hooks, commands) — use plugin development guides
 - Non-skill Claude Code development — this is specifically for skill architecture
