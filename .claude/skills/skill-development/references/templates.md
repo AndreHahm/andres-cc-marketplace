@@ -337,13 +337,13 @@ allowed-tools: Bash(git:*)
 # Example 3: Read-only analysis (inspect code, no execution)
 ---
 name: code-analyzer
-allowed-tools: Read,Bash(grep:*,ls:*)
+allowed-tools: Read,Bash(grep:*),Bash(ls:*)
 ---
 
 # Example 4: Skill with external dependencies (limited network, file ops only)
 ---
 name: markdown-doc-generator
-allowed-tools: Read,Write,Bash(python:*,curl:*)
+allowed-tools: Read,Write,Bash(python:*),Bash(curl:*)
 ---
 ```
 
