@@ -30,7 +30,8 @@ The failure is rare in practice: before the 35-file data fix, 27 of 1,747 tracke
   `plugins/plugin-devkit/skills/skill-development/references/eval-workflow.md` (eval 8).
 - **The task.** The `prompt` of each eval in `evals.json`, with `<OUT>` replaced by an empty
   scratch directory the agent writes to and the document copied to a neutrally named file.
-  Eval 7 also needs a one-line `answer.md` and a short `transcript.md` in that directory.
+  For eval 7 (the grader), `<OUT>` is the directory holding a short `transcript.md` and an
+  `outputs/` subdirectory with a one-line `answer.md`; the grading file is saved in `<OUT>` itself.
 - **The pass check.** `python check_trailing_newline.py <output-dir> <expected-file-count>`
   (counts: 2, 2, 1 and 3 for evals 5 to 8). This checker is the only script persisted here.
 
