@@ -199,6 +199,39 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_check_token_shapes(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.sync_plan import SyncError
+    from scripts.marketplace_ci.token_shapes import plan_token_shapes_sync
+
+    repo = Path.cwd()
+    try:
+        plan = plan_token_shapes_sync(repo)
+    except SyncError as exc:
+        print(f"check-token-shapes: {exc}", file=sys.stderr)
+        return 2
+    if not plan.actions:
+        print("check-token-shapes: OK")
+        return 0
+    _report("token-shapes", plan.actions, repo)
+    print("check-token-shapes: consumer copies differ; run sync-token-shapes")
+    return 1
+
+
+def _handle_sync_token_shapes(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.sync import apply_sync_plan
+    from scripts.marketplace_ci.sync_plan import SyncError
+    from scripts.marketplace_ci.token_shapes import plan_token_shapes_sync
+
+    repo = Path.cwd()
+    try:
+        result = apply_sync_plan(plan_token_shapes_sync(repo))
+    except SyncError as exc:
+        print(f"sync-token-shapes: {exc}", file=sys.stderr)
+        return 2
+    print(f"sync-token-shapes: applied {len(result.applied)} action(s)")
+    return 0
+
+
 def _handle_check_codex_exports(args: argparse.Namespace) -> int:
     from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
     from scripts.marketplace_ci.registry import RegistryError
@@ -403,10 +436,11 @@ def _handle_check_all(args: argparse.Namespace) -> int:
     mirrors_rc = _handle_check_plugin_mirrors(args)
     exports_rc = _handle_check_codex_exports(args)
     prefixes_rc = _handle_check_prefixes(args)
+    token_shapes_rc = _handle_check_token_shapes(args)
     rc = (
         2
-        if (mirrors_rc == 2 or exports_rc == 2 or prefixes_rc == 2)
-        else (1 if (mirrors_rc or exports_rc or prefixes_rc) else 0)
+        if (mirrors_rc == 2 or exports_rc == 2 or prefixes_rc == 2 or token_shapes_rc == 2)
+        else (1 if (mirrors_rc or exports_rc or prefixes_rc or token_shapes_rc) else 0)
     )
 
     if getattr(args, "json_output", None):
@@ -414,6 +448,7 @@ def _handle_check_all(args: argparse.Namespace) -> int:
             "check_plugin_mirrors": mirrors_rc,
             "check_codex_exports": exports_rc,
             "check_prefixes": prefixes_rc,
+            "check_token_shapes": token_shapes_rc,
             "exit_code": rc,
         }
         Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -1146,6 +1181,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="also `git add` each applied destination whose own canonical source is already staged",
     )
     convert_exports.set_defaults(handler=_handle_convert_codex_exports)
+
+    subparsers.add_parser(
+        "check-token-shapes", help="verify each plugin's secret token-shapes copy matches canonical"
+    ).set_defaults(handler=_handle_check_token_shapes)
+
+    subparsers.add_parser(
+        "sync-token-shapes", help="copy the canonical secret token shapes into each plugin"
+    ).set_defaults(handler=_handle_sync_token_shapes)
 
     subparsers.add_parser(
         "check-prefixes", help="verify plugin-root files carry their registered prefix"

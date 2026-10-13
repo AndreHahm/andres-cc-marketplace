@@ -259,11 +259,23 @@ def test_the_node_chain_codex_review_runs_stays_inside_the_tier1_set():
     node_files = sorted(p for p in TIER1_FILES if p.endswith(".mjs"))
     assert len(node_files) == 3, node_files
     specifier = re.compile(r"""(?:from\s+|import\s*\(\s*|require\(\s*)["'](\.{1,2}/[^"']+)["']""")
+    # A data file read next to the module (new URL("./x.json", import.meta.url)) is loaded by the
+    # same key-bearing job, so it is as much a part of the chain as an import.
+    data_read = re.compile(r"""new\s+URL\(\s*["'](\.{1,2}/[^"']+)["']\s*,\s*import\.meta\.url""")
     for rel in node_files:
         source = (REPO_ROOT / rel).read_text(encoding="utf-8")
-        for target in specifier.findall(source):
+        for target in (*specifier.findall(source), *data_read.findall(source)):
             resolved = posixpath.normpath(posixpath.join(posixpath.dirname(rel), target))
             assert resolved in TIER1_FILES, f"{rel} imports {resolved}, which is not Tier 1"
+
+
+def test_data_files_review_py_loads_stay_inside_the_tier1_set():
+    """review.py runs from the PR checkout in the key-bearing job, so the shapes file it reads
+    at import must be gated the same way its own code is."""
+    from scripts.marketplace_ci import review
+
+    relative = review._TOKEN_SHAPES_FILE.resolve().relative_to(REPO_ROOT).as_posix()
+    assert relative in TIER1_FILES
 
 
 def test_every_tier1_file_is_ineligible_for_the_zero_reviewer_bypass():

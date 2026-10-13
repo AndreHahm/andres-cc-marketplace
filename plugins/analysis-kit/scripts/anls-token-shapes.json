@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "note": "Canonical prefix-based secret token shapes. Edit only this file, then run `python -m scripts.marketplace_ci sync-token-shapes`; the per-plugin copies are byte-identical and `check-all` fails if one drifts. Python consumers must compile each pattern with re.ASCII (or scope it with (?a:...)) so \\b matches JavaScript's ASCII-only word boundary.",
+  "shapes": [
+    {"name": "aws_access_key", "pattern": "\\bAKIA[0-9A-Z]{16}\\b"},
+    {"name": "github_token", "pattern": "\\bgh[pousr]_[A-Za-z0-9]{36,}\\b"},
+    {"name": "github_pat_token", "pattern": "\\bgithub_pat_[A-Za-z0-9_]{22,}\\b"},
+    {"name": "slack_token", "pattern": "\\bxox[baprs]-[A-Za-z0-9-]+\\b"},
+    {"name": "generic_sk_token", "pattern": "\\bsk-[A-Za-z0-9-]{20,}\\b"},
+    {"name": "google_api_key", "pattern": "\\bAIza[0-9A-Za-z_-]{35}\\b"},
+    {"name": "jwt_token", "pattern": "\\beyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*\\b"}
+  ]
+}

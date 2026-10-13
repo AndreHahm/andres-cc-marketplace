@@ -986,6 +986,10 @@ jobs:
       # ever running the review from an unverified copy of its own
       # control-plane code.
       #
+      # The set is code and the data that code loads at import: the two token_shapes
+      # JSON files feed the secret redaction of review.py and codex-exec.mjs, so they are
+      # gated like those modules.
+      #
       # Scoped to the review-dispatch-critical (Tier 1) module set only --
       # not the whole scripts/ tree -- per issue #351 (direction #3):
       # __main__.py imports every handler's own dependencies lazily,
@@ -1056,8 +1060,10 @@ jobs:
               .python-versions \
               plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs \
               plugins/codex-kit/scripts/lib/codex-exec.mjs \
-              plugins/codex-kit/scripts/lib/cdx-process.mjs; then
-            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec or uv/Python-version config (pyproject.toml, uv.lock, uv.toml, .python-version, .python-versions), or the Node bridge this job runs with the API key (plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs, plugins/codex-kit/scripts/lib/codex-exec.mjs, plugins/codex-kit/scripts/lib/cdx-process.mjs) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
+              plugins/codex-kit/scripts/lib/cdx-process.mjs \
+              scripts/marketplace_ci/token_shapes.json \
+              plugins/codex-kit/scripts/lib/cdx-token-shapes.json; then
+            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec or uv/Python-version config (pyproject.toml, uv.lock, uv.toml, .python-version, .python-versions), or the Node bridge this job runs with the API key (plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs, plugins/codex-kit/scripts/lib/codex-exec.mjs, plugins/codex-kit/scripts/lib/cdx-process.mjs) or the secret-redaction shapes those two load at import (scripts/marketplace_ci/token_shapes.json, plugins/codex-kit/scripts/lib/cdx-token-shapes.json) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi
 

@@ -50,6 +50,23 @@ def repo(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def token_shapes_seeded(repo: Path) -> Path:
+    """`repo` plus the real canonical token-shapes file and in-sync copies in every consumer.
+
+    `check-all` runs the token-shapes check, which exits 2 when the canonical file is absent.
+    """
+    from scripts.marketplace_ci.token_shapes import CANONICAL, CONSUMERS
+
+    real_repo = Path(__file__).resolve().parents[2]
+    data = (real_repo / CANONICAL).read_bytes()
+    for relative in (CANONICAL, *CONSUMERS):
+        destination = repo / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+    return repo
+
+
+@pytest.fixture
 def git_repo(repo: Path) -> GitRepoHelper:
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)

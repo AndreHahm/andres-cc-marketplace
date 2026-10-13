@@ -76,6 +76,7 @@ EXTERNAL_HOOK_SCRIPT_MIRRORS: tuple[tuple[str, str], ...] = (
     ("codex-kit", "scripts/lib/cdx-claude-session-transfer.mjs"),
     ("codex-kit", "scripts/lib/codex-config.mjs"),
     ("codex-kit", "scripts/lib/codex-exec.mjs"),
+    ("codex-kit", "scripts/lib/cdx-token-shapes.json"),
     ("codex-kit", "scripts/lib/cdx-codex.mjs"),
     ("codex-kit", "scripts/lib/cdx-fs.mjs"),
     ("codex-kit", "scripts/lib/cdx-git.mjs"),

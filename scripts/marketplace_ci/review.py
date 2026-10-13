@@ -551,6 +551,9 @@ BYPASS_INELIGIBLE_PREFIXES = (
     "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
     "plugins/codex-kit/scripts/lib/codex-exec.mjs",
     "plugins/codex-kit/scripts/lib/cdx-process.mjs",
+    # The shapes file codex-exec.mjs loads at import (the canonical copy is already covered by
+    # the "scripts/" prefix above): a PR touching only it must reach the hard-refuse step.
+    "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     # The other 2 of pr_policy.py's 3 _CODEOWNERS_CANDIDATES -- a PR adding
     # or editing either one changes who check_merge_rights lets merge for
     # every subsequent PR (a CODEOWNERS match is terminal: it both grants
@@ -1423,15 +1426,35 @@ def _sanitize_log_text(text: str) -> str:
 # would swallow everything after the match. The bridge redacts before it
 # slices, but a few of its error contributors (a semantic-validation detail,
 # a Node crash trace) reach this point unredacted.
+_TOKEN_SHAPES_FILE = Path(__file__).with_name("token_shapes.json")
+
+
+def _token_shapes_alternation(path: Path = _TOKEN_SHAPES_FILE) -> str:
+    """The shared prefix-based token shapes (token_shapes.json) as one regex alternation.
+
+    Wrapped in (?a:...) so a word boundary behaves like the Node redactor's: the default Unicode
+    boundary missed a token next to an accented or CJK character. A missing or malformed file
+    raises at import; silently redacting nothing would fail open. The validation is inline, not
+    an import of token_shapes.py, to keep this module's import closure unchanged.
+    """
+    document = json.loads(path.read_text(encoding="utf-8"))
+    valid = (
+        isinstance(document, dict)
+        and document.get("version") == 1
+        and isinstance(document.get("shapes"), list)
+        and bool(document["shapes"])
+        and all(
+            isinstance(shape, dict) and isinstance(shape.get("pattern"), str) and shape["pattern"]
+            for shape in document["shapes"]
+        )
+    )
+    if not valid:
+        raise ValueError(f"{path.name}: expected version 1 and a non-empty list of shapes")
+    return "(?a:" + "|".join(shape["pattern"] for shape in document["shapes"]) + ")"
+
+
 _SECRET_TOKEN_PATTERNS = re.compile(
-    r"\bsk-[A-Za-z0-9-]{20,}"
-    r"|\bgh[pousr]_[A-Za-z0-9]{36,}"
-    r"|\bgithub_pat_[A-Za-z0-9_]{22,}"
-    r"|\bxox[baprs]-[A-Za-z0-9-]+"
-    r"|\bAKIA[0-9A-Z]{16}\b"
-    r"|\bAIza[0-9A-Za-z_-]{35}"
-    r"|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
-    r"|\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]{8,}"
+    _token_shapes_alternation() + r"|\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]{8,}"
     # A bare "Bearer <word>" is usually prose ("invalid Bearer authentication
     # scheme"), so a bare value must look like a token: 16+ characters containing a
     # digit, a lower-to-upper step or two capitals in a row, or any 20+ run (the

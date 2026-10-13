@@ -41,6 +41,11 @@ TIER1_FILES = frozenset(
         "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
         "plugins/codex-kit/scripts/lib/codex-exec.mjs",
         "plugins/codex-kit/scripts/lib/cdx-process.mjs",
+        # Data those two read at import: review.py and codex-exec.mjs build their secret
+        # redaction from these files, so a PR editing one could weaken redaction in the job
+        # that holds the API key. Gated like the code that loads them.
+        "scripts/marketplace_ci/token_shapes.json",
+        "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     }
 )
 

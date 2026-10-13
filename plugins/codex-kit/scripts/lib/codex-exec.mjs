@@ -128,6 +128,28 @@ export function classifyNonZeroExit(stderr, prompt = "") {
   return FAILURE_CATEGORIES.NON_ZERO_EXIT;
 }
 
+// Prefix-based token shapes are shared with the other redactors through one canonical file.
+// cdx-token-shapes.json is a byte-identical copy of scripts/marketplace_ci/token_shapes.json;
+// edit that file and run `python -m scripts.marketplace_ci sync-token-shapes`, never this copy.
+// A missing or malformed file throws at import: redacting nothing would fail open.
+export function parseTokenShapes(text) {
+  const document = JSON.parse(text);
+  const shapes = document?.shapes;
+  if (
+    document?.version !== 1 ||
+    !Array.isArray(shapes) ||
+    shapes.length === 0 ||
+    !shapes.every((shape) => typeof shape?.pattern === "string" && shape.pattern !== "")
+  ) {
+    throw new Error("cdx-token-shapes.json: expected version 1 and a non-empty list of shapes");
+  }
+  return shapes.map(({ pattern }) => new RegExp(pattern, "g"));
+}
+
+const TOKEN_SHAPES = parseTokenShapes(
+  fs.readFileSync(new URL("./cdx-token-shapes.json", import.meta.url), "utf8")
+);
+
 // Ported pattern set (not the file itself -- codex-kit stays JS per
 // require-declared-plugin-language.md) from analysis-kit's
 // scripts/anls_redact_secrets.py, applied to the raw Codex stderr tail before it
@@ -147,13 +169,7 @@ const SECRET_PATTERNS = [
   // which is both an over-redaction bug and untested for that case.
   /\bbearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi,
   /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
-  /\bAKIA[0-9A-Z]{16}\b/g,
-  /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g,
-  /\bgithub_pat_[A-Za-z0-9_]{22,}\b/g,
-  /\bxox[baprs]-[A-Za-z0-9-]+\b/g,
-  /\bsk-[A-Za-z0-9-]{20,}\b/g,
-  /\bAIza[0-9A-Za-z_-]{35}\b/g,
-  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b/g,
+  ...TOKEN_SHAPES,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g
 ];
 

@@ -20,14 +20,51 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import re
 import sys
 import typing
 from pathlib import Path
 
-# A sibling list, SECRET_PATTERNS in plugins/promptlibrary-kit/scripts/plib_catalog_validate.py,
-# was seeded from these shapes and diverges on purpose (extra shapes; it detects and blocks,
-# never rewrites). When changing a pattern here, check whether the sibling needs the same change.
+
+def _load_token_shapes(path: Path | None = None) -> list[tuple[str, re.Pattern]]:
+    """Prefix-based token shapes, shared with the other redactors through one canonical file.
+
+    anls-token-shapes.json is a byte-identical copy of scripts/marketplace_ci/token_shapes.json;
+    edit that file and run `python -m scripts.marketplace_ci sync-token-shapes`, never this copy.
+    Compiled with re.ASCII so a word boundary behaves like the JavaScript redactor's (the default
+    Unicode boundary missed a token next to an accented or CJK character). A missing or
+    malformed file raises at import: silently redacting nothing would fail open.
+    """
+    document = json.loads(
+        (path or Path(__file__).with_name("anls-token-shapes.json")).read_text("utf-8")
+    )
+    valid = (
+        isinstance(document, dict)
+        and document.get("version") == 1
+        and isinstance(document.get("shapes"), list)
+        and bool(document["shapes"])
+        and all(
+            isinstance(shape, dict)
+            and isinstance(shape.get("name"), str)
+            and isinstance(shape.get("pattern"), str)
+            and shape["pattern"]
+            for shape in document["shapes"]
+        )
+    )
+    if not valid:
+        raise ValueError(
+            "anls-token-shapes.json: expected version 1 and a non-empty list of name/pattern shapes"
+        )
+    return [(shape["name"], re.compile(shape["pattern"], re.ASCII)) for shape in document["shapes"]]
+
+
+_TOKEN_SHAPES = _load_token_shapes()
+
+# The token shapes above are shared; everything else here is this plugin's own. A sibling list,
+# SECRET_PATTERNS in plugins/promptlibrary-kit/scripts/plib_catalog_validate.py, was seeded from
+# these rules and diverges on purpose (extra shapes; it detects and blocks, never rewrites).
+# When changing a non-shared pattern here, check whether the sibling needs the same change.
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     # "authorization" alone is common English prose -- only treat it as a header when
     # followed by an explicit separator. "bearer" is rare enough outside real tokens
@@ -60,17 +97,7 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
             r"""|'(?:[^'\\\r\n]|\\[^\r\n]?)*(?:'|(?=[\r\n])|$)|\S+)"""
         ),
     ),
-    ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
-    ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
-    ("github_pat_token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{22,}\b")),
-    ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]+\b")),
-    # Anthropic keys (sk-ant-api03-...) contain hyphens, so the character class
-    # must span them -- unlike the removed high-entropy catch-all (see the note
-    # below _PATTERNS), this stays anchored to the literal "sk-" prefix, which
-    # doesn't collide with this plugin's own <scope-slug>-<timestamp> filenames.
-    ("generic_sk_token", re.compile(r"\bsk-[A-Za-z0-9-]{20,}\b")),
-    ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
-    ("jwt_token", re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b")),
+    *_TOKEN_SHAPES,
     (
         "pem_private_key_block",
         re.compile(
