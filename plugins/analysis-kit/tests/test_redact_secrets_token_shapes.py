@@ -35,6 +35,27 @@ def test_redacts_mid_line_secret_assignment_value_only():
     assert redacted.endswith(" then more")
 
 
+def test_name_that_only_contains_a_credential_word_is_not_redacted():
+    for text in ("error while sorting: sortKey=asc then more", "saw monkey=banana today"):
+        redacted, counts = redact_secrets.redact(text)
+        assert redacted == text
+        assert counts == {}
+
+
+def test_redacts_camel_case_compound_credential_name():
+    value = "hunter2" + "abcdef"
+    redacted, _ = redact_secrets.redact(f"failed with apiKey={value} again")
+    assert value not in redacted
+    assert redacted.startswith("failed with apiKey=")
+
+
+def test_unterminated_quote_redacts_only_the_rest_of_its_line():
+    redacted, _ = redact_secrets.redact('stderr: API_KEY="abc\nlots of other diagnostic text\nmore')
+    assert "abc" not in redacted
+    assert "lots of other diagnostic text" in redacted
+    assert redacted.endswith("\nmore")
+
+
 def test_prose_without_an_assignment_is_untouched():
     text = "the password was rotated and the key is stored elsewhere"
     redacted, counts = redact_secrets.redact(text)
