@@ -27,7 +27,14 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
 
 - **`notion-knowledge-management`** — capture and manage Ideas, Decisions (with
   proposed/accepted/superseded/reversed states), proposed Goals, Notes, Research, Reports,
-  Outcomes, and Learning in Notion.
+  Outcomes, and Learning in Notion. Notes, Research and Outcome/Learning records live in
+  organization-level databases shared by every repository (`AndreHahm / <env> / <Type>`); Ideas,
+  Decisions, proposed Goals and Reports live in repository-level ones
+  (`AndreHahm / <repo> / <env> / <Type>`). Every record carries a required `repo` select property,
+  set from the `notion.repo` configuration value. Long text goes into page content as blocks of at
+  most 2,000 characters, split by `scripts/wmgt_split_blocks.py` (paged with `--start`/`--count`;
+  fixture test `scripts/wmgt_test_split_blocks.py`). A live probe found the Notion connector accepts
+  longer text, so the limit is kept as a conservative contract, not a connector-enforced rule.
 - **`linear-work-management`** — read and update accepted Projects, Milestones, and Issues in
   Linear under Linear's own authority (Goals and Roadmaps are handoff-only today). It also reads Initiatives, read-only, through
   an optional second, separately installed Linear connector; that read is gated by its own
@@ -172,6 +179,11 @@ Items still open from Wave 1:
   for what the schema defines and deliberately does not validate. Batch approval is backed by a
   separate script, `scripts/wmgt_batch_hash.py`, which hashes the previewed file, caps and checks its
   records, and fails closed (a script failure stops the batch).
+- **`versioned-configuration.json`'s `notion.repo` ships `null`, so no Notion record write can
+  proceed until an installation sets it.** It names the single repository written into the required
+  `repo` select property, must equal one of that property's existing options, and a `null` or
+  unmatched value stops the write because the kit never guesses a repository. Set it through
+  `.claude/workmanagement-kit.local.json`, like every other shipped default.
 - **The Codex bridge-caller script (`scripts/wmgt_bridge_caller.py`) that dispatches
   `work-transition-reviewer`/`work-intake-classifier` live is built and has run live, for real,
   against both agents** — see each agent's own body for its exact invocation. Known reliability
