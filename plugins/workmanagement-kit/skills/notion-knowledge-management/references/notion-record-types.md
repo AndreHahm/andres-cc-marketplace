@@ -1,7 +1,7 @@
 # Notion Record Types
 
 Seven record types this skill owns. Each row below lists the properties beyond the shared set
-(`source`, `related-record`, `authority`, `transition-id`, `owner`, `date`, and `status` — except
+(`source`, `related-record`, `authority`, `transition-id`, `owner`, `date`, `repo`, and `status` — except
 on Decision, where `decision-state` is the sole authoritative state instead, see SKILL.md's
 Decision State Machine section — see SKILL.md) that this specific type requires or supports.
 
@@ -80,6 +80,12 @@ Decision State Machine section — see SKILL.md) that this specific type require
 - `title` is required on every type — it is the primary human-readable identifier shown in
   previews and approval prompts.
 - `related-record`/`related-*` fields always store a stable ID, never a display name.
+- `repo` is a required select property on every type, set from the plugin's `notion.repo`
+  configuration value (`../../../FOUNDATION_CONTRACTS.md`), never from the record's content or a
+  caller's message. It must equal an existing option; if `notion.repo` is unset or matches no option,
+  stop and report instead of writing the record without it. Note, Research and Outcome/Learning live in
+  organization-level databases shared by all repositories, so `repo` is what tells their rows apart; the
+  other four types live in a per-repository database and carry `repo` for uniformity.
 - No type in this table supports a delete operation — see SKILL.md's Gotchas.
 - `disposition-history` is append-only — a dispositioning pass adds entries, it never replaces or
   reorders the array.

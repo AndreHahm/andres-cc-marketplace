@@ -152,6 +152,7 @@ specific, not a fact about the plugin).
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
+    "repo": null,
     "databases": {
       "test": {},
       "prod": {}
@@ -221,6 +222,17 @@ below). `linear.repositories` is additive within schema v2 and ships empty.
   any future resolver code reading both must not assume a shared literal string; translate
   `production_workspace_id`'s `production` to `databases`' `prod` key explicitly rather than deriving
   one name from the other.
+  **Scope per record type is fixed by the layout, not stored in this map:** `note`, `research` and
+  `outcome-learning` are organization-level databases, found at `AndreHahm / <env> / <Type>` (one set
+  shared by every repository); `idea`, `decision`, `proposed-goal` and `report` are repository-level
+  databases, found at `AndreHahm / <repo> / <env> / <Type>`. The map still holds one ID per type and
+  environment; a database is always resolved by its stored ID, never by its title or by the child
+  listing of its parent page.
+- `notion.repo` — the single repository name this installation writes into the required `repo` select
+  property that every one of the seven record types carries (for example `andres-cc-marketplace`). It
+  must equal one of that property's existing options. Ships `null`; a `null` or unmatched value means no
+  Notion record write may proceed, since the property is required and the kit never guesses a repository.
+  A second repository will need a map here instead of one string (a later, breaking change).
 - `test_workspace_id` / `test_team_id` — the isolated test locations Bootstrap also resolves,
   per its own "resolve the production and an isolated test location" instruction.
 
@@ -715,3 +727,9 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
   represent both environments' resolved database IDs at once. Found live during Foundational Setup
   (`.draft/prompts/workmanagement-kit/_done/foundation-setup-wave1.md`): Bootstrap resolved 7 test + 7
   prod database IDs, and the previously-documented flat shape could only hold one set.
+- 2026-10-13 — Notion layout split into organization-level (`note`, `research`, `outcome-learning`) and
+  repository-level (`idea`, `decision`, `proposed-goal`, `report`) databases (decision D46), and a required
+  `repo` select property added to all seven record types (D61). `notion.databases` keeps its flat
+  per-environment shape; scope per type is fixed by the layout. Added `notion.repo` (ships `null`)
+  as the value written into every record's `repo` property. Additive within schema v2. The live
+  Notion workspace was migrated by hand beforehand (moves keep database IDs).
