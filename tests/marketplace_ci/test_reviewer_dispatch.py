@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections import Counter
@@ -80,6 +81,22 @@ def test_dispatch_default_instructions_dir_is_a_temp_dir_outside_the_repo(
     assert not (repo / ".codex-review-instructions").exists()
     assert all(not p.is_relative_to(repo) for p in seen)
     assert all(not p.parent.exists() for p in seen)  # the temp dir is gone after the call
+
+
+def test_dispatch_refuses_a_default_temp_dir_inside_the_repo(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    # TMPDIR is honored by tempfile; one pointing into the checkout must not receive the files.
+    inside = repo / "scratch-tmp"
+    inside.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(inside))
+    seen = _bridge_instruction_files(monkeypatch, completed)
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    with pytest.raises(OSError, match="inside the checkout"):
+        dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+
+    assert not seen
+    assert list(inside.iterdir()) == []
 
 
 def test_dispatch_writes_into_a_caller_supplied_instructions_dir_and_keeps_it(
