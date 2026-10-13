@@ -330,7 +330,7 @@ allowed-tools: Read,Write,Bash(*)
 
 ✅ **GOOD:**
 ```yaml
-allowed-tools: Read,Write,Bash(python:*,grep:*)
+allowed-tools: Read,Write,Bash(python:*),Bash(grep:*)
 ```
 **Why it works:** Only Python and grep commands allowed.
 
