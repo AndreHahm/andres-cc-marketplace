@@ -11,7 +11,7 @@ For the latest spec, fetch official docs: `WebFetch https://code.claude.com/docs
 | Field | Description |
 |-------|-------------|
 | `name` | Lowercase letters, numbers, and hyphens only (max 64 chars). If omitted, uses directory name. When a plugin declares skills via `"skills": ["./"]` in `plugin.json`, the `name` field becomes the invocation name (not the directory basename), giving stable identity across install methods. |
-| `description` | Trigger condition — see Phase 5 for optimization. 80–1024 chars; combined with `when_to_use`, capped at 1536 chars in skill listing (skills.md). See `references/size-limits.md`. |
+| `description` | Trigger condition — see Phase 5 for optimization. 80–1024 chars; combined with `when_to_use`, capped at 1536 chars in skill listing (skills.md). See `../../references/pdk-size-limits.md`. |
 | `when_to_use` | Additional context for when Claude should invoke. Trigger phrases or example requests. Up to 512 chars; counts toward the 1536-char cap (combined with description). (skills.md) |
 | `argument-hint` | Hint shown during autocomplete (e.g., `[issue-number]`). Must match what the body actually consumes — see plugin-rulebook R22 (missing/stale/wrong-position checks). |
 | `arguments` | Named positional arguments for `$name` substitution. Accepts space-separated string or YAML list. Names map to argument positions in order, 0-based (`$0` = first name). (skills.md) |

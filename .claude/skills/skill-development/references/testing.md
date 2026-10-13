@@ -103,5 +103,5 @@ When editing an existing skill, always compare before-and-after:
 
 - [ ] All previously-passing eval assertions still pass.
 - [ ] Trigger rate did not drop (re-run should-trigger set, verify ≥ previous score).
-- [ ] SKILL.md still within size limits (see `references/size-limits.md`'s tiered thresholds — 300-line soft target, 500-line hard limit).
+- [ ] SKILL.md still within size limits (see `../../references/pdk-size-limits.md`'s tiered thresholds — 300-line soft target, 500-line hard limit).
 - [ ] No new anti-patterns introduced (check `references/anti-patterns.md`).

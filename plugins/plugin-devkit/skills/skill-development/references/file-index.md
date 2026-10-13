@@ -24,7 +24,7 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `references/allowed-tools.md` | Tool scoping validation, principle of least privilege | Phase 2 (design) — tool scoping |
 | `references/self-containment-principle.md` | External dependency architecture and guidance | Phase 2 (design) — external dependencies |
 | `references/secrets-and-credentials.md` | Secrets detection, git safety, env-var patterns, testing | Phase 2 (design) — skills with credentials |
-| `references/size-limits.md` | Strict size limits reference | Phase 2 (design) |
+| `../../references/pdk-size-limits.md` | Strict size limits reference | Phase 2 (design) |
 | `references/tessl-best-practices.md` | Tessl-style Activation/Implementation standards | Phase 2 and Phase 5 |
 
 ### Phase 3–5: Test, Improve & Polish

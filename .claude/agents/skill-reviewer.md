@@ -43,9 +43,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match m
 1. Extract the plugin-rulebook directory path from the result
 2. Read `<plugin-rulebook-dir>/assets/settings.json` — load R13 and R18 threshold config, and `structured_output.action_enum` (used by Structured Output Mode, Step 7)
 3. Read `<plugin-rulebook-dir>/references/size-rules.md` — severity tier definitions
-4. Resolve active thresholds from the `config.thresholds` blocks in settings.json; these override the flat limits in `skill-development/references/size-limits.md`
+4. Resolve active thresholds from the `config.thresholds` blocks in settings.json; these override the flat limits in `<skill-development-dir>/../../references/pdk-size-limits.md`
 
-**If not found:** use the fallback flat limits from `skill-development/references/size-limits.md` (loaded in Step 2), and fall back to the hardcoded action enum in Structured Output Mode (Step 7).
+**If not found:** use the fallback flat limits from `<skill-development-dir>/../../references/pdk-size-limits.md` (loaded in Step 2), and fall back to the hardcoded action enum in Structured Output Mode (Step 7).
 
 ## Step 2: Load Standards from `skill-development`
 
@@ -56,7 +56,7 @@ Read these files — they are the complete source of truth for all checks except
 1. `<skill-development-dir>/references/rubric.md` — Tessl-aligned scoring rubric
 2. `<skill-development-dir>/references/checklist.md` — comprehensive pre-release validation checklist
 3. `<skill-development-dir>/references/content-guidelines.md` — description formula, voice rules, writing principles
-4. `<skill-development-dir>/references/size-limits.md` — fallback size limits (used for C1/C2 only when plugin-rulebook is absent)
+4. `<skill-development-dir>/../../references/pdk-size-limits.md` — fallback size limits (used for C1/C2 only when plugin-rulebook is absent)
 5. `<skill-development-dir>/references/design-patterns.md` — five named workflow patterns and their key techniques (required for Step 6 pattern validation)
 
 If `skill-development` cannot be found, report this clearly and halt — do not substitute self-defined standards.
