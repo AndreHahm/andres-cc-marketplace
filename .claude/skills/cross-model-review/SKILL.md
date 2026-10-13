@@ -145,7 +145,7 @@ literal, already-resolved value — substitute the concrete string into every la
    ```bash
    UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
    echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-   [ -z "$PLANNER_TOUCHED" ] && { python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; }
+   if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
