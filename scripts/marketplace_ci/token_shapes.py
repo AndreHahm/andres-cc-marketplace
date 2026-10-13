@@ -31,17 +31,38 @@ CONSUMERS = (
 
 _SHAPE_KEYS = {"name", "pattern"}
 
+# A shape is a word boundary, then a literal prefix of at least two characters, then anything the
+# rules below allow. The mandatory literal prefix is what guarantees a shape cannot match zero
+# characters (a zero-width match would insert a marker between every two characters and stop the
+# shapes after it from running); a finite list of probe strings cannot prove that.
+_SHAPE_PREFIX = re.compile(r"\\b[A-Za-z0-9_-]{2}")
+
 # Syntax the Python and JavaScript engines do not both accept: a shape must mean the same thing
 # in both, and only Python compiles here. Groups are a whitelist, not a blacklist: any "(?" group
 # other than (?: (?= (?! (?<= (?<! is rejected, which covers named groups, inline comments, atomic
-# groups, conditionals and inline flags in one rule. The other alternatives are the \A / \Z
-# anchors and a possessive quantifier (a quantifier followed by "+"). Every alternative is anchored
-# after an even run of backslashes, so an escaped "(" or "+" is not mistaken for syntax.
-_PYTHON_ONLY_SYNTAX = re.compile(r"(?<!\\)(?:\\\\)*(?:\(\?(?![:=!]|<[=!])|\\[AZ]|[*+?}]\+)")
+# groups, conditionals and inline flags in one rule. The other alternative is a possessive
+# quantifier (a quantifier followed by "+"). Both are anchored after an even run of backslashes,
+# so an escaped "(" or "+" is not mistaken for syntax.
+_PYTHON_ONLY_SYNTAX = re.compile(r"(?<!\\)(?:\\\\)*(?:\(\?(?![:=!]|<[=!])|[*+?}]\+)")
 
-# A shape that can match an empty string matches between every two characters; the redactors
-# would then insert a marker everywhere and the shapes after it would never run.
-_ZERO_WIDTH_PROBES = ("", "a", "a b", "-_.", "A1")
+# Backslash-letter escapes that mean the same in both engines. Any other alphanumeric escape is
+# rejected: some differ ("\a" is the BEL character in Python and the letter "a" in JavaScript),
+# and the shared ones are not needed by a prefix-based token shape.
+_SHARED_LETTER_ESCAPES = frozenset("bBdDsSwW")
+
+
+def _unportable_escape(pattern: str) -> str | None:
+    """The first backslash escape whose meaning differs between the two engines, if any."""
+    index = 0
+    while index < len(pattern):
+        if pattern[index] == "\\":
+            following = pattern[index + 1 : index + 2]
+            if following.isalnum() and following not in _SHARED_LETTER_ESCAPES:
+                return "\\" + following
+            index += 2
+        else:
+            index += 1
+    return None
 
 
 def load_shapes(text: str) -> list[tuple[str, str]]:
@@ -66,17 +87,21 @@ def load_shapes(text: str) -> list[tuple[str, str]]:
         if not isinstance(pattern, str) or not pattern:
             raise SyncError(f"token shapes: shape {name!r} needs a non-empty string pattern")
         try:
-            compiled: re.Pattern[str] = re.compile(pattern, re.ASCII)
+            re.compile(pattern, re.ASCII)
         except re.error as exc:
             raise SyncError(f"token shapes: shape {name!r} does not compile: {exc}") from exc
+        if not _SHAPE_PREFIX.match(pattern):
+            raise SyncError(
+                f"token shapes: shape {name!r} must start with a word boundary and a literal "
+                "prefix of at least two characters"
+            )
         if _PYTHON_ONLY_SYNTAX.search(pattern):
             raise SyncError(f"token shapes: shape {name!r} uses syntax JavaScript does not share")
-        if any(
-            m.end() == m.start() for probe in _ZERO_WIDTH_PROBES for m in compiled.finditer(probe)
-        ):
+        escape = _unportable_escape(pattern)
+        if escape is not None:
             raise SyncError(
-                f"token shapes: shape {name!r} can match zero characters, which would "
-                "redact (or erase the redaction of) everything"
+                f"token shapes: shape {name!r} uses the escape {escape}, which the two engines "
+                "do not read the same way"
             )
         seen.add(name)
         result.append((name, pattern))
