@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/skill-development/SKILL.md",
+  "assertions": [
+    {"text": "answer.md names skill-refiner-interactive as the skill for operator-approved refinement of an existing working skill", "type": "presence", "target": "answer.md"},
+    {"text": "answer.md explains the distinction: skill-development authors and repairs, the sibling refines with operator checkpoints", "type": "quality", "target": "answer.md"},
+    {"text": "No new skill was created and the five-phase creation process was not run", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Nothing was written outside the outputs directory", "type": "presence", "target": "outputs/ directory"}
+  ]
+}
