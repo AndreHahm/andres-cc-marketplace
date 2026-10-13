@@ -542,6 +542,6 @@ This project includes the following skills:
 If during conversion you:
 - **Find unclear command logic** → Ask user to explain original purpose
 - **Hit conversion blockers** → Refactor command or document workarounds
-- **Struggle with activation phrases** → Load `references/content-guidelines.md`
-- **Are unsure about tool scoping** → Load `references/allowed-tools.md`
+- **Struggle with activation phrases** → Load `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`
+- **Are unsure about tool scoping** → Load `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md`
 - **Need structural guidance** → Load `references/templates.md`
