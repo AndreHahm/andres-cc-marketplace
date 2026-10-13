@@ -297,7 +297,10 @@ def check_askuserquestion_headers():
     # not reject a longer one, so this enforces a documented convention, not a rejection.
     # Dry-run evals cannot call the tool, so this is checked statically.
     problems = []
-    for path in [SKILL_MD, *sorted(REFS_DIR.glob("*.md"))]:
+    # The AskUserQuestion examples live in the plugin-root reference this skill cites; a
+    # copy of the skill directory (as the fixture test makes) has no such sibling.
+    shared = SKILL_DIR.parent.parent / "references" / "pdk-ask-user-question-patterns.md"
+    for path in [SKILL_MD, *sorted(REFS_DIR.glob("*.md")), *([shared] if shared.is_file() else [])]:
         for number, line in enumerate(read(path).splitlines(), 1):
             match = re.search(r"[\"']?header[\"']?:\s*[\"']([^\"']+)[\"']", line)
             if match and len(match.group(1)) > HEADER_LIMIT:

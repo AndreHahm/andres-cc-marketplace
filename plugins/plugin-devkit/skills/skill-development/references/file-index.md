@@ -15,13 +15,13 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `references/templates.md` | Full skill creation templates (token-optimized Basic, Complex, patterns, description examples) | Phase 1 (Greenfield) and Phase 2 (design) — scaffold |
 | `references/skill-workflow.md` | 80% Rule, content distribution, preservation gates | Phase 2 (design) — content placement decisions |
 | `references/resource-organization.md` | Content placement decision framework | Phase 2 (design) |
-| `references/content-guidelines.md` | Description formulas, phrase library, activation examples | Phase 2 (design) and Phase 5 (polish) |
-| `references/ask-user-question-patterns.md` | AskUserQuestion interaction patterns, decision trees, wizard pattern | Phase 2 (design) — skills with user interviews |
+| `../../references/pdk-content-guidelines.md` | Description formulas, phrase library, activation examples | Phase 2 (design) and Phase 5 (polish) |
+| `../../references/pdk-ask-user-question-patterns.md` | AskUserQuestion interaction patterns, decision trees, wizard pattern | Phase 2 (design) — skills with user interviews |
 | `references/task-management-patterns.md` | TaskCreate/TaskUpdate instruction patterns for multi-step components | Phase 2 (design) — skills/agents with 3+ step workflows |
 | `references/anti-patterns.md` | Token-wasting, activation, structure, content, and tool-scoping anti-patterns | Phase 2 (design) and Phase 4 (improve) |
 | `references/advanced-patterns.md` | Production patterns, skill archetypes, specialized skill designs | Phase 2 (design) and Phase 4 (improve) |
 | `references/complex-skills-patterns.md` | Error handling, tool scoping, validation scripts, security review | Phase 2 (design) — complex skills |
-| `references/allowed-tools.md` | Tool scoping validation, principle of least privilege | Phase 2 (design) — tool scoping |
+| `../../references/pdk-allowed-tools.md` | Tool scoping validation, principle of least privilege | Phase 2 (design) — tool scoping |
 | `references/self-containment-principle.md` | External dependency architecture and guidance | Phase 2 (design) — external dependencies |
 | `references/secrets-and-credentials.md` | Secrets detection, git safety, env-var patterns, testing | Phase 2 (design) — skills with credentials |
 | `../../references/pdk-size-limits.md` | Strict size limits reference | Phase 2 (design) |

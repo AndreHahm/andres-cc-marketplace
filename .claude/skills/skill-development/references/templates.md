@@ -240,7 +240,7 @@ project/
 
 ## Description Formula & Examples
 
-See `content-guidelines.md`'s "Writing Effective Descriptions" section for the formula, good/poor examples, and full writing rules — not repeated here to avoid drift.
+See `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`'s "Writing Effective Descriptions" section for the formula, good/poor examples, and full writing rules — not repeated here to avoid drift.
 
 ## Common Description Patterns
 
