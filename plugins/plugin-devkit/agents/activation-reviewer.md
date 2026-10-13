@@ -111,7 +111,7 @@ For every Critical or Major finding from Step 5, produce a concrete remediation 
 - **Establish precedence** — when both components can legitimately fire on the same input and one should win (e.g. the more specific domain beats the generic one), state which and why, and suggest documenting that precedence explicitly in both components' descriptions
 - **Recommend merge** — when the overlap is total or near-total (same job, redundant components), name which should absorb the other and why
 - **Recommend split** — when one overlapping component's description is trying to cover ground that rightfully belongs to several narrower siblings, recommend splitting it and name the split boundary
-- **Add a trigger hint** — for file- or keyword-triggered skills, suggest a `(triggers: *.ext, keyword)` hint suffix (per `content-guidelines.md`'s convention) to narrow matching without a full rewrite
+- **Add a trigger hint** — for file- or keyword-triggered skills, suggest a `(triggers: *.ext, keyword)` hint suffix (per `skill-development`'s SKILL.md Phase 5 convention) to narrow matching without a full rewrite
 
 ## Step 7: Output the Report
 
