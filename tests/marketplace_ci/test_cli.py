@@ -1145,7 +1145,7 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
 
 
 def test_run_codex_review_instructions_dir_option_redirects_instruction_files(
-    monkeypatch, git_repo, tmp_path
+    monkeypatch, git_repo, tmp_path_factory
 ):
     import subprocess as subprocess_module
 
@@ -1204,12 +1204,38 @@ def test_run_codex_review_instructions_dir_option_redirects_instruction_files(
 
     monkeypatch.setattr(subprocess_module, "run", fake_run)
     monkeypatch.chdir(git_repo.root)
-    target = tmp_path / "instructions"
+    target = tmp_path_factory.mktemp("outside") / "instructions"
     rc = main(["run-codex-review", "--base-sha", base_sha, "--instructions-dir", str(target)])
     assert rc == 0
     assert seen
     assert all(p.parent == target for p in seen)
     assert not (git_repo.root / ".codex-review-instructions").exists()
+
+
+@pytest.mark.parametrize("kind", ["in_checkout", "relative", "existing_dir", "symlink"])
+def test_run_codex_review_refuses_an_unsafe_instructions_dir(
+    monkeypatch, git_repo, tmp_path_factory, capsys, kind
+):
+    outside = tmp_path_factory.mktemp("outside")
+    if kind == "in_checkout":
+        target = git_repo.root / "scratch" / "instructions"
+    elif kind == "relative":
+        target = Path(".codex-review-instructions")
+    elif kind == "existing_dir":
+        target = outside / "instructions"
+        target.mkdir()
+    else:
+        (outside / "victim").mkdir()
+        target = outside / "instructions"
+        target.symlink_to(outside / "victim", target_is_directory=True)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", "deadbeef", "--instructions-dir", str(target)])
+    assert rc == 2
+    assert "--instructions-dir" in capsys.readouterr().err
+    assert not (git_repo.root / ".codex-review-instructions").exists()
+    assert not (git_repo.root / "scratch").exists()
+    if kind == "symlink":
+        assert list((outside / "victim").iterdir()) == []
 
 
 def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git_repo):

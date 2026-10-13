@@ -1004,6 +1004,18 @@ def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
     return 2
 
 
+def _instructions_dir_problem(path: Path, repo: Path) -> str | None:
+    """Why `--instructions-dir` can't be used, or None. The reviewers write files
+    into it, so it must be a new path outside the checkout: an existing directory
+    or symlink would be written through, and one inside the checkout would leave
+    scratch files in a shippable location."""
+    if path.is_symlink() or path.exists():
+        return f"--instructions-dir {str(path)!r} already exists; pass a new path"
+    if (path.parent.resolve() / path.name).is_relative_to(repo.resolve()):
+        return f"--instructions-dir {str(path)!r} is inside the checkout; use a scratch directory"
+    return None
+
+
 def _handle_run_codex_review(args: argparse.Namespace) -> int:
     """The single entry point the Codex GitHub Actions workflow calls: scope
     the diff since `base_sha`, run the deterministic structural check
@@ -1029,6 +1041,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     repo = Path.cwd()
     base_sha = args.base_sha
+
+    instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
+    if instructions_dir is not None:
+        problem = _instructions_dir_problem(instructions_dir, repo)
+        if problem:
+            return _fail_run_codex_review(args, problem)
 
     resolved = subprocess.run(
         ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"], cwd=repo, capture_output=True
@@ -1080,7 +1098,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         scope,
         base_sha=base_sha,
         repo=repo,
-        instructions_dir=Path(args.instructions_dir) if args.instructions_dir else None,
+        instructions_dir=instructions_dir,
         changed_ranges=changed_ranges,
         changed_paths=_changed_path_set(changed),
     )
@@ -1311,7 +1329,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_codex_review.add_argument(
         "--instructions-dir",
         metavar="PATH",
-        help="directory for the per-reviewer instruction files "
+        help="new directory outside the checkout for the per-reviewer instruction files "
         "(default: a temporary directory removed afterwards)",
     )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
