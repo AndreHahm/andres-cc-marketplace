@@ -137,7 +137,7 @@ def test_shared_shapes_are_redacted_next_to_non_ascii_text():
     # Python's default \b is Unicode-aware, so a token next to an accented letter or a CJK
     # character was missed while the JavaScript copy of the same pattern caught it.
     for name, sample in SHAPE_SAMPLES.items():
-        for before, after in (("é", ""), ("", "é"), ("中", "")):
+        for before, after in (("é", ""), ("", "é"), ("中", ""), ("", "_x")):
             redacted, _ = redact_secrets.redact(f"x {before}{sample}{after} y")
             assert sample not in redacted, (name, before, after)
 

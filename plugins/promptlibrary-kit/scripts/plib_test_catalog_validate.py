@@ -176,7 +176,13 @@ class TextAndYaml(unittest.TestCase):
         )
         self.assertEqual({s["name"] for s in shared["shapes"]}, set(samples))
         for name, sample in samples.items():
-            for before, after in (("", ""), ("é", ""), ("", "é"), ("中", "")):
+            for before, after in (
+                ("", ""),
+                ("é", ""),
+                ("", "é"),
+                ("中", ""),
+                ("", "_x"),
+            ):
                 hits = V.screen_text(f"x {before}{sample}{after} y")
                 self.assertIn(name, {h["pattern"] for h in hits}, (name, before, after))
 
