@@ -6,6 +6,7 @@ only, since this is a conversational, reference-driven skill with no executable
 logic of its own to simulate beyond the two scripts it shells out to (which own
 their own correctness)."""
 
+import json
 import pathlib
 import re
 import sys
@@ -131,12 +132,50 @@ def check_frontmatter_fields_documented():
     )
 
 
+def check_trigger_script_detection_helpers():
+    script = SKILL_DIR / "scripts" / "test-agent-trigger.sh"
+    if not script.is_file():
+        return True, "scripts/test-agent-trigger.sh not found (skip)"
+    body = script.read_text(encoding="utf-8").split("<<'PY'\n")[-1].split("\nPY\n", 1)[0]
+    ns = {}
+    exec(body.split("agent_path = Path(sys.argv[1])", 1)[0], ns)
+
+    def rate_limit(status):
+        return json.dumps({"type": "rate_limit_event", "rate_limit_info": {"status": status}})
+
+    def tool_use(name, tool_input):
+        block = {"type": "tool_use", "name": name, "input": tool_input}
+        return json.dumps({"type": "assistant", "message": {"content": [block]}})
+
+    init = json.dumps({"type": "system", "subtype": "init", "agents": ["my-agent"]})
+    delegation = tool_use("Agent", {"subagent_type": "my-agent"})
+    cases = {
+        "allowed rate_limit_event ignored": not ns["requires_fallback"](rate_limit("allowed")),
+        "rejected rate_limit_event falls back": ns["requires_fallback"](rate_limit("rejected")),
+        "plain rate-limit text falls back": ns["requires_fallback"]("Rate limit exceeded"),
+        "init listing is not delegation": not ns["_delegated_to_agent"](
+            init + "\n" + tool_use("Glob", {"pattern": "x"}), "my-agent"
+        ),
+        "matching Agent tool_use is delegation": ns["_delegated_to_agent"](
+            init + "\n" + delegation, "my-agent"
+        ),
+        "other agent's delegation is no match": not ns["_delegated_to_agent"](
+            delegation, "other-agent"
+        ),
+    }
+    failed = [name for name, ok in cases.items() if not ok]
+    if failed:
+        return False, "failed: " + ", ".join(failed)
+    return True, f"all {len(cases)} detection-helper cases pass"
+
+
 CHECKS = [
     check_frontmatter,
     check_bash_grants,
     check_scripts_exist,
     check_reference_table_files_exist,
     check_frontmatter_fields_documented,
+    check_trigger_script_detection_helpers,
 ]
 
 
