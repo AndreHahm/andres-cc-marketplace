@@ -368,7 +368,8 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `scripts/marketplace_ci/token_shapes.json` and the byte-identical `codex-kit` copy
   `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`. The canonical file is copied into
   `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
-  drifted copy, and `sync-token-shapes` rewrites the copies. Edit the canonical file only.
+  drifted copy, and `sync-token-shapes` rewrites the copies (run `sync-plugin-mirrors` after it so
+  the `.claude/` mirrors follow). Edit the canonical file only.
   These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
   review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,
