@@ -11,7 +11,7 @@ description: >-
   a dev-rules command needs to know which sources to check and how stale the last check is, or when
   a maintainer asks "is there an official source backing this rule", "what sources cover X", "add a
   source to the registry", or "check registry freshness".
-allowed-tools: Read Write Edit WebFetch WebSearch Bash(*/compute_priority.py:*) Bash(*/validate_sources.py:*)
+allowed-tools: Read Write Edit WebFetch WebSearch Bash(python ${CLAUDE_SKILL_DIR}/scripts/compute_priority.py:*) Bash(python ${CLAUDE_SKILL_DIR}/scripts/validate_sources.py:*)
 ---
 
 # Upstream Sources Registry
@@ -114,7 +114,7 @@ scale ranks how urgent a *found gap* is to fix, this one ranks how often a *sour
 re-checking. Reusing `P1`–`P4` for a different axis would make a maintainer reading both a
 `pdk-verify-dev-rules` gap report and this registry side by side misread one for the other.
 
-Computed by `scripts/compute_priority.py` from `authority` × `volatility` × live-grepped blast
+Computed by `python ${CLAUDE_SKILL_DIR}/scripts/compute_priority.py` from `authority` × `volatility` × live-grepped blast
 radius — never hand-picked per source, and never trusted from a stale cached value:
 
 - **`critical`** — any `frequent`-volatility source, or a `spec`-tier source cited by a REQUIRED
@@ -190,7 +190,7 @@ also fetched from a live external location this skill doesn't control.
 - **Add a custom source:** append a new entry with `custom: true`. If `authority`/`volatility` aren't
   stated, use `AskUserQuestion` (`authority`: `spec`/`guide`/`changelog`/`informal`; `volatility`:
   `stable`/`evolving`/`frequent`); default an unclassified blog post/paper/repo to `informal`/`stable`
-  rather than guessing a higher tier. Run `scripts/validate_sources.py` after any manual edit to
+  rather than guessing a higher tier. Run `python ${CLAUDE_SKILL_DIR}/scripts/validate_sources.py` after any manual edit to
   `assets/sources.json` before considering the change complete — it catches malformed entries and
   duplicate `id`s before they reach a consuming command. **Do the fetch as part of this step** (via
   the Freshness Check procedure above, so `last_verified`/`last_verified_snapshot` are populated

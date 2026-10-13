@@ -190,7 +190,7 @@ Always validate generated agents:
 
 ```bash
 # Validate structure
-./scripts/validate-agent.sh agents/your-agent.md
+${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh agents/your-agent.md
 
 # Check triggering works
 # Test with realistic invocation phrasings

@@ -151,7 +151,7 @@ defect shapes and neither implements zero-match-iteration detection. These check
 scoped to eval/smoke-test scripts specifically so they can run before dispatch instead
 of waiting for the fan-out.
 
-Run `${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/check_evals.py --smoke-test <path> --skill-md <path>`
+Run `python ${CLAUDE_SKILL_DIR}/scripts/check_evals.py --smoke-test <path> --skill-md <path>`
 (this skill's own bundled script, not the target's — a bare `scripts/check_evals.py`
 reads ambiguously against the target's own `scripts/` directory this step is already
 focused on) for the mechanical portion (extracting literal `re.findall`/`re.search`
@@ -197,7 +197,7 @@ owned and schema-defined by `skill-tester`'s `references/eval-schema.md` — rea
 that file if a field's meaning is unclear rather than trusting this restatement,
 since this section can drift out of sync with the schema it describes.
 
-Run `${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/check_evals.py --evals-json <path>`
+Run `python ${CLAUDE_SKILL_DIR}/scripts/check_evals.py --evals-json <path>`
 (this skill's own bundled script) for the arithmetic portion
 (`declared_scenarios_covered` + `len(uncovered)` == `declared_scenarios_total`,
 plus a JSON-parse check) — it's purely mechanical, no need to do it by hand.
@@ -380,7 +380,7 @@ re.findall(...); if matches: return False` smoke-test function), which now
 exits 0 with a SKIP instead of the previously-reported false FAIL. Also
 verified via a cross-model review (Claude + Codex) of the full PR diff, which
 found the negative-count and alternation bugs Claude's own review missed. Run
-`python ${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/test_check_evals.py`
+`python ${CLAUDE_SKILL_DIR}/scripts/test_check_evals.py`
 to reproduce.
 
 ## Reference Guide
