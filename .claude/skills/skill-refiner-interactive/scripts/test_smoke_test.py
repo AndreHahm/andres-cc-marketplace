@@ -155,11 +155,12 @@ MUTATIONS = {
     ),
     "long-header-json": (
         {"check_askuserquestion_headers"},
-        lambda d: edit(
-            refs(d, "ask-user-question-patterns.md"),
-            lambda t: t.replace(
-                '"header": "Action"', '"header": "A header well over the limit"', 1
-            ),
+        # The header examples now live in the shared plugin-root reference, which a copy of
+        # this skill directory does not contain, so the JSON form is injected into one of
+        # the skill's own references instead.
+        lambda d: append(
+            refs(d, "production-patterns.md"),
+            '\n```json\n{"header": "A header well over the limit"}\n```\n',
         ),
     ),
     "unused-grant": (
