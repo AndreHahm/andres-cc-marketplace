@@ -1238,6 +1238,75 @@ def test_run_codex_review_refuses_an_unsafe_instructions_dir(
         assert list((outside / "victim").iterdir()) == []
 
 
+def _commit_codex_review_fixture(git_repo) -> str:
+    """Commit the agents and a changed skill file; return the base SHA to review against."""
+    for name in (
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+        "skill-reviewer",
+    ):
+        git_repo.write(
+            f".codex/agents/{name}.toml",
+            f'name = "{name}"\ndeveloper_instructions = """\ncheck\n"""\n',
+        )
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+    return base_sha
+
+
+def test_run_codex_review_claims_the_instructions_dir_privately(
+    monkeypatch, git_repo, tmp_path_factory
+):
+    base_sha = _commit_codex_review_fixture(git_repo)
+    seen = []
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            seen.append(Path(argv[argv.index("--instruction-file") + 1]).parent)
+            return subprocess.CompletedProcess(argv, returncode=1, stdout=b"", stderr=b"")
+        return real_run(argv, **kw)
+
+    real_run = subprocess.run
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    target = tmp_path_factory.mktemp("outside") / "instructions"
+    main(["run-codex-review", "--base-sha", base_sha, "--instructions-dir", str(target)])
+    assert seen
+    assert (target.stat().st_mode & 0o777) == 0o700
+
+
+def test_run_codex_review_refuses_a_dir_planted_after_the_validation(
+    monkeypatch, git_repo, tmp_path_factory, capsys
+):
+    # The check passes, then something else creates the path (here a symlink) before the claim.
+    import scripts.marketplace_ci.__main__ as cli
+
+    base_sha = _commit_codex_review_fixture(git_repo)
+    outside = tmp_path_factory.mktemp("outside")
+    victim = outside / "victim"
+    victim.mkdir()
+    target = outside / "instructions"
+
+    def validate_then_plant(path, repo, output):
+        target.symlink_to(victim, target_is_directory=True)
+        return None
+
+    monkeypatch.setattr(cli, "_instructions_dir_problem", validate_then_plant)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha, "--instructions-dir", str(target)])
+    assert rc == 2
+    assert "--instructions-dir" in capsys.readouterr().err
+    assert list(victim.iterdir()) == []
+
+
 def test_run_codex_review_fails_cleanly_when_the_default_temp_dir_is_in_the_checkout(
     monkeypatch, git_repo, capsys
 ):
