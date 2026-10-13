@@ -1,0 +1,12 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "answer.md names skill-refiner-interactive as the skill for operator-approved refinement of an existing working skill", "passed": true, "evidence": "answer.md: \"Use skill-refiner-interactive, not skill-development.\""},
+    {"text": "answer.md explains the distinction: skill-development authors and repairs, the sibling refines with operator checkpoints", "passed": true, "evidence": "answer.md: \"It authors and repairs skills ... refining a working skill with operator checkpoints belongs to skill-refiner-interactive\""},
+    {"text": "No new skill was created and the five-phase creation process was not run", "passed": true, "evidence": "outputs/ contains only answer.md; the answer states it did not touch deploy-notes"},
+    {"text": "Nothing was written outside the outputs directory", "passed": true, "evidence": "git status --short shows only ?? evals/skill-development/"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "note": "The first dispatch for this eval reported writing answer.md but no file existed; this grading is for the re-run (iteration-1, same prompt), whose answer.md was verified on disk."
+}

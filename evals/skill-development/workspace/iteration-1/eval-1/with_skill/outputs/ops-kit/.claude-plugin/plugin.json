@@ -1,0 +1,5 @@
+{
+  "name": "ops-kit",
+  "version": "0.1.0",
+  "description": "Operations helpers for working with application logs and runtime diagnostics."
+}
