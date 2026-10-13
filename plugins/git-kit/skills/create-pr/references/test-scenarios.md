@@ -121,10 +121,8 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - The base tip has no readable trust_boundary.py → "could not check" warning, run still proceeds
 - The run exits 0 or 1 but the result file is missing, malformed, or its `blocking` contradicts the exit code → exit 2
   ("could not run"), never a pass
-- The run creates `.codex-review-instructions/` in the checkout → removed afterwards; a directory that already
-  existed is left untouched
+- The run's argv carries `--instructions-dir <output stem>-instructions` beside `--output` → the checkout stays clean
 - `--output` is a symlink (even to a file that looks like a result) → exit 2, the link and its target are untouched
-- The scratch-directory name used for cleanup stays in sync with `review.py` and `.gitignore` (drift test)
 - The remote has no (or an unrelated) fetch refspec configured → the explicit-refspec fetch still refreshes
   `origin/main` before its tip is resolved as the base
 - A retry after an exit 2 uses a fresh `--output` file name (the earlier file is never touched) and proceeds

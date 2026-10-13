@@ -1080,6 +1080,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         scope,
         base_sha=base_sha,
         repo=repo,
+        instructions_dir=Path(args.instructions_dir) if args.instructions_dir else None,
         changed_ranges=changed_ranges,
         changed_paths=_changed_path_set(changed),
     )
@@ -1307,6 +1308,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_codex_review.add_argument("--base-sha", required=True, metavar="SHA")
     run_codex_review.add_argument("--output", metavar="PATH")
+    run_codex_review.add_argument(
+        "--instructions-dir",
+        metavar="PATH",
+        help="directory for the per-reviewer instruction files "
+        "(default: a temporary directory removed afterwards)",
+    )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
 
     check_trust_boundary = subparsers.add_parser(

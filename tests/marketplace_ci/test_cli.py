@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -1141,6 +1142,74 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     monkeypatch.chdir(git_repo.root)
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 0
+
+
+def test_run_codex_review_instructions_dir_option_redirects_instruction_files(
+    monkeypatch, git_repo, tmp_path
+):
+    import subprocess as subprocess_module
+
+    for name in (
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+        "skill-reviewer",
+    ):
+        git_repo.write(
+            f".codex/agents/{name}.toml",
+            f'name = "{name}"\ndeveloper_instructions = """\ncheck\n"""\n',
+        )
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+    valid_envelope = json.dumps(
+        {
+            "contract_version": "1",
+            "dispatch": {
+                "id": "test-dispatch",
+                "reviewer": "plugin-rulebook-checker",
+                "backend": "codex",
+                "target_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
+            },
+            "provenance": {
+                "provider": "openai",
+                "model": "test-model",
+                "cli_version": "0.0.0",
+                "execution_profile": "read-only",
+            },
+            "findings": [],
+            "verdict": "pass",
+            "inspection_limits": [],
+        }
+    ).encode()
+
+    seen = []
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            seen.append(Path(argv[argv.index("--instruction-file") + 1]))
+            return subprocess_module.CompletedProcess(
+                argv, returncode=0, stdout=valid_envelope, stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    target = tmp_path / "instructions"
+    rc = main(["run-codex-review", "--base-sha", base_sha, "--instructions-dir", str(target)])
+    assert rc == 0
+    assert seen
+    assert all(p.parent == target for p in seen)
+    assert not (git_repo.root / ".codex-review-instructions").exists()
 
 
 def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git_repo):

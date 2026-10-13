@@ -55,6 +55,46 @@ def test_dispatch_calls_bridge_once_per_reviewer_with_instruction_file(
     }
 
 
+def _bridge_instruction_files(monkeypatch, completed):
+    """Record every --instruction-file path the bridge is invoked with."""
+    seen = []
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            seen.append(Path(argv[argv.index("--instruction-file") + 1]))
+            return completed(0)
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    return seen
+
+
+def test_dispatch_default_instructions_dir_is_a_temp_dir_outside_the_repo(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    seen = _bridge_instruction_files(monkeypatch, completed)
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+
+    assert seen
+    assert not (repo / ".codex-review-instructions").exists()
+    assert all(not p.is_relative_to(repo) for p in seen)
+    assert all(not p.parent.exists() for p in seen)  # the temp dir is gone after the call
+
+
+def test_dispatch_writes_into_a_caller_supplied_instructions_dir_and_keeps_it(
+    monkeypatch, repo, change, dependency_index, completed, tmp_path
+):
+    seen = _bridge_instruction_files(monkeypatch, completed)
+    target = tmp_path / "not-yet-created" / "instructions"
+    scope = derive_review_scope([change("plugins/demo-kit/skills/x/SKILL.md")], dependency_index())
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, instructions_dir=target)
+
+    assert seen
+    assert all(p.parent == target for p in seen)
+    assert all(p.exists() for p in seen)  # the caller owns the directory; nothing deletes it
+
+
 def test_dispatch_uses_run_scoped_dispatch_id_shared_across_reviewers(
     monkeypatch, repo, change, dependency_index, completed
 ):

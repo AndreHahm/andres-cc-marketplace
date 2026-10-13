@@ -446,21 +446,11 @@ def test_an_output_path_that_is_a_directory_is_refused(repo, tmp_path):
     assert (tmp_path / "out.json").is_dir()
 
 
-SCRATCH_STUB = "mkdir -p .codex-review-instructions && echo x > .codex-review-instructions/a.txt\n"
-
-
-def test_scratch_dir_created_by_the_run_is_removed(repo, tmp_path):
-    result, _, _ = _run(repo, tmp_path, uv_prelude=SCRATCH_STUB)
+def test_instruction_files_are_redirected_beside_the_output_not_into_the_checkout(repo, tmp_path):
+    result, args, _ = _run(repo, tmp_path)
     assert result.returncode == 0
+    assert f"--instructions-dir {tmp_path}/out-instructions" in args
     assert not (repo / ".codex-review-instructions").exists()
-
-
-def test_a_pre_existing_scratch_dir_is_left_alone(repo, tmp_path):
-    (repo / ".codex-review-instructions").mkdir()
-    (repo / ".codex-review-instructions" / "mine.txt").write_text("x", encoding="utf-8")
-    result, _, _ = _run(repo, tmp_path, uv_prelude=SCRATCH_STUB)
-    assert result.returncode == 0
-    assert (repo / ".codex-review-instructions" / "mine.txt").exists()
 
 
 def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
@@ -478,15 +468,6 @@ def test_a_symlink_output_is_refused_and_its_target_survives(repo, tmp_path):
     assert target.exists()
     assert (tmp_path / "out.json").is_symlink()
     assert args == ""
-
-
-def test_the_scratch_dir_name_matches_the_ci_entry_point_and_gitignore():
-    # The wrapper's cleanup and the .gitignore entry duplicate a default in review.py; a rename
-    # there must fail here instead of silently bringing the stray directory back.
-    root = Path(__file__).resolve().parents[2]
-    name = str(_load_module().INSTRUCTIONS_DIR)
-    assert f'repo / "{name}"' in (root / "scripts/marketplace_ci/review.py").read_text("utf-8")
-    assert f"{name}/" in (root / ".gitignore").read_text("utf-8").splitlines()
 
 
 @pytest.mark.parametrize("model", ["a/b", "a:b", "m" * 65])

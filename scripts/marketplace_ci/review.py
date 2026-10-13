@@ -8,6 +8,7 @@ or trust reviewer prose beyond that envelope's own typed fields.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import posixpath
@@ -16,6 +17,7 @@ import secrets
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
@@ -1776,8 +1778,11 @@ def dispatch_reviewers(
 
     `changed_ranges` (from `compute_changed_line_ranges`) adds a `[diff scope]`
     briefing to each instruction so the reviewer reports on the PR's changed
-    lines only; `None` leaves the instruction exactly as the base SHA has it."""
-    instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
+    lines only; `None` leaves the instruction exactly as the base SHA has it.
+
+    `instructions_dir` receives the per-reviewer instruction files. When it is
+    `None` they go in a fresh temporary directory removed after the call, so
+    nothing lands in `repo`."""
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
     deadline = time.monotonic() + budget_seconds
@@ -1794,7 +1799,18 @@ def dispatch_reviewers(
             # The gate runs the same lookup later and fails closed (exit 2); an
             # unnarrowed reviewer is the safe side of this one.
             changed_ranges = None
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+    # The stack is entered first so it exits last: the pool has finished every
+    # reviewer before a default temp directory is removed. A caller-supplied
+    # directory is the caller's to clean up and is never deleted here.
+    with contextlib.ExitStack() as stack, ThreadPoolExecutor(max_workers=max_workers) as pool:
+        if instructions_dir is None:
+            instructions_dir = Path(
+                stack.enter_context(
+                    tempfile.TemporaryDirectory(
+                        prefix="codex-review-instructions-", ignore_cleanup_errors=True
+                    )
+                )
+            )
         futures = [
             pool.submit(
                 _dispatch_one,
