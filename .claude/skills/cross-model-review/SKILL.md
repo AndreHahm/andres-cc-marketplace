@@ -268,8 +268,11 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    run and ask via `AskUserQuestion` whether to proceed single-model (Claude only — loses the
    cross-vendor benefit, findings default to Medium confidence since nothing cross-examines them) or
    stop.
-   - **On Phase 1's Codex call failing**: full single-model path — skip every remaining Codex
-     dispatch and follow the single-model paths in Phase 2/3.
+   - **On Phase 1's Codex call failing for a batch**: that batch is Claude-only. If **no** batch has a
+     valid Codex Phase 1 envelope (the first or the only batch failed with nothing succeeded), take the
+     full single-model path: skip every remaining Codex dispatch and follow the single-model paths in
+     Phase 2/3. Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
+     run Phase 2 only for batches with a valid Phase 1 envelope.
    - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded): **partial
      failure, not full single-model — never discard the already-completed envelopes.** See
      `references/resolver-failure-handling.md` for the full distinction and why it matters.
@@ -438,7 +441,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
 | `references/testing-scenarios.md` | The 36 scenarios and the quality-gate checklist |
-| `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; dispatcher and planner trust |
+| `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
 

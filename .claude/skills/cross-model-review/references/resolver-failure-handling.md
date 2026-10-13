@@ -4,10 +4,14 @@ Extracted from the "Codex dispatch resolver" section's step 3 per plugin-ruleboo
 grew past the 500-line Critical threshold). SKILL.md keeps the two-case split inline; this file holds
 the fuller reasoning for each.
 
-- **On Phase 1's Codex call failing** (nothing from Codex has succeeded yet): "single-model" means
-  the full single-model path — skip every remaining Codex dispatch (Phase 1's Codex pass, already
-  failed, and all of Phase 2 entirely) and follow the single-model paths called out in Phase 2 and
-  Phase 3.
+- **On Phase 1's Codex call failing** (nothing from Codex has succeeded yet, no batch has a valid
+  Phase 1 envelope): "single-model" means the full single-model path — skip every remaining Codex
+  dispatch (Phase 1's Codex pass, already failed, and all of Phase 2 entirely) and follow the
+  single-model paths called out in Phase 2 and Phase 3.
+- **On Phase 1's Codex call failing for one batch while another batch already succeeded**: a partial
+  failure at batch level. Mark only that batch Claude-only (its Claude findings stay Medium), keep every
+  finished batch's envelopes, still dispatch the remaining batches, and run Phase 2 only for batches with
+  a valid Phase 1 envelope. The user is still asked once, at resolver step 3, whether to continue.
 - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded —
   `$RUN/codex_fresh_eyes.<N>.json` exists for that batch, and Claude's own native Phase 2 pass may have too): this is a
   **partial failure, not full single-model mode — do not discard the already-completed envelopes.**

@@ -152,7 +152,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     the working-tree planner runs (an explicit yes runs it as `python3 -I`; otherwise review unscoped).
     The manifest is cross-checked against the real changed-file list: a changed path in none of `files`,
     `excluded` or `dropped_slices` is `PLAN_FAILED`. Folder picks offer only names matching
-    `^[A-Za-z0-9._-]+/$`. The First-Send Confirmation lists every batch's paths and the dispatch count.
+    `^[A-Za-z0-9_][A-Za-z0-9._-]*/$` (no leading dash). The First-Send Confirmation lists every batch's paths and the dispatch count.
 
 ## Quality gates
 
@@ -248,4 +248,4 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] A dropped slice is always listed in the report and marked as needing a direct read
 - [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
 - [ ] Every diff command uses `--no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none`
-- [ ] A path from the manifest is never typed into a command; it is never typed: slice diffs come from files the planner wrote
+- [ ] A path from the manifest is never typed into a command; slice diffs come from files the planner wrote

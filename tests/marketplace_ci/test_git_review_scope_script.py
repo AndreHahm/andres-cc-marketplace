@@ -275,6 +275,18 @@ def test_first_slice_is_kept_even_when_it_alone_exceeds_the_budget():
     assert manifest["dropped_slices"] == []
 
 
+def test_the_oversized_first_slice_exception_applies_only_when_nothing_else_is_chosen():
+    # Deliberate: with a protected slice chosen, an oversized slice must fit the budget (a padding
+    # file cannot be kept free of it), it is dropped, and the drop is disclosed.
+    files = ["plugins/codex-kit/scripts/a.mjs", "big.py", "later.py"]
+    sizes = {"plugins/codex-kit/scripts/a.mjs": 1, "big.py": 500, "later.py": 5}
+    manifest = _plan(files, config=_config(budget_bytes=10, max_slice_bytes=500), sizes=sizes)
+    kept = sorted(f["path"] for f in manifest["files"])
+    assert kept == ["later.py", "plugins/codex-kit/scripts/a.mjs"]
+    assert [s["name"] for s in manifest["dropped_slices"]] == ["scripts"]
+    assert any("reduced scope" in n and "big.py" in n for n in manifest["inspection_limits"])
+
+
 def test_candidate_dirs_report_remaining_bytes_largest_first():
     manifest = _plan(
         ["a/x.py", "b/y.py", "root.py"], sizes={"a/x.py": 10, "b/y.py": 99, "root.py": 5}
