@@ -7,7 +7,7 @@ description: >-
   file's fields directly, or validate/refine an existing agent against the spec. For
   one-shot generation of a brand-new agent from a described need, use the agent-creator
   agent instead; for a structured quality review of an existing agent, use subagent-reviewer.
-allowed-tools: Read Grep Glob Skill Bash(scripts/validate-agent.sh:*) Bash(scripts/test-agent-trigger.sh:*)
+allowed-tools: Read Grep Glob Skill Bash(${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/test-agent-trigger.sh:*)
 ---
 
 # Agent Development for Claude Code Plugins
@@ -57,7 +57,7 @@ Create a minimal agent in 5 steps:
 4. Write the body: start with `You are [role]...` then add responsibilities, process steps, and output format
 5. Add `## When to invoke` with 2–4 prose trigger scenarios
 
-Validate: `scripts/validate-agent.sh agents/your-agent.md`
+Validate: `${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh agents/your-agent.md`
 
 ## Agent File Structure
 
@@ -242,7 +242,7 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 8. If the agent's default scope is a whole component/plugin/set rather than a single narrowly-named target, ask via `AskUserQuestion` whether a Delta mode is needed now (see "Delta Mode recommendation" above) — don't add one speculatively
 9. Add `## When to invoke` with 2–4 prose trigger scenarios
 10. Save as `agents/agent-name.md`
-11. Validate with `scripts/validate-agent.sh`
+11. Validate with `${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh`
 12. Test with real trigger scenarios
 
 ## Validation Rules
@@ -256,7 +256,7 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 | System prompt | 20–10,000 chars (ideal: 500–3,000) | structured prompt | empty body |
 | `<example>` in description | Avoid — use body "When to invoke" section instead | — | verbose blocks in frontmatter |
 
-Run `scripts/validate-agent.sh agents/your-agent.md` to validate.
+Run `${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh agents/your-agent.md` to validate.
 
 ## Agent Organization
 
