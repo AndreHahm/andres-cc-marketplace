@@ -309,7 +309,7 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 - Skills use `allowed-tools:` — agents use `tools:`
 - List only tools that instructions actually reference
 - Read-only components should never have Write or Bash
-- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:* date:*)`, `Bash(python:*)`), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, `Bash(python:*)`), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
 
 ## Frontmatter Options
 
