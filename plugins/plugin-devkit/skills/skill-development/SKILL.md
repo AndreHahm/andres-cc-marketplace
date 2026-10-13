@@ -379,6 +379,11 @@ Adapt technical vocabulary to the user's apparent familiarity:
 - "improve this existing skill" → use `skill-refiner-interactive` instead
 - "add a hook to my project" → use `hook-development` instead
 
+**Last dated run record:** `evals/skill-development/workspace/iteration-1/eval-{1,2,3,4}/with_skill/grading.json`,
+2026-10-13 — 4 Quick Workflow scenarios (create, convert, consolidate, route refinement away), 19/19
+assertions, with_skill only, no baseline. Covers 3 of the 7 bullets above; the others are listed in
+`evals/skill-development/evals.json`'s `uncovered`. `scripts/smoke_test.py` passes as of the same date.
+
 **Quality gates:**
 - `quick_validate.py` passes without errors
 - `scripts/smoke_test.py` passes (this skill's own persisted smoke test)
