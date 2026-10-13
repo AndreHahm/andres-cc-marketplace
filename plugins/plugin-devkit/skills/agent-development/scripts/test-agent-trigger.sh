@@ -305,7 +305,7 @@ def parse_phrase_line(line: str) -> tuple[bool, str] | None:
 
 def _drop_allowed_rate_limit_events(text: str) -> str:
     # `claude -p --output-format stream-json` emits a routine rate_limit_event
-    # (status "allowed") on every call -- usage reporting, not a failure. Left in,
+    # (status "allowed" or "allowed_warning") on every call -- usage reporting, not a failure. Left in,
     # it matches the "rate_limit" retry pattern and forces every run into fallback.
     kept = []
     for line in text.splitlines():
@@ -315,7 +315,7 @@ def _drop_allowed_rate_limit_events(text: str) -> str:
             kept.append(line)
             continue
         info = event.get("rate_limit_info") if isinstance(event, dict) else None
-        if isinstance(event, dict) and event.get("type") == "rate_limit_event" and isinstance(info, dict) and info.get("status") == "allowed":
+        if isinstance(event, dict) and event.get("type") == "rate_limit_event" and isinstance(info, dict) and str(info.get("status", "")).startswith("allowed"):
             continue
         kept.append(line)
     return "\n".join(kept)
@@ -473,30 +473,39 @@ for raw_line in phrases_path.read_text(encoding="utf-8").splitlines():
     expected, phrase = parsed_line
     total += 1
 
-    native_result = run_claude_native(agent_path, agent_name, phrase, timeout_seconds)
-    if native_result is None:
-        actual, provider = run_semantic_fallback(agent_name, description, phrase, timeout_seconds)
-        mode = f"fallback:{provider}"
-    else:
-        actual = native_result
-        mode = "claude-native"
+    error_text = None
+    try:
+        native_result = run_claude_native(agent_path, agent_name, phrase, timeout_seconds)
+        if native_result is None:
+            actual, provider = run_semantic_fallback(agent_name, description, phrase, timeout_seconds)
+            mode = f"fallback:{provider}"
+        else:
+            actual = native_result
+            mode = "claude-native"
+    except (LLMProviderError, ValueError) as exc:
+        # One flaky phrase (provider failure, timeout, non-JSON reply) must not abort the
+        # battery and lose the results already collected -- record it as an error instead.
+        actual, mode, error_text = None, "error", f"{type(exc).__name__}: {exc}"
 
-    ok = actual == expected
+    ok = error_text is None and actual == expected
     if ok:
         passed += 1
+    status = "pass" if ok else ("error" if error_text else "fail")
 
     if output_format == "text":
-        status = "PASS" if ok else "FAIL"
         expectation = "should trigger" if expected else "should not trigger"
-        actual_text = "triggered" if actual else "not triggered"
-        print(f"[{status}] {mode} | {expectation} | {actual_text} | {phrase}")
+        if error_text:
+            print(f"[ERROR] {mode} | {expectation} | {error_text} | {phrase}")
+        else:
+            actual_text = "triggered" if actual else "not triggered"
+            print(f"[{status.upper()}] {mode} | {expectation} | {actual_text} | {phrase}")
     else:
         results.append(
             {
                 "phrase": phrase,
                 "expected": expected,
                 "actual": actual,
-                "status": "pass" if ok else "fail",
+                "status": status,
                 "mode": mode,
             }
         )
@@ -527,7 +536,7 @@ else:  # yaml -- hand-formatted, no pyyaml dependency for this simple shape
         phrase_escaped = str(r["phrase"]).replace('"', '\\"')
         lines.append(
             f'  - {{phrase: "{phrase_escaped}", expected: {str(r["expected"]).lower()}, '
-            f'actual: {str(r["actual"]).lower()}, status: {r["status"]}, mode: {r["mode"]}}}'
+            f'actual: {"null" if r["actual"] is None else str(r["actual"]).lower()}, status: {r["status"]}, mode: {r["mode"]}}}'
         )
     print("\n".join(lines))
 
