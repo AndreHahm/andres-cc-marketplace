@@ -1,17 +1,18 @@
 ---
 name: skill-development
 description: >-
-  Create, test, evaluate, improve, repair, and consolidate Claude Code skills. Use when the user
-  asks to "create a skill", "add a skill to plugin", "write a new skill", "improve a skill you are authoring",
-  "make a skill for X", "turn this into a skill", "convert a slash command to a skill", "apply a
-  skill template", "rewrite a skill's description", "organize
-  skill content", "fix a broken skill", "repair a skill", "consolidate skills", "find duplicate
-  skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-  Also covers skill structure, progressive disclosure, skill categories, testing, compliance
-  testing, and slash-command conversion for Claude Code plugins. Not for refining a working skill
+  Create, test, evaluate, improve, repair, and consolidate Claude Code skills. Also covers skill
+  structure, progressive disclosure, skill categories, testing, compliance testing, and
+  slash-command conversion for Claude Code plugins. Not for refining a working skill
   (skill-refiner-interactive, skill-improver-loop), auditing an existing evals.json
   (reviewing-evals) or multi-step workflow skills (workflow-skill-development): this skill
   authors and repairs.
+when_to_use: >-
+  Use when the user asks to "create a skill", "add a skill to plugin", "write a new skill",
+  "improve a skill you are authoring", "make a skill for X", "turn this into a skill", "convert a
+  slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
+  skill content", "fix a broken skill", "repair a skill", "consolidate skills", "find duplicate
+  skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
 allowed-tools: Read Write Edit Glob Grep Agent Skill Bash(python:*) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
 ---
 
