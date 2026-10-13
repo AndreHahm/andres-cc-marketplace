@@ -49,6 +49,14 @@ def test_redacts_camel_case_compound_credential_name():
     assert redacted.startswith("failed with apiKey=")
 
 
+def test_redacts_camel_case_names_ending_in_a_credential_word():
+    value = "hunter2" + "abcdef"
+    for name in ("databasePassword", "awsAccessKey", "clientSecret", "authToken"):
+        redacted, _ = redact_secrets.redact(f"request failed: {name}={value} retrying")
+        assert value not in redacted, name
+        assert redacted.endswith(" retrying"), name
+
+
 def test_unterminated_quote_redacts_only_the_rest_of_its_line():
     redacted, _ = redact_secrets.redact('stderr: API_KEY="abc\nlots of other diagnostic text\nmore')
     assert "abc" not in redacted

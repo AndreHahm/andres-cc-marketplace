@@ -63,7 +63,11 @@ console.log("\n=== dotenv-shaped assignment in the middle of a line (issue #546)
   check("a substring match inside another word is not redacted", redactSecrets(monkey) === monkey, redactSecrets(monkey));
   const camel = redactSecrets(`failed with apiKey=${value} again`);
   check("a camelCase compound credential name is redacted", !camel.includes(value), camel);
-  const unterminated = redactSecrets('stderr: API_KEY="abc\nlots of other diagnostic text\nmore');
+  const camelPassword = redactSecrets(`request failed: databasePassword=${value} retrying`);
+  check("a camelCase name ending in Password is redacted", !camelPassword.includes(value) && camelPassword.endsWith(" retrying"), camelPassword);
+  const accessKey = redactSecrets(`using awsAccessKey=${value} now`);
+  check("a camelCase accessKey compound is redacted", !accessKey.includes(value), accessKey);
+  const unterminated =redactSecrets('stderr: API_KEY="abc\nlots of other diagnostic text\nmore');
   check(
     "an unterminated quote redacts only the rest of its own line",
     !unterminated.includes("abc") && unterminated.includes("lots of other diagnostic text") && unterminated.endsWith("\nmore"),

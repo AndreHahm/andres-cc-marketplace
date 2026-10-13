@@ -43,16 +43,18 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     # The line-anchored rule above misses an assignment that is not at the start of a
     # line, and swallowing the rest of a mid-line match would eat surrounding prose, so
     # this one replaces only the value (the `keep` group is the name and stays). Unlike the
-    # line-anchored rule, the credential word must be a whole `_`-delimited segment of the name
-    # (or a known compound such as apiKey), so prose-embedded fields like sortKey=asc are left
-    # alone. A quoted value runs to its closing quote, or to the end of its line when the quote
-    # is never closed, so one stray quote cannot swallow the lines after it.
+    # line-anchored rule, the noisy words KEY and API must be a whole `_`-delimited segment of the
+    # name (or part of a known compound such as apiKey), so prose-embedded fields like
+    # sortKey=asc are left alone; TOKEN, SECRET and PASSWORD may appear anywhere in the name
+    # (databasePassword, DB_PASSWORD), since they rarely occur in non-secret names. A quoted
+    # value runs to its closing quote, or to the end of its line when the quote is never
+    # closed, so one stray quote cannot swallow the lines after it.
     (
         "dotenv_secret_assignment",
         re.compile(
-            r"(?i)(?P<keep>\b(?:[A-Za-z0-9]*_)*"
-            r"(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|API|APIKEY|ACCESSTOKEN|AUTHTOKEN|APITOKEN"
-            r"|SECRETKEY|PRIVATEKEY|CLIENTSECRET)(?:_[A-Za-z0-9_]*)?\s*=\s*)"
+            r"(?i)(?P<keep>\b(?:[A-Za-z0-9_]*"
+            r"(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)"
+            r"[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)\s*=\s*)"
             r"(?!\[REDACTED\])"
             r"""(?:"(?:[^"\\\r\n]|\\.)*(?:"|(?=[\r\n])|$)"""
             r"""|'(?:[^'\\\r\n]|\\.)*(?:'|(?=[\r\n])|$)|\S+)"""
