@@ -40,5 +40,5 @@ Dead links: [list | "none"] / Cross-skill references: [list | "none"]
 Missing standard sections: [list | "all 5 present"]
 Goal verification: [present | "absent — optional low-priority candidate"]
 Deferred goal candidates: [list | "none"]
-R13/R18 threshold source: [plugin-rulebook/assets/settings.json | skill-development fallback]
+R13/R18 threshold source: [plugin-rulebook/assets/settings.json | pdk-size-limits.md fallback]
 ```

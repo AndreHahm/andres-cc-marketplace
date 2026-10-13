@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "_meta": {
-    "notes": "Seeded during the upstream-sources-registry build by migrating plugin-rulebook's former 'Tracked Upstream Sources' table and settings.json _meta.review_triggers. Two of that table's six rows (references/pdk-size-limits.md, skill-reviewer C1/C2 severity tier logic) were internal plugin-devkit files, not official sources -- they were miscategorized in the old table and are intentionally NOT migrated here; see references/migration-notes.md. Seed entries below have not yet had a live freshness check run against them -- last_verified/last_verified_snapshot are null until the first real check populates them; do not treat a null last_verified as a fabricated or assumed check."
+    "notes": "Seeded during the upstream-sources-registry build by migrating plugin-rulebook's former 'Tracked Upstream Sources' table and settings.json _meta.review_triggers. Two of that table's six rows (references/pdk-size-limits.md, skill-reviewer C1/C2 severity tier logic) were internal plugin-devkit files, not official sources -- they were miscategorized in the old table and are intentionally NOT migrated here; see references/migration-notes.md. Only the claude-code-changelog and anthropics-claude-code-repo entries have not yet had a live freshness check run against them -- their last_verified/last_verified_snapshot are null until the first real check populates them; do not treat a null last_verified as a fabricated or assumed check. The other seed entries carry real last_verified values."
   },
   "sources": [
     {
