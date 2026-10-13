@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/plugin-devkit/skills/skill-tester/SKILL.md",
+  "assertions": [
+    {
+      "text": "all 2 expected JSON file(s) were written",
+      "type": "presence",
+      "target": "written files"
+    },
+    {
+      "text": "every written file parses as JSON",
+      "type": "structure",
+      "target": "written files"
+    },
+    {
+      "text": "every written file ends with a trailing newline (last byte 0x0A)",
+      "type": "functionality",
+      "target": "written files"
+    }
+  ]
+}
