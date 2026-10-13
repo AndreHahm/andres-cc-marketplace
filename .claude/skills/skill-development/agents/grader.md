@@ -50,7 +50,7 @@ After grading, consider if evals could be improved. Only surface suggestions whe
 If `{outputs_dir}/metrics.json` or `{outputs_dir}/../timing.json` exist, read and include.
 
 ### Step 8: Write Grading Results
-Save to `{outputs_dir}/../grading.json`.
+Save to `{outputs_dir}/../grading.json`, ending the file with a trailing newline.
 
 ## Grading Criteria
 
