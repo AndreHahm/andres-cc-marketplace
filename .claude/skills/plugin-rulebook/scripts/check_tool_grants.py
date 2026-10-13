@@ -224,6 +224,17 @@ def _split_multi_scope(grant_content):
     return scopes or [grant_content.strip()]
 
 
+def find_multi_scope_grants(allowed_tools_value):
+    """Return the raw `Bash(...)` grants that hold more than one scope. Claude
+    Code's permissions docs show one specifier per rule and never describe
+    this form, so it is parsed leniently above but flagged as advisory."""
+    return [
+        f"Bash({grant.strip()})"
+        for grant in BASH_GRANT_RE.findall(allowed_tools_value)
+        if len(_split_multi_scope(grant)) > 1
+    ]
+
+
 def extract_bash_grant_prefixes(allowed_tools_value):
     """Return (prefixes, universal) -- `prefixes` is a set of granted Bash
     prefixes as lowercase token tuples (e.g. Bash(git diff:*) -> ("git",
@@ -386,6 +397,14 @@ def main():
 
     findings, granted_prefixes = check_file(args.file)
     granted_display = ", ".join(" ".join(p) for p in sorted(granted_prefixes)) or "(none)"
+
+    frontmatter_text, _ = extract_frontmatter_body(args.file.read_text(encoding="utf-8"))
+    for grant in find_multi_scope_grants(parse_allowed_tools_value(frontmatter_text)):
+        print(
+            f"{args.file}: ADVISORY -- `{grant}` holds multiple scopes in one entry; Claude Code's "
+            "permissions docs only show one specifier per Bash(...) rule, so this form is "
+            "undocumented. Prefer separate entries, e.g. `Bash(npm:*) Bash(git:*)`."
+        )
 
     if not findings:
         print("PASS (tool grants): every candidate command span is covered by allowed-tools")
