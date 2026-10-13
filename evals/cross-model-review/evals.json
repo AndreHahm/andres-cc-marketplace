@@ -44,11 +44,32 @@
       "prompt": "Using this repo's cross-model-review skill: the diff you're about to review (a branch about to become a PR) modifies plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs itself, alongside unrelated application code changes. Walk through exactly where in Preflight this matters, what check catches it, and what happens at the First-Send Confirmation as a result. Do not actually run any command -- describe it.",
       "expected_output": "Identifies Preflight step 6 specifically: greps the step 2 changed-file list for plugins/codex-kit/.*/scripts/.*, finds a match (bridge-invoke.mjs). States explicitly that Preflight step 5 protects the two prompt files (review.md/refute.md) against a self-modifying diff, but step 6 exists because that protection does NOT extend to the dispatcher executable itself, which runs from a repo-relative path with no $BASE verification of its own. Correctly describes the consequence: the match is disclosed explicitly at the First-Send Confirmation (not silently proceeded past), and recorded in Phase 3's inspection_limits as the dispatcher itself not having been trust-boundary-verified against $BASE for this run.",
       "files": []
+    },
+    {
+      "id": 7,
+      "name": "Small diff stays one dispatch pair; planner failure is not a pass",
+      "prompt": "Using this repo's cross-model-review skill (read the worktree copy of plugins/git-kit/skills/cross-model-review/SKILL.md and its references/scoped-review.md): a branch changes 5 files totalling 40 KB, Claude plus Codex are both available, and no exclusions are configured. Describe exactly what Preflight step 1 runs, how many Codex dispatches happen in Phase 1 and Phase 2, and whether the user is asked about folders. Then describe what happens if the planner script exits 2. Do not run any command -- describe it.",
+      "expected_output": "Step 1 runs python3 plugins/git-kit/scripts/git-review-scope.py with --merge-base, --base-ref and --output in the chained call and sends the full diff to $RUN/full.diff so its text stays out of context. The 5 files are well under max_slice_bytes (80000), so they pack into one batch: one Phase 1 and one Phase 2 Codex dispatch, as before the change. No folder question is asked, because that question only fires when dropped_slices is non-empty or the request named folders. If the planner exits 2, PLAN_FAILED=1 is set without aborting the chain, it is never treated as a pass, and the user is asked via AskUserQuestion whether to review unscoped or stop; choosing unscoped records that the planner was unavailable.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "Codex timeout on one batch",
+      "prompt": "Using this repo's cross-model-review skill (worktree copy, including references/scoped-review.md): a 250 KB diff was planned into three batches. The second batch's Codex Phase 1 dispatch returns the typed failure category timeout. Describe exactly what the skill does, what the user is asked, what happens if they accept or decline, and which slices count as completed afterwards. Do not run anything -- describe it.",
+      "expected_output": "The skill asks the user via AskUserQuestion whether to retry that batch once with CODEX_KIT_REVIEW_TIMEOUT_MS=480000 or leave it to Claude alone; the default 240 s limit is used first and a retry happens only on an explicit yes, once. If declined or the retry also fails, the batch is unfinished: its Claude findings stay single-sided (Medium), the unfinished batch is disclosed in inspection_limits, and its slices are NOT completed. Envelopes from the finished batches are kept, not discarded. Only slices whose Claude pass and dispatched Codex passes all finished are passed later as --completed-slice.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "Round two with a timed-out slice",
+      "prompt": "Using this repo's cross-model-review skill (worktree copy, references/scoped-review.md): in the same conversation the user fixed some findings and asks for another review round. Round one's batch covering slice 'scripts' timed out and was not retried; slices 'protected' and 'tests' finished. Describe the planner invocation for round two and what gets reviewed. Also say what happens if the earlier manifest path is no longer known. Do not run anything -- describe it.",
+      "expected_output": "Round two runs the planner with --prior-manifest pointing at the earlier manifest (outside the repository, owned by the user) and --completed-slice protected and --completed-slice tests, but NOT scripts, writing a new manifest to the new $RUN. The scripts slice is reviewed again; files unchanged since a completed slice are skipped; files a run pick hid before are reviewed again. If the earlier manifest path is not known, the run is treated as round one and everything is reviewed.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 6,
-    "declared_scenarios_covered": 6,
+    "declared_scenarios_total": 9,
+    "declared_scenarios_covered": 9,
     "uncovered": []
   }
 }

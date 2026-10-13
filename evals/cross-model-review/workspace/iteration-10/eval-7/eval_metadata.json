@@ -1,0 +1,10 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response says Preflight step 1 runs python3 plugins/git-kit/scripts/git-review-scope.py and sends the full diff to $RUN/full.diff so its text stays out of context", "type": "presence", "target": "Preflight step 1"},
+    {"text": "Response says the 5 files form one batch, so there is one Codex Phase 1 dispatch and one Phase 2 dispatch (unchanged from before)", "type": "functionality", "target": "scoped-review.md section 3"},
+    {"text": "Response says no folder question is asked, because it fires only when dropped_slices is non-empty or the request names folders", "type": "functionality", "target": "scoped-review.md section 2"},
+    {"text": "Response says a planner exit of 2 sets PLAN_FAILED=1 without aborting the chain, is never treated as a pass, and the user chooses via AskUserQuestion between unscoped review and stop", "type": "functionality", "target": "scoped-review.md section 1"}
+  ]
+}

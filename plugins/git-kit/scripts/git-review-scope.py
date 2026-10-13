@@ -701,6 +701,36 @@ def _write_fresh(output: Path, text: str) -> None:
         handle.write(text)
 
 
+_CODEX_PATH_RE = re.compile(r"[A-Za-z0-9._/-]+\Z")
+
+
+def _codex_eligible(repo: Path, path: str) -> bool:
+    """Whether the Codex dispatch scripts accept this path: their charset, a regular file that
+    still exists, and no symlink anywhere along it."""
+    if not _CODEX_PATH_RE.match(path) or path.startswith("/") or ".." in path.split("/"):
+        return False
+    target = repo / path
+    return target.is_file() and not _has_symlink(repo, PurePosixPath(path).parts)
+
+
+def _write_diffs(diff_dir: Path, manifest: dict, file_diff: Callable[[str], bytes | None]) -> None:
+    """One diff file per slice, plus a variant of it limited to Codex-eligible files. Slice names
+    come from a fixed set, so no file name is built from diff content."""
+    eligible = {f["path"] for f in manifest["files"] if f["codex_eligible"]}
+    os.mkdir(diff_dir, 0o700)
+    for s in manifest["slices"]:
+        for suffix, keep in (
+            (".diff", s["files"]),
+            (".codex.diff", [p for p in s["files"] if p in eligible]),
+        ):
+            body = b"".join(file_diff(p) or b"" for p in keep)
+            fd = os.open(
+                diff_dir / (s["name"] + suffix), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+            )
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(body)
+
+
 def _fail(message: str) -> int:
     print(f"error: {message}", file=sys.stderr)
     return 2
@@ -724,11 +754,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="a prior-round slice whose reviewer finished (repeatable)",
     )
     parser.add_argument("--output", required=True, help="fresh path; never overwritten")
+    parser.add_argument(
+        "--diff-dir",
+        default="",
+        help="fresh directory outside the repository; receives <slice>.diff and <slice>.codex.diff",
+    )
     args = parser.parse_args(argv)
     repo = Path(args.repo).resolve()
     output = Path(args.output)
     if os.path.lexists(output):
         return _fail(f"--output {output} already exists; use a fresh file name")
+    if output.parent.resolve().is_relative_to(repo):
+        return _fail("--output must be outside the repository")
+    diff_dir: Path | None = None
+    if args.diff_dir:
+        diff_dir = Path(args.diff_dir)
+        if os.path.lexists(diff_dir):
+            return _fail(f"--diff-dir {diff_dir} already exists; use a fresh directory name")
+        if diff_dir.resolve().is_relative_to(repo):
+            return _fail("--diff-dir must be outside the repository")
     if not _SHA_RE.match(args.merge_base):
         return _fail("invalid --merge-base: pass the full lowercase commit SHA")
     if args.scope.startswith(":"):
@@ -781,21 +825,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "no --completed-slice given: files planned last round are reviewed again"
             )
 
+    diff_cache: dict[str, bytes | None] = {}
+
+    def file_diff(path: str) -> bytes | None:
+        if path not in diff_cache:
+            # A changed file's name is data: with literal pathspecs a name such as ":(glob)x" or
+            # "*" selects exactly that file, not pathspec magic that matches nothing or more.
+            result = _git(
+                repo,
+                "--literal-pathspecs",
+                "diff",
+                "--no-color",
+                "--no-renames",
+                "--ignore-submodules=none",
+                "--text",
+                "--no-ext-diff",
+                "--no-textconv",
+                args.merge_base,
+                "--",
+                path,
+            )
+            diff_cache[path] = result.stdout if result.returncode == 0 else None
+        return diff_cache[path]
+
     def diff_size(path: str) -> int:
-        result = _git(
-            repo,
-            "diff",
-            "--no-color",
-            "--no-renames",
-            "--ignore-submodules=none",
-            "--text",
-            "--no-ext-diff",
-            "--no-textconv",
-            args.merge_base,
-            "--",
-            path,
-        )
-        return len(result.stdout) if result.returncode == 0 else -1
+        data = file_diff(path)
+        return -1 if data is None else len(data)
 
     manifest = plan_scope(
         changed,
@@ -812,10 +867,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         base=args.merge_base,
         scope=args.scope,
     )
+    for entry in manifest["files"]:
+        entry["codex_eligible"] = _codex_eligible(repo, entry["path"])
     try:
+        if diff_dir is not None:
+            _write_diffs(diff_dir, manifest, file_diff)
         _write_fresh(output, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     except OSError as err:
-        return _fail(f"cannot write --output: {err}")
+        return _fail(f"cannot write --output or --diff-dir: {err}")
     print(
         f"round {manifest['round']}: {len(manifest['files'])} file(s) in "
         f"{len(manifest['slices'])} slice(s), {len(manifest['excluded'])} excluded, "

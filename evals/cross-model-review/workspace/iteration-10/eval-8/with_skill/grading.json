@@ -1,0 +1,12 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response says the user is asked once whether to retry that batch with CODEX_KIT_REVIEW_TIMEOUT_MS=480000, after the default 240 s limit was used first", "passed": true, "evidence": "'via AskUserQuestion, whether to retry batch 2 once with export CODEX_KIT_REVIEW_TIMEOUT_MS=480000... The default limit was 240 s. The skill retries only on an explicit yes.'"},
+    {"text": "Response says a decline or a failed retry leaves the batch unfinished, its Claude findings single-sided (Medium), and the unfinished batch disclosed in inspection_limits", "passed": true, "evidence": "'If the user declines. The batch is unfinished. Its Claude findings stay single-sided at Medium confidence. The unfinished batch is disclosed in inspection_limits'; a failed retry also leaves it unfinished."},
+    {"text": "Response says envelopes from batches that already finished are kept, not discarded", "passed": true, "evidence": "'Envelopes from finished batches are kept.'"},
+    {"text": "Response says the timed-out batch's slices are not completed and are not passed as --completed-slice", "passed": true, "evidence": "'Batch 2's slices are therefore not completed on decline or a failed retry'; round two passes only completed slices as --completed-slice."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "The agent reported two unstated points in the skill text: the success path after a retry, and that later batches are dispatched normally. Follow-up fix in scoped-review.md section 4."
+}

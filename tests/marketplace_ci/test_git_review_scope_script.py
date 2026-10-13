@@ -1022,6 +1022,60 @@ def test_prior_manifest_inside_the_repository_is_refused(repo, tmp_path):
     assert manifest["round"] == 1 and "inside the repository" in manifest["fallback"]
 
 
+def test_diff_dir_gets_a_diff_per_slice_and_a_codex_variant_without_ineligible_files(
+    repo, tmp_path
+):
+    (repo / "ok.py").write_text("print(1)\n")
+    (repo / "odd name.py").write_text("print(2)\n")
+    (repo / "link.py").symlink_to("ok.py")
+    _git(repo, "add", "-N", "-A")
+    out, diffs = tmp_path / "m.json", tmp_path / "diffs"
+    assert _run(repo, out, "--diff-dir", str(diffs)).returncode == 0
+    manifest = json.loads(out.read_text())
+    eligible = {f["path"]: f["codex_eligible"] for f in manifest["files"]}
+    assert eligible == {"ok.py": True, "odd name.py": False, "link.py": False}
+    name = next(s["name"] for s in manifest["slices"] if "ok.py" in s["files"])
+    full = (diffs / f"{name}.diff").read_bytes()
+    codex = (diffs / f"{name}.codex.diff").read_bytes()
+    assert b"odd name.py" in full and b"link.py" in full and b"ok.py" in full
+    assert b"ok.py" in codex and b"odd name.py" not in codex and b"link.py" not in codex
+    assert oct((diffs / f"{name}.diff").stat().st_mode & 0o777) == "0o600"
+
+
+def test_a_file_named_like_pathspec_magic_still_gets_its_own_diff(repo, tmp_path):
+    (repo / "plain.py").write_text("print(1)\n")
+    (repo / ":(glob)payload.sh").write_text("echo hidden-payload\n")
+    (repo / "star").mkdir()
+    (repo / "star" / "*").write_text("echo star-payload\n")
+    _git(repo, "add", "-N", "-A")
+    out, diffs = tmp_path / "m.json", tmp_path / "diffs"
+    assert _run(repo, out, "--diff-dir", str(diffs)).returncode == 0
+    manifest = json.loads(out.read_text())
+    sizes = {f["path"]: f["bytes"] for f in manifest["files"]}
+    assert sizes[":(glob)payload.sh"] > 0 and sizes["star/*"] > 0
+    full = [p for p in diffs.glob("*.diff") if not p.name.endswith(".codex.diff")]
+    text = b"".join(p.read_bytes() for p in full)
+    assert b"hidden-payload" in text and b"star-payload" in text
+    assert text.count(b"print(1)") == 1  # a glob-named file must not pull in other files' diffs
+
+
+def test_output_inside_the_repository_is_refused(repo, tmp_path):
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    assert _run(repo, repo / "manifest.json").returncode == 2
+    assert not (repo / "manifest.json").exists()
+
+
+def test_diff_dir_must_be_fresh_and_outside_the_repository(repo, tmp_path):
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    existing = tmp_path / "exists"
+    existing.mkdir()
+    assert _run(repo, tmp_path / "m1.json", "--diff-dir", str(existing)).returncode == 2
+    assert _run(repo, tmp_path / "m2.json", "--diff-dir", str(repo / "diffs")).returncode == 2
+    assert not (repo / "diffs").exists()
+
+
 def test_prior_manifest_symlink_is_refused(repo, tmp_path):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
