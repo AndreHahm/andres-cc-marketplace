@@ -2,9 +2,14 @@
 """Persisted smoke test for skill-development: frontmatter validity, referenced-file
 existence, and Bash-scope grant usage consistency."""
 
+import contextlib
+import importlib.util
+import io
 import pathlib
 import re
+import subprocess
 import sys
+import tempfile
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -66,13 +71,112 @@ def check_bash_grants():
     return True, "every granted Bash command is invoked somewhere in the body"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
+def _load_script(name):
+    """Import a sibling script by file path (repair_skill.py imports quick_validate bare)."""
+    scripts_dir = str(SKILL_DIR / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    spec = importlib.util.spec_from_file_location(name, SKILL_DIR / "scripts" / f"{name}.py")
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load scripts/{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_scan_skills_parses_block_scalar():
+    scan = _load_script("scan_skills")
+    text = "---\nname: demo\ndescription: >-\n  Folded text.\n  Second line.\n---\n# Body\n"
+    description = scan.parse_frontmatter(text).get("description")
+    if description != "Folded text. Second line.":
+        return False, f"block-scalar description parsed as {description!r}"
+    return True, "block-scalar description is parsed by a real YAML parser"
+
+
+def check_similarity_without_registry():
+    sim = _load_script("analyze_similarity")
+    if sim.jaccard_similarity(set(), set()) != 0.0:
+        return False, "two empty sets must not count as identical"
+    same = "Parse structured application logs for error triage and incident correlation"
+    skills = [
+        {"name": "alpha", "frontmatter": {"name": "alpha", "description": same}},
+        {"name": "beta", "frontmatter": {"name": "beta", "description": "Render sales charts"}},
+        {"name": "gamma", "frontmatter": {"name": "gamma", "description": same}},
+    ]
+    if sim.find_obsolete_skills(skills, {}):
+        return False, "registry-less skills must not all be reported obsolete (bold != old)"
+    report = sim.generate_simple_report({"skills": skills}, 0.65)
+    # Merge headings use the title-cased display name; skills are alphabetical pairs
+    if "### Alpha + Gamma" not in report:
+        return False, "identical registry-less descriptions were not flagged (positive control)"
+    if "Beta" in report.split("## Medium Priority")[0].split("## High Priority")[1]:
+        return False, "a dissimilar registry-less skill was flagged as a merge pair"
+    return True, "no registry: no KeyError; duplicates flagged, dissimilar and unused not"
+
+
+def check_obsolete_handles_naive_timestamp():
+    sim = _load_script("analyze_similarity")
+    skills = [{"name": "alpha", "frontmatter": {"description": "Parse logs"}}]
+    for stamp in ("2020-01-01T00:00:00", "2020-01-01T00:00:00Z"):
+        registry = {"skills": {"alpha": {"activation_count": 3, "last_used": stamp}}}
+        reasons = sim.find_obsolete_skills(skills, registry)[0]["reasons"]
+        if not any(r.startswith("Not used in") for r in reasons):
+            return False, f"last_used {stamp!r} was not compared: {reasons}"
+    return True, "naive and timezone-aware last_used timestamps are both compared"
+
+
+def check_repair_preserves_frontmatter():
+    repair = _load_script("repair_skill")
+    original = "---\ndescription: >-\n  Zażółć gęślą.\nz-key: 1\na-key: 2\n---\n# Body\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "demo-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(original, encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            repair.fix_frontmatter_format(skill)
+        result = (skill / "SKILL.md").read_text(encoding="utf-8")
+    expected = '---\nname: "demo-skill"\n' + original[4:]
+    if result != expected:
+        return False, f"existing frontmatter was rewritten: {result!r}"
+    return True, "repair inserts only the missing key and leaves the rest byte-identical"
+
+
+def check_init_rejects_path_traversal_name():
+    script = SKILL_DIR / "scripts" / "init_skill.py"
+    with tempfile.TemporaryDirectory() as tmp:
+        base = pathlib.Path(tmp) / "base"
+        base.mkdir()
+        proc = subprocess.run(
+            [sys.executable, str(script), "../escape", "--path", str(base)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        escaped = (pathlib.Path(tmp) / "escape").exists()
+    if proc.returncode == 0 or escaped:
+        return False, "init_skill.py accepted a name containing '..'"
+    return True, "init_skill.py rejects a non-hyphen-case skill name"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_scan_skills_parses_block_scalar,
+    check_similarity_without_registry,
+    check_obsolete_handles_naive_timestamp,
+    check_repair_preserves_frontmatter,
+    check_init_rejects_path_traversal_name,
+]
 
 
 def main():
     failed = False
     for check in CHECKS:
-        ok, message = check()
+        try:
+            ok, message = check()
+        except Exception as exc:  # a crashing check is a FAIL, not an aborted run
+            ok, message = False, f"raised {type(exc).__name__}: {exc}"
         print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
         failed = failed or not ok
     sys.exit(1 if failed else 0)
