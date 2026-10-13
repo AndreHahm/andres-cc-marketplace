@@ -4,8 +4,8 @@ Extracted from the "Codex dispatch resolver" section's step 3 per plugin-ruleboo
 grew past the 500-line Critical threshold). SKILL.md keeps the two-case split inline; this file holds
 the fuller reasoning for each.
 
-- **On Phase 1's Codex call failing** (nothing from Codex has succeeded yet, no batch has a valid
-  Phase 1 envelope): "single-model" means the full single-model path — skip every remaining Codex
+- **On Phase 1's Codex call failing** (no batch has a valid Phase 1 envelope, judged once every
+  dispatched Phase 1 call has returned): "single-model" means the full single-model path — skip every remaining Codex
   dispatch (Phase 1's Codex pass, already failed, and all of Phase 2 entirely) and follow the
   single-model paths called out in Phase 2 and Phase 3.
 - **On Phase 1's Codex call failing for one batch while another batch already succeeded**: a partial

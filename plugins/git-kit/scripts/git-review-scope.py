@@ -27,7 +27,8 @@ tracked by git, reached through a symlink, a case variant, or not verifiable as 
 ignored for the same reason. The local file can only add exclusions. Dispatcher, settings,
 .gitattributes, .gitmodules and this skill's own files can never be excluded by config, pick or
 lockfile rules, and are kept ahead of the size budget (they do not count against it). A mirror
-collapses only into a canonical copy that is itself reviewed this round (or already reviewed in an
+collapses only into a canonical copy with the same bytes and the same executable bit that is itself
+reviewed this round (or already reviewed in an
 earlier one, or identical on the base ref); a lockfile is excluded only beside a manifest reviewed
 this round; no path through a symlink is ever read. If the budget drops such an anchor, what it
 excused is put back. Residual risk: the budget still drops lowest-priority slices (disclosed), so
@@ -422,6 +423,10 @@ def _default_fingerprint(read: Reader) -> Callable[[str], str]:
     return fingerprint
 
 
+def _is_executable(fingerprint: str) -> bool:
+    return fingerprint.startswith("file:x:")
+
+
 def plan_scope(
     changed: Sequence[str],
     config: dict,
@@ -462,7 +467,12 @@ def plan_scope(
         if hit:
             excluded.append({"path": path, "reason": hit[0], "detail": hit[1]})
             continue
-        canonicals = _mirror_canonicals(path, sync, read)
+        # Equal bytes are not enough: an executable-bit change on a mirror is a change to review.
+        canonicals = [
+            c
+            for c in _mirror_canonicals(path, sync, read)
+            if _is_executable(prints[path]) == _is_executable(fingerprint(c))
+        ]
         manifest = LOCK_MANIFESTS.get(PurePosixPath(path).name)
         sibling = str(PurePosixPath(path).with_name(manifest)) if manifest else ""
         if canonicals:
