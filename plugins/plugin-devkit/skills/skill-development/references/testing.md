@@ -49,7 +49,7 @@ Trigger rate = % of should-trigger queries that correctly activate the skill.
 - Adjacent domains, ambiguous phrasing, context where another tool wins.
 - Do NOT use obviously unrelated queries — they don't test anything.
 
-**Good**: `"review this PR and check if the architecture looks right"` (code-review skill, not skill-creator)
+**Good**: `"review this PR and check if the architecture looks right"` (code-review skill, not skill-development)
 **Bad**: `"Write a fibonacci function"` (too far away, trivially fails)
 
 ### Scoring

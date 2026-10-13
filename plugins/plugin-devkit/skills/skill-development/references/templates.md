@@ -357,7 +357,7 @@ allowed-tools: Read,Write,Bash(python:*),Bash(curl:*)
 ### Reference File Organization
 ✅ One level deep:
 ```
-skill-creator/
+skill-development/
 ├── SKILL.md
 └── references/
     ├── templates.md
@@ -366,7 +366,7 @@ skill-creator/
 
 ❌ Nested chains (avoid):
 ```
-skill-creator/
+skill-development/
 └── references/
     └── templates/
         └── advanced/
