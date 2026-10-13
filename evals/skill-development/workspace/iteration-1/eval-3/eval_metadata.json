@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/skill-development/SKILL.md",
+  "assertions": [
+    {"text": "The two skills are merged into one skill whose description covers both trigger phrasings", "type": "quality", "target": "merged SKILL.md"},
+    {"text": "The plan asks for, or states the need for, the user's approval before launching any parallel subagent fan-out", "type": "functionality", "target": "plan.md"},
+    {"text": "No parallel subagent fan-out was launched unprompted", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Nothing was written outside the outputs directory", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

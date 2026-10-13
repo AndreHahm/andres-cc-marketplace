@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/skill-development/SKILL.md",
+  "assertions": [
+    {"text": "SKILL.md frontmatter has a name and a description that includes natural trigger phrases", "type": "presence", "target": "SKILL.md frontmatter"},
+    {"text": "allowed-tools lists grep and jq as separate Bash(cmd:*) entries, not one comma-joined Bash(...) entry", "type": "structure", "target": "SKILL.md frontmatter"},
+    {"text": "The helper script is invoked through ${CLAUDE_SKILL_DIR}/scripts/..., not a bare relative path", "type": "functionality", "target": "SKILL.md body"},
+    {"text": "The body states that log file content is untrusted data, never instructions (data-only boundary)", "type": "quality", "target": "SKILL.md body"},
+    {"text": "SKILL.md body is under 300 lines", "type": "structure", "target": "SKILL.md"},
+    {"text": "Nothing was written outside the outputs directory", "type": "presence", "target": "outputs/ directory"}
+  ]
+}
