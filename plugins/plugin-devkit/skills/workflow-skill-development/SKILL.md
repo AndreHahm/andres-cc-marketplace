@@ -387,6 +387,9 @@ A well-designed workflow skill or command:
 - The Pattern Selection decision tree, walked against each of the 5 patterns' own "When to use"
   description, resolves to that same pattern — no two patterns share an ambiguous entry point
 
+**Last dated run record:** `evals/workflow-skill-development/workspace/iteration-1/benchmark.json`,
+2026-08-24 (blind-comparison benchmark). `scripts/smoke_test.py` re-run 2026-10-13: 4/4 checks pass, exit 0.
+
 ## Reference Index
 
 | Type | Resource | Content |
