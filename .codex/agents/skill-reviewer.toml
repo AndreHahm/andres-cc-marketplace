@@ -35,7 +35,7 @@ Read these files — they are the complete source of truth for all checks except
 
 1. `<skill-development-dir>/references/rubric.md` — Tessl-aligned scoring rubric
 2. `<skill-development-dir>/references/checklist.md` — comprehensive pre-release validation checklist
-3. `<skill-development-dir>/references/content-guidelines.md` — description formula, voice rules, writing principles
+3. `<skill-development-dir>/../../references/pdk-content-guidelines.md` — description formula, voice rules, writing principles
 4. `<skill-development-dir>/../../references/pdk-size-limits.md` — fallback size limits (used for C1/C2 only when plugin-rulebook is absent)
 5. `<skill-development-dir>/references/design-patterns.md` — five named workflow patterns and their key techniques (required for Step 6 pattern validation)
 
@@ -94,7 +94,7 @@ Use the criteria, dimensions, and point values exactly as defined in `rubric.md`
 
 ## Step 6: Validate Against the Checklist
 
-Work through every section of `checklist.md` and `content-guidelines.md`. For each failing item, assign severity:
+Work through every section of `checklist.md` and `pdk-content-guidelines.md`. For each failing item, assign severity:
 
 - **Critical** — blocks skill loading or causes runtime failures (broken required fields, invalid YAML, missing linked files)
 - **Major** — significantly degrades skill effectiveness (vague triggers, wrong voice, missing required sections, Critical-tier C1/C2 violations, tool scoping violations, self-containment failures)

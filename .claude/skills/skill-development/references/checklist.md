@@ -209,7 +209,7 @@ For form filling, see references/FORMS.md
 - [ ] Discoverable by synonyms users might use
 
 ### Examples of Good/Poor Descriptions
-See `content-guidelines.md`'s "Examples of Good Descriptions" / "Examples of Poor Descriptions" — the canonical copy, kept in one place to avoid drift.
+See `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`'s "Examples of Good Descriptions" / "Examples of Poor Descriptions" — the canonical copy, kept in one place to avoid drift.
 
 ## Testing Checklist
 
@@ -333,8 +333,8 @@ See `references/secrets-and-credentials.md` for complete guidance.
 
 For comprehensive best practices, see:
 - **How skills work**: `how-skills-work.md` (architecture, token loading, selection mechanism)
-- **Writing effective descriptions**: `content-guidelines.md` (description formula, trigger phrases, testing)
+- **Writing effective descriptions**: `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md` (description formula, trigger phrases, testing)
 - **Workflow patterns**: `templates.md` (checklist, feedback loop, conditional, template patterns)
 - **Testing & iteration**: `skill-workflow.md` Phase 7 and Testing Checklist
-- **Security & permissions**: `allowed-tools.md` (tool scoping, principle of least privilege)
+- **Security & permissions**: `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md` (tool scoping, principle of least privilege)
 - **Advanced patterns**: `advanced-patterns.md` (complex skill patterns, archetypes, risk tiering)
