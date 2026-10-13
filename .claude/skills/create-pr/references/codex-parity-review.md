@@ -25,7 +25,8 @@ even a dangling one) is refused with exit 2, and a path inside the checkout is r
 result must be the full payload `run-codex-review` writes (a string `mode`, the list fields, a boolean
 `blocking`); anything else, including its `error` failure payload, counts as "could not run". The CI entry point's
 per-reviewer instruction files go to `<output stem>-instructions/` beside `--output` (via `--instructions-dir`), so
-nothing is written into the checkout; the script leaves that directory in place.
+nothing is written into the checkout; the script leaves that directory in place and refuses (exit 2) when that path
+already exists, a symlink included.
 The model variable is looked up on `origin`'s repository (`gh variable list --repo`), the repo this branch is pushed to;
 a value the bridge would reject (anything outside `[A-Za-z0-9._-]`, or over 64 characters) is ignored with the fallback warning.
 In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, so run the script from the checkout root as
