@@ -1,7 +1,5 @@
 # Templates for Skill Creation
 
-**R18 exception (recorded):** several templates below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready template; splitting one would break its usability. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
-
 ## Content-Size Decision Tree
 
 For the authoritative decision tree (which specific content goes in SKILL.md vs. references/, including the ~100-line content-type-specific trigger for API docs/schema tables/background material), see `skill-workflow.md` Part 1 (the 80% Rule) — not restated here to avoid drift with a conflicting flat threshold.
@@ -23,62 +21,7 @@ Use this template as your starting point. Customize the sections based on your s
 
 Token-optimized: carries the five standard sections the rulebook expects (Quick Start, When to Use, When NOT to Use, Testing & Validation, Reference Guide).
 
-````markdown
----
-name: {skill-name}
-description: >-
-  {What it does — start with action verbs}. Use when {primary trigger conditions}:
-  {keywords}, {trigger phrases}, {file patterns}. {Optional: explicit scope or constraints}.
-allowed-tools: Read Edit Write Glob
----
-
-# {Skill Name}
-
-{One-line imperative summary of what to do}.
-
-## Quick Start
-
-1. **{Step 1}** — {brief instruction}
-2. **{Step 2}** — {brief instruction}
-3. **{Step 3}** — {brief instruction}
-
-## When to Use
-
-- {Primary trigger condition}
-- {Secondary trigger condition}
-- {Specific scenario where this skill applies}
-
-## When NOT to Use
-
-- {Exclusion 1} → use `{alternative-skill}` instead
-- {Exclusion 2} → {reason or alternative approach}
-
-## {Core Workflow}
-
-{Procedural steps or rules for the main use case.}
-
-- **{Rule 1}**: {Imperative constraint}.
-- **{Rule 2}**: {Imperative constraint}.
-
----
-
-## Testing & Validation
-
-1. **{Check 1}** — {what to verify}
-2. **{Check 2}** — {what to verify}
-
-**Quality gates:**
-- [ ] {Gate 1}
-- [ ] {Gate 2}
-
----
-
-## Reference Guide
-
-| Resource | Purpose |
-|---|---|
-| `references/{file}.md` | {What it contains and when to read it} |
-````
+Template file: `${CLAUDE_SKILL_DIR}/assets/skill-template-basic.md`
 
 #### Token Budget Checklist
 
@@ -107,64 +50,7 @@ allowed-tools: Read,Write,Bash(python:*)
 
 **Body:**
 
-````markdown
-# Skill Name
-
-## Overview
-[Brief description of what this skill does]
-
-## Prerequisites
-- Required software/libraries: Python 3.8+, requests library
-- Environment variables (required):
-  - `GITHUB_TOKEN`: Personal access token from https://github.com/settings/tokens
-  - `API_ENDPOINT`: Your API endpoint URL
-- Validation: Run `bash scripts/validate-env.sh` to verify setup
-
-## Quick Start
-[3-5 step usage with example]
-
-## Common Workflows
-- [Workflow 1]
-- [Workflow 2]
-- [Workflow 3]
-
-## Validation
-Run the validation script to test the skill:
-
-```bash
-bash scripts/validate-env.sh  # Verify environment setup
-bash scripts/validate.sh      # Full skill validation
-```
-
-## Error Handling
-[How the skill handles failures and what error messages mean]
-
-## Security Notes
-
-This skill requires credentials. Never hardcode them:
-
-**Required environment variables:**
-- `API_KEY`: Get from https://service.com/api-keys
-- `SECRET_TOKEN`: Get from https://service.com/settings
-
-**Setup:**
-```bash
-export API_KEY=your_key_here
-export SECRET_TOKEN=your_token_here
-bash scripts/validate-env.sh  # Verify setup
-```
-
-**See `references/secrets-and-credentials.md` for complete security guidance.**
-
-## Troubleshooting
-[Common issues and solutions]
-
-## Support
-Contact: [Team lead / owner]
-
-## Version History
-See [VERSION_HISTORY.md](../VERSION_HISTORY.md)
-````
+Body template file: `${CLAUDE_SKILL_DIR}/assets/skill-template-complex-body.md`
 
 ### SKILL.md Body Structure Examples
 
@@ -193,50 +79,7 @@ See [VERSION_HISTORY.md](../VERSION_HISTORY.md)
 
 For skills with detailed content, create `references/complete-guide.md` or task-specific files.
 
-```markdown
-# Complete Guide: [Skill Name]
-
-## Table of Contents
-- [Configuration](#configuration)
-- [Operations](#operations)
-- [Workflows](#workflows)
-- [Troubleshooting](#troubleshooting)
-
-## Configuration
-
-### Environment Variables
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| VAR_NAME | Yes | — | Description |
-| VAR_NAME | No | default_value | Description |
-
-### File Structure
-```
-project/
-├── config.yml
-├── src/
-└── tests/
-```
-
-## Operations
-
-### Basic Operation
-[Step-by-step instructions with code examples]
-
-### Advanced Operation
-[For users who understand the basics]
-
-## Workflows
-
-### Template: [Workflow Name]
-[Checklist or step-by-step workflow]
-
-## Troubleshooting
-
-### Error: [Error Message]
-**Cause:** Explanation
-**Solution:** Fix steps
-```
+Template file: `${CLAUDE_SKILL_DIR}/assets/reference-file-template.md`
 
 ## Description Formula & Examples
 
