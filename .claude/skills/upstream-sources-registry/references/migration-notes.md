@@ -25,7 +25,7 @@ table had.
 
 | Old entry | Old rule(s) affected | Why not migrated |
 |---|---|---|
-| `skill-development/references/size-limits.md` | R13, R18 | This is a plugin-devkit **internal** file, not an official Claude Code source — it was miscategorized in the old table. A change to this file is exactly what `R20`'s Duplicate Fact Sweep already exists to catch; it does not belong in a registry of *external* sources. |
+| `references/pdk-size-limits.md` | R13, R18 | This is a plugin-devkit **internal** file, not an official Claude Code source — it was miscategorized in the old table. A change to this file is exactly what `R20`'s Duplicate Fact Sweep already exists to catch; it does not belong in a registry of *external* sources. |
 | `skill-reviewer` severity-tier logic | R13, R18 | Same — an internal component, not an official source. Same reasoning as above. |
 
 If `R13`/`R18` need their own tracked upstream source in the future (e.g. an actual official

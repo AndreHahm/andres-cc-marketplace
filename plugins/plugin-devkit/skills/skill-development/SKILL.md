@@ -200,7 +200,7 @@ For blind A/B comparison: `${CLAUDE_SKILL_DIR}/agents/comparator.md`. For benchm
 
 ### Phase 5: Polish
 
-**Description optimization** — the description is a trigger condition, not a summary. Front-load trigger phrases. `description` should run 80–1024 characters, `when_to_use` up to 512, and the two combined cap at 1536 characters (see `references/size-limits.md` for the full tiered thresholds). Describe what the skill does and when to trigger it — not the internal workflow steps; a description that summarizes procedural steps reduces activation accuracy because Claude treats it as already-known detail rather than a trigger to read the body.
+**Description optimization** — the description is a trigger condition, not a summary. Front-load trigger phrases. `description` should run 80–1024 characters, `when_to_use` up to 512, and the two combined cap at 1536 characters (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md` for the full tiered thresholds). Describe what the skill does and when to trigger it — not the internal workflow steps; a description that summarizes procedural steps reduces activation accuracy because Claude treats it as already-known detail rather than a trigger to read the body.
 
 **Description formula:** `[Action]. Use when [trigger contexts]. [Scope/constraints].` — the formula, rules and good/poor examples are in `${CLAUDE_SKILL_DIR}/references/content-guidelines.md`. The description must activate Claude on the right input without requiring the skill name to be mentioned — begin with the trigger context or primary use case.
 
