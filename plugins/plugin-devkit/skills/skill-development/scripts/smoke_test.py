@@ -5,7 +5,9 @@ existence, and Bash-scope grant usage consistency."""
 import contextlib
 import importlib.util
 import io
+import os
 import pathlib
+import queue
 import re
 import subprocess
 import sys
@@ -73,9 +75,10 @@ def check_bash_grants():
 
 def _load_script(name):
     """Import a sibling script by file path (repair_skill.py imports quick_validate bare)."""
-    scripts_dir = str(SKILL_DIR / "scripts")
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
+    # scripts/ itself (bare sibling imports) and the skill dir (`from scripts.utils import`)
+    for path in (str(SKILL_DIR / "scripts"), str(SKILL_DIR)):
+        if path not in sys.path:
+            sys.path.insert(0, path)
     spec = importlib.util.spec_from_file_location(name, SKILL_DIR / "scripts" / f"{name}.py")
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load scripts/{name}.py")
@@ -158,6 +161,70 @@ def check_init_rejects_path_traversal_name():
     return True, "init_skill.py rejects a non-hyphen-case skill name"
 
 
+def check_run_eval_reads_pipe_without_select():
+    run_eval = _load_script("run_eval")
+    if hasattr(run_eval, "select"):
+        return False, "run_eval still imports select (POSIX-only on pipes)"
+    child = subprocess.Popen(
+        [sys.executable, "-c", "print('ok')"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+    )
+    chunks = queue.Queue()
+    run_eval._pump_stdout(child.stdout, chunks)  # returns at EOF
+    child.wait()
+    first = chunks.get(timeout=5)
+    if b"ok" not in first or chunks.get(timeout=5) != b"":
+        return False, f"pump did not deliver the output then EOF: {first!r}"
+    return True, "run_eval reads the child's stdout through a portable pump and sees EOF"
+
+
+def check_package_skill_imports_as_script():
+    script = SKILL_DIR / "scripts" / "package_skill.py"
+    with tempfile.TemporaryDirectory() as tmp:
+        proc = subprocess.run(
+            [sys.executable, str(script)], capture_output=True, text=True, cwd=tmp, check=False
+        )
+    if "ModuleNotFoundError" in proc.stderr or "ImportError" in proc.stderr:
+        return False, "package_skill.py cannot import quick_validate when run as a script"
+    return True, "package_skill.py imports its validator when run as `python .../package_skill.py`"
+
+
+def check_report_icons_differ():
+    text = (SKILL_DIR / "scripts" / "generate_report.py").read_text(encoding="utf-8")
+    pairs = re.findall(r'icon = "([^"]*)" if did_pass else "([^"]*)"', text)
+    if not pairs or any(ok == bad for ok, bad in pairs):
+        return False, f"pass and fail icons must differ: {pairs}"
+    return True, "report pass and fail icons are distinct"
+
+
+def check_improve_description_call_is_contained():
+    if os.name == "nt":
+        return True, "POSIX-only fake `claude` shim (skip)"
+    improve = _load_script("improve_description")
+    with tempfile.TemporaryDirectory() as tmp:
+        shim = pathlib.Path(tmp) / "claude"
+        shim.write_text('#!/bin/sh\nif [ -n "$SLOW" ]; then sleep 5; fi\npwd\n', encoding="utf-8")
+        shim.chmod(0o755)
+        old_path, old_cwd = os.environ["PATH"], os.getcwd()
+        os.environ["PATH"] = f"{tmp}{os.pathsep}{old_path}"
+        try:
+            reply = improve._call_claude("prompt", None, timeout=5).strip()
+            os.environ["SLOW"] = "1"
+            try:
+                improve._call_claude("prompt", None, timeout=1)
+            except RuntimeError as exc:
+                timed_out = "timed out" in str(exc)
+            else:
+                timed_out = False
+        finally:
+            os.environ["PATH"] = old_path
+            os.environ.pop("SLOW", None)
+    if os.path.realpath(reply) == os.path.realpath(old_cwd):
+        return False, "claude -p ran in the caller's cwd instead of a neutral one"
+    if not timed_out:
+        return False, "a claude -p timeout did not surface as RuntimeError"
+    return True, "claude -p runs in a neutral cwd and a timeout becomes a RuntimeError"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -167,6 +234,10 @@ CHECKS = [
     check_obsolete_handles_naive_timestamp,
     check_repair_preserves_frontmatter,
     check_init_rejects_path_traversal_name,
+    check_run_eval_reads_pipe_without_select,
+    check_package_skill_imports_as_script,
+    check_report_icons_differ,
+    check_improve_description_call_is_contained,
 ]
 
 
