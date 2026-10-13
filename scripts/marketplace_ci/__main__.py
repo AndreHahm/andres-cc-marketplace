@@ -1098,6 +1098,16 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     structural_findings = run_delta_structural_checks(repo, changed)
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
+    if instructions_dir is not None:
+        # Claim it exclusively and privately: the validation above is only a check, and
+        # `mkdir(exist_ok=True)` later would accept a path planted since, symlinks included.
+        try:
+            instructions_dir.parent.mkdir(parents=True, exist_ok=True)
+            instructions_dir.mkdir(mode=0o700)
+        except OSError as exc:
+            return _fail_run_codex_review(
+                args, f"cannot claim --instructions-dir {str(instructions_dir)!r}: {exc}"
+            )
     try:
         reports = dispatch_reviewers(
             scope,
@@ -1340,7 +1350,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--instructions-dir",
         metavar="PATH",
         help="new directory outside the checkout for the per-reviewer instruction files "
-        "(default: a temporary directory removed afterwards)",
+        "(default: a temporary directory, removed afterwards on a best-effort basis)",
     )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
 

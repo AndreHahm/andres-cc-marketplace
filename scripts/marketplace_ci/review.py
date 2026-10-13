@@ -1781,8 +1781,9 @@ def dispatch_reviewers(
     lines only; `None` leaves the instruction exactly as the base SHA has it.
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
-    `None` they go in a fresh temporary directory removed after the call, so
-    nothing lands in `repo`."""
+    `None` they go in a fresh temporary directory outside `repo`, removed after
+    the call on a best-effort basis: a failed removal (a file still held open on
+    Windows, say) is ignored rather than raised, so the directory can remain."""
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
     deadline = time.monotonic() + budget_seconds
