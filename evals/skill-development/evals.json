@@ -34,8 +34,9 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 7,
-    "declared_scenarios_covered": 4,
+    "declared_scenarios_covered": 3,
     "uncovered": [
+      "improve this skill / audit this skill / fix a broken skill",
       "bulletproof a skill / verify skill under pressure / compliance test a skill",
       "help me debug Python / review my PR / write unit tests for X (generic non-trigger)",
       "add a hook to my project (routes to hook-development)"
