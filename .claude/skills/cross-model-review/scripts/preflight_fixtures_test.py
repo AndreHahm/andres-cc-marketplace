@@ -284,7 +284,77 @@ def test_real_index_untouched_after_run():
         return True, "real .git/index is untouched after the run -- file still shows as untracked"
 
 
+def extract_planner_block() -> str:
+    text = SKILL_MD.read_text(encoding="utf-8")
+    for match in re.finditer(r"```bash\n(.*?)```", text, re.DOTALL):
+        if "git-review-scope.py" in match.group(1):
+            return match.group(1).strip()
+    raise RuntimeError("Could not find Preflight step 1's review-scope-planner bash block")
+
+
+def planner_repo(repo: pathlib.Path) -> None:
+    # The planner is run by its repo-relative path, so the scratch repo carries a copy of it on
+    # main, committed before the branch, so it is not part of the diff under review.
+    init_repo(repo)
+    script = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
+    dest = repo / "plugins" / "git-kit" / "scripts"
+    dest.mkdir(parents=True)
+    (dest / "git-review-scope.py").write_bytes(script.read_bytes())
+    (repo / "f.txt").write_text("line1\n", encoding="utf-8")
+    commit_all(repo, "init")
+    run_bash(repo, "git checkout -qb feature")
+
+
+def planner_chain(extra: str, *, merge_base_override: str = "") -> str:
+    inputs_block = extract_inputs_block()
+    planner = extract_planner_block()
+    return f"""
+set -e
+BASE=main
+SCOPE=
+{inputs_block}
+{merge_base_override}
+{planner}
+echo "PLANNER_CHAIN_COMPLETED"
+{extra}
+"""
+
+
+def test_planner_sees_untracked_files_and_diff_goes_to_a_file():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        planner_repo(repo)
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
+        check = (
+            'grep -q new_untracked.txt "$RUN/manifest-1.json" && '
+            'grep -q new_untracked.txt "$RUN/full.diff" && echo PLANNER_SAW_UNTRACKED'
+            ' && echo "STATUS=$DIFF_STATUS PLAN=${PLAN_FAILED:-0}"'
+        )
+        result = run_bash(repo, planner_chain(check))
+        if "PLANNER_SAW_UNTRACKED" not in result.stdout or "STATUS=0 PLAN=0" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"planner/diff-file step wrong {detail}"
+        return True, "planner lists the untracked file and the diff text goes to a file, not stdout"
+
+
+def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        planner_repo(repo)
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
+        result = run_bash(
+            repo,
+            planner_chain('echo "PLAN=${PLAN_FAILED:-0}"', merge_base_override="MERGE_BASE=bogus"),
+        )
+        if "PLANNER_CHAIN_COMPLETED" not in result.stdout or "PLAN=1" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"chain aborted or PLAN_FAILED unset {detail}"
+        return True, "an unplannable scope sets PLAN_FAILED=1 and the chain still completes"
+
+
 CHECKS = [
+    test_planner_sees_untracked_files_and_diff_goes_to_a_file,
+    test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,
     test_index_copy_failure_is_disclosed,

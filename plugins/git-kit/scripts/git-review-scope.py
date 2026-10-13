@@ -567,6 +567,7 @@ def plan_scope(
         "scope": scope,
         "fallback": fallback,
         "budget_bytes": config["budget_bytes"],
+        "max_slice_bytes": config["max_slice_bytes"],
         "files": files,
         "slices": chosen,
         "dropped_slices": dropped,
