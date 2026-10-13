@@ -9,7 +9,7 @@ description: >-
   the content. Reads, classification, and previews need no approval; all material record creation,
   Decision state changes, and Goal proposals require the plugin's live approval gate, with no
   exception for a record that looks low-risk or purely archival.
-allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database
+allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database
 ---
 
 # Notion Knowledge Management
@@ -99,6 +99,29 @@ Decision record**, where `decision-state` (see Decision State Machine below) is 
 authoritative state and the shared `status` field is not separately tracked, to avoid two fields
 that could silently drift apart.
 
+## Long Text and Page-Content Blocks
+
+Notion's API limits a text property or a text block to 2,000 characters (user-confirmed). A live probe
+on 2026-10-13 found the Notion connector accepted a 2,500-character paragraph of page content and a
+2,500-character text property and returned both intact, so neither limit is enforced through this
+connector. This plugin keeps to the 2,000 limit regardless, as a conservative contract that does not
+depend on connector behavior. Two rules follow:
+
+- **Never write a text property value over 2,000 characters, and never truncate one silently.** Check
+  the length before the preview; if a value is over the limit, say so and either shorten it with the
+  user or move the content into page content as below.
+- **A long body goes into page content, not a property.** For a Report (and any other record whose
+  `body` would exceed the limit), the `body` property holds only a short note, and the full text goes
+  into the page as blocks of at most 2,000 characters. Write the full text to a file in the session
+  scratchpad (never the repository root), then run
+  `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py split <file> --start <i>` — it returns the
+  block count (`total`) and ten blocks at a time. Create the page with the first blocks joined by blank
+  lines as its content, then append the remaining pages of blocks with `notion-update-page`'s
+  `insert_content`, and read the page back to confirm the block count and that nothing was cut. The
+  preview shown for approval states the block count. The splitter does not understand markdown
+  tables or code fences, so say so in the preview when the text contains one; it never changes what
+  the approval gate requires.
+
 ## Decision State Machine
 
 Decisions carry a state distinct from other record types, tracked in the `decision-state` property
@@ -179,7 +202,9 @@ bootstrap creates it with the installation's `notion.repo` as an option, and rec
 configuration. A database that is already in place at either path is adopted by its stable ID, not
 recreated; a database found only at the old repository-level path for an organization-level type is
 reported as a move candidate for the user to approve, never moved or recreated silently. Resolve by
-stable ID or direct fetch, never from a parent page's child listing text, which can show a stale title.
+stable ID or direct fetch, never from title text alone: a database's own title and its data source's
+name are separate fields that can differ (renaming only the data source leaves the database title, which
+a parent page's child listing shows, unchanged), so rename both and verify the listing.
 Store the resulting stable IDs in the plugin's
 versioned configuration (`versioned-configuration.json` at the plugin root, schema documented in
 `FOUNDATION_CONTRACTS.md`) via `.claude/workmanagement-kit.local.json`'s override, not in this

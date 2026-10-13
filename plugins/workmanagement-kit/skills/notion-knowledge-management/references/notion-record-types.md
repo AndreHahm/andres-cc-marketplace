@@ -61,7 +61,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
 |---|---|---|
 | `title` | Yes | Short, human-readable summary |
 | `summary` | Yes | Executive summary of the report's content |
-| `body` | Yes | Full report content |
+| `body` | Yes | A short note only (at most 2,000 characters); the full report goes into page content as blocks — see SKILL.md's Long Text and Page-Content Blocks |
 | `open-items` | No | Enumerated follow-ups — feeds `open-item-management` |
 | `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Report is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
 
@@ -86,6 +86,9 @@ Decision State Machine section — see SKILL.md) that this specific type require
   stop and report instead of writing the record without it. Note, Research and Outcome/Learning live in
   organization-level databases shared by all repositories, so `repo` is what tells their rows apart; the
   other four types live in a per-repository database and carry `repo` for uniformity.
+- No text property on any type may hold more than 2,000 characters; a longer value is shortened with
+  the user or moved into page content blocks, never truncated silently (SKILL.md's Long Text and
+  Page-Content Blocks section).
 - No type in this table supports a delete operation — see SKILL.md's Gotchas.
 - `disposition-history` is append-only — a dispositioning pass adds entries, it never replaces or
   reorders the array.
