@@ -12,7 +12,7 @@ description: >-
   retrospective, auditing skill or agent performance, building an improvement backlog, or
   identifying systemic issues across skills, agents, and rules from a session or date range.
 argument-hint: "[start-date | \"today\" | \"this conversation\"]"
-allowed-tools: Read Glob Grep Write Edit Agent AskUserQuestion Bash(git log:* git show:* date:*)
+allowed-tools: Read Glob Grep Write Edit Agent AskUserQuestion Bash(git log:*) Bash(git show:*) Bash(date:*)
 ---
 
 # Session Analysis
