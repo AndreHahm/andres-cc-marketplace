@@ -287,3 +287,15 @@ def test_review_loader_refuses_an_unusable_shapes_file(tmp_path, document):
     shapes_file.write_text(document, encoding="utf-8")
     with pytest.raises(ValueError):
         _token_shapes_alternation(shapes_file)
+
+
+def test_sk_shape_covers_underscores_in_project_style_keys():
+    """OpenAI project keys (sk-proj-...) can contain underscores; the shape must span them or a
+    key is only partly redacted, leaving its tail in the output."""
+    pattern = dict(load_shapes((REAL_REPO / CANONICAL).read_text(encoding="utf-8")))[
+        "generic_sk_token"
+    ]
+    key = "sk-" + "proj-" + "abcDEF_123-ghiJKL_456-mnoPQR"
+    assert re.sub(pattern, "[REDACTED]", f"leaked {key} here", flags=re.ASCII) == (
+        "leaked [REDACTED] here"
+    )
