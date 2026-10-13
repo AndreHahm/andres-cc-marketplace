@@ -56,8 +56,8 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
             r"(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)"
             r"[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)\s*=\s*)"
             r"(?!\[REDACTED\])"
-            r"""(?:"(?:[^"\\\r\n]|\\.)*(?:"|(?=[\r\n])|$)"""
-            r"""|'(?:[^'\\\r\n]|\\.)*(?:'|(?=[\r\n])|$)|\S+)"""
+            r"""(?:"(?:[^"\\\r\n]|\\[^\r\n]?)*(?:"|(?=[\r\n])|$)"""
+            r"""|'(?:[^'\\\r\n]|\\[^\r\n]?)*(?:'|(?=[\r\n])|$)|\S+)"""
         ),
     ),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),

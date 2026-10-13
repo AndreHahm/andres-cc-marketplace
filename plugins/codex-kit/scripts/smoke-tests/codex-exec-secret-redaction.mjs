@@ -63,7 +63,20 @@ console.log("\n=== dotenv-shaped assignment in the middle of a line (issue #546)
   check("a substring match inside another word is not redacted", redactSecrets(monkey) === monkey, redactSecrets(monkey));
   const camel = redactSecrets(`failed with apiKey=${value} again`);
   check("a camelCase compound credential name is redacted", !camel.includes(value), camel);
-  const camelPassword = redactSecrets(`request failed: databasePassword=${value} retrying`);
+  const bs = String.fromCharCode(92);
+  for (const [label, quote] of [["double", '"'], ["single", "'"]]) {
+    const atEnd = redactSecrets(`diag: API_KEY=${quote}two words${bs}`);
+    check(`a ${label}-quoted spaced value ending in a lone backslash is redacted whole`, !atEnd.includes("words"), atEnd);
+    const beforeNewline = redactSecrets(`diag: DB_PASSWORD=${quote}top secret${bs}\nnext line stays`);
+    check(
+      `a ${label}-quoted value ending in a backslash before a newline is redacted whole, next line kept`,
+      !beforeNewline.includes("secret") && beforeNewline.endsWith("\nnext line stays"),
+      beforeNewline
+    );
+  }
+  const escapedQuote = redactSecrets(`diag: DB_PASSWORD="top ${bs}"secret" tail`);
+  check("an escaped quote inside a quoted value still redacts through the closing quote", !escapedQuote.includes("secret") && escapedQuote.endsWith(" tail"), escapedQuote);
+  const camelPassword =redactSecrets(`request failed: databasePassword=${value} retrying`);
   check("a camelCase name ending in Password is redacted", !camelPassword.includes(value) && camelPassword.endsWith(" retrying"), camelPassword);
   const accessKey = redactSecrets(`using awsAccessKey=${value} now`);
   check("a camelCase accessKey compound is redacted", !accessKey.includes(value), accessKey);
