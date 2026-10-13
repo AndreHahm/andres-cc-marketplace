@@ -111,7 +111,7 @@ A skill can depend on another skill if:
 
 **Example:**
 ```yaml
-# ✅ GOOD - skill-creator extends from skill ecosystem
+# ✅ GOOD - skill-development extends from skill ecosystem
 description: >-
   Create and refine Claude Code skills following best practices.
   Use when building new skills, validating existing skills, or improving skill quality.

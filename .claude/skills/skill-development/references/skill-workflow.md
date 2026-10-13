@@ -261,7 +261,7 @@ When consolidating multiple reference files into one:
 
 ### Case Study: Correct Refinement ✅
 
-**Skill:** skill-creator (version 1.2.0 → 1.2.1)
+**Skill:** skill-development (version 1.2.0 → 1.2.1)
 
 **Plan:** Add "Refinement Preservation Rules" section with 4 gates
 
