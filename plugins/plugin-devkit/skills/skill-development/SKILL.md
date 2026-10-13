@@ -372,13 +372,13 @@ Adapt technical vocabulary to the user's apparent familiarity:
 
 **Verify this skill activates on:**
 - "create a skill for X" / "add a skill to plugin" / "write a new skill"
-- "improve this skill" / "audit this skill" / "fix a broken skill"
+- "improve a skill you are authoring" / "audit this skill" / "fix a broken skill"
 - "bulletproof a skill" / "verify skill under pressure" / "compliance test a skill"
 - "convert this slash command to a skill" / "consolidate my skills"
 
 **Verify it does NOT activate on:**
 - "help me debug Python" / "review my PR" / "write unit tests for X"
-- "improve this existing skill" → use `skill-refiner-interactive` instead
+- "improve this existing skill" (an already-working skill, refined with operator checkpoints) → use `skill-refiner-interactive` instead
 - "add a hook to my project" → use `hook-development` instead
 
 **Last dated run record:** `evals/skill-development/workspace/iteration-1/eval-{1,2,3,4}/with_skill/grading.json`,
