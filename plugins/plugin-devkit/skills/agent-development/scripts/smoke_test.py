@@ -83,9 +83,9 @@ def check_scripts_exist():
 
 def check_reference_table_files_exist():
     _, _, text = _frontmatter_and_body()
-    idx = text.find("## Additional Resources")
+    idx = text.find("## Reference Guide")
     if idx == -1:
-        return True, "no '## Additional Resources' section found (skip)"
+        return True, "no '## Reference Guide' section found (skip)"
     section = text[idx:]
     link_targets = re.findall(r"\]\(([^)]+)\)", section)
     backtick_targets = re.findall(r"\|\s*`([^`]+)`\s*\|", section)
@@ -95,13 +95,11 @@ def check_reference_table_files_exist():
         if "<" not in t and "." in t.rsplit("/", 1)[-1]
     }
     if not targets:
-        return True, "no file paths found in '## Additional Resources' (skip)"
+        return True, "no file paths found in '## Reference Guide' (skip)"
     missing = [t for t in targets if not (SKILL_DIR / t).is_file()]
     if missing:
-        return False, "'## Additional Resources' file(s) do not exist: " + ", ".join(
-            sorted(missing)
-        )
-    return True, f"all {len(targets)} '## Additional Resources' file path(s) exist"
+        return False, "'## Reference Guide' file(s) do not exist: " + ", ".join(sorted(missing))
+    return True, f"all {len(targets)} '## Reference Guide' file path(s) exist"
 
 
 def check_frontmatter_fields_documented():
