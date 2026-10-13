@@ -93,7 +93,8 @@ rather than a clean validation error.
 Every record shares: `source` (what produced it — a user request, another plugin via
 `plugin-integration-intake`, or a prior record), `related-record` (links to other Notion/Linear
 records), `authority` (always `notion` for records this skill owns), `transition-id` (the
-recorded transition this write produced), `owner`, and `date` — plus `status`, **except on a
+recorded transition this write produced), `owner`, `date`, and `repo` (required; the configured
+`notion.repo`, see `references/notion-record-types.md`) — plus `status`, **except on a
 Decision record**, where `decision-state` (see Decision State Machine below) is the sole
 authoritative state and the shared `status` field is not separately tracked, to avoid two fields
 that could silently drift apart.
@@ -167,7 +168,19 @@ any other, with no lighter-weight exception for the fact that it starts in `prop
 The first time this plugin operates against a Notion workspace, resolve the production and an
 isolated test location using stable IDs (never a display name — two databases can share a name).
 Read existing structures first and present reuse/create/adopt choices; get plan-level approval for
-the exact bounded changes before creating anything. Store the resulting stable IDs in the plugin's
+the exact bounded changes before creating anything.
+
+Resolve two scopes per environment (`prod`, `test`): the **organization-level** page
+`AndreHahm / <env>` holding the `note`, `research` and `outcome-learning` databases (titled
+`AndreHahm / <env> / <Type>`, shared by every repository), and the **repository-level** page
+`AndreHahm / <repo> / <env>` holding `idea`, `decision`, `proposed-goal` and `report` (titled
+`AndreHahm / <repo> / <env> / <Type>`). Every database carries the required `repo` select property; the
+bootstrap creates it with the installation's `notion.repo` as an option, and records that value in the
+configuration. A database that is already in place at either path is adopted by its stable ID, not
+recreated; a database found only at the old repository-level path for an organization-level type is
+reported as a move candidate for the user to approve, never moved or recreated silently. Resolve by
+stable ID or direct fetch, never from a parent page's child listing text, which can show a stale title.
+Store the resulting stable IDs in the plugin's
 versioned configuration (`versioned-configuration.json` at the plugin root, schema documented in
 `FOUNDATION_CONTRACTS.md`) via `.claude/workmanagement-kit.local.json`'s override, not in this
 skill's own state.

@@ -3,6 +3,7 @@
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
+    "repo": null,
     "databases": {
       "test": {},
       "prod": {}
