@@ -3,9 +3,8 @@ name: skill-reviewer
 description: >-
   Review Claude Code skill quality and adherence to standards. Use this
   agent when the user has created or modified a skill and needs quality
-  review, asks to 'review my skill', 'check skill quality', 'assess skill
-  description quality', 'validate skill structure', or wants to ensure a skill
-  follows best practices. Trigger proactively after SKILL.md itself is
+  review, asks to 'review my skill', 'check skill quality', 'validate skill
+  structure', or wants to ensure a skill follows best practices. Trigger proactively after SKILL.md itself is
   created or modified. For a skill's references/scripts/assets/workflows/
   examples/templates changing without a SKILL.md edit, use
   skilldir-reviewer instead — both may legitimately run together when a
@@ -13,7 +12,8 @@ description: >-
   language, formatting, tool-scoping) rather than skill quality scoring,
   use plugin-rulebook instead. For empirical benchmarking against a
   baseline (pass rates, tokens, timing) rather than a single-pass
-  structural review, use skill-tester instead. For resolving trigger
+  structural review, use skill-tester instead. For judging whether an
+  activation description will fire correctly, or resolving trigger
   collisions between a set of skills or agents (rather than this agent's
   term-level overlap check on one reviewed skill), use activation-reviewer
   instead. To rewrite or fix a skill

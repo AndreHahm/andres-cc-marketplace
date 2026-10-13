@@ -6,7 +6,8 @@ description: >-
   Use when the user wants to understand agent structure, hand-author or edit an agent
   file's fields directly, or validate/refine an existing agent against the spec. For
   one-shot generation of a brand-new agent from a described need, use the agent-creator
-  agent instead; for a structured quality review of an existing agent, use subagent-reviewer.
+  agent instead; for a structured quality review of an existing agent, use subagent-reviewer;
+  for whether agent descriptions collide or will fire correctly, use activation-reviewer.
 allowed-tools: Read Grep Glob Skill Bash(${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/test-agent-trigger.sh:*)
 ---
 
@@ -36,6 +37,7 @@ Agents are autonomous subprocesses with their own isolated context window that h
 - Running **plugin compliance checks** → use `plugin-rulebook` instead
 - Generating a complete new agent end-to-end from a description → use `agent-creator` instead
 - Structured quality review of an existing agent (tool scoping, prompt quality, checklist compliance) → use `subagent-reviewer` instead
+- Whether two or more agents' (or skills') descriptions overlap, or whether one description will fire for a given request → use `activation-reviewer` instead; this skill writes a description, it does not compare trigger conditions across components
 
 ## Finding-ID Fix Mode
 

@@ -11,6 +11,7 @@ description: >-
   commit-SHA reference directly in a source artifact it reads. Use when running a post-session
   retrospective, auditing skill or agent performance, building an improvement backlog, or
   identifying systemic issues across skills, agents, and rules from a session or date range.
+  For several analysis types in one prioritized report, use running-a-full-retrospective.
 argument-hint: "[start-date | \"today\" | \"this conversation\"]"
 allowed-tools: Read Glob Grep Write Edit Agent AskUserQuestion Bash(git log:*) Bash(git show:*) Bash(date:*)
 ---
@@ -43,6 +44,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **No `.claude/` components were active** — if no skills, agents, commands, or rules were involved, there is nothing to analyze
 - **Single-component review** — use `skill-reviewer` for one skill or `plugin-validator` for one plugin; this skill adds overhead without benefit for isolated reviews
 - **Code quality** — use `/code-review` for diff analysis; this skill covers skill and agent behavior, not code correctness
+- **Several analysis types consolidated into one deduplicated, prioritized report** — use `running-a-full-retrospective`; this skill is the single SWOT-per-component retrospective, one of the lenses that skill can run
 - **Want the retrospective's suggestions applied, tested, documented, and committed as a guided pipeline, not just surfaced** — use `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow after this skill's report is produced; this skill stops at "Top 5 Actions," it never applies them
 - **Full permission-candidate extraction across session transcripts** — use `pdk-find-permissions`; this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a substitute for that command's systematic scan
 

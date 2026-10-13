@@ -5,7 +5,8 @@ description: >-
   with multi-step phases, sub-agent orchestration, decision trees, and progressive disclosure.
   Use when creating or implementing skills that involve sequential pipelines, routing patterns,
   safety gates, task tracking, phased execution, parallel sub-agent orchestration, or any
-  multi-step workflow command. Also applies when reviewing or refactoring existing workflow skills.
+  multi-step workflow command. Also applies when refactoring existing workflow skills; for a
+  scored quality review use skill-reviewer, for operator-approved polish skill-refiner-interactive.
   Not for simple single-purpose skills with no multi-step workflow — use skill-development
   directly for those; this skill covers workflow/orchestration architecture only, not domain
   content authoring.
