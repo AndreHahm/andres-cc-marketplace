@@ -1,5 +1,22 @@
 # Slash Command to Skill Conversion Guide
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Why Convert?](#why-convert)
+- [Part 1: Analyze the Slash Command](#part-1-analyze-the-slash-command)
+- [Part 2: Map Command to Skill](#part-2-map-command-to-skill)
+- [Part 3: Convert Logic to Skill Instructions](#part-3-convert-logic-to-skill-instructions)
+- [Part 4: Determine Skill Location](#part-4-determine-skill-location)
+- [Part 5: Structure the Converted Skill](#part-5-structure-the-converted-skill)
+- [Part 6: Validation After Conversion](#part-6-validation-after-conversion)
+- [Part 7: Migration Path Decision](#part-7-migration-path-decision)
+- [Part 8: Documentation & Handoff](#part-8-documentation--handoff)
+- [Common Conversion Pitfalls](#common-conversion-pitfalls)
+- [Quick Reference: Conversion Checklist](#quick-reference-conversion-checklist)
+- [Examples by Complexity](#examples-by-complexity)
+- [Need Help?](#need-help)
+
 ## Overview
 
 Slash commands in `~/.claude/commands/` have been merged into Skills. While existing slash commands continue to work, migrating to skills provides better context management, subagent support, and project-scoped automation instead of user-space-wide effects.
