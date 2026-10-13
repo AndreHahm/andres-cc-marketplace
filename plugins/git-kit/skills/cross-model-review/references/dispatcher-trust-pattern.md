@@ -21,6 +21,10 @@ changed-file list. Two parts of that pattern are each load-bearing on their own:
 
 ## Why `-E` and the trailing `|| true` are both required on the check itself
 
+(The check also carries `-i`, which is not required for it to work: on a case-insensitive filesystem a
+path such as `Plugins/Codex-Kit/Assets/x.json` reaches the real `plugins/codex-kit/assets/` folder and
+would otherwise slip past the case-sensitive pattern.)
+
 `grep`'s default basic mode treats `(`/`)`/`?` as literal characters, so it fails to match either
 alternative in the pattern above — verified: a plain `grep` run against
 `plugins/codex-kit/scripts/lib/codex-exec.mjs` exits 1 (no match) where `grep -E` correctly exits 0.

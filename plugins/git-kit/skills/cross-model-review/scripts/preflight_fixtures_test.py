@@ -352,6 +352,38 @@ def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
         return True, "an unplannable scope sets PLAN_FAILED=1 and the chain still completes"
 
 
+def test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        init_repo(repo)
+        mirror = repo / ".claude" / "scripts"
+        mirror.mkdir(parents=True)
+        source = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
+        (mirror / "git-review-scope.py").write_bytes(source.read_bytes())
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
+        commit_all(repo, "init")
+        run_bash(repo, "git checkout -qb feature")
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
+        block = extract_planner_block()
+        command = '"${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py"'
+        mirror_command = '"$PWD/.claude/scripts/git-review-scope.py"'
+        results = []
+        for text in (block.replace(command, mirror_command), block):
+            script = (
+                f"set -e\nunset CLAUDE_PLUGIN_ROOT\nBASE=main\nSCOPE=\n{extract_inputs_block()}\n"
+            )
+            script += f'{text}\necho "PLAN=${{PLAN_FAILED:-0}}"\n'
+            results.append(run_bash(repo, script).stdout)
+        if "PLAN=0" not in results[0]:
+            return False, f"mirror substitution did not run the planner: {results[0]}"
+        if "PLAN=1" not in results[1]:
+            return False, f"an empty variable without the substitution should fail: {results[1]}"
+        return (
+            True,
+            "empty CLAUDE_PLUGIN_ROOT: the .claude mirror substitution works, the bare form fails",
+        )
+
+
 def test_dispatcher_check_matches_a_case_variant_path():
     with tempfile.TemporaryDirectory() as tmp:
         script = (
@@ -396,6 +428,7 @@ CHECKS = [
     test_planner_sees_untracked_files_and_diff_goes_to_a_file,
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
     test_a_diff_touching_the_planner_skips_it_and_sets_the_flag,
+    test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,

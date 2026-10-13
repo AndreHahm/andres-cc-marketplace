@@ -396,6 +396,10 @@ def _select(kept: list[dict], config: dict) -> tuple[list[dict], list[dict]]:
     for s in sorted(slices, key=lambda s: (order[s["class"]], s["index"])):
         if s["class"] == "protected":
             chosen.append(s)
+        # `not chosen` is deliberate: the "keep the first slice even if it alone is over budget"
+        # exception only applies when nothing, protected slices included, would be reviewed
+        # otherwise. With a protected slice chosen, an oversized slice must fit the budget, so a
+        # padding file cannot be kept free of it. A dropped slice is disclosed and must be read.
         elif not chosen or used + s["bytes"] <= config["budget_bytes"]:
             chosen.append(s)
             used += s["bytes"]
