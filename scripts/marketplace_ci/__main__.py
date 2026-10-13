@@ -229,6 +229,10 @@ def _handle_sync_token_shapes(args: argparse.Namespace) -> int:
         print(f"sync-token-shapes: {exc}", file=sys.stderr)
         return 2
     print(f"sync-token-shapes: applied {len(result.applied)} action(s)")
+    if result.applied:
+        # The .claude/ copies are generated mirrors of the plugin copies; check-plugin-mirrors
+        # (part of check-all) fails until they follow.
+        print("sync-token-shapes: now run sync-plugin-mirrors so the .claude/ mirrors follow")
     return 0
 
 

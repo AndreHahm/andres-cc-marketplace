@@ -87,6 +87,8 @@ def test_load_shapes_rejects_malformed_input(text):
         "(?>abc)",  # atomic group
         "a++b",  # possessive quantifier
         "a{2}+b",
+        "(a)?(?(1)b|c)",  # conditional group: Python accepts it, JavaScript throws
+        "(?<n>a)b",  # named group: JavaScript syntax Python rejects
     ],
 )
 def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(pattern):
@@ -305,6 +307,24 @@ def test_review_loader_refuses_an_unusable_shapes_file(tmp_path, document):
     shapes_file.write_text(document, encoding="utf-8")
     with pytest.raises(ValueError):
         _token_shapes_alternation(shapes_file)
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    ["(?:abc)d", "(?=x)abc", "(?!x)abc", "(?<=x)abc", "(?<!x)abc", "abc" + chr(92) + "(?x"],
+)
+def test_load_shapes_accepts_the_group_forms_both_engines_share(pattern):
+    """The group whitelist must keep the constructs Python and JavaScript agree on, including a
+    literal escaped parenthesis followed by a quantifier."""
+    text = json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
+    assert load_shapes(text) == [("a", pattern)]
+
+
+def test_sync_token_shapes_reminds_to_run_the_mirror_sync(monkeypatch, repo, capsys):
+    _seed(repo)
+    monkeypatch.chdir(repo)
+    assert main(["sync-token-shapes"]) == 0
+    assert "sync-plugin-mirrors" in capsys.readouterr().out
 
 
 def test_load_shapes_accepts_an_escaped_plus_followed_by_a_quantifier():
