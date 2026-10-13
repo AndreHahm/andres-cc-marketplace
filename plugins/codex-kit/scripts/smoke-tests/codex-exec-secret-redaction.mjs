@@ -12,7 +12,8 @@
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-exec-secret-redaction.mjs
 
-import { redactSecrets } from "../lib/codex-exec.mjs";
+import fs from "node:fs";
+import { parseTokenShapes, redactSecrets } from "../lib/codex-exec.mjs";
 
 let pass = 0;
 let fail = 0;
@@ -160,6 +161,52 @@ console.log("\n=== Bare word 'bearer' in prose is not over-redacted ===");
   const prose = "the bearer of this document must sign here";
   const redacted = redactSecrets(prose);
   check("prose containing the bare word 'bearer' passes through unchanged", redacted === prose, redacted);
+}
+
+console.log("\n=== Every shared token shape is redacted, next to non-ASCII text too ===");
+{
+  // Built from pieces so no token-shaped literal sits in this source file.
+  const samples = {
+    aws_access_key: "AKIA" + "ABCDEFGHIJKLMNOP",
+    github_token: "gh" + "p_" + "a".repeat(36),
+    github_pat_token: "github_" + "pat_" + "d".repeat(22) + "_" + "e".repeat(30),
+    slack_token: "xox" + "b-123-abc-DEF",
+    generic_sk_token: "sk" + "-" + "a1".repeat(12),
+    google_api_key: "AIza" + "B".repeat(35),
+    jwt_token: "eyJ" + "abc.def_-.sig-1"
+  };
+  const shared = JSON.parse(
+    fs.readFileSync(new URL("../lib/cdx-token-shapes.json", import.meta.url), "utf8")
+  );
+  const names = shared.shapes.map((shape) => shape.name).sort();
+  check("the shared file and this test list the same shapes", JSON.stringify(names) === JSON.stringify(Object.keys(samples).sort()), names.join(","));
+  for (const [name, sample] of Object.entries(samples)) {
+    for (const [before, after] of [["", ""], ["é", ""], ["", "é"], ["中", ""]]) {
+      const redacted = redactSecrets(`x ${before}${sample}${after} y`);
+      check(`${name} is redacted (${JSON.stringify([before, after])})`, !redacted.includes(sample), redacted);
+    }
+  }
+}
+
+console.log("\n=== An unusable shapes file stops the import instead of redacting nothing ===");
+{
+  const unusable = [
+    "[]",
+    JSON.stringify({ version: 2, shapes: [{ name: "a", pattern: "x" }] }),
+    JSON.stringify({ version: 1, shapes: [] }),
+    JSON.stringify({ version: 1, shapes: [{ name: "a" }] }),
+    JSON.stringify({ version: 1, shapes: [{ name: "a", pattern: "" }] }),
+    "not json"
+  ];
+  for (const text of unusable) {
+    let threw = false;
+    try {
+      parseTokenShapes(text);
+    } catch {
+      threw = true;
+    }
+    check(`parseTokenShapes rejects ${text}`, threw);
+  }
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);

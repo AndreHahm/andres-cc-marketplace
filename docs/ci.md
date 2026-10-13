@@ -295,7 +295,9 @@ config-free. Because that job runs `scripts/` from the PR's own checkout, it als
 adds a file under `scripts/` that could replace an unchanged Tier-1 module — a same-named package
 directory, a `.so`/`.pyc`/`.pyw`/`.pyd` file, a `__pycache__` entry, any new `__init__.*` package
 marker, or any symlink. The Node chain it runs with the key (`bridge-invoke.mjs`, `codex-exec.mjs`,
-`cdx-process.mjs`) is on the Tier-1 list too.
+`cdx-process.mjs`) is on the Tier-1 list too, as are the two secret-redaction shapes files that
+`review.py` and `codex-exec.mjs` load at import (`scripts/marketplace_ci/token_shapes.json` and
+the `codex-kit` copy of it): editing either would weaken redaction in the job that holds the key.
 
 Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
 including the Node files and the uv/Python-version config, and the shadow checks above), because
@@ -361,7 +363,12 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
   `uv.toml`, `.python-version` and `.python-versions`, and the three Node files `codex-review` runs
   with the API key (`plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs`,
-  `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `plugins/codex-kit/scripts/lib/cdx-process.mjs`).
+  `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `plugins/codex-kit/scripts/lib/cdx-process.mjs`)
+  and the data those two load at import: the canonical secret token shapes
+  `scripts/marketplace_ci/token_shapes.json` and the byte-identical `codex-kit` copy
+  `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`. The canonical file is copied into
+  `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
+  drifted copy, and `sync-token-shapes` rewrites the copies. Edit the canonical file only.
   These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
   review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,

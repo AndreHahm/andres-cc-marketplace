@@ -135,7 +135,7 @@ def test_convert_then_check_codex_exports_passes(monkeypatch, repo):
     assert (repo / ".codex" / "agents" / "export-demo.toml").exists()
 
 
-def test_check_all_ok_after_full_sync(monkeypatch, repo):
+def test_check_all_ok_after_full_sync(monkeypatch, repo, token_shapes_seeded):
     _write_registry(
         repo, plugin_mirrors=["sample-kit"], skills=["export-demo"], agents=["export-demo"]
     )
@@ -145,7 +145,7 @@ def test_check_all_ok_after_full_sync(monkeypatch, repo):
     assert main(["check-all"]) == 0
 
 
-def test_check_all_writes_json_output(monkeypatch, repo, tmp_path):
+def test_check_all_writes_json_output(monkeypatch, repo, tmp_path, token_shapes_seeded):
     _write_registry(repo, plugin_mirrors=["sample-kit"])
     monkeypatch.chdir(repo)
     out = tmp_path / "report.json"

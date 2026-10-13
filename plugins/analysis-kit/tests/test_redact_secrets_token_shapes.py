@@ -7,8 +7,11 @@ assignment at the start of a line.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -105,3 +108,54 @@ def test_prose_without_an_assignment_is_untouched():
     redacted, counts = redact_secrets.redact(text)
     assert redacted == text
     assert counts == {}
+
+
+# One sample per shape in anls-token-shapes.json (the shared canonical list), built from pieces
+# so no token-shaped literal sits in this source file.
+SHAPE_SAMPLES = {
+    "aws_access_key": "AKIA" + "ABCDEFGHIJKLMNOP",
+    "github_token": "gh" + "p_" + "a" * 36,
+    "github_pat_token": FINE_GRAINED_TOKEN,
+    "slack_token": "xox" + "b-123-abc-DEF",
+    "generic_sk_token": "sk" + "-" + "a1" * 12,
+    "google_api_key": "AIza" + "B" * 35,
+    "jwt_token": "eyJ" + "abc.def_-.sig-1",
+}
+
+
+def test_every_shared_shape_has_a_sample_and_a_redactor_pattern():
+    shared = json.loads((SCRIPTS_DIR / "anls-token-shapes.json").read_text(encoding="utf-8"))
+    names = [shape["name"] for shape in shared["shapes"]]
+    assert set(names) == set(SHAPE_SAMPLES)
+    for name in names:
+        redacted, counts = redact_secrets.redact(f"leaked {SHAPE_SAMPLES[name]} here")
+        assert SHAPE_SAMPLES[name] not in redacted, name
+        assert counts.get(name) == 1, name
+
+
+def test_shared_shapes_are_redacted_next_to_non_ascii_text():
+    # Python's default \b is Unicode-aware, so a token next to an accented letter or a CJK
+    # character was missed while the JavaScript copy of the same pattern caught it.
+    for name, sample in SHAPE_SAMPLES.items():
+        for before, after in (("é", ""), ("", "é"), ("中", "")):
+            redacted, _ = redact_secrets.redact(f"x {before}{sample}{after} y")
+            assert sample not in redacted, (name, before, after)
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        "[]",
+        '{"version": 2, "shapes": [{"name": "a", "pattern": "x"}]}',
+        '{"version": 1, "shapes": []}',
+        '{"version": 1, "shapes": [{"name": "a"}]}',
+        '{"version": 1, "shapes": [{"name": "a", "pattern": ""}]}',
+        "not json",
+    ],
+)
+def test_loader_refuses_an_unusable_shapes_file(tmp_path, document):
+    # An empty or partial document must stop the import, not silently redact nothing.
+    shapes_file = tmp_path / "shapes.json"
+    shapes_file.write_text(document, encoding="utf-8")
+    with pytest.raises(ValueError):
+        redact_secrets._load_token_shapes(shapes_file)

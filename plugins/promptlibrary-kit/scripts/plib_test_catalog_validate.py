@@ -160,6 +160,42 @@ class TextAndYaml(unittest.TestCase):
         ):
             self.assertTrue(V.screen_text(text), text)
 
+    def test_shared_token_shapes_are_screened_next_to_non_ascii_text(self):
+        # Pieces are joined so no token-shaped literal sits in this source file.
+        samples = {
+            "aws_access_key": FAKE_KEY,
+            "github_token": "gh" + "p_" + "a" * 36,
+            "github_pat_token": "github_" + "pat_" + "d" * 22 + "_" + "e" * 30,
+            "slack_token": "xox" + "b-123-abc-DEF",
+            "generic_sk_token": "sk" + "-" + "a1" * 12,
+            "google_api_key": "AIza" + "B" * 35,
+            "jwt_token": "eyJ" + "abc.def_-.sig-1",
+        }
+        shared = json.loads(
+            Path(__file__).with_name("plib-token-shapes.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual({s["name"] for s in shared["shapes"]}, set(samples))
+        for name, sample in samples.items():
+            for before, after in (("", ""), ("é", ""), ("", "é"), ("中", "")):
+                hits = V.screen_text(f"x {before}{sample}{after} y")
+                self.assertIn(name, {h["pattern"] for h in hits}, (name, before, after))
+
+    def test_token_shape_loader_refuses_an_unusable_file(self):
+        # An empty or partial document must stop the import, not silently screen nothing.
+        for document in (
+            "[]",
+            '{"version": 2, "shapes": [{"name": "a", "pattern": "x"}]}',
+            '{"version": 1, "shapes": []}',
+            '{"version": 1, "shapes": [{"name": "a"}]}',
+            '{"version": 1, "shapes": [{"name": "a", "pattern": ""}]}',
+            "not json",
+        ):
+            with tempfile.TemporaryDirectory() as tmp:
+                shapes_file = Path(tmp) / "shapes.json"
+                shapes_file.write_text(document, encoding="utf-8")
+                with self.assertRaises(ValueError, msg=document):
+                    V._load_token_shapes(shapes_file)
+
     def test_bare_credential_assignments_are_screened(self):
         # Pieces are joined so no assignment-shaped literal sits in this source file.
         word = "hunter2" + "abcdef"
