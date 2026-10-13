@@ -75,7 +75,9 @@ def check_scripts_exist():
     path_like = [t for t in tokens if "/" in t and re.search(r"\.(sh|py|mjs|js)$", t)]
     if not path_like:
         return True, "no file-path-shaped Bash grants found (skip)"
-    missing = [p for p in path_like if not (SKILL_DIR / p).is_file()]
+    missing = [
+        p for p in path_like if not (SKILL_DIR / p.removeprefix("${CLAUDE_SKILL_DIR}/")).is_file()
+    ]
     if missing:
         return False, "referenced script(s) do not exist: " + ", ".join(missing)
     return True, f"all {len(path_like)} referenced script(s) exist"
