@@ -57,7 +57,7 @@ def check_bash_grants():
     unused = []
     for t in tokens:
         needle = t.split("/")[-1] if "/" in t else t
-        if not re.search(re.escape(needle), body):
+        if not re.search(rf"\b{re.escape(needle)}\b", body):
             unused.append(t)
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
