@@ -7,11 +7,12 @@ description: >-
   trace back to. Classifies each source by authority tier and volatility, derives a re-check
   priority from those plus how many local rules cite it, tracks last-verified state, and performs
   the actual freshness check (WebFetch/WebSearch) on request. Supports enabling/disabling sources,
-  overriding a source's rank, and adding custom sources (blog posts, papers, other repos). Use when
-  a dev-rules command needs to know which sources to check and how stale the last check is, or when
-  a maintainer asks "is there an official source backing this rule", "what sources cover X", "add a
-  source to the registry", or "check registry freshness". For checking one rule against its
-  source, use pdk-verify-dev-rules.
+  overriding a source's rank, and adding custom sources (blog posts, papers, other repos). For
+  checking one rule against its source, use pdk-verify-dev-rules.
+when_to_use: >-
+  Use when a dev-rules command needs to know which sources to check and how stale the last check
+  is, or when a maintainer asks "is there an official source backing this rule", "what sources
+  cover X", "add a source to the registry", or "check registry freshness".
 allowed-tools: Read Write Edit WebFetch WebSearch Bash(python ${CLAUDE_SKILL_DIR}/scripts/compute_priority.py:*) Bash(python ${CLAUDE_SKILL_DIR}/scripts/validate_sources.py:*)
 ---
 
