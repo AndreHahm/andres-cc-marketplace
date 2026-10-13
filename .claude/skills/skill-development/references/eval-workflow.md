@@ -9,7 +9,7 @@ Organize all runs as siblings to the skill directory:
 ```text
 <skill-name>-workspace/
 ├── iteration-1/
-│   ├── <eval-name>/
+│   ├── eval-N[-suffix]/
 │   │   ├── with_skill/outputs/
 │   │   ├── without_skill/outputs/
 │   │   ├── eval_metadata.json
@@ -20,7 +20,7 @@ Organize all runs as siblings to the skill directory:
     └── ...
 ```
 
-Name eval dirs descriptively (e.g., `basic-trigger`, `edge-case-ambiguous`) — not `eval-0`.
+Name eval dirs `eval-N`, optionally with a descriptive suffix (e.g., `eval-1-basic-trigger`, `eval-2-edge-case-ambiguous`), and keep `without_skill/` for the no-skill run (`eval-viewer/viewer.html` recognizes only `with_skill`, `without_skill`, `new_skill` and `old_skill`). `aggregate_benchmark.py` only discovers `eval-*` directories, so a bare descriptive name is silently skipped. plugin-rulebook R28/R31 describe `{with_skill,baseline}` for persisted `evals/` records, a different layout from this workspace.
 
 ## Step 1: Spawn All Runs (Same Turn)
 
@@ -32,7 +32,7 @@ Launch with-skill and without-skill subagents simultaneously per eval case.
 Execute this task:
 - Skill path: <path-to-skill>
 - Task: <eval prompt>
-- Save outputs to: <workspace>/iteration-N/<eval-name>/with_skill/outputs/
+- Save outputs to: <workspace>/iteration-N/eval-N/with_skill/outputs/
 ```
 
 **Baseline prompt (no skill):**
@@ -40,7 +40,7 @@ Execute this task:
 ```text
 Execute this task:
 - Task: <eval prompt>
-- Save outputs to: <workspace>/iteration-N/<eval-name>/without_skill/outputs/
+- Save outputs to: <workspace>/iteration-N/eval-N/without_skill/outputs/
 ```
 
 > Improving existing skill? Use old version as baseline (snapshot first), not no-skill.

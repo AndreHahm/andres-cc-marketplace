@@ -82,7 +82,7 @@ Use this checklist to validate new or improved skills against best practices.
 ### Paths
 - [ ] Forward slashes only (no Windows paths like `scripts\helper.py`)
 - [ ] Relative paths work across systems
-- [ ] {baseDir} used for portability when needed
+- [ ] `${CLAUDE_SKILL_DIR}` used for in-skill paths (never `{baseDir}`, which does not resolve)
 
 ### Scripts (if included)
 
