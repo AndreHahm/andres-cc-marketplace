@@ -83,6 +83,23 @@ def test_escaped_quote_inside_a_quoted_value_still_redacts_through_the_closing_q
     assert redacted.endswith(" tail")
 
 
+def test_assignment_padding_never_spans_a_newline():
+    for text, survivor in (
+        ("error: API_KEY=\nnext line stays", "next line stays"),
+        ("error: API_KEY=\r\nnext line stays", "next line stays"),
+        ("error: API_KEY= \nnext line stays", "next line stays"),
+        ("error: API_KEY\n=value tail", "=value tail"),
+    ):
+        redacted, _ = redact_secrets.redact(text)
+        assert survivor in redacted, text
+
+
+def test_tab_padding_after_the_equals_sign_is_still_redacted():
+    redacted, _ = redact_secrets.redact("error: API_KEY=\tabc123 tail")
+    assert "abc123" not in redacted
+    assert redacted.endswith(" tail")
+
+
 def test_prose_without_an_assignment_is_untouched():
     text = "the password was rotated and the key is stored elsewhere"
     redacted, counts = redact_secrets.redact(text)

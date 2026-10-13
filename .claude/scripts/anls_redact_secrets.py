@@ -54,7 +54,7 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
         re.compile(
             r"(?i)(?P<keep>\b(?:[A-Za-z0-9_]*"
             r"(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)"
-            r"[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)\s*=\s*)"
+            r"[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)[^\S\r\n]*=[^\S\r\n]*)"
             r"(?!\[REDACTED\])"
             r"""(?:"(?:[^"\\\r\n]|\\[^\r\n]?)*(?:"|(?=[\r\n])|$)"""
             r"""|'(?:[^'\\\r\n]|\\[^\r\n]?)*(?:'|(?=[\r\n])|$)|\S+)"""
