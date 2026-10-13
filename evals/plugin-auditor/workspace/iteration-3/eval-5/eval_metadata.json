@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md",
+  "assertions": [
+    {"text": "(a) The resolver may not record the result as a clean review, because a zero-finding envelope whose inspection_limits reports process-creation failure means nothing was inspected", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(b) codex-review-bridge's isTotalInspectionFailure heuristic reclassifies it as isolation_profile_unavailable", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(c) The reviewer is then handled like any isolation_profile_unavailable: the Windows-guarded profile only if its opt-in is enabled and its dry run passes, otherwise the Claude-native Agent() fallback recorded once on the dispatch's coverage note", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(d) The older shape exits non-zero and is classified by codex-exec.mjs's classifyNonZeroExit (ERROR: lines or a tracing-log spawn error), whereas the exit-0 shape relies on the bridge's zero-findings heuristic", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Did not dispatch any Agent() calls or run any Bash commands (reasoning-only)", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

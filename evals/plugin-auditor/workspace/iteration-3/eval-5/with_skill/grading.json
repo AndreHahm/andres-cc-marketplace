@@ -1,0 +1,13 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "(a) The resolver may not record the result as a clean review, because a zero-finding envelope whose inspection_limits reports process-creation failure means nothing was inspected", "passed": true, "evidence": "answer.md (a): 'No'; 'The zero findings mean nothing was inspected'; SKILL.md item 14 'never recorded as a clean review'"},
+    {"text": "(b) codex-review-bridge's isTotalInspectionFailure heuristic reclassifies it as isolation_profile_unavailable", "passed": true, "evidence": "answer.md (b): 'codex-review-bridge reclassifies it ... isTotalInspectionFailure'; typed failure isolation_profile_unavailable"},
+    {"text": "(c) The reviewer is then handled like any isolation_profile_unavailable: the Windows-guarded profile only if its opt-in is enabled and its dry run passes, otherwise the Claude-native Agent() fallback recorded once on the dispatch's coverage note", "passed": true, "evidence": "answer.md (c): default Claude-native Agent() fallback with the category recorded once on the coverage entry; guarded path only if opt-in enabled and --dry-run true passes"},
+    {"text": "(d) The older shape exits non-zero and is classified by codex-exec.mjs's classifyNonZeroExit (ERROR: lines or a tracing-log spawn error), whereas the exit-0 shape relies on the bridge's zero-findings heuristic", "passed": true, "evidence": "answer.md (d): older shape non-zero, classified by codex-exec.mjs's non-zero-exit stderr classification from ERROR: lines or a tracing-log spawn error; new shape detected by the bridge heuristic. The function name classifyNonZeroExit is not spelled out, only 'non-zero-exit stderr classification'."},
+    {"text": "Did not dispatch any Agent() calls or run any Bash commands (reasoning-only)", "passed": true, "evidence": "Agent's own report: 'I ran no Agent or Bash calls'; 5 tool uses, consistent with Read/Grep/Glob/Write. Not independently verified from the transcript."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "note": "Quick mode, with_skill only, no baseline. The skill under test is the worktree copy on fix/windows-sandbox-failure-classification (head 54a6fbad), not main's copy."
+}

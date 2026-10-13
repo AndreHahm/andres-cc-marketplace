@@ -1,0 +1,15 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "(a) The resolver first calls guarded-dispatch.mjs with the same arguments plus --dry-run true, which runs the guard chain and skips only the real codex call", "passed": true, "evidence": "answer.md (a): calls guarded-dispatch.mjs once with --dry-run true, same arguments; 'runs the whole guard chain, including the policy-enabled check, and skips only the real codex call'"},
+    {"text": "(b) Any typed failure from the dry run, guardrails_disabled included, routes the reviewer to Claude-native with no user prompt", "passed": true, "evidence": "answer.md (b): 'Any typed failure ... guardrails_disabled included, routes skill-reviewer to Claude-native with no prompt'"},
+    {"text": "(c) The second AskUserQuestion is asked only after a passing dry run and before the real call, and discloses that the profile has no sandbox: the process can reach anything this user account can, anywhere on the machine, with network access, bounded only by best-effort guardrails", "passed": true, "evidence": "answer.md (c): 'only after a passing dry run ... and before the real call'; lists no sandbox, anywhere on the machine, network access, best-effort guardrails"},
+    {"text": "(c) The disclosure also states that the secret-file screen skips untracked gitignored files unless scan_ignored_high_risk is on, and the question is asked once per audit run", "passed": true, "evidence": "answer.md (c): gitignored .env not caught unless scan_ignored_high_risk; 'asked once per audit run'"},
+    {"text": "(d) A question that cannot be asked, or a decline, is treated as declined (never consent) and routes the reviewer to Claude-native", "passed": true, "evidence": "answer.md (d): 'treat that as declined, never as consent'; decline routes skill-reviewer and remaining reviewers to Claude-native"},
+    {"text": "(e) guarded-dispatch.mjs is deliberately absent from allowed-tools, so Claude Code's permission prompt appears; the dry run's prompt is the first gate and the real run's a backstop; denying it counts as declined", "passed": true, "evidence": "answer.md (e) and (d): script 'deliberately absent' from allowed-tools; dry run's prompt first gate, real run's a backstop; a denied permission prompt routes to Claude-native"},
+    {"text": "Did not dispatch any Agent() calls or run any Bash commands (reasoning-only)", "passed": true, "evidence": "Agent's own report: 'made no Agent calls and ran no Bash commands'; 4 tool uses, consistent with Read/Grep/Glob/Write. Not independently verified from the transcript."}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0},
+  "note": "Quick mode, with_skill only, no baseline. The skill under test is the worktree copy on fix/windows-sandbox-failure-classification (head 54a6fbad), not main's copy."
+}
