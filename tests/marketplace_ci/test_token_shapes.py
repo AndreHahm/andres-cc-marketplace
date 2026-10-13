@@ -72,16 +72,41 @@ def test_load_shapes_rejects_malformed_input(text):
         load_shapes(text)
 
 
+BS = "\\"
+VALID_PREFIX = BS + "bab"  # a word boundary and a two-character literal prefix
+
+
+def _shape_text(pattern):
+    return json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
+
+
 @pytest.mark.parametrize(
     "pattern",
     [
         "(?:)",  # matches the empty string everywhere, which would disable all redaction
         "x*",
         "a?",
-        "\\" + "b",  # zero-width on its own
+        BS + "b",  # zero-width on its own
+        "(?=z)",  # zero-width only when the next character differs; finite probes miss it
+        "[A-Z]{16}",  # no word boundary / literal prefix
+        "AKIA[0-9A-Z]{16}",  # literal prefix but no leading word boundary
+        BS + "b[A-Z]{3}",  # word boundary but no literal prefix
+        BS + "ba*",  # the second prefix character is a quantifier, not a literal
+    ],
+)
+def test_load_shapes_requires_a_boundary_and_literal_prefix(pattern):
+    """A shape must start with a word boundary and two literal characters, which guarantees it
+    matches at least one character instead of erasing the redaction everywhere."""
+    with pytest.raises(SyncError):
+        load_shapes(_shape_text(pattern))
+
+
+@pytest.mark.parametrize(
+    "construct",
+    [
         "(?P<n>x)",  # Python-only named group
-        "\\" + "Aabc",  # Python-only anchor
-        "abc" + "\\" + "Z",
+        BS + "Aabc",  # Python-only anchor
+        "abc" + BS + "Z",
         "(?i)abc",  # inline flag group, rejected by one of the two engines
         "(?#c)abc",  # inline comment: Python accepts it, JavaScript throws
         "(?>abc)",  # atomic group
@@ -89,12 +114,16 @@ def test_load_shapes_rejects_malformed_input(text):
         "a{2}+b",
         "(a)?(?(1)b|c)",  # conditional group: Python accepts it, JavaScript throws
         "(?<n>a)b",  # named group: JavaScript syntax Python rejects
+        BS + "a",  # BEL in Python, the letter a in JavaScript
+        BS + "x41",  # letter escapes outside the shared set are rejected conservatively
+        BS + "N{DIGIT ONE}",
+        BS + "0",
+        BS + "1",
     ],
 )
-def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(pattern):
-    text = json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
+def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(construct):
     with pytest.raises(SyncError):
-        load_shapes(text)
+        load_shapes(_shape_text(VALID_PREFIX + construct))
 
 
 def test_plan_refuses_a_symlinked_canonical_or_consumer(repo):
@@ -106,6 +135,34 @@ def test_plan_refuses_a_symlinked_canonical_or_consumer(repo):
     consumer.unlink()
     try:
         consumer.symlink_to(target)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are not available here")
+    with pytest.raises(SyncError, match="symlink"):
+        plan_token_shapes_sync(repo)
+
+
+def test_plan_refuses_a_symlinked_canonical_file(repo):
+    body = _seed(repo)
+    real = repo / "real-shapes.json"
+    real.write_text(body, encoding="utf-8")
+    canonical = repo / CANONICAL
+    canonical.unlink()
+    try:
+        canonical.symlink_to(real)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks are not available here")
+    with pytest.raises(SyncError, match="symlink"):
+        plan_token_shapes_sync(repo)
+
+
+def test_plan_refuses_a_consumer_under_a_symlinked_directory(repo):
+    _seed(repo)
+    elsewhere = repo / "elsewhere"
+    elsewhere.mkdir()
+    plugin_root = repo / CONSUMERS[0].rsplit("/scripts/", 1)[0]
+    plugin_root.mkdir(parents=True)
+    try:
+        (plugin_root / "scripts").symlink_to(elsewhere, target_is_directory=True)
     except (OSError, NotImplementedError):
         pytest.skip("symlinks are not available here")
     with pytest.raises(SyncError, match="symlink"):
@@ -310,14 +367,22 @@ def test_review_loader_refuses_an_unusable_shapes_file(tmp_path, document):
 
 
 @pytest.mark.parametrize(
-    "pattern",
-    ["(?:abc)d", "(?=x)abc", "(?!x)abc", "(?<=x)abc", "(?<!x)abc", "abc" + chr(92) + "(?x"],
+    "construct",
+    [
+        "(?:abc)d",
+        "(?=x)abc",
+        "(?!x)abc",
+        "(?<=x)abc",
+        "(?<!x)abc",
+        "abc" + BS + "(?x",  # a literal escaped parenthesis followed by a quantifier
+        "c" + BS + "." + BS + "d+" + BS + "w*[" + BS + "-_]",  # the escapes both engines share
+        "c" + BS + "B" + BS + "s" + BS + "S" + BS + "W" + BS + "D",
+    ],
 )
-def test_load_shapes_accepts_the_group_forms_both_engines_share(pattern):
-    """The group whitelist must keep the constructs Python and JavaScript agree on, including a
-    literal escaped parenthesis followed by a quantifier."""
-    text = json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
-    assert load_shapes(text) == [("a", pattern)]
+def test_load_shapes_accepts_the_syntax_both_engines_share(construct):
+    """The whitelists must keep the constructs Python and JavaScript agree on."""
+    pattern = VALID_PREFIX + construct
+    assert load_shapes(_shape_text(pattern)) == [("a", pattern)]
 
 
 def test_sync_token_shapes_reminds_to_run_the_mirror_sync(monkeypatch, repo, capsys):
@@ -330,9 +395,8 @@ def test_sync_token_shapes_reminds_to_run_the_mirror_sync(monkeypatch, repo, cap
 def test_load_shapes_accepts_an_escaped_plus_followed_by_a_quantifier():
     """An escaped literal plus then a quantifier is valid in both engines and is not a
     possessive quantifier."""
-    pattern = "abc" + chr(92) + "++x"
-    text = json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
-    assert load_shapes(text) == [("a", pattern)]
+    pattern = VALID_PREFIX + "c" + BS + "++x"
+    assert load_shapes(_shape_text(pattern)) == [("a", pattern)]
 
 
 def test_sk_shape_covers_underscores_in_project_style_keys():
