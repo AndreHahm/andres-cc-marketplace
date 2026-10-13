@@ -586,7 +586,7 @@ When a session starts, Claude builds a listing of every skill with its descripti
 
 ### Description Length and Body Budget
 
-`description` runs 80–1024 characters; `when_to_use` up to 512. The combined `description` and `when_to_use` text caps at **1536 characters** in the skill listing (skills.md). Front-load trigger phrases — attention is strongest at the start. Adding `when_to_use` does not raise the cap; it shares the same 1536 budget. Long descriptions dilute the trigger signal and gain nothing. See `../../references/pdk-size-limits.md` for the full tiered thresholds.
+`description` runs 80–1024 characters; `when_to_use` up to 512. The combined `description` and `when_to_use` text caps at **1536 characters** in the skill listing (skills.md). Front-load trigger phrases — attention is strongest at the start. Adding `when_to_use` does not raise the cap; it shares the same 1536 budget. Long descriptions dilute the trigger signal and gain nothing. See `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md` for the full tiered thresholds.
 
 The skill body budget scales to **1% of the context window**, with a fallback of **8,000 characters** (skills.md). Set `SLASH_COMMAND_TOOL_CHAR_BUDGET` env var to raise the limit. Keep SKILL.md lean and push detail to reference files.
 
