@@ -57,6 +57,18 @@ console.log("\n=== dotenv-shaped assignment in the middle of a line (issue #546)
   check("a quoted mid-line value containing a space is redacted whole", !quoted.includes("two words") && quoted.endsWith(" and more"), quoted);
   const prose = "the password was rotated and the key is stored elsewhere";
   check("prose with no assignment is unchanged", redactSecrets(prose) === prose);
+  const sorted = "error while sorting: sortKey=asc then more";
+  check("a name that only contains a credential word is not redacted", redactSecrets(sorted) === sorted, redactSecrets(sorted));
+  const monkey = "saw monkey=banana today";
+  check("a substring match inside another word is not redacted", redactSecrets(monkey) === monkey, redactSecrets(monkey));
+  const camel = redactSecrets(`failed with apiKey=${value} again`);
+  check("a camelCase compound credential name is redacted", !camel.includes(value), camel);
+  const unterminated = redactSecrets('stderr: API_KEY="abc\nlots of other diagnostic text\nmore');
+  check(
+    "an unterminated quote redacts only the rest of its own line",
+    !unterminated.includes("abc") && unterminated.includes("lots of other diagnostic text") && unterminated.endsWith("\nmore"),
+    unterminated
+  );
 }
 
 console.log("\n=== AWS access key ===");

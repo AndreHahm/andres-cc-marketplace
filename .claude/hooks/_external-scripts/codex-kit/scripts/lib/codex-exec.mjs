@@ -160,11 +160,15 @@ const SECRET_PATTERNS = [
 // The line-anchored dotenv rule above misses an assignment that is not at the
 // start of a line, and consuming the rest of a mid-line match would eat
 // surrounding prose, so this one replaces only the value and keeps the name
-// (group 1). A quoted value runs to its closing quote (or the end of the text,
-// for a truncated one), so a value containing spaces is redacted whole. The
-// lookahead leaves a value the line-anchored rule already replaced alone.
+// (group 1). Unlike the line-anchored rule, the credential word must be a whole
+// `_`-delimited segment of the name (or a known compound such as apiKey), so
+// ordinary prose-embedded fields like sortKey=asc are left alone. A quoted
+// value runs to its closing quote, or to the end of its line when the quote
+// is never closed, so a value containing spaces is redacted whole but one stray
+// quote cannot swallow the lines after it. The lookahead leaves a value the
+// line-anchored rule already replaced alone.
 const SECRET_ASSIGNMENT_PATTERN =
-  /(\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)(?!\[REDACTED\])(?:"(?:[^"\\]|\\.)*(?:"|$)|'(?:[^'\\]|\\.)*(?:'|$)|\S+)/gi;
+  /(\b(?:[A-Za-z0-9]*_)*(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|API|APIKEY|ACCESSTOKEN|AUTHTOKEN|APITOKEN|SECRETKEY|PRIVATEKEY|CLIENTSECRET)(?:_[A-Za-z0-9_]*)?\s*=\s*)(?!\[REDACTED\])(?:"(?:[^"\\\r\n]|\\.)*(?:"|(?=[\r\n])|$)|'(?:[^'\\\r\n]|\\.)*(?:'|(?=[\r\n])|$)|\S+)/gi;
 
 // Exported so a smoke test can exercise the pattern set directly, matching
 // the existing findSchemaViolation export pattern below.
