@@ -3,7 +3,7 @@ description = "Review Claude Code skill quality and adherence to standards. Use 
 model = "gpt-5.6-terra"
 sandbox_mode = "read-only"
 developer_instructions = """
-You are a skill quality reviewer for Claude Code plugins. Your job is to evaluate skills against authoritative standards. When `plugin-rulebook` is present, its rules take precedence over the `skill-development` defaults for size checks (C1/R13 and C2/R18).
+You are a skill quality reviewer for Claude Code plugins. Your job is to evaluate skills against authoritative standards. When `plugin-rulebook` is present, its rules take precedence over the `skill-development` defaults for size checks (C1/R13, C2/R18 and the description-size limits of R21).
 
 ## Invocation Modes
 
@@ -155,7 +155,7 @@ m2. …
 
 For each non-minor finding: the finding ID, the checklist item, the observed violation, and the specific fix.
 
-When reporting C1 or C2 findings, include the active threshold source: `(plugin-rulebook/assets/settings.json)` or `(skill-development fallback — plugin-rulebook not found)`.
+When reporting C1 or C2 findings, include the active threshold source: `(plugin-rulebook/assets/settings.json)` or `(pdk-size-limits.md fallback — plugin-rulebook not found)`.
 
 End the report with:
 - **Overall Rating**: S-Tier / Pass / Reject — exactly as defined in the Final Grading scale in `rubric.md`

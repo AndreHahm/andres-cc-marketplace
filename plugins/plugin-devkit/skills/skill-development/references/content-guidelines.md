@@ -18,7 +18,7 @@ The description is **the triggering mechanism**. Claude uses it to select from 1
 1. **Third person always** — "Processes Excel files" not "I can help you" or "You can use this"
 2. **Specific + trigger phrases** — Include what it does AND when to invoke
 3. **Key terms for discovery** — Use synonyms user might say
-4. **80–1024 characters** — `when_to_use` (if present) ≤512; combined with `description` ≤1536; keep concise yet comprehensive (see `../../references/pdk-size-limits.md`)
+4. **80–1024 characters** — `when_to_use` (if present) ≤512; combined with `description` ≤1536; keep concise yet comprehensive (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`)
 5. **Activation-focused, not step-summarizing** — Write for the model selecting the skill, not for a human reader. Be specific about trigger conditions. An action-phrase-first opening is fine, but the phrasing must be written to activate the skill, not to summarize its internal workflow — describing internal steps in the description causes Claude to treat that detail as already known and skip reading the body.
 
 ### Formula

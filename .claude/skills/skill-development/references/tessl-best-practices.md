@@ -44,7 +44,7 @@ Implementation determines if the skill actually helps the AI solve the problem e
 
 ### Progressive Disclosure
 
-- **Rule**: Keep `SKILL.md` within `../../references/pdk-size-limits.md`'s tiered thresholds (300-line soft target, 500-line hard limit).
+- **Rule**: Keep `SKILL.md` within `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`'s tiered thresholds (Soft Warning above 300 lines, Critical above 500).
 - **Standard**:
   - **SKILL.md**: Workflow + Decision Trees + Core Rules.
   - **references/**: Large code blocks, edge cases, and verbose checklists.

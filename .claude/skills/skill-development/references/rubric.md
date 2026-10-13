@@ -8,7 +8,7 @@ Skills must PASS all checks to be eligible for scoring.
 
 > **Rulebook override:** When `**/plugin-rulebook/SKILL.md` is found, C1 and C2 use tiered severity from `<plugin-rulebook-dir>/references/size-rules.md` with thresholds from `<plugin-rulebook-dir>/assets/settings.json`. Tiered severity means only **Critical** findings block scoring — Weak Warnings and Warnings are advisory. Without `plugin-rulebook`, the flat limits below apply as hard gates.
 
-- [ ] **C1 — Line Count**: Without plugin-rulebook: `SKILL.md` ≤ 500 lines (hard gate). With plugin-rulebook: apply tiered thresholds (Critical at >500 lines blocks; Warning at >490 is advisory; Weak Warning at >100 is informational).
+- [ ] **C1 — Line Count**: Without plugin-rulebook: `SKILL.md` ≤ 500 lines (hard gate). With plugin-rulebook: apply tiered thresholds (Critical at >500 lines blocks; Warning at >490 and Soft Warning at >300 are advisory; Weak Warning at >100 is informational).
 - [ ] **C2 — Code Blocks**: Without plugin-rulebook: no inline block > 30 lines (hard gate). With plugin-rulebook: apply tiered thresholds (Critical at >30 lines blocks; Warning at >20 is advisory; Weak Warning at >10 is informational).
 - [ ] **Frontmatter**: Valid YAML with `name` and `description`.
 - [ ] **Description Voice**: Third-person mood (e.g., "Standardizes...", "Validate...").

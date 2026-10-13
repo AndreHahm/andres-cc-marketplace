@@ -9,7 +9,10 @@ description: >-
   skill/agent fire correctly', 'resolve overlapping descriptions', or
   'which of these should fire for X'. Trigger proactively after creating or
   modifying multiple skills or agents together whose domains plausibly touch —
-  for a broader check of data, governance, functionality, and capability
+  for a full quality review of a single skill (structure, size, scoring), use
+  skill-reviewer instead, which only runs a term-level overlap check on that
+  one skill; this agent compares trigger conditions across a set of skills or
+  agents; for a broader check of data, governance, functionality, and capability
   drift between the same components, use consistency-reviewer instead; the
   two may legitimately run back-to-back on the same trigger event, each
   covering a different axis.
