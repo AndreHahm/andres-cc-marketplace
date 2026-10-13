@@ -13,7 +13,10 @@ description: >-
   language, formatting, tool-scoping) rather than skill quality scoring,
   use plugin-rulebook instead. For empirical benchmarking against a
   baseline (pass rates, tokens, timing) rather than a single-pass
-  structural review, use skill-tester instead. To rewrite or fix a skill
+  structural review, use skill-tester instead. For resolving trigger
+  collisions between a set of skills or agents (rather than this agent's
+  term-level overlap check on one reviewed skill), use activation-reviewer
+  instead. To rewrite or fix a skill
   or its description, use skill-development (authoring),
   skill-refiner-interactive (operator-approved refinement) or
   skill-improver-loop (automated fix-review cycles); this agent only
