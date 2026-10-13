@@ -401,59 +401,8 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 
 ## Reference Files
 
-### Phase 1–2: Understand & Design
+The full index of every bundled reference, agent and script, with its purpose and the phase to read it in, is [`file-index.md`](references/file-index.md). Read the phase-matched file before each phase.
 
-| File | Purpose | When to Read |
-|---|---|---|
-| `${CLAUDE_SKILL_DIR}/references/how-skills-work.md` | Token loading mechanics, activation internals, selection mechanism | Phase 1 (understand) — deep dive |
-| `${CLAUDE_SKILL_DIR}/references/skill-categories.md` | 9 categories with templates and improvement patterns | Phase 1 (identify category) and Phase 4 (improve) |
-| `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` | Detection, mapping, conversion logic, validation | Phase 1 — Convert entry path |
-| `${CLAUDE_SKILL_DIR}/references/web-search-research.md` | Web search research for unfamiliar domains | Phase 1 (understand) |
-| `${CLAUDE_SKILL_DIR}/references/platform-reference.md` | Frontmatter fields, string substitutions, hook system, platform gotchas | Phase 2 (design) |
-| `${CLAUDE_SKILL_DIR}/references/design-patterns.md` | Gotchas patterns, progressive disclosure, hooks, setup, composability | Phase 2 (design) |
-| `${CLAUDE_SKILL_DIR}/references/templates.md` | Full skill creation templates (token-optimized Basic, Complex, patterns, description examples) | Phase 1 (Greenfield) and Phase 2 (design) — scaffold |
-| `${CLAUDE_SKILL_DIR}/references/skill-workflow.md` | 80% Rule, content distribution, preservation gates | Phase 2 (design) — content placement decisions |
-| `${CLAUDE_SKILL_DIR}/references/resource-organization.md` | Content placement decision framework | Phase 2 (design) |
-| `${CLAUDE_SKILL_DIR}/references/content-guidelines.md` | Description formulas, phrase library, activation examples | Phase 2 (design) and Phase 5 (polish) |
-| `${CLAUDE_SKILL_DIR}/references/ask-user-question-patterns.md` | AskUserQuestion interaction patterns, decision trees, wizard pattern | Phase 2 (design) — skills with user interviews |
-| `${CLAUDE_SKILL_DIR}/references/task-management-patterns.md` | TaskCreate/TaskUpdate instruction patterns for multi-step components | Phase 2 (design) — skills/agents with 3+ step workflows |
-| `${CLAUDE_SKILL_DIR}/references/anti-patterns.md` | Token-wasting, activation, structure, content, and tool-scoping anti-patterns | Phase 2 (design) and Phase 4 (improve) |
-| `${CLAUDE_SKILL_DIR}/references/advanced-patterns.md` | Production patterns, skill archetypes, specialized skill designs | Phase 2 (design) and Phase 4 (improve) |
-| `${CLAUDE_SKILL_DIR}/references/complex-skills-patterns.md` | Error handling, tool scoping, validation scripts, security review | Phase 2 (design) — complex skills |
-| `${CLAUDE_SKILL_DIR}/references/allowed-tools.md` | Tool scoping validation, principle of least privilege | Phase 2 (design) — tool scoping |
-| `${CLAUDE_SKILL_DIR}/references/self-containment-principle.md` | External dependency architecture and guidance | Phase 2 (design) — external dependencies |
-| `${CLAUDE_SKILL_DIR}/references/secrets-and-credentials.md` | Secrets detection, git safety, env-var patterns, testing | Phase 2 (design) — skills with credentials |
-| `${CLAUDE_SKILL_DIR}/references/size-limits.md` | Strict size limits reference | Phase 2 (design) |
-| `${CLAUDE_SKILL_DIR}/references/tessl-best-practices.md` | Tessl-style Activation/Implementation standards | Phase 2 and Phase 5 |
-
-### Phase 3–5: Test, Improve & Polish
-
-| File | Purpose | When to Read |
-|---|---|---|
-| `${CLAUDE_SKILL_DIR}/references/schemas.md` | JSON schemas for evals, grading, benchmark, comparison | Phase 3 (test) |
-| `${CLAUDE_SKILL_DIR}/references/eval-writing-guide.md` | How to write good assertions | Phase 3 (test) |
-| `${CLAUDE_SKILL_DIR}/references/eval-workflow.md` | Step-by-step eval workflow reference | Phase 3 (test) |
-| `${CLAUDE_SKILL_DIR}/references/benchmark.md` | Eval-driven scorecard and iteration table | Phase 3–4 (measure quality) |
-| `${CLAUDE_SKILL_DIR}/../../references/pdk-compliance-testing.md` | TDD compliance testing: pressure scenarios, rationalization tables, meta-testing protocol | Phase 3.5 — after quantitative evals |
-| `${CLAUDE_SKILL_DIR}/references/testing.md` | Trigger rate, eval set schema, regression guide | Phase 3–5 |
-| `${CLAUDE_SKILL_DIR}/references/rubric.md` | Tessl-aligned Activation/Implementation grading rubric | Phase 5 (polish) |
-| `${CLAUDE_SKILL_DIR}/references/troubleshooting-guide.md` | Doesn't trigger, triggers too often, instructions not followed, large context, frontmatter errors | Phase 5 (polish) and debugging |
-| `${CLAUDE_SKILL_DIR}/references/checklist.md` | Comprehensive pre-release validation across all dimensions | Phase 5 (polish) — before packaging |
-| `${CLAUDE_SKILL_DIR}/agents/grader.md` | Evaluate assertions against outputs | Phase 3 (test) |
-| `${CLAUDE_SKILL_DIR}/agents/comparator.md` | Blind A/B comparison between two outputs | Phase 4 (improve) |
-| `${CLAUDE_SKILL_DIR}/agents/analyzer.md` | Analyze benchmark patterns and comparison results | Phase 3–4 |
-| `${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py` | Aggregate benchmark results across iterations | Phase 3 step 5 (invoked as `python -m scripts.aggregate_benchmark`) |
-| `${CLAUDE_SKILL_DIR}/scripts/run_loop.py` | Run description optimization loop | Phase 5 (polish) |
-| `${CLAUDE_SKILL_DIR}/scripts/quick_validate.py` | Quick skill validation check | Phase 5 (before packaging) |
-| `${CLAUDE_SKILL_DIR}/scripts/package_skill.py` | Package skill into distributable `.skill` file | Phase 5 (packaging) |
-| `${CLAUDE_SKILL_DIR}/scripts/init_skill.py` | Scaffold template directory for standalone (non-plugin) skills | Phase 1 (Greenfield — non-plugin only) |
-| `${CLAUDE_SKILL_DIR}/scripts/repair_skill.py` | Diagnose and repair skill loading failures | Skill Repair section |
-| `${CLAUDE_SKILL_DIR}/scripts/scan_skills.py` | Inventory all skills with metadata and usage statistics | Skill Consolidation step 1 |
-| `${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py` | Find merge candidates by trigger/keyword overlap | Skill Consolidation step 2 |
-| `${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) | Before packaging / after any SKILL.md edit |
-| `plugin-rulebook` skill | Plugin-level rules — invoke before finalizing to check naming, language, formatting, tool-scoping, and external-reference compliance | Phase 5 (before packaging) |
-| `CHANGELOG.md` | Change history for this skill | Reference |
-
-**Internal dependencies** (not directly invoked — referenced by the scripts above): `scripts/run_eval.py`, `scripts/generate_report.py`, `scripts/improve_description.py`, `scripts/utils.py`, `scripts/__init__.py`, `eval-viewer/viewer.html`. `LICENSE.txt` — Apache License 2.0.
+**Internal dependencies** (not directly invoked — referenced by the scripts in the index): `scripts/run_eval.py`, `scripts/generate_report.py`, `scripts/improve_description.py`, `scripts/utils.py`, `scripts/__init__.py`, `eval-viewer/viewer.html`. `LICENSE.txt` — Apache License 2.0.
 
 **Official docs:** [`llms.txt`](https://code.claude.com/docs/llms.txt) — fetch for platform spec changes (frontmatter, hooks, manifest). Bundled references cover design and eval methodology; official docs are authoritative for platform syntax.
