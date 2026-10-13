@@ -269,7 +269,8 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    cross-vendor benefit, findings default to Medium confidence since nothing cross-examines them) or
    stop.
    - **On Phase 1's Codex call failing for a batch**: that batch is Claude-only. If **no** batch has a
-     valid Codex Phase 1 envelope (the first or the only batch failed with nothing succeeded), take the
+     valid Codex Phase 1 envelope (judged once every dispatched Phase 1 call has returned, so the order
+     batches ran in, or whether they ran in parallel, does not change the outcome), take the
      full single-model path: skip every remaining Codex dispatch and follow the single-model paths in
      Phase 2/3. Otherwise keep every finished batch's envelopes, still dispatch the remaining batches, and
      run Phase 2 only for batches with a valid Phase 1 envelope.

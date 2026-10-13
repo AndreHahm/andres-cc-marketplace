@@ -71,6 +71,32 @@ def test_identical_claude_mirror_collapses_to_canonical():
     assert [f["path"] for f in manifest["files"]] == ["plugins/git-kit/skills/a/SKILL.md"]
 
 
+def _mirror_plan(mirror_mode, canonical_mode):
+    tree = {".claude/scripts/run.sh": b"same", "plugins/git-kit/scripts/run.sh": b"same"}
+    modes = {
+        ".claude/scripts/run.sh": mirror_mode,
+        "plugins/git-kit/scripts/run.sh": canonical_mode,
+    }
+    return _plan(
+        [".claude/scripts/run.sh"],
+        tree=tree,
+        base_read=lambda p: tree.get(p),
+        fingerprint=lambda p: f"file:{modes[p]}:h",
+    )
+
+
+def test_a_mirror_whose_only_change_is_its_executable_bit_is_still_reviewed():
+    manifest = _mirror_plan("x", "-")
+    assert manifest["excluded"] == []
+    assert [f["path"] for f in manifest["files"]] == [".claude/scripts/run.sh"]
+
+
+def test_a_mirror_with_the_same_mode_as_its_canonical_still_collapses():
+    for mode in ("x", "-"):
+        manifest = _mirror_plan(mode, mode)
+        assert _reasons(manifest) == {".claude/scripts/run.sh": "mirror-identical"}
+
+
 def test_differing_mirror_is_kept_because_drift_is_a_finding():
     tree = {
         "plugins/git-kit/skills/a/SKILL.md": b"canonical",
