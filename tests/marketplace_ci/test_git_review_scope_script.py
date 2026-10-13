@@ -116,6 +116,11 @@ def test_codex_agent_export_is_never_collapsed_even_with_its_source_in_the_diff(
     assert ".codex/agents/r.toml" in [f["path"] for f in manifest["files"]]
 
 
+def test_manifest_reports_the_slice_size_the_skill_batches_by():
+    manifest = _plan(["a.py"], tree={"a.py": b"1"})
+    assert manifest["max_slice_bytes"] == M.DEFAULT_MAX_SLICE_BYTES
+
+
 def test_symlink_or_deleted_mirror_is_never_collapsed():
     tree = {"plugins/git-kit/skills/a/SKILL.md": b"s"}  # mirror absent from tree: reader gives None
     assert _plan([".claude/skills/a/SKILL.md"], tree=tree)["excluded"] == []

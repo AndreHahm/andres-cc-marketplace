@@ -114,6 +114,39 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     `codex-review-bridge`'s sandboxed Step 1 with a real, substantive finding returned — confirming
     the fix works via the actual resolver Step 1 path, not a special-cased workaround.
 
+Scenarios 28-35 cover the scoped review (issue #541, `scoped-review.md`). They are checked by
+reading the skill against each case; 28 and 29 are also exercised by `scripts/preflight_fixtures_test.py`.
+
+28. A diff within the byte budget, no exclusions configured, Claude plus Codex only → the planner runs,
+    the files reviewed are the same set as before, one dispatch batch (one Phase 1 and one Phase 2
+    Codex dispatch), and no folder question is asked.
+29. The planner exits 2 (`PLAN_FAILED=1`) → the Preflight chain still reaches its closing echo; the
+    skill asks via `AskUserQuestion` whether to review unscoped or stop, never treats it as a pass,
+    and records "review scope planner unavailable" if unscoped is chosen.
+30. A diff over the budget, so `dropped_slices` is non-empty → the folder question is built from
+    `candidate_dirs` (multi-select, at most 4 options per question and 4 questions per call); the picks
+    go to a second planner run as `--exclude-dir` with a **new** output path; Phase 3 lists each
+    dropped slice and says it must be read, not skimmed.
+31. A diff of 250 KB split into slices of at most 80 KB, batched by `max_slice_bytes` → one Codex
+    dispatch pair per batch, each with its own `--target-paths`, dispatch id suffix `-<N>` and
+    envelope files; a Claude Phase 1 finding is cross-examined only in the batch that contains its
+    `location`, and stays Medium if no batch does.
+32. A batch's Codex dispatch returns the typed failure `timeout` → the user is asked once whether to
+    retry that batch with `CODEX_KIT_REVIEW_TIMEOUT_MS=480000`; on yes, one retry; on no or a second
+    failure, the batch is unfinished, its slices are not completed, and the report says so. A
+    non-timeout typed failure follows the resolver's step 3 and keeps envelopes of finished batches.
+33. Round two in the same conversation → `--prior-manifest` points at the earlier manifest and each
+    completed slice is passed as `--completed-slice`; a slice whose batch timed out is not passed and
+    is reviewed again; files unchanged since a completed slice are skipped; with no earlier manifest
+    path known, the run is treated as round one.
+34. The diff changes `plugins/git-kit/scripts/git-review-scope.py` or this skill's own files →
+    `PLANNER_TOUCHED=1` is disclosed at the First-Send Confirmation and in `inspection_limits`, and
+    those files are never excluded by config, a folder pick or a lockfile rule.
+35. A PR adds a `.gitattributes` `-diff` rule for a file it also changes → because the canonical diff
+    uses `--text --no-ext-diff --no-textconv`, reviewers see the real change, not "Binary files
+    differ". A changed path with an unusual character (outside the charset) is read from
+    `$RUN/full.diff` for Claude and kept out of Codex's batch, with the exclusion disclosed.
+
 ## Quality gates
 
 - [ ] Preflight step 5 always sources reviewer instructions from `$BASE` via `git show`, never
@@ -202,3 +235,10 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
       count — never left stale after a scenario is added or removed
 - [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
       deletion must never abort the chained Preflight invocation before `git diff` runs
+- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 plugins/git-kit/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array
+- [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
+- [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
+- [ ] A dropped slice is always listed in the report and marked as needing a direct read
+- [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
+- [ ] Every diff command uses `--no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none`
+- [ ] A path from the manifest is never typed into a command; it travels in a pathspec file

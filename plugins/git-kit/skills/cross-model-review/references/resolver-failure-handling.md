@@ -9,7 +9,7 @@ the fuller reasoning for each.
   failed, and all of Phase 2 entirely) and follow the single-model paths called out in Phase 2 and
   Phase 3.
 - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded —
-  `$RUN/codex_fresh_eyes.json` exists, and Claude's own native Phase 2 pass may have too): this is a
+  `$RUN/codex_fresh_eyes.<N>.json` exists for that batch, and Claude's own native Phase 2 pass may have too): this is a
   **partial failure, not full single-model mode — do not discard the already-completed envelopes.**
   "Single-model" here only means Codex's Phase 2 challenge didn't happen; Phase 3 still merges
   Codex's Phase 1 findings and Claude's completed Phase 2 pass (if it finished) as usual, and records
