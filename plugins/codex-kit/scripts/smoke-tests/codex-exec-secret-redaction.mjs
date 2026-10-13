@@ -76,7 +76,18 @@ console.log("\n=== dotenv-shaped assignment in the middle of a line (issue #546)
   }
   const escapedQuote = redactSecrets(`diag: DB_PASSWORD="top ${bs}"secret" tail`);
   check("an escaped quote inside a quoted value still redacts through the closing quote", !escapedQuote.includes("secret") && escapedQuote.endsWith(" tail"), escapedQuote);
-  const camelPassword =redactSecrets(`request failed: databasePassword=${value} retrying`);
+  for (const [label, text, survivor] of [
+    ["LF", "error: API_KEY=\nnext line stays", "next line stays"],
+    ["CRLF", "error: API_KEY=\r\nnext line stays", "next line stays"],
+    ["a space before the newline", "error: API_KEY= \nnext line stays", "next line stays"],
+    ["a newline before the equals sign", "error: API_KEY\n=value tail", "=value tail"],
+  ]) {
+    const out = redactSecrets(text);
+    check(`an assignment's padding never spans a newline (${label})`, out === text || out.includes(survivor), out);
+  }
+  const tabbed = redactSecrets("error: API_KEY=\tabc123 tail");
+  check("tab padding after the equals sign is still redacted", !tabbed.includes("abc123") && tabbed.endsWith(" tail"), tabbed);
+  const camelPassword = redactSecrets(`request failed: databasePassword=${value} retrying`);
   check("a camelCase name ending in Password is redacted", !camelPassword.includes(value) && camelPassword.endsWith(" retrying"), camelPassword);
   const accessKey = redactSecrets(`using awsAccessKey=${value} now`);
   check("a camelCase accessKey compound is redacted", !accessKey.includes(value), accessKey);
