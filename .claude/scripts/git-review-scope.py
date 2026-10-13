@@ -61,6 +61,9 @@ SYNC_PATH = ".claude/marketplace-sync.json"
 # timed out at 240 s), so these are starting points to tune against real runs, not findings.
 DEFAULT_BUDGET_BYTES = 250_000
 DEFAULT_MAX_SLICE_BYTES = 80_000
+# Used only while the base ref's tracked settings lack the dirs key (the first run after it was
+# introduced); a tracked `[]` is an explicit choice and wins.
+DEFAULT_EXCLUDE_DIRS = ["issues/"]
 MAX_MANIFEST_BYTES = 5_000_000
 MAX_FILE_BYTES = 10_000_000
 _SHA_RE = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
@@ -207,7 +210,10 @@ def load_config(tracked_text: str | None, local_text: str | None, local_is_track
     for kind, key in _LIST_KEYS.items():
         merged: list[str] = []
         for data, label, is_local in sources:
-            for entry in _clean_entries(data.get(key), kind, f"{label} {key}", notes):
+            raw = data.get(key)
+            if raw is None and kind == "dirs" and data is tracked:
+                raw = DEFAULT_EXCLUDE_DIRS
+            for entry in _clean_entries(raw, kind, f"{label} {key}", notes):
                 if entry not in merged:
                     merged.append(entry)
                     if is_local:

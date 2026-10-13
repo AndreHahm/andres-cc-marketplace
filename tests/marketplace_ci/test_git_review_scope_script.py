@@ -197,7 +197,7 @@ def test_local_config_only_adds_to_tracked_lists():
 def test_tracked_local_config_is_ignored_and_disclosed():
     local = json.dumps({"cross_model_review_exclude_dirs": ["plugins/"]})
     config = M.load_config(None, local, True)
-    assert config["dirs"] == []
+    assert config["dirs"] == M.DEFAULT_EXCLUDE_DIRS
     assert any("tracked by git" in n for n in config["notes"])
 
 
@@ -220,8 +220,18 @@ def test_invalid_entries_are_dropped_with_a_note():
 
 def test_unreadable_tracked_settings_fall_back_to_defaults():
     config = M.load_config("{not json", None, False)
-    assert config["dirs"] == [] and config["budget_bytes"] == M.DEFAULT_BUDGET_BYTES
+    assert config["dirs"] == M.DEFAULT_EXCLUDE_DIRS
+    assert config["budget_bytes"] == M.DEFAULT_BUDGET_BYTES
     assert any("unreadable" in n for n in config["notes"])
+
+
+def test_built_in_dirs_apply_only_while_the_tracked_key_is_absent():
+    assert M.load_config(None, None, False)["dirs"] == ["issues/"]
+    assert M.load_config("{}", None, False)["dirs"] == ["issues/"]
+    explicit = json.dumps({"cross_model_review_exclude_dirs": []})
+    assert M.load_config(explicit, None, False)["dirs"] == []
+    local = json.dumps({"cross_model_review_exclude_dirs": ["x/"]})
+    assert M.load_config(explicit, local, False)["dirs"] == ["x/"]
 
 
 # --- slicing and budget ------------------------------------------------------------------------
@@ -639,10 +649,10 @@ def test_round_two_reviews_files_dropped_by_the_budget_in_round_one():
 
 
 def test_round_two_reviews_files_a_run_pick_hid_in_round_one():
-    tree = {"issues/1.md": b"1", "a.py": b"1"}
-    one = _plan(list(tree), tree=tree, picks=["issues/"])
+    tree = {"notes/1.md": b"1", "a.py": b"1"}
+    one = _plan(list(tree), tree=tree, picks=["notes/"])
     two = _plan(list(tree), tree=tree, prior=_loaded(one))
-    assert sorted(f["path"] for f in two["files"]) == ["issues/1.md"]
+    assert sorted(f["path"] for f in two["files"]) == ["notes/1.md"]
 
 
 def test_reviewed_hashes_carry_forward_so_round_three_skips_round_one_files_too():
