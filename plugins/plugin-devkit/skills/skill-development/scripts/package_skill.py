@@ -15,7 +15,12 @@ import sys
 import zipfile
 from pathlib import Path
 
-from scripts.quick_validate import validate_skill
+try:
+    from scripts.quick_validate import validate_skill
+except ImportError:
+    # Run as `python .../scripts/package_skill.py`, sys.path[0] is the scripts directory
+    # itself, so the `scripts` package is not importable; import the sibling directly.
+    from quick_validate import validate_skill  # ty: ignore[unresolved-import]
 
 # Patterns to exclude when packaging skills.
 EXCLUDE_DIRS = {"__pycache__", "node_modules"}
@@ -89,9 +94,9 @@ def package_skill(skill_path, output_dir=None):
 
     # Create the .skill file (zip format)
     try:
-        with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        with zipfile.ZipFile(skill_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory, excluding build artifacts
-            for file_path in skill_path.rglob('*'):
+            for file_path in skill_path.rglob("*"):
                 if not file_path.is_file():
                     continue
                 arcname = file_path.relative_to(skill_path.parent)
