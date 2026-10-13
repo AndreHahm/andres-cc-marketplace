@@ -212,6 +212,8 @@ also fetched from a live external location this skill doesn't control.
 - "check naming/formatting compliance" → use `plugin-rulebook` instead
 - "what does the current Claude Code doc say about X" (one-off, no intent to track) → just `WebSearch`/`WebFetch` directly
 
+**Last dated run record:** 2026-10-13 — `scripts/smoke_test.py` run via `smoke-tester`, 7/7 checks passing (covers the first two quality gates below; the disabled-source and custom-source gates are conversational and not exercised). Record: `.claude/output/upstream-sources-registry/smoke-test-20261013.md`. Full evals not warranted: the skill is a data registry plus two deterministic scripts, covered by the smoke test; no `evals/upstream-sources-registry/` suite exists.
+
 **Quality gates:**
 - [ ] `scripts/validate_sources.py` passes cleanly against `assets/sources.json`
 - [ ] `scripts/compute_priority.py` runs without error and its derived priority changes when `manual_rank_override` is set, confirming the override takes precedence over the derived value
@@ -225,6 +227,7 @@ also fetched from a live external location this skill doesn't control.
 | `assets/sources.json` | The registry itself — built-in seed sources plus any added since |
 | `scripts/compute_priority.py` | Derives `critical`/`standard`/`opportunistic` from authority × volatility × live-grepped blast radius |
 | `scripts/validate_sources.py` | Schema/consistency check for `assets/sources.json` — run after any manual edit |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter, Reference Guide files, `validate_sources.py` positive/negative controls, derivation table, override precedence) — re-run after any script or `SKILL.md` edit |
 | `references/classification-criteria.md` | Worked examples for assigning authority tier and volatility to a new source |
 | `references/migration-notes.md` | Where each entry in the old `plugin-rulebook` "Tracked Upstream Sources" table and `_meta.review_triggers` moved to in this registry |
 | `plugin-rulebook` skill | R1–R37 structural rules — separate concern, see "When NOT to Use" |
