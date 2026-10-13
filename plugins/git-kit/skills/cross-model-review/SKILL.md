@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
