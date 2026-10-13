@@ -10,7 +10,8 @@ description: >-
   overriding a source's rank, and adding custom sources (blog posts, papers, other repos). Use when
   a dev-rules command needs to know which sources to check and how stale the last check is, or when
   a maintainer asks "is there an official source backing this rule", "what sources cover X", "add a
-  source to the registry", or "check registry freshness".
+  source to the registry", or "check registry freshness". For checking one rule against its
+  source, use pdk-verify-dev-rules.
 allowed-tools: Read Write Edit WebFetch WebSearch Bash(python ${CLAUDE_SKILL_DIR}/scripts/compute_priority.py:*) Bash(python ${CLAUDE_SKILL_DIR}/scripts/validate_sources.py:*)
 ---
 
