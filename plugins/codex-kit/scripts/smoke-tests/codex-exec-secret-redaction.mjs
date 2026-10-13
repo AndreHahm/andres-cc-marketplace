@@ -181,7 +181,7 @@ console.log("\n=== Every shared token shape is redacted, next to non-ASCII text 
   const names = shared.shapes.map((shape) => shape.name).sort();
   check("the shared file and this test list the same shapes", JSON.stringify(names) === JSON.stringify(Object.keys(samples).sort()), names.join(","));
   for (const [name, sample] of Object.entries(samples)) {
-    for (const [before, after] of [["", ""], ["é", ""], ["", "é"], ["中", ""]]) {
+    for (const [before, after] of [["", ""], ["é", ""], ["", "é"], ["中", ""], ["", "_x"]]) {
       const redacted = redactSecrets(`x ${before}${sample}${after} y`);
       check(`${name} is redacted (${JSON.stringify([before, after])})`, !redacted.includes(sample), redacted);
     }

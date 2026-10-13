@@ -31,9 +31,11 @@ CONSUMERS = (
 
 _SHAPE_KEYS = {"name", "pattern"}
 
-# Syntax the Python and JavaScript engines do not both accept (named groups, \A / \Z anchors,
-# inline flag groups): a shape must mean the same thing in both, and only Python compiles here.
-_PYTHON_ONLY_SYNTAX = re.compile(r"\(\?(?:P|[aiLmsux-]+[:)])|\\[AZ]")
+# Syntax the Python and JavaScript engines do not both accept (named groups, inline comments,
+# atomic groups, \A / \Z anchors, inline flag groups, possessive quantifiers): a shape must mean
+# the same thing in both, and only Python compiles here. The last alternative is a quantifier
+# followed by an unescaped "+"; the lookbehind plus even-backslash run skips an escaped quantifier.
+_PYTHON_ONLY_SYNTAX = re.compile(r"\(\?(?:P|#|>|[aiLmsux-]+[:)])|\\[AZ]|(?<!\\)(?:\\\\)*[*+?}]\+")
 
 # A shape that can match an empty string matches between every two characters; the redactors
 # would then insert a marker everywhere and the shapes after it would never run.

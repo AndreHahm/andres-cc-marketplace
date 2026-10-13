@@ -1420,12 +1420,6 @@ def _sanitize_log_text(text: str) -> str:
     return " ".join("".join(c if c.isprintable() else " " for c in text).split())
 
 
-# Token-shaped secrets only, applied to the already single-line sanitized text,
-# so the line-anchored patterns the bridge's own redactSecrets uses (an
-# `Authorization:` or `KEY=` line) are deliberately absent: on one line they
-# would swallow everything after the match. The bridge redacts before it
-# slices, but a few of its error contributors (a semantic-validation detail,
-# a Node crash trace) reach this point unredacted.
 _TOKEN_SHAPES_FILE = Path(__file__).with_name("token_shapes.json")
 
 
@@ -1453,6 +1447,12 @@ def _token_shapes_alternation(path: Path = _TOKEN_SHAPES_FILE) -> str:
     return "(?a:" + "|".join(shape["pattern"] for shape in document["shapes"]) + ")"
 
 
+# Token-shaped secrets only, applied to the already single-line sanitized text,
+# so the line-anchored patterns the bridge's own redactSecrets uses (an
+# `Authorization:` or `KEY=` line) are deliberately absent: on one line they
+# would swallow everything after the match. The bridge redacts before it
+# slices, but a few of its error contributors (a semantic-validation detail,
+# a Node crash trace) reach this point unredacted.
 _SECRET_TOKEN_PATTERNS = re.compile(
     _token_shapes_alternation() + r"|\bauthorization\s*[:=]\s*bearer\s+[A-Za-z0-9._~+/=-]{8,}"
     # A bare "Bearer <word>" is usually prose ("invalid Bearer authentication

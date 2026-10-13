@@ -83,6 +83,10 @@ def test_load_shapes_rejects_malformed_input(text):
         "\\" + "Aabc",  # Python-only anchor
         "abc" + "\\" + "Z",
         "(?i)abc",  # inline flag group, rejected by one of the two engines
+        "(?#c)abc",  # inline comment: Python accepts it, JavaScript throws
+        "(?>abc)",  # atomic group
+        "a++b",  # possessive quantifier
+        "a{2}+b",
     ],
 )
 def test_load_shapes_rejects_patterns_that_are_not_portable_token_shapes(pattern):
@@ -197,7 +201,15 @@ def test_python_ascii_and_node_agree_on_every_shape(tmp_path):
         "jwt_token": "eyJ" + "abc.def_-.sig-1",
     }
     assert set(samples) == {name for name, _ in shapes}
-    neighbours = [("", ""), (" ", " "), ("é", ""), ("", "é"), ("中", ""), ("_", "")]
+    neighbours = [
+        ("", ""),
+        (" ", " "),
+        ("é", ""),
+        ("", "é"),
+        ("中", ""),
+        ("_", ""),
+        ("", "_x"),
+    ]
     texts = [pre + samples[name] + post for name, _ in shapes for pre, post in neighbours]
     texts += ["AKIA" + "A" * 15, "plain text"]
     expected = [
@@ -234,7 +246,13 @@ def test_review_redactor_covers_every_shared_shape_next_to_non_ascii_text():
     shapes = load_shapes((REAL_REPO / CANONICAL).read_text(encoding="utf-8"))
     assert set(samples) == {name for name, _ in shapes}
     for name, sample in samples.items():
-        for before, after in (("", ""), ("é", ""), ("", "é"), ("中", "")):
+        for before, after in (
+            ("", ""),
+            ("é", ""),
+            ("", "é"),
+            ("中", ""),
+            ("", "_x"),
+        ):
             assert sample not in _redact_tokens(f"x {before}{sample}{after} y"), (name, before)
 
 
@@ -287,6 +305,14 @@ def test_review_loader_refuses_an_unusable_shapes_file(tmp_path, document):
     shapes_file.write_text(document, encoding="utf-8")
     with pytest.raises(ValueError):
         _token_shapes_alternation(shapes_file)
+
+
+def test_load_shapes_accepts_an_escaped_plus_followed_by_a_quantifier():
+    """An escaped literal plus then a quantifier is valid in both engines and is not a
+    possessive quantifier."""
+    pattern = "abc" + chr(92) + "++x"
+    text = json.dumps({"version": 1, "shapes": [{"name": "a", "pattern": pattern}]})
+    assert load_shapes(text) == [("a", pattern)]
 
 
 def test_sk_shape_covers_underscores_in_project_style_keys():
