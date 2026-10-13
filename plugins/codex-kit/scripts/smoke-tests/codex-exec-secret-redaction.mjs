@@ -47,6 +47,18 @@ console.log("\n=== dotenv-shaped secret line ===");
   check("an unrelated following line survives", redacted.includes("next line unaffected"), redacted);
 }
 
+console.log("\n=== dotenv-shaped assignment in the middle of a line (issue #546) ===");
+{
+  const value = "hunter2" + "abcdef";
+  const redacted = redactSecrets(`could not read env DATABASE_PASSWORD=${value} then more`);
+  check("the mid-line value is redacted", !redacted.includes(value), redacted);
+  check("the name and surrounding prose survive", redacted.startsWith("could not read env DATABASE_PASSWORD=") && redacted.endsWith(" then more"), redacted);
+  const quoted = redactSecrets(`failed: API_KEY="two words" and more`);
+  check("a quoted mid-line value containing a space is redacted whole", !quoted.includes("two words") && quoted.endsWith(" and more"), quoted);
+  const prose = "the password was rotated and the key is stored elsewhere";
+  check("prose with no assignment is unchanged", redactSecrets(prose) === prose);
+}
+
 console.log("\n=== AWS access key ===");
 {
   const redacted = redactSecrets("credential: AKIAABCDEFGHIJKLMNOP in use");

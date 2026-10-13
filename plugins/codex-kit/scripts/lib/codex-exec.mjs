@@ -157,6 +157,15 @@ const SECRET_PATTERNS = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g
 ];
 
+// The line-anchored dotenv rule above misses an assignment that is not at the
+// start of a line, and consuming the rest of a mid-line match would eat
+// surrounding prose, so this one replaces only the value and keeps the name
+// (group 1). A quoted value runs to its closing quote (or the end of the text,
+// for a truncated one), so a value containing spaces is redacted whole. The
+// lookahead leaves a value the line-anchored rule already replaced alone.
+const SECRET_ASSIGNMENT_PATTERN =
+  /(\b[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*)(?!\[REDACTED\])(?:"(?:[^"\\]|\\.)*(?:"|$)|'(?:[^'\\]|\\.)*(?:'|$)|\S+)/gi;
+
 // Exported so a smoke test can exercise the pattern set directly, matching
 // the existing findSchemaViolation export pattern below.
 export function redactSecrets(text) {
@@ -164,7 +173,7 @@ export function redactSecrets(text) {
   for (const pattern of SECRET_PATTERNS) {
     result = result.replace(pattern, "[REDACTED]");
   }
-  return result;
+  return result.replace(SECRET_ASSIGNMENT_PATTERN, "$1[REDACTED]");
 }
 
 // Minimal structural validator against the same `schema` object passed to

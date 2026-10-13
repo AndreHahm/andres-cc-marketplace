@@ -156,6 +156,7 @@ class TextAndYaml(unittest.TestCase):
             "sk_live_" + "a" * 20,
             "glpat-" + "b" * 22,
             "npm_" + "c" * 32,
+            "github_pat_" + "d" * 22 + "_" + "e" * 30,  # fine-grained GitHub token (issue #546)
         ):
             self.assertTrue(V.screen_text(text), text)
 
