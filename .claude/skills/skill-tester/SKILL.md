@@ -223,7 +223,7 @@ See `references/eval-schema.md` for full schema and annotated examples.
 
 ### Step 2.3: Generate eval_metadata.json Files
 
-Create `workspace/iteration-1/eval-N/eval_metadata.json` for each eval. Required fields: `eval_id`, `skill_path`, `assertions` array (each entry: `text`, `type`, `target`). Assertion types: `presence`, `quality`, `structure`, `functionality`.
+Create `workspace/iteration-1/eval-N/eval_metadata.json` for each eval. Required fields: `eval_id`, `skill_path`, `assertions` array (each entry: `text`, `type`, `target`). Assertion types: `presence`, `quality`, `structure`, `functionality`. End the file with a trailing newline, as with every JSON file this skill writes.
 
 Create directories: `workspace/iteration-1/eval-1/`, `eval-2/`, etc. (with_skill and baseline subdirs created in Phase 3).
 
@@ -309,7 +309,7 @@ For EACH eval:
 ### Step 4.2: Write grading.json Files
 
 Create `workspace/iteration-1/eval-N/with_skill/grading.json` and `baseline/grading.json`.
-Required fields: `eval_id`, `configuration` (`"with_skill"` or `"baseline"`), `assertions_evaluated` array (each: `text`, `passed`, `evidence`), `summary` (`assertions_total`, `assertions_passed`, `pass_rate`). Set `"contaminated": true` in a baseline grading whose output quotes the skill; aggregation then refuses it.
+Required fields: `eval_id`, `configuration` (`"with_skill"` or `"baseline"`), `assertions_evaluated` array (each: `text`, `passed`, `evidence`), `summary` (`assertions_total`, `assertions_passed`, `pass_rate`). Set `"contaminated": true` in a baseline grading whose output quotes the skill; aggregation then refuses it. End each file with a trailing newline.
 
 See `references/eval-schema.md` for full schema and pass/fail examples.
 

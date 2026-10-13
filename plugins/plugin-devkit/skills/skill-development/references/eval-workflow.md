@@ -45,7 +45,7 @@ Execute this task:
 
 > Improving existing skill? Use old version as baseline (snapshot first), not no-skill.
 
-Write `eval_metadata.json` per eval immediately (assertions can be empty):
+Write `eval_metadata.json` per eval immediately (assertions can be empty), ending each file with a trailing newline:
 
 ```json
 {
@@ -76,7 +76,7 @@ When each subagent finishes, save to `timing.json` immediately — this data onl
 
 ## Step 4: Grade & Benchmark
 
-1. Grade assertions per run → save `grading.json` (fields: `text`, `passed`, `evidence`)
+1. Grade assertions per run → save `grading.json` (fields: `text`, `passed`, `evidence`; end the file with a trailing newline)
 2. Aggregate → `benchmark.json` + `benchmark.md` (pass rate, time, tokens — with vs without), plus a summary row appended to `<workspace>/benchmark-log.md` — a cumulative, append-only history across all iterations, one file, for at-a-glance progress scanning without opening each iteration's files individually
 3. Analyst pass — flag non-discriminating assertions, flaky evals, token tradeoffs
 
