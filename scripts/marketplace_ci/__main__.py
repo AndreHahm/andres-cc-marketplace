@@ -1008,12 +1008,13 @@ def _instructions_dir_problem(path: Path, repo: Path, output: str | None) -> str
     """Why `--instructions-dir` can't be used, or None. The reviewers write files
     into it, so it must be a new path outside the checkout: an existing directory
     or symlink would be written through, one inside the checkout would leave
-    scratch files in a shippable location, and one equal to `--output` would turn
-    the result file's path into a directory."""
+    scratch files in a shippable location, and one equal to or below `--output`
+    would turn the result file's path into a directory."""
     if path.is_symlink() or path.exists():
         return f"--instructions-dir {str(path)!r} already exists; pass a new path"
-    if output and path.resolve() == Path(output).resolve():
-        return "--instructions-dir must differ from --output"
+    resolved = path.resolve()
+    if output and Path(output).resolve() in (resolved, *resolved.parents):
+        return "--instructions-dir must not be --output or below it"
     if (path.parent.resolve() / path.name).is_relative_to(repo.resolve()):
         return f"--instructions-dir {str(path)!r} is inside the checkout; use a scratch directory"
     return None

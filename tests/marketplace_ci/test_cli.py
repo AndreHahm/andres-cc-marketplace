@@ -1288,6 +1288,22 @@ def test_run_codex_review_refuses_an_instructions_dir_equal_to_output(
     assert same.is_file()  # the failure payload went to --output; it was not made a directory
 
 
+def test_run_codex_review_refuses_an_instructions_dir_nested_under_output(
+    monkeypatch, git_repo, tmp_path_factory, capsys
+):
+    result = tmp_path_factory.mktemp("outside") / "result.json"
+    nested = result / "instructions"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        ["run-codex-review", "--base-sha", "deadbeef", "--output", str(result)]
+        + ["--instructions-dir", str(nested)]
+    )
+    assert rc == 2
+    assert "--output" in capsys.readouterr().err
+    assert result.is_file()  # the failure payload went to --output; it never became a directory
+    assert not nested.exists()
+
+
 def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git_repo):
     import subprocess as subprocess_module
 
