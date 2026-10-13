@@ -398,7 +398,6 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 
 | File | Purpose | When to Read |
 |---|---|---|
-| `${CLAUDE_SKILL_DIR}/references/lifecycle.md` | Historical draft lifecycle guide (superseded by this file's own Phase 1-5.5 process; kept for token-efficiency background) | Background reference |
 | `${CLAUDE_SKILL_DIR}/references/how-skills-work.md` | Token loading mechanics, activation internals, selection mechanism | Phase 1 (understand) — deep dive |
 | `${CLAUDE_SKILL_DIR}/references/skill-categories.md` | 9 categories with templates and improvement patterns | Phase 1 (identify category) and Phase 4 (improve) |
 | `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` | Detection, mapping, conversion logic, validation | Phase 1 — Convert entry path |
@@ -447,7 +446,6 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 | `${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py` | Find merge candidates by trigger/keyword overlap | Skill Consolidation step 2 |
 | `${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) | Before packaging / after any SKILL.md edit |
 | `plugin-rulebook` skill | Plugin-level rules — invoke before finalizing to check naming, language, formatting, tool-scoping, and external-reference compliance | Phase 5 (before packaging) |
-| `references/skill-creator-original.md` | Original skill-creator methodology | Background reference |
 | `CHANGELOG.md` | Change history for this skill | Reference |
 
 **Internal dependencies** (not directly invoked — referenced by the scripts above): `scripts/run_eval.py`, `scripts/generate_report.py`, `scripts/improve_description.py`, `scripts/utils.py`, `scripts/__init__.py`, `eval-viewer/viewer.html`. `LICENSE.txt` — Apache License 2.0.
