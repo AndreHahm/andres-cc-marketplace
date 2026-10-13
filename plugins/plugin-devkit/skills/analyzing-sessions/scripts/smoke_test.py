@@ -56,7 +56,7 @@ def check_bash_grants():
     unused = []
     for t in tokens:
         needle = t.split("/")[-1] if "/" in t else t
-        if not re.search(re.escape(needle), body):
+        if not re.search(rf"\b{re.escape(needle)}\b", body):
             unused.append(t)
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
@@ -107,12 +107,23 @@ def check_phase2_confirmation_uses_askuserquestion():
     if "Confirm" not in section:
         return False, "Phase 2 section has no confirmation step at all"
     if "AskUserQuestion" not in section:
-        return False, "Phase 2's confirmation step doesn't mention AskUserQuestion -- may have regressed to plain narrative text"
+        return (
+            False,
+            "Phase 2's confirmation step doesn't mention AskUserQuestion -- "
+            "may have regressed to plain narrative text",
+        )
     if "Found N components. Proceed with full analysis?" not in section:
         return False, "Phase 2's confirmation question text is missing or was reworded"
     if '"Proceed"' not in section or '"Cancel"' not in section:
-        return False, "Phase 2's confirmation options are missing or were reworded (expected \"Proceed\" / \"Cancel\")"
-    return True, "Phase 2 confirmation is an AskUserQuestion call with the expected question and options"
+        return (
+            False,
+            "Phase 2's confirmation options are missing or were reworded "
+            '(expected "Proceed" / "Cancel")',
+        )
+    return (
+        True,
+        "Phase 2 confirmation is an AskUserQuestion call with the expected question and options",
+    )
 
 
 CHECKS = [

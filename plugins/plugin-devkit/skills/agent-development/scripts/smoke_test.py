@@ -58,7 +58,7 @@ def check_bash_grants():
     unused = []
     for t in tokens:
         needle = t.split("/")[-1] if "/" in t else t
-        if not re.search(re.escape(needle), body):
+        if not re.search(rf"\b{re.escape(needle)}\b", body):
             unused.append(t)
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
@@ -151,6 +151,9 @@ def check_trigger_script_detection_helpers():
     delegation = tool_use("Agent", {"subagent_type": "my-agent"})
     cases = {
         "allowed rate_limit_event ignored": not ns["requires_fallback"](rate_limit("allowed")),
+        "allowed_warning rate_limit_event ignored": not ns["requires_fallback"](
+            rate_limit("allowed_warning")
+        ),
         "rejected rate_limit_event falls back": ns["requires_fallback"](rate_limit("rejected")),
         "plain rate-limit text falls back": ns["requires_fallback"]("Rate limit exceeded"),
         "init listing is not delegation": not ns["_delegated_to_agent"](
