@@ -31,15 +31,16 @@ Identify the entry path and jump in:
 |---|---|---|
 | **Extract** | "turn this into a skill" | Extract tools/steps from conversation → write minimal SKILL.md → test on original task |
 | **Greenfield** | "make a skill for X" | Start with one concrete task → succeed → extract winning approach into skill |
-| **Audit** | "improve/audit this skill" | `cp -r` snapshot → run Quality Checklist → fix violations |
+| **Audit** | "audit this skill" (still being authored, or failing the Quality Checklist) | `cp -r` snapshot → run Quality Checklist → fix violations |
 | **Convert** | "convert slash command to skill" | Read `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` |
 | **Repair** | "fix/repair a skill" | `python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py --diagnose <skill-name>` |
 | **Consolidate** | "find duplicate/consolidate skills" | `${CLAUDE_SKILL_DIR}/scripts/scan_skills.py` → `${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py` |
 
 ## When NOT to Use
 
-- **Refining an existing skill only** → use `/skill-refiner-interactive`
+- **Polishing a skill that already works and passes the Quality Checklist** (clarity, token cuts, tool-scope audit, with operator approval at each step) → use `/skill-refiner-interactive`; a skill still being authored, broken, or failing the checklist stays here
 - **Reviewing skill quality** (assessing and scoring only, with no edits) → use the `skill-reviewer` agent; this skill edits
+- **Judging whether a description will fire correctly, or whether two skills' descriptions collide** → use the `activation-reviewer` agent; this skill writes a description, it does not review trigger selection across components
 - **Plain reusable instruction text with no script, tool or bundled-file needs** (a prompt to store and re-run, not a skill) → tell the user to run `/prompt-library` (promptlibrary-kit; it is user-invoked only, so do not invoke it yourself), which stores it as a record in the project catalog. This skill creates skills: content that needs scripts, tool restrictions, bundled references or automatic activation.
 - **Auditing a skill's `evals.json` or `smoke_test.*` for defects** (vacuous assertions, wrong coverage claims, missing run records) → use `reviewing-evals`. This skill creates the evals as part of authoring a skill (Phase 3); `reviewing-evals` only checks existing eval artifacts and never edits the skill.
 - **Quick standalone repair (issue already diagnosed)** → run `python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py` directly; skip the full skill workflow
@@ -87,7 +88,7 @@ Identify the entry path:
 
 - **Extract** ("turn this into a skill") — extract tools used, steps taken, and corrections made from the current conversation. Write a minimal SKILL.md and test on the original task first, then expand to variations.
 - **Greenfield** ("make a skill for X") — start with one concrete challenging task. Succeed on that single task, then extract the winning approach into a skill. Don't try to design for every scenario upfront.
-- **Audit** ("improve this skill", "audit this skill") — run the Quality Checklist first to identify violations. Snapshot with `cp -r` before any edits. Fix violations, compress, and move oversized content to `references/`. Test against the snapshot as baseline; re-optimize description if it changed.
+- **Audit** ("audit this skill I'm authoring", "this skill fails the checklist") — a skill still being authored, broken, or failing the Quality Checklist; a working skill that only needs polish goes to `skill-refiner-interactive`. Run the Quality Checklist first to identify violations. Snapshot with `cp -r` before any edits. Fix violations, compress, and move oversized content to `references/`. Test against the snapshot as baseline; re-optimize description if it changed.
 - **Convert** ("convert this slash command to a skill") — read the slash command source, map each section to SKILL.md structure, and migrate references. Read `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` for the full detection, mapping, and validation workflow.
 
 Capture intent: what should this skill enable, when should it trigger, what is the expected output format, and how will success be measured. Proactively research edge cases, input/output formats, and dependencies before writing anything.

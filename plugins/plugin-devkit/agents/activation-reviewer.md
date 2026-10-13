@@ -15,7 +15,10 @@ description: >-
   agents; for a broader check of data, governance, functionality, and capability
   drift between the same components, use consistency-reviewer instead; the
   two may legitimately run back-to-back on the same trigger event, each
-  covering a different axis.
+  covering a different axis. To write or rewrite a description, use
+  skill-development or agent-development (this agent only reviews, it never
+  edits); for a description's size and format (R8, R21) rather than whether
+  it selects the right component, use plugin-rulebook.
 model: sonnet
 color: pink
 tools: ["Read", "Grep", "Glob"]

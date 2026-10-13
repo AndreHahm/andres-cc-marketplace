@@ -9,7 +9,7 @@ description: >-
   coverage-claim accuracy, assertion non-vacuity, scenario counting,
   run-record presence, and behavior-claim currency. Accepts a single skill
   path or a comma-separated list for a batch sweep. Does not run evals (use
-  skill-tester) or review skill quality (use skill-reviewer). Executes the
+  skill-tester), write evals (use skill-development) or review skill quality (use skill-reviewer). Executes the
   target skill's own scripts/smoke_test.* under a resolved-path trust boundary
   as part of Check 1 — this is real code execution, not read-only analysis.
 argument-hint: "[skill-path | skill-path,skill-path,...]"

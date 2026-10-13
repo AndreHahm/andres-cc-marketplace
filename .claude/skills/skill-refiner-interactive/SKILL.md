@@ -7,8 +7,9 @@ description: >-
   new skills — use skill-development instead. For a one-shot quality report with no fixes, use the
   skill-reviewer agent instead. For automated fix-review loops with no user checkpoints, use
   skill-improver-loop instead. To measure a skill empirically against a baseline without
-  editing it, use skill-tester instead. For authoring or repairing a broken skill, use
-  skill-development instead.
+  editing it, use skill-tester instead. For a skill still being authored, broken, or failing
+  the Quality Checklist, use skill-development instead; this skill polishes a skill that
+  already works and passes the Quality Checklist.
 when_to_use: >-
   Use when refining skills, improving skill structure, validating against best practices,
   reducing token usage, consolidating references, checking production readiness, applying the
@@ -72,6 +73,7 @@ options:
 - **Fully automated fix-review loops with no user checkpoints** — use `skill-improver-loop` instead
 - **Iterating skill content during development** — use `skill-development`'s own iterative workflow
 - **Auditing or ranking the quality of many skills at once** — use `skill-stocktake`; this skill refines one skill at a time
+- **Redesigning a workflow skill's architecture** (phases, routing, sub-agent orchestration, a `workflows/` split) — use `workflow-skill-development`; this skill polishes a working skill's clarity, tokens and tool scope
 
 ## Core Workflow: Refinement
 
