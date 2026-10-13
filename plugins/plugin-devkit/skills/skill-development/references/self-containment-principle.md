@@ -82,7 +82,7 @@ Network access is allowed **only when**:
 5. **Documented clearly** — SKILL.md documents what external calls happen and why
 
 **Allowed network patterns:**
-- ✅ `allowed-tools: Bash(curl:*, gh:*)` with user asking "fetch GitHub data"
+- ✅ `allowed-tools: Bash(curl:*), Bash(gh:*)` with user asking "fetch GitHub data"
 - ✅ `allowed-tools: Bash(curl:*)` with explicit network call in SKILL.md instructions
 - ✅ Bundled `scripts/fetch.sh` that uses curl only when called
 
