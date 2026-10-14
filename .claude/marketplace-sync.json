@@ -30,7 +30,12 @@
     {
       "source": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
       "dest": ".claude/skills/notion-knowledge-management/SKILL.md",
-      "reason": "Frontmatter hooks: block's command path is necessarily copy-specific, same reason as marketplace-development above: the canonical plugins/workmanagement-kit/ copy is distributed and uses ${CLAUDE_PLUGIN_ROOT}; the .claude/ mirror copy is never distributed (in-repo dogfooding only) and uses ${CLAUDE_PROJECT_DIR} with this repo's own .claude/skills/ path, because ${CLAUDE_PLUGIN_ROOT} is empty for a skill loaded from the mirror. Whole-file exception: only the command line inside this hooks: block differs between the two copies, everything else stays identical, so a later edit to either copy must be applied to both by hand."
+      "reason": "Frontmatter hooks: block's command path is necessarily copy-specific, same reason as marketplace-development above: the canonical plugins/workmanagement-kit/ copy is distributed and uses ${CLAUDE_PLUGIN_ROOT}; the .claude/ mirror copy is never distributed (in-repo dogfooding only) and uses ${CLAUDE_PROJECT_DIR} with this repo's own .claude/skills/ path, because ${CLAUDE_PLUGIN_ROOT} is empty for a skill loaded from the mirror. The same reason covers the plugin scripts this skill runs: its allowed-tools grants and body paths use ${CLAUDE_PLUGIN_ROOT}/scripts/ in the canonical copy, which is empty for a skill loaded from the mirror, so the mirror copy uses ${CLAUDE_PROJECT_DIR}/.claude/scripts/ (the mirrored scripts live there). Whole-file exception: only the hook command line and the ${CLAUDE_PLUGIN_ROOT}/scripts/ paths differ between the two copies, everything else stays identical, so a later edit to either copy must be applied to both by hand (regenerate the mirror from the canonical file with those replacements)."
+    },
+    {
+      "source": "plugins/workmanagement-kit/skills/notion-knowledge-management/references/long-text-blocks.md",
+      "dest": ".claude/skills/notion-knowledge-management/references/long-text-blocks.md",
+      "reason": "Names the splitter script by its ${CLAUDE_PLUGIN_ROOT}/scripts/ path in the canonical copy; that variable is empty for a skill loaded from the .claude/ mirror, so the mirror copy uses ${CLAUDE_PROJECT_DIR}/.claude/scripts/, where the mirrored script lives (same reason as the SKILL.md entry above). Whole-file exception: only that script path differs between the two copies, so a later edit to either copy must be applied to both by hand."
     }
   ]
 }

@@ -178,6 +178,12 @@ def main():
         check("big gap keeps the end", joined.endswith("z" * 100), "end")
         check("big gap keeps every word", joined.count("w0899") == 1, "word lost")
 
+        # 6e3. Leading and trailing newlines are dropped (documented), content in between is kept.
+        code, out = all_blocks(write("edges.md", "\n\nhello\n\nworld\n\n"))
+        check("boundary newlines dropped", out.get("blocks") == ["hello\n\nworld"], str(out))
+        code, out = all_blocks(write("edge1.md", "\nhello\n"))
+        check("single boundary newlines dropped", out.get("blocks") == ["hello"], str(out))
+
         # 6f. Paging: the default --count is 10, and a start past the end is empty but ok.
         many = "\n\n".join("m" * 1500 for _ in range(15))
         code, out = run_script("split", str(write("many.md", many)))

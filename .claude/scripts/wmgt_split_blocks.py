@@ -23,7 +23,8 @@ and cuts hard only where a stretch has no whitespace. Length is counted in UTF-1
 character outside the Basic Multilingual Plane counts as two and is never cut in half; --max
 therefore has to be at least 2. Line endings are normalized to LF before splitting, and a run of
 three or more newlines becomes one blank line, so the caller's reassembly with a blank line
-between blocks never differs from the split text by extra blank lines. The
+between blocks never differs from the split text by extra blank lines. Leading and trailing
+newlines of the text and of each block are dropped, as Notion blocks carry none. The
 whitespace character at a cut is dropped, and blocks cut from one paragraph are rejoined with a
 blank line by the caller, so a mid-paragraph cut reads as a paragraph break after reassembly.
 Limitation: it does not understand markdown tables or code fences, so a split can land inside

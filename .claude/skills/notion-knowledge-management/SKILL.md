@@ -10,7 +10,7 @@ description: >-
   what was learned goes to `status-and-learning`, not here. Reading, previews and this skill's own
   classification need no approval; every record creation, Decision state change, Goal proposal and
   Bootstrap database change requires the live approval gate, with no exception for a low-risk one.
-allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files --error-unmatch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database, mcp__claude_ai_Notion__notion-update-data-source, mcp__claude_ai_Notion__notion-move-pages
+allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files --error-unmatch:*), Bash(${CLAUDE_PROJECT_DIR}/.claude/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PROJECT_DIR}/.claude/scripts/wmgt_split_blocks.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database, mcp__claude_ai_Notion__notion-update-data-source, mcp__claude_ai_Notion__notion-move-pages
 hooks:
   PreToolUse:
     - matcher: "^(mcp__claude_ai_Notion__notion-update-data-source|mcp__claude_ai_Notion__notion-move-pages)$"
@@ -125,7 +125,7 @@ depend on connector behavior. Two rules follow:
 - **A long body goes into page content, not a property.** For a Report (and any other record whose
   `body`, `findings` or `context` would exceed the limit), the property holds only a short note, and
   the full text goes into the page as blocks of at most 2,000 characters: write it to a scratchpad file
-  with `Write`, then split it with `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py`. Read
+  with `Write`, then split it with `${CLAUDE_PROJECT_DIR}/.claude/scripts/wmgt_split_blocks.py`. Read
   `references/long-text-blocks.md` before doing this: it has the file naming, paging, partial-failure
   and read-back steps (the read-back checks each block's opening and closing words in order plus the
   closing sentence, never a block or paragraph count). The preview states the block count; none of it
