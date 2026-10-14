@@ -44,8 +44,11 @@ next) and pointing `GIT_INDEX_FILE` at `"$RUN/index"` — a new file inside that
 
 ## Why a failed copy sets `$INDEX_COPY_FAILED` instead of aborting outright
 
-If `$REAL_INDEX` doesn't exist or can't be read, `cp` fails and the throwaway index stays empty —
-the same starting point a from-scratch reseed would have, minus its two data-loss bugs above.
+If the real index doesn't exist or can't be read, `git-review-copy-index.sh` exits non-zero and the
+throwaway index stays empty — the same starting point a from-scratch reseed would have, minus its two
+data-loss bugs above. (That helper replaced a bare `cp` in the skill's `allowed-tools`, whose source and
+destination a grant could not constrain; the helper copies one file to `$RUN/index`, sets `umask 077`
+itself, never overwrites, and ignores `GIT_INDEX_FILE` when it looks up the real index.)
 `git add -N` still intent-adds every worktree path in that state, so the review isn't blind, but the
 diff it produces can differ from the real one in a way worth knowing about: an unchanged file (same
 content in the worktree as at `$MERGE_BASE`) is silently omitted entirely, rather than shown as

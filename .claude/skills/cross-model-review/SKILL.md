@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -104,20 +104,24 @@ still-real index — the throwaway path doesn't exist yet until the `export` lin
 umask 077
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
+UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
+echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
+[ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ] || { echo "PLANNER_TOUCHED=1: ask the user first"; exit 0; }
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
-REAL_INDEX=$(git rev-parse --git-path index)
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
-cp "$REAL_INDEX" "$GIT_INDEX_FILE" 2>/dev/null || INDEX_COPY_FAILED=1
+bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" 2>/dev/null || INDEX_COPY_FAILED=1
 git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
 ```
 
-**Seed the throwaway index with a byte-for-byte copy of the real one, captured *before*
-`GIT_INDEX_FILE` is exported** (afterwards `$REAL_INDEX` reads back the overridden path); a failed copy
-sets `$INDEX_COPY_FAILED=1`. See `references/index-seeding-rationale.md`.
+**Seed the throwaway index with a byte-for-byte copy of the real one.** `git-review-copy-index.sh`, a
+fixed-shape helper (it copies one file to `$RUN/index`, never overwrites, and sets its own mode), ignores
+`GIT_INDEX_FILE` when it looks the real index up; a failed copy sets `$INDEX_COPY_FAILED=1`. In this
+repository's own sessions the `:-.claude` mirror form is deliberately ungranted and prompts, like the
+planner wrapper's. See `references/index-seeding-rationale.md`.
 
 **`|| true` on `git add -N` matters for a deletion-only `$SCOPE`**, and **`$UNTRACKED_FILES` matters
 beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
@@ -138,14 +142,12 @@ an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_ST
 literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`/
 `Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
 
-1. **Plan the scope and check the diff exists.** In this same chained call, first check whether the diff
-   changes the planner or this skill, then run the review scope planner, and send the diff to a file so its
-   text stays out of context (details: `references/scoped-review.md` section 1):
+1. **Plan the scope and check the diff exists.** In this same chained call, run the review scope planner
+   and send the diff to a file so its text stays out of context (details: `references/scoped-review.md`
+   section 1). The touched-script check already ran at the top of the Inputs block:
 
    ```bash
-   UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
-   echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-   if [ -z "$PLANNER_TOUCHED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
+   if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
@@ -155,9 +157,11 @@ literal, already-resolved value — substitute the concrete string into every la
    default selects the `.claude/` mirror, deliberately **not** granted in `allowed-tools`, so it prompts
    (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`; details in `references/scoped-review.md`
    section 1). A missing file means `PLAN_FAILED=1`.
-   **`PLANNER_TOUCHED=1` means the planner has not run**: it executes code from the working tree, which may
-   be the branch under review, so ask via `AskUserQuestion` before running it (`references/scoped-review.md`
-   section 1). A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a
+   **`PLANNER_TOUCHED=1` means the chain stopped at the top of the Inputs block**, before running any
+   working-tree script (the index helper or the planner), because the diff changes them or this skill and
+   the working tree may be the branch under review: ask via `AskUserQuestion`; only an explicit yes
+   re-runs the whole chain with `PLANNER_APPROVED=1` set first (`references/scoped-review.md` section 1).
+   A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a
    Preflight failure, not an empty scope: report the Git error and ask for a valid `$BASE`. Only exit 0
    with an empty `$RUN/full.diff` means "nothing to review against $BASE" (mention `$SCOPE` if set): stop.
    A planner failure (`PLAN_FAILED=1`) is never a pass; follow that section's fallback. Cross-check the
@@ -207,7 +211,7 @@ literal, already-resolved value — substitute the concrete string into every la
    `${CLAUDE_PLUGIN_ROOT}`.
 6. **Check whether the diff itself touches the Codex dispatcher scripts (or their non-script trust
    inputs) this skill is about to execute** — against the **unscoped** changed-file list
-   (`UNSCOPED_CHANGED_FILES`, already computed in step 1 with `--no-renames` and deliberately without
+   (`UNSCOPED_CHANGED_FILES`, already computed at the top of the Inputs block with `--no-renames`, untracked files included, and deliberately without
    `-- "$SCOPE"`), never a `$SCOPE`-filtered list:
 
    ```bash
@@ -216,8 +220,8 @@ literal, already-resolved value — substitute the concrete string into every la
 
    Both `-E` and the trailing `|| true` are required — see `references/dispatcher-trust-pattern.md`
    for why (verified `grep` behavior, and why a no-match here must not abort the chain).
-   `PLANNER_TOUCHED` is the same kind of check for the planner, done in step 1 because the planner runs
-   there. `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
+   `PLANNER_TOUCHED` is the same kind of check for the review scripts, done at the top of the Inputs
+   block because the index helper runs there. `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
    Confirmation's clause (c) checks — a property of the *whole diff*, which is why a `$SCOPE` excluding
    `plugins/codex-kit` (e.g. `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made
    elsewhere in the same diff. The pattern's `(.*/)?` group and `assets/` alternative are both

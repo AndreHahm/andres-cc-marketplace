@@ -87,6 +87,7 @@ def diff_build_chain(base: str = "main", scope: str = "", extra: str = "") -> st
     scope_line = f"SCOPE={scope!r}\n" if scope else "SCOPE=\n"
     return f"""
 set -e
+export CLAUDE_PLUGIN_ROOT={str(SKILL_DIR.parent.parent)!r}
 BASE={base!r}
 {scope_line}
 {inputs_block}
@@ -106,6 +107,7 @@ def preflight_chain(base: str = "main", scope: str = "", extra: str = "") -> str
     scope_line = f"SCOPE={scope!r}\n" if scope else "SCOPE=\n"
     return f"""
 set -e
+export CLAUDE_PLUGIN_ROOT={str(SKILL_DIR.parent.parent)!r}
 BASE={base!r}
 {scope_line}
 {inputs_block}
@@ -301,12 +303,13 @@ def planner_repo(repo: pathlib.Path) -> None:
     run_bash(repo, "git checkout -qb feature")
 
 
-def planner_chain(extra: str, *, scope: str = "") -> str:
+def planner_chain(extra: str, *, scope: str = "", approved: bool = False) -> str:
     inputs_block = extract_inputs_block()
     planner = extract_planner_block()
     plugin_root = SKILL_DIR.parent.parent
     return f"""
 set -e
+{"PLANNER_APPROVED=1" if approved else ""}
 export CLAUDE_PLUGIN_ROOT={str(plugin_root)!r}
 BASE=main
 SCOPE={scope!r}
@@ -352,28 +355,22 @@ def test_planner_failure_sets_a_flag_instead_of_aborting_the_chain():
         return True, "an unplannable scope sets PLAN_FAILED=1 and the chain still completes"
 
 
-def test_the_planner_skip_branch_survives_a_block_joined_with_and_and():
+def test_the_planner_block_joined_with_and_and_still_completes():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         planner_repo(repo)
-        variant = repo / "plugins" / "git-kit" / "scripts"  # a change to the planner's own folder
-        variant.mkdir(parents=True)
-        (variant / "json.py").write_text("x = 1\n", encoding="utf-8")
         lines = [ln for ln in extract_planner_block().splitlines() if ln.strip()]
         plugin_root = str(SKILL_DIR.parent.parent)
         script = (
             f"set -e\nexport CLAUDE_PLUGIN_ROOT={plugin_root!r}\nBASE=main\nSCOPE=\n"
             f"{extract_inputs_block()}\n" + " && ".join(lines) + "\n"
-            'echo "CHAIN_DONE TOUCHED=${PLANNER_TOUCHED:-0}"\nls "$RUN/full.diff"\n'
+            'echo "CHAIN_DONE"\nls "$RUN/full.diff"\n'
         )
         result = run_bash(repo, script)
-        if "CHAIN_DONE TOUCHED=1" not in result.stdout or "full.diff" not in result.stdout:
+        if "CHAIN_DONE" not in result.stdout or "full.diff" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
-            return False, f"a skipped planner aborted the && chained block {detail}"
-        return (
-            True,
-            "with the planner skipped, a block joined with && still reaches its closing echo",
-        )
+            return False, f"a planner block joined with && did not reach its closing echo {detail}"
+        return True, "a planner block joined with && still reaches its closing echo"
 
 
 def _empty_variable_run(*, with_mirror: bool) -> str:
@@ -385,7 +382,11 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
         if with_mirror:
             mirror = repo / ".claude" / "scripts"
             mirror.mkdir(parents=True)
-            for name in ("git-review-scope.py", "git-review-scope-run.sh"):
+            for name in (
+                "git-review-scope.py",
+                "git-review-scope-run.sh",
+                "git-review-copy-index.sh",
+            ):
                 source = SKILL_DIR.parent.parent / "scripts" / name
                 (mirror / name).write_bytes(source.read_bytes())
         (repo / "f.txt").write_text("line1\n", encoding="utf-8")
@@ -431,32 +432,41 @@ def test_dispatcher_check_matches_a_case_variant_path():
         )
 
 
-def test_a_diff_touching_the_planner_skips_it_and_sets_the_flag():
+def test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         planner_repo(repo)
         variant = repo / "PLUGINS" / "Git-Kit" / "Scripts"  # a case variant of the planner folder
         variant.mkdir(parents=True)
-        (variant / "json.py").write_text("x = 1\n", encoding="utf-8")
+        (variant / "json.py").write_text("x = 1\n", encoding="utf-8")  # untracked on purpose
         check = (
-            'echo "TOUCHED=${PLANNER_TOUCHED:-0} PLAN=${PLAN_FAILED:-0}"; ls "$RUN/manifest-1.json"'
+            'echo "TOUCHED=${PLANNER_TOUCHED:-0} PLAN=${PLAN_FAILED:-0} '
+            'COPY=${INDEX_COPY_FAILED:-ok}"'
         )
-        result = run_bash(repo, planner_chain(check))
-        bad = "TOUCHED=1 PLAN=0" not in result.stdout or "manifest-1.json" in result.stdout
-        if bad or result.returncode == 0 and "No such file" not in result.stderr:
-            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
-            return False, f"planner ran or flag unset despite a changed planner folder {detail}"
+        stopped = run_bash(repo, planner_chain(check))
+        if (
+            "PLANNER_TOUCHED=1: ask the user first" not in stopped.stdout
+            or "PLANNER_CHAIN_COMPLETED" in stopped.stdout
+            or stopped.returncode != 0
+        ):
+            detail = f"(exit={stopped.returncode}): {stopped.stdout}\n{stopped.stderr}"
+            return False, f"a changed review script did not stop the chain before it ran {detail}"
+        approved = run_bash(repo, planner_chain(check, approved=True))
+        if "TOUCHED=1 PLAN=0 COPY=ok" not in approved.stdout:
+            detail = f"(exit={approved.returncode}): {approved.stdout}\n{approved.stderr}"
+            return False, f"an approved run did not run the helper and the planner {detail}"
         return (
             True,
-            "a changed planner folder (any case) sets PLANNER_TOUCHED and the planner does not run",
+            "a changed review-script folder (any case, even untracked) stops the chain "
+            "until approved",
         )
 
 
 CHECKS = [
     test_planner_sees_untracked_files_and_diff_goes_to_a_file,
     test_planner_failure_sets_a_flag_instead_of_aborting_the_chain,
-    test_a_diff_touching_the_planner_skips_it_and_sets_the_flag,
-    test_the_planner_skip_branch_survives_a_block_joined_with_and_and,
+    test_a_diff_touching_the_review_scripts_stops_the_chain_until_approved,
+    test_the_planner_block_joined_with_and_and_still_completes,
     test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty,
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,

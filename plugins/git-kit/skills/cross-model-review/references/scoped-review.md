@@ -39,13 +39,21 @@ codex-kit's own exposure, outside this change, and is reported as an open item. 
 check below covers a diff that *changes* the planner or its mirror.
 
 The planner must run in the call that exports `GIT_INDEX_FILE`, so intent-added untracked files are
-seen. **Check whether the diff changes the planner or this skill before running it**, because the planner
-executes code from the working tree, which may be the branch under review:
+seen. **The diff is checked for changes to the review scripts or this skill at the top of the Inputs
+block, before anything from the working tree runs** (the index helper there, then the planner here),
+because those scripts execute with your permissions and the working tree may be the branch under review.
+The check is:
 
 ```bash
-UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
+UNSCOPED_CHANGED_FILES=$({ git diff --no-renames --name-only "$MERGE_BASE"; git ls-files --others --exclude-standard; })
 echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-if [ -z "$PLANNER_TOUCHED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
+[ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ] || { echo "PLANNER_TOUCHED=1: ask the user first"; exit 0; }
+```
+
+and Preflight step 1 then runs the planner behind the same flag:
+
+```bash
+if [ -z "$PLANNER_TOUCHED" ] || [ -n "$PLANNER_APPROVED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
 "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
 ```
 
@@ -60,11 +68,12 @@ is case-insensitive. The tag is `1` for the first plan, and `1b` for the re-run 
 - `DIFF_STATUS` non-zero is a Preflight failure exactly as before (invalid `$BASE`, no local `main`):
   report the Git error and ask for a valid `$BASE`. Zero with an empty `$RUN/full.diff` is "nothing to
   review against $BASE". `$RUN/full.diff` is never read into context in full.
-- **`PLANNER_TOUCHED=1` means the planner has not run.** Before anything else, ask via
-  `AskUserQuestion`: run the working-tree planner anyway (it executes code from the branch under review,
-  with no sandbox), or review unscoped. Only an explicit yes runs it, in a separate call that starts with
-  the same `export GIT_INDEX_FILE` and uses the same wrapper command. Record the choice in
-  `inspection_limits` and disclose it again at the First-Send Confirmation.
+- **`PLANNER_TOUCHED=1` means the chain stopped before running any working-tree script** (no scratch
+  directory, no index copy, no planner). Ask via `AskUserQuestion`: run the working-tree review scripts
+  anyway (they execute code from the branch under review with your permissions, no sandbox), or stop.
+  Only an explicit yes re-runs the **whole** chain, unchanged, with `PLANNER_APPROVED=1` set first. A
+  "stop" leaves the user to review the diff another way (for example the PR's own CI review). Record the
+  choice in `inspection_limits` and disclose it again at the First-Send Confirmation.
 - `PLAN_FAILED=1` (the planner exits 2: bad input, a git failure, or an `--output` or `--diff-dir` that
   already exists) means scope could not be planned. Never treat it as a pass. Ask via `AskUserQuestion`:
   review the whole diff unscoped (section 7), or stop. Record "review scope planner unavailable" in
