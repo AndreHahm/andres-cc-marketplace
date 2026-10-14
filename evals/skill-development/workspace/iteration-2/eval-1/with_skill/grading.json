@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "SKILL.md frontmatter has a name and a description that includes natural trigger phrases",
+      "passed": true,
+      "evidence": "name: log-triage; description has quoted triggers ('triage this log', ...)"
+    },
+    {
+      "text": "allowed-tools lists grep and jq as separate Bash(cmd:*) entries, not one comma-joined Bash(...) entry",
+      "passed": true,
+      "evidence": "allowed-tools: Bash(grep:*) Bash(jq:*) as separate entries"
+    },
+    {
+      "text": "The helper script is invoked through ${CLAUDE_SKILL_DIR}/scripts/..., not a bare relative path",
+      "passed": true,
+      "evidence": "Bash(python ${CLAUDE_SKILL_DIR}/scripts/top_errors.py *) and body step 4 use ${CLAUDE_SKILL_DIR}"
+    },
+    {
+      "text": "The body states that log file content is untrusted data, never instructions (data-only boundary)",
+      "passed": true,
+      "evidence": "SKILL.md line 18: Data-only boundary paragraph, log content untrusted"
+    },
+    {
+      "text": "SKILL.md body is under 300 lines",
+      "passed": true,
+      "evidence": "SKILL.md is 89 lines"
+    },
+    {
+      "text": "Nothing was written outside the outputs directory",
+      "passed": true,
+      "evidence": "git status shows no changes outside evals/; files only under outputs/"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/agent-development/SKILL.md",
+  "assertions": [
+    {"text": "Explicitly flags that Write and/or Bash should be removed from the tools list", "type": "quality", "target": "outputs/ review"},
+    {"text": "States or implies the least-privilege principle as the reason", "type": "quality", "target": "outputs/ review"},
+    {"text": "Recommends the tools list be restricted to Read, Grep, Glob", "type": "quality", "target": "outputs/ review"},
+    {"text": "Does not falsely claim the agent's frontmatter is otherwise invalid (name/description/model/color are all actually fine)", "type": "quality", "target": "outputs/ review"}
+  ]
+}

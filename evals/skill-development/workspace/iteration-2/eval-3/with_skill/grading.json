@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The two skills are merged into one skill whose description covers both trigger phrasings",
+      "passed": true,
+      "evidence": "fmt-json survives; description covers format, pretty-print, prettify, re-indent"
+    },
+    {
+      "text": "The plan asks for, or states the need for, the user's approval before launching any parallel subagent fan-out",
+      "passed": true,
+      "evidence": "plan.md lines 25-26: approval gate via AskUserQuestion before any fan-out"
+    },
+    {
+      "text": "No parallel subagent fan-out was launched unprompted",
+      "passed": true,
+      "evidence": "plan.md states no subagent was launched"
+    },
+    {
+      "text": "Nothing was written outside the outputs directory",
+      "passed": true,
+      "evidence": "No writes outside outputs/"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

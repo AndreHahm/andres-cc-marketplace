@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/skill-development/SKILL.md",
+  "assertions": [
+    {"text": "A skills/release-notes/SKILL.md exists with a name and a description containing trigger phrases", "type": "presence", "target": "SKILL.md frontmatter"},
+    {"text": "allowed-tools has Bash(git:*) and Bash(gh:*) as separate entries, not Bash(git:*, gh:*)", "type": "structure", "target": "SKILL.md frontmatter"},
+    {"text": "Read and Write remain granted", "type": "presence", "target": "SKILL.md frontmatter"},
+    {"text": "The original behavior is preserved: list merged PRs, group by conventional-commit type, write RELEASE_NOTES.md", "type": "functionality", "target": "SKILL.md body"},
+    {"text": "Nothing was written outside the outputs directory", "type": "presence", "target": "outputs/ directory"}
+  ]
+}
