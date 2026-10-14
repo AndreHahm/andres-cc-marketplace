@@ -363,8 +363,8 @@ def find_obsolete_skills(skills: list[dict], registry: dict) -> list[dict]:
                 }
             )
 
-    # Sort by urgency and activation count
-    obsolete.sort(key=lambda x: (x["urgency"] == "high", x["activation_count"]))
+    # High urgency first, then least-used first, so the report's first-10 cut keeps the worst cases
+    obsolete.sort(key=lambda x: (x["urgency"] != "high", x["activation_count"]))
 
     return obsolete
 

@@ -195,6 +195,11 @@ fi
 # Check tools field
 TOOLS=$(echo "$FRONTMATTER" | grep '^tools:' | sed 's/tools: *//') || true
 
+# YAML block-list form: `tools:` alone on its line, then indented `- Tool` items
+if [ -z "$TOOLS" ]; then
+  TOOLS=$(echo "$FRONTMATTER" | awk '/^tools:[ \t]*$/ {f=1; next} f && /^[ \t]*-[ \t]+/ {sub(/^[ \t]*-[ \t]+/, ""); printf "%s%s", (n++ ? ", " : ""), $0; next} f {exit}') || true
+fi
+
 if [ -n "$TOOLS" ]; then
   echo "✅ tools: $TOOLS"
 else
