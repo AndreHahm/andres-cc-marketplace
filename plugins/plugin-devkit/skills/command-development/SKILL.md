@@ -8,7 +8,7 @@ description: >-
   commands, defining command arguments, using command frontmatter, organizing
   commands, creating commands with file references, or writing interactive commands.
   Not for SKILL.md skills (skill-development), multi-step skill workflows
-  (workflow-skill-development), or converting a command into a skill (skill-development).
+  and the orchestrator commands that launch them (workflow-skill-development), or converting a command into a skill (skill-development).
 allowed-tools: Read Write Edit Skill(plugin-rulebook)
 ---
 
@@ -35,7 +35,7 @@ allowed-tools: Read Write Edit Skill(plugin-rulebook)
 ## When NOT to Use
 
 - **Building a skill** (SKILL.md format) — use `skill-development`; skills are activated by context-matching, not user-typed commands. Converting an existing command into a skill also goes there
-- **Designing a multi-step workflow skill** (phases with entry/exit criteria, sub-agent orchestration, decision trees, safety gates in a SKILL.md) — use `workflow-skill-development`; this skill's multi-step coverage is the step sequence inside one user-typed command file
+- **Designing a multi-step workflow skill** (phases with entry/exit criteria, sub-agent orchestration, decision trees, safety gates in a SKILL.md) — use `workflow-skill-development`; this skill's multi-step coverage is the step sequence inside one user-typed command file; an orchestrator command that only launches a workflow and hands its phases to task files and sub-agents is designed there
 - **Creating hooks** — use `hook-development`; hooks respond to events, not slash commands
 - **Adding MCP servers** — use `mcp-integration`
 
