@@ -375,8 +375,10 @@ For skills that need user-specific configuration.
 
 ```markdown
 If config is not set up, use AskUserQuestion to ask:
-- Which Slack channel to post to? (options: #eng-standup, #general, Other)
-- What timezone for scheduling? (options: US/Pacific, US/Eastern, UTC, Other)
+- Which Slack channel to post to? (options: #eng-standup, #general)
+- What timezone for scheduling? (options: US/Pacific, US/Eastern, UTC)
+
+`AskUserQuestion` adds a free-text "Other" choice itself, so never list it as an option.
 ```
 
 ---

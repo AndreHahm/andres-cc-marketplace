@@ -178,7 +178,6 @@ description: >-
   Coordinate releases with versioning, building, and publishing. Use when
   preparing releases, bumping versions, or publishing packages to npm.
 allowed-tools: Bash(npm:*),Bash(git:*),Read,Write,Edit,Grep
-version: 1.0.0
 ---
 ```
 
