@@ -207,7 +207,15 @@ def load_config(tracked_text: str | None, local_text: str | None, local_is_track
             f"{LOCAL_PATH} is tracked by git or could not be verified as untracked: ignored"
         )
     elif local_text is not None:
-        sources.append((_json_object(local_text, "local config", notes), "local config", True))
+        local = _json_object(local_text, "local config", notes)
+        if local.get("enabled") is False:
+            notes.append(f"{LOCAL_PATH} sets enabled=false: ignored")
+        else:
+            sources.append((local, "local config", True))
+            config["budget_bytes"] = _positive_int(local.get(_BUDGET_KEY), config["budget_bytes"])
+            config["max_slice_bytes"] = _positive_int(
+                local.get(_SLICE_KEY), config["max_slice_bytes"]
+            )
     for kind, key in _LIST_KEYS.items():
         merged: list[str] = []
         for data, label, is_local in sources:
