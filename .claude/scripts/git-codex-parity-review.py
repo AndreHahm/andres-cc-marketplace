@@ -6,7 +6,9 @@ surface locally instead of one CI round at a time (issue #540). It wraps the exa
 point the workflow uses (`python -m scripts.marketplace_ci run-codex-review`) and reads the
 settings that must match CI from the workflow file itself, so they cannot drift:
 
-  - CODEX_KIT_REVIEW_TIMEOUT_MS: parsed from .github/workflows/marketplace-ci.yml.
+  - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when it is set to a valid
+    number (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '<fallback>'`),
+    else the fallback parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
   - Warns when the branch changed a Tier-1 file (list read from the base-tip copy).
   - Base: `origin/main` is fetched first (best effort); its tip SHA, used as CI's base.sha, is
@@ -38,6 +40,7 @@ WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
+TIMEOUT_VARIABLE = "CODEX_KIT_REVIEW_TIMEOUT_MS"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
 RUN_TIMEOUT_SECONDS = 45 * 60
 # Bound for every helper call (git, gh, codex --version): a stalled network or a credential prompt
@@ -45,7 +48,13 @@ RUN_TIMEOUT_SECONDS = 45 * 60
 _HELPER_TIMEOUT_SECONDS = 60
 # A model slug is data from a repository variable; pass it on only if the bridge would accept it.
 _MODEL_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")  # identical to bridge-invoke.mjs
-_TIMEOUT_RE = re.compile(r'CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"?(\d+)"?')
+# Group 1: a literal value. Group 2: the fallback N in the workflow's `vars.<NAME> || 'N'` form.
+_TIMEOUT_RE = re.compile(
+    r"CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"
+    r"(?:\"?(\d+)\"?|\$\{\{[^}]*\|\|\s*'(\d+)'\s*\}\})"
+)
+# A timeout variable is data too: positive, no leading zero, at most 9 digits (about 11 days).
+_TIMEOUT_VALUE_RE = re.compile(r"^[1-9][0-9]{0,8}$")
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 _SLUG_RE = re.compile(r"^(?:https://github\.com/|git@github\.com:)([\w.-]+/[\w.-]+?)(?:\.git)?$")
@@ -72,7 +81,7 @@ def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
     pin = _PIN_RE.search(_step_block(workflow_text, "Install Codex CLI"))
     if not timeout or not pin:
         return None
-    return timeout.group(1), pin.group(1)
+    return timeout.group(1) or timeout.group(2), pin.group(1)
 
 
 def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str] | None:
@@ -124,16 +133,28 @@ def _origin_slug() -> str | None:
     return match.group(1) if match else None
 
 
-def resolve_model() -> str | None:
+def _read_variable(name: str, pattern: re.Pattern[str]) -> str | None:
+    """A repository variable's value if it is set and matches `pattern`, else None."""
     slug = _origin_slug()
     repo_args = ["--repo", slug] if slug else []
     # `gh variable get` only exists in newer gh releases (absent in 2.45.0); `list --json` is older.
-    selector = f'.[] | select(.name == "{MODEL_VARIABLE}") | .value'
+    selector = f'.[] | select(.name == "{name}") | .value'
     result = _run(["gh", "variable", "list", "--json", "name,value", "--jq", selector, *repo_args])
     if result is None or result.returncode != 0:
         return None
-    model = result.stdout.strip()
-    return model if _MODEL_RE.match(model) else None
+    value = result.stdout.strip()
+    return value if pattern.match(value) else None
+
+
+def resolve_model() -> str | None:
+    return _read_variable(MODEL_VARIABLE, _MODEL_RE)
+
+
+def resolve_timeout_ms(fallback: str) -> tuple[str, bool]:
+    """(timeout_ms, from_variable): the repository variable when valid, as CI does, else the
+    workflow's fallback."""
+    value = _read_variable(TIMEOUT_VARIABLE, _TIMEOUT_VALUE_RE)
+    return (value, True) if value else (fallback, False)
 
 
 def main() -> int:
@@ -225,7 +246,16 @@ def main() -> int:
         print(f"PARITY: {instructions_dir} already exists; pass a new --output path.")
         return 2
 
-    env: dict[str, str] = {**os.environ, "CODEX_KIT_REVIEW_TIMEOUT_MS": timeout_ms}
+    timeout_ms, timeout_from_variable = resolve_timeout_ms(timeout_ms)
+    env: dict[str, str] = {**os.environ, TIMEOUT_VARIABLE: timeout_ms}
+    print(
+        f"PARITY: timeout {timeout_ms} ms "
+        + (
+            f"(from repository variable {TIMEOUT_VARIABLE})."
+            if timeout_from_variable
+            else f"(workflow fallback; {TIMEOUT_VARIABLE} unset or unreadable)."
+        )
+    )
     model = resolve_model()
     if model:
         env[MODEL_VARIABLE] = model

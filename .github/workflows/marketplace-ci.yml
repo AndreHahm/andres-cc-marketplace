@@ -872,6 +872,10 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+    outputs:
+      # findings | clean | could_not_run, read from the result file by the last step;
+      # the publish step words its message by it. Never decides pass/fail itself.
+      review_status: ${{ steps.result_status.outputs.status }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -954,6 +958,49 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: git rev-parse --verify "$BASE_SHA"^{commit}
 
+      # This job reviews refs/pull/<n>/merge, so the PR's own delta is the merge commit's
+      # first parent (the base tip GitHub merged onto) .. HEAD. The event's base.sha is the
+      # fork point and does not move when the base branch does: diffing against it adds
+      # everything the base gained since (128 files instead of 13 on PR #567) and refuses PRs
+      # for Tier-1 files other people changed. The event base is kept only as a guard input.
+      # Plain shell, before any PR code runs: the merge ref carries the PR's own
+      # scripts/marketplace_ci, so this decision cannot be made in it. Both messages are static
+      # text, safe to write into the result file. tests/marketplace_ci/test_merge_ref_delta.py
+      # runs this script against fixture merge refs.
+      - name: Derive the delta base from the merge commit (first parent), failing closed
+        id: delta_base
+        env:
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          rm -f codex-review-result.json
+          fail() {
+            printf '{\n  "status": "could_not_run",\n  "blocking": true,\n  "error": "%s"\n}\n' "$1" > codex-review-result.json
+            echo "::error::$1"
+            exit 1
+          }
+          git rev-parse --verify "$EVENT_BASE_SHA"^{commit} >/dev/null 2>&1 \
+            || fail "cannot resolve the event base SHA in this checkout"
+          # rev-list --parents prints the commit then its parents: exactly two parents is 3 words.
+          [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3 ] \
+            || fail "the checked-out merge ref must have exactly two parents; refusing to guess a delta base"
+          # The base anchors the Tier-1 diff, the reviewed delta, the reviewer instructions and the
+          # mirror map, so prove it rather than assume it: the second parent must be this event's PR
+          # head (so HEAD is a merge of it, not an author-made commit), and the first parent must be
+          # on the base branch (an author-made merge of their own commit on top of base satisfies
+          # the parent count and the ancestor check alone). A base branch that moved on since
+          # the checkout still passes; a force-push away from it fails closed.
+          [ "$(git rev-parse HEAD^2)" = "$EVENT_HEAD_SHA" ] \
+            || fail "the merge ref's second parent is not the event's PR head; re-run this job"
+          delta_base=$(git rev-parse HEAD^1) \
+            || fail "cannot read the merge commit's first parent"
+          git merge-base --is-ancestor "$EVENT_BASE_SHA" "$delta_base" \
+            || fail "the event base SHA is not an ancestor of the merge commit's first parent; refusing to review a delta that is not this PR's"
+          git merge-base --is-ancestor "$delta_base" "refs/remotes/origin/$BASE_REF" \
+            || fail "the merge commit's first parent is not on the base branch; refusing to trust it as the delta base"
+          echo "sha=$delta_base" >> "$GITHUB_OUTPUT"
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
@@ -1030,19 +1077,15 @@ jobs:
       # comment alone.
       - name: Refuse automated Codex dispatch when this PR modifies review-dispatch-critical code (trust boundary)
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # The merge commit's first parent (the derive step above), not the event's fork
+          # point: the diff below runs on the merge ref, where the fork point still holds
+          # every path the base branch changed since, so an upstream-only change to one of
+          # these paths would refuse a PR that never touched it.
+          BASE_SHA: ${{ steps.delta_base.outputs.sha }}
         run: |
-          # Three-dot (merge-base) diff, not two-dot: this job checks out
-          # refs/pull/<n>/merge, which always reflects the *current* base
-          # branch tip, while $BASE_SHA can lag behind it (e.g. no push to
-          # this PR since an unrelated, already-merged PR touched one of
-          # these paths after $BASE_SHA). A two-dot diff against $BASE_SHA
-          # would compare the full trees and pick up that unrelated
-          # upstream change too, failing this gate closed for a PR that
-          # never touched these paths itself (CodeRabbit finding).
-          # Three-dot scopes the comparison to commits reachable from HEAD
-          # but not from $BASE_SHA -- this PR's own changes only, matching
-          # the base...head convention check-pr already uses.
+          # Three-dot (merge-base) diff against that first parent: commits reachable from
+          # HEAD but not from it -- this PR's own changes only, matching the base...head
+          # convention check-pr already uses.
           if ! git diff --quiet "$BASE_SHA"...HEAD -- \
               scripts/__init__.py \
               scripts/marketplace_ci/__init__.py \
@@ -1197,8 +1240,11 @@ jobs:
           # has headroom for a longer per-reviewer budget across the several
           # reviewers dispatched in one run (two at a time, with timeout
           # retries inside a 40-minute dispatch budget). See docs/ci.md.
-          CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # The repository variable wins; 600000 is the fallback when it is unset. The local
+          # parity wrapper (plugins/git-kit/scripts/git-codex-parity-review.py) reads both
+          # this fallback and the variable, so keep the expression in this exact shape.
+          CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
+          BASE_SHA: ${{ steps.delta_base.outputs.sha }}
         run: |
           uv run python -m scripts.marketplace_ci run-codex-review \
             --base-sha "$BASE_SHA" \
@@ -1211,6 +1257,22 @@ jobs:
           name: codex-review-result
           path: codex-review-result.json
           if-no-files-found: ignore
+
+      # Words the publish step's message only; pass/fail still comes from this job's result.
+      # Anything unreadable counts as could_not_run, never as clean.
+      - name: Read the review status for the publish step
+        id: result_status
+        if: always()
+        run: |
+          status=""
+          if [ -f codex-review-result.json ]; then
+            status=$(jq -r '.status // empty' codex-review-result.json 2>/dev/null || true)
+          fi
+          case "$status" in
+            findings|clean|could_not_run) ;;
+            *) status="could_not_run" ;;
+          esac
+          echo "status=$status" >> "$GITHUB_OUTPUT"
 
   publish:
     name: Publish Codex policy result
@@ -1599,6 +1661,7 @@ jobs:
           SCOPE_RESULT: ${{ needs.compute-scope.result }}
           BYPASS_ELIGIBLE: ${{ needs.compute-scope.outputs.bypass_eligible }}
           CODEX_RESULT: ${{ needs.codex-review.result }}
+          REVIEW_STATUS: ${{ needs.codex-review.outputs.review_status }}
           PREFIX_PERMANENCE_RESULT: ${{ needs.prefix-permanence.result }}
           HYGIENE_RESULT: ${{ needs.hygiene.result }}
           PYTHON_QUALITY_RESULT: ${{ needs.python-quality.result }}
@@ -1652,7 +1715,18 @@ jobs:
             exit 1
           fi
           if [ "$CODEX_RESULT" != "success" ] && [ "$CODEX_RESULT" != "skipped" ]; then
-            echo "Codex review job failed, timed out, or found a blocking (Critical/Major) finding."
+            # The status only picks the wording; this job's own result already failed it.
+            if [ "$REVIEW_STATUS" = "findings" ]; then
+              echo "Codex review found a blocking (Critical/Major) finding on a changed line."
+            elif [ "$REVIEW_STATUS" = "could_not_run" ]; then
+              echo "Codex review could not run to completion (guard refusal, reviewer dispatch failure, timeout or infrastructure error) -- this is not a verdict on the change. See the codex-review-result artifact."
+            else
+              echo "Codex review job failed (codex-review=$CODEX_RESULT, status=${REVIEW_STATUS:-none})."
+            fi
             exit 1
           fi
-          echo "Codex review passed (codex-review=$CODEX_RESULT, bypass_eligible=$BYPASS_ELIGIBLE)."
+          if [ "$REVIEW_STATUS" = "clean" ]; then
+            echo "Codex review passed with no findings (codex-review=$CODEX_RESULT, bypass_eligible=$BYPASS_ELIGIBLE)."
+          else
+            echo "Codex review passed (codex-review=$CODEX_RESULT, bypass_eligible=$BYPASS_ELIGIBLE, status=${REVIEW_STATUS:-none})."
+          fi

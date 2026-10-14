@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
@@ -825,8 +826,9 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     again, defeating the rebase carve-out entirely. Exits 0 on a computed
     decision (bypass_eligible in the JSON payload either way), 2 only on an
     infrastructure failure the caller must treat as not-eligible."""
-    from scripts.marketplace_ci.git_state import parse_name_status_z
     from scripts.marketplace_ci.review import (
+        PrDeltaError,
+        compute_pr_delta,
         derive_review_scope,
         is_bypass_eligible,
         rebase_onto_base_absorbed,
@@ -842,15 +844,11 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
         print(f"check-scope-bypass: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
         return 2
 
-    diff = subprocess.run(
-        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
-        cwd=repo,
-        capture_output=True,
-    )
-    if diff.returncode != 0:
-        print(f"check-scope-bypass: git diff against {base_sha!r} failed", file=sys.stderr)
+    try:
+        changed = compute_pr_delta(repo, base_sha)
+    except PrDeltaError as exc:
+        print(f"check-scope-bypass: {exc}", file=sys.stderr)
         return 2
-    changed = parse_name_status_z(diff.stdout)
 
     scope = derive_review_scope(changed, {})
     eligible = is_bypass_eligible(scope)
@@ -990,6 +988,47 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_
     return gated & in_diff, in_diff, True
 
 
+def _git_out(repo: Path, *argv: str) -> str | None:
+    result = subprocess.run(["git", *argv], cwd=repo, capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
+
+
+def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict:
+    """What a review ran on, recorded in every result shape so an artifact can be read
+    without the log: the PR head (second parent on the merge ref), the checked-out merge
+    ref, the base the delta used, and the model and CLI version the reviewers reported."""
+    merge_ref_sha = _git_out(repo, "rev-parse", "HEAD")
+    second_parent = _git_out(repo, "rev-parse", "--verify", "-q", "HEAD^2")
+    reported: dict[str, str | None] = {"model": None, "cli_version": None}
+    for report in reports:
+        envelope = report.output.get("provenance") if isinstance(report.output, dict) else None
+        if not isinstance(envelope, dict):
+            continue
+        for key in reported:
+            value = envelope.get(key)
+            if reported[key] is None and isinstance(value, str):
+                reported[key] = value
+    return {
+        "head_sha": second_parent or merge_ref_sha,
+        "merge_ref_sha": merge_ref_sha,
+        "base_sha": base_sha,
+        **reported,
+    }
+
+
+def _reviewer_results(reports: Sequence) -> dict:
+    """Per reviewer: `could_not_run` when the dispatch failed, else `findings` or `clean`
+    by whether its envelope reported any finding."""
+    results = {}
+    for report in reports:
+        if report.status == "failed" or not isinstance(report.output, dict):
+            status = "could_not_run"
+        else:
+            status = "findings" if report.output.get("findings") else "clean"
+        results[report.reviewer] = {"status": status, "attempts": report.attempts}
+    return results
+
+
 def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
     """Report an infrastructure failure of `run-codex-review` (exit 2): the log
     line, plus a machine-readable copy in `--output` so the uploaded artifact
@@ -999,7 +1038,12 @@ def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
     if args.output:
         from scripts.marketplace_ci.review import _MAX_ERROR_CHARS
 
-        failure = {"blocking": True, "error": message[:_MAX_ERROR_CHARS]}
+        failure = {
+            "status": "could_not_run",
+            "blocking": True,
+            "error": message[:_MAX_ERROR_CHARS],
+            "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), []),
+        }
         Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
     return 2
 
@@ -1030,13 +1074,15 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     Exit 1 only for a genuine blocking finding (see _diff_scope: a Major/Critical
     on a changed line).
     """
-    from scripts.marketplace_ci.git_state import parse_name_status_z
     from scripts.marketplace_ci.review import (
         FULL_ESCALATION_PATHS,
+        PrDeltaError,
         ReviewOutputError,
         _changed_path_set,
         aggregate_findings,
+        collapse_identical_mirrors,
         compute_changed_line_ranges,
+        compute_pr_delta,
         derive_review_scope,
         dispatch_reviewers,
         run_delta_structural_checks,
@@ -1058,14 +1104,10 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     if resolved.returncode != 0:
         return _fail_run_codex_review(args, f"cannot resolve base SHA {base_sha!r}")
 
-    diff = subprocess.run(
-        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
-        cwd=repo,
-        capture_output=True,
-    )
-    if diff.returncode != 0:
-        return _fail_run_codex_review(args, f"git diff against {base_sha!r} failed")
-    changed = parse_name_status_z(diff.stdout)
+    try:
+        changed = collapse_identical_mirrors(repo, compute_pr_delta(repo, base_sha), base_sha)
+    except PrDeltaError as exc:
+        return _fail_run_codex_review(args, str(exc))
 
     scope = derive_review_scope(changed, {})
 
@@ -1145,6 +1187,9 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                     for r in failed_reports
                 ],
                 "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
+                "status": "could_not_run",
+                "reviewer_results": _reviewer_results(reports),
+                "provenance": _run_provenance(repo, base_sha, reports),
                 "blocking": True,
             }
             Path(args.output).write_text(
@@ -1176,6 +1221,9 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "reviewed_paths": list(scope.paths),
         "reviewers": [r.reviewer for r in reports],
         "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
+        "status": "findings" if (findings or structural_findings) else "clean",
+        "reviewer_results": _reviewer_results(reports),
+        "provenance": _run_provenance(repo, base_sha, reports),
         "structural_findings": [
             {"path": f.path, "operation": f.operation, "reason": f.reason}
             for f in structural_findings
