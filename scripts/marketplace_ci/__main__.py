@@ -1016,20 +1016,27 @@ def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict
     }
 
 
-def _reviewer_results(reports: Sequence) -> dict:
-    """Per reviewer: `could_not_run` when the dispatch failed, else `findings` or `clean`
-    by whether its envelope reported any finding."""
+def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
+    """Per reviewer: `could_not_run` when the dispatch failed, its output is missing or has no
+    findings list, or the caller names it in `failed` (its envelope did not validate); else
+    `findings` or `clean` by whether its envelope reported any finding."""
     results = {}
     for report in reports:
-        if report.status == "failed" or not isinstance(report.output, dict):
+        findings = report.output.get("findings") if isinstance(report.output, dict) else None
+        if report.status == "failed" or report.reviewer in failed or not isinstance(findings, list):
             status = "could_not_run"
         else:
-            status = "findings" if report.output.get("findings") else "clean"
+            status = "findings" if findings else "clean"
         results[report.reviewer] = {"status": status, "attempts": report.attempts}
     return results
 
 
-def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
+def _fail_run_codex_review(
+    args: argparse.Namespace,
+    message: str,
+    reports: Sequence = (),
+    failed: Sequence[str] = (),
+) -> int:
     """Report an infrastructure failure of `run-codex-review` (exit 2): the log
     line, plus a machine-readable copy in `--output` so the uploaded artifact
     always reflects this run (a stale file from the PR checkout is overwritten,
@@ -1042,8 +1049,8 @@ def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
             "status": "could_not_run",
             "blocking": True,
             "error": message[:_MAX_ERROR_CHARS],
-            "reviewer_results": {},
-            "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), []),
+            "reviewer_results": _reviewer_results(reports, failed),
+            "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), reports),
         }
         Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
     return 2
@@ -1201,11 +1208,18 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     validated = []
     for report in reports:
         if report.output is None:
-            return _fail_run_codex_review(args, f"{report.reviewer} completed with no output")
+            return _fail_run_codex_review(
+                args, f"{report.reviewer} completed with no output", reports, [report.reviewer]
+            )
         try:
             validated.append(validate_review_output(report.output))
         except ReviewOutputError as exc:
-            return _fail_run_codex_review(args, f"{report.reviewer} returned invalid output: {exc}")
+            return _fail_run_codex_review(
+                args,
+                f"{report.reviewer} returned invalid output: {exc}",
+                reports,
+                [report.reviewer],
+            )
 
     findings = aggregate_findings(validated)
     try:
@@ -1213,7 +1227,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             findings, repo, base_sha, _changed_path_set(changed), (changed_ranges,)
         )
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
-        return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}")
+        return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
     blocking = bool(blocking_set)
     structural_blocking = len(structural_findings) > 0
 

@@ -124,8 +124,10 @@ path. A drifted pair, or a mirror changed alone, is kept, because the drift is w
 
 `codex-review-result.json` has a top-level `status` (`findings`, `clean` or `could_not_run`) on every payload
 shape. Every shape `run-codex-review` writes itself (a completed review, a failed dispatch, any other exit-2
-failure) also has `provenance` and a per-reviewer `reviewer_results[<name>]` of `{status, attempts}`, empty
-when nothing ran. The workflow's pre-dispatch guard refusal, which runs before any Python, writes only
+failure) also has `provenance` and a per-reviewer `reviewer_results[<name>]` of `{status, attempts}`. Both are
+empty or null only when nothing ran (a failure before dispatch); a failure after dispatch (a reviewer with no
+or invalid output, a failed classification) keeps the reviewers that did run, marking one whose output did not
+validate `could_not_run`. The workflow's pre-dispatch guard refusal, which runs before any Python, writes only
 `status`, `blocking` and `error`. `blocking` is unchanged. A run with
 any failed reviewer is `could_not_run` as a whole, never a clean review of the rest. `provenance` records
 `head_sha` (the PR head, the merge commit's second parent), `merge_ref_sha`, `base_sha` (the base the delta
@@ -155,11 +157,12 @@ way; that outcome is expected and needs a manual review or an attested bypass.
 The `CODEX_KIT_REVIEW_TIMEOUT_MS` environment value is the only per-call timeout the dispatcher reads. The
 workflow fills it from the repository variable of that name, falling back to the literal in the expression
 (before issue #572 it was a hard-coded literal, so the variable had no effect, #471). The local parity
-wrapper (`git-codex-parity-review.py`) does the same: it reads the variable with `gh variable list`, passes
-it on verbatim when the bridge would accept it (a positive integer in a decimal form such as `720000`,
-`6e5` or `720000.0`, up to 2^53), and otherwise uses the fallback it parses from the workflow's expression,
-printing a warning when the variable is set but unusable. Keep the expression in that exact shape, because
-the wrapper parses it.
+wrapper (`git-codex-parity-review.py`) does the same: it reads the variable with `gh variable list` and asks
+node to apply the bridge's own test (`Number(value)` is a positive integer), because JavaScript's number
+grammar (`0x10`, `1e-0`, `+5`, ...) is too open-ended to re-implement. An accepted value is passed on
+verbatim; otherwise the wrapper uses the fallback it parses from the workflow's expression and prints a
+warning, whether the variable was rejected or node could not be run. Keep the expression in that exact
+shape, because the wrapper parses it.
 
 ## Diff-scoped blocking
 
