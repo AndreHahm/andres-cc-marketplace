@@ -376,36 +376,39 @@ def test_the_planner_skip_branch_survives_a_block_joined_with_and_and():
         )
 
 
-def test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty():
+def _empty_variable_run(*, with_mirror: bool) -> str:
+    """Run the extracted planner block with CLAUDE_PLUGIN_ROOT unset in a scratch repo, with or
+    without a committed .claude mirror of the planner, and return its stdout."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        mirror = repo / ".claude" / "scripts"
-        mirror.mkdir(parents=True)
-        source = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
-        (mirror / "git-review-scope.py").write_bytes(source.read_bytes())
+        if with_mirror:
+            mirror = repo / ".claude" / "scripts"
+            mirror.mkdir(parents=True)
+            source = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
+            (mirror / "git-review-scope.py").write_bytes(source.read_bytes())
         (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
-        block = extract_planner_block()
-        command = '"${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py"'
-        mirror_command = '"$PWD/.claude/scripts/git-review-scope.py"'
-        results = []
-        for text in (block.replace(command, mirror_command), block):
-            script = (
-                f"set -e\nunset CLAUDE_PLUGIN_ROOT\nBASE=main\nSCOPE=\n{extract_inputs_block()}\n"
-            )
-            script += f'{text}\necho "PLAN=${{PLAN_FAILED:-0}}"\n'
-            results.append(run_bash(repo, script).stdout)
-        if "PLAN=0" not in results[0]:
-            return False, f"mirror substitution did not run the planner: {results[0]}"
-        if "PLAN=1" not in results[1]:
-            return False, f"an empty variable without the substitution should fail: {results[1]}"
-        return (
-            True,
-            "empty CLAUDE_PLUGIN_ROOT: the .claude mirror substitution works, the bare form fails",
+        script = (
+            f"set -e\nunset CLAUDE_PLUGIN_ROOT\nBASE=main\nSCOPE=\n{extract_inputs_block()}\n"
+            f'{extract_planner_block()}\necho "PLAN=${{PLAN_FAILED:-0}}"\n'
         )
+        return run_bash(repo, script).stdout
+
+
+def test_the_documented_mirror_substitution_runs_the_planner_when_the_variable_is_empty():
+    with_mirror = _empty_variable_run(with_mirror=True)
+    without_mirror = _empty_variable_run(with_mirror=False)
+    if "PLAN=0" not in with_mirror:
+        return False, f"the :-.claude default did not run the mirror's planner: {with_mirror}"
+    if "PLAN=1" not in without_mirror:
+        return False, f"a missing mirror planner must set PLAN_FAILED: {without_mirror}"
+    return (
+        True,
+        "empty CLAUDE_PLUGIN_ROOT: runs the .claude mirror's planner, or sets PLAN_FAILED",
+    )
 
 
 def test_dispatcher_check_matches_a_case_variant_path():

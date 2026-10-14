@@ -242,7 +242,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       count — never left stale after a scenario is added or removed
 - [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
       deletion must never abort the chained Preflight invocation before `git diff` runs
-- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root (the `.claude/` mirror when the variable is empty), never from a path inside the repository under review
+- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, with a matching `python3 -I .claude/scripts/git-review-scope.py` grant), never from the `plugins/` folder of the repository under review
+- [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
 - [ ] A dropped slice is always listed in the report and marked as needing a direct read

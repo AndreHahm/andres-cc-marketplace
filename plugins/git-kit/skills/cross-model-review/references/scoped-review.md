@@ -16,8 +16,10 @@ the checks below.
 
 **Scope of use.** The planner runs from the installed git-kit plugin (`${CLAUDE_PLUGIN_ROOT}/scripts/`),
 outside the repository under review, so a file a third-party repository keeps at some path of its own is
-never what runs. In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty and the `.claude/`
-mirror is used instead (`$PWD/.claude/scripts/git-review-scope.py`, from the checkout root). **Not
+never what runs. In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the skill itself loads
+from the `.claude/` mirror, and the command's `:-.claude` default selects that mirror's planner
+(`.claude/scripts/git-review-scope.py`, relative to the checkout root the chain runs from). That adds no
+trust beyond the skill text that named it: in that mode the repository already supplies the skill. **Not
 covered:** the Codex dispatch beside it still runs `plugins/codex-kit/.../bridge-invoke.mjs` by a path
 relative to the repository, under its own pre-approved grant. In an unrelated repository that happens to
 contain a file at that path, that file would run, so do not run this skill's Codex pass there. That is
@@ -31,13 +33,14 @@ executes code from the working tree, which may be the branch under review:
 ```bash
 UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
 echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
+if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
 "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
 ```
 
 The planner command is spelled out literally (not through an array) so the `allowed-tools` grant
-`Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)` can match it (with the mirror
-substitution for this repository's own sessions, described above). `-I` keeps the script's
+`Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)` and its twin for the mirror
+(`Bash(python3 -I .claude/scripts/git-review-scope.py:*)`) can match it. How Claude Code matches a grant
+against a command that contains a `${VAR:-default}` expansion is not verified here. `-I` keeps the script's
 own folder off the import path, so a file such as `json.py` added to that folder is not imported. The
 `grep -i` pattern covers the whole scripts folder and is case-insensitive.
 
@@ -51,8 +54,7 @@ own folder off the import path, so a file such as `json.py` added to that folder
   `inspection_limits` and disclose it again at the First-Send Confirmation.
 - `PLAN_FAILED=1` (the planner exits 2: bad input, a git failure, or an `--output` or `--diff-dir` that
   already exists) means scope could not be planned. Never treat it as a pass. Ask via `AskUserQuestion`:
-  review the whole diff unscoped (one dispatch group of every eligible file, no manifest, no round-two
-  carry-over; read `$RUN/full.diff` in pieces), or stop. Record "review scope planner unavailable" in
+  review the whole diff unscoped (section 7), or stop. Record "review scope planner unavailable" in
   `inspection_limits` if unscoped is chosen.
 - Read `$RUN/manifest-1.json` with `Read`. Fields used: `files` (`path`, `bytes`, `slice`,
   `codex_eligible`), `slices` (`name`, `files`, `bytes`), `dropped_slices`, `excluded`,
@@ -70,7 +72,10 @@ own folder off the import path, so a file such as `json.py` added to that folder
 ## 2. Folder pick (only when the plan reduced scope)
 
 Ask only when `dropped_slices` is non-empty, or the request itself named folders to leave out; otherwise
-ask nothing, so a normal run behaves as before. Build the question from `candidate_dirs` (already sorted
+ask nothing, so a normal run behaves as before. `candidate_dirs` lists the folders of **retained** files
+only, on purpose: excluding a retained folder frees budget for a dropped slice, while a dropped folder is
+already unreviewed and excluding it changes nothing (the report lists it as dropped). Build the question
+from `candidate_dirs` (already sorted
 by diff bytes, largest first), **offering only folders whose label matches `^[A-Za-z0-9_][A-Za-z0-9._-]*/$`** (no leading dash, which the planner's option parser would read as a flag); list
 any other folder as "not offered for exclusion (unusual name)", because the label is typed into the
 re-run command. One multi-select option per folder, label the folder, description "N files, B bytes".
@@ -127,7 +132,7 @@ slice, and write the new manifest and diffs to the new `$RUN`. A slice name must
 those:
 
 ```bash
-python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1
+python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1
 ```
 
 Never list a slice that timed out or failed. The planner then skips files unchanged since a round that
@@ -144,3 +149,24 @@ its files (a dropped slice **must be read directly**, not skimmed past); folders
 not offered; unfinished batches; `PLANNER_TOUCHED` and the answer given; the planner-unavailable
 fallback if taken; any cross-check failure. State the manifest path and the completed slice names so a
 second round can use them.
+
+## 7. Unscoped fallback (planner failed, or you chose to skip it)
+
+With no manifest there are no slices, so build one dispatch group by hand. Every step below uses the
+safe-charset rule, so no typed path can carry shell text:
+
+1. List the changed names into `$RUN/changed.names` (section 1's command, with the `export
+   GIT_INDEX_FILE` prefix). Keep a name for Codex only if it matches `^[A-Za-z0-9._/-]+$` (`grep -E`),
+   is a regular file (`test -f`), and is not a symlink (`test -L`, then `realpath` containment as in
+   `codex-pass-assembly.md`). Everything else stays in Claude's review only and is listed in
+   `inspection_limits`.
+2. `$TARGET_PATHS` is the kept names, comma-separated. The Codex diff is one command over only those
+   names: `git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none
+   "$MERGE_BASE" -- <kept names>`, redirected to `$RUN/codex_unscoped.diff`. These names passed the
+   charset check, so typing them is safe.
+3. Claude reads `$RUN/full.diff` in pieces (every changed file, ineligible ones included).
+4. One Phase 1 and one Phase 2 Codex dispatch, with the instruction files built as
+   `codex-pass-assembly.md` says but embedding `$RUN/codex_unscoped.diff`; dispatch ids end in `-1`.
+   A diff this large can time out (section 4 applies).
+5. Phase 3 as usual, plus "review scope planner unavailable, unscoped review". No manifest exists, so there
+   are no completed slices: a later round is a round one.
