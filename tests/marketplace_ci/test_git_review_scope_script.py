@@ -1307,3 +1307,82 @@ def test_the_wrapper_drops_environment_that_would_redirect_git_or_python(
     assert result.returncode == 0, result.stderr
     paths = [f["path"] for f in json.loads((run_dir / "manifest-1.json").read_text())["files"]]
     assert paths == ["a.py"]
+
+
+# --- the fixed-shape index copy the skill's allowed-tools grant names (replaces a bare cp grant) --
+
+COPY_INDEX = SCRIPT.with_name("git-review-copy-index.sh")
+
+
+def _copy_index(repo, *args, env=None):
+    return subprocess.run(
+        ["bash", str(COPY_INDEX), *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
+def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_elsewhere(
+    repo, tmp_path
+):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(mode=0o700)
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "a.py")
+    real = (repo / ".git" / "index").read_bytes()
+    env = {**os.environ, "GIT_INDEX_FILE": str(tmp_path / "decoy")}
+    result = _copy_index(repo, str(run_dir), env=env)
+    assert result.returncode == 0, result.stderr
+    assert (run_dir / "index").read_bytes() == real
+    assert oct((run_dir / "index").stat().st_mode & 0o777) == "0o600"
+    assert _copy_index(repo, str(run_dir)).returncode == 2  # never overwrites
+
+
+def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(mode=0o700)
+    target = tmp_path / "victim.txt"
+    target.write_text("precious")
+    (run_dir / "index").symlink_to(target)
+    result = _copy_index(repo, str(run_dir))
+    assert result.returncode == 2 and "already exists" in result.stderr
+    assert target.read_text() == "precious"
+    (run_dir / "index").unlink()
+    (run_dir / "index").symlink_to(tmp_path / "does-not-exist")  # dangling
+    assert _copy_index(repo, str(run_dir)).returncode == 2
+    assert not (tmp_path / "does-not-exist").exists()
+
+
+def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, tmp_path):
+    run_dir = tmp_path / "shared"
+    run_dir.mkdir(mode=0o700)
+    for mode in (0o770, 0o707):
+        run_dir.chmod(mode)
+        result = _copy_index(repo, str(run_dir))
+        assert result.returncode == 2 and "writable" in result.stderr, oct(mode)
+    assert not (run_dir / "index").exists()
+
+
+def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(mode=0o700)
+    link = tmp_path / "link"
+    link.symlink_to(run_dir)
+    (repo / "inside").mkdir()
+    for args in (
+        [],
+        [str(run_dir), "extra"],
+        [str(link)],
+        [str(tmp_path / "missing")],
+        [str(repo / "inside")],
+        [str(repo)],
+        ["-"],
+        [str(run_dir) + "\n"],
+    ):
+        result = _copy_index(repo, *args)
+        assert result.returncode == 2, args
+        assert result.stderr.startswith("git-review-copy-index.sh:"), (args, result.stderr)
+    assert not list(run_dir.iterdir())
