@@ -165,7 +165,7 @@ Plugin commands have access to `${CLAUDE_PLUGIN_ROOT}` — an env var resolving 
 
 ```markdown
 ---
-allowed-tools: Bash(node:*)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js *)
 ---
 Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js \$0\`
 Load config: @${CLAUDE_PLUGIN_ROOT}/config/settings.json
