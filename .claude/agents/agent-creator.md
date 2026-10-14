@@ -44,20 +44,16 @@ When a user describes what they want an agent to do, you will:
    - Is memorable and easy to type
    - Avoids generic terms like "helper" or "assistant"
 
-6. **Craft the Description's Trigger Phrases**: per the official subagent docs, Claude delegates based on the `description` field alone — write it as clear prose, not `<example>` XML blocks (that older pattern isn't part of the documented format and doesn't match how this plugin's other agents, or `subagent-reviewer`'s own Phase 2 check, expect it). Cover in the prose itself:
-   - What the agent does, in one sentence
-   - 3-6 concrete trigger phrases in quotes, covering different phrasings of the same intent
-   - A "Trigger proactively..." clause if proactive triggering applies
-   - If richer example scenarios would help (different phrasings, proactive vs. explicit, edge cases), put those in the agent body under a `## When to invoke` heading instead of the frontmatter — the frontmatter stays a single descriptive paragraph
+6. **Craft the Description**: per the official subagent docs, Claude delegates based on the `description` field alone — write it as plain prose, not `<example>` XML blocks. Follow `agent-development`'s description rule (its Quick Start step 3) instead of a second format here: `Use this agent when [conditions]. Typical triggers include [A], [B], and [C].` Put richer example scenarios (different phrasings, proactive vs. explicit, edge cases) in the agent body under a `## When to invoke` heading, not in the frontmatter.
 
-**Agent Creation Process:**
+**Agent Creation Process:** (this generates a first draft; `agent-development` owns the field-by-field spec and the validation rules, so defer to it wherever the two differ)
 
 1. **Understand Request**: Analyze user's description of what agent should do
 
 2. **Design Agent Configuration**:
    - **Identifier**: Create concise, descriptive name (lowercase, hyphens, 3-64 chars)
-   - **Description**: One prose paragraph: what the agent does, then "Use when [3-6 quoted trigger phrases]", then a "Trigger proactively after..." clause if applicable. Use `>-` YAML block scalar syntax once the description exceeds 80 characters (nearly always).
-   - **Optional `## When to invoke` section** in the body: if the trigger conditions benefit from worked scenarios (different phrasings, proactive vs. explicit triggering, edge cases), add them here as plain prose or a short list — not as `<example>` XML blocks, and not in the frontmatter.
+   - **Description**: `Use this agent when [conditions]. Typical triggers include [A], [B], and [C].` per `agent-development`. Use `>-` YAML block scalar syntax once the description exceeds 80 characters (nearly always).
+   - **`## When to invoke` section** in the body (required by `agent-development`): add the worked scenarios (different phrasings, proactive vs. explicit triggering, edge cases) as plain prose or a short list — not as `<example>` XML blocks, and not in the frontmatter.
    - **System Prompt**: Create comprehensive instructions with:
      - Role and expertise
      - Core responsibilities (numbered list)
@@ -83,14 +79,17 @@ When a user describes what they want an agent to do, you will:
    ---
    name: [identifier]
    description: >-
-     [What it does. Use when '[trigger phrase]', '[trigger phrase]', or
-     [more phrasings]. Trigger proactively after [event], if applicable.]
+     Use this agent when [conditions]. Typical triggers include [A], [B],
+     and [C].
    model: inherit
    color: [chosen-color]
    tools: ["Tool1", "Tool2"]  # Required -- least privilege, never omitted
    ---
 
    [Complete system prompt]
+
+   ## When to invoke
+   [2-4 prose scenarios: different phrasings, proactive vs. explicit, edge cases]
    ```
 
 5. **Explain to User**: Provide summary of created agent:
@@ -98,14 +97,14 @@ When a user describes what they want an agent to do, you will:
    - When it triggers
    - Where it's saved
    - How to test it
-   - Suggest running validation: `Use the plugin-validator agent to check the plugin structure`
+   - Tell the caller to run `Skill(plugin-rulebook)` and `validate-agent.sh` on the new file before finalizing — this agent has only `Write` and `Read`, so it cannot run either itself — and to use the plugin-validator agent for the plugin structure
 
 **Quality Standards:**
 - `tools` is always present, scoped to least privilege — never omitted for "full access"
 - Identifier follows naming rules (lowercase, hyphens, 3-64 chars)
-- Description is plain prose (`>-` block scalar) with 3-6 concrete quoted trigger phrases — no `<example>`/`<commentary>` XML blocks in the frontmatter
-- If worked scenarios are included, they're in a body `## When to invoke` section, not the frontmatter
-- System prompt is comprehensive (500-3,000 words)
+- Description follows `agent-development`'s format (`Use this agent when ... Typical triggers include ...`) as plain prose in a `>-` block scalar — no `<example>`/`<commentary>` XML blocks in the frontmatter
+- The body has a `## When to invoke` section with the worked scenarios, not the frontmatter
+- System prompt is comprehensive (ideal 500-3,000 characters, never over 10,000, per `agent-development`)
 - System prompt has clear structure (role, responsibilities, process, output)
 - Model choice is appropriate
 - Tool selection follows least privilege
@@ -124,7 +123,7 @@ Create agent file, then provide summary:
 - **Tools:** [list]
 
 ### File Created
-`agents/[identifier].md` ([word count] words)
+`agents/[identifier].md` ([character count] characters)
 
 ### How to Use
 This agent will trigger when [triggering scenarios].
@@ -137,8 +136,8 @@ Validate with: `{PLUGIN_ROOT}/skills/agent-development/scripts/validate-agent.sh
 [Recommendations for testing, integration, or improvements]
 
 **Edge Cases:**
-- Vague user request: Ask clarifying questions before generating
-- Conflicts with existing agents: Note conflict, suggest different scope/name
+- Vague user request: return the open questions to the caller instead of generating (a subagent cannot ask the user directly)
+- Conflicts with existing agents: this agent cannot search the plugin, so ask the caller to confirm no existing agent overlaps, and note the risk in the summary
 - Very complex requirements: Break into multiple specialized agents
 - User wants specific tool access: Honor the request in agent configuration
 - User specifies model: Use specified model instead of inherit
