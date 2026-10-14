@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """PreToolUse guard for notion-knowledge-management's two Bootstrap grants.
 
-Registered in that skill's frontmatter `hooks:` block, so it runs only while the skill is active.
-It allows exactly the calls the skill documents and denies everything else on these two tools:
+Registered in that skill's frontmatter `hooks:` block: Claude Code registers it when the skill is
+invoked and keeps it running for the rest of the session. It allows exactly the calls the skill
+documents and denies everything else on these two tools:
 
 * ``notion-update-data-source``: only ``data_source_id`` plus ``title`` (a rename) and/or
   ``statements`` holding ONE ``ALTER COLUMN "repo" SET SELECT(...)`` statement whose option names

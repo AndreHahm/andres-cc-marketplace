@@ -294,7 +294,7 @@ after the routing rule, iteration 6 43/46 after two regrades. Each eval is also 
 | `references/notion-record-types.md` | Full property table per record type (Idea, Decision, proposed Goal, Note, Research, Report, Outcome/Learning) |
 | `references/long-text-blocks.md` | Splitting a long body into page-content blocks: file naming, paging, partial failure, read-back |
 | `references/bootstrap-steps.md` | Bootstrap procedure, approval preview contents, option-list and move checks |
-| `hooks/guard_notion_bootstrap.sh` (+ `.py`, `test_guard_notion_bootstrap.py`) | Skill-scoped guard that denies every use of the two Bootstrap grants except the documented shapes, and its fixture test |
+| `hooks/guard_notion_bootstrap.sh` (+ `.py`, `test_guard_notion_bootstrap.py`) | Guard, registered when the skill is invoked and kept for the session, that denies every use of the two Bootstrap grants except the documented shapes, and its fixture test |
 | `references/testing-run-history.md` | Dated eval iterations, newest first |
 | `scripts/smoke_test.py` | This skill's persisted structural self-test |
 | `../../scripts/wmgt_split_blocks.py` | Block splitter (plugin root); its fixture test is `wmgt_test_split_blocks.py` beside it |
