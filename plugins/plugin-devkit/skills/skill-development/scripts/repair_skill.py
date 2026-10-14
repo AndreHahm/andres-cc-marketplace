@@ -13,6 +13,7 @@ Examples:
     repair_skill.py --list-issues
 """
 
+import io
 import json
 import re
 import sys
@@ -289,4 +290,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     main()
