@@ -139,6 +139,20 @@
 # whole-path/whole-engine tradeoff as every entry above: this also silences secret-detection
 # for these three files, accepted for the same reason -- they contain no real secrets, and the
 # placeholder strings are obviously synthetic.
+#
+# plugins/workmanagement-kit/scripts/wmgt_test_*.py and the notion-knowledge-management guard's
+# hooks/test_guard_notion_bootstrap.py are that plugin's persisted test scripts. They live next to
+# the code they test (scripts/ and the skill's hooks/ directory, the plugin's declared layout), not
+# in a directory named tests/, so the plugins/**/tests/** glob above never reaches them. Verified
+# against Codacy's own PR #565 annotations before excluding: every security finding Codacy raised
+# in this plugin (6 of them, "6 new security issues (5 max.)") sits in these two files and is the
+# same subprocess-harness trio, B404 (import subprocess), B603 and Semgrep's "subprocess function
+# 'run' without a static string". Each call is list-form with no shell: the program is a literal
+# "bash" or sys.executable and the arguments are the script or launcher under test plus fixture
+# data the test itself builds, never external input. The plugin's production scripts are NOT
+# excluded and raised no security finding. Same whole-path/whole-engine tradeoff as every entry
+# above: this also silences secret-detection for these two files, accepted for the same reason --
+# they hold only obviously-synthetic placeholder ids (00000000-0000-4000-8000-...), no real secrets.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/**/tests/**"
@@ -154,3 +168,5 @@ exclude_paths:
   - ".claude/assets/**"
   - "plugins/context-kit/skills/*/scripts/smoke_test.py"
   - "plugins/workledger-kit/scripts/wlgr_test_*.py"
+  - "plugins/workmanagement-kit/scripts/wmgt_test_*.py"
+  - "plugins/workmanagement-kit/skills/notion-knowledge-management/hooks/test_guard_notion_bootstrap.py"
