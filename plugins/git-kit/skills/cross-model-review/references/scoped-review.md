@@ -14,12 +14,24 @@ the checks below.
 
 ## 1. Plan (Preflight, inside the same chained Bash call as the throwaway-index export)
 
-**Scope of use.** The planner runs from the installed git-kit plugin (`${CLAUDE_PLUGIN_ROOT}/scripts/`),
-outside the repository under review, so a file a third-party repository keeps at some path of its own is
-never what runs. In this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the skill itself loads
-from the `.claude/` mirror, and the command's `:-.claude` default selects that mirror's planner
-(`.claude/scripts/git-review-scope.py`, relative to the checkout root the chain runs from). That adds no
-trust beyond the skill text that named it: in that mode the repository already supplies the skill. **Not
+**Scope of use.** The planner runs through `git-review-scope-run.sh`, a wrapper from the installed
+git-kit plugin (`${CLAUDE_PLUGIN_ROOT}/scripts/`), outside the repository under review, so a file a
+third-party repository keeps at some path of its own is never what runs. The wrapper fixes the
+planner's shape: the repository is the current directory; the manifest and slice diffs go only to
+`<run-dir>/manifest-<tag>.json` and `<run-dir>/diffs-<tag>`, in a run directory that exists, is not a
+symlink, is owned by the caller and lies outside the repository; and only `--scope`, `--exclude-dir`,
+`--prior-manifest` and `--completed-slice` pass through (the planner validates their values); variables
+that redirect git or Python (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_CONFIG_*`, `PYTHON*`, `BASH_ENV`, ...) are
+dropped before it starts. So the `allowed-tools` grant for the wrapper cannot by itself aim the planner at
+another repository or another output path; the narrowed `export` grants (only `GIT_INDEX_FILE`,
+`CODEX_KIT_REVIEW_REPO_ROOT` and `CODEX_KIT_REVIEW_TIMEOUT_MS`) keep other variables out of reach too. In
+this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the skill itself loads from the `.claude/`
+mirror, and the command's `:-.claude` default selects that mirror's wrapper
+(`.claude/scripts/git-review-scope-run.sh`, relative to the checkout root the chain runs from). That adds no
+trust beyond the skill text that named it: in that mode the repository already supplies the skill. The
+mirror form is deliberately **not** granted: a grant for a path relative to the repository would ship to
+every installed user and let a hostile repository's own file run unprompted, so in this repository the
+mirror form raises a permission prompt, which is the intended human gate. **Not
 covered:** the Codex dispatch beside it still runs `plugins/codex-kit/.../bridge-invoke.mjs` by a path
 relative to the repository, under its own pre-approved grant. In an unrelated repository that happens to
 contain a file at that path, that file would run, so do not run this skill's Codex pass there. That is
@@ -33,16 +45,17 @@ executes code from the working tree, which may be the branch under review:
 ```bash
 UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
 echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
+if [ -z "$PLANNER_TOUCHED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
 "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
 ```
 
-The planner command is spelled out literally (not through an array) so the `allowed-tools` grant
-`Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)` and its twin for the mirror
-(`Bash(python3 -I .claude/scripts/git-review-scope.py:*)`) can match it. How Claude Code matches a grant
-against a command that contains a `${VAR:-default}` expansion is not verified here. `-I` keeps the script's
-own folder off the import path, so a file such as `json.py` added to that folder is not imported. The
-`grep -i` pattern covers the whole scripts folder and is case-insensitive.
+The wrapper command is spelled out literally (not through an array) so the `allowed-tools` grant
+`Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)` can match it. How Claude Code
+matches a grant against a command that contains a `${VAR:-default}` expansion is not verified here; if it
+does not match, the command prompts, which fails safe. The wrapper runs
+the planner as `python3 -I`, which keeps the script's own folder off the import path, so a file such as
+`json.py` added to that folder is not imported. The `grep -i` pattern covers the whole scripts folder and
+is case-insensitive. The tag is `1` for the first plan, and `1b` for the re-run after a folder pick.
 
 - `DIFF_STATUS` non-zero is a Preflight failure exactly as before (invalid `$BASE`, no local `main`):
   report the Git error and ask for a valid `$BASE`. Zero with an empty `$RUN/full.diff` is "nothing to
@@ -50,7 +63,7 @@ own folder off the import path, so a file such as `json.py` added to that folder
 - **`PLANNER_TOUCHED=1` means the planner has not run.** Before anything else, ask via
   `AskUserQuestion`: run the working-tree planner anyway (it executes code from the branch under review,
   with no sandbox), or review unscoped. Only an explicit yes runs it, in a separate call that starts with
-  the same `export GIT_INDEX_FILE` and uses the same command with `python3 -I`. Record the choice in
+  the same `export GIT_INDEX_FILE` and uses the same wrapper command. Record the choice in
   `inspection_limits` and disclose it again at the First-Send Confirmation.
 - `PLAN_FAILED=1` (the planner exits 2: bad input, a git failure, or an `--output` or `--diff-dir` that
   already exists) means scope could not be planned. Never treat it as a pass. Ask via `AskUserQuestion`:
@@ -81,7 +94,7 @@ any other folder as "not offered for exclusion (unusual name)", because the labe
 re-run command. One multi-select option per folder, label the folder, description "N files, B bytes".
 `AskUserQuestion` takes at most 4 options per question and 4 questions per call, so offer at most the 16
 largest and say when more exist. Re-run the planner once with one `--exclude-dir <folder>` per pick, to
-**new** paths (`--output "$RUN/manifest-1b.json" --diff-dir "$RUN/diffs-1b"`; neither is overwritten) and
+**new** paths (the wrapper with tag `1b` writes `$RUN/manifest-1b.json` and `$RUN/diffs-1b`; neither is overwritten) and
 use that manifest. Each Bash call is a fresh shell: start the re-run call with `export
 GIT_INDEX_FILE="<literal $RUN>/index"` and the same `--merge-base`, `--base-ref`, `--scope`, and run the
 cross-check in section 1 against the new manifest. Picked folders stay unreviewed this round and the
@@ -132,7 +145,7 @@ slice, and write the new manifest and diffs to the new `$RUN`. A slice name must
 those:
 
 ```bash
-python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1
+bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} --prior-manifest "<earlier manifest path>" --completed-slice <name> --completed-slice <name2> || PLAN_FAILED=1
 ```
 
 Never list a slice that timed out or failed. The planner then skips files unchanged since a round that
@@ -157,16 +170,16 @@ safe-charset rule, so no typed path can carry shell text:
 
 1. List the changed names into `$RUN/changed.names` (section 1's command, with the `export
    GIT_INDEX_FILE` prefix). Keep a name for Codex only if it matches `^[A-Za-z0-9._/-]+$` (`grep -E`),
-   is a regular file (`test -f`), and is not a symlink (`test -L`, then `realpath` containment as in
-   `codex-pass-assembly.md`). Everything else stays in Claude's review only and is listed in
-   `inspection_limits`.
+   is a regular file (`test -f`), and is not a symlink (`test -L`; a symlink that stays inside the checkout
+   is dropped too, which is stricter than the planner's own rule but simple). Everything else stays in
+   Claude's review only and is listed in `inspection_limits`.
 2. `$TARGET_PATHS` is the kept names, comma-separated. The Codex diff is one command over only those
    names: `git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none
    "$MERGE_BASE" -- <kept names>`, redirected to `$RUN/codex_unscoped.diff`. These names passed the
    charset check, so typing them is safe.
 3. Claude reads `$RUN/full.diff` in pieces (every changed file, ineligible ones included).
-4. One Phase 1 and one Phase 2 Codex dispatch, with the instruction files built as
-   `codex-pass-assembly.md` says but embedding `$RUN/codex_unscoped.diff`; dispatch ids end in `-1`.
+4. One Phase 1 and one Phase 2 Codex dispatch, with the instruction files built as SKILL.md's Codex
+   passes describe but embedding `$RUN/codex_unscoped.diff`; dispatch ids end in `-1`.
    A diff this large can time out (section 4 applies).
 5. Phase 3 as usual, plus "review scope planner unavailable, unscoped review". No manifest exists, so there
    are no completed slices: a later round is a round one.

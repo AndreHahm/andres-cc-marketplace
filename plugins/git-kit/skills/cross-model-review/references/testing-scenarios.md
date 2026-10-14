@@ -149,7 +149,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     target paths, and the exclusion is disclosed.
 36. The diff changes anything under `plugins/git-kit/scripts/` or `skills/cross-model-review/` (also in a
     different letter case) → `PLANNER_TOUCHED=1`, the planner has NOT run, and the user is asked before
-    the working-tree planner runs (an explicit yes runs it as `python3 -I`; otherwise review unscoped).
+    the working-tree planner runs (an explicit yes runs it through the wrapper; otherwise review unscoped).
     The manifest is cross-checked against the real changed-file list: a changed path in none of `files`,
     `excluded` or `dropped_slices` is `PLAN_FAILED`. Folder picks offer only names matching
     `^[A-Za-z0-9_][A-Za-z0-9._-]*/$` (no leading dash). The First-Send Confirmation lists every batch's paths and the dispatch count.
@@ -242,7 +242,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       count — never left stale after a scenario is added or removed
 - [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
       deletion must never abort the chained Preflight invocation before `git diff` runs
-- [ ] The review scope planner is always run from `allowed-tools`'s exact `python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, with a matching `python3 -I .claude/scripts/git-review-scope.py` grant), never from the `plugins/` folder of the repository under review
+- [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished

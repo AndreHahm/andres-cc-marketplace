@@ -194,6 +194,8 @@ def test_run_pick_excludes_a_folder_for_this_run():
         ".claude/git-kit.local.json",
         "plugins/git-kit/skills/cross-model-review/prompts/review.md",
         "plugins/git-kit/scripts/git-review-scope.py",
+        "plugins/git-kit/scripts/git-review-scope-run.sh",
+        ".claude/scripts/git-review-scope-run.sh",
         ".claude/marketplace-sync.json",
     ],
 )
@@ -1114,6 +1116,29 @@ def test_diff_dir_must_be_fresh_and_outside_the_repository(repo, tmp_path):
     assert not (repo / "diffs").exists()
 
 
+def test_a_mirror_is_judged_against_the_verified_base_ref_not_the_older_merge_base(repo, tmp_path):
+    canonical = repo / "plugins/git-kit/scripts/a.sh"
+    mirror = repo / ".claude/scripts/a.sh"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    mirror.parent.mkdir(parents=True, exist_ok=True)
+    canonical.write_text("old\n")
+    mirror.write_text("stale\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "canonical and a stale mirror")
+    merge_base = _head(repo)
+    _git(repo, "checkout", "-q", "-b", "advance")  # the base ref moves on and changes the canonical
+    canonical.write_text("new\n")
+    _git(repo, "commit", "-qam", "canonical changes on the base ref")
+    _git(repo, "checkout", "-q", "-b", "feature", merge_base)
+    mirror.write_text("old\n")  # equals the canonical as of the merge-base
+    _git(repo, "branch", "-f", "main", "advance")
+    out = tmp_path / "m.json"
+    assert _run_with_base(repo, merge_base, out, "--base-ref", "main").returncode == 0
+    manifest = json.loads(out.read_text())
+    assert [e["path"] for e in manifest["excluded"]] == []
+    assert [f["path"] for f in manifest["files"]] == [".claude/scripts/a.sh"]
+
+
 def test_prior_manifest_symlink_is_refused(repo, tmp_path):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1153,3 +1178,132 @@ def test_local_config_variant_committed_after_the_merge_base_is_caught_with_an_e
     # A failed index copy leaves the throwaway index without the branch's own entries.
     monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "empty-index"))
     assert M._local_config(plain_repo, merge_base, [])[1]
+
+
+# --- the fixed-argument wrapper the skill's allowed-tools grant names -----------------------------
+
+WRAPPER = SCRIPT.with_name("git-review-scope-run.sh")
+
+
+def _wrapper(repo, *args):
+    return subprocess.run(
+        ["bash", str(WRAPPER), *args], cwd=repo, capture_output=True, text=True, check=False
+    )
+
+
+def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path):
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = _wrapper(repo, str(run_dir), "1", _head(repo), "main")
+    assert result.returncode == 0, result.stderr
+    assert json.loads((run_dir / "manifest-1.json").read_text())["round"] == 1
+    assert (run_dir / "diffs-1").is_dir()
+
+
+def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    base = [str(run_dir), "1", _head(repo), "main"]
+    for extra in (
+        ["--repo", "/etc"],
+        ["--output", str(tmp_path / "elsewhere.json")],
+        ["--diff-dir", str(tmp_path / "elsewhere")],
+        ["--recheck", "x"],
+        ["surprise"],
+    ):
+        result = _wrapper(repo, *base, *extra)
+        assert result.returncode == 2 and "unsupported argument" in result.stderr, extra
+    assert not (tmp_path / "elsewhere.json").exists() and not (run_dir / "manifest-1.json").exists()
+
+
+def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(run_dir)
+    sha = _head(repo)
+    cases = [
+        [str(run_dir), "1; touch x", sha, "main"],  # tag
+        [str(run_dir), "1", "abc", "main"],  # merge-base is not a full SHA
+        [str(run_dir), "1", sha, "-x"],  # base ref that looks like an option
+        [str(run_dir), "1", sha, "ma in"],  # base ref outside the safe charset
+        [str(tmp_path / "missing"), "1", sha, "main"],  # run directory does not exist
+        [str(link), "1", sha, "main"],  # run directory is a symlink
+        [str(repo / "inside"), "1", sha, "main"],  # run directory inside the repository
+    ]
+    (repo / "inside").mkdir()
+    for args in cases:
+        result = _wrapper(repo, *args)
+        assert result.returncode == 2, (args, result.stderr)
+    assert not list(run_dir.iterdir())
+
+
+def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    sha = _head(repo)
+    cases = [
+        [str(run_dir), "1\n", sha, "main"],  # trailing newline in the tag
+        [str(run_dir), "1", sha + "\n", "main"],  # trailing newline in the SHA
+        [str(run_dir), "1", sha, "main\n"],  # trailing newline in the base ref
+        [str(run_dir) + "\n", "1", sha, "main"],  # newline in the run directory
+        ["-", "1", sha, "main"],  # cd would go to OLDPWD
+        [str(repo), "1", sha, "main"],  # the run directory is the repository
+        [str(repo / "sub" / ".."), "1", sha, "main"],  # resolves to the repository
+    ]
+    for args in cases:
+        result = _wrapper(repo, *args)
+        assert result.returncode == 2, args
+        assert result.stderr.startswith("git-review-scope-run.sh:"), (args, result.stderr)
+
+
+def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_repo(
+    repo, tmp_path
+):
+    (repo / "inside").mkdir()
+    (tmp_path / "hop").symlink_to(repo)
+    result = _wrapper(repo, str(tmp_path / "hop" / "inside"), "1", _head(repo), "main")
+    assert result.returncode == 2 and "outside the repository" in result.stderr
+
+
+def test_the_wrapper_accepts_a_sibling_directory_whose_name_starts_like_the_repository(
+    repo, tmp_path
+):
+    sibling = tmp_path / "repo-evil"
+    sibling.mkdir()
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    result = _wrapper(repo, str(sibling), "1", _head(repo), "main")
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    result = _wrapper(repo, str(run_dir), "1", _head(repo), "main", "--scope", "--output=/x")
+    assert result.returncode == 0, result.stderr
+    assert json.loads((run_dir / "manifest-1.json").read_text())["scope"] == "--output=/x"
+    assert not Path("/x").exists()
+
+
+def test_the_wrapper_drops_environment_that_would_redirect_git_or_python(
+    repo, tmp_path, monkeypatch
+):
+    other = tmp_path / "other"
+    other.mkdir()
+    _git(other, "init", "-q", "-b", "main")
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    sha = _head(repo)
+    monkeypatch.setenv("GIT_DIR", str(other / ".git"))
+    monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+    result = _wrapper(repo, str(run_dir), "1", sha, "main")
+    assert result.returncode == 0, result.stderr
+    paths = [f["path"] for f in json.loads((run_dir / "manifest-1.json").read_text())["files"]]
+    assert paths == ["a.py"]

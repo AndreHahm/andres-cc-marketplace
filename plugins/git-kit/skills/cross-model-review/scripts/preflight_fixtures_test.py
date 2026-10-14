@@ -287,7 +287,7 @@ def test_real_index_untouched_after_run():
 def extract_planner_block() -> str:
     text = SKILL_MD.read_text(encoding="utf-8")
     for match in re.finditer(r"```bash\n(.*?)```", text, re.DOTALL):
-        if "git-review-scope.py" in match.group(1):
+        if "git-review-scope-run.sh" in match.group(1):
             return match.group(1).strip()
     raise RuntimeError("Could not find Preflight step 1's review-scope-planner bash block")
 
@@ -385,8 +385,9 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
         if with_mirror:
             mirror = repo / ".claude" / "scripts"
             mirror.mkdir(parents=True)
-            source = SKILL_DIR.parent.parent / "scripts" / "git-review-scope.py"
-            (mirror / "git-review-scope.py").write_bytes(source.read_bytes())
+            for name in ("git-review-scope.py", "git-review-scope-run.sh"):
+                source = SKILL_DIR.parent.parent / "scripts" / name
+                (mirror / name).write_bytes(source.read_bytes())
         (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
