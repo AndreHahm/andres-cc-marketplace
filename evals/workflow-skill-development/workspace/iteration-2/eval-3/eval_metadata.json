@@ -3,7 +3,7 @@
   "skill_path": "plugins/plugin-devkit/skills/workflow-skill-development/SKILL.md",
   "assertions": [
     {"text": "Explicitly flags the 640-line SKILL.md as monolithic or over the 500-line limit and recommends moving content into references/ or workflows/", "type": "quality", "target": "outputs/ review"},
-    {"text": "Explicitly flags the absolute /Users/dana/... paths as hardcoded and recommends a path variable such as CLAUDE_SKILL_DIR instead", "type": "quality", "target": "outputs/ review"},
+    {"text": "Explicitly flags the absolute /Users/jane/... paths as hardcoded and recommends a path variable such as CLAUDE_SKILL_DIR instead", "type": "quality", "target": "outputs/ review"},
     {"text": "Explicitly flags overview.md -> details.md -> edge-cases.md as a reference chain and recommends keeping every file one hop from SKILL.md", "type": "quality", "target": "outputs/ review"},
     {"text": "Does not incorrectly claim the skill has no anti-patterns", "type": "quality", "target": "outputs/ review"}
   ]
