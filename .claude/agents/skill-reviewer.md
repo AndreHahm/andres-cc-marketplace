@@ -19,8 +19,9 @@ description: >-
   instead. To rewrite or fix a skill
   or its description, use skill-development (authoring),
   skill-refiner-interactive (operator-approved refinement) or
-  skill-improver-loop (automated fix-review cycles); this agent only
-  assesses and scores, it never edits.
+  skill-improver-loop (automated fix-review cycles); to redesign a workflow
+  skill's phase or routing structure, use workflow-skill-development. This
+  agent only assesses and scores, it never edits.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]
