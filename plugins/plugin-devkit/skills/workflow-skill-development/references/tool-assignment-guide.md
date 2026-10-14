@@ -191,23 +191,11 @@ Instructions must produce tool-calling patterns that stay efficient regardless o
 
 ### Combine-Then-Filter for Searches
 
-When a workflow searches for multiple patterns across multiple files, combine all patterns into a single regex and grep the entire codebase once.
-
-**Wrong:** "For each of these 10 patterns, grep all `.sol` files." (10 patterns × N files = 10N calls)
-
-**Right:** "Grep the codebase for `pattern1|pattern2|...|pattern10`. Filter results to exclude test paths." (1 call)
-
-The agent can then Read specific files of interest from the grep results, but the discovery step is a single call.
+When a workflow searches for multiple patterns across multiple files, combine all patterns into a single regex and grep the entire codebase once, then filter the results. Never loop patterns × files. The agent can then Read specific files of interest from the grep results, but the discovery step is a single call. The before/after example is AP-18 in `anti-patterns-tooling-content.md`.
 
 ### Batching for Subagent Work
 
-When a workflow needs to process many items (files, functions, findings), batch them into fixed-size groups instead of spawning one subagent per item.
-
-**Wrong:** "Spawn a subagent for each discovered file." (N files = N subagents)
-
-**Right:** "Batch files into groups of 10-20. Spawn one subagent per batch." (N/15 subagents, capped)
-
-Always specify the batch size explicitly. Without a number, the agent picks its own grouping (or doesn't batch at all).
+When a workflow needs to process many items (files, functions, findings), batch them into fixed-size groups (for example 10-20) and spawn one subagent per batch, not one per item. Always specify the batch size explicitly: without a number, the agent picks its own grouping or doesn't batch at all. The before/after example is AP-19 in `anti-patterns-tooling-content.md`.
 
 ### The 10,000-File Test
 
