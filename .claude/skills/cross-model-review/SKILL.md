@@ -34,9 +34,7 @@ the repository itself, and never to `.claude/codex-windows-guardrails.local.json
 this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
 deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
 repository's real index: it runs against a throwaway `GIT_INDEX_FILE`, so no state from this skill's
-run persists anywhere the user's own later `git add`/`git commit` could see it. `git add -N` and the
-`export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines are deliberately **not** in `allowed-tools`
-(a grant cannot pin the value they set), so those steps prompt.
+run persists anywhere the user's own later `git add`/`git commit` could see it.
 
 ## Quick Start
 
@@ -196,18 +194,17 @@ call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't 
    git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/refute.md" > "$RUN/refute.md" 2>/dev/null || true
    ```
 
-   **The `|| true` on each line is deliberate — an expected `git show` failure must not break the
-   `&&` chain** the whole Preflight sequence runs as, or every resolved value this skill depends on
-   for the rest of the run is lost with it.
+   **The `|| true` is deliberate — an expected `git show` failure must not break the `&&` chain** the
+   Preflight runs as, or every resolved value the rest of the run depends on is lost.
 
    A `git show` failure (non-zero exit, or an empty `$RUN/review.md`/`$RUN/refute.md` — reflected in
    the closing `echo`'s non-empty/empty signal for each file) means the file doesn't exist on `$BASE`
-   yet (e.g. this skill's own not-yet-merged first run). Once the chain returns and its echoed state
-   is captured, fall back — as separate tool calls, using the just-resolved `$RUN` value — by copying
-   the plugin's own working-tree prompt:
-   `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" review.md @plugin:review`
-   (respectively `refute.md` / `@plugin:refute`; the helper resolves them under its own plugin root, no
-   `Read` needed), but never silently: set `REVIEW_UNVERIFIED=1` /
+   yet (e.g. this skill's own not-yet-merged first run). The working-tree copy may be the branch under
+   review, so **never use it without consent**: once the chain returns, ask via `AskUserQuestion`
+   whether to use the plugin's working-tree prompts for this run (not verified against `$BASE`), and
+   stop the review on anything but an explicit yes. On yes, as separate tool calls using the just-resolved
+   `$RUN`: `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" review.md @plugin:review`
+   (respectively `refute.md` / `@plugin:refute`; no `Read` needed), set `REVIEW_UNVERIFIED=1` /
    `REFUTE_UNVERIFIED=1` and record it in Phase 3's `inspection_limits` ("reviewer instructions were
    not trust-boundary-verified against $BASE this run"). Every later reference to `review.md` /
    `refute.md` below means these materialized `$RUN` copies, never the live path under
@@ -439,6 +436,12 @@ under the OS temp directory until cleaned up. This skill has no scoped delete ca
 than implying cleanup, and treat the envelopes as needing review before they are shared. The same goes
 for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), the manifests, the
 `diffs-*` folders and the instruction files. The throwaway `$GIT_INDEX_FILE` is likewise left in place; `umask 077` (Inputs section) keeps it user-readable-only.
+
+## Boundaries
+
+Deliberately not in `allowed-tools`, so each prompts: `git add -N`, the `export GIT_INDEX_FILE` /
+`export CODEX_KIT_REVIEW_*` lines (a grant cannot pin the value they set) and the `guarded-dispatch.mjs`
+fallback (a grant would pre-approve a full-access dispatch).
 
 ## Deliberately NOT done
 

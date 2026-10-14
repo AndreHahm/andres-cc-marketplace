@@ -22,9 +22,10 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 4. A finding raised in Phase 1 by only one side and explicitly refuted in that side's Phase 2 pass →
    reported as Low/contested with both sides shown, never dropped.
 5. `prompts/review.md`/`prompts/refute.md` don't yet exist on `$BASE` (this skill's own first,
-   not-yet-merged run) → Preflight step 5 falls back via the write helper (`@plugin:review`/`@plugin:refute`) to the working-tree copy at
-   `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/...` and records it in
-   `inspection_limits`, never silently.
+   not-yet-merged run) → Preflight step 5 asks via `AskUserQuestion` before using the working-tree copy
+   at `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/...`; anything but an explicit yes stops
+   the review. On yes it falls back via the write helper (`@plugin:review`/`@plugin:refute`) and records
+   it in `inspection_limits`, never silently.
 6. The diff itself modifies a file under `plugins/codex-kit/**/scripts/**`, **including when `$SCOPE`
    is set to exclude that path from the review** → Preflight step 6 still finds it (it checks the
    unscoped `$MERGE_BASE` diff, independent of `$SCOPE`), the First-Send Confirmation discloses it,
