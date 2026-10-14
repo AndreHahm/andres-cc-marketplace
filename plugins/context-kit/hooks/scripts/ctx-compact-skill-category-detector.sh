@@ -8,7 +8,7 @@
 # call's own PostToolUse event fires once the skill's instructions have
 # loaded into the conversation as a message, not once the model has actually
 # finished executing the workflow those instructions describe (see
-# plugin-devkit's skill-development/references/design-patterns.md, "Skill
+# plugin-devkit's references/pdk-design-patterns.md, "Skill
 # content lifecycle") -- there is no hook event in Claude Code that fires on
 # real workflow completion for a foreground skill. An earlier version of this
 # script wired both phases and had PostToolUse claim the skill "finished";
