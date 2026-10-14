@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PLUGIN_SCRIPTS = SKILL_DIR.parent.parent / "scripts"
 FORBIDDEN_GRANT_NAMES = {"Read", "Write", "Edit", "WebFetch", "Bash"}
-ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)"}
+ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)", "AskUserQuestion"}
 
 
 def _load_common():
