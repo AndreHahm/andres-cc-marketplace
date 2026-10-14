@@ -8,9 +8,9 @@
       "evidence": "review.md finding 1: \"AP-2 Monolithic SKILL.md (640 lines, all inline) - FAIL\"; \"The draft is 140 lines over\"; fix: \"Move detailed reference material (tables, examples) to `references/`\" and \"Move step-by-step procedures to `workflows/`\"."
     },
     {
-      "text": "Explicitly flags the absolute /Users/dana/... paths as hardcoded and recommends a path variable such as CLAUDE_SKILL_DIR instead",
+      "text": "Explicitly flags the absolute /Users/jane/... paths as hardcoded and recommends a path variable such as CLAUDE_SKILL_DIR instead",
       "passed": true,
-      "evidence": "review.md finding 2: \"AP-4 Hardcoded absolute paths (Step 2 and Step 5) - FAIL\" naming both /Users/dana/projects/deploy/config.yaml and .../scripts/push.sh; fix: \"Use `${CLAUDE_SKILL_DIR}` for files the skill ships\"."
+      "evidence": "review.md finding 2: \"AP-4 Hardcoded absolute paths (Step 2 and Step 5) - FAIL\" naming both /Users/jane/projects/deploy/config.yaml and .../scripts/push.sh; fix: \"Use `${CLAUDE_SKILL_DIR}` for files the skill ships\"."
     },
     {
       "text": "Explicitly flags overview.md -> details.md -> edge-cases.md as a reference chain and recommends keeping every file one hop from SKILL.md",
