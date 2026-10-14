@@ -112,7 +112,7 @@ echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/sc
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
-bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" 2>/dev/null || INDEX_COPY_FAILED=1
+bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" || INDEX_COPY_FAILED=1
 bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || true
 DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
