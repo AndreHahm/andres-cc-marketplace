@@ -215,6 +215,8 @@ Generate 20 trigger eval queries (mix of should-trigger and should-not-trigger).
 
 The optimization loop runs up to `--max-iterations` model calls over the full eval set. Ask via `AskUserQuestion` before starting it, stating the iteration cap and the eval-set size. Run it from `${CLAUDE_SKILL_DIR}`:
 
+The `Bash(python:*)` grant in this skill's frontmatter is deliberately broad: the `-m scripts.run_loop` and `-m scripts.aggregate_benchmark` module calls cannot be pinned to one script path. Narrow it only after rewriting those calls.
+
 ```bash
 python -m scripts.run_loop \
   --eval-set <path-to-eval.json> \
