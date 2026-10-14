@@ -19,7 +19,7 @@ An agent file has two places for triggering information:
 description: Use this agent when [conditions]. Typical triggers include [scenario 1], [scenario 2], and [scenario 3]. See "When to invoke" in the agent body for worked scenarios.
 ```
 
-**Components:**
+**Components** (cover all three inside the one description form above, which still starts "Use this agent when"):
 
 1. **Action** (required) — what does this agent do?
    - Good: `Execute read-only database queries for data analysis`
@@ -30,7 +30,7 @@ description: Use this agent when [conditions]. Typical triggers include [scenari
    - Bad: `when needed` / `for database work`
 
 3. **Constraints** (required) — what's in/out of scope
-   - Good: `SELECT only; write operations blocked`
+   - Good: `SELECT queries only`
    - Bad: absent or vague
 
 ### "When to invoke" Body Section
@@ -92,7 +92,7 @@ Don't write three near-duplicate scenarios that differ only in the literal phras
 
 ✅ **Specific** — reliable trigger:
 ```
-"Execute read-only SQL queries for data analysis. Use when analyzing data, generating reports, or exploring table structure. SELECT only."
+"Use this agent when analyzing data, generating reports, or exploring table structure with SELECT queries. Typical triggers include running a query and summarizing a table."
 ```
 
 ### Writing a Description: Step by Step
@@ -106,7 +106,7 @@ Don't write three near-duplicate scenarios that differ only in the literal phras
 Example for a database analyzer:
 - Use cases: analyze data, generate report, explore database structure
 - Trigger phrases: "analyze", "generate report", "explore structure"
-- Result: `Execute read-only database queries for data analysis. Use when exploring table structure, answering questions about data, or generating reports. SELECT only; write operations blocked.`
+- Result: `Use this agent when exploring table structure, answering questions about data, or generating reports with SELECT queries. Typical triggers include analyzing data and exploring a schema.`
 
 ### Trigger Phrase Library
 
