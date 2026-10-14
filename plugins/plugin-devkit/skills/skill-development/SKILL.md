@@ -13,7 +13,7 @@ when_to_use: >-
   slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "find duplicate
   skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-allowed-tools: Read Write Edit Glob Grep Agent Skill Bash(python:*) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
+allowed-tools: Read Write Edit Grep Agent Skill Bash(python:*) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
 ---
 
 # Skill Development for Claude Code Plugins
