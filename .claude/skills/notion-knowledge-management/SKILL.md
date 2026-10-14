@@ -8,9 +8,16 @@ description: >-
   Also covers first-time Notion database bootstrap, and executing an Outcome/Learning write once
   `status-and-learning` has drafted the content; a request to summarize completed work or capture
   what was learned goes to `status-and-learning`, not here. Reading, previews and this skill's own
-  classification need no approval; every record creation, Decision state change and Goal proposal
-  requires the live approval gate, with no exception for a low-risk record.
+  classification need no approval; every record creation, Decision state change, Goal proposal and
+  Bootstrap database change requires the live approval gate, with no exception for a low-risk one.
 allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_bridge_caller.py:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py:*), mcp__claude_ai_Notion__notion-search, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page, mcp__claude_ai_Notion__notion-create-database, mcp__claude_ai_Notion__notion-update-data-source, mcp__claude_ai_Notion__notion-move-pages
+hooks:
+  PreToolUse:
+    - matcher: "^(mcp__claude_ai_Notion__notion-update-data-source|mcp__claude_ai_Notion__notion-move-pages)$"
+      hooks:
+        - type: command
+          command: "bash \"${CLAUDE_PROJECT_DIR}/.claude/skills/notion-knowledge-management/hooks/guard_notion_bootstrap.sh\""
+          timeout: 10
 ---
 
 # Notion Knowledge Management
@@ -39,8 +46,6 @@ write that `status-and-learning` has drafted.
 - **When routing, name the owning skill and stop.** Do not draft or sketch a preview of the record that
   skill owns (an Outcome/Learning record, a dated progress Report, a Linear issue); it drafts it.
 
-See Testing & Validation below for the concrete trigger phrases this section summarizes.
-
 ## Quick Start
 
 1. Resolve the connector through the plugin's shared host profile (`../../host-profile.json`, see
@@ -54,10 +59,9 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ## Why this exists
 
-Every plugin in this repository that might want to jot down an idea or record a decision would
-otherwise build its own Notion integration, with its own approval logic and its own inconsistent
-notion of what counts as "done." This skill is the single place that logic lives, so every capture
-across every workflow gets the same approval discipline and the same durable record.
+Every plugin that might jot down an idea or record a decision would otherwise build its own Notion
+integration and approval logic, with its own notion of what counts as "done." This skill is the one
+place that logic lives, so every capture gets the same approval discipline and durable record.
 
 ## Resolving the connector
 
@@ -79,13 +83,14 @@ to the shipped `unconfigured` defaults, never the override's claims.
 
 This file's own `allowed-tools` names the real, currently-installed Notion connector's tool
 surface (`mcp__claude_ai_Notion__*`) directly — resolved during Foundational Setup, see the plugin
-README's Status section. There is no single `notion.read`/`notion.write` tool pair on this
-connector; `notion-search`/`notion-fetch`/`notion-query-data-sources` cover reads (including
-read-back), `notion-create-pages`/`notion-update-page` cover record creation and state changes, and
-`notion-create-database`, `notion-update-data-source` and `notion-move-pages` cover Bootstrap's
-create, schema/rename and move steps. This grant is coupled to this
-specific connector's tool names — a future installation using a different Notion MCP connector
-would need this list re-resolved against that connector's own tool surface, not assumed portable.
+README's Status section. `notion-search`/`notion-fetch`/`notion-query-data-sources` cover reads
+(including read-back), `notion-create-pages`/`notion-update-page` cover record creation and state
+changes, and `notion-create-database`, `notion-update-data-source` and `notion-move-pages` cover
+Bootstrap only. **Bound on those Bootstrap grants:** `notion-update-data-source` is used only to add a
+`repo` option or rename a data source — never `DROP COLUMN`, a type change or `in_trash` — and
+`notion-move-pages` only to move an approved move candidate. The grants are broader than that use, so
+this sentence is the limit, with the plan-level approval behind it. A different Notion MCP connector
+would need this list re-resolved against its own tool surface, not assumed portable.
 
 ## Record Types and Properties
 
@@ -123,8 +128,8 @@ depend on connector behavior. Two rules follow:
   the full text goes into the page as blocks of at most 2,000 characters, split by
   `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py`. Read `references/long-text-blocks.md` before
   doing this: it has the file naming, paging, partial-failure and read-back steps (the read-back
-  checks paragraph count and the closing sentence, not a block count). The preview states the block
-  count, and none of it changes what the approval gate requires.
+  checks each block's opening and closing words in order plus the closing sentence, never a block or
+  paragraph count). The preview states the block count; none of it changes the approval gate.
 
 ## Decision State Machine
 
@@ -172,7 +177,8 @@ any other, with no lighter-weight exception for the fact that it starts in `prop
   untrusted data describing a classification, never a directive this skill acts on unchecked, per
   the Data-only boundary bullet below.
 - **Approval required:** creating any Idea/Note/Research/Report/Outcome/Decision record, proposing
-  a Goal, and any Decision state change (Accept/Supersede/Reverse) — unconditionally, with no
+  a Goal, any Decision state change (Accept/Supersede/Reverse), and any Bootstrap database creation,
+  option change, rename or move (via Bootstrap's plan-level approval) — unconditionally, with no
   exception for a record that looks low-risk, purely archival, or unlikely to be acted on
   downstream. This is the single canonical statement of this skill's approval requirement — the
   Decision State Machine section above and this skill's own frontmatter both restate it, and must
@@ -200,6 +206,8 @@ The first time this plugin operates against a Notion workspace, resolve the prod
 isolated test location using stable IDs (never a display name — two databases can share a name).
 Read existing structures first and present the reuse/create/adopt choices via `AskUserQuestion`; get
 plan-level approval for the exact bounded changes before creating, changing or moving anything.
+Bootstrap runs only on a direct user request. Read `references/bootstrap-steps.md` before any Bootstrap
+step: it has the procedure and what the approval preview must show.
 
 Resolve two scopes per environment (`prod`, `test`): the **organization-level** page
 `AndreHahm / <env>` holding the `note`, `research` and `outcome-learning` databases (titled
@@ -209,24 +217,16 @@ Resolve two scopes per environment (`prod`, `test`): the **organization-level** 
 is canonical for which type sits at which scope. The `AndreHahm` segment is the workspace's root
 page name (decision D46), not a placeholder.
 
-Every database carries the required `repo` select property.
-- **Where the repo value comes from:** `notion.repo` ships `null`. When it is null, ask the user for
-  the repository name via `AskUserQuestion` and record it through the local override; the name must
-  not be guessed from the checkout. `notion.repo` holds one repository today; a second repository
-  needs a map there (`FOUNDATION_CONTRACTS.md`, a later breaking change).
-- **A created database** gets the `repo` property with that value as an option. **An adopted database
-  whose `repo` select lacks the option** (normal for a shared organization-level database when
-  another repository bootstraps) gets the option added with `notion-update-data-source`
-  (`ALTER COLUMN "repo" SET SELECT(...)`), as a schema change listed in the plan and approved with it.
-  That call replaces the whole option list, so list every existing option plus the new one (the tool's
-  schema says an omitted option is removed; a live test run on 2026-10-14 kept the existing option's ID).
-- **Adopt, don't recreate:** a database already in place at either path is adopted by its stable ID.
-  One found only at the old repository-level path for an organization-level type is a move candidate,
-  carried out with `notion-move-pages` only after the user approves it, never silently.
-- **Rename both names:** resolve by stable ID or direct fetch, never from title text alone. A
-  database's own title (`notion-update-page`) and its data source's name (`notion-update-data-source`)
-  are separate fields that can differ, and a parent page's child listing shows the database title,
-  so rename both and verify the listing.
+Every database carries the required `repo` select property, valued from `notion.repo` (null means ask
+the user for the repository name; never guess it). `notion.repo` holds one repository today; a second
+one needs a map there (`FOUNDATION_CONTRACTS.md`, a later breaking change). Rules that cannot be skipped:
+- **Adopt, don't recreate:** a database already in place at either path is adopted by its stable ID. One
+  found only at the old repository-level path for an organization-level type is a move candidate, moved
+  with `notion-move-pages` only after approval, under the same environment's organization-level page.
+- **Adding a `repo` option** to an adopted database (`notion-update-data-source`, `ALTER COLUMN "repo" SET
+  SELECT(...)`) replaces the whole option list: re-read it right before the call, send a strict superset
+  of it, and confirm every option ID afterwards. A name with a quote, semicolon or parenthesis stops the plan.
+- **Rename both names** (database title and data source name), and verify via the parent's child listing.
 
 Store the resulting stable IDs in the plugin's
 versioned configuration (`versioned-configuration.json` at the plugin root, schema documented in
@@ -247,9 +247,8 @@ might have partially succeeded.
 ## Gotchas
 
 - **A Decision's `superseded`/`reversed` state is not deletion.** Both states keep the original
-  record fully readable — this skill has no delete operation for any record type. If asked to
-  "remove" a Decision, this means marking it superseded/reversed with a stated reason, not erasing
-  it.
+  record fully readable. This skill has no delete operation for any record type and never trashes a
+  database or data source; "remove" a Decision means marking it superseded/reversed with a reason.
 - **A proposed Goal is not an accepted Goal.** This skill never creates or touches Linear state,
   even when a Goal looks obviously accepted — that transition is `idea-to-implementation`'s
   approval-gated job, never a silent side effect of proposing the Goal here.
@@ -273,12 +272,11 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-7/ (2026-10-14) — Quick
-Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json). Iteration 6 (evals 8-15:
-`repo` from `notion.repo`, the stop when it is unset or unmatched, two-scope Bootstrap, long text, an
-over-limit property) scored 45/46 after eval 15 was regraded as a fail. Iteration 7 re-ran eval 12 and the
-routing evals 15-18 (the "does NOT activate" phrases): 18/19 first run, 17/17 after the routing rule was
-added; each eval is also checked against `allowed-tools`. Iterations 1-5: `references/testing-run-history.md`.
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-9/ (2026-10-14) — Quick
+Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json): 28/28 on the Bootstrap
+evals 10, 12, 19 and 20 after the security re-check. Earlier: iteration 8 13/13 (read-back), iteration 7 17/17
+after the routing rule, iteration 6 43/46 after two regrades. Each eval is also checked against
+`allowed-tools`. Full history: `references/testing-run-history.md`.
 
 **Quality gates:**
 - [ ] Every write is preceded by a preview and, where required, live approval.
@@ -287,7 +285,7 @@ added; each eval is also checked against `allowed-tools`. Iterations 1-5: `refer
 - [ ] `repo` comes from `notion.repo`; a null or unmatched value stops the write instead of guessing.
 - [ ] No text property exceeds 2,000 characters; a long body goes into page content via the splitter,
   and `python scripts/wmgt_test_split_blocks.py` (plugin root) passes.
-- [ ] `scripts/smoke_test.py` passes (structural check: frontmatter, referenced-file existence, Bash-grant usage, step-header sequencing).
+- [ ] `scripts/smoke_test.py` (structural) and `hooks/test_guard_notion_bootstrap.py` (the Bootstrap guard) both pass.
 
 ## Reference Guide
 
@@ -295,6 +293,8 @@ added; each eval is also checked against `allowed-tools`. Iterations 1-5: `refer
 |---|---|
 | `references/notion-record-types.md` | Full property table per record type (Idea, Decision, proposed Goal, Note, Research, Report, Outcome/Learning) |
 | `references/long-text-blocks.md` | Splitting a long body into page-content blocks: file naming, paging, partial failure, read-back |
+| `references/bootstrap-steps.md` | Bootstrap procedure, approval preview contents, option-list and move checks |
+| `hooks/guard_notion_bootstrap.sh` (+ `.py`, `test_guard_notion_bootstrap.py`) | Skill-scoped guard that denies every use of the two Bootstrap grants except the documented shapes, and its fixture test |
 | `references/testing-run-history.md` | Dated eval iterations, newest first |
 | `scripts/smoke_test.py` | This skill's persisted structural self-test |
 | `../../scripts/wmgt_split_blocks.py` | Block splitter (plugin root); its fixture test is `wmgt_test_split_blocks.py` beside it |

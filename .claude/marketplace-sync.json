@@ -26,6 +26,11 @@
       "source": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
       "dest": ".claude/skills/marketplace-development/SKILL.md",
       "reason": "Frontmatter hooks: block's command paths are necessarily copy-specific: the canonical plugins/plugin-devkit/ copy is distributed and installed into other users' own projects, so it uses ${CLAUDE_PLUGIN_ROOT} (tracks wherever the plugin is actually installed); the .claude/ mirror copy is never distributed (only used in-repo for pre-packaging dogfooding), so it uses ${CLAUDE_PROJECT_DIR} with this repo's own path (${CLAUDE_PLUGIN_ROOT} is confirmed-broken for a project-level skill with no enclosing plugin, and a bare relative path is unsafe -- hook handlers run in the session's cwd, not the skill's own directory). Whole-file exception: only this hooks: block differs between the two copies, everything else stays identical."
+    },
+    {
+      "source": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "dest": ".claude/skills/notion-knowledge-management/SKILL.md",
+      "reason": "Frontmatter hooks: block's command path is necessarily copy-specific, same reason as marketplace-development above: the canonical plugins/workmanagement-kit/ copy is distributed and uses ${CLAUDE_PLUGIN_ROOT}; the .claude/ mirror copy is never distributed (in-repo dogfooding only) and uses ${CLAUDE_PROJECT_DIR} with this repo's own .claude/skills/ path, because ${CLAUDE_PLUGIN_ROOT} is empty for a skill loaded from the mirror. Whole-file exception: only the command line inside this hooks: block differs between the two copies, everything else stays identical, so a later edit to either copy must be applied to both by hand."
     }
   ]
 }
