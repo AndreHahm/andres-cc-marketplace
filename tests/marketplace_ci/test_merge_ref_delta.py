@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.marketplace_ci.review import compute_pr_delta
+from scripts.marketplace_ci.review import PrDeltaError, compute_pr_delta
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "marketplace-ci.yml"
 DERIVE_STEP = "Derive the delta base from the merge commit"
@@ -292,3 +292,10 @@ def test_the_derive_step_runs_no_python_and_no_pr_code():
     script = _step_script(DERIVE_STEP)
     assert not re.search(r"\b(uv|python3?|pip|node|npm)\b", script)
     assert "scripts/" not in script
+
+
+def test_compute_pr_delta_raises_pr_delta_error_when_git_cannot_diff(tmp_path):
+    """Not a repository: the failure must surface as the typed error callers turn into exit 2,
+    never as an empty delta that reads as "nothing changed"."""
+    with pytest.raises(PrDeltaError):
+        compute_pr_delta(tmp_path, "0" * 40)

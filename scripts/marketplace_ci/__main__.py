@@ -989,8 +989,15 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_
 
 
 def _git_out(repo: Path, *argv: str) -> str | None:
-    result = subprocess.run(["git", *argv], cwd=repo, capture_output=True, text=True)
-    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
+    """Trimmed stdout of a git command, or None when it fails or prints nothing. Goes through
+    review.py's shared `_run_git` so this module adds no subprocess call site of its own."""
+    from scripts.marketplace_ci.review import _run_git
+
+    try:
+        out = _run_git(repo, *argv).decode("utf-8", errors="replace").strip()
+    except RuntimeError:
+        return None
+    return out or None
 
 
 def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict:
