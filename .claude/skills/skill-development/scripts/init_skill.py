@@ -12,6 +12,7 @@ Examples:
     init_skill.py custom-skill --path /custom/location
 """
 
+import io
 import re
 import sys
 from pathlib import Path
@@ -334,4 +335,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     main()

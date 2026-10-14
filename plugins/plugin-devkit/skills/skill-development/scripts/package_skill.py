@@ -11,6 +11,7 @@ Example:
 """
 
 import fnmatch
+import io
 import sys
 import zipfile
 from pathlib import Path
@@ -139,4 +140,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     main()
