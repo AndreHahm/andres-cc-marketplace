@@ -52,5 +52,15 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `scripts/scan_skills.py` | Inventory all skills with metadata and usage statistics | Skill Consolidation step 1 |
 | `scripts/analyze_similarity.py` | Find merge candidates by trigger/keyword overlap | Skill Consolidation step 2 |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) | Before packaging / after any SKILL.md edit |
+| `scripts/run_eval.py` | Trigger evaluation for a skill description: does a query make Claude read the skill (JSON output) | Phase 5 — invoked by `run_loop.py`, not directly |
+| `scripts/improve_description.py` | Propose an improved description from eval results via `claude -p` | Phase 5 — invoked by `run_loop.py`, not directly |
+| `scripts/generate_report.py` | HTML report of each description attempt from `run_loop.py` output | Phase 5 — invoked by `run_loop.py`, not directly |
+| `scripts/utils.py` | Shared helpers (e.g. `parse_skill_md`) for the scripts above | Internal dependency |
+| `eval-viewer/generate_review.py` | Build the eval viewer (Outputs and Benchmark tabs; `--static` for a standalone HTML file) | Phase 3 step 6 (review outputs) |
+| `eval-viewer/viewer.html` | The viewer's page template, filled in by `generate_review.py` | Internal dependency |
+| `assets/eval_review.html` | Page for reviewing and exporting the trigger eval set (`eval_set.json`) | Phase 5 (description optimization) |
+| `assets/skill-template-basic.md` | Basic SKILL.md starter template | Phase 1 (Greenfield) and Phase 2 (design) — scaffold |
+| `assets/skill-template-complex-body.md` | Starter body for a complex skill | Phase 2 (design) — complex skills |
+| `assets/reference-file-template.md` | Starter for a `references/` file | Phase 2 (design) — content placement |
 | `plugin-rulebook` skill | Plugin-level rules — invoke before finalizing to check naming, language, formatting, tool-scoping, and external-reference compliance | Phase 5 (before packaging) |
 | `CHANGELOG.md` | Change history for this skill | Reference |
