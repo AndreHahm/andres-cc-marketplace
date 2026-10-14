@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)", "Bash(python3 -I .claude/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -145,15 +145,16 @@ literal, already-resolved value — substitute the concrete string into every la
    ```bash
    UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
    echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-   if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
+   if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
    The planner runs from the installed plugin (`${CLAUDE_PLUGIN_ROOT}`), outside the repository under
    review, so a file at some path inside a third-party repository is never what runs. When
-   `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions, where skills load from the `.claude/`
-   mirror), use `"$PWD/.claude/scripts/git-review-scope.py"` from the checkout root instead
-   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`); stop and report if that file is missing.
+   `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions, where the skill itself loads from the
+   `.claude/` mirror), the `:-.claude` default selects that mirror, relative to the checkout root this
+   chain runs from; the mirror is as trusted as the skill text that named it
+   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`). If the file is missing, `PLAN_FAILED=1`.
    **`PLANNER_TOUCHED=1` means the planner has not run**: it executes code from the working tree, which may
    be the branch under review, so ask via `AskUserQuestion` before running it (`references/scoped-review.md`
    section 1). A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a

@@ -570,6 +570,8 @@ def plan_scope(
             stats = folders.setdefault(top + "/", [0, 0])
             stats[0] += 1
             stats[1] += f["bytes"]
+    # Retained files only, deliberately: the folder pick exists to free budget for dropped
+    # slices, so a dropped slice's folders are not offered (already unreviewed, listed as dropped).
     candidates = [
         {"dir": d, "files": n, "bytes": b}
         for d, (n, b) in sorted(folders.items(), key=lambda kv: -kv[1][1])
