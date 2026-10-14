@@ -55,7 +55,7 @@ Indexed arguments use shell-style quoting. Wrap multi-word values in quotes to p
 
 `${CLAUDE_SKILL_DIR}` is the most important for skill authors. Use it whenever your SKILL.md body tells Claude to read a bundled file — it resolves correctly regardless of where the plugin is installed.
 
-If a skill expects free-form user input, include `$ARGUMENTS` at the intended position in the skill body. Claude Code does not append the typed argument text at the end of the skill on its own — a skill that omits `$ARGUMENTS` entirely never sees what the user typed after the slash command.
+If a skill expects free-form user input, include `$ARGUMENTS` at the intended position in the skill body. When no placeholder (`$ARGUMENTS`, an indexed `$N`, or a named argument) receives an argument, Claude Code appends `ARGUMENTS: <value>` to the end of the skill content, so the skill still sees what the user typed; a placement you choose yourself is clearer than relying on the appended line.
 
 ---
 
