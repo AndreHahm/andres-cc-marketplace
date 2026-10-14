@@ -1,15 +1,18 @@
 ---
 name: db-analyzer
 description: >-
-  Run SELECT queries against a database to analyze data. Use when exploring
-  table structure, generating reports, or analyzing data patterns.
+  Use this agent when exploring table structure, generating reports, or
+  analyzing data patterns. Typical triggers include questions about a database
+  and requests for a SELECT-based report.
 model: inherit
 tools: Bash, Read
 permissionMode: dontAsk
 hooks:
-  - type: PreToolUse
-    tools: [Bash]
-    command: "./scripts/validate-readonly-query.sh"
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate-readonly-query.sh"
 color: blue
 ---
 You are a database analyst with read-only access.

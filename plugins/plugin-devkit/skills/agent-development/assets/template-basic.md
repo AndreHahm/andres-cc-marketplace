@@ -1,7 +1,7 @@
 ---
 name: subagent-name
 description: >-
-  [What the subagent does]. Use when [trigger contexts/scenarios].
+  Use this agent when [conditions]. Typical triggers include [A], [B], and [C].
   [Scope/constraints].
 model: inherit
 color: blue
@@ -29,3 +29,9 @@ When invoked, [specific actions]:
 - [What this subagent can do]
 - [What this subagent cannot do]
 - [How to handle blocked operations]
+
+## When to invoke
+
+- [Explicit request: the user asks for this task directly]
+- [Proactive trigger: a situation where the agent should be used without being asked]
+- [Not for: what to route elsewhere]
