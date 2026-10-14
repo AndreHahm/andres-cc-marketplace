@@ -104,13 +104,16 @@ def check_triage_is_a_dedicated_gate():
     step = body[start:end]
     for needed in (
         "AskUserQuestion",
-        "skill-development",
-        "workflow-skill-development",
-        "never fold",
+        '"Prompt"',
+        '"Skill: `skill-development`"',
+        '"Workflow skill: `workflow-skill-development`"',
+        "(Recommended)",
     ):
         if needed not in step:
             return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
-    return True, "triage is its own AskUserQuestion with skill options and may not be folded away"
+    if "AskUserQuestion" not in body[end : end + 900]:
+        return False, "step 6 no longer has its own AskUserQuestion for the file-draft decision"
+    return True, "triage is its own AskUserQuestion with the three options, apart from step 6's"
 
 
 def check_live_web_secret_is_refused_and_nothing_filed():
