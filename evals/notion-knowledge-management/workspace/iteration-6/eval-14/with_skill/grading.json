@@ -1,0 +1,46 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output notices the body is over 2,000 characters before showing the preview",
+      "passed": true,
+      "evidence": "Item 4: the write-up is 2,819 characters, over the 2,000 limit for a text property, noticed before the preview"
+    },
+    {
+      "text": "Output does not write the over-limit text as a property value and does not truncate it silently",
+      "passed": true,
+      "evidence": "'The skill forbids both writing it into a property and truncating it'; body keeps only a short note"
+    },
+    {
+      "text": "Output offers or applies the shorten-with-the-user or move-to-page-content route",
+      "passed": true,
+      "evidence": "Moves the text into page content as blocks of at most 2,000 characters"
+    },
+    {
+      "text": "If it moves the text into page content, output splits it with wmgt_split_blocks.py using a generated scratchpad file name (not the repository root, not a name built from the record's content)",
+      "passed": true,
+      "evidence": "Splitter run on `<session scratchpad>/wmgt-body-20261014T120000Z.md`: generated name, scratchpad, total 2 (1,567 and 1,250 units)"
+    },
+    {
+      "text": "If it plans a read-back after a page-content write, the check is paragraph count and the closing sentence, not a block count",
+      "passed": true,
+      "evidence": "Read-back: a block count cannot be observed; checks six paragraphs equal to the source and that the last ends with the source's closing sentence"
+    },
+    {
+      "text": "Output still requires live approval before the write",
+      "passed": true,
+      "evidence": "Approval gate: AskUserQuestion for area, then 'Create this Idea as previewed'; 'Approval is unconditional'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash(git ls-files), Write, Bash(splitter), AskUserQuestion x2, notion-fetch, notion-create-pages, notion-update-page: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

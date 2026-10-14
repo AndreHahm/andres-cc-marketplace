@@ -1,0 +1,41 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output distinguishes the organization-level scope (Note, Research, Outcome-Learning) from the repository-level scope (Idea, Decision, Proposed Goal, Report)",
+      "passed": true,
+      "evidence": "Plan table splits org scope (note, research, outcome-learning) from repo scope (idea, decision, proposed-goal, report)"
+    },
+    {
+      "text": "Output adopts already-present databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "Table rows: Adopt by ID for note, research, idea, decision, proposed-goal, report; 'resolved by stable ID or direct fetch, never by title text'"
+    },
+    {
+      "text": "Output reports the Outcome-Learning database found at the repository-level path as a move candidate for user approval and does not move or recreate it silently",
+      "passed": true,
+      "evidence": "outcome-learning: 'Move candidate: move to the org page, rename, adopt'; AskUserQuestion offers move / keep at repo level / create new; 'Nothing is created, changed or moved until you approve'"
+    },
+    {
+      "text": "Output requires the repo select property on every database, with andres-cc-marketplace as an option",
+      "passed": true,
+      "evidence": "Step 3: for each database whose repo select lacks the option, add it with notion-update-data-source, listed as a schema change for approval"
+    },
+    {
+      "text": "Output asks for plan-level approval before creating or changing anything",
+      "passed": true,
+      "evidence": "Approval gate via AskUserQuestion (section 4), one question at a time"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash, Read, notion-search, notion-fetch, AskUserQuestion, notion-move-pages, notion-update-page, notion-update-data-source, Write: all granted now; notion-create-database not called"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

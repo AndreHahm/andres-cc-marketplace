@@ -1,0 +1,31 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output stops and reports that notion.repo matches no option of the `repo` select",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not write the Decision record and does not present the write as ready for approval",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not silently add the missing option or change the database schema",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output tells the user how to resolve it (an approved Bootstrap schema change adding the option, or a corrected notion.repo)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

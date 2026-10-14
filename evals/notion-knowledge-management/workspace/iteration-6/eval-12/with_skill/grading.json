@@ -1,0 +1,46 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output asks the user for the repository name (AskUserQuestion) and does not infer it from the checkout, directory or git remote",
+      "passed": true,
+      "evidence": "Asks the user for the repository name via AskUserQuestion; 'I will not infer it from the directory name, the git remote, or the sibling page title' (lines 14-19)"
+    },
+    {
+      "text": "Output plans to add the repository's option to the adopted organization-level databases' `repo` select as a schema change listed in the plan and approved with it",
+      "passed": true,
+      "evidence": "Plan table: for note, research and outcome-learning, add select option <REPO> to repo (currently only other-repo) as a schema change approved with the plan"
+    },
+    {
+      "text": "Output names notion-update-data-source (not notion-create-database) for that schema change",
+      "passed": true,
+      "evidence": "Step 3 note names `notion-update-data-source` for that change; 'I would not call notion-create-database'"
+    },
+    {
+      "text": "Output adopts the existing databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "'Adopt by stable ID' for the organization-level and repository-level databases; 'Nothing is recreated' (lines 33, 49-62)"
+    },
+    {
+      "text": "Output records notion.repo through the local override (.claude/workmanagement-kit.local.json), not by editing the shipped versioned-configuration.json",
+      "passed": true,
+      "evidence": "Records notion.repo through `.claude/workmanagement-kit.local.json` (line 19), not the shipped configuration"
+    },
+    {
+      "text": "Output requires plan-level approval before any change",
+      "passed": true,
+      "evidence": "AskUserQuestion for plan approval (line 93, planned call 6); the schema change is 'approved with it'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash, Read, AskUserQuestion, notion-search, notion-fetch, notion-update-data-source, notion-update-page, notion-move-pages, Write: all granted; no create-database"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

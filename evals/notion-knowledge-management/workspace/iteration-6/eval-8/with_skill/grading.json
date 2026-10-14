@@ -1,0 +1,36 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output includes a repo property in the Idea record with the value andres-cc-marketplace",
+      "passed": true,
+      "evidence": "Preview row: `repo` (required select) = andres-cc-marketplace (from `notion.repo`, not from your message)"
+    },
+    {
+      "text": "Output sources the repo value from the configured notion.repo, not from the git remote, directory name or a guess",
+      "passed": true,
+      "evidence": "Step 3 reads notion.repo; the preview row says 'from notion.repo, not from your message'"
+    },
+    {
+      "text": "Output previews the record and states live approval via AskUserQuestion is required before writing",
+      "passed": true,
+      "evidence": "Preview table, then AskUserQuestion for area and the create approval (lines 46, 73)"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "'I made no Notion or Linear calls' (line 3)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash(git ls-files), Read, notion-fetch, notion-search, notion-query-data-sources, AskUserQuestion, notion-create-pages, notion-update-page: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
