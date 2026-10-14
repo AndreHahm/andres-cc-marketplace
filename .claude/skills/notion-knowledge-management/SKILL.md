@@ -284,8 +284,8 @@ after the routing rule, iteration 6 43/46 after two regrades. Each eval is also 
 - [ ] A Decision state change never overwrites prior rationale.
 - [ ] `repo` comes from `notion.repo`; a null or unmatched value stops the write instead of guessing.
 - [ ] No text property exceeds 2,000 characters; a long body goes into page content via the splitter.
-- [ ] Maintainer checks, run outside a skill session (this skill grants no Python): `python scripts/wmgt_test_split_blocks.py`
-  (plugin root), `scripts/smoke_test.py` and `hooks/test_guard_notion_bootstrap.py` pass.
+- [ ] Maintainer checks, run with `python <path>` outside a skill session (this skill grants no Python):
+  `scripts/wmgt_test_split_blocks.py` (plugin root), `scripts/smoke_test.py` and `hooks/test_guard_notion_bootstrap.py` pass.
 
 ## Reference Guide
 

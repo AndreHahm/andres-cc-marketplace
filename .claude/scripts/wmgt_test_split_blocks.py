@@ -158,6 +158,26 @@ def main():
         check("crlf blocks", blocks == ["p" * 1500, "q" * 1500], str([len(b) for b in blocks]))
         check("crlf no CR", not any("\r" in b for b in blocks), "carriage return left")
 
+        # 6e2. A run of three or more newlines becomes one blank line, so reassembly with a blank
+        #      line between blocks equals the normalized source.
+        want = ["p" * 1500, "q" * 1500, "r" * 1500]
+        for runs in ("\n\n\n", "\n\n\n\n", "\n\n\n\n\n\n"):
+            gap = runs.join(want)
+            code, out = all_blocks(write("gap.md", gap))
+            blocks = out.get("blocks", [])
+            label = f"gap of {len(runs)} newlines"
+            check(f"{label} blocks", blocks == want, str([len(b) for b in blocks]))
+            check(f"{label} reassembly", "\n\n".join(blocks) == "\n\n".join(want), "differs")
+        words = " ".join(f"w{i:04d}" for i in range(900))
+        big_gap = ("a" * 100) + "\n\n\n\n" + words + "\n\n\n" + ("z" * 100)
+        code, out = all_blocks(write("biggap.md", big_gap))
+        blocks = out.get("blocks", [])
+        joined = "\n\n".join(blocks)
+        check("big gap no triple newline", "\n\n\n" not in joined, "run survived")
+        check("big gap keeps the ends", joined.startswith("a" * 100), "start")
+        check("big gap keeps the end", joined.endswith("z" * 100), "end")
+        check("big gap keeps every word", joined.count("w0899") == 1, "word lost")
+
         # 6f. Paging: the default --count is 10, and a start past the end is empty but ok.
         many = "\n\n".join("m" * 1500 for _ in range(15))
         code, out = run_script("split", str(write("many.md", many)))

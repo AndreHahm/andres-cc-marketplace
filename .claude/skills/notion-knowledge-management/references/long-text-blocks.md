@@ -16,7 +16,8 @@ and the full text goes into the page as blocks of at most 2,000 characters.
    be at least 2), and a bad command line comes back as the same JSON failure (exit 1). A leading
    byte-order mark in the file is ignored. Splitting prefers a blank line, then a line break, then a
    space or tab, and cuts hard only where there is no whitespace. Line endings are normalized to LF,
-   and the whitespace character at a cut is dropped.
+   a run of three or more newlines becomes one blank line (also inside a code fence), and the
+   whitespace character at a cut is dropped.
 3. **Preview for approval.** State the block count, say that a cut inside a paragraph reads as a
    paragraph break after reassembly, and say so when the text contains a markdown table or code fence
    (the splitter does not understand them, so a split can land inside one). The preview also covers the
