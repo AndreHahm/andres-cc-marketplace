@@ -19,15 +19,24 @@ fail() {
 [ "$#" -eq 1 ] || fail "usage: <run-dir>"
 run_dir=$1
 
-[[ $run_dir != - && $run_dir != *$'\n'* ]] || fail "invalid run directory"
+[[ $run_dir != -* && $run_dir != *$'\n'* ]] || fail "invalid run directory"
 [ -d "$run_dir" ] && [ ! -L "$run_dir" ] || fail "run directory must be an existing directory, not a symlink"
 [ -O "$run_dir" ] || fail "run directory must be owned by the current user"
 [ -z "$(find "$run_dir" -maxdepth 0 \( -perm -020 -o -perm -002 \) 2>/dev/null)" ] ||
   fail "run directory must not be writable by group or others"
 
-unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR
+unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS \
+  GIT_CEILING_DIRECTORIES
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
+# Only a directory `mktemp -d` makes: tmp.<random> (mode 0700) directly under the temp directory.
+[[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
+[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+run_parent=$(dirname -- "$run_dir")
+tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
+tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
+[ "$run_parent" = "$tmp_a" ] || [ "$run_parent" = "$tmp_b" ] ||
+  fail "run directory must be directly under the temp directory"
 top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"
 top=$(CDPATH='' cd -P -- "$top" && pwd -P)

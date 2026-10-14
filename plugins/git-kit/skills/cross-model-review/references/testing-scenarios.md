@@ -22,7 +22,7 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 4. A finding raised in Phase 1 by only one side and explicitly refuted in that side's Phase 2 pass →
    reported as Low/contested with both sides shown, never dropped.
 5. `prompts/review.md`/`prompts/refute.md` don't yet exist on `$BASE` (this skill's own first,
-   not-yet-merged run) → Preflight step 5 falls back via `Read`/`Write` to the working-tree copy at
+   not-yet-merged run) → Preflight step 5 falls back via the write helper (`@plugin:review`/`@plugin:refute`) to the working-tree copy at
    `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/...` and records it in
    `inspection_limits`, never silently.
 6. The diff itself modifies a file under `plugins/codex-kit/**/scripts/**`, **including when `$SCOPE`
@@ -37,7 +37,7 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
    `inspection_limits`.
 8. `prompts/review.md`/`refute.md` don't exist on `$BASE` yet (scenario 5) → the chained Bash
    invocation's `git show || true` doesn't abort; step 6 and the closing `echo` still run, and the
-   `Read`/`Write` fallback runs afterward using the echoed `$RUN` value.
+   write-helper fallback runs afterward using the echoed `$RUN` value.
 9. Every changed file is a deletion or an invalid-charset path (Preflight step 2's eligible list is
    empty) → single-model mode is entered proactively, before any dispatch attempt, with
    `inspection_limits` recording "zero Codex-eligible paths" rather than "Codex unavailable."
@@ -245,6 +245,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       deletion must never abort the chained Preflight invocation before `git diff` runs
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
+- [ ] Every file the skill creates is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts), and `allowed-tools` has no `Write` entry
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
