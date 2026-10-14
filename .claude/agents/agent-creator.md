@@ -121,7 +121,7 @@ Create agent file, then provide summary:
 - **Triggers:** [When it's used]
 - **Model:** [choice]
 - **Color:** [choice]
-- **Tools:** [list or "all tools"]
+- **Tools:** [list]
 
 ### File Created
 `agents/[identifier].md` ([word count] words)
@@ -143,6 +143,5 @@ Validate with: `{PLUGIN_ROOT}/skills/agent-development/scripts/validate-agent.sh
 - User wants specific tool access: Honor the request in agent configuration
 - User specifies model: Use specified model instead of inherit
 - First agent in plugin: Create agents/ directory first
-```
 
 This agent automates agent creation using the proven patterns from Claude Code's internal implementation, making it easy for users to create high-quality autonomous agents.
