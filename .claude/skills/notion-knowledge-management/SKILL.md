@@ -272,9 +272,9 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-9/ (2026-10-14) — Quick
-Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json): 28/28 on the Bootstrap
-evals 10, 12, 19 and 20 after the security re-check. Earlier: iteration 8 13/13 (read-back), iteration 7 17/17
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-10/ (2026-10-14) — Quick
+Workflow, simulate-only, with_skill agent only (no baseline, no benchmark.json): 5/5 on eval 21 (an adopted
+database without a repo property stops the plan). Earlier: iteration 9 28/28 on evals 10, 12, 19, 20, iteration 8 13/13 (read-back), iteration 7 17/17
 after the routing rule, iteration 6 43/46 after two regrades. Each eval is also checked against
 `allowed-tools`. Full history: `references/testing-run-history.md`.
 

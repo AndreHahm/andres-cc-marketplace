@@ -3,7 +3,9 @@
 # grants). Uses the repo's required uv -> python3 -> python cascade. Unlike an advisory hook, this one is a
 # guard, so when NO working interpreter is found it denies the call rather than letting it through.
 #
-# Each tier is probed FUNCTIONALLY (it must actually run a trivial program), not just found on PATH:
+# Each tier is probed FUNCTIONALLY (it must actually run a trivial program), not just found on PATH.
+# For uv that means a real `uv run` of Python, because `uv --version` can succeed while `uv run` cannot
+# start the selected Python (for example a .python-version naming an interpreter that is not installed).
 # `exec` replaces this process, so a present-but-broken interpreter (for example the Windows Store
 # "python3" stub that prints "Python was not found" and exits 9009) would otherwise dead-end with an exit
 # code the hook system treats as a non-blocking error, letting the guarded call through.
@@ -18,7 +20,7 @@ HERE="$(cd "$HERE" 2>/dev/null && pwd -P)"
 SCRIPT="$HERE/guard_notion_bootstrap.py"
 
 if [ -n "$HERE" ] && [ -f "$SCRIPT" ]; then
-  if command -v uv >/dev/null 2>&1 && uv --version >/dev/null 2>&1; then
+  if command -v uv >/dev/null 2>&1 && uv run --no-project python -c 'import sys' >/dev/null 2>&1; then
     exec uv run --no-project "$SCRIPT"
   elif command -v python3 >/dev/null 2>&1 && python3 -c 'import sys' >/dev/null 2>&1; then
     exec python3 "$SCRIPT"

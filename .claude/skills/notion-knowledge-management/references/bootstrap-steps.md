@@ -18,6 +18,11 @@ starts Bootstrap on its own, because the only approval the user has seen at that
 2. The plan lists every candidate with its stable ID and its full parent chain. The chain must end at the
    workspace root page's stable ID. More than one match for a target means stop and ask the user.
 3. A database already in place at either layout path is adopted by its stable ID, never recreated.
+4. An adopted database whose data source has no `repo` property at all (one created before the org-level
+   migration) stops the plan. Bootstrap only manages the options of an existing `repo` select and never adds
+   the property: the guard denies `ADD COLUMN`. The operator adds it outside the kit, as the one-time
+   migration step, and Bootstrap then continues. Record writes stay blocked by the required-property check
+   until that is done.
 
 ## The repo value
 
@@ -41,7 +46,8 @@ The user approves the exact plan, so it lists, for every change:
 
 ## Adding a `repo` option (`notion-update-data-source`)
 
-The call is `ALTER COLUMN "repo" SET SELECT(...)`. It replaces the whole option list, and the tool's
+The call is `ALTER COLUMN "repo" SET SELECT(...)`, for example `SET SELECT('a':blue, 'b')`: one space after
+each comma and none inside the parentheses, which the guard enforces. It replaces the whole option list, and the tool's
 schema says an omitted option is removed. On a shared organization-level database that would delete
 another repository's option, so:
 
@@ -77,7 +83,7 @@ The guard `hooks/guard_notion_bootstrap.sh` is registered when this skill is inv
 hooks documentation, keeps running for the rest of the session, not only during the skill's own turn. It is
 registered in SKILL.md's frontmatter and launched as `bash "..."`. It denies every call to the two tools except the
 shapes above: a data source update with only `data_source_id` plus a `title` and/or one single-line
-`ALTER COLUMN "repo" SET SELECT(...)` statement with single spaces and safe option names, and a move of
+`ALTER COLUMN "repo" SET SELECT(...)` statement in that exact spacing with safe option names, and a move of
 exactly one id under a `page_id` parent. A payload with no tool name is denied. The launcher probes each
 interpreter functionally and denies when none works.
 
