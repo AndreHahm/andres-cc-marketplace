@@ -29,7 +29,7 @@ Search for the rulebook: `Glob(\"**/plugin-rulebook/SKILL.md\")`. This can match
 
 ## Step 2: Load Standards from `skill-development`
 
-Use Glob to find the `skill-development` skill: search for `**/skill-development/SKILL.md`. Extract the directory path from the result.
+Use Glob to find the `skill-development` skill: search for `**/skill-development/SKILL.md`. When several copies match, prefer the `plugins/*/skills/skill-development/` copy and never use a `.agents/` copy (its `../../references/` siblings do not exist there). Extract the directory path from the result.
 
 Read these files — they are the complete source of truth for all checks except C1/C2 (which come from plugin-rulebook when available):
 
