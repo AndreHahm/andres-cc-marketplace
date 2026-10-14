@@ -21,6 +21,7 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `references/advanced-patterns.md` | Production patterns, skill archetypes, specialized skill designs | Phase 2 (design) and Phase 4 (improve) |
 | `references/complex-skills-patterns.md` | Error handling, tool scoping, validation scripts, security review | Phase 2 (design) — complex skills |
 | `../../references/pdk-allowed-tools.md` | Tool scoping validation, principle of least privilege | Phase 2 (design) — tool scoping |
+| `../../references/pdk-design-patterns.md` | Gotchas patterns, progressive disclosure, hooks, setup, composability | Phase 2 (design) |
 | `references/self-containment-principle.md` | External dependency architecture and guidance | Phase 2 (design) — external dependencies |
 | `references/secrets-and-credentials.md` | Secrets detection, git safety, env-var patterns, testing | Phase 2 (design) — skills with credentials |
 | `../../references/pdk-size-limits.md` | Strict size limits reference | Phase 2 (design) |
