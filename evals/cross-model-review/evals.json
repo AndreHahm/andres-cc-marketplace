@@ -65,11 +65,18 @@
       "prompt": "Using this repo's cross-model-review skill (worktree copy, references/scoped-review.md): in the same conversation the user fixed some findings and asks for another review round. Round one's batch covering slice 'scripts' timed out and was not retried; slices 'protected' and 'tests' finished. Describe the planner invocation for round two and what gets reviewed. Also say what happens if the earlier manifest path is no longer known. Do not run anything -- describe it.",
       "expected_output": "Round two runs the planner with --prior-manifest pointing at the earlier manifest (outside the repository, owned by the user) and --completed-slice protected and --completed-slice tests, but NOT scripts, writing a new manifest to the new $RUN. The scripts slice is reviewed again; files unchanged since a completed slice are skipped; files a run pick hid before are reviewed again. If the earlier manifest path is not known, the run is treated as round one and everything is reviewed.",
       "files": []
+    },
+    {
+      "id": 10,
+      "name": "More batches than the batch limit asks before dispatching",
+      "prompt": "Using this repo's cross-model-review skill (the plugins/ copy, including references/scoped-review.md): the planner's manifest shows budget_bytes 250000 and max_slice_bytes 80000, and packing the slices yields 9 batches, because several protected slices are large. Describe exactly what the skill does before any Codex dispatch: what limit applies and how it is computed, whether and what the user is asked, what happens under each answer, and how slices that were not reviewed are reported and treated in a later round. Do not run anything -- describe it.",
+      "expected_output": "The batch limit is 2 * floor(250000 / 80000) + 1 = 7, taken from the manifest's two values. 9 batches is over it (only protected slices or an oversized first slice can cause that), so the skill does not dispatch yet: before the First-Send Confirmation it asks via AskUserQuestion, naming the batch count (9), the dispatch count (18, two per batch) and the limit (7): review all batches, review only the first 7 in planner order, or stop. It never goes past the limit without that answer. If the user picks the limited run, the slices in batches 8 and 9 are unreviewed this round, are reported like dropped slices that must be read directly, and are never passed as --completed-slice in a later round. At or under the limit there is no extra question; the First-Send Confirmation states the real dispatch count either way.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 9,
-    "declared_scenarios_covered": 9,
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 10,
     "uncovered": []
   }
 }

@@ -251,6 +251,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] An `<untracked_files>` block always ends with the untrusted-data sentence, and Phase 2's closing boundary names those files' contents too
 - [ ] A failed planner never leaves the run without a defined path: section 7 of `scoped-review.md` builds the unscoped group from the safe-charset changed names
 - [ ] A planner failure is never treated as a pass; the user chooses unscoped or stop
+- [ ] Packing that yields more batches than the batch limit (`2 * floor(budget_bytes / max_slice_bytes) + 1`) never dispatches without an `AskUserQuestion` first; a limited run reports the later batches' slices as unreviewed and never as completed
 - [ ] `--completed-slice` is passed only for slices whose Claude pass and dispatched Codex passes all finished
 - [ ] A dropped slice is always listed in the report and marked as needing a direct read
 - [ ] The diff text never enters context in full during Preflight step 1; it goes to `$RUN/full.diff`
