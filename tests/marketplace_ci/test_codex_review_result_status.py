@@ -204,3 +204,53 @@ def test_every_failure_shape_has_a_known_status(monkeypatch, review_repo, tmp_pa
     for bridge in (_answers(CLEAN), _answers(BLOCKING), _bridge_fails):
         _, payload = _run(monkeypatch, review_repo, tmp_path, bridge)
         assert payload["status"] in STATUSES
+
+
+def _run_with_reports(monkeypatch, review_repo, tmp_path, reports):
+    """Run the command with `dispatch_reviewers` returning `reports`; return (rc, payload)."""
+    import scripts.marketplace_ci.review as review_module
+
+    root, base_sha = review_repo
+    monkeypatch.setattr(review_module, "dispatch_reviewers", lambda *a, **kw: reports)
+    monkeypatch.chdir(root)
+    out = tmp_path / "result.json"
+    rc = main(["run-codex-review", "--base-sha", base_sha, "--output", str(out)])
+    return rc, json.loads(out.read_text(encoding="utf-8")), base_sha
+
+
+def test_a_failure_after_dispatch_keeps_the_reviewers_that_ran(monkeypatch, review_repo, tmp_path):
+    """No output from one reviewer: the artifact still says who ran, how often, and on what."""
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    good = json.loads(CLEAN)
+    reports = [
+        ReviewerReport(reviewer="security-reviewer", status="completed", output=None, attempts=2),
+        ReviewerReport(reviewer="dependency-reviewer", status="completed", output=good, attempts=1),
+    ]
+    rc, payload, base_sha = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 2
+    assert payload["status"] == "could_not_run"
+    assert payload["reviewer_results"] == {
+        "security-reviewer": {"status": "could_not_run", "attempts": 2},
+        "dependency-reviewer": {"status": "clean", "attempts": 1},
+    }
+    assert payload["provenance"]["base_sha"] == base_sha
+    assert payload["provenance"]["model"] == "test-model"  # reported by the reviewer that answered
+
+
+def test_an_invalid_envelope_marks_that_reviewer_could_not_run(monkeypatch, review_repo, tmp_path):
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    reports = [
+        ReviewerReport(
+            reviewer="security-reviewer", status="completed", output={"x": 1}, attempts=1
+        ),
+        ReviewerReport(
+            reviewer="dependency-reviewer", status="completed", output=json.loads(CLEAN), attempts=1
+        ),
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 2
+    assert "returned invalid output" in payload["error"]
+    assert payload["reviewer_results"]["security-reviewer"]["status"] == "could_not_run"
+    assert payload["reviewer_results"]["dependency-reviewer"]["status"] == "clean"

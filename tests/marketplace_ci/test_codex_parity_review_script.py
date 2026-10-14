@@ -21,6 +21,10 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="stub executables are POSIX shell scripts"
 )
 
+needs_node = pytest.mark.skipif(
+    shutil.which("node") is None, reason="the wrapper asks node, as the bridge does"
+)
+
 WORKFLOW = """\
       # decoy: npm install -g @openai/codex@9.9.9 and CODEX_KIT_REVIEW_TIMEOUT_MS: "1"
       - name: Install Codex CLI (pinned version, never floating latest)
@@ -148,6 +152,7 @@ def _run(
     codex: str | None = "codex-cli 0.147.0",
     model: str = "gpt-x",
     timeout_var: str = "",
+    node_stub: str | None = None,
     result_json: str | None = "auto",
     uv_prelude: str = "",
     output_name: str = "out.json",
@@ -176,6 +181,8 @@ def _run(
         f'  [ -n "{timeout_var}" ] && echo "{timeout_var}"; exit 0;;\nesac\n'
         f'[ -n "{model}" ] && echo "{model}"\nexit 0',
     )
+    if node_stub is not None:
+        _stub(bin_dir, "node", node_stub)  # stands in for a missing or broken node
     # codex=None stands in for a Codex CLI that fails to run (a real one may be on PATH here).
     _stub(bin_dir, "codex", "exit 127" if codex is None else f'echo "{codex}"')
     env: dict[str, str] = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
@@ -646,6 +653,7 @@ def test_parse_ci_settings_reads_the_fallback_from_the_variable_expression():
     assert module.parse_ci_settings(legacy) == ("600000", "0.147.0")
 
 
+@needs_node
 def test_the_timeout_repository_variable_overrides_the_workflow_fallback(repo, tmp_path):
     result, _, uv_env = _run(repo, tmp_path, timeout_var="720000")
     assert result.returncode == 0
@@ -660,20 +668,48 @@ def test_an_unset_timeout_variable_falls_back_to_the_workflow_literal(repo, tmp_
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
 
 
-@pytest.mark.parametrize("value", ["6e5", "000720000", "720000.0", "1" * 12])
+# Every form below is a positive integer to the bridge's `Number()` check, so CI uses it.
+ACCEPTED_TIMEOUTS = [
+    "6e5",
+    "000720000",
+    "720000.0",
+    "1" * 12,
+    "0x10",
+    "0b11",
+    "1e-0",
+    "100e-2",
+    "+5",
+    "9" * 20,
+]
+REJECTED_TIMEOUTS = [
+    "abc",
+    "0",
+    "-5",
+    "720000;rm",
+    "7 2",
+    "600000.5",
+    "1e-3",
+    "1e400",
+    "Infinity",
+    "1_000",
+    "--x",
+]
+
+
+@needs_node
+@pytest.mark.parametrize("value", ACCEPTED_TIMEOUTS)
 def test_a_timeout_value_the_bridge_accepts_is_passed_on_as_ci_would(repo, tmp_path, value):
     """CI forwards the variable verbatim and the bridge takes any positive `Number()` integer,
-    so the wrapper must not read such a value as unset."""
+    so the wrapper asks the same check instead of approximating its grammar."""
     result, _, uv_env = _run(repo, tmp_path, timeout_var=value)
     assert result.returncode == 0
     assert f"CODEX_KIT_REVIEW_TIMEOUT_MS={value}" in uv_env
     assert "from repository variable" in result.stdout
 
 
-@pytest.mark.parametrize(
-    "value", ["abc", "0", "-5", "720000;rm", "7 2", "600000.5", "1e-3", "0x10", "1e400", "9" * 20]
-)
-def test_a_timeout_value_the_bridge_would_reject_falls_back_with_a_warning(repo, tmp_path, value):
+@needs_node
+@pytest.mark.parametrize("value", REJECTED_TIMEOUTS)
+def test_a_timeout_value_the_bridge_rejects_falls_back_with_a_warning(repo, tmp_path, value):
     result, _, uv_env = _run(repo, tmp_path, timeout_var=value)
     assert result.returncode == 0
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
@@ -681,6 +717,21 @@ def test_a_timeout_value_the_bridge_would_reject_falls_back_with_a_warning(repo,
     # A variable that is set but unusable is not "unset or unreadable".
     assert "set but not a positive integer" in result.stdout
     assert "workflow fallback; CODEX_KIT_REVIEW_TIMEOUT_MS unset" not in result.stdout
+
+
+def test_a_timeout_value_that_cannot_be_checked_is_not_passed_on(repo, tmp_path):
+    """Without a working node the value cannot be validated the way the bridge does."""
+    result, _, uv_env = _run(repo, tmp_path, timeout_var="720000", node_stub="exit 127")
+    assert result.returncode == 0
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=720000" not in uv_env
+    assert "could not check" in result.stdout
+
+
+def test_the_timeout_value_is_never_interpolated_into_node_code():
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "process.argv[1]" in source  # the value travels as an argument
+    assert "Decimal" not in source  # no approximation of the grammar is left
 
 
 def test_an_unset_timeout_variable_says_unset_not_rejected(repo, tmp_path):

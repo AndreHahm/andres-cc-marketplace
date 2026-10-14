@@ -6,8 +6,8 @@ surface locally instead of one CI round at a time (issue #540). It wraps the exa
 point the workflow uses (`python -m scripts.marketplace_ci run-codex-review`) and reads the
 settings that must match CI from the workflow file itself, so they cannot drift:
 
-  - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when it is set to a value the
-    bridge accepts (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS ||
+  - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when node confirms the bridge
+    would accept it (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS ||
     '<fallback>'`), else the fallback parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
   - Warns when the branch changed a Tier-1 file (list read from the base-tip copy).
@@ -34,7 +34,6 @@ import re
 import signal
 import subprocess
 import sys
-from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
@@ -54,12 +53,13 @@ _TIMEOUT_RE = re.compile(
     r"CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"
     r"(?:\"?(\d+)\"?|\$\{\{[^}]*\|\|\s*'(\d+)'\s*\}\})"
 )
-# A timeout variable is data too. CI forwards it verbatim and bridge-invoke.mjs takes any value
-# whose `Number()` is a positive integer, so decimal forms such as 6e5, 000600000 and 600000.0
-# are valid.
-# Only those decimal forms are read here (no 0x/0b prefixes); the shape is checked before parsing.
-_TIMEOUT_SHAPE_RE = re.compile(r"^[0-9]+(?:\.[0-9]*)?(?:[eE]\+?[0-9]+)?$")
-_TIMEOUT_MAX_MS = 2**53  # beyond this a double no longer holds an exact integer
+# A timeout variable is data too. CI forwards it verbatim and bridge-invoke.mjs accepts it when
+# `Number(value)` is a positive integer. JavaScript's number grammar is open-ended (0x10, 1e-0, +5,
+# ...), so the wrapper asks node with the very same test, passing the value as an argument, never
+# as code.
+_NODE_TIMEOUT_CHECK = (
+    "const n = Number(process.argv[1]); process.exit(Number.isInteger(n) && n > 0 ? 0 : 3)"
+)
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 _SLUG_RE = re.compile(r"^(?:https://github\.com/|git@github\.com:)([\w.-]+/[\w.-]+?)(?:\.git)?$")
@@ -155,27 +155,26 @@ def resolve_model() -> str | None:
     return model if model and _MODEL_RE.match(model) else None
 
 
-def _is_bridge_timeout(value: str) -> bool:
-    """True when bridge-invoke.mjs would accept `value`: a positive integer (decimal forms)."""
-    if not _TIMEOUT_SHAPE_RE.match(value):
-        return False
-    try:
-        number = Decimal(value)
-    except InvalidOperation:
-        return False
-    return 0 < number <= _TIMEOUT_MAX_MS and number == number.to_integral_value()
+def _is_bridge_timeout(value: str) -> bool | None:
+    """True or False as bridge-invoke.mjs would decide for `value`; None when node could not say
+    (not installed, timed out, crashed), which is not the same as a rejection."""
+    result = _run(["node", "-e", _NODE_TIMEOUT_CHECK, "--", value])
+    if result is None:
+        return None
+    return {0: True, 3: False}.get(result.returncode)
 
 
 def resolve_timeout_ms(fallback: str) -> tuple[str, str]:
-    """(timeout_ms, source) with source `variable`, `unset` or `rejected`: the repository variable
-    when the bridge would accept it (passed on verbatim, as CI does), else the workflow's
-    fallback."""
+    """(timeout_ms, source) with source `variable`, `unset`, `rejected` or `unchecked`: the
+    repository variable when the bridge would accept it (passed on verbatim, as CI does), else
+    the workflow's fallback."""
     value = _gh_variable(TIMEOUT_VARIABLE)
     if value is None:
         return fallback, "unset"
-    if _is_bridge_timeout(value):
-        return value, "variable"
-    return fallback, "rejected"
+    accepted = _is_bridge_timeout(value)
+    if accepted is None:
+        return fallback, "unchecked"
+    return (value, "variable") if accepted else (fallback, "rejected")
 
 
 def main() -> int:
@@ -271,6 +270,11 @@ def main() -> int:
     env: dict[str, str] = {**os.environ, TIMEOUT_VARIABLE: timeout_ms}
     if timeout_source == "variable":
         print(f"PARITY: timeout {timeout_ms} ms (from repository variable {TIMEOUT_VARIABLE}).")
+    elif timeout_source == "unchecked":
+        print(
+            f"PARITY WARNING: could not check {TIMEOUT_VARIABLE} with node as the bridge does; "
+            f"using the workflow fallback, {timeout_ms} ms, which may differ from CI."
+        )
     elif timeout_source == "rejected":
         print(
             f"PARITY WARNING: {TIMEOUT_VARIABLE} is set but not a positive integer the bridge "
