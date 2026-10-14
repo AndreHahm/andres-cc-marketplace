@@ -15,6 +15,8 @@ pass; this step runs CI's own entry point so those findings surface before the p
   `gh variable list --json`) when node confirms the bridge accepts it (`Number(value)` is a positive
   integer; a fractional value such as `600000.5` is not), else the fallback in the workflow's
   `vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '<fallback>'` expression. The output says which one it used.
+  The fallback is a local convenience only: for a set but rejected value, CI forwards it unchanged and
+  the bridge rejects it, so the CI review fails; the wrapper warns about exactly that.
 - Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable list --json` (it is a repository variable, not a workflow
   value). Unset, unreadable or malformed means the local Codex default runs, and the output says so.
 - Warns (does not fail) when the local `codex --version` differs from CI's pin.

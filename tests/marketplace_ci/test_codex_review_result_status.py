@@ -254,3 +254,45 @@ def test_an_invalid_envelope_marks_that_reviewer_could_not_run(monkeypatch, revi
     assert "returned invalid output" in payload["error"]
     assert payload["reviewer_results"]["security-reviewer"]["status"] == "could_not_run"
     assert payload["reviewer_results"]["dependency-reviewer"]["status"] == "clean"
+
+
+def test_every_malformed_envelope_is_marked_could_not_run_not_just_the_first(
+    monkeypatch, review_repo, tmp_path
+):
+    """A malformed envelope can still carry a list-valued `findings`; none of them may read as
+    a completed review just because validation stopped at the first bad one."""
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    reports = [
+        ReviewerReport(reviewer="security-reviewer", status="completed", output={"findings": []}),
+        ReviewerReport(
+            reviewer="dependency-reviewer", status="completed", output={"findings": [{"x": 1}]}
+        ),
+        ReviewerReport(
+            reviewer="plugin-rulebook-checker", status="completed", output=json.loads(CLEAN)
+        ),
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 2
+    assert payload["status"] == "could_not_run"
+    results = {name: r["status"] for name, r in payload["reviewer_results"].items()}
+    assert results == {
+        "security-reviewer": "could_not_run",
+        "dependency-reviewer": "could_not_run",
+        "plugin-rulebook-checker": "clean",  # a valid envelope stays what it is
+    }
+    # The error still names the first failure, and says there were more.
+    assert "security-reviewer" in payload["error"]
+    assert "dependency-reviewer" in payload["error"]
+
+
+def test_a_missing_output_and_a_malformed_one_are_both_marked(monkeypatch, review_repo, tmp_path):
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    reports = [
+        ReviewerReport(reviewer="security-reviewer", status="completed", output=None),
+        ReviewerReport(reviewer="dependency-reviewer", status="completed", output={"findings": []}),
+    ]
+    rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
+    assert rc == 2
+    assert {r["status"] for r in payload["reviewer_results"].values()} == {"could_not_run"}

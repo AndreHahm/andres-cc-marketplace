@@ -1533,15 +1533,33 @@ def _clip_error(text: str) -> str:
     return f"{text[:_ERROR_HEAD_CHARS]} ... {text[-(_MAX_ERROR_CHARS - _ERROR_HEAD_CHARS - 5) :]}"
 
 
+# JavaScript's `Number()` reads these radix forms as integers; Python's float() does not.
+_JS_RADIX_RE = re.compile(r"^0(?:[xX][0-9a-fA-F]+|[oO][0-7]+|[bB][01]+)$")
+
+
+def _js_number(raw: str) -> float | None:
+    """`Number(raw)` as bridge-invoke.mjs evaluates it, for the forms a timeout can take, or None
+    when it is NaN. float() differs in two ways that matter here: it rejects 0x/0o/0b numerals
+    (so a value the bridge accepts would read as unset) and it accepts digit separators such as
+    "1_000" (which `Number()` does not)."""
+    text = raw.strip()
+    if _JS_RADIX_RE.match(text):
+        return float(int(text, 0))
+    if "_" in text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def _per_call_seconds() -> float:
     # Parse the way bridge-invoke.mjs does (`Number()` then an integer check),
-    # so a value the bridge accepts (e.g. "6e5") is never read here as unset.
+    # so a value the bridge accepts (e.g. "6e5" or "0x927c0") is never read here as unset: the
+    # dispatcher's own kill timer and budget check must agree with the bridge's real timeout.
     raw = os.environ.get("CODEX_KIT_REVIEW_TIMEOUT_MS")
-    try:
-        ms = float(raw) if raw else 0.0
-    except ValueError:
-        ms = 0.0
-    return ms / 1000 if ms > 0 and ms.is_integer() else _DEFAULT_CALL_SECONDS
+    ms = _js_number(raw) if raw else None
+    return ms / 1000 if ms is not None and ms > 0 and ms.is_integer() else _DEFAULT_CALL_SECONDS
 
 
 def _sanitize_log_text(text: str) -> str:

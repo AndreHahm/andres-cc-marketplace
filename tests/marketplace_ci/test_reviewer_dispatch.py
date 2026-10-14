@@ -723,6 +723,21 @@ def test_dispatch_skips_a_retry_that_would_not_fit_in_the_remaining_budget(
         ("abc", 240.0),
         ("-5", 240.0),
         ("", 240.0),
+        # Number() reads these radix forms as integers; float() does not, which cut a configured
+        # 10 minute budget down to the 4 minute default and killed the bridge at 5 minutes.
+        ("0x927c0", 600.0),
+        ("0X927C0", 600.0),
+        ("0b11", 0.003),
+        ("0o7", 0.007),
+        (" 600000 ", 600.0),
+        # Number() has no digit separators (the bridge rejects them), no sign on a radix form,
+        # no empty digit run and no Infinity from a lowercase word.
+        ("1_000", 240.0),
+        ("-0x10", 240.0),
+        ("0x", 240.0),
+        ("0xg", 240.0),
+        ("inf", 240.0),
+        ("nan", 240.0),
     ],
 )
 def test_per_call_seconds_parses_the_timeout_like_the_bridge(monkeypatch, raw, expected):
