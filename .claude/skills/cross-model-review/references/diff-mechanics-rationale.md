@@ -32,7 +32,8 @@ files out, and an untracked-only change then gives an empty diff that looks like
 ## Why `$UNTRACKED_FILES` matters beyond the Preflight chain
 
 Codex never runs `git diff` itself at all — Phase 1 and Phase 2 both embed diff content directly into
-Codex's instruction file instead (see `references/embed-diff-not-run-rationale.md` for why). The diff
+Codex's instruction file instead (a Codex-run diff of a large change failed every time on a real
+Windows machine while the embedded diff succeeded, issue #78). The diff
 they embed is `$CODEX_DIFF_STR`, not `$DIFF_STR` — scoped to eligible paths only (Preflight step 2).
 Once an untracked file is intent-added, `git diff` shows its **full real content** as an addition, not
 an empty placeholder (verified empirically: intent-adding a two-line untracked file and diffing it
