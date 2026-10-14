@@ -105,10 +105,9 @@ def check_triage_is_a_dedicated_gate():
     step = body[start:end]
     for needed in (
         "AskUserQuestion",
-        '"Prompt"',
+        '"Prompt (Recommended)"',
         '"Skill: `skill-development`"',
         '"Workflow skill: `workflow-skill-development`"',
-        "(Recommended)",
     ):
         if needed not in step:
             return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
