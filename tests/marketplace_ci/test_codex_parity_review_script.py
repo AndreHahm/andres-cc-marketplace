@@ -660,12 +660,33 @@ def test_an_unset_timeout_variable_falls_back_to_the_workflow_literal(repo, tmp_
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
 
 
-@pytest.mark.parametrize("value", ["abc", "0", "-5", "720000;rm", "7 2", "1" * 12])
-def test_a_malformed_timeout_variable_falls_back_instead_of_being_passed_on(repo, tmp_path, value):
+@pytest.mark.parametrize("value", ["6e5", "000720000", "720000.0", "1" * 12])
+def test_a_timeout_value_the_bridge_accepts_is_passed_on_as_ci_would(repo, tmp_path, value):
+    """CI forwards the variable verbatim and the bridge takes any positive `Number()` integer,
+    so the wrapper must not read such a value as unset."""
+    result, _, uv_env = _run(repo, tmp_path, timeout_var=value)
+    assert result.returncode == 0
+    assert f"CODEX_KIT_REVIEW_TIMEOUT_MS={value}" in uv_env
+    assert "from repository variable" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "value", ["abc", "0", "-5", "720000;rm", "7 2", "600000.5", "1e-3", "0x10", "1e400", "9" * 20]
+)
+def test_a_timeout_value_the_bridge_would_reject_falls_back_with_a_warning(repo, tmp_path, value):
     result, _, uv_env = _run(repo, tmp_path, timeout_var=value)
     assert result.returncode == 0
     assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
     assert f"CODEX_KIT_REVIEW_TIMEOUT_MS={value}" not in uv_env
+    # A variable that is set but unusable is not "unset or unreadable".
+    assert "set but not a positive integer" in result.stdout
+    assert "workflow fallback; CODEX_KIT_REVIEW_TIMEOUT_MS unset" not in result.stdout
+
+
+def test_an_unset_timeout_variable_says_unset_not_rejected(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, timeout_var="")
+    assert "set but not a positive integer" not in result.stdout
+    assert "TIMEOUT_MS unset or unreadable" in result.stdout
 
 
 def test_the_real_workflow_takes_the_timeout_from_the_repository_variable():

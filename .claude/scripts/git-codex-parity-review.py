@@ -6,9 +6,9 @@ surface locally instead of one CI round at a time (issue #540). It wraps the exa
 point the workflow uses (`python -m scripts.marketplace_ci run-codex-review`) and reads the
 settings that must match CI from the workflow file itself, so they cannot drift:
 
-  - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when it is set to a valid
-    number (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '<fallback>'`),
-    else the fallback parsed from .github/workflows/marketplace-ci.yml.
+  - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when it is set to a value the
+    bridge accepts (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS ||
+    '<fallback>'`), else the fallback parsed from .github/workflows/marketplace-ci.yml.
   - Codex CLI pin: parsed from the same file; a differing local version only warns.
   - Warns when the branch changed a Tier-1 file (list read from the base-tip copy).
   - Base: `origin/main` is fetched first (best effort); its tip SHA, used as CI's base.sha, is
@@ -34,6 +34,7 @@ import re
 import signal
 import subprocess
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
@@ -53,8 +54,12 @@ _TIMEOUT_RE = re.compile(
     r"CODEX_KIT_REVIEW_TIMEOUT_MS:\s*"
     r"(?:\"?(\d+)\"?|\$\{\{[^}]*\|\|\s*'(\d+)'\s*\}\})"
 )
-# A timeout variable is data too: positive, no leading zero, at most 9 digits (about 11 days).
-_TIMEOUT_VALUE_RE = re.compile(r"^[1-9][0-9]{0,8}$")
+# A timeout variable is data too. CI forwards it verbatim and bridge-invoke.mjs takes any value
+# whose `Number()` is a positive integer, so decimal forms such as 6e5, 000600000 and 600000.0
+# are valid.
+# Only those decimal forms are read here (no 0x/0b prefixes); the shape is checked before parsing.
+_TIMEOUT_SHAPE_RE = re.compile(r"^[0-9]+(?:\.[0-9]*)?(?:[eE]\+?[0-9]+)?$")
+_TIMEOUT_MAX_MS = 2**53  # beyond this a double no longer holds an exact integer
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 _SLUG_RE = re.compile(r"^(?:https://github\.com/|git@github\.com:)([\w.-]+/[\w.-]+?)(?:\.git)?$")
@@ -133,8 +138,8 @@ def _origin_slug() -> str | None:
     return match.group(1) if match else None
 
 
-def _read_variable(name: str, pattern: re.Pattern[str]) -> str | None:
-    """A repository variable's value if it is set and matches `pattern`, else None."""
+def _gh_variable(name: str) -> str | None:
+    """A repository variable's raw value, or None when it is unset or `gh` cannot read it."""
     slug = _origin_slug()
     repo_args = ["--repo", slug] if slug else []
     # `gh variable get` only exists in newer gh releases (absent in 2.45.0); `list --json` is older.
@@ -142,19 +147,35 @@ def _read_variable(name: str, pattern: re.Pattern[str]) -> str | None:
     result = _run(["gh", "variable", "list", "--json", "name,value", "--jq", selector, *repo_args])
     if result is None or result.returncode != 0:
         return None
-    value = result.stdout.strip()
-    return value if pattern.match(value) else None
+    return result.stdout.strip() or None
 
 
 def resolve_model() -> str | None:
-    return _read_variable(MODEL_VARIABLE, _MODEL_RE)
+    model = _gh_variable(MODEL_VARIABLE)
+    return model if model and _MODEL_RE.match(model) else None
 
 
-def resolve_timeout_ms(fallback: str) -> tuple[str, bool]:
-    """(timeout_ms, from_variable): the repository variable when valid, as CI does, else the
-    workflow's fallback."""
-    value = _read_variable(TIMEOUT_VARIABLE, _TIMEOUT_VALUE_RE)
-    return (value, True) if value else (fallback, False)
+def _is_bridge_timeout(value: str) -> bool:
+    """True when bridge-invoke.mjs would accept `value`: a positive integer (decimal forms)."""
+    if not _TIMEOUT_SHAPE_RE.match(value):
+        return False
+    try:
+        number = Decimal(value)
+    except InvalidOperation:
+        return False
+    return 0 < number <= _TIMEOUT_MAX_MS and number == number.to_integral_value()
+
+
+def resolve_timeout_ms(fallback: str) -> tuple[str, str]:
+    """(timeout_ms, source) with source `variable`, `unset` or `rejected`: the repository variable
+    when the bridge would accept it (passed on verbatim, as CI does), else the workflow's
+    fallback."""
+    value = _gh_variable(TIMEOUT_VARIABLE)
+    if value is None:
+        return fallback, "unset"
+    if _is_bridge_timeout(value):
+        return value, "variable"
+    return fallback, "rejected"
 
 
 def main() -> int:
@@ -246,16 +267,20 @@ def main() -> int:
         print(f"PARITY: {instructions_dir} already exists; pass a new --output path.")
         return 2
 
-    timeout_ms, timeout_from_variable = resolve_timeout_ms(timeout_ms)
+    timeout_ms, timeout_source = resolve_timeout_ms(timeout_ms)
     env: dict[str, str] = {**os.environ, TIMEOUT_VARIABLE: timeout_ms}
-    print(
-        f"PARITY: timeout {timeout_ms} ms "
-        + (
-            f"(from repository variable {TIMEOUT_VARIABLE})."
-            if timeout_from_variable
-            else f"(workflow fallback; {TIMEOUT_VARIABLE} unset or unreadable)."
+    if timeout_source == "variable":
+        print(f"PARITY: timeout {timeout_ms} ms (from repository variable {TIMEOUT_VARIABLE}).")
+    elif timeout_source == "rejected":
+        print(
+            f"PARITY WARNING: {TIMEOUT_VARIABLE} is set but not a positive integer the bridge "
+            f"accepts; using the workflow fallback, {timeout_ms} ms. CI would fail on it."
         )
-    )
+    else:
+        print(
+            f"PARITY: timeout {timeout_ms} ms (workflow fallback; "
+            f"{TIMEOUT_VARIABLE} unset or unreadable)."
+        )
     model = resolve_model()
     if model:
         env[MODEL_VARIABLE] = model
