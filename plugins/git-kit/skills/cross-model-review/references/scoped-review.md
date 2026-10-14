@@ -131,8 +131,9 @@ slice can cause that), do not dispatch yet. Ask via `AskUserQuestion`, before th
 Confirmation, naming the batch count, the dispatch count (two per batch) and the limit: review all
 batches, review only the first batches up to the limit in planner order, or stop. Never go past the
 limit without that answer. Choosing the limited run leaves the later batches' slices unreviewed this
-round: report them like dropped slices (they **must be read**), and never pass them as
-`--completed-slice` in a later round. At or under the limit there is no extra question. The First-Send
+round, by either model. Note each of those slices' names and files from the manifest's `slices` (they
+are not in `dropped_slices`) so section 6 can list them as **must be read directly**, and never pass
+them as `--completed-slice` in a later round. At or under the limit there is no extra question. The First-Send
 Confirmation then states the real dispatch count either way.
 
 **Diffs come from files, not commands.** The planner wrote, per slice, `$RUN/diffs-1/<slice>.diff` (every
@@ -186,8 +187,9 @@ section 1 applies to every round.
 ## 6. Report (Phase 3)
 
 Copy into the report, as data: the manifest's `inspection_limits` sentences; every dropped slice with
-its files (a dropped slice **must be read directly**, not skimmed past); folders excluded by a pick or
-not offered; unfinished batches; `PLANNER_TOUCHED` and the answer given; the planner-unavailable
+its files (a dropped slice **must be read directly**, not skimmed past); every slice left out by a
+limited run at the batch limit (section 3), with its files, held to the same must-be-read-directly
+rule; folders excluded by a pick or not offered; unfinished batches; `PLANNER_TOUCHED` and the answer given; the planner-unavailable
 fallback if taken; any cross-check failure. State the manifest path and the completed slice names so a
 second round can use them.
 
