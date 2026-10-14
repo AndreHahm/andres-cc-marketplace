@@ -211,18 +211,18 @@ step: it has the procedure and what the approval preview must show.
 
 Resolve two scopes per environment (`prod`, `test`): the **organization-level** page
 `AndreHahm / <env>` holding the `note`, `research` and `outcome-learning` databases (titled
-`AndreHahm / <env> / <Type>`, shared by every repository), and the **repository-level** page
-`AndreHahm / <repo> / <env>` holding `idea`, `decision`, `proposed-goal` and `report` (titled
-`AndreHahm / <repo> / <env> / <Type>`). `FOUNDATION_CONTRACTS.md`'s Versioned Configuration section
-is canonical for which type sits at which scope. The `AndreHahm` segment is the workspace's root
-page name (decision D46), not a placeholder.
+`AndreHahm / <env> / <Type>`, shared by every repository, so a read can return other repositories'
+rows: see `references/notion-record-types.md`), and the **repository-level** page `AndreHahm / <repo> / <env>`
+holding `idea`, `decision`, `proposed-goal` and `report` (titled `AndreHahm / <repo> / <env> / <Type>`).
+`FOUNDATION_CONTRACTS.md`'s Versioned Configuration section is canonical for which type sits at which
+scope. The `AndreHahm` segment is the workspace's root page name (decision D46), not a placeholder.
 
 Every database carries the required `repo` select property, valued from `notion.repo` (null means ask
 the user for the repository name; never guess it). `notion.repo` holds one repository today; a second
 one needs a map there (`FOUNDATION_CONTRACTS.md`, a later breaking change). Rules that cannot be skipped:
 - **Adopt, don't recreate:** a database already in place at either path is adopted by its stable ID. One
   found only at the old repository-level path for an organization-level type is a move candidate, moved
-  with `notion-move-pages` only after approval, under the same environment's organization-level page.
+  with `notion-move-pages` after approval and only if no row has a blank `repo`, under the same environment's organization-level page.
 - **Adding a `repo` option** to an adopted database (`notion-update-data-source`, `ALTER COLUMN "repo" SET
   SELECT(...)`) replaces the whole option list: re-read it right before the call, send a strict superset
   of it, and confirm every option ID afterwards. A name with a quote, semicolon or parenthesis stops the plan.
@@ -272,9 +272,9 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-10/ (2026-10-14) — Quick
-Workflow, simulate-only, with_skill agent only (no baseline, no benchmark.json): 5/5 on eval 21 (an adopted
-database without a repo property stops the plan). Earlier: iteration 9 28/28 on evals 10, 12, 19, 20, iteration 8 13/13 (read-back), iteration 7 17/17
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-11/ (2026-10-14) — Quick
+Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json): 10/10 on evals 22 and 23 (blank-repo
+rows stop a move; shared-database reads show repo). Earlier: iteration 10 5/5 on eval 21, iteration 9 28/28 on evals 10, 12, 19, 20, iteration 8 13/13 (read-back), iteration 7 17/17
 after the routing rule, iteration 6 43/46 after two regrades. Each eval is also checked against
 `allowed-tools`. Full history: `references/testing-run-history.md`.
 

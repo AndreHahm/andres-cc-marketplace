@@ -1,0 +1,31 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output reports that the Note database holds 12 rows with a blank repo and stops the move",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output plans no notion-move-pages call for the Note database and no row back-fill (no update-page on its rows)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says the operator back-fills the rows outside the kit, after which Bootstrap continues",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not recreate the Note database and keeps adopting it by stable ID",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

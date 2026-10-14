@@ -13,6 +13,11 @@ run record" line points at the latest; the older entries live here.
   database title, so the parent listing is the check. Not tested: an `ALTER COLUMN` that omits an
   existing option (the tool's schema says it removes it), moving a database that holds rows, and any
   production database. The probe objects were trashed afterwards.
+- **iteration-11 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-11/`** — Quick
+  Workflow, simulate-only, `with_skill` agents only. Added evals 22 and 23 after two Codex review findings:
+  a populated legacy database whose rows have a blank `repo` must not be moved (the operator back-fills
+  outside the kit first), and a read of the shared Note, Research or Outcome/Learning databases treats `repo`
+  as attribution (shown per row; filtered only on request). 10/10 assertions.
 - **iteration-10 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-10/`** — Quick
   Workflow, simulate-only, `with_skill` agent only. Added eval 21 after PR review found that nothing said
   what Bootstrap does when an adopted database has no `repo` property at all: the plan stops, Bootstrap

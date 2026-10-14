@@ -1,0 +1,36 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output reports that the Note database holds 12 rows with a blank repo and stops the move",
+      "passed": true,
+      "evidence": "Reports 12 of 12 rows with a blank repo and stops the Note move; the existing option on the data source does not change that"
+    },
+    {
+      "text": "Output plans no notion-move-pages call for the Note database and no row back-fill (no update-page on its rows)",
+      "passed": true,
+      "evidence": "No notion-move-pages, notion-update-data-source, notion-update-page, notion-create-database or notion-create-pages call is planned for the Note database; no row back-fill"
+    },
+    {
+      "text": "Output says the operator back-fills the rows outside the kit, after which Bootstrap continues",
+      "passed": true,
+      "evidence": "Back-fill is the operator's one-time step outside the kit; after it Bootstrap re-queries, confirms zero blank rows, then proposes the move; AskUserQuestion offers stop-and-back-fill first"
+    },
+    {
+      "text": "Output does not recreate the Note database and keeps adopting it by stable ID",
+      "passed": true,
+      "evidence": "Note stays an adopted stopped move candidate by stable ID with no rename or option change; nothing is recreated"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Read, Bash(git ls-files --error-unmatch), AskUserQuestion, Write (local override only, after approval), notion-search, notion-fetch, notion-query-data-sources: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "eval_id": 23,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output lists all three Notes and shows each one's repo value",
+      "passed": true,
+      "evidence": "Lists the three Notes and shows each one's repo value"
+    },
+    {
+      "text": "Output does not present the two other-repo Notes as this repository's and does not silently drop them",
+      "passed": true,
+      "evidence": "Says only the 'andres-cc-marketplace' Note is this repository's; the two 'other-repo' Notes are shown, not dropped"
+    },
+    {
+      "text": "Output says it filters to this repository's records only if the user asks",
+      "passed": true,
+      "evidence": "Does not filter by repo; offers a repo = andres-cc-marketplace filter on request"
+    },
+    {
+      "text": "Output plans only read calls (no create, update, move or schema tool)",
+      "passed": true,
+      "evidence": "Only read calls planned (host-profile and local-override reads, notion-search, notion-fetch only if the user opens a Note)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Read, Bash(git ls-files --error-unmatch), notion-search, notion-fetch: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
