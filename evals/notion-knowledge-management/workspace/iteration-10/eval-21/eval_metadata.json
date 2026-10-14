@@ -1,0 +1,31 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output reports that the adopted Idea data source has no repo property and stops that part of the plan",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output plans no ADD COLUMN and no other schema statement that adds the repo property",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says the operator adds the property outside the kit, after which Bootstrap continues with the options",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not recreate the Idea database and keeps adopting it by stable ID",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

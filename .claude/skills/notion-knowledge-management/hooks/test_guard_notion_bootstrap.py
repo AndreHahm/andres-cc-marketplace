@@ -109,6 +109,26 @@ def launcher_scenarios():
             "falls through to python: deny", run_bash([bash, str(LAUNCHER)], dropped, env), "deny"
         )
 
+        # 3b. uv answers --version but cannot run Python (e.g. a .python-version naming an
+        #     interpreter that is not installed): the cascade must fall through to python.
+        uvbroken = tmp / "uvbroken"
+        uvbroken.mkdir()
+        (uvbroken / "uv").write_text(
+            '#!/bin/bash\n[ "$1" = "--version" ] && exit 0\nexit 2\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        (uvbroken / "python").write_text(
+            f'#!/bin/bash\nexec "{real}" "$@"\n', encoding="utf-8", newline="\n"
+        )
+        for name in ("uv", "python"):
+            (uvbroken / name).chmod(0o755)
+        env = {**os.environ, "PATH": str(uvbroken)}
+        check("broken uv falls through: allow", run_bash([bash, str(LAUNCHER)], allowed, env), None)
+        check(
+            "broken uv falls through: deny", run_bash([bash, str(LAUNCHER)], dropped, env), "deny"
+        )
+
         # 4. The registered command string, run exactly as SKILL.md's frontmatter spells it, from
         #    a plugin root whose path contains a space.
         skill_md = (HERE.parent / "SKILL.md").read_text(encoding="utf-8")
@@ -201,6 +221,21 @@ def main():
         ),
         "double space in keywords": call(
             UPDATE, {"data_source_id": DS, "statements": "ALTER  COLUMN \"repo\" SET SELECT('a')"}
+        ),
+        "extra spaces inside the parentheses": call(
+            UPDATE,
+            {"data_source_id": DS, "statements": "ALTER COLUMN \"repo\" SET SELECT( 'a' )"},
+        ),
+        "extra spaces around the comma": call(
+            UPDATE,
+            {"data_source_id": DS, "statements": "ALTER COLUMN \"repo\" SET SELECT('a'  ,  'b')"},
+        ),
+        "no space after the comma": call(
+            UPDATE,
+            {"data_source_id": DS, "statements": "ALTER COLUMN \"repo\" SET SELECT('a','b')"},
+        ),
+        "leading space before the statement": call(
+            UPDATE, {"data_source_id": DS, "statements": " " + ALTER}
         ),
         "trailing content after semicolon": call(
             UPDATE, {"data_source_id": DS, "statements": ALTER + "; SELECT 1"}

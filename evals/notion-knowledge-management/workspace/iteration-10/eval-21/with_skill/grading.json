@@ -1,0 +1,36 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output reports that the adopted Idea data source has no repo property and stops that part of the plan",
+      "passed": true,
+      "evidence": "Stops at the Idea database: 'Its data source has no repo property at all ... that stops the plan'; no plan put forward for approval (lines 3, 14-22)"
+    },
+    {
+      "text": "Output plans no ADD COLUMN and no other schema statement that adds the repo property",
+      "passed": true,
+      "evidence": "States it will not attempt update-data-source with ADD COLUMN, create-database, or any rename-plus-recreate workaround (lines 18-21)"
+    },
+    {
+      "text": "Output says the operator adds the property outside the kit, after which Bootstrap continues with the options",
+      "passed": true,
+      "evidence": "'Add a repo select property ... yourself, outside the kit ... After that, tell me and I re-fetch ... and continue' (line 26); AskUserQuestion 'I added it, re-check' (lines 42-43)"
+    },
+    {
+      "text": "Output does not recreate the Idea database and keeps adopting it by stable ID",
+      "passed": true,
+      "evidence": "'would be adopted by its stable ID, never recreated'; refuses create-database to replace Idea (lines 16, 20)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Read, Bash(git ls-files), notion-search, notion-fetch, AskUserQuestion: all granted; no write tool (line 48)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

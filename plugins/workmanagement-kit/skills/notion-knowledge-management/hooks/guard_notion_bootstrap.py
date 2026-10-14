@@ -35,7 +35,7 @@ MOVE_TOOL = "mcp__claude_ai_Notion__notion-move-pages"
 _COLORS = r"(?:default|gray|brown|orange|yellow|green|blue|purple|pink|red)"
 _OPTION = r"'[A-Za-z0-9 _./-]{1,100}'(?::" + _COLORS + r")?"
 ALTER_REPO = re.compile(
-    r'ALTER COLUMN "repo" SET SELECT\( *' + _OPTION + r"(?: *, *" + _OPTION + r")* *\) *;?"
+    r'ALTER COLUMN "repo" SET SELECT\(' + _OPTION + r"(?:, " + _OPTION + r")*\);?"
 )
 NOTION_ID = re.compile(r"[0-9a-fA-F-]{32,36}")
 DATA_SOURCE_ID = re.compile(r"(?:collection://)?[0-9a-fA-F-]{32,36}")
@@ -87,12 +87,12 @@ def check_update(tool_input):
         if (
             not isinstance(statements, str)
             or "--" in statements
-            or not ALTER_REPO.fullmatch(statements.strip(" "))
+            or not ALTER_REPO.fullmatch(statements)
         ):
             return (
                 'statements must be exactly one ALTER COLUMN "repo" SET SELECT(...) statement '
-                "on a single line with single spaces and safe option names "
-                "(no quote, semicolon, parenthesis or -- inside a name)."
+                "on a single line, one space after each comma and none inside the parentheses, "
+                "with safe option names (no quote, semicolon, parenthesis or -- inside a name)."
             )
     return None
 

@@ -13,6 +13,13 @@ run record" line points at the latest; the older entries live here.
   database title, so the parent listing is the check. Not tested: an `ALTER COLUMN` that omits an
   existing option (the tool's schema says it removes it), moving a database that holds rows, and any
   production database. The probe objects were trashed afterwards.
+- **iteration-10 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-10/`** — Quick
+  Workflow, simulate-only, `with_skill` agent only. Added eval 21 after PR review found that nothing said
+  what Bootstrap does when an adopted database has no `repo` property at all: the plan stops, Bootstrap
+  never adds the property (the guard denies `ADD COLUMN`), and the operator adds it outside the kit. 5/5
+  assertions. The same review round tightened the guard's statement grammar (one space after each comma,
+  none inside the parentheses) and made the launcher probe `uv run` itself; the guard test now has 66
+  checks and the new cases fail against the previous guard.
 - **iteration-9 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-9/`** — Quick
   Workflow, simulate-only, `with_skill` agents only. Re-ran evals 10 and 12 with stronger Bootstrap
   assertions (the exact statement and option lists in the preview, a fresh read right before the call, a

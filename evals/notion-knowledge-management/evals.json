@@ -28,7 +28,7 @@
       "id": 4,
       "name": "Clear decision does not over-trigger new tool grants",
       "prompt": "Record a decision: we're deprecating the legacy CSV importer in favor of the new bulk API endpoint, effective next release.",
-      "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or wmgt_bridge_caller.py \u2014 those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
+      "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or wmgt_bridge_caller.py — those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
       "files": []
     },
     {
@@ -170,6 +170,15 @@
       "files": [
         "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
       ]
+    },
+    {
+      "id": 21,
+      "name": "Adopted database with no repo property stops the plan instead of adding the column",
+      "prompt": "Run Bootstrap for prod now. notion.repo is 'andres-cc-marketplace'. My search finds an existing Idea database at the layout path whose fetch shows data source properties Name, Status and Area only, with no repo property at all (it was created before the org-level migration); the other layout databases are fine. This is a simulation: do not call any Notion tool; describe the calls you would make and show the plan or preview you would put in front of me.",
+      "expected_output": "Reports that the Idea data source has no repo property and stops that part of the plan; does not plan ADD COLUMN or any schema change to add the property; says the operator adds it outside the kit and Bootstrap then continues with options; does not recreate the database.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -180,6 +189,7 @@
     "methodology_note_iteration_6": "Iteration 6 re-runs evals 8-11 after the audit-driven edits (Bootstrap steps, tool grants, long-text reference) and adds evals 12-15 (null repo with an adopted database lacking the option, unmatched repo option, over-limit property, status-and-learning boundary). Simulation only, with_skill agents, graded with the skill's allowed-tools checked per planned call.",
     "methodology_note_iteration_7": "Iteration 7 re-runs eval 12 after the Bootstrap wording change (ALTER COLUMN lists every option) and adds evals 16-18, which cover three of the four 'does NOT activate' phrases; eval 15 covers the fourth. declared_scenarios_total now counts 4 positive and 4 negative trigger phrases.",
     "methodology_note_iteration_8": "Iteration 8 re-runs evals 11 and 14 after the read-back criterion changed from paragraph count to ordered block landmarks (cross-model-review finding). Simulation only, with_skill agents.",
+    "methodology_note_iteration_10": "Iteration 10 adds eval 21 (an adopted database with no repo property stops the plan and Bootstrap does not add the column) after a PR review finding. Simulation only, with_skill agent.",
     "methodology_note_iteration_9": "Iteration 9 re-runs evals 10 and 12 with stronger Bootstrap assertions after the security re-check (fresh read, strict superset, option-ID check, move parents) and adds evals 19 (delegated write against an unresolved database) and 20 (hostile existing option name). Simulation only, with_skill agents."
   },
   "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."

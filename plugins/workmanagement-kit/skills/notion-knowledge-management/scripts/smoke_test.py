@@ -64,6 +64,28 @@ def _skill_dir_candidates(repo_root):
     return candidates
 
 
+REPO_RELATIVE_PATH = re.compile(r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`")
+
+
+def _missing_repo_relative_paths(text, repo_root):
+    """Repo-relative paths named in ``text`` that do not exist under ``repo_root``.
+
+    A `.claude/<plugin>.local.json`-style reference is this repo's own established local-override
+    convention (.claude/rules/ask-before-config-decisions.md) -- gitignored and install-time-
+    optional, so it legitimately may not exist here and is skipped.
+    """
+    missing = []
+    for match in REPO_RELATIVE_PATH.finditer(text):
+        path_str = match.group(1)
+        if path_str.endswith(".local.json"):
+            continue
+        if repo_root is None:
+            missing.append(path_str + " (repo root not found)")
+        elif not (repo_root / path_str).exists():
+            missing.append(path_str)
+    return missing
+
+
 def check_referenced_files():
     text = SKILL_MD.read_text(encoding="utf-8")
     missing = []
@@ -111,19 +133,7 @@ def check_referenced_files():
         ):
             missing.append(bare_name)
 
-    repo_relative = r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`"
-    for match in re.finditer(repo_relative, text):
-        path_str = match.group(1)
-        if path_str.endswith(".local.json"):
-            # A `.claude/<plugin>.local.json`-style reference is this repo's own established
-            # local-override convention (.claude/rules/ask-before-config-decisions.md) --
-            # gitignored and install-time-optional, so it legitimately may not exist here.
-            continue
-        if repo_root is None:
-            missing.append(path_str + " (repo root not found)")
-            continue
-        if not (repo_root / path_str).exists():
-            missing.append(path_str)
+    missing.extend(_missing_repo_relative_paths(text, repo_root))
 
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
@@ -148,14 +158,8 @@ def check_reference_docs():
                 (cand / "references" / match.group(1)).resolve().exists() for cand in skill_dirs
             ):
                 missing.append(f"{doc.name}: {match.group(1)}")
-        for match in re.finditer(
-            r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`", text
-        ):
-            path_str = match.group(1)
-            if path_str.endswith(".local.json"):
-                continue
-            if repo_root is None or not (repo_root / path_str).exists():
-                missing.append(f"{doc.name}: {path_str}")
+        for path in _missing_repo_relative_paths(text, repo_root):
+            missing.append(f"{doc.name}: {path}")
     if missing:
         return False, "reference file(s) name paths that do not exist: " + ", ".join(missing)
     return True, "paths named in references/*.md exist"
