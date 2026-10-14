@@ -5,9 +5,11 @@ description: >-
   with multi-step phases, sub-agent orchestration, decision trees, and progressive disclosure.
   Use when creating or implementing skills that involve sequential pipelines, routing patterns,
   safety gates, task tracking, phased execution, parallel sub-agent orchestration, or any
-  multi-step workflow command. Also applies when refactoring existing workflow skills; for a
+  multi-step workflow skill. Also applies when redesigning the phase or routing structure of an
+  existing workflow skill; for a
   scored quality review use skill-reviewer, for operator-approved polish skill-refiner-interactive.
-  Not for simple single-purpose skills with no multi-step workflow — use skill-development
+  Not for slash command files (command-development) or simple single-purpose skills with no
+  sub-agents, confirmation gates, routing or workflows/ task files — use skill-development
   directly for those; this skill covers workflow/orchestration architecture only, not domain
   content authoring.
 allowed-tools: Read Glob Grep Write Skill
@@ -113,9 +115,11 @@ plugins/<plugin-name>/
 
 ## When NOT to Use
 
-- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture
+- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture. Test: a skill needs this one only if it has sub-agent dispatch, a confirmation/safety gate, routing between independent tasks, or `workflows/` task files; a linear instruction list, however long, stays in `skill-development`
+- Repairing, consolidating or converting an existing skill, including a workflow skill — use `skill-development`; this skill takes over only to redesign that skill's phase or routing architecture
 - Writing the actual domain content of a skill (this teaches structure, not domain expertise)
-- Plugin configuration (plugin.json, hooks, commands) — use plugin development guides
+- Writing a slash command (a `commands/*.md` file the user runs by typing `/name`), even a multi-step one — use `command-development`; this skill designs SKILL.md workflows that Claude activates from context
+- Plugin configuration (plugin.json, hooks) — use plugin development guides
 - Non-skill Claude Code development — this is specifically for skill architecture
 
 ## Pattern Selection
