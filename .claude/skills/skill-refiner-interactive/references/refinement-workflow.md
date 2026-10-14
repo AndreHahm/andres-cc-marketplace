@@ -176,7 +176,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 - [ ] **Examples:** Code-first examples before abstract explanations
 - [ ] **Structure:** Clear sections (Quick Start → Workflows → Key Rules → References)
 - [ ] **Activation:** Trigger phrases present and clear (will Claude recognize requests?)
-- [ ] **Workflow pattern:** Load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
+- [ ] **Workflow pattern:** Load `${CLAUDE_PLUGIN_ROOT}/references/pdk-design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
 - [ ] **Spawn anti-patterns:** No Cartesian product spawning (O(N×M) subagent spawns across independent lists), no unbounded agent spawning (loop spawn with no explicit count cap on a user-controlled list), no vague subagent prompts (dispatch with no file paths, goal, or output spec)
 
 **Pass Condition:** within the R13 tiers with no Critical, 80% rule applied, clear procedural content.
