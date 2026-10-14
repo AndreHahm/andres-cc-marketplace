@@ -388,7 +388,9 @@ A well-designed workflow skill or command:
   description, resolves to that same pattern — no two patterns share an ambiguous entry point
 
 **Last dated run record:** `evals/workflow-skill-development/workspace/iteration-1/benchmark.json`,
-2026-08-24 (blind-comparison benchmark). `scripts/smoke_test.py` re-run 2026-10-13: 4/4 checks pass, exit 0.
+2026-08-24 (blind-comparison benchmark, evals 1-2). Eval 3 (monolithic SKILL.md, hardcoded paths, reference chain) ran
+2026-10-14 as a with-skill-only Quick Workflow (`evals/workflow-skill-development/workspace/iteration-2/eval-3/`): 4/4
+assertions, no baseline. `scripts/smoke_test.py` re-run 2026-10-14: 4/4 checks pass, exit 0.
 
 ## Reference Index
 
