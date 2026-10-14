@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A skills/release-notes/SKILL.md exists with a name and a description containing trigger phrases",
+      "passed": true,
+      "evidence": "skills/release-notes/SKILL.md with name and quoted triggers"
+    },
+    {
+      "text": "allowed-tools has Bash(git:*) and Bash(gh:*) as separate entries, not Bash(git:*, gh:*)",
+      "passed": true,
+      "evidence": "allowed-tools: Bash(git:*) Bash(gh:*) Read Write"
+    },
+    {
+      "text": "Read and Write remain granted",
+      "passed": true,
+      "evidence": "Read and Write granted"
+    },
+    {
+      "text": "The original behavior is preserved: list merged PRs, group by conventional-commit type, write RELEASE_NOTES.md",
+      "passed": true,
+      "evidence": "Body keeps list merged PRs, group by conventional-commit type, write RELEASE_NOTES.md (agent also added a tag-date filter and an Other group)"
+    },
+    {
+      "text": "Nothing was written outside the outputs directory",
+      "passed": true,
+      "evidence": "No writes outside outputs/"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

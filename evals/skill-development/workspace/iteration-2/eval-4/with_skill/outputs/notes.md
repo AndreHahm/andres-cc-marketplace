@@ -1,0 +1,1 @@
+Read skill-development SKILL.md (routing: When NOT to Use, Audit path, Testing section) and the head of skill-refiner-interactive to confirm its flow (Refine/Validate question). Wrote answer.md only. No user questions were needed. Assumed deploy-notes works and passes the checklist. Did not start the five-phase process or create anything.

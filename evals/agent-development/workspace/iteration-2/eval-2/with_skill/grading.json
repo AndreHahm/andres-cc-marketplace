@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Explicitly flags that Write and/or Bash should be removed from the tools list",
+      "passed": true,
+      "evidence": "notes.md line 6: Write and Bash over-privileged, remove"
+    },
+    {
+      "text": "States or implies the least-privilege principle as the reason",
+      "passed": true,
+      "evidence": "notes.md frames it as read-only reviewer without need to modify files or run commands"
+    },
+    {
+      "text": "Recommends the tools list be restricted to Read, Grep, Glob",
+      "passed": true,
+      "evidence": "notes.md line 8: recommends tools [Read, Grep, Glob]"
+    },
+    {
+      "text": "Does not falsely claim the agent's frontmatter is otherwise invalid (name/description/model/color are all actually fine)",
+      "passed": true,
+      "evidence": "Agent says name/model/color/tools format are valid; its description-form note is a style point, not a claim that the frontmatter is invalid"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

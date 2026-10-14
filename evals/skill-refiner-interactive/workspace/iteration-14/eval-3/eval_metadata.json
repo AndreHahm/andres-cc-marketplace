@@ -1,0 +1,46 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "request (a) routes to skill-refiner-interactive",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (b) routes to skill-refiner-interactive",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (c) routes to skill-reviewer",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (d) routes to skill-development",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (e) routes to skill-improver-loop",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (f) routes to skill-refiner-interactive",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (g) routes to skill-refiner-interactive",
+      "type": "functionality",
+      "target": "routing.md"
+    },
+    {
+      "text": "request (h) routes to skill-refiner-interactive",
+      "type": "functionality",
+      "target": "routing.md"
+    }
+  ]
+}
