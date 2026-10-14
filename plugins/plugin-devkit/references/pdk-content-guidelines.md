@@ -31,9 +31,9 @@ Use when [trigger phrases, contexts, file types, user intents].
 
 ### Examples of Good Descriptions
 
-- "Analyze Excel spreadsheets, create pivot tables, generate charts. Use when analyzing Excel files, spreadsheets, tabular data, or .xlsx files."
-- "Generate descriptive commit messages by analyzing git diffs. Use when user asks for help writing commit messages or reviewing staged changes."
-- "Create Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving skill quality."
+- "Analyzes Excel spreadsheets, creates pivot tables, generates charts. Use when analyzing Excel files, spreadsheets, tabular data, or .xlsx files."
+- "Generates descriptive commit messages by analyzing git diffs. Use when user asks for help writing commit messages or reviewing staged changes."
+- "Creates Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving skill quality."
 
 ### Examples of Poor Descriptions
 
