@@ -16,15 +16,11 @@ import argparse
 import base64
 import json
 import mimetypes
-import os
 import re
-import signal
-import subprocess
 import sys
-import time
 import webbrowser
 from functools import partial
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # Files to exclude from output listings
@@ -32,9 +28,32 @@ METADATA_FILES = {"transcript.md", "user_notes.md", "metrics.json"}
 
 # Extensions we render as inline text
 TEXT_EXTENSIONS = {
-    ".txt", ".md", ".json", ".csv", ".py", ".js", ".ts", ".tsx", ".jsx",
-    ".yaml", ".yml", ".xml", ".html", ".css", ".sh", ".rb", ".go", ".rs",
-    ".java", ".c", ".cpp", ".h", ".hpp", ".sql", ".r", ".toml",
+    ".txt",
+    ".md",
+    ".json",
+    ".csv",
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".yaml",
+    ".yml",
+    ".xml",
+    ".html",
+    ".css",
+    ".sh",
+    ".rb",
+    ".go",
+    ".rs",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".sql",
+    ".r",
+    ".toml",
 }
 
 # Extensions we render as inline images
@@ -276,7 +295,10 @@ def generate_html(
     if benchmark:
         embedded["benchmark"] = benchmark
 
-    data_json = json.dumps(embedded)
+    # Run outputs can hold untrusted text. json.dumps leaves "<" alone, so a "</script>" inside
+    # a value would end the inline script and let the rest run as HTML; "<" only occurs inside
+    # JSON strings, where < is the same character.
+    data_json = json.dumps(embedded).replace("<", "\\u003c")
 
     return template.replace("/*__EMBEDDED_DATA__*/", f"const EMBEDDED_DATA = {data_json};")
 
@@ -285,25 +307,20 @@ def generate_html(
 # HTTP server (stdlib only, zero dependencies)
 # ---------------------------------------------------------------------------
 
-def _kill_port(port: int) -> None:
-    """Kill any process listening on the given port."""
-    try:
-        result = subprocess.run(
-            ["lsof", "-ti", f":{port}"],
-            capture_output=True, text=True, timeout=5,
-        )
-        for pid_str in result.stdout.strip().split("\n"):
-            if pid_str.strip():
-                try:
-                    os.kill(int(pid_str.strip()), signal.SIGTERM)
-                except (ProcessLookupError, ValueError):
-                    pass
-        if result.stdout.strip():
-            time.sleep(0.5)
-    except subprocess.TimeoutExpired:
-        pass
-    except FileNotFoundError:
-        print("Note: lsof not found, cannot check if port is in use", file=sys.stderr)
+MAX_FEEDBACK_BYTES = 1_000_000
+
+
+def request_allowed(host: str | None, origin: str | None, port: int) -> bool:
+    """Accept only requests addressed to this server's own loopback origin.
+
+    Another site can POST here with no preflight, and DNS rebinding can make a foreign
+    hostname resolve to 127.0.0.1; checking Host and Origin blocks both.
+    """
+    allowed_hosts = {f"localhost:{port}", f"127.0.0.1:{port}"}
+    if host not in allowed_hosts:
+        return False
+    return origin is None or origin in {f"http://{h}" for h in allowed_hosts}
+
 
 class ReviewHandler(BaseHTTPRequestHandler):
     """Serves the review HTML and handles feedback saves.
@@ -329,7 +346,17 @@ class ReviewHandler(BaseHTTPRequestHandler):
         self.benchmark_path = benchmark_path
         super().__init__(*args, **kwargs)
 
+    def _allowed(self) -> bool:
+        server = self.server
+        port = server.server_port if isinstance(server, HTTPServer) else 0  # 0 rejects everything
+        if request_allowed(self.headers.get("Host"), self.headers.get("Origin"), port):
+            return True
+        self.send_error(403)
+        return False
+
     def do_GET(self) -> None:
+        if not self._allowed():
+            return
         if self.path == "/" or self.path == "/index.html":
             # Regenerate HTML on each request (re-scans workspace for new outputs)
             runs = find_runs(self.workspace)
@@ -359,8 +386,16 @@ class ReviewHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self) -> None:
+        if not self._allowed():
+            return
         if self.path == "/api/feedback":
-            length = int(self.headers.get("Content-Length", 0))
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = -1
+            if not 0 <= length <= MAX_FEEDBACK_BYTES:
+                self.send_error(413)
+                return
             body = self.rfile.read(length)
             try:
                 data = json.loads(body)
@@ -390,15 +425,22 @@ def main() -> None:
     parser.add_argument("--port", "-p", type=int, default=3117, help="Server port (default: 3117)")
     parser.add_argument("--skill-name", "-n", type=str, default=None, help="Skill name for header")
     parser.add_argument(
-        "--previous-workspace", type=Path, default=None,
+        "--previous-workspace",
+        type=Path,
+        default=None,
         help="Path to previous iteration's workspace (shows old outputs and feedback as context)",
     )
     parser.add_argument(
-        "--benchmark", type=Path, default=None,
+        "--benchmark",
+        type=Path,
+        default=None,
         help="Path to benchmark.json to show in the Benchmark tab",
     )
     parser.add_argument(
-        "--static", "-s", type=Path, default=None,
+        "--static",
+        "-s",
+        type=Path,
+        default=None,
         help="Write standalone HTML to this path instead of starting a server",
     )
     args = parser.parse_args()
@@ -435,20 +477,19 @@ def main() -> None:
         print(f"\n  Static viewer written to: {args.static}\n")
         sys.exit(0)
 
-    # Kill any existing process on the target port
+    # Never terminate whatever holds the port; fall back to a free one instead
     port = args.port
-    _kill_port(port)
     handler = partial(ReviewHandler, workspace, skill_name, feedback_path, previous, benchmark_path)
     try:
         server = HTTPServer(("127.0.0.1", port), handler)
     except OSError:
-        # Port still in use after kill attempt — find a free one
+        # Port in use — find a free one
         server = HTTPServer(("127.0.0.1", 0), handler)
         port = server.server_address[1]
 
     url = f"http://localhost:{port}"
-    print(f"\n  Eval Viewer")
-    print(f"  ---------------------------------")
+    print("\n  Eval Viewer")
+    print("  ---------------------------------")
     print(f"  URL:       {url}")
     print(f"  Workspace: {workspace}")
     print(f"  Feedback:  {feedback_path}")
@@ -456,7 +497,7 @@ def main() -> None:
         print(f"  Previous:  {args.previous_workspace} ({len(previous)} runs)")
     if benchmark_path:
         print(f"  Benchmark: {benchmark_path}")
-    print(f"\n  Press Ctrl+C to stop.\n")
+    print("\n  Press Ctrl+C to stop.\n")
 
     webbrowser.open(url)
 

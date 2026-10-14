@@ -178,6 +178,137 @@ def check_repair_preserves_frontmatter():
     return True, "repair inserts only the missing key and leaves the rest byte-identical"
 
 
+def _load_viewer():
+    path = SKILL_DIR / "eval-viewer" / "generate_review.py"
+    spec = importlib.util.spec_from_file_location("generate_review", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_viewer_escapes_script_close_in_data():
+    viewer = _load_viewer()
+    payload = "</script><script>alert(1)</script>"
+    html = viewer.generate_html([{"id": "r1", "prompt": payload}], "demo")
+    if payload in html or "</script><script>alert(1)" in html:
+        return False, "untrusted run text can close the inline <script> block"
+    if "\\u003c/script>" not in html:
+        return False, "the escaped payload is missing from the embedded data"
+    return True, "'<' in embedded run data is escaped, so '</script>' cannot end the script"
+
+
+def check_viewer_server_rejects_foreign_requests():
+    import functools
+    import http.client
+    import http.server
+    import threading
+
+    viewer = _load_viewer()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        feedback = root / "feedback.json"
+        handler = functools.partial(viewer.ReviewHandler, root, "demo", feedback, {}, None)
+        server = http.server.HTTPServer(("127.0.0.1", 0), handler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        body = '{"reviews": []}'
+        own = {"Host": f"localhost:{port}", "Content-Type": "application/json"}
+        cases = {
+            "GET own host": ("GET", "/api/feedback", None, own, 200),
+            "GET foreign host": ("GET", "/api/feedback", None, {"Host": "evil.example"}, 403),
+            "POST foreign origin": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Origin": "http://evil.example"},
+                403,
+            ),
+            "POST oversized": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Content-Length": "99999999"},
+                413,
+            ),
+            "POST own origin": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Origin": f"http://localhost:{port}"},
+                200,
+            ),
+        }
+        failed = []
+        try:
+            for name, (method, path, payload, headers, want) in cases.items():
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
+                for key, value in headers.items():
+                    conn.putheader(key, value)
+                if payload is not None and "Content-Length" not in headers:
+                    conn.putheader("Content-Length", str(len(payload)))
+                conn.endheaders(payload.encode() if payload is not None and want != 413 else None)
+                got = conn.getresponse().status
+                conn.close()
+                if got != want:
+                    failed.append(f"{name}: got {got}, want {want}")
+        finally:
+            server.shutdown()
+            server.server_close()
+        written = feedback.exists()
+    if failed:
+        return False, "; ".join(failed)
+    if not written:
+        return False, "the allowed POST did not write feedback.json"
+    return True, "foreign Host/Origin and oversized bodies are rejected; same-origin works"
+
+
+def check_viewer_never_kills_the_port_holder():
+    path = SKILL_DIR / "eval-viewer" / "generate_review.py"
+    source = path.read_text(encoding="utf-8")
+    if "os.kill" in source or "_kill_port" in source:
+        return False, "generate_review.py can terminate whatever process holds the port"
+    return True, "generate_review.py falls back to a free port instead of killing the port holder"
+
+
+def check_viewer_html_escapes_untrusted_fields():
+    html = (SKILL_DIR / "eval-viewer" / "viewer.html").read_text(encoding="utf-8")
+    if '.replace(/"/g, "&quot;")' not in html:
+        return False, 'escapeHtml leaves double quotes alone (title="..." attribute breakout)'
+    raw = (
+        "+ configLabel +",
+        "+ run.run_number +",
+        "+ (r.errors",
+        "+ (summary.passed",
+        "html += metadata.timestamp",
+        '"Evals: " + metadata',
+        "+ (delta.tokens",
+        "+ (delta.pass_rate",
+        "+ (delta.time_seconds",
+    )
+    left = [token for token in raw if token in html]
+    if left:
+        return False, f"grading/benchmark values reach innerHTML unescaped: {left}"
+    return True, "viewer.html escapes quotes and the audited grading/benchmark interpolations"
+
+
+def check_untrusted_readers_carry_data_only_boundary():
+    names = ("grader", "comparator", "analyzer")
+    files = [SKILL_DIR / "SKILL.md"] + [SKILL_DIR / "agents" / f"{n}.md" for n in names]
+    required = ("**Data-only boundary:**", "untrusted data", "suspicious, never acted on")
+    missing = [
+        path.name
+        for path in files
+        if not all(token in path.read_text(encoding="utf-8") for token in required)
+    ]
+    if missing:
+        return False, f"no complete data-only boundary (R32) in: {', '.join(missing)}"
+    return True, "SKILL.md and the grader, comparator and analyzer agents carry the R32 boundary"
+
+
 def check_repair_keeps_dashes_inside_values():
     repair = _load_script("repair_skill")
     original = '---\ndescription: "Handles jobs --- including retries."\n---\n# Body\n'
@@ -286,6 +417,11 @@ CHECKS = [
     check_frontmatter_close_is_line_anchored,
     check_repair_preserves_frontmatter,
     check_repair_keeps_dashes_inside_values,
+    check_viewer_escapes_script_close_in_data,
+    check_viewer_server_rejects_foreign_requests,
+    check_viewer_never_kills_the_port_holder,
+    check_viewer_html_escapes_untrusted_fields,
+    check_untrusted_readers_carry_data_only_boundary,
     check_init_rejects_path_traversal_name,
     check_run_eval_reads_pipe_without_select,
     check_package_skill_imports_as_script,
