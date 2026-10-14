@@ -24,7 +24,7 @@ Subagent files use YAML frontmatter (between `---` delimiters) to configure the 
 ---
 name: subagent-name
 description: What the subagent does and when to use it
-model: sonnet
+model: inherit
 tools: Read, Write, Bash
 permissionMode: default
 disallowedTools: Edit

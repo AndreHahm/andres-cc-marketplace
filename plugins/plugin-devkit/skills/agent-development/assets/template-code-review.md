@@ -4,7 +4,7 @@ description: >-
   Expert code review for quality, security, and best practices. Use when
   reviewing code changes, analyzing security, checking performance, or
   validating against standards. Analysis only; no modifications.
-model: sonnet
+model: inherit
 tools: Read, Grep, Glob
 ---
 
