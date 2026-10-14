@@ -46,7 +46,7 @@ description: >-
 
 The `description` controls activation. The body sections scope behavior after activation.
 
-**Format rule:** Start descriptions with triggering conditions ("Use when..."), use third-person voice ("Analyzes X" not "I analyze X"), and include specific trigger keywords. See also AP-20 for the related trap of putting workflow steps in the description.
+**Format rule:** Follow `pdk-content-guidelines.md`'s description formula: third-person voice ("Analyzes X" not "I analyze X"), then a "Use when..." clause with specific trigger keywords. See also AP-20 for the related trap of putting workflow steps in the description.
 
 ---
 
