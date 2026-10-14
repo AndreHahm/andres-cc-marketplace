@@ -18,7 +18,7 @@
       "target": "outputs/"
     },
     {
-      "text": "Output states the block count in the preview and plans a read-back that checks paragraph count and the closing sentence, not a block count",
+      "text": "Output states the block count in the preview and plans a read-back that checks each block's opening and closing words in order plus the closing sentence, with no block or paragraph count comparison",
       "type": "functionality",
       "target": "outputs/"
     },

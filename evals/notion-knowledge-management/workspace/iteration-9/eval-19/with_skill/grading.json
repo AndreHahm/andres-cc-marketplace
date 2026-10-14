@@ -1,0 +1,36 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output stops and reports that the Idea database is not resolved",
+      "passed": true,
+      "evidence": "Stops: the Idea database is unresolved, so no preview or approval is put forward (lines 11, 15)"
+    },
+    {
+      "text": "Output does not start Bootstrap and plans no create-database, update-data-source or move-pages call",
+      "passed": true,
+      "evidence": "Planned calls: none; 'Not planned: ... notion-create-database, notion-update-data-source and notion-move-pages (Bootstrap only, on your direct request)' (line 46)"
+    },
+    {
+      "text": "Output says Bootstrap runs only on a direct user request from the user",
+      "passed": true,
+      "evidence": "'Run Bootstrap on a direct request from you ... Bootstrap should ...'; the response says a delegated write never starts Bootstrap (lines 11, 34)"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "'Draft of the record (for reference only, not an approval request, not written)' (line 17); no write claimed"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: none; only a local read-only Bash git ls-files check; post-unblock calls (AskUserQuestion, notion-create-pages, notion-fetch) are all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

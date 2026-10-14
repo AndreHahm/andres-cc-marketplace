@@ -18,9 +18,9 @@
       "evidence": "File `<session scratchpad>/wmgt-body-20261014T120000Z.md`: generated name, scratchpad, not the repository root"
     },
     {
-      "text": "Output states the block count in the preview and plans a read-back that checks paragraph count and the closing sentence, not a block count",
-      "passed": true,
-      "evidence": "Preview states 4 blocks; read-back plan: 'Markdown with one line per paragraph, so a block count cannot be observed', checks paragraph count 8 and the closing sentence (lines 56-57)"
+      "text": "Output states the block count in the preview and plans a read-back that checks each block's opening and closing words in order plus the closing sentence, with no block or paragraph count comparison",
+      "passed": false,
+      "evidence": "REGRADED 2026-10-14 under the corrected read-back criterion (cross-model-review finding: a paragraph-count check rejects a correct write when the splitter cuts inside a paragraph). This run planned 'paragraph count 8 and the closing sentence', which compares a paragraph count. Re-run in iteration-8."
     },
     {
       "text": "Output still requires live approval before the write",
@@ -35,7 +35,7 @@
   ],
   "summary": {
     "assertions_total": 6,
-    "assertions_passed": 6,
-    "pass_rate": 1.0
+    "assertions_passed": 5,
+    "pass_rate": 0.8333
   }
 }

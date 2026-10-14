@@ -1,0 +1,56 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output distinguishes the organization-level scope (Note, Research, Outcome-Learning) from the repository-level scope (Idea, Decision, Proposed Goal, Report)",
+      "passed": true,
+      "evidence": "Table rows classify Note and Research as organization scope, Idea/Decision/Proposed Goal/Report as repository scope, Outcome-Learning as moving to the organization page (lines 9-10, 44-57)"
+    },
+    {
+      "text": "Output adopts already-present databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "Rows read 'adopt by stable ID'; 'No database needs creating, so I plan no notion-create-database call' (lines 9-10, 17)"
+    },
+    {
+      "text": "Output reports the Outcome-Learning database found at the repository-level path as a move candidate for user approval and does not move or recreate it silently",
+      "passed": true,
+      "evidence": "Outcome-Learning is a move candidate with a user choice (move or not) and the move runs only after plan approval (lines 56-59, 104, 121)"
+    },
+    {
+      "text": "Output requires the repo select property on every database, with andres-cc-marketplace as an option",
+      "passed": true,
+      "evidence": "Adoption table lists each database's current repo options (line 44); the option is added where missing via a strict-superset ALTER COLUMN (lines 76-83)"
+    },
+    {
+      "text": "Output asks for plan-level approval before creating or changing anything",
+      "passed": true,
+      "evidence": "One AskUserQuestion shows the whole plan (A to F); 'Nothing in B, C or D runs without it' (line 100)"
+    },
+    {
+      "text": "Output's plan shows each move's source ID, current parent ID and new parent ID, with the new parent being the organization-level page of the same environment (by stable ID), never the workspace root, a database or a data source",
+      "passed": true,
+      "evidence": "Move block lists source ID, current parent ID, new parent 'AndreHahm / prod' page ID (prod to prod, by stable ID, not the workspace root/database/data source) and a sharing-inheritance warning (lines 56-59)"
+    },
+    {
+      "text": "Output requires the data source to be re-read immediately before any option change, and the option list it sends to be a strict superset of what that read shows",
+      "passed": true,
+      "evidence": "'I re-read the options immediately before each call'; strict-superset rules; afterwards every earlier option ID must still be present and exactly one added (lines 79-83)"
+    },
+    {
+      "text": "Output lists candidates with their stable IDs and parent chains instead of trusting titles alone",
+      "passed": true,
+      "evidence": "Step 1 fetches every candidate for stable ID, full parent chain and repo options; each chain must end at the workspace root page by stable ID; 'Your findings are a lead, not proof' (lines 17, 26-27)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash (git ls-files), Read, AskUserQuestion, notion-search, notion-fetch, notion-move-pages, notion-update-page, notion-update-data-source, Write: all granted; no create-database"
+    }
+  ],
+  "summary": {
+    "assertions_total": 9,
+    "assertions_passed": 9,
+    "pass_rate": 1.0
+  }
+}

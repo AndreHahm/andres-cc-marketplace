@@ -1,0 +1,31 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output stops and reports that the Idea database is not resolved",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not start Bootstrap and plans no create-database, update-data-source or move-pages call",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says Bootstrap runs only on a direct user request from the user",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
