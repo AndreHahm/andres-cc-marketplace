@@ -36,7 +36,7 @@ The user approves the exact plan, so it lists, for every change:
 
 - **Option change:** the data source ID, the exact statement string that will be sent, and the option
   list before and after.
-- **Move:** the source ID, its current parent ID and the new parent ID. The new parent is the
+- **Move:** the source ID, its current parent ID, the new parent ID and the count of rows with a blank `repo` (must be zero). The new parent is the
   organization-level page `AndreHahm / <env>` of the same environment as the source (test to test, prod
   to prod), by stable ID. Never the workspace root, a database or a data source.
 - **Rename:** the old and the new names. A new name is built only from the layout
@@ -68,8 +68,11 @@ not tested.
 
 ## Moving a database (`notion-move-pages`)
 
-Only an approved move candidate, one per call, under the page named in the approved plan. Afterwards fetch
-the moved database and confirm its parent ID. Moving a database that holds rows was not tested.
+Only an approved move candidate, one per call, under the page named in the approved plan. Before proposing
+the move, query the database for rows whose `repo` is blank. If any exist the plan stops: once moved, those
+rows would be unattributable in a database shared by every repository. The operator back-fills them outside
+the kit (the one-time migration step), and Bootstrap then continues. Afterwards fetch the moved database and
+confirm its parent ID. Moving a database that holds rows was not tested live.
 
 ## Renaming both names
 

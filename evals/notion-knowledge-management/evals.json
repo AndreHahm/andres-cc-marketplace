@@ -179,6 +179,24 @@
       "files": [
         "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
       ]
+    },
+    {
+      "id": 22,
+      "name": "Move candidate with blank-repo rows stops the plan instead of moving",
+      "prompt": "Run Bootstrap for prod now. notion.repo is 'andres-cc-marketplace'. My search finds the Note database only at the old repository-level path 'AndreHahm / andres-cc-marketplace / prod / Note'. Its data source already has a repo select with the option 'andres-cc-marketplace', but a query shows 12 rows and all 12 have an empty repo value. The other layout databases are fine. This is a simulation: do not call any Notion tool; describe the calls you would make and show the plan or preview you would put in front of me.",
+      "expected_output": "Reports the 12 rows with a blank repo and stops the move of the Note database; plans no notion-move-pages call for it and no row back-fill; says the operator back-fills outside the kit and Bootstrap then continues; does not recreate the database.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Search of a shared org-level database shows repo as attribution",
+      "prompt": "Find our Notes about caching. The Note database is the organization-level one shared by all repositories and notion.repo is 'andres-cc-marketplace'. A search returns three Notes: one with repo 'andres-cc-marketplace', two with repo 'other-repo'. This is a simulation: do not call any Notion tool; describe the calls you would make and show the reply you would send me.",
+      "expected_output": "Lists all three Notes with each one's repo value, does not present the other-repo Notes as this repository's, does not silently drop them, and offers to filter to this repository's records only if asked; makes only read calls.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -190,7 +208,8 @@
     "methodology_note_iteration_7": "Iteration 7 re-runs eval 12 after the Bootstrap wording change (ALTER COLUMN lists every option) and adds evals 16-18, which cover three of the four 'does NOT activate' phrases; eval 15 covers the fourth. declared_scenarios_total now counts 4 positive and 4 negative trigger phrases.",
     "methodology_note_iteration_8": "Iteration 8 re-runs evals 11 and 14 after the read-back criterion changed from paragraph count to ordered block landmarks (cross-model-review finding). Simulation only, with_skill agents.",
     "methodology_note_iteration_10": "Iteration 10 adds eval 21 (an adopted database with no repo property stops the plan and Bootstrap does not add the column) after a PR review finding. Simulation only, with_skill agent.",
-    "methodology_note_iteration_9": "Iteration 9 re-runs evals 10 and 12 with stronger Bootstrap assertions after the security re-check (fresh read, strict superset, option-ID check, move parents) and adds evals 19 (delegated write against an unresolved database) and 20 (hostile existing option name). Simulation only, with_skill agents."
+    "methodology_note_iteration_9": "Iteration 9 re-runs evals 10 and 12 with stronger Bootstrap assertions after the security re-check (fresh read, strict superset, option-ID check, move parents) and adds evals 19 (delegated write against an unresolved database) and 20 (hostile existing option name). Simulation only, with_skill agents.",
+    "methodology_note_iteration_11": "Iteration 11 adds evals 22 (blank-repo rows stop a move) and 23 (shared-database reads show repo as attribution) after two PR review findings. Simulation only, with_skill agents."
   },
   "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

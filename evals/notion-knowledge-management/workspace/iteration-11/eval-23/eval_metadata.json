@@ -1,0 +1,31 @@
+{
+  "eval_id": 23,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output lists all three Notes and shows each one's repo value",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not present the two other-repo Notes as this repository's and does not silently drop them",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says it filters to this repository's records only if the user asks",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output plans only read calls (no create, update, move or schema tool)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

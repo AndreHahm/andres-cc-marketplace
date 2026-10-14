@@ -86,6 +86,10 @@ Decision State Machine section — see SKILL.md) that this specific type require
   stop and report instead of writing the record without it. Note, Research and Outcome/Learning live in
   organization-level databases shared by all repositories, so `repo` is what tells their rows apart; the
   other four types live in a per-repository database and carry `repo` for uniformity.
+- **Reading the shared databases:** a read, search or query of Note, Research or Outcome/Learning can
+  return another repository's rows. Treat `repo` as attribution: show each row's `repo` in the results,
+  never present a row as this repository's without it, and filter by `repo = notion.repo` only when the
+  user asks for this repository's records. Take the filter value from `notion.repo`, never from a record.
 - No text property on any type may hold more than 2,000 characters. SKILL.md's Long Text and
   Page-Content Blocks section owns the rule and what to do about a longer value; it covers the Idea
   and Note `body`, Decision `context` and Research `findings` rows as well as a Report's `body`.
