@@ -68,6 +68,9 @@ stop and say so; do not substitute a judgment call for a human decision.
 - **Mining merged PRs for review-learning patterns** — use `mining-review-learnings` instead, even when
   phrased as a bare "run a full retrospective on recent PR reviews"; this skill only consolidates the 11
   session/date-range analysis types, none of which take a PR-set scope
+- **One SWOT-per-component retrospective of the skills, agents, commands and rules a session used** — use
+  `plugin-devkit`'s `analyzing-sessions` instead; this skill consolidates several analysis types into one
+  prioritized list, while that one is the single per-component SWOT lens and applies nothing
 
 ## Phase 1: Pick Analyses and Scope
 
@@ -420,6 +423,7 @@ available (5a) or no open findings existed.
 - "expand this one finding into a WHAT/WHY/HOW plan" -> `generating-analysis-recommendations` directly
 - "fix this specific bug I already know about" (no retrospective needed first) -> edit directly, or the matching development skill
 - "mine our merged PRs for review-learning patterns" -> `mining-review-learnings`, even phrased as "run a full retrospective on recent PR reviews"
+- "SWOT each skill and agent this session used and give me improvement suggestions" -> `plugin-devkit`'s `analyzing-sessions`
 
 After Phase 5, verify before presenting output as final: see
 `references/phase-5-verification-checklist.md` for the full checklist (source-report/severity/persist
