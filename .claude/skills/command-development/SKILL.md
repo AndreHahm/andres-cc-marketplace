@@ -27,7 +27,7 @@ allowed-tools: Read Write Edit Skill(plugin-rulebook)
 
 ## When to Use
 
-- Creating, editing or reviewing a slash command file (`commands/*.md` or `.claude/commands/*.md`)
+- Creating, editing or reviewing a slash command file (`commands/*.md` or `.claude/commands/*.md`), other than an orchestrator command that only launches a workflow (`workflow-skill-development`)
 - Defining command arguments (`\$ARGUMENTS`, `\$0`/`\$1`), `argument-hint`, or `allowed-tools` for a command
 - Adding bash execution (`!` backticks), `@file` references or `AskUserQuestion` prompts to a command
 - Organizing a plugin's commands, or writing a multi-step sequence inside one command file
