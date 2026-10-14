@@ -1206,20 +1206,23 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return 2
 
     validated = []
+    unusable: list[tuple[str, str]] = []  # (reviewer, why), in dispatch order
     for report in reports:
         if report.output is None:
-            return _fail_run_codex_review(
-                args, f"{report.reviewer} completed with no output", reports, [report.reviewer]
-            )
+            unusable.append((report.reviewer, "completed with no output"))
+            continue
         try:
             validated.append(validate_review_output(report.output))
         except ReviewOutputError as exc:
-            return _fail_run_codex_review(
-                args,
-                f"{report.reviewer} returned invalid output: {exc}",
-                reports,
-                [report.reviewer],
-            )
+            unusable.append((report.reviewer, f"returned invalid output: {exc}"))
+    if unusable:
+        # Every report is checked before failing, so each unusable one is marked in the artifact
+        # and none reads as a completed review just because it came after the first bad one.
+        first_reviewer, first_reason = unusable[0]
+        message = f"{first_reviewer} {first_reason}"
+        if len(unusable) > 1:
+            message += f" (also unusable: {', '.join(name for name, _ in unusable[1:])})"
+        return _fail_run_codex_review(args, message, reports, [name for name, _ in unusable])
 
     findings = aggregate_findings(validated)
     try:

@@ -88,3 +88,14 @@ def test_the_timeout_comes_from_the_repository_variable_with_a_fallback():
     assert (
         "CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}" in step
     )
+
+
+def test_the_findings_message_does_not_claim_every_blocker_is_on_a_changed_line():
+    """Structural findings, and Critical/Major findings when the changed lines could not be
+    computed, also fail the job with status `findings`."""
+    step = _step(_job("publish"), PUBLISH_NAME)
+    found = re.search(r'REVIEW_STATUS" = "findings"[^\n]*\n\s*echo "([^"]+)"', step)
+    assert found
+    message = found.group(1)
+    assert "changed line" not in message
+    assert "codex-review-result" in message  # points at the artifact instead

@@ -1717,7 +1717,7 @@ jobs:
           if [ "$CODEX_RESULT" != "success" ] && [ "$CODEX_RESULT" != "skipped" ]; then
             # The status only picks the wording; this job's own result already failed it.
             if [ "$REVIEW_STATUS" = "findings" ]; then
-              echo "Codex review found a blocking (Critical/Major) finding on a changed line."
+              echo "Codex review reported blocking findings (reviewer Critical/Major or structural). See the codex-review-result artifact."
             elif [ "$REVIEW_STATUS" = "could_not_run" ]; then
               echo "Codex review could not run to completion (guard refusal, reviewer dispatch failure, timeout or infrastructure error) -- this is not a verdict on the change. See the codex-review-result artifact."
             else
