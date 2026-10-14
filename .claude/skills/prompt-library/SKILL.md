@@ -101,9 +101,10 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
 5. **Triage.** Every add, however plain the text looks, gets its own `AskUserQuestion` before anything is
    filed; never fold it into the step 6 question or skip it because the answer seems obvious. Ask whether
    this is one reusable instruction text (a prompt) or needs something a prompt cannot provide (a skill),
-   with these three options (list the one you recommend first and append `(Recommended)` to its label):
-   "Prompt", "Skill: `skill-development`" (bundled scripts or references, tool restrictions, automatic activation) and
-   "Workflow skill: `workflow-skill-development`" (multi-step phases or sub-agent orchestration). Naming an
+   with these three options, in this order unless a skill fits better: "Prompt (Recommended)",
+   "Skill: `skill-development`" (bundled scripts or references, tool restrictions, automatic activation) and
+   "Workflow skill: `workflow-skill-development`" (multi-step phases or sub-agent orchestration). Exactly one
+   label carries `(Recommended)`: if a skill fits better, move the marker to that label and list it first. Naming an
    existing script that the user already has is a prompt, not a bundled script. If the user picks a skill
    option, point to that skill and create no record. Then filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
