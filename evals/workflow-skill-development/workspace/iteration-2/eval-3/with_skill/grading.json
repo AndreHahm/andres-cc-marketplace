@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Explicitly flags the 640-line SKILL.md as monolithic or over the 500-line limit and recommends moving content into references/ or workflows/",
+      "passed": true,
+      "evidence": "review.md finding 1: \"AP-2 Monolithic SKILL.md (640 lines, all inline) - FAIL\"; \"The draft is 140 lines over\"; fix: \"Move detailed reference material (tables, examples) to `references/`\" and \"Move step-by-step procedures to `workflows/`\"."
+    },
+    {
+      "text": "Explicitly flags the absolute /Users/dana/... paths as hardcoded and recommends a path variable such as CLAUDE_SKILL_DIR instead",
+      "passed": true,
+      "evidence": "review.md finding 2: \"AP-4 Hardcoded absolute paths (Step 2 and Step 5) - FAIL\" naming both /Users/dana/projects/deploy/config.yaml and .../scripts/push.sh; fix: \"Use `${CLAUDE_SKILL_DIR}` for files the skill ships\"."
+    },
+    {
+      "text": "Explicitly flags overview.md -> details.md -> edge-cases.md as a reference chain and recommends keeping every file one hop from SKILL.md",
+      "passed": true,
+      "evidence": "review.md finding 3: \"AP-3 Reference chain (overview -> details -> edge-cases) - FAIL\"; \"the rule is that every file is one hop from SKILL.md\"; fix: link all three directly from SKILL.md's Reference Index."
+    },
+    {
+      "text": "Does not incorrectly claim the skill has no anti-patterns",
+      "passed": true,
+      "evidence": "review.md Summary: \"Three confirmed failures: AP-2 (size), AP-4 (hardcoded paths, two occurrences), AP-3 (reference chain).\" Finding 4 is hedged as a CHECK, not a false claim."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
