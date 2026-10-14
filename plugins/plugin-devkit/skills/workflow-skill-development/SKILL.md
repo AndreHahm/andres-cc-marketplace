@@ -186,7 +186,7 @@ Create `commands/<workflow-name>.md` — a lean dispatcher that references task 
 ```markdown
 ---
 description: <Workflow description>
-allowed-tools: Task, Read
+allowed-tools: Agent, Read
 model: sonnet
 ---
 
