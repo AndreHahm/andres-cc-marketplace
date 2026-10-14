@@ -1,0 +1,32 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill_rerun",
+  "note": "Re-run after the routing rule was added to SKILL.md (When NOT to Use). The first run is in ../with_skill/.",
+  "assertions_evaluated": [
+    {
+      "text": "Output identifies a dated progress summary as status-and-learning's job",
+      "passed": true,
+      "evidence": "'This request belongs to status-and-learning'; a dated progress snapshot of completed work"
+    },
+    {
+      "text": "Output names status-and-learning and stops: it drafts no Report preview or sketch, not even with placeholder figures",
+      "passed": true,
+      "evidence": "'Per the skill's routing rule, I name the owning skill and stop here. I am not drafting or sketching a preview of the progress Report'; no Report table in 25 lines"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "No write is claimed; 'No Notion or Linear tool is called by this skill for this request'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: only Skill(status-and-learning) as the hand-off; no mcp__claude_ai_Notion__* and no Linear call from this skill"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

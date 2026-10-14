@@ -1,0 +1,32 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill_rerun",
+  "note": "Re-run after the routing rule was added to SKILL.md (When NOT to Use). The first run is in ../with_skill/.",
+  "assertions_evaluated": [
+    {
+      "text": "Output says creating a Linear issue is linear-work-management's job, not this skill's",
+      "passed": true,
+      "evidence": "First line: 'This request belongs to linear-work-management, not to notion-knowledge-management'"
+    },
+    {
+      "text": "Output names linear-work-management and stops: it drafts no Linear issue preview or sketch and no Notion record",
+      "passed": true,
+      "evidence": "'It owns the issue preview and its approval gate'; no Linear issue draft or sketch, no Notion record, in 11 lines"
+    },
+    {
+      "text": "Output does not create or claim to create any Linear or Notion state",
+      "passed": true,
+      "evidence": "No state created or claimed; offers a separate Notion Idea or Note only on request, 'a different write with its own preview and approval'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: only Skill(linear-work-management); 'No Notion or Linear tool is called by this skill'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

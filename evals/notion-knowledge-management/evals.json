@@ -125,14 +125,42 @@
       "files": [
         "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
       ]
+    },
+    {
+      "id": 16,
+      "name": "Negative trigger: create a Linear issue",
+      "prompt": "Create a Linear issue for this: the export times out for large accounts. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Does not capture a Notion record; says Linear execution state belongs to linear-work-management.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Negative trigger: promote an idea to Linear",
+      "prompt": "Promote the 'add a --dry-run flag to the bulk exporter' idea to Linear. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Does not promote anything; routes promotion into Linear to idea-to-implementation.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Negative trigger: summarize progress to Notion",
+      "prompt": "Summarize this week's progress on the export migration to Notion. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Does not write a snapshot itself; routes the dated progress summary to status-and-learning.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 4,
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 8,
     "uncovered": [],
     "methodology_note_iteration_5": "Evals 8-11 cover the 2026-10-13 org-level migration behavior (repo select, unset notion.repo, two-scope bootstrap, long-text blocks). Simulation only: agents were told not to call Notion.",
-    "methodology_note_iteration_6": "Iteration 6 re-runs evals 8-11 after the audit-driven edits (Bootstrap steps, tool grants, long-text reference) and adds evals 12-15 (null repo with an adopted database lacking the option, unmatched repo option, over-limit property, status-and-learning boundary). Simulation only, with_skill agents, graded with the skill's allowed-tools checked per planned call."
+    "methodology_note_iteration_6": "Iteration 6 re-runs evals 8-11 after the audit-driven edits (Bootstrap steps, tool grants, long-text reference) and adds evals 12-15 (null repo with an adopted database lacking the option, unmatched repo option, over-limit property, status-and-learning boundary). Simulation only, with_skill agents, graded with the skill's allowed-tools checked per planned call.",
+    "methodology_note_iteration_7": "Iteration 7 re-runs eval 12 after the Bootstrap wording change (ALTER COLUMN lists every option) and adds evals 16-18, which cover three of the four 'does NOT activate' phrases; eval 15 covers the fourth. declared_scenarios_total now counts 4 positive and 4 negative trigger phrases."
   },
   "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }

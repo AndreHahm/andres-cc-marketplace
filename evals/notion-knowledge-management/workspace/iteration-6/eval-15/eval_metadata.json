@@ -8,7 +8,7 @@
       "target": "outputs/"
     },
     {
-      "text": "Output does not build and preview an Outcome/Learning record from scratch itself",
+      "text": "Output names status-and-learning and stops: it builds no Outcome/Learning preview or sketch of its own, not even an unfilled one",
       "type": "quality",
       "target": "outputs/"
     },

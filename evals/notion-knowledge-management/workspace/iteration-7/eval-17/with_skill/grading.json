@@ -1,0 +1,31 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output says promoting an idea into Linear is idea-to-implementation's job, not this skill's",
+      "passed": true,
+      "evidence": "Lines 8-9: promoting an Idea into Linear is idea-to-implementation's approval-gated job"
+    },
+    {
+      "text": "Output does not create Linear work or a Notion record itself",
+      "passed": true,
+      "evidence": "Lines 40-41: 'I will not' call any Linear tool, draft the Linear issue, or write to Notion"
+    },
+    {
+      "text": "Output keeps this skill's role to reading or capturing Notion knowledge, if it mentions one at all",
+      "passed": true,
+      "evidence": "Line 12: does only the read-only lookup that belongs here, then hands off; no Linear preview built"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: notion-search, notion-fetch, Bash(git ls-files), AskUserQuestion: granted; Skill(idea-to-implementation) is the hand-off after a yes, not a call this skill's grants cover (noted)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

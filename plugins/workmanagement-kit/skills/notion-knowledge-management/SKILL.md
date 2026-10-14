@@ -18,10 +18,8 @@ allowed-tools: Read, Write, AskUserQuestion, Bash(git ls-files:*), Bash(${CLAUDE
 Notion is the authority for this plugin's knowledge domain: Ideas, Decisions, proposed Goals,
 Notes, Research, Reports, and Outcome/Learning records. This skill is the only place that reads or
 writes these record types. It never touches Linear — accepted execution state lives there, and
-`linear-work-management` owns it exclusively. A direct-user request to capture a learning or
-summarize completed work (`"capture what we learned from this"`) is `status-and-learning`'s
-trigger, not this skill's — that skill drafts the Outcome/Learning content from Linear facts and
-calls this skill only to execute the resulting write.
+`linear-work-management` owns it exclusively. A request another skill owns is routed there, not
+handled here (see When NOT to Use).
 
 ## When to Use
 
@@ -38,6 +36,8 @@ write that `status-and-learning` has drafted.
 - A request to act in Linear, or to promote captured knowledge into Linear (including accepting a
   proposed Goal into execution) → `linear-work-management` / `idea-to-implementation`.
 - A request submitted by another plugin's own workflow → `plugin-integration-intake`.
+- **When routing, name the owning skill and stop.** Do not draft or sketch a preview of the record that
+  skill owns (an Outcome/Learning record, a dated progress Report, a Linear issue); it drafts it.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -216,8 +216,10 @@ Every database carries the required `repo` select property.
   needs a map there (`FOUNDATION_CONTRACTS.md`, a later breaking change).
 - **A created database** gets the `repo` property with that value as an option. **An adopted database
   whose `repo` select lacks the option** (normal for a shared organization-level database when
-  another repository bootstraps) gets the option added with `notion-update-data-source`, as a schema
-  change listed in the plan and approved with it.
+  another repository bootstraps) gets the option added with `notion-update-data-source`
+  (`ALTER COLUMN "repo" SET SELECT(...)`), as a schema change listed in the plan and approved with it.
+  That call replaces the whole option list, so list every existing option plus the new one (the tool's
+  schema says an omitted option is removed; a live test run on 2026-10-14 kept the existing option's ID).
 - **Adopt, don't recreate:** a database already in place at either path is adopted by its stable ID.
   One found only at the old repository-level path for an organization-level type is a move candidate,
   carried out with `notion-move-pages` only after the user approves it, never silently.
@@ -271,12 +273,12 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-6/ (2026-10-14) — Quick
-Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json): evals 8-15 covering the
-required `repo` from `notion.repo`, the stop when it is unset or matches no option, the two-scope Bootstrap
-(adopted databases, move candidate, adding the `repo` option), long text as page-content blocks, an
-over-limit property, and the `status-and-learning` boundary; 46/46 assertions, each eval also checked
-against this skill's `allowed-tools`. Earlier iterations (1-5) are in `references/testing-run-history.md`.
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-7/ (2026-10-14) — Quick
+Workflow, simulate-only, with_skill agents only (no baseline, no benchmark.json). Iteration 6 (evals 8-15:
+`repo` from `notion.repo`, the stop when it is unset or unmatched, two-scope Bootstrap, long text, an
+over-limit property) scored 45/46 after eval 15 was regraded as a fail. Iteration 7 re-ran eval 12 and the
+routing evals 15-18 (the "does NOT activate" phrases): 18/19 first run, 17/17 after the routing rule was
+added; each eval is also checked against `allowed-tools`. Iterations 1-5: `references/testing-run-history.md`.
 
 **Quality gates:**
 - [ ] Every write is preceded by a preview and, where required, live approval.

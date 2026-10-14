@@ -1,0 +1,46 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output asks the user for the repository name (AskUserQuestion) and does not infer it from the checkout, directory or git remote",
+      "passed": true,
+      "evidence": "Line 9: AskUserQuestion for the repository name; 'I will not infer it from the checkout'"
+    },
+    {
+      "text": "Output plans to add the repository's option to the adopted organization-level databases' `repo` select as a schema change listed in the plan and approved with it",
+      "passed": true,
+      "evidence": "Org-level table: Adopt, add `repo` option <repo> for note, research, outcome-learning (lines 36-41), as a plan item"
+    },
+    {
+      "text": "Output names notion-update-data-source (not notion-create-database) for that schema change",
+      "passed": true,
+      "evidence": "Line 41: `ALTER COLUMN \"repo\" SET SELECT('other-repo', '<repo>')` via notion-update-data-source; no create-database planned"
+    },
+    {
+      "text": "Output adopts the existing databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "Line 20 'resolve everything by stable ID'; line 32 'adopted by stable ID, not recreated'"
+    },
+    {
+      "text": "Output records notion.repo through the local override (.claude/workmanagement-kit.local.json), not by editing the shipped versioned-configuration.json",
+      "passed": true,
+      "evidence": "Line 11: recorded through `.claude/workmanagement-kit.local.json`, not the tracked versioned-configuration.json"
+    },
+    {
+      "text": "Output requires plan-level approval before any change",
+      "passed": true,
+      "evidence": "Planned calls: 'AskUserQuestion (repo name, then plan approval)'; nothing runs until answered"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: AskUserQuestion, Bash(git ls-files), Read, notion-search, notion-fetch, notion-update-data-source, notion-update-page, notion-move-pages, Write: all granted. Also line 43: lists existing other-repo with the new option so it is not dropped"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill_rerun",
+  "note": "Re-run after the routing rule was added to SKILL.md (When NOT to Use). The first run is in ../with_skill/.",
+  "assertions_evaluated": [
+    {
+      "text": "Output says promoting an idea into Linear is idea-to-implementation's job, not this skill's",
+      "passed": true,
+      "evidence": "'promoting captured knowledge into Linear belongs to idea-to-implementation (with linear-work-management owning the Linear side)'"
+    },
+    {
+      "text": "Output names idea-to-implementation and stops: it drafts no Linear issue preview or sketch",
+      "passed": true,
+      "evidence": "'So I am not drafting a Linear issue or a plan here. idea-to-implementation drafts the issue and runs its own approval gate'"
+    },
+    {
+      "text": "Output does not create Linear work or a Notion record itself",
+      "passed": true,
+      "evidence": "'This skill never touches Linear and never creates Linear work'; no Notion record created"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: only Skill(idea-to-implementation) as a hand-off; 'No Notion or Linear tool call from this skill'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

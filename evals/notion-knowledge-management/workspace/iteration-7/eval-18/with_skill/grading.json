@@ -1,0 +1,31 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output identifies a dated progress summary as status-and-learning's job, not a knowledge capture by this skill",
+      "passed": true,
+      "evidence": "Lines 6-11: summarize progress to Notion belongs to status-and-learning"
+    },
+    {
+      "text": "Output does not draft a Report or other record from scratch itself",
+      "passed": false,
+      "evidence": "Step 6 'Build and preview (below)' and a Report preview 'placeholder data, pending the Linear read' (lines 31, 45-72): it sketched the Report the routed skill owns"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "Line 72: figures are placeholders because this is a simulation; no write is claimed"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "This skill's own calls (notion-search, notion-fetch, notion-query-data-sources, notion-create-pages, notion-update-page, AskUserQuestion, Bash git ls-files) are granted; Skill(status-and-learning), Skill(linear-work-management) are hand-offs (noted)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

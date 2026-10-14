@@ -8,9 +8,9 @@
       "evidence": "'It belongs to status-and-learning, which drafts' the content; 'Hand off to status-and-learning' is step 1"
     },
     {
-      "text": "Output does not build and preview an Outcome/Learning record from scratch itself",
-      "passed": true,
-      "evidence": "'So I am not writing an Outcome/Learning record from here'; the only preview is labelled 'illustrative ... PREVIEW, NOT WRITTEN' with content unfilled (weak pass: the sketch carries a filled title)"
+      "text": "Output names status-and-learning and stops: it builds no Outcome/Learning preview or sketch of its own, not even an unfilled one",
+      "passed": false,
+      "evidence": "REGRADED 2026-10-14 under the tightened wording: the response showed an 'illustrative' Outcome/Learning preview ('PREVIEW, NOT WRITTEN') with a filled title and type. Originally graded as a weak pass; under 'not even an unfilled one' it fails. The routing itself was correct. Re-run after the skill change: iteration-7/eval-15/with_skill_rerun, passes."
     },
     {
       "text": "Output says this skill only executes the write once status-and-learning has drafted the content, under the live approval gate",
@@ -30,7 +30,7 @@
   ],
   "summary": {
     "assertions_total": 5,
-    "assertions_passed": 5,
-    "pass_rate": 1.0
+    "assertions_passed": 4,
+    "pass_rate": 0.8
   }
 }
