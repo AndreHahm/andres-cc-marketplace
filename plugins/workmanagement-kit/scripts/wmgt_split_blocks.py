@@ -13,9 +13,10 @@ Usage:
     wmgt_split_blocks.py split <file> [--max N] [--start I] [--count K]
 
 Prints one JSON object: {"ok": true, "max_units": N, "total": <all blocks>, "start": I,
-"count": <blocks returned>, "blocks": [...]} with the blocks in [start, start + count)
-(count defaults to 10). A caller pages through a long text with --start. On a failure it
-prints {"ok": false, "error": "..."} and exits 1.
+"count": <blocks returned>, "has_more": bool, "next_start": <int or null>, "blocks": [...]}
+with the blocks in [start, start + count) (count defaults to 10). A caller pages through a
+long text by passing "next_start" as --start while "has_more" is true. On a failure,
+including a bad command line, it prints {"ok": false, "error": "..."} and exits 1.
 
 Splitting prefers a blank line between paragraphs, then a line break, then a space or tab,
 and cuts hard only where a stretch has no whitespace. Length is counted in UTF-16 units, so a
@@ -26,7 +27,8 @@ blank line by the caller, so a mid-paragraph cut reads as a paragraph break afte
 Limitation: it does not understand markdown tables or code fences, so a split can land inside
 one.
 
-The file must be a regular (non-symlink), strictly UTF-8, non-blank file of at most 5 MB. The
+The file must be a regular (non-symlink), strictly UTF-8 (a leading byte-order mark is ignored),
+non-blank file of at most 5 MB. The
 symlink check covers only the final path component and is a convenience, not a security
 boundary.
 """
@@ -116,7 +118,7 @@ def read_text(path_text):
     if path.stat().st_size > MAX_FILE_BYTES:
         raise SplitError(f"the file is larger than {MAX_FILE_BYTES} bytes")
     try:
-        text = path.read_bytes().decode("utf-8")
+        text = path.read_bytes().decode("utf-8-sig")
     except UnicodeDecodeError:
         raise SplitError("the file is not valid UTF-8") from None
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -134,18 +136,28 @@ def run(args):
         raise SplitError("--count must be 1 or more")
     blocks = split_blocks(read_text(args.file), args.max)
     window = blocks[args.start : args.start + args.count]
+    end = args.start + len(window)
     return {
         "ok": True,
         "max_units": args.max,
         "total": len(blocks),
         "start": args.start,
         "count": len(window),
+        "has_more": end < len(blocks),
+        "next_start": end if end < len(blocks) else None,
         "blocks": window,
     }
 
 
+class _JsonArgumentParser(argparse.ArgumentParser):
+    """Report a bad command line as the documented JSON failure instead of argparse's exit 2."""
+
+    def error(self, message):
+        raise SplitError(f"bad arguments: {message}")
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = _JsonArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     split = sub.add_parser("split", help="split a file into blocks")
     split.add_argument("file")

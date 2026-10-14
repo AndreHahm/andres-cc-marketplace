@@ -162,12 +162,44 @@ def main():
         many = "\n\n".join("m" * 1500 for _ in range(15))
         code, out = run_script("split", str(write("many.md", many)))
         check("default count", out.get("count") == 10 and out.get("total") == 15, str(out))
+        check(
+            "first page has more",
+            out.get("has_more") is True and out.get("next_start") == 10,
+            str({k: out.get(k) for k in ("has_more", "next_start")}),
+        )
+        code, out = run_script("split", str(tmp / "many.md"), "--start", "10")
+        check(
+            "last page ends paging",
+            out.get("count") == 5
+            and out.get("has_more") is False
+            and out.get("next_start") is None,
+            str({k: out.get(k) for k in ("count", "has_more", "next_start")}),
+        )
         code, out = run_script("split", str(tmp / "many.md"), "--start", "999")
         check(
             "page past end",
             code == 0 and out.get("count") == 0 and out.get("blocks") == [] and out.get("ok"),
             str(out),
         )
+
+        # 6f2. A leading byte-order mark is not content.
+        bom = tmp / "bom.md"
+        bom.write_bytes(b"\xef\xbb\xbfHello.")
+        code, out = run_script("split", str(bom))
+        check("bom ignored", code == 0 and out.get("blocks") == ["Hello."], str(out))
+
+        # 6f3. A bad command line is the documented JSON failure with exit 1, not argparse's exit 2.
+        for name, args in {
+            "no command": (),
+            "missing file argument": ("split",),
+            "non-numeric max": ("split", str(tmp / "short.md"), "--max", "abc"),
+        }.items():
+            code, out = run_script(*args)
+            check(
+                f"bad args {name}",
+                code == 1 and out.get("ok") is False and out.get("error"),
+                f"{code} {out}",
+            )
 
         # 6g. A very large single paragraph finishes promptly and keeps every word.
         word_list = ["word"] * 200_000  # ~1 MB with no blank line
