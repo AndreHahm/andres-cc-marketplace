@@ -4,7 +4,7 @@ description: >-
   Fix bugs, implement changes, and refactor code. Use when fixing specific
   issues, implementing features, or refactoring sections. Auto-approves file
   edits; use when trusting the transformation.
-model: sonnet
+model: inherit
 tools: Read, Write, Edit, Bash, Grep, Glob
 permissionMode: acceptEdits
 ---

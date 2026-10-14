@@ -3,7 +3,7 @@ name: subagent-name
 description: >-
   [What the subagent does]. Use when [trigger contexts/scenarios].
   [Scope/constraints].
-model: sonnet
+model: inherit
 tools: Read, Grep, Glob
 permissionMode: default
 ---

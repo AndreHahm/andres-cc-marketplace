@@ -4,7 +4,7 @@ description: >-
   Execute read-only database queries to analyze data. Use when exploring
   table structure, generating reports, or analyzing data patterns. SELECT
   queries only; write operations are blocked.
-model: sonnet
+model: inherit
 tools: Bash, Read
 permissionMode: dontAsk
 hooks:
