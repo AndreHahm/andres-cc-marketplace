@@ -76,10 +76,9 @@ file ships with every operation defaulting to `support_status: "unconfigured"`**
 makes it functional via `.claude/workmanagement-kit.local.json` during Foundational Setup (see the
 plugin README's Status section); until an operation's `support_status` reads `verified`, no write
 may proceed on the assumption that a sanctioning check happened. **Before honoring that override
-file's contents at all**, run the tracked-vs-untracked trust check `FOUNDATION_CONTRACTS.md`'s Local
-Override section defines (`Bash(git ls-files --error-unmatch:*)` is granted in this file's own `allowed-tools`
-specifically so this check is actually runnable, not just documented) — a tracked copy falls back
-to the shipped `unconfigured` defaults, never the override's claims.
+file's contents at all**, run the trust check `FOUNDATION_CONTRACTS.md`'s Local Override section defines:
+`git ls-files --error-unmatch ":(top,literal).claude/workmanagement-kit.local.json"` (granted in `allowed-tools`).
+A tracked copy falls back to the shipped `unconfigured` defaults, never the override's claims.
 
 This file's own `allowed-tools` names the real, currently-installed Notion connector's tool
 surface (`mcp__claude_ai_Notion__*`) directly — resolved during Foundational Setup, see the plugin
@@ -125,11 +124,12 @@ depend on connector behavior. Two rules follow:
   below.
 - **A long body goes into page content, not a property.** For a Report (and any other record whose
   `body`, `findings` or `context` would exceed the limit), the property holds only a short note, and
-  the full text goes into the page as blocks of at most 2,000 characters, split by
-  `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py`. Read `references/long-text-blocks.md` before
-  doing this: it has the file naming, paging, partial-failure and read-back steps (the read-back
-  checks each block's opening and closing words in order plus the closing sentence, never a block or
-  paragraph count). The preview states the block count; none of it changes the approval gate.
+  the full text goes into the page as blocks of at most 2,000 characters: write it to a scratchpad file
+  with `Write`, then split it with `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py`. Read
+  `references/long-text-blocks.md` before doing this: it has the file naming, paging, partial-failure
+  and read-back steps (the read-back checks each block's opening and closing words in order plus the
+  closing sentence, never a block or paragraph count). The preview states the block count; none of it
+  changes the approval gate.
 
 ## Decision State Machine
 
@@ -283,9 +283,9 @@ after the routing rule, iteration 6 43/46 after two regrades. Each eval is also 
 - [ ] Every write is followed by a read-back before the transition is recorded.
 - [ ] A Decision state change never overwrites prior rationale.
 - [ ] `repo` comes from `notion.repo`; a null or unmatched value stops the write instead of guessing.
-- [ ] No text property exceeds 2,000 characters; a long body goes into page content via the splitter,
-  and `python scripts/wmgt_test_split_blocks.py` (plugin root) passes.
-- [ ] `scripts/smoke_test.py` (structural) and `hooks/test_guard_notion_bootstrap.py` (the Bootstrap guard) both pass.
+- [ ] No text property exceeds 2,000 characters; a long body goes into page content via the splitter.
+- [ ] Maintainer checks, run outside a skill session (this skill grants no Python): `python scripts/wmgt_test_split_blocks.py`
+  (plugin root), `scripts/smoke_test.py` and `hooks/test_guard_notion_bootstrap.py` pass.
 
 ## Reference Guide
 
