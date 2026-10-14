@@ -21,11 +21,13 @@ including a bad command line, it prints {"ok": false, "error": "..."} and exits 
 Splitting prefers a blank line between paragraphs, then a line break, then a space or tab,
 and cuts hard only where a stretch has no whitespace. Length is counted in UTF-16 units, so a
 character outside the Basic Multilingual Plane counts as two and is never cut in half; --max
-therefore has to be at least 2. Line endings are normalized to LF before splitting. The
+therefore has to be at least 2. Line endings are normalized to LF before splitting, and a run of
+three or more newlines becomes one blank line, so the caller's reassembly with a blank line
+between blocks never differs from the split text by extra blank lines. The
 whitespace character at a cut is dropped, and blocks cut from one paragraph are rejoined with a
 blank line by the caller, so a mid-paragraph cut reads as a paragraph break after reassembly.
 Limitation: it does not understand markdown tables or code fences, so a split can land inside
-one.
+one, and the blank-line normalization also applies inside a code fence.
 
 The file must be a regular (non-symlink), strictly UTF-8 (a leading byte-order mark is ignored),
 non-blank file of at most 5 MB. The
@@ -35,6 +37,7 @@ boundary.
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -122,6 +125,7 @@ def read_text(path_text):
     except UnicodeDecodeError:
         raise SplitError("the file is not valid UTF-8") from None
     text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
     if not text.strip():
         raise SplitError("the file is empty or only whitespace")
     return text
