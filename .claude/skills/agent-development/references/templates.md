@@ -113,10 +113,10 @@ Template file: `${CLAUDE_SKILL_DIR}/assets/template-background-research.md`
 
 | Model | Use When |
 |-------|----------|
-| `sonnet` (default) | Balanced capability and speed; general purpose |
+| `inherit` (recommended default) | Consistency with parent conversation |
+| `sonnet` | Balanced capability and speed; general purpose |
 | `opus` | Complex reasoning, detailed analysis, careful decisions |
 | `haiku` | Fast, simple tasks, background processing, cost-sensitive |
-| `inherit` | Consistency with parent conversation |
 
 ### Tool Sets
 
