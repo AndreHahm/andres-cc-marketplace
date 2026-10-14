@@ -4,6 +4,7 @@ description: >-
   [What the subagent does]. Use when [trigger contexts/scenarios].
   [Scope/constraints].
 model: inherit
+color: blue
 tools: Read, Grep, Glob
 permissionMode: default
 ---

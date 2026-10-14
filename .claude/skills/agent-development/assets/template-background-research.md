@@ -5,6 +5,7 @@ description: >-
   research (authentication module, database design, API patterns) while working
   on other tasks. Fast and non-intrusive.
 model: haiku
+color: cyan
 tools: Read, Grep, Glob
 permissionMode: dontAsk
 ---

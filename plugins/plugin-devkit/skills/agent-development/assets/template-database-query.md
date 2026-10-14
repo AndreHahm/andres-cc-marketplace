@@ -1,10 +1,10 @@
 ---
 name: db-analyzer
 description: >-
-  Execute read-only SQL queries for data analysis. Use when exploring tables,
-  generating reports, analyzing data patterns, or answering questions. SELECT
-  only; write operations blocked by validation.
+  Run SELECT queries against a database for data analysis. Use when exploring
+  tables, generating reports, analyzing data patterns, or answering questions.
 model: inherit
+color: cyan
 tools: Bash
 permissionMode: dontAsk
 hooks:
@@ -18,6 +18,12 @@ hooks:
 # Purpose
 
 This subagent executes read-only database queries to analyze and explore data.
+
+**Scope of the read-only guarantee:** the `PreToolUse` hook below blocks write statements only for a
+project-level agent. In a plugin's `agents/` directory `permissionMode` and `hooks:` are not honored, so
+this agent would run any shell command with the bare `Bash` grant. For a plugin, use a read-only database
+credential or a read-only MCP tool instead, and treat the hook script as a best-effort filter, not a
+security control.
 
 ## Query Process
 
@@ -42,7 +48,7 @@ LIMIT 100;
 ## Constraints
 
 - ✅ Can: SELECT queries, read operations, analysis
-- ❌ Cannot: INSERT, UPDATE, DELETE, CREATE, ALTER (blocked by validation hook)
+- ❌ Cannot: INSERT, UPDATE, DELETE, CREATE, ALTER (blocked by the validation hook for a project-level agent)
 - If modification is needed: "I can only read data; write operations are blocked."
 
 ## Database Connection
