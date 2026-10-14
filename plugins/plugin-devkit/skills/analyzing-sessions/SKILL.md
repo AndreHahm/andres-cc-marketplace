@@ -210,6 +210,9 @@ Close with **Top 5 Actions**: the five highest-impact suggestions across all com
 
 ## Testing & Validation
 
+**Last dated run record:** `evals/analyzing-sessions/workspace/iteration-1/benchmark.json`, 2026-08-24.
+`scripts/smoke_test.py` structural self-check re-run 2026-10-14, 5/5 passing, exit 0.
+
 **Verify this skill activates on:**
 - "run a retrospective on this session"
 - "analyze my sessions since 2026-07-10"
