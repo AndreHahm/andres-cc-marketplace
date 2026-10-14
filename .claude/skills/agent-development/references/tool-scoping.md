@@ -635,7 +635,6 @@ When configuring tool scoping:
 - Glob (not glob, GLOB)
 - Agent (not agent, AGENT)
 - Skill (not skill, SKILL)
-- AskUserQuestion (exact case)
 
 ### Tool access denied but tool is in list
 
