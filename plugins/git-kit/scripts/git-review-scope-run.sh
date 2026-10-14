@@ -8,7 +8,8 @@
 # binds the rest: the repository is the current directory (which must be the work tree root, since the
 # planner's --scope is a pathspec relative to it), and the manifest and slice diffs always
 # land at <run-dir>/manifest-<tag>.json and <run-dir>/diffs-<tag>, in a directory that exists, is
-# not a symlink, is owned by the caller and lies outside the repository. The only options passed
+# not a symlink, is owned by the caller, is shaped like `mktemp -d` output (tmp.<random>, mode 0700,
+# directly under the temp directory) and lies outside the repository. The only options passed
 # through are --scope, --exclude-dir, --prior-manifest and --completed-slice; the planner validates
 # their values itself. Environment variables that redirect git or Python (GIT_DIR, GIT_WORK_TREE,
 # GIT_COMMON_DIR, GIT_CONFIG_*, PYTHON*, ...) are dropped before the planner starts; GIT_INDEX_FILE
@@ -31,11 +32,19 @@ shift 4
 [[ $tag =~ ^[0-9]+[a-z]?$ ]] || fail "invalid tag: use digits and at most one lowercase letter"
 [[ $merge_base =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || fail "invalid merge-base: pass the full commit SHA"
 [[ $base_ref =~ ^[A-Za-z0-9._/][A-Za-z0-9._/-]*$ ]] || fail "invalid base ref"
-[[ $run_dir != - && $run_dir != *$'\n'* ]] || fail "invalid run directory"
+[[ $run_dir != -* && $run_dir != *$'\n'* ]] || fail "invalid run directory"
 [ -d "$run_dir" ] && [ ! -L "$run_dir" ] || fail "run directory must be an existing directory, not a symlink"
 [ -O "$run_dir" ] || fail "run directory must be owned by the current user"
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
+# Only a directory `mktemp -d` makes: tmp.<random> (mode 0700) directly under the temp directory.
+[[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
+[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+run_parent=$(dirname -- "$run_dir")
+tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
+tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
+[ "$run_parent" = "$tmp_a" ] || [ "$run_parent" = "$tmp_b" ] ||
+  fail "run directory must be directly under the temp directory"
 repo=$(pwd -P)
 top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"

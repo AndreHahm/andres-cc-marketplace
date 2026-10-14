@@ -1,12 +1,13 @@
 ---
 name: cross-model-review
 description: >-
-  Cross-vendor adversarial review of the current diff before a PR is created (draft or ready) or a
-  draft PR is flipped to ready-to-merge. Claude reviews natively; Codex reviews independently
+  Reviews the current diff adversarially across two model vendors before a PR is created (draft or
+  ready) or a draft PR is flipped to ready-to-merge. Claude reviews natively; Codex reviews independently
   through codex-kit (codex-review-bridge, falling back to codex-windows-guardrails when no
-  sandboxed profile is available). Both cross-examine each other's findings via a fresh-eyes persona
-  (Phase 1, independent) and a challenger persona (Phase 2, confirms/refutes/adds novel findings).
-  Report-only — surfaces a ranked, confidence-scored table and asks which findings to act on; never
+  sandboxed profile is available). Both cross-examine each other's findings (fresh-eyes
+  persona, then challenger persona).
+  Report-only — edits nothing in the repository (it runs helper scripts that write scratch files
+  outside it), surfaces a ranked, confidence-scored table and asks which findings to act on; never
   auto-applies fixes. Use for an adversarial review, a cross-model or second-opinion review, a
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor

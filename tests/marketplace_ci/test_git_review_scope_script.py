@@ -1212,31 +1212,28 @@ def _wrapper(repo, *args):
     )
 
 
-def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path):
+def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+    run_dir = mktemp_dirs()
     result = _wrapper(repo, str(run_dir), "1", _head(repo), "main")
     assert result.returncode == 0, result.stderr
     assert json.loads((run_dir / "manifest-1.json").read_text())["round"] == 1
     assert (run_dir / "diffs-1").is_dir()
 
 
-def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path):
+def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
     (repo / "sub").mkdir()
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+    run_dir = mktemp_dirs()
     result = _wrapper(repo / "sub", str(run_dir), "1", _head(repo), "main")
     assert result.returncode == 2 and "repository root" in result.stderr
     assert not list(run_dir.iterdir())  # nothing planned from the wrong directory
 
 
-def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
     base = [str(run_dir), "1", _head(repo), "main"]
     for extra in (
         ["--repo", "/etc"],
@@ -1250,9 +1247,8 @@ def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp
     assert not (tmp_path / "elsewhere.json").exists() and not (run_dir / "manifest-1.json").exists()
 
 
-def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
     link = tmp_path / "link"
     link.symlink_to(run_dir)
     sha = _head(repo)
@@ -1272,9 +1268,8 @@ def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path):
     assert not list(run_dir.iterdir())
 
 
-def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
     sha = _head(repo)
     cases = [
         [str(run_dir), "1\n", sha, "main"],  # trailing newline in the tag
@@ -1294,26 +1289,38 @@ def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path):
 def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_repo(
     repo, tmp_path
 ):
-    (repo / "inside").mkdir()
+    (repo / "tmp.abcdefgh").mkdir(
+        mode=0o700
+    )  # mktemp-shaped, so only the repository check can refuse
     (tmp_path / "hop").symlink_to(repo)
-    result = _wrapper(repo, str(tmp_path / "hop" / "inside"), "1", _head(repo), "main")
+    result = subprocess.run(
+        ["bash", str(WRAPPER), str(tmp_path / "hop" / "tmp.abcdefgh"), "1", _head(repo), "main"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "TMPDIR": str(repo)},
+    )
     assert result.returncode == 2 and "outside the repository" in result.stderr
 
 
-def test_the_wrapper_accepts_a_sibling_directory_whose_name_starts_like_the_repository(
-    repo, tmp_path
-):
-    sibling = tmp_path / "repo-evil"
-    sibling.mkdir()
-    (repo / "a.py").write_text("1")
-    _git(repo, "add", "-N", "-A")
-    result = _wrapper(repo, str(sibling), "1", _head(repo), "main")
-    assert result.returncode == 0, result.stderr
+def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
+    wrong_name = tmp_path / "run"
+    wrong_name.mkdir(mode=0o700)
+    wrong_parent = tmp_path / "tmp.abcdefgh"
+    wrong_parent.mkdir(mode=0o700)
+    loose = mktemp_dirs()
+    loose.chmod(0o750)
+    sha = _head(repo)
+    for target in (wrong_name, wrong_parent, loose):
+        result = _wrapper(repo, str(target), "1", sha, "main")
+        assert result.returncode == 2, target
+        assert result.stderr.startswith("git-review-scope-run.sh:"), (target, result.stderr)
+        assert not list(target.iterdir())  # no manifest or diffs were written there
 
 
-def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
     result = _wrapper(repo, str(run_dir), "1", _head(repo), "main", "--scope", "--output=/x")
@@ -1323,13 +1330,12 @@ def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_
 
 
 def test_the_wrapper_drops_environment_that_would_redirect_git_or_python(
-    repo, tmp_path, monkeypatch
+    repo, tmp_path, monkeypatch, mktemp_dirs
 ):
     other = tmp_path / "other"
     other.mkdir()
     _git(other, "init", "-q", "-b", "main")
-    run_dir = tmp_path / "run"
-    run_dir.mkdir()
+    run_dir = mktemp_dirs()
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
     sha = _head(repo)
