@@ -1,9 +1,10 @@
 ---
 name: data-analyzer
 description: >-
-  Execute read-only analysis on data and files. Use when exploring structure,
-  generating reports, analyzing patterns, or answering questions about existing
-  data. Read-only; no modifications allowed.
+  Use this agent when exploring structure, generating reports, analyzing
+  patterns, or answering questions about existing data. Typical triggers
+  include read-only analysis of data and files. Read-only; no modifications
+  allowed.
 model: inherit
 color: cyan
 tools: Read, Grep, Glob
@@ -47,3 +48,9 @@ containment that actually works for a plugin-scoped agent (`permissionMode` is n
 plugin-scoped agents). If asked to make a change, respond:
 - Explanation: "Write operations not allowed; this is read-only."
 - Suggestion: "I can generate a report with recommendations instead."
+
+## When to invoke
+
+- Explicit request: the user asks to explore or summarize existing data or files.
+- Proactive trigger: a structure overview or report is needed before changes are planned.
+- Not for: anything that modifies files or data.

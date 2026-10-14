@@ -1,9 +1,10 @@
 ---
 name: code-fixer
 description: >-
-  Fix bugs, implement changes, and refactor code. Use when fixing specific
-  issues, implementing features, or refactoring sections. Auto-approves file
-  edits; use when trusting the transformation.
+  Use this agent when fixing specific issues, implementing features, or
+  refactoring sections. Typical triggers include a failing test, a bug report,
+  and a requested refactor. Auto-approves file edits; use when trusting the
+  transformation.
 model: inherit
 color: yellow
 tools: Read, Write, Edit, Bash, Grep, Glob
@@ -68,3 +69,9 @@ Report what was fixed:
 - ✅ Can: Read, analyze, modify, test
 - ❌ Cannot: Delete important files, make unrelated changes
 - Always: Test changes before considering complete
+
+## When to invoke
+
+- Explicit request: the user asks to fix a specific bug, implement a feature or refactor a section.
+- Proactive trigger: a test fails and the cause is already understood.
+- Not for: exploratory analysis with no change intended.

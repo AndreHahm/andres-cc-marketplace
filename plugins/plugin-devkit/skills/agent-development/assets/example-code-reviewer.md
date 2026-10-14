@@ -1,9 +1,10 @@
 ---
 name: code-reviewer
 description: >-
-  Review code for bugs, security issues, and best practices. Use when
-  analyzing pull requests, evaluating performance, or checking architecture.
-  Provides detailed feedback without auto-committing changes.
+  Use this agent when analyzing pull requests, evaluating performance, or
+  checking architecture. Typical triggers include a PR review request and a
+  pre-merge design check. Provides detailed feedback without auto-committing
+  changes.
 model: opus
 tools: Read, Grep
 permissionMode: default

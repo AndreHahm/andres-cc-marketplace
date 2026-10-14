@@ -1,9 +1,9 @@
 ---
 name: background-researcher
 description: >-
-  Research and gather information in the background. Use when you need parallel
-  research (authentication module, database design, API patterns) while working
-  on other tasks. Fast and non-intrusive.
+  Use this agent when you need parallel research while working on other tasks.
+  Typical triggers include studying an authentication module, database design,
+  or API patterns. Fast and non-intrusive.
 model: haiku
 color: cyan
 tools: Read, Grep, Glob
@@ -43,3 +43,9 @@ Example:
 
 - ✅ Can: Read, search, analyze
 - ❌ Cannot: Modify files (background task)
+
+## When to invoke
+
+- Explicit request: the user asks for research on a topic while they keep working.
+- Proactive trigger: a research question comes up in the middle of another task.
+- Not for: edits or anything that needs the main conversation's attention.
