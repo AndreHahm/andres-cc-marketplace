@@ -9,7 +9,7 @@ description: >-
   commands, creating commands with file references, or writing interactive commands.
   Not for SKILL.md skills (skill-development), multi-step skill workflows
   (workflow-skill-development), or converting a command into a skill (skill-development).
-allowed-tools: Read Write Edit
+allowed-tools: Read Write Edit Skill(plugin-rulebook)
 ---
 
 # Command Development for Claude Code
