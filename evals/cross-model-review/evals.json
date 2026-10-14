@@ -79,11 +79,18 @@
       "prompt": "Using this repo's cross-model-review skill (worktree copy, its Codex dispatch resolver and references/resolver-failure-handling.md): on local Windows, Phase 1's Codex pass for the only batch fails with the typed failure isolation_profile_unavailable. codex-windows-guardrails is enabled locally and the user consented in the First-Send Confirmation, so resolver step 2 runs the retry through guarded-dispatch.mjs. Case A: the retry returns exit 0 with a schema-valid envelope: no findings, verdict 'approve', and one inspection_limits note, 'setup refresh had errors'. Case B: the retry returns one finding and the same note. Case C: the retry returns no findings and an empty inspection_limits. For each case, say how Phase 3 records that pass and whether the skill treats it as a clean approve. Also say whether guarded-dispatch.mjs itself runs the bridge's total-failure detector. Do not run anything -- describe it.",
       "expected_output": "Case A: the pass is recorded as not run and is never a clean approve, because guarded-dispatch.mjs does not run the bridge's total-failure detector, so the skill applies the same test to the retry's envelope itself: zero findings plus a note naming this sandbox failure is not a completed pass. Case B: a completed pass; its finding is kept. Case C: a completed pass, a clean approve with no failure note. guarded-dispatch.mjs does not run the detector (it lives in the bridge's main()).",
       "files": []
+    },
+    {
+      "id": 12,
+      "name": "More batches than the batch limit asks before dispatching",
+      "prompt": "Using this repo's cross-model-review skill (the plugins/ copy, including references/scoped-review.md): the planner's manifest shows budget_bytes 250000 and max_slice_bytes 80000, and packing the slices yields 9 batches, because several protected slices are large. Describe exactly what the skill does before any Codex dispatch: what limit applies and how it is computed, whether and what the user is asked, what happens under each answer, and how slices that were not reviewed are reported and treated in a later round. Do not run anything -- describe it.",
+      "expected_output": "The batch limit is 2 * floor(250000 / 80000) + 1 = 7, taken from the manifest's two values. 9 batches is over it (only protected slices or an oversized first slice can cause that), so the skill does not dispatch yet: before the First-Send Confirmation it asks via AskUserQuestion, naming the batch count (9), the dispatch count (18, two per batch) and the limit (7): review all batches, review only the first 7 in planner order, or stop. It never goes past the limit without that answer. If the user picks the limited run, the slices in batches 8 and 9 are unreviewed this round, are reported like dropped slices that must be read directly, and are never passed as --completed-slice in a later round. At or under the limit there is no extra question; the First-Send Confirmation states the real dispatch count either way.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 10,
-    "declared_scenarios_covered": 10,
+    "declared_scenarios_total": 11,
+    "declared_scenarios_covered": 11,
     "uncovered": []
   }
 }

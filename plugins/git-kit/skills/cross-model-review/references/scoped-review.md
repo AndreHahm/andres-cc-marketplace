@@ -118,14 +118,22 @@ manifest's `max_slice_bytes`; a slice that is alone over that size is its own ba
 its own Codex Phase 1 dispatch and its own Phase 2 dispatch.** A diff within budget is one batch, so
 the run is a single dispatch pair as before.
 
-**How many batches there can be.** Nothing enforces a cap on batches or dispatches, and protected
-slices can add batches without limit: they never count against the budget, and when nothing else is
-chosen the first slice is kept even if it alone is over budget. The size budget bounds only the rest.
-Packing is greedy in planner order, so two neighbouring batches always sum to more than
-`max_slice_bytes`, and the planner keeps at most `budget_bytes` of non-protected slices. That gives at
-most `2 * floor(budget_bytes / max_slice_bytes) + 1` batches from them: 7 at the defaults (250000 and
-80000), so up to 14 Codex dispatches for those slices. The First-Send Confirmation states the real
-dispatch count before any send, so that number, not this bound, is what the user approves.
+**How many batches there can be, and the limit.** The planner does not cap batches: protected slices
+never count against the budget, and when nothing else is chosen the first slice is kept even if it
+alone is over budget. The size budget bounds only the rest. Packing is greedy in planner order, so two
+neighbouring batches always sum to more than `max_slice_bytes`, and the planner keeps at most
+`budget_bytes` of non-protected slices. That gives at most `2 * floor(budget_bytes / max_slice_bytes) + 1`
+batches from them. Take that number from the manifest's two values as the **batch limit**: 7 at the
+defaults (250000 and 80000), so up to 14 Codex dispatches.
+
+**If packing produces more batches than the batch limit** (only protected slices or an oversized first
+slice can cause that), do not dispatch yet. Ask via `AskUserQuestion`, before the First-Send
+Confirmation, naming the batch count, the dispatch count (two per batch) and the limit: review all
+batches, review only the first batches up to the limit in planner order, or stop. Never go past the
+limit without that answer. Choosing the limited run leaves the later batches' slices unreviewed this
+round: report them like dropped slices (they **must be read**), and never pass them as
+`--completed-slice` in a later round. At or under the limit there is no extra question. The First-Send
+Confirmation then states the real dispatch count either way.
 
 **Diffs come from files, not commands.** The planner wrote, per slice, `$RUN/diffs-1/<slice>.diff` (every
 file of the slice) and `$RUN/diffs-1/<slice>.codex.diff` (only the files with `codex_eligible: true`).
