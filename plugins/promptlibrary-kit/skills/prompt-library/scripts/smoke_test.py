@@ -95,6 +95,24 @@ def check_body_uses_only_granted_subcommands():
     return True, f"body uses {len(used)} subcommands, all granted"
 
 
+def check_triage_is_a_dedicated_gate():
+    _, body = C.read_skill(SKILL_DIR)
+    start = body.find("5. **Triage.**")
+    end = body.find("6. **File the draft.**")
+    if start < 0 or end < start:
+        return False, "triage step 5 or step 6 not found in the body"
+    step = body[start:end]
+    for needed in (
+        "AskUserQuestion",
+        "skill-development",
+        "workflow-skill-development",
+        "never fold",
+    ):
+        if needed not in step:
+            return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
+    return True, "triage is its own AskUserQuestion with skill options and may not be folded away"
+
+
 def check_live_web_secret_is_refused_and_nothing_filed():
     fx = C.Fixture()
     try:
@@ -147,6 +165,7 @@ def main() -> int:
         ("referenced files", check_referenced_files),
         ("grants", check_grants),
         ("body uses only granted subcommands", check_body_uses_only_granted_subcommands),
+        ("triage is a dedicated gate", check_triage_is_a_dedicated_gate),
         ("live: secret refused, nothing filed", check_live_web_secret_is_refused_and_nothing_filed),
         ("live: clean prompt lifecycle", check_live_clean_prompt_lifecycle),
     ]

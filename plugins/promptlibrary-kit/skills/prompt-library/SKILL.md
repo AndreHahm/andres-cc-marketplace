@@ -98,9 +98,14 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    validator screens again at each later filing, verification and activation step and refuses (the exact
    scope is in `references/prompt-intake-sources.md`). For `user` text a match is a warning the user may
    accept, because their own prompt can legitimately contain a path or an example string.
-5. **Triage.** Ask whether this is one reusable instruction text (a prompt) or needs something a prompt
-   cannot provide (a skill: point to `skill-development`, or to `workflow-skill-development` for
-   multi-step phases or sub-agent orchestration, and create no record). Then filter `validate`'s
+5. **Triage.** Every add, however plain the text looks, gets its own `AskUserQuestion` before anything is
+   filed; never fold it into the step 6 question or skip it because the answer seems obvious. Ask whether
+   this is one reusable instruction text (a prompt) or needs something a prompt cannot provide (a skill),
+   with these options, the one you recommend first and marked `(Recommended)`: "Prompt", "Skill:
+   `skill-development`" (bundled scripts or references, tool restrictions, automatic activation) and
+   "Workflow skill: `workflow-skill-development`" (multi-step phases or sub-agent orchestration). Naming an
+   existing script that the user already has is a prompt, not a bundled script. If the user picks a skill
+   option, point to that skill and create no record. Then filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
@@ -168,8 +173,9 @@ maintainer command; this skill does not run it).
 A persisted smoke test, `scripts/smoke_test.py`, checks this skill's frontmatter, referenced files and
 grants (no pre-approved Read, Write, Edit or WebFetch), and runs the validator end to end: a web-origin
 draft carrying a fake key is refused with nothing filed, and a clean draft goes through activation and
-deactivation. Run it directly; last run 2026-10-03, 6 of 6 checks passed, and it failed on a copy with a
-pre-approved Write.
+deactivation. It also checks that the triage step is its own `AskUserQuestion` with skill options. Run it
+directly; last run 2026-10-14, 7 of 7 checks passed, and it failed on a copy with a pre-approved Write
+(2026-10-03) and on a copy with the pre-fix triage step (2026-10-14).
 
 **Verify this skill activates on:** (explicit invocation only; it cannot be model-triggered)
 - "/prompt-library add" with a pasted instruction
@@ -186,6 +192,8 @@ pre-approved Write.
       with the user's consent.
 - [ ] A secret in `session`, `web`, `claude` or `codex` text blocks the draft and is never auto-redacted
       or echoed.
+- [ ] Every add asks the prompt-or-skill triage question as its own `AskUserQuestion` before filing, with a
+      skill option offered; it is never merged into the file-draft question or skipped for plain text.
 - [ ] Script-needing content is routed to `skill-development` with no record created.
 - [ ] A near-duplicate is offered as a revision before a new record is created.
 - [ ] A `session` or `web` record cannot be activated without an import hash.
