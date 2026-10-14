@@ -252,7 +252,7 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 | Component | Rule | Valid | Invalid |
 |-----------|------|-------|---------|
 | Name | 3–64 chars, lowercase, hyphens | `code-reviewer` | `Code_Reviewer`, `ag` |
-| Description | 10–5,000 chars · one sentence · starts "Use this agent when..." | correct | verbose list of phrases |
+| Description | 10–5,000 chars (validator range; aim ≤1,024) · one sentence · starts "Use this agent when..." | correct | verbose list of phrases |
 | Model | `inherit`, `sonnet`, `opus`, `haiku`, `fable`, or a full model ID string | `inherit` | `gpt-4` |
 | Color | one of 8 allowed values (`magenta` deprecated) | `blue` | `teal` |
 | System prompt | 20–10,000 chars (ideal: 500–3,000) | structured prompt | empty body |

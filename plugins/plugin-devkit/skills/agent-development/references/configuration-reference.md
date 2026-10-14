@@ -68,7 +68,7 @@ name: database-query-execution-and-analysis-tool  # ❌ Too long
 **Required.** Natural language description that triggers Claude's delegation to this subagent. This is the PRIMARY signal Claude uses to decide when to delegate.
 
 **Rules:**
-- Maximum 1024 characters
+- Recommended maximum 1024 characters (no per-field platform limit is documented; validate-agent.sh warns above 5,000)
 - Should follow pattern: `[Action]. Use when [trigger contexts]. [Scope/constraints].`
 - Must include 3+ specific trigger phrases (not vague language)
 - Should be concrete and actionable
@@ -149,7 +149,6 @@ color: red      # critical/security agents
 - `Grep` - Search file contents
 - `Glob` - Find files by pattern
 - `Agent` - Launch subagents (renamed from `Task` in Claude Code v2.1.63; `Task(...)` still works as a legacy alias)
-- `AskUserQuestion` - Ask user for input
 - `Skill` - Invoke skills
 - And any MCP tools available in parent conversation
 
@@ -518,7 +517,7 @@ Use when analyzing data patterns, generating reports, or exploring table structu
 Before deploying, verify:
 
 - [ ] `name` is lowercase-hyphen, ≤64 chars, unique
-- [ ] `description` includes 3+ trigger phrases, ≤1024 chars
+- [ ] `description` includes 3+ trigger phrases, ≤1024 chars (recommended)
 - [ ] `model` is sonnet/opus/haiku/fable/inherit/full model ID (or omitted)
 - [ ] `color` (if present) is one of: red/blue/green/yellow/purple/orange/pink/cyan
 - [ ] `tools` uses exact tool names (Read, Write, Edit, Bash, Grep, Glob, etc.)
