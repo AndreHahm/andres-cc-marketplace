@@ -1,0 +1,32 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "note": "Assertions for the re-run after the routing rule was added to SKILL.md; the first-run assertions stay in eval_metadata.json.",
+  "assertions": [
+    {
+      "text": "Output identifies this as status-and-learning's request and says that skill drafts the content first",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output names status-and-learning and stops: it builds no Outcome/Learning preview or sketch of its own, not even an unfilled one",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says this skill only executes the write once status-and-learning has drafted, under the live approval gate",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

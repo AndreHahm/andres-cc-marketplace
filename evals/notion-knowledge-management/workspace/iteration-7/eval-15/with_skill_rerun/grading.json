@@ -1,0 +1,37 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill_rerun",
+  "note": "Re-run after the routing rule was added to SKILL.md (When NOT to Use). The first run is in ../with_skill/.",
+  "assertions_evaluated": [
+    {
+      "text": "Output identifies this as status-and-learning's request and says that skill drafts the content first",
+      "passed": true,
+      "evidence": "Opens by saying this is not a request notion-knowledge-management handles and routes 'capture what we learned' to status-and-learning, which drafts from the project's Linear facts"
+    },
+    {
+      "text": "Output names status-and-learning and stops: it builds no Outcome/Learning preview or sketch of its own, not even an unfilled one",
+      "passed": true,
+      "evidence": "'I have not drafted a preview of the Outcome/Learning record, and I have not guessed any lessons'; no sketch anywhere in the 19 lines"
+    },
+    {
+      "text": "Output says this skill only executes the write once status-and-learning has drafted, under the live approval gate",
+      "passed": true,
+      "evidence": "'What happens next' step 3: only after status-and-learning drafts does this skill build the record, behind a live AskUserQuestion approval gate"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "No write is claimed; 'No Notion tool calls from this skill in this turn'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: only Skill(status-and-learning) as the hand-off; no mcp__claude_ai_Notion__* and no Linear call from this skill"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

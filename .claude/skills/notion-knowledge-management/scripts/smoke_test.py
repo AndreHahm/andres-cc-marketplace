@@ -130,6 +130,37 @@ def check_referenced_files():
     return True, "all referenced files exist"
 
 
+def check_reference_docs():
+    # check_referenced_files only reads SKILL.md. The skill's own references/*.md name
+    # plugin-root files too (e.g. `../../../FOUNDATION_CONTRACTS.md`), resolved from the reference
+    # file's own directory, and repo-relative paths -- check those the same way, with the same
+    # canonical-skill-directory fallback for the .claude/ mirror copy.
+    refs_dir = SKILL_DIR / "references"
+    if not refs_dir.is_dir():
+        return True, "no references/ directory (skip)"
+    repo_root = _find_repo_root(SKILL_DIR)
+    skill_dirs = _skill_dir_candidates(repo_root)
+    missing = []
+    for doc in sorted(refs_dir.glob("*.md")):
+        text = doc.read_text(encoding="utf-8")
+        for match in re.finditer(r"`((?:\.\./){2,}[\w./-]+\.(?:md|json))`", text):
+            if not any(
+                (cand / "references" / match.group(1)).resolve().exists() for cand in skill_dirs
+            ):
+                missing.append(f"{doc.name}: {match.group(1)}")
+        for match in re.finditer(
+            r"`((?:docs|evals|plugins|\.claude)/[\w./-]+\.(?:md|py|json))`", text
+        ):
+            path_str = match.group(1)
+            if path_str.endswith(".local.json"):
+                continue
+            if repo_root is None or not (repo_root / path_str).exists():
+                missing.append(f"{doc.name}: {path_str}")
+    if missing:
+        return False, "reference file(s) name paths that do not exist: " + ", ".join(missing)
+    return True, "paths named in references/*.md exist"
+
+
 def _grant_pattern(cmd: str) -> str:
     # (?![\w/-]) requires a real token boundary after the match -- without it, a grant like
     # "gh pr view" would be reported "used" by an unrelated "gh pr viewer" or "gh pr view-only"
@@ -312,7 +343,13 @@ def check_step_sequence():
     return True, "step headers sequential in every found section/subsection"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_step_sequence]
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_reference_docs,
+    check_bash_grants,
+    check_step_sequence,
+]
 
 
 def main():

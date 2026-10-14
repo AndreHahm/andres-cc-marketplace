@@ -1,0 +1,27 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "note": "Assertions for the re-run after the routing rule was added to SKILL.md; the first-run assertions stay in eval_metadata.json.",
+  "assertions": [
+    {
+      "text": "Output says promoting an idea into Linear is idea-to-implementation's job, not this skill's",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output names idea-to-implementation and stops: it drafts no Linear issue preview or sketch",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not create Linear work or a Notion record itself",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

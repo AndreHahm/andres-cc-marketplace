@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output says creating a Linear issue is linear-work-management's job, not this skill's",
+      "passed": true,
+      "evidence": "Lines 5-7: out of scope; 'linear-work-management the right owner, not idea-to-implementation'"
+    },
+    {
+      "text": "Output does not build or preview a Notion Idea, Note or other record for this request",
+      "passed": true,
+      "evidence": "No Notion record is previewed; the only preview is a Linear issue draft (line 18). Note: that is the routed skill's record, which the new routing rule says not to sketch"
+    },
+    {
+      "text": "Output does not create or claim to create any Linear or Notion state itself",
+      "passed": true,
+      "evidence": "Line 34: 'this skill makes no calls'; the Linear calls and save_issue are planned under linear-work-management after its own approval"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "This skill plans no calls; the Linear tools listed belong to the routed skill"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

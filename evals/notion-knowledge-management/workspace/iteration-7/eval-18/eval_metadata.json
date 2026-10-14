@@ -1,0 +1,26 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output identifies a dated progress summary as status-and-learning's job, not a knowledge capture by this skill",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not draft a Report or other record from scratch itself",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
