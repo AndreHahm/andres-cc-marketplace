@@ -8,7 +8,7 @@ description: >-
   multi-step workflow skill. Also applies when redesigning the phase or routing structure of an
   existing workflow skill; for a
   scored quality review use skill-reviewer, for operator-approved polish skill-refiner-interactive.
-  Not for slash command files (command-development) or simple single-purpose skills with no
+  Not for single-file slash commands (command-development) or simple single-purpose skills with no
   sub-agents, confirmation gates, routing or workflows/ task files — use skill-development
   directly for those; this skill covers workflow/orchestration architecture only, not domain
   content authoring.
@@ -118,7 +118,7 @@ plugins/<plugin-name>/
 - Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture. Test: a skill needs this one only if it has sub-agent dispatch, a confirmation/safety gate, routing between independent tasks, or `workflows/` task files; a linear instruction list, however long, stays in `skill-development`
 - Repairing, consolidating or converting an existing skill, including a workflow skill — use `skill-development`; this skill takes over only to redesign that skill's phase or routing architecture
 - Writing the actual domain content of a skill (this teaches structure, not domain expertise)
-- Writing a slash command (a `commands/*.md` file the user runs by typing `/name`), even a multi-step one — use `command-development`; this skill designs SKILL.md workflows that Claude activates from context
+- Writing a slash command (a `commands/*.md` file the user runs by typing `/name`), even a multi-step one whose steps all sit in that one file — use `command-development`; this skill designs SKILL.md workflows that Claude activates from context, plus the orchestrator command that only launches a workflow and hands its phases to task files and sub-agents
 - Plugin configuration (plugin.json, hooks) — use plugin development guides
 - Non-skill Claude Code development — this is specifically for skill architecture
 
@@ -378,7 +378,7 @@ A well-designed workflow skill or command:
 
 **Verify it does NOT activate on:**
 - "write the domain content for this skill" → this teaches structure, not domain expertise
-- "create a slash command" with no multi-step workflow → `command-development`
+- "create a slash command", including a multi-step one in a single file → `command-development`
 - "fix a bug in this plugin's hook" → `hook-development`
 
 **Quality gates:**
