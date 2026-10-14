@@ -9,7 +9,7 @@ description: >-
   commands, creating commands with file references, or writing interactive commands.
   Not for SKILL.md skills (skill-development), multi-step skill workflows
   (workflow-skill-development), or converting a command into a skill (skill-development).
-allowed-tools: Read Write Edit Glob Skill
+allowed-tools: Read Write Edit
 ---
 
 # Command Development for Claude Code
@@ -24,6 +24,13 @@ allowed-tools: Read Write Edit Glob Skill
 4. **Write the body** as instructions FOR Claude (not a message to the user — see below)
 5. **Add frontmatter** for tool restrictions, model selection, or argument hints
 6. **Test** with `/command-name [args]`
+
+## When to Use
+
+- Creating, editing or reviewing a slash command file (`commands/*.md` or `.claude/commands/*.md`)
+- Defining command arguments (`$ARGUMENTS`, `$0`/`$1`), `argument-hint`, or `allowed-tools` for a command
+- Adding bash execution (`!` backticks), `@file` references or `AskUserQuestion` prompts to a command
+- Organizing a plugin's commands, or writing a multi-step sequence inside one command file
 
 ## When NOT to Use
 
@@ -210,6 +217,20 @@ For complete patterns, multi-step workflows, and templates, see `references/adva
 | File reference not working | `@` syntax correct? File path valid? `Read` in `allowed-tools`? |
 
 ## Testing & Validation
+
+**Verify this skill activates on:**
+- "Create a slash command that reviews a PR"
+- "Add an `argument-hint` to my command"
+- "Why isn't `$1` being substituted in my command?"
+
+**Verify it does NOT activate on:**
+- "Write a SKILL.md for this workflow" (use `skill-development`)
+- "Add a PreToolUse hook" (use `hook-development`)
+- "Design a multi-phase workflow skill" (use `workflow-skill-development`)
+
+**Evals:** none are kept for this skill. It is reference guidance whose output is a command file checked by the procedure and quality gates below, and the bundled `scripts/validate-command.sh` and `scripts/validate-frontmatter.sh` cover the mechanical checks. A `skill-tester` run would add a baseline comparison only.
+
+**Pass criteria:** every quality gate below is checked, and the new command runs once with typical arguments.
 
 After writing or modifying a command:
 
