@@ -18,7 +18,8 @@
       "rule-reviewer",
       "completeness-reviewer",
       "hook-reviewer",
-      "plugin-validator"
+      "plugin-validator",
+      "activation-reviewer"
     ]
   },
   "divergence_exceptions": [
