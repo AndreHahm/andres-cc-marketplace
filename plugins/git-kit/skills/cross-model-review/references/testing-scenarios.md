@@ -213,7 +213,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       `location` and every entry in its `components` array — never `location` alone
 - [ ] `plugin.json` and the marketplace entry's `version` are bumped together whenever a release-worthy
       change (like a new skill) ships, so `claude plugin update` doesn't treat it as unchanged
-- [ ] `git add -N` always runs before the canonical `DIFF`/`CODEX_DIFF` commands, never after — an
+- [ ] `git add -N` always runs before the canonical `DIFF` command and the planner's per-slice diffs, never after — an
       untracked file added post-diff still won't appear in that run's output
 - [ ] `git merge-base` and `realpath` are declared in `allowed-tools`, and `git add -N` is run only
       through `git-review-intent-add.sh` (declared) — never invoked without a matching grant
