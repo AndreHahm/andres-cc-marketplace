@@ -46,7 +46,12 @@ case "$run_dir/" in
 esac
 
 real=$(git rev-parse --git-path index)
-[ -f "$real" ] || fail "the repository has no index file to copy"
+# The source must be this work tree's own index: a regular file, not a symlink, directly in its git dir.
+git_dir=$(CDPATH='' cd -P -- "$(git rev-parse --absolute-git-dir)" && pwd -P)
+[ -f "$real" ] && [ ! -L "$real" ] || fail "the repository has no regular index file to copy"
+real_dir=$(CDPATH='' cd -P -- "$(dirname -- "$real")" && pwd -P)
+[ "$real_dir" = "$git_dir" ] && [ "$(basename -- "$real")" = index ] ||
+  fail "the index file is not in the repository's git directory"
 [ ! -e "$run_dir/index" ] && [ ! -L "$run_dir/index" ] || fail "$run_dir/index already exists"
 
 umask 077

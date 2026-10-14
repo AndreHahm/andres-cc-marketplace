@@ -1395,6 +1395,19 @@ def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, mktemp_
     assert not (run_dir / "index").exists()
 
 
+def test_the_index_helper_refuses_a_symlinked_source_index(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
+    outside = tmp_path / "other-index"
+    outside.write_bytes(b"not the real index")
+    index = repo / ".git" / "index"
+    index.rename(repo / ".git" / "index.real")
+    index.symlink_to(outside)
+    result = _copy_index(repo, str(run_dir))
+    assert result.returncode == 2, result.stderr
+    assert result.stderr.startswith("git-review-copy-index.sh:")
+    assert not (run_dir / "index").exists()
+
+
 def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
