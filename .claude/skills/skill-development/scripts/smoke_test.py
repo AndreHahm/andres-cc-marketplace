@@ -266,6 +266,19 @@ def check_viewer_server_rejects_foreign_requests():
     return True, "foreign Host/Origin and oversized bodies are rejected; same-origin works"
 
 
+def check_allowed_tools_reference_teaches_pinned_grants():
+    path = SKILL_DIR.parent.parent / "references" / "pdk-allowed-tools.md"
+    text = path.read_text(encoding="utf-8")
+    if "pre-approves python only" in text:
+        return False, "the reference still says Bash(python:*) pre-approves 'python only'"
+    if "Bash(python ${CLAUDE_SKILL_DIR}/scripts/" not in text:
+        return False, "the reference does not show a script-pinned interpreter grant"
+    return (
+        True,
+        "pdk-allowed-tools.md teaches script-pinned grants and no longer calls python:* narrow",
+    )
+
+
 def check_viewer_never_kills_the_port_holder():
     path = SKILL_DIR / "eval-viewer" / "generate_review.py"
     source = path.read_text(encoding="utf-8")
@@ -419,6 +432,7 @@ CHECKS = [
     check_repair_keeps_dashes_inside_values,
     check_viewer_escapes_script_close_in_data,
     check_viewer_server_rejects_foreign_requests,
+    check_allowed_tools_reference_teaches_pinned_grants,
     check_viewer_never_kills_the_port_holder,
     check_viewer_html_escapes_untrusted_fields,
     check_untrusted_readers_carry_data_only_boundary,
