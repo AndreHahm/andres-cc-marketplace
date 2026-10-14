@@ -1,12 +1,11 @@
 ---
 name: agent-creator
 description: >-
-  Generates new Claude Code subagent configurations from a described need.
-  Use when the user asks to 'create an agent', 'generate an agent', 'build
-  a new agent', 'make me an agent that...', or describes agent
-  functionality they need. Trigger when the user wants to create autonomous
-  agents for plugins. Not for hand-authoring or editing an existing agent's
-  fields, or validating and refining one against the spec (use
+  Use this agent when the user wants a new Claude Code subagent generated from
+  a described need. Typical triggers include 'create an agent', 'generate an
+  agent', 'build a new agent', 'make me an agent that...', or describing agent
+  functionality they need for a plugin. Not for hand-authoring or editing an
+  existing agent's fields, or validating and refining one against the spec (use
   agent-development).
 model: sonnet
 color: purple
@@ -144,3 +143,9 @@ Validate with: `{PLUGIN_ROOT}/skills/agent-development/scripts/validate-agent.sh
 - First agent in plugin: Create agents/ directory first
 
 This agent automates agent creation using the proven patterns from Claude Code's internal implementation, making it easy for users to create high-quality autonomous agents.
+
+## When to invoke
+
+- Explicit request: the user asks to create, generate or build a new agent, or says "make me an agent that...".
+- Described need: the user describes behavior they want from an agent without using the word "agent".
+- Not for: editing, validating or refining an existing agent file (use `agent-development`).
