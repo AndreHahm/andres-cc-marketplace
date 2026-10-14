@@ -642,13 +642,60 @@ def _plain_file(repo: Path, path: str) -> Path | None:
     return target if target.is_file() else None
 
 
-def _make_reader(repo: Path) -> Reader:
-    def read(path: str) -> bytes | None:
+_NOFOLLOW_OPEN = (
+    hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY") and os.open in os.supports_dir_fd
+)
+
+
+def _open_plain(repo: Path, path: str) -> int | None:
+    """A read-only descriptor for the regular file at `path`, or None.
+
+    Where the platform allows, every directory is opened relative to its parent's descriptor with
+    O_NOFOLLOW, so a component swapped for a symlink after an earlier check is refused rather than
+    followed. Elsewhere only the check-then-open of `_plain_file` is available.
+    """
+    parts = PurePosixPath(path).parts
+    if not parts or any(part in ("..", "/") for part in parts):
+        return None
+    if not _NOFOLLOW_OPEN:
         target = _plain_file(repo, path)
         try:
-            if target is None or target.stat().st_size > MAX_FILE_BYTES:
-                return None
-            return target.read_bytes()
+            return os.open(target, os.O_RDONLY | getattr(os, "O_BINARY", 0)) if target else None
+        except OSError:
+            return None
+    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    held = -1
+    leaf = -1
+    try:
+        held = os.open(repo, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0))
+        for part in parts[:-1]:
+            child = os.open(part, flags | os.O_DIRECTORY, dir_fd=held)
+            os.close(held)
+            held = child
+        leaf = os.open(parts[-1], flags | os.O_NONBLOCK, dir_fd=held)
+        if not stat.S_ISREG(os.fstat(leaf).st_mode):
+            os.close(leaf)
+            return None
+        return leaf
+    except OSError:
+        if leaf >= 0:
+            os.close(leaf)
+        return None
+    finally:
+        if held >= 0:
+            os.close(held)
+
+
+def _make_reader(repo: Path) -> Reader:
+    def read(path: str) -> bytes | None:
+        fd = _open_plain(repo, path)
+        if fd is None:
+            return None
+        try:
+            with os.fdopen(fd, "rb") as handle:
+                if os.fstat(handle.fileno()).st_size > MAX_FILE_BYTES:
+                    return None
+                return handle.read()
         except OSError:
             return None
 
@@ -669,8 +716,12 @@ def _make_fingerprint(repo: Path) -> Callable[[str], str]:
                 return "symlink:" + os.readlink(target)
             if not stat.S_ISREG(st.st_mode):
                 return "other"
+            fd = _open_plain(repo, path)
+            if fd is None:
+                return "unreadable"
             digest = hashlib.sha256()
-            with open(target, "rb") as handle:
+            with os.fdopen(fd, "rb") as handle:
+                st = os.fstat(handle.fileno())
                 for chunk in iter(lambda: handle.read(1 << 20), b""):
                     digest.update(chunk)
         except FileNotFoundError:
@@ -693,8 +744,11 @@ def _local_config(repo: Path, merge_base: str, changed: Sequence[str]) -> tuple[
     target = _plain_file(repo, LOCAL_PATH)
     if target is None:
         return "", True
+    fd = _open_plain(repo, LOCAL_PATH)
+    if fd is None:
+        return "", True
     try:
-        with open(target, "rb") as handle:
+        with os.fdopen(fd, "rb") as handle:
             text = handle.read(1_000_000).decode("utf-8", "replace")
     except OSError:
         return "", True

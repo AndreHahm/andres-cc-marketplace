@@ -1201,6 +1201,27 @@ def test_local_config_variant_committed_after_the_merge_base_is_caught_with_an_e
     assert M._local_config(plain_repo, merge_base, [])[1]
 
 
+@pytest.mark.skipif(not M._NOFOLLOW_OPEN, reason="needs openat-style O_NOFOLLOW")
+def test_reads_refuse_a_component_swapped_for_a_symlink_after_the_check(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    (repo / "d").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "s.txt").write_text("secret")
+    (repo / "d" / "ok.txt").write_text("ok")
+    monkeypatch.setattr(M, "_has_symlink", lambda *args, **kwargs: False)  # the check "passed"
+    read, fingerprint = M._make_reader(repo), M._make_fingerprint(repo)
+    assert read("d/ok.txt") == b"ok"
+    assert fingerprint("d/ok.txt").startswith("file:")
+    (repo / "d" / "ok.txt").unlink()
+    (repo / "d" / "ok.txt").symlink_to(outside / "s.txt")  # the leaf is swapped for a symlink
+    assert read("d/ok.txt") is None
+    shutil.rmtree(repo / "d")
+    (repo / "d").symlink_to(outside)  # a directory is swapped for a symlink
+    assert read("d/s.txt") is None
+    assert fingerprint("d/s.txt") == "unreadable"
+
+
 # --- the fixed-argument wrapper the skill's allowed-tools grant names -----------------------------
 
 WRAPPER = SCRIPT.with_name("git-review-scope-run.sh")
