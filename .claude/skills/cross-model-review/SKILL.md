@@ -136,7 +136,7 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 
 **Bash tool calls do not share shell state — only the working directory persists between them.** Run
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
-an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
+an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`,
 `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `PLAN_FAILED`, `DIFF_STATUS`, the manifest path,
 `TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, and whether
 `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as a separate write-helper
