@@ -28,7 +28,7 @@ allowed-tools: Read Write Edit
 ## When to Use
 
 - Creating, editing or reviewing a slash command file (`commands/*.md` or `.claude/commands/*.md`)
-- Defining command arguments (`$ARGUMENTS`, `$0`/`$1`), `argument-hint`, or `allowed-tools` for a command
+- Defining command arguments (`\$ARGUMENTS`, `\$0`/`\$1`), `argument-hint`, or `allowed-tools` for a command
 - Adding bash execution (`!` backticks), `@file` references or `AskUserQuestion` prompts to a command
 - Organizing a plugin's commands, or writing a multi-step sequence inside one command file
 
@@ -221,7 +221,7 @@ For complete patterns, multi-step workflows, and templates, see `references/adva
 **Verify this skill activates on:**
 - "Create a slash command that reviews a PR"
 - "Add an `argument-hint` to my command"
-- "Why isn't `$1` being substituted in my command?"
+- "Why isn't `\$1` being substituted in my command?"
 
 **Verify it does NOT activate on:**
 - "Write a SKILL.md for this workflow" (use `skill-development`)
