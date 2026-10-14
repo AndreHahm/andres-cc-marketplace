@@ -8,7 +8,7 @@ description: >-
   one-shot generation of a brand-new agent from a described need, use the agent-creator
   agent instead; for a structured quality review of an existing agent, use subagent-reviewer;
   for whether agent descriptions collide or will fire correctly, use activation-reviewer.
-allowed-tools: Read Grep Glob Skill Bash(${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/test-agent-trigger.sh:*)
+allowed-tools: Read Write Edit Grep Glob Skill Bash(${CLAUDE_SKILL_DIR}/scripts/validate-agent.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/test-agent-trigger.sh:*)
 ---
 
 # Agent Development for Claude Code Plugins
