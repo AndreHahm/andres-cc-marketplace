@@ -1223,6 +1223,17 @@ def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path):
     assert (run_dir / "diffs-1").is_dir()
 
 
+def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path):
+    (repo / "a.py").write_text("1")
+    _git(repo, "add", "-N", "-A")
+    (repo / "sub").mkdir()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = _wrapper(repo / "sub", str(run_dir), "1", _head(repo), "main")
+    assert result.returncode == 2 and "repository root" in result.stderr
+    assert not list(run_dir.iterdir())  # nothing planned from the wrong directory
+
+
 def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path):
     run_dir = tmp_path / "run"
     run_dir.mkdir()

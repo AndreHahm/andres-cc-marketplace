@@ -5,7 +5,8 @@
 #
 # The planner itself accepts --repo, --output, --diff-dir and more. This wrapper is what the
 # `cross-model-review` skill's allowed-tools grant names, so it takes only what that skill needs and
-# binds the rest: the repository is the current directory, and the manifest and slice diffs always
+# binds the rest: the repository is the current directory (which must be the work tree root, since the
+# planner's --scope is a pathspec relative to it), and the manifest and slice diffs always
 # land at <run-dir>/manifest-<tag>.json and <run-dir>/diffs-<tag>, in a directory that exists, is
 # not a symlink, is owned by the caller and lies outside the repository. The only options passed
 # through are --scope, --exclude-dir, --prior-manifest and --completed-slice; the planner validates
@@ -40,6 +41,7 @@ top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"
 top=$(CDPATH='' cd -P -- "$top" && pwd -P)
 [ "$repo" != / ] && [ "$top" != / ] || fail "refusing to treat / as the repository"
+[ "$repo" = "$top" ] || fail "run from the repository root: $repo is inside the work tree at $top"
 for root in "$repo" "$top"; do
   case "$run_dir/" in
     "$root"/*) fail "run directory must be outside the repository" ;;

@@ -17,7 +17,8 @@ the checks below.
 **Scope of use.** The planner runs through `git-review-scope-run.sh`, a wrapper from the installed
 git-kit plugin (`${CLAUDE_PLUGIN_ROOT}/scripts/`), outside the repository under review, so a file a
 third-party repository keeps at some path of its own is never what runs. The wrapper fixes the
-planner's shape: the repository is the current directory; the manifest and slice diffs go only to
+planner's shape: the repository is the current directory, which must be the work tree root (from a
+subdirectory the wrapper exits 2, so the run takes the `PLAN_FAILED` fallback); the manifest and slice diffs go only to
 `<run-dir>/manifest-<tag>.json` and `<run-dir>/diffs-<tag>`, in a run directory that exists, is not a
 symlink, is owned by the caller and lies outside the repository; and only `--scope`, `--exclude-dir`,
 `--prior-manifest` and `--completed-slice` pass through (the planner validates their values); variables
