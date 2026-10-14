@@ -304,7 +304,7 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 |---------------|---------------|
 | Read-only analysis skill | Read, Glob, Grep |
 | Interactive analysis skill | Read, Glob, Grep, AskUserQuestion |
-| Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked) |
+| Code generation skill | Read, Glob, Grep, Write, `Bash(python <skill-dir>/scripts/gen.py *)` (pinned to the one bundled script invoked) |
 | Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate |
 | Read-only agent | Read, Grep, Glob |
 | Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below) |
@@ -314,7 +314,7 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 - Skills use `allowed-tools:` — agents use `tools:`
 - List only tools that instructions actually reference
 - Read-only components should never have Write or Bash
-- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, `Bash(python:*)`), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, or `Bash(python <skill-dir>/scripts/x.py *)` to pin an interpreter to one script), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
 
 ## Frontmatter Options
 

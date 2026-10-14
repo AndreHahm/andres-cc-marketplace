@@ -266,7 +266,7 @@ If creating complex skills:
 - [ ] Only required tools are included (principle of least privilege)
 - [ ] No overly broad permissions (`Bash(*)`)
 - [ ] If `Bash` included: scope to specific commands (`Bash(git:*)`)
-  - Example: `Read,Write,Bash(python:*)` for Python skill
+  - Example: `Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/check.py *)` for a skill that runs one bundled Python script
   - Example: `Bash(git:*)` for git-only skill
 - [ ] Safe defaults (read-only when possible)
 

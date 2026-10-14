@@ -44,7 +44,7 @@ name: complex-skill-name
 description: >-
   What the skill does. Use when [specific trigger contexts].
   Designed for complex skill use with robust error handling.
-allowed-tools: Read,Write,Bash(python:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/run.py *)
 ---
 ```
 
@@ -165,10 +165,10 @@ Use these optional fields to customize your skill's behavior:
 Apply principle of least privilege: only grant tools your skill needs.
 
 ```yaml
-# Example 1: File processing skill (read/write files, run Python)
+# Example 1: File processing skill (read/write files, run one bundled Python script)
 ---
 name: pdf-processor
-allowed-tools: Read,Write,Bash(python:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/extract.py *)
 ---
 
 # Example 2: Git workflow skill (git commands only)
@@ -186,12 +186,13 @@ allowed-tools: Read,Bash(grep:*),Bash(ls:*)
 # Example 4: Skill with external dependencies (limited network, file ops only)
 ---
 name: markdown-doc-generator
-allowed-tools: Read,Write,Bash(python:*),Bash(curl:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/generate.py *),Bash(curl:*)
 ---
 ```
 
 **Key patterns:**
 - Specify exact commands: `Bash(git:*)` not `Bash(*)`
+- Pin an interpreter to one bundled script (`Bash(python ${CLAUDE_SKILL_DIR}/scripts/x.py *)`), not `Bash(python:*)`, which pre-approves `python -c`
 - For team skills: minimal permissions
 - Never use `Bash(*)` unless absolutely necessary
 
