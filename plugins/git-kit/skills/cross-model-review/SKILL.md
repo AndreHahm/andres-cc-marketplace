@@ -27,9 +27,9 @@ review: self-ratification (a model won't critique its own work) and confident fa
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
 via a raw `codex exec`.
 
-**This skill has no `Write` grant** (it cannot be limited to a path). Every file it creates goes through
-`scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run file"), which
-writes one file directly under `$RUN`, this skill's own scratch dir. Never write to any path inside
+**This skill has no `Write` grant** (it cannot be limited to a path). Every file the model authors goes
+through `scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run
+file") into `$RUN`, this skill's scratch dir; Preflight's `git` redirects write fixed names there. Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
 this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
 deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
