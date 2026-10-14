@@ -29,7 +29,7 @@ Practical examples of commands designed for Claude Code plugins, demonstrating p
 ---
 description: Analyze code quality using plugin tools
 argument-hint: [file-path]
-allowed-tools: Bash(node:*), Read
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/quality-check.js *), Read
 ---
 
 Analyze @$0 using plugin's quality checker:
@@ -298,7 +298,7 @@ Generate production-ready API documentation.
 ---
 description: Comprehensive review using all plugin components
 argument-hint: [file-path]
-allowed-tools: Bash(node:*), Read
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js *), Read
 ---
 
 Target file: @$0

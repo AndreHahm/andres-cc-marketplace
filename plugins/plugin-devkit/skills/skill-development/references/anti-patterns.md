@@ -330,9 +330,9 @@ allowed-tools: Read,Write,Bash(*)
 
 ✅ **GOOD:**
 ```yaml
-allowed-tools: Read,Write,Bash(python:*),Bash(grep:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/check.py *),Bash(grep:*)
 ```
-**Why it works:** Only Python and grep commands allowed.
+**Why it works:** Only one bundled Python script and grep commands are pre-approved, so `python -c` still prompts.
 
 ### Requesting Unnecessary Tools
 
