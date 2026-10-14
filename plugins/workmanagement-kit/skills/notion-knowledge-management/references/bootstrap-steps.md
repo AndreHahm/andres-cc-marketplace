@@ -73,8 +73,9 @@ rename both and verify the listing. Resolve by stable ID or direct fetch, never 
 
 ## Enforcement
 
-The guard `hooks/guard_notion_bootstrap.sh` runs only while this skill is active. It is registered in
-SKILL.md's frontmatter and launched as `bash "..."`. It denies every call to the two tools except the
+The guard `hooks/guard_notion_bootstrap.sh` is registered when this skill is invoked and, per Claude Code's
+hooks documentation, keeps running for the rest of the session, not only during the skill's own turn. It is
+registered in SKILL.md's frontmatter and launched as `bash "..."`. It denies every call to the two tools except the
 shapes above: a data source update with only `data_source_id` plus a `title` and/or one single-line
 `ALTER COLUMN "repo" SET SELECT(...)` statement with single spaces and safe option names, and a move of
 exactly one id under a `page_id` parent. A payload with no tool name is denied. The launcher probes each
@@ -92,8 +93,9 @@ What it cannot check, because it sees one call and not Notion's state:
 - **That the parent is the right page.**
 
 Other limits:
-- The guard is inactive when the tools are used outside this skill. They are not pre-approved there, so
-  the normal permission prompt applies.
+- After this skill has been invoked, the guard also covers the two tools when other work in the same session
+  calls them. Any other use is denied until a new session starts, even though the user could approve it at
+  the normal permission prompt. Before that invocation the guard is not registered and the prompt applies.
 - A hook that crashes, times out or cannot launch is treated by the hook system as a non-blocking error,
   which lets the call through. The launcher closes the launch paths it controls, but a timeout, or a
   registered path that does not resolve, cannot be closed from inside the script.

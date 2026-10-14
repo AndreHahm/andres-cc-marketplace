@@ -27,7 +27,9 @@ run record" line points at the latest; the older entries live here.
   60 checks) fails 31 checks when the guard is deliberately broken; it also caught a launcher bug (a
   Windows backslash path made it deny every call). Not verified live: that `${CLAUDE_PLUGIN_ROOT}` is set
   for a skill's frontmatter hook in an installed plugin, and that a skill-scoped hook's deny decision is
-  honored like a plugin `hooks.json` hook.
+  honored like a plugin `hooks.json` hook. Codex's review (2026-10-14) found the docs say a skill hook
+  stays registered for the rest of the session, so the earlier "runs only while the skill is active" wording
+  was corrected.
 - **iteration-8 (2026-10-14), `evals/notion-knowledge-management/workspace/iteration-8/`** — Re-ran evals
   11 and 14 after a cross-model-review finding that the read-back rule "paragraph count equals the
   source's" rejects a correct write whenever the splitter cuts inside a paragraph (reproduced: a 4,049
