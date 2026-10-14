@@ -333,6 +333,16 @@ def main():
             MOVE,
             {"page_or_database_ids": ["x"], "new_parent": {"type": "page_id", "page_id": PAGE}},
         ),
+        "move hyphens-only id": call(
+            MOVE,
+            {
+                "page_or_database_ids": ["-" * 32],
+                "new_parent": {"type": "page_id", "page_id": PAGE},
+            },
+        ),
+        "update hyphens-only data source id": call(
+            UPDATE, {"data_source_id": "-" * 36, "statements": ALTER}
+        ),
         "tool_input not an object": json.dumps({"tool_name": UPDATE, "tool_input": "x"}),
         "malformed json": "{not json",
         "empty stdin": "",

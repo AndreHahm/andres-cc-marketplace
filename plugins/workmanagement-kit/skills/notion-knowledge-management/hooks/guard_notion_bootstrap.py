@@ -37,8 +37,9 @@ _OPTION = r"'[A-Za-z0-9 _./-]{1,100}'(?::" + _COLORS + r")?"
 ALTER_REPO = re.compile(
     r'ALTER COLUMN "repo" SET SELECT\(' + _OPTION + r"(?:, " + _OPTION + r")*\);?"
 )
-NOTION_ID = re.compile(r"[0-9a-fA-F-]{32,36}")
-DATA_SOURCE_ID = re.compile(r"(?:collection://)?[0-9a-fA-F-]{32,36}")
+_UUID = r"(?:[0-9a-fA-F]{32}|[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})"
+NOTION_ID = re.compile(_UUID)
+DATA_SOURCE_ID = re.compile(r"(?:collection://)?" + _UUID)
 
 UPDATE_ALLOWED_KEYS = {"data_source_id", "title", "statements"}
 HELP = (
