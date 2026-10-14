@@ -26,7 +26,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from scripts.marketplace_ci.conversion import plan_exports
-from scripts.marketplace_ci.git_state import ChangedPath
+from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
 from scripts.marketplace_ci.registry import Registry
 from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
@@ -882,6 +882,135 @@ def compute_changed_line_ranges(repo: Path, base_sha: str) -> LineRanges | None:
         return parse_changed_line_ranges(output.decode("utf-8", errors="surrogateescape"))
     except ValueError:
         return None
+
+
+class PrDeltaError(Exception):
+    """The PR's changed paths could not be computed."""
+
+
+def compute_pr_delta(repo: Path, base_sha: str) -> tuple[ChangedPath, ...]:
+    """The PR's changed paths, `base_sha...HEAD` with renames detected: the one delta
+    both `check-scope-bypass` and `run-codex-review` score. On the merge ref, pass the
+    merge commit's first parent (the workflow's derive step), not the event's fork
+    point, which `main` has moved past."""
+    diff = subprocess.run(
+        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
+        cwd=repo,
+        capture_output=True,
+    )
+    if diff.returncode != 0:
+        raise PrDeltaError(f"git diff against {base_sha!r} failed")
+    return parse_name_status_z(diff.stdout)
+
+
+# Components a `.claude/<component>/...` mirror can hold for a plugin (the
+# `scripts` component has its own list in the map).
+_MIRROR_COMPONENTS = frozenset(
+    {"skills", "agents", "commands", "hooks", "rules", "references", "assets"}
+)
+_MIRROR_MAP_PATH = ".claude/marketplace-sync.json"
+
+
+def _mirror_map(repo: Path, base_sha: str) -> tuple[list[str], list[str], set[str]] | None:
+    """(plugin_mirrors, scripts_mirrors, divergence-exception destinations) from the
+    base's copy of the map, or None when it is missing or unusable. Read from the
+    base, never the working tree: a PR must not widen what counts as its own mirror."""
+    shown = subprocess.run(
+        ["git", "show", f"{base_sha}:{_MIRROR_MAP_PATH}"], cwd=repo, capture_output=True
+    )
+    if shown.returncode != 0:
+        return None
+    try:
+        data = json.loads(shown.stdout)
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    def names(key: str) -> list[str]:
+        raw = data.get(key)
+        return [n for n in raw if isinstance(n, str)] if isinstance(raw, list) else []
+
+    raw_exceptions = data.get("divergence_exceptions")
+    exceptions = {
+        e["dest"]
+        for e in (raw_exceptions if isinstance(raw_exceptions, list) else [])
+        if isinstance(e, dict) and isinstance(e.get("dest"), str)
+    }
+    return names("plugin_mirrors"), names("scripts_mirrors"), exceptions
+
+
+def _blob_fingerprints(repo: Path, paths: Sequence[str]) -> dict[str, tuple[str, str]]:
+    """{path: (mode, blob sha)} at HEAD for the paths that exist there."""
+    if not paths:
+        return {}
+    listed = subprocess.run(
+        ["git", "ls-tree", "-z", "HEAD", "--", *paths], cwd=repo, capture_output=True
+    )
+    if listed.returncode != 0:
+        return {}
+    result: dict[str, tuple[str, str]] = {}
+    for entry in listed.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+        meta, _, path = entry.partition("\t")
+        parts = meta.split()
+        if len(parts) == 3 and path:
+            result[path] = (parts[0], parts[2])
+    return result
+
+
+def collapse_identical_mirrors(
+    repo: Path, changed: Sequence[ChangedPath], base_sha: str
+) -> tuple[ChangedPath, ...]:
+    """Drop each `.claude/...` path that is a byte-identical copy (same mode too) of a
+    changed canonical `plugins/<plugin>/...` file, so the pair is reviewed once under the
+    canonical path. A drifted pair, a mirror changed alone, a declared divergence exception
+    and a plugin missing from the base's mirror map are all kept: the drift is the finding.
+    Mirrors `mirror-identical` in plugins/git-kit/scripts/git-review-scope.py, which a
+    Tier-1 module cannot import."""
+    mirror_map = _mirror_map(repo, base_sha)
+    if mirror_map is None:
+        return tuple(changed)
+    plugin_mirrors, scripts_mirrors, exceptions = mirror_map
+    changed_paths = {cp.new_path for cp in changed if cp.new_path is not None}
+
+    candidates: dict[str, list[str]] = {}
+    for cp in changed:
+        path = cp.new_path
+        if path is None or cp.status not in ("A", "M") or path in exceptions:
+            continue
+        if not path.startswith(".claude/"):
+            continue
+        component, _, rest = path[len(".claude/") :].partition("/")
+        if not rest:
+            continue
+        if component == "scripts":
+            plugins = scripts_mirrors
+        elif component in _MIRROR_COMPONENTS:
+            plugins = plugin_mirrors
+        else:
+            continue
+        canonicals = [
+            f"plugins/{plugin}/{component}/{rest}"
+            for plugin in plugins
+            if f"plugins/{plugin}/{component}/{rest}" in changed_paths
+        ]
+        if canonicals:
+            candidates[path] = canonicals
+
+    wanted = sorted({*candidates, *(c for cs in candidates.values() for c in cs)})
+    prints = _blob_fingerprints(repo, wanted)
+    # Regular files only: a symlink's blob is its target text, which resolves differently from
+    # the canonical and the mirror path (they sit at different depths), so equal text is not
+    # equal content.
+    regular = ("100644", "100755")
+    identical = {
+        mirror
+        for mirror, canonicals in candidates.items()
+        if mirror in prints
+        and prints[mirror][0] in regular
+        and any(prints.get(c) == prints[mirror] for c in canonicals)
+    }
+    return tuple(cp for cp in changed if cp.new_path not in identical)
 
 
 # Off Linux the filesystem (and so the bridge's existence check) may match a path

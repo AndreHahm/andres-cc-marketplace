@@ -29,7 +29,7 @@ WORKFLOW = """\
       - name: Dispatch reviewers directly, validate output, aggregate findings
         env:
           CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
-          CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
+          CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
         run: uv run python -m scripts.marketplace_ci run-codex-review
 
       - name: Upload review result
@@ -147,6 +147,7 @@ def _run(
     uv_rc: int = 0,
     codex: str | None = "codex-cli 0.147.0",
     model: str = "gpt-x",
+    timeout_var: str = "",
     result_json: str | None = "auto",
     uv_prelude: str = "",
     output_name: str = "out.json",
@@ -170,6 +171,9 @@ def _run(
         "gh",
         f'echo "$@" > "{log}.gh"\n'
         '[ "$2" = "list" ] || { echo "unknown command" >&2; exit 1; }\n'
+        # The selector names the variable asked for; answer the timeout one separately.
+        'case "$*" in *CODEX_KIT_REVIEW_TIMEOUT_MS*)\n'
+        f'  [ -n "{timeout_var}" ] && echo "{timeout_var}"; exit 0;;\nesac\n'
         f'[ -n "{model}" ] && echo "{model}"\nexit 0',
     )
     # codex=None stands in for a Codex CLI that fails to run (a real one may be on PATH here).
@@ -630,3 +634,44 @@ def test_the_script_and_its_mirror_are_executable(root):
     # create-pr's grants name this script by path; plugin-rulebook R37 wants it committed as 100755.
     copy = SCRIPT.parents[3] / root / "scripts" / SCRIPT.name
     assert os.access(copy, os.X_OK), f"{copy} is not executable"
+
+
+def test_parse_ci_settings_reads_the_fallback_from_the_variable_expression():
+    # The workflow takes the repository variable and falls back to a literal; the wrapper
+    # needs that literal, and must keep working when only the literal form is present.
+    module = _load_module()
+    assert "vars.CODEX_KIT_REVIEW_TIMEOUT_MS ||" in WORKFLOW
+    assert module.parse_ci_settings(WORKFLOW) == ("600000", "0.147.0")
+    legacy = WORKFLOW.replace("${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}", '"600000"')
+    assert module.parse_ci_settings(legacy) == ("600000", "0.147.0")
+
+
+def test_the_timeout_repository_variable_overrides_the_workflow_fallback(repo, tmp_path):
+    result, _, uv_env = _run(repo, tmp_path, timeout_var="720000")
+    assert result.returncode == 0
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=720000" in uv_env
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" not in uv_env
+    assert "720000" in result.stdout
+
+
+def test_an_unset_timeout_variable_falls_back_to_the_workflow_literal(repo, tmp_path):
+    result, _, uv_env = _run(repo, tmp_path, timeout_var="")
+    assert result.returncode == 0
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-5", "720000;rm", "7 2", "1" * 12])
+def test_a_malformed_timeout_variable_falls_back_instead_of_being_passed_on(repo, tmp_path, value):
+    result, _, uv_env = _run(repo, tmp_path, timeout_var=value)
+    assert result.returncode == 0
+    assert "CODEX_KIT_REVIEW_TIMEOUT_MS=600000" in uv_env
+    assert f"CODEX_KIT_REVIEW_TIMEOUT_MS={value}" not in uv_env
+
+
+def test_the_real_workflow_takes_the_timeout_from_the_repository_variable():
+    root = Path(__file__).resolve().parents[2]
+    text = (root / ".github/workflows/marketplace-ci.yml").read_text("utf-8")
+    assert (
+        "CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}" in text
+    )
+    assert 'CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"' not in text

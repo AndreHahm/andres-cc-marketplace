@@ -65,11 +65,12 @@ Every `codex-review-bridge` dispatch shares `runCodexExec`'s own 240000ms (4 min
 overridden. On a large delta PR, a single reviewer's one-call review can legitimately need longer than
 that to complete against its full scope — confirmed live: a 100-changed-path PR pushed
 `plugin-rulebook-checker`'s dispatch past the default, first as a strained/malformed response, then as a
-hard timeout on retry. The `codex-review` job sets `CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"` (10 min)
-directly in the workflow (not a repository variable, unlike the model override above — this is a
-self-contained workflow default, not something a maintainer needs to configure separately), giving every
-dispatched reviewer more headroom within the job's own 45-minute budget. Invalid values (non-numeric or
-non-positive) fail the job with a clear message, same as the model override.
+hard timeout on retry. The `codex-review` job sets
+`CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}`: the repository
+variable of that name when it is set, else a 10 min fallback written in the workflow. That gives every
+dispatched reviewer more headroom within the job's own 45-minute budget, and a maintainer can raise it
+without editing the workflow. Invalid values (non-numeric or non-positive) fail the job with a clear
+message, same as the model override.
 
 ### Concurrency, timeout retries and the dispatch budget
 
@@ -91,8 +92,39 @@ reviewer fails, the file is still written, with a `dispatch_failed` list (review
 `blocking: true`, so the uploaded `codex-review-result` artifact holds a machine-readable copy of the error
 (the same text the log line carries); the job still exits 2. Every other exit-2 path of `run-codex-review`
 (unresolvable base SHA, failed `git diff`, an undefined full-mode dispatch, a reviewer with no or invalid
-output) writes `{"blocking": true, "error": ...}` the same way, which also overwrites a stale
-`codex-review-result.json` a PR might have committed, so the artifact always reflects this run.
+output) writes `{"status": "could_not_run", "blocking": true, "error": ..., "provenance": ...}` the same way,
+which also overwrites a stale `codex-review-result.json` a PR might have committed, so the artifact always
+reflects this run.
+
+## The reviewed delta and the result status
+
+`codex-review` checks out `refs/pull/<n>/merge`, so the PR's own delta is the merge commit's first parent
+to `HEAD`. The event's `base.sha` is the fork point and does not move when the base branch does; diffing
+against it on the merge ref put everything the base gained since into the review (128 files instead of 13
+on PR #567) and made the Tier-1 hard-refuse step refuse PRs for files other people changed (issue #572).
+A plain-shell step, `Derive the delta base from the merge commit`, runs first, before any PR code (the merge
+ref carries the PR's own `scripts/marketplace_ci`, so this decision cannot live in it). It takes
+`git rev-parse HEAD^1` as the base and passes it, as `BASE_SHA`, to the Tier-1 refusal step and to
+`run-codex-review --base-sha`. Reviewer instructions are read at that same base, which is the current base
+tip. It fails closed, writing a `could_not_run` result file, unless the event base SHA resolves, `HEAD` has
+exactly two parents, and the event base is an ancestor of the first parent. Steps that diff against the PR
+head (`compute-scope`, `check-pr`, every `merge-base "$BASE_SHA" "$PR_HEAD_SHA"` step) were already
+correct and are unchanged. An attested bypass clears this guard like every other `codex-review` refusal.
+
+`compute-scope` and `run-codex-review` get their changed paths from one helper (`compute_pr_delta`), so the
+bypass decision and the review cannot disagree about the delta. A canonical `plugins/<plugin>/...` file and
+its byte-identical `.claude/...` copy (same blob and mode, plugin listed in the **base's**
+`.claude/marketplace-sync.json`, not a declared divergence exception) are reviewed once, under the canonical
+path. A drifted pair, or a mirror changed alone, is kept, because the drift is what the reviewer must see.
+
+`codex-review-result.json` has a top-level `status` and a per-reviewer `reviewer_results[<name>]` of
+`{status, attempts}`, each `findings`, `clean` or `could_not_run`, on every payload shape (a completed
+review, a failed dispatch, an infrastructure failure or guard refusal). `blocking` is unchanged. A run with
+any failed reviewer is `could_not_run` as a whole, never a clean review of the rest. `provenance` records
+`head_sha` (the PR head, the merge commit's second parent), `merge_ref_sha`, `base_sha` (the base the delta
+used), and the `model` and `cli_version` the reviewers reported. The job exposes the status as the
+`review_status` output, and `publish` words its message by it (a blocking finding, could not run, or passed
+clean); the job result alone still decides pass or fail.
 
 Each bridge process runs in its own session and is killed, together with its whole process group on POSIX runners (the bridge
 spawns a `codex` child; elsewhere only the direct process is killed), if it outlives its own timeout plus 60 seconds (`_PROCESS_SLACK_SECONDS`, counted in
@@ -113,8 +145,12 @@ that raised findings. A reviewer that legitimately finds nothing to review but w
 `Inconclusive` (for example `plugin-rulebook-checker` on a diff with no component files) is blocked the same
 way; that outcome is expected and needs a manual review or an attested bypass.
 
-The `CODEX_KIT_REVIEW_TIMEOUT_MS` workflow value is the only per-call timeout the dispatcher reads; a
-repository variable of that name has no effect, because the workflow sets the value itself.
+The `CODEX_KIT_REVIEW_TIMEOUT_MS` environment value is the only per-call timeout the dispatcher reads. The
+workflow fills it from the repository variable of that name, falling back to the literal in the expression
+(before issue #572 it was a hard-coded literal, so the variable had no effect, #471). The local parity
+wrapper (`git-codex-parity-review.py`) does the same: it reads the variable with `gh variable list`, accepts
+it only as 1 to 9 digits without a leading zero, and otherwise uses the fallback it parses from the
+workflow's expression. Keep the expression in that exact shape, because the wrapper parses it.
 
 ## Diff-scoped blocking
 
