@@ -4,9 +4,10 @@
 # ///
 """Split long text into blocks of at most 2,000 UTF-16 units, for Notion page content.
 
-Notion rejects a text block or text property longer than 2,000 characters, so the
-notion-knowledge-management skill writes a long record body (a Report, for example) as page
-content split into blocks, with the record's own `body` property holding only a short note.
+Notion's API limits a text block or text property to 2,000 characters (a live probe found the
+connector accepts longer text, so the limit is kept as a conservative contract). The
+notion-knowledge-management skill therefore writes a long record body (a Report, for example) as
+page content split into blocks, with the record's own `body` property holding only a short note.
 
 Usage:
     wmgt_split_blocks.py split <file> [--max N] [--start I] [--count K]
@@ -18,11 +19,16 @@ prints {"ok": false, "error": "..."} and exits 1.
 
 Splitting prefers a blank line between paragraphs, then a line break, then a space or tab,
 and cuts hard only where a stretch has no whitespace. Length is counted in UTF-16 units, so a
-character outside the Basic Multilingual Plane counts as two and is never cut in half.
+character outside the Basic Multilingual Plane counts as two and is never cut in half; --max
+therefore has to be at least 2. Line endings are normalized to LF before splitting. The
+whitespace character at a cut is dropped, and blocks cut from one paragraph are rejoined with a
+blank line by the caller, so a mid-paragraph cut reads as a paragraph break after reassembly.
 Limitation: it does not understand markdown tables or code fences, so a split can land inside
 one.
 
-The file must be a regular (non-symlink), strictly UTF-8, non-blank file of at most 5 MB.
+The file must be a regular (non-symlink), strictly UTF-8, non-blank file of at most 5 MB. The
+symlink check covers only the final path component and is a convenience, not a security
+boundary.
 """
 
 import argparse
@@ -56,19 +62,29 @@ def prefix_within(text, max_units):
 
 
 def split_paragraph(paragraph, max_units):
-    """Split one over-long paragraph at a line break, then whitespace, then hard."""
+    """Split one over-long paragraph at a line break, then whitespace, then hard.
+
+    ``max_units`` must be at least 2 so every character fits, which guarantees progress. Only a
+    window of at most ``max_units`` characters is measured per step, so the work stays linear.
+    """
     pieces = []
-    while units(paragraph) > max_units:
-        head = prefix_within(paragraph, max_units)
-        cut = max(head.rfind("\n"), head.rfind(" "), head.rfind("\t"))
+    pos = 0
+    while True:
+        if len(paragraph) - pos <= max_units:
+            rest = paragraph[pos:]
+            if units(rest) <= max_units:
+                pieces.append(rest)
+                return pieces
+        head = prefix_within(paragraph[pos : pos + max_units], max_units)
+        cut = head.rfind("\n")
+        if cut <= 0:
+            cut = max(head.rfind(" "), head.rfind("\t"))
         if cut > 0:
             pieces.append(head[:cut])
-            paragraph = paragraph[cut + 1 :]
+            pos += cut + 1
         else:
             pieces.append(head)
-            paragraph = paragraph[len(head) :]
-    pieces.append(paragraph)
-    return pieces
+            pos += len(head)
 
 
 def split_blocks(text, max_units):
@@ -103,14 +119,15 @@ def read_text(path_text):
         text = path.read_bytes().decode("utf-8")
     except UnicodeDecodeError:
         raise SplitError("the file is not valid UTF-8") from None
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     if not text.strip():
         raise SplitError("the file is empty or only whitespace")
     return text
 
 
 def run(args):
-    if not 1 <= args.max <= LIMIT:
-        raise SplitError(f"--max must be between 1 and {LIMIT}")
+    if not 2 <= args.max <= LIMIT:
+        raise SplitError(f"--max must be between 2 and {LIMIT}")
     if args.start < 0:
         raise SplitError("--start must be 0 or more")
     if args.count < 1:
