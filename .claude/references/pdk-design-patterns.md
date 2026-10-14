@@ -231,7 +231,7 @@ The gotchas section is the highest-signal content in any skill. It should be bui
 
 ## Progressive Disclosure
 
-See `how-skills-work.md`'s "Token Loading Hierarchy" for the canonical three-level explanation; the table below adds the skill-content-lifecycle/auto-compaction detail that file doesn't cover.
+See `skill-development`'s `references/how-skills-work.md` "Token Loading Hierarchy" for the canonical three-level explanation; the table below adds the skill-content-lifecycle/auto-compaction detail that file doesn't cover.
 
 ### The Three-Level System
 
@@ -559,7 +559,7 @@ Use a PreToolUse hook to log when skills are invoked. This enables data-driven i
 - **Popular vs underused** — High-usage skills justify more investment; low-usage may need description optimization or retirement
 - **Under-triggering** — If a skill exists for a task but users invoke it manually instead of auto-triggering, the description needs work
 - **Time and token consumption** — Skills that significantly increase token usage without proportional quality gain may need to be leaned down
-- **Regression after model updates** — Rerun evals after model changes to catch skills that break or become redundant (see Phase 3: Model Update Check)
+- **Regression after model updates** — Rerun evals after model changes to catch skills that break or become redundant (see `skill-development`'s Phase 3, step 7)
 
 **2. OpenTelemetry `claude_code.skill_activated` event (v2.1.126)** — fires on every skill activation and carries `invocation_trigger` (`"user-slash"`, `"claude-proactive"`, or `"nested-skill"`). Aggregate by trigger to spot under-triggering: a skill mostly fired by `user-slash` is probably failing to auto-trigger and needs a description rewrite.
 
@@ -570,7 +570,7 @@ With OTel enabled, query `claude_code.skill_activated` events and group by `invo
 - `claude-proactive` healthy mix → auto-triggering works; iterate on output quality instead
 - `nested-skill` only → skill is purely a composition target; description optimization is lower priority
 
-Without OTel: review usage logs from the PreToolUse hook above. If a skill is manually invoked (via `/skill-name`) far more often than auto-triggered, run the description optimization loop from Phase 5.
+Without OTel: review usage logs from the PreToolUse hook above. If a skill is manually invoked (via `/skill-name`) far more often than auto-triggered, run the description optimization loop from `skill-development`'s Phase 5.
 
 ---
 
