@@ -7,6 +7,8 @@ description: >-
   Use when creating slash commands, adding commands to a plugin, writing custom
   commands, defining command arguments, using command frontmatter, organizing
   commands, creating commands with file references, or writing interactive commands.
+  Not for SKILL.md skills (skill-development), multi-step skill workflows
+  (workflow-skill-development), or converting a command into a skill (skill-development).
 allowed-tools: Read Write Edit Glob Skill
 ---
 
@@ -25,7 +27,8 @@ allowed-tools: Read Write Edit Glob Skill
 
 ## When NOT to Use
 
-- **Building a skill** (SKILL.md format) — use `skill-development`; skills are activated by context-matching, not user-typed commands
+- **Building a skill** (SKILL.md format) — use `skill-development`; skills are activated by context-matching, not user-typed commands. Converting an existing command into a skill also goes there
+- **Designing a multi-step workflow skill** (phases with entry/exit criteria, sub-agent orchestration, decision trees, safety gates in a SKILL.md) — use `workflow-skill-development`; this skill's multi-step coverage is the step sequence inside one user-typed command file
 - **Creating hooks** — use `hook-development`; hooks respond to events, not slash commands
 - **Adding MCP servers** — use `mcp-integration`
 
