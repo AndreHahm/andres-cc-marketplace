@@ -5,7 +5,9 @@ description: >-
   Use when the user asks to 'create an agent', 'generate an agent', 'build
   a new agent', 'make me an agent that...', or describes agent
   functionality they need. Trigger when the user wants to create autonomous
-  agents for plugins.
+  agents for plugins. Not for hand-authoring or editing an existing agent's
+  fields, or validating and refining one against the spec (use
+  agent-development).
 model: sonnet
 color: purple
 tools: ["Write", "Read"]
