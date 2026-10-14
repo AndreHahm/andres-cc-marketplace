@@ -5,6 +5,7 @@ description: >-
   reviewing code changes, analyzing security, checking performance, or
   validating against standards. Analysis only; no modifications.
 model: inherit
+color: blue
 tools: Read, Grep, Glob
 ---
 

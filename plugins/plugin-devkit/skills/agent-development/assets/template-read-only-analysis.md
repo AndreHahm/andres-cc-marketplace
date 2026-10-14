@@ -5,6 +5,7 @@ description: >-
   generating reports, analyzing patterns, or answering questions about existing
   data. Read-only; no modifications allowed.
 model: inherit
+color: cyan
 tools: Read, Grep, Glob
 ---
 
