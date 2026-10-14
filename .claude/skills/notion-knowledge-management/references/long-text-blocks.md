@@ -28,7 +28,15 @@ and the full text goes into the page as blocks of at most 2,000 characters.
 
 ## Read-back
 
-The read-back returns Markdown with one line per paragraph, so a block count cannot be observed. A live
-split write in the test environment on 2026-10-13 confirmed this: six paragraphs written as three
-splitter blocks came back as six lines, intact and in order. Confirm instead that the paragraph count
-equals the source's and that the last paragraph ends with the source's closing sentence.
+The read-back returns Markdown with one line per paragraph, so neither a block count nor a paragraph
+count can be compared with the source. A cut inside a paragraph is written as a paragraph break, so a
+correct write of one long paragraph reads back with more paragraphs than the source has. A live split
+write in the test environment on 2026-10-13 showed the read-back has no block structure: six paragraphs
+written as three splitter blocks came back as six lines, intact and in order.
+
+Confirm instead, in this order:
+1. Each splitter block's opening words and closing words appear in the read-back, block after block.
+2. The last paragraph ends with the source's closing sentence.
+
+This catches a missing, duplicated or reordered block, the realistic failure after a partial append. It
+does not compare the full text, so it does not prove every character arrived.

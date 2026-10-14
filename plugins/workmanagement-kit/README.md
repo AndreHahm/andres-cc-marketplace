@@ -34,7 +34,10 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   set from the `notion.repo` configuration value. Long text goes into page content as blocks of at
   most 2,000 characters, split by `scripts/wmgt_split_blocks.py` (paged with `--start`/`--count`;
   fixture test `scripts/wmgt_test_split_blocks.py`). A live probe found the Notion connector accepts
-  longer text, so the limit is kept as a conservative contract, not a connector-enforced rule.
+  longer text, so the limit is kept as a conservative contract, not a connector-enforced rule. Bootstrap
+  uses two broad Notion tools (`notion-update-data-source`, `notion-move-pages`); a hook that runs only
+  while this skill is active (`skills/notion-knowledge-management/hooks/guard_notion_bootstrap.sh`)
+  denies every use of them except adding a `repo` option, a rename, and moving one item under a page.
 - **`linear-work-management`** — read and update accepted Projects, Milestones, and Issues in
   Linear under Linear's own authority (Goals and Roadmaps are handoff-only today). It also reads Initiatives, read-only, through
   an optional second, separately installed Linear connector; that read is gated by its own
