@@ -964,8 +964,8 @@ jobs:
       # everything the base gained since (128 files instead of 13 on PR #567) and refuses PRs
       # for Tier-1 files other people changed. The event base is kept only as a guard input.
       # Plain shell, before any PR code runs: the merge ref carries the PR's own
-      # scripts/marketplace_ci, so this decision cannot be made in it. Both messages are static
-      # text, safe to write into the result file. tests/marketplace_ci/test_merge_ref_delta.py
+      # scripts/marketplace_ci, so this decision cannot be made in it. Every message here is
+      # static text, safe to write into the result file. tests/marketplace_ci/test_merge_ref_delta.py
       # runs this script against fixture merge refs.
       - name: Derive the delta base from the merge commit (first parent), failing closed
         id: delta_base

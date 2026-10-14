@@ -160,6 +160,9 @@ def test_an_infrastructure_failure_reports_could_not_run(monkeypatch, git_repo, 
     assert payload["status"] == "could_not_run"
     assert payload["blocking"] is True
     assert "cannot resolve base SHA" in payload["error"]
+    # Every shape run-codex-review writes itself carries the same keys, empty where nothing ran.
+    assert payload["reviewer_results"] == {}
+    assert PROVENANCE_KEYS <= set(payload["provenance"])
 
 
 @pytest.mark.parametrize("bridge_key", ["clean", "blocking"])

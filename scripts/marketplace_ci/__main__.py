@@ -1042,6 +1042,7 @@ def _fail_run_codex_review(args: argparse.Namespace, message: str) -> int:
             "status": "could_not_run",
             "blocking": True,
             "error": message[:_MAX_ERROR_CHARS],
+            "reviewer_results": {},
             "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), []),
         }
         Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")

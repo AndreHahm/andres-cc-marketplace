@@ -106,20 +106,27 @@ A plain-shell step, `Derive the delta base from the merge commit`, runs first, b
 ref carries the PR's own `scripts/marketplace_ci`, so this decision cannot live in it). It takes
 `git rev-parse HEAD^1` as the base and passes it, as `BASE_SHA`, to the Tier-1 refusal step and to
 `run-codex-review --base-sha`. Reviewer instructions are read at that same base, which is the current base
-tip. It fails closed, writing a `could_not_run` result file, unless the event base SHA resolves, `HEAD` has
-exactly two parents, and the event base is an ancestor of the first parent. Steps that diff against the PR
+tip. It fails closed, writing a `could_not_run` result file, unless all five hold: the event base SHA
+resolves; `HEAD` has exactly two parents; the second parent is the event's PR head (so `HEAD` is a merge of
+it, not an author-made commit); the event base is an ancestor of the first parent; and the first parent is an
+ancestor of `refs/remotes/origin/<base branch>` (an author-made merge of their own commit on top of base
+passes the first four alone). A base branch that moved on since the checkout still passes. Steps that diff against the PR
 head (`compute-scope`, `check-pr`, every `merge-base "$BASE_SHA" "$PR_HEAD_SHA"` step) were already
 correct and are unchanged. An attested bypass clears this guard like every other `codex-review` refusal.
 
-`compute-scope` and `run-codex-review` get their changed paths from one helper (`compute_pr_delta`), so the
-bypass decision and the review cannot disagree about the delta. A canonical `plugins/<plugin>/...` file and
+`compute-scope` and `run-codex-review` both start from one helper (`compute_pr_delta`). Only the review then
+collapses identical mirrors, so for a large mirrored diff the two scopes can differ: 26 identical pairs are 52
+paths (a closure-overflow `full` scope) to the bypass decision but 26 paths (a `delta` scope) to the review.
+That direction is fail-safe, since a larger bypass scope only means Codex runs. A canonical `plugins/<plugin>/...` file and
 its byte-identical `.claude/...` copy (same blob and mode, plugin listed in the **base's**
 `.claude/marketplace-sync.json`, not a declared divergence exception) are reviewed once, under the canonical
 path. A drifted pair, or a mirror changed alone, is kept, because the drift is what the reviewer must see.
 
-`codex-review-result.json` has a top-level `status` and a per-reviewer `reviewer_results[<name>]` of
-`{status, attempts}`, each `findings`, `clean` or `could_not_run`, on every payload shape (a completed
-review, a failed dispatch, an infrastructure failure or guard refusal). `blocking` is unchanged. A run with
+`codex-review-result.json` has a top-level `status` (`findings`, `clean` or `could_not_run`) on every payload
+shape. Every shape `run-codex-review` writes itself (a completed review, a failed dispatch, any other exit-2
+failure) also has `provenance` and a per-reviewer `reviewer_results[<name>]` of `{status, attempts}`, empty
+when nothing ran. The workflow's pre-dispatch guard refusal, which runs before any Python, writes only
+`status`, `blocking` and `error`. `blocking` is unchanged. A run with
 any failed reviewer is `could_not_run` as a whole, never a clean review of the rest. `provenance` records
 `head_sha` (the PR head, the merge commit's second parent), `merge_ref_sha`, `base_sha` (the base the delta
 used), and the `model` and `cli_version` the reviewers reported. The job exposes the status as the
@@ -148,9 +155,11 @@ way; that outcome is expected and needs a manual review or an attested bypass.
 The `CODEX_KIT_REVIEW_TIMEOUT_MS` environment value is the only per-call timeout the dispatcher reads. The
 workflow fills it from the repository variable of that name, falling back to the literal in the expression
 (before issue #572 it was a hard-coded literal, so the variable had no effect, #471). The local parity
-wrapper (`git-codex-parity-review.py`) does the same: it reads the variable with `gh variable list`, accepts
-it only as 1 to 9 digits without a leading zero, and otherwise uses the fallback it parses from the
-workflow's expression. Keep the expression in that exact shape, because the wrapper parses it.
+wrapper (`git-codex-parity-review.py`) does the same: it reads the variable with `gh variable list`, passes
+it on verbatim when the bridge would accept it (a positive integer in a decimal form such as `720000`,
+`6e5` or `720000.0`, up to 2^53), and otherwise uses the fallback it parses from the workflow's expression,
+printing a warning when the variable is set but unusable. Keep the expression in that exact shape, because
+the wrapper parses it.
 
 ## Diff-scoped blocking
 
