@@ -9,7 +9,9 @@ their own correctness)."""
 import json
 import pathlib
 import re
+import subprocess
 import sys
+import tempfile
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -172,7 +174,32 @@ def check_trigger_script_detection_helpers():
     return True, f"all {len(cases)} detection-helper cases pass"
 
 
+def check_validator_accepts_list_form_tools():
+    agent = (
+        "---\nname: list-agent\n"
+        "description: Use this agent when you need a list-form tools agent "
+        "for testing the validator.\n"
+        "model: inherit\ncolor: blue\ntools:\n  - Read\n  - Grep\n---\n\n"
+        "You are a test agent. Do the thing carefully and report results "
+        "clearly to the caller always.\n"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = pathlib.Path(tmp) / "list-agent.md"
+        path.write_text(agent, encoding="utf-8")
+        proc = subprocess.run(
+            ["bash", str(SKILL_DIR / "scripts" / "validate-agent.sh"), str(path)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    if "Missing required field: tools" in proc.stdout or "tools: Read, Grep" not in proc.stdout:
+        return False, f"block-list tools: not recognized: {proc.stdout[-300:]!r}"
+    return True, "validate-agent.sh reads a YAML block-list tools: field"
+
+
 CHECKS = [
+    check_validator_accepts_list_form_tools,
     check_frontmatter,
     check_bash_grants,
     check_scripts_exist,

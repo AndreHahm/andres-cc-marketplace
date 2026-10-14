@@ -128,6 +128,40 @@ def check_obsolete_handles_naive_timestamp():
     return True, "naive and timezone-aware last_used timestamps are both compared"
 
 
+def check_obsolete_lists_high_urgency_first():
+    sim = _load_script("analyze_similarity")
+    skills = [
+        {"name": f"stale-{i}", "frontmatter": {"description": "Parse logs"}} for i in range(11)
+    ]
+    skills.append({"name": "never-used", "frontmatter": {"description": "Parse logs"}})
+    entries = {
+        f"stale-{i}": {"activation_count": 3, "last_used": "2020-01-01T00:00:00Z"}
+        for i in range(11)
+    }
+    entries["never-used"] = {"activation_count": 0}
+    names = [item["name"] for item in sim.find_obsolete_skills(skills, {"skills": entries})]
+    if "never-used" not in names[:10]:
+        return False, f"high-urgency skill would be cut by the report's first-10 limit: {names}"
+    return True, "high-urgency obsolete skills sort ahead of the report's first-10 cut"
+
+
+def check_frontmatter_close_is_line_anchored():
+    validate = _load_script("quick_validate")
+    text = (
+        "---\nname: dash-skill\n"
+        'description: "Handles jobs --- including retries. Use when jobs stall."\n'
+        "---\n# Body\n"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "dash-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(text, encoding="utf-8")
+        ok, message = validate.validate_skill_frontmatter(skill)
+    if not ok:
+        return False, f"a '---' inside a frontmatter value ended the block early: {message}"
+    return True, "a '---' inside a frontmatter value does not end the block"
+
+
 def check_repair_preserves_frontmatter():
     repair = _load_script("repair_skill")
     original = "---\ndescription: >-\n  Zażółć gęślą.\nz-key: 1\na-key: 2\n---\n# Body\n"
@@ -142,6 +176,22 @@ def check_repair_preserves_frontmatter():
     if result != expected:
         return False, f"existing frontmatter was rewritten: {result!r}"
     return True, "repair inserts only the missing key and leaves the rest byte-identical"
+
+
+def check_repair_keeps_dashes_inside_values():
+    repair = _load_script("repair_skill")
+    original = '---\ndescription: "Handles jobs --- including retries."\n---\n# Body\n'
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "demo-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(original, encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            repair.fix_frontmatter_format(skill)
+        result = (skill / "SKILL.md").read_text(encoding="utf-8")
+    expected = '---\nname: "demo-skill"\n' + original[4:]
+    if result != expected:
+        return False, f"a '---' inside a value was treated as the closing delimiter: {result!r}"
+    return True, "repair does not treat a '---' inside a value as the closing delimiter"
 
 
 def check_init_rejects_path_traversal_name():
@@ -232,7 +282,10 @@ CHECKS = [
     check_scan_skills_parses_block_scalar,
     check_similarity_without_registry,
     check_obsolete_handles_naive_timestamp,
+    check_obsolete_lists_high_urgency_first,
+    check_frontmatter_close_is_line_anchored,
     check_repair_preserves_frontmatter,
+    check_repair_keeps_dashes_inside_values,
     check_init_rejects_path_traversal_name,
     check_run_eval_reads_pipe_without_select,
     check_package_skill_imports_as_script,
