@@ -2,6 +2,8 @@
 
 Detailed guidance on writing effective skills, from gotchas sections to progressive disclosure to on-demand hooks.
 
+The five patterns below are skill-design patterns. They are a different axis from `workflow-skill-development`'s five workflow-architecture patterns (Routing, Sequential Pipeline, Linear Progression, Safety Gate, Task-Driven), which describe how a multi-phase skill routes and gates its phases.
+
 ## Table of Contents
 
 1. [Writing Effective Instructions](#writing-effective-instructions)

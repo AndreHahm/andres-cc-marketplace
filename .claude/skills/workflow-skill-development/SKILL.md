@@ -152,6 +152,8 @@ How many distinct paths does the skill have?
 | **Safety Gate** | Destructive/irreversible actions | Two confirmation gates before execution |
 | **Task-Driven** | Complex dependencies, partial failure tolerance | TaskCreate/TaskUpdate with dependency tracking |
 
+These are workflow-architecture patterns: how phases are routed, ordered and gated. They are a different axis from the five skill-design patterns in `pdk-design-patterns.md` (Sequential workflow orchestration, Multi-MCP coordination, Iterative refinement, Context-aware tool selection, Domain-specific intelligence), which `skill-reviewer` checks; a workflow skill can be judged against both. Sequential Pipeline and Linear Progression are both forms of the design pattern "Sequential workflow orchestration"; Routing, Safety Gate and Task-Driven have no counterpart there.
+
 ## Structural Anatomy
 
 Every workflow skill needs the same skeleton, regardless of pattern. See [skill-skeleton.md](references/skill-skeleton.md) for the full template.
@@ -206,7 +208,7 @@ Launch general-purpose agent:
 ### Step 5: Verify
 
 Confirm the workflow actually works before considering it done:
-1. Walk through the Validation Checklist above end-to-end against the finished skill/command.
+1. Walk through the Validation Checklist below end-to-end against the finished skill/command.
 2. Invoke `plugin-rulebook` for naming, tool-scoping, and formatting compliance.
 3. If the target skill has a persisted `scripts/smoke_test.py`, ask the user to run it (this skill holds no `Bash` grant) and review the output.
 4. Test at least one real invocation through the orchestrator command, confirming each step's captured
