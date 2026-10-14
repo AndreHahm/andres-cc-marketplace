@@ -292,7 +292,7 @@ Use when the agent needs to reference prior work:
 
 ```
 "The user just finished creating a new skill at <skill_path>.
-Invoke skill-refiner to:
+Invoke skill-refiner-interactive to:
 1. Analyze the skill (structure, clarity, efficiency)
 2. Apply refinements
 3. Validate final quality

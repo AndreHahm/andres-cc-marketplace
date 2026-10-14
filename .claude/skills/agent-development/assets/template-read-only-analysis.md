@@ -4,7 +4,7 @@ description: >-
   Execute read-only analysis on data and files. Use when exploring structure,
   generating reports, analyzing patterns, or answering questions about existing
   data. Read-only; no modifications allowed.
-model: sonnet
+model: inherit
 tools: Read, Grep, Glob
 ---
 
