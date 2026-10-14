@@ -99,8 +99,9 @@ def check_triage_is_a_dedicated_gate():
     _, body = C.read_skill(SKILL_DIR)
     start = body.find("5. **Triage.**")
     end = body.find("6. **File the draft.**")
-    if start < 0 or end < start:
-        return False, "triage step 5 or step 6 not found in the body"
+    after = body.find("7. **Review and optimize.**")
+    if start < 0 or end < start or after < end:
+        return False, "triage step 5, step 6 or step 7 not found in the body"
     step = body[start:end]
     for needed in (
         "AskUserQuestion",
@@ -111,7 +112,7 @@ def check_triage_is_a_dedicated_gate():
     ):
         if needed not in step:
             return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
-    if "AskUserQuestion" not in body[end : end + 900]:
+    if "AskUserQuestion" not in body[end:after]:
         return False, "step 6 no longer has its own AskUserQuestion for the file-draft decision"
     return True, "triage is its own AskUserQuestion with the three options, apart from step 6's"
 
