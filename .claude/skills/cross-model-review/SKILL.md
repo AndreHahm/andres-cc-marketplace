@@ -129,7 +129,7 @@ planner wrapper's. See `references/index-seeding-rationale.md`.
 beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
-`$DIFF_STR`. Every other diff invocation here (Preflight steps 2 and 6, `CODEX_DIFF`) reuses this
+`$DIFF_STR`. Every other diff invocation here (the planner's per-slice diffs, Preflight step 1) reuses this
 same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, seeing intent-added files too.
 
 ## Preflight
