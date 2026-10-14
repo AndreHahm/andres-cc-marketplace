@@ -215,14 +215,15 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       change (like a new skill) ships, so `claude plugin update` doesn't treat it as unchanged
 - [ ] `git add -N` always runs before the canonical `DIFF`/`CODEX_DIFF` commands, never after — an
       untracked file added post-diff still won't appear in that run's output
-- [ ] `git add -N`, `git merge-base`, and `realpath` are all declared in `allowed-tools` — never
-      invoked without a matching grant
+- [ ] `git merge-base` and `realpath` are declared in `allowed-tools`, and `git add -N` is run only
+      through `git-review-intent-add.sh` (declared) — never invoked without a matching grant
 - [ ] Preflight step 2's symlink-containment check always resolves `$REPO_ROOT` inline via
       `git rev-parse --show-toplevel`, never the `$REPO_ROOT` variable — step 4 hasn't assigned it yet
       at that point in the sequence
 - [ ] review.md's self-contained field summary is used whenever `envelope-schema.md` is unavailable
       (codex-kit not installed) — Claude's native pass is never left without a field contract to follow
-- [ ] `git add -N` always runs against a throwaway `GIT_INDEX_FILE` — the real `.git/index` is never
+- [ ] `git add -N` always runs against a throwaway `GIT_INDEX_FILE` (`git-review-intent-add.sh` sets
+      it to `<run-dir>/index` itself) — the real `.git/index` is never
       touched, and a `git status` on the real repo after the run shows every previously-untracked
       file exactly as it did before
 - [ ] The symlink-containment check always requires an exact match or a `/`-separator boundary —

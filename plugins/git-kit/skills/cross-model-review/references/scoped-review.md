@@ -25,7 +25,8 @@ symlink, is owned by the caller and lies outside the repository; and only `--sco
 that redirect git or Python (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_CONFIG_*`, `PYTHON*`, `BASH_ENV`, ...) are
 dropped before it starts. So the `allowed-tools` grant for the wrapper cannot by itself aim the planner at
 another repository or another output path. The `export` lines (`GIT_INDEX_FILE`,
-`CODEX_KIT_REVIEW_REPO_ROOT`, `CODEX_KIT_REVIEW_TIMEOUT_MS`) and `git add -N` have no grant, so they prompt. In
+`CODEX_KIT_REVIEW_REPO_ROOT`, `CODEX_KIT_REVIEW_TIMEOUT_MS`) have no grant, so they prompt; `git add -N` runs
+through `git-review-intent-add.sh`, which fixes the index to `<run-dir>/index`. In
 this repository's own sessions `CLAUDE_PLUGIN_ROOT` is empty, the skill itself loads from the `.claude/`
 mirror, and the command's `:-.claude` default selects that mirror's wrapper
 (`.claude/scripts/git-review-scope-run.sh`, relative to the checkout root the chain runs from). That adds no

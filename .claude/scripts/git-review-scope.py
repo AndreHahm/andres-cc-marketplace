@@ -100,7 +100,7 @@ NEVER_EXCLUDE = tuple(
         r"(^|/)skills/(codex-review-bridge|codex-windows-guardrails)/",
         r"(^|/)git-kit\.(settings|local)\.json\Z",
         r"(^|/)skills/cross-model-review/",
-        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh)\Z",
+        r"(^|/)git-review-(scope(-run\.sh|\.py)|copy-index\.sh|write-run-file\.sh|intent-add\.sh)\Z",
         r"(^|/)marketplace-sync\.json\Z",
         r"(^|/)\.gitattributes\Z",
         r"(^|/)\.gitmodules\Z",
