@@ -296,3 +296,14 @@ def test_a_missing_output_and_a_malformed_one_are_both_marked(monkeypatch, revie
     rc, payload, _ = _run_with_reports(monkeypatch, review_repo, tmp_path, reports)
     assert rc == 2
     assert {r["status"] for r in payload["reviewer_results"].values()} == {"could_not_run"}
+
+
+def test_provenance_helpers_return_none_outside_a_repository(tmp_path):
+    """`_git_out` backs `_run_provenance`, which also runs on failure paths: git failing must
+    give None (a null field), never raise out of the failure writer."""
+    from scripts.marketplace_ci.__main__ import _git_out, _run_provenance
+
+    assert _git_out(tmp_path, "rev-parse", "HEAD") is None
+    provenance = _run_provenance(tmp_path, "abc", [])
+    assert provenance["head_sha"] is None and provenance["merge_ref_sha"] is None
+    assert provenance["base_sha"] == "abc"

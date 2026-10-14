@@ -893,14 +893,11 @@ def compute_pr_delta(repo: Path, base_sha: str) -> tuple[ChangedPath, ...]:
     both `check-scope-bypass` and `run-codex-review` score. On the merge ref, pass the
     merge commit's first parent (the workflow's derive step), not the event's fork
     point, which `main` has moved past."""
-    diff = subprocess.run(
-        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
-        cwd=repo,
-        capture_output=True,
-    )
-    if diff.returncode != 0:
-        raise PrDeltaError(f"git diff against {base_sha!r} failed")
-    return parse_name_status_z(diff.stdout)
+    try:
+        raw = _run_git(repo, "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD")
+    except RuntimeError as exc:
+        raise PrDeltaError(f"git diff against {base_sha!r} failed") from exc
+    return parse_name_status_z(raw)
 
 
 # Components a `.claude/<component>/...` mirror can hold for a plugin (the
@@ -915,14 +912,9 @@ def _mirror_map(repo: Path, base_sha: str) -> tuple[list[str], list[str], set[st
     """(plugin_mirrors, scripts_mirrors, divergence-exception destinations) from the
     base's copy of the map, or None when it is missing or unusable. Read from the
     base, never the working tree: a PR must not widen what counts as its own mirror."""
-    shown = subprocess.run(
-        ["git", "show", f"{base_sha}:{_MIRROR_MAP_PATH}"], cwd=repo, capture_output=True
-    )
-    if shown.returncode != 0:
-        return None
     try:
-        data = json.loads(shown.stdout)
-    except ValueError:
+        data = json.loads(_run_git(repo, "show", f"{base_sha}:{_MIRROR_MAP_PATH}"))
+    except (RuntimeError, ValueError):
         return None
     if not isinstance(data, dict):
         return None
@@ -944,13 +936,12 @@ def _blob_fingerprints(repo: Path, paths: Sequence[str]) -> dict[str, tuple[str,
     """{path: (mode, blob sha)} at HEAD for the paths that exist there."""
     if not paths:
         return {}
-    listed = subprocess.run(
-        ["git", "ls-tree", "-z", "HEAD", "--", *paths], cwd=repo, capture_output=True
-    )
-    if listed.returncode != 0:
+    try:
+        listed = _run_git(repo, "ls-tree", "-z", "HEAD", "--", *paths)
+    except RuntimeError:
         return {}
     result: dict[str, tuple[str, str]] = {}
-    for entry in listed.stdout.decode("utf-8", errors="surrogateescape").split("\0"):
+    for entry in listed.decode("utf-8", errors="surrogateescape").split("\0"):
         meta, _, path = entry.partition("\t")
         parts = meta.split()
         if len(parts) == 3 and path:

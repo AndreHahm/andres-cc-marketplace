@@ -20,7 +20,7 @@ import sys
 import pytest
 
 from scripts.marketplace_ci.git_state import parse_name_status_z
-from scripts.marketplace_ci.review import collapse_identical_mirrors
+from scripts.marketplace_ci.review import _blob_fingerprints, collapse_identical_mirrors
 
 CANONICAL = "plugins/demo-kit/skills/x/SKILL.md"
 MIRROR = ".claude/skills/x/SKILL.md"
@@ -165,3 +165,15 @@ def test_identical_symlinks_are_not_collapsed(scenario):
     _git(scenario.root, "add", "-A", "-f")
     _git(scenario.root, "commit", "-q", "-m", "symlinks")
     assert {CANONICAL, MIRROR} <= scenario.collapsed(base)
+
+
+def test_without_a_readable_base_nothing_is_collapsed(tmp_path):
+    """git cannot show the mirror map (not a repository): fail safe, keep every path."""
+    from scripts.marketplace_ci.git_state import ChangedPath
+
+    changed = (ChangedPath(status="M", old_path=None, new_path=MIRROR),)
+    assert collapse_identical_mirrors(tmp_path, changed, "0" * 40) == changed
+
+
+def test_blob_fingerprints_are_empty_when_git_cannot_list_the_tree(tmp_path):
+    assert _blob_fingerprints(tmp_path, [MIRROR]) == {}
