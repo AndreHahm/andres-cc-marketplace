@@ -1,0 +1,56 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output asks the user for the repository name (AskUserQuestion) and does not infer it from the checkout, directory or git remote",
+      "passed": true,
+      "evidence": "AskUserQuestion for the repository name; 'I must not infer it from the checkout, directory or git remote' (lines 12-18)"
+    },
+    {
+      "text": "Output plans to add the repository's option to the adopted organization-level databases' `repo` select as a schema change listed in the plan and approved with it",
+      "passed": true,
+      "evidence": "Option changes block: 3 organization-level data sources via notion-update-data-source, listed in the plan and approved with it (lines 44-51, 63)"
+    },
+    {
+      "text": "Output names notion-update-data-source (not notion-create-database) for that schema change",
+      "passed": true,
+      "evidence": "Statement block names notion-update-data-source; no notion-create-database in the planned calls (lines 44, 84-90)"
+    },
+    {
+      "text": "Output adopts the existing databases by stable ID instead of recreating them",
+      "passed": true,
+      "evidence": "Adopt table: all seven by stable ID and parent chain, 'no recreate' (lines 23, 32-34)"
+    },
+    {
+      "text": "Output records notion.repo through the local override (.claude/workmanagement-kit.local.json), not by editing the shipped versioned-configuration.json",
+      "passed": true,
+      "evidence": "Stable IDs and notion.repo go to `.claude/workmanagement-kit.local.json`, not the shipped configuration (line 61)"
+    },
+    {
+      "text": "Output requires plan-level approval before any change",
+      "passed": true,
+      "evidence": "'Approve this exact Bootstrap plan for prod?' AskUserQuestion; 'Nothing in Notion changes before this approval' (line 63)"
+    },
+    {
+      "text": "Output's preview shows the exact ALTER statement that will be sent and the option list before and after",
+      "passed": true,
+      "evidence": "Preview shows 'Options after: other-repo (unchanged, same ID), plus <repo> (new)' and 'Exact statement to send: ALTER COLUMN \"repo\" SET SELECT(...)' (lines 50-51)"
+    },
+    {
+      "text": "Output re-reads the data source immediately before the ALTER statement, sends a strict superset of the options that read shows, and plans to confirm every option ID is still present afterwards",
+      "passed": true,
+      "evidence": "Execution step 1 re-reads right before the call and stops if the options differ; step 2 builds from that read; step 3 checks the prior option ID survived and exactly one was added (lines 69-71)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Bash, Read, AskUserQuestion, notion-search, notion-fetch, notion-update-data-source, Write: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 9,
+    "assertions_passed": 9,
+    "pass_rate": 1.0
+  }
+}

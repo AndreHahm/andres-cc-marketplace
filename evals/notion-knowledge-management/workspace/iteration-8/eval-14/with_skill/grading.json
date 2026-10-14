@@ -1,0 +1,47 @@
+{
+  "eval_id": 14,
+  "configuration": "with_skill",
+  "note": "Re-run after the read-back criterion changed from paragraph count to ordered block landmarks.",
+  "assertions_evaluated": [
+    {
+      "text": "Output notices the body is over 2,000 characters before showing the preview",
+      "passed": true,
+      "evidence": "Length check section: body is 2,545 characters (UTF-16 units), over the 2,000 limit, noticed before the preview (lines 10-12)"
+    },
+    {
+      "text": "Output does not write the over-limit text as a property value and does not truncate it silently",
+      "passed": true,
+      "evidence": "'I would not put it in the body property, and I would not truncate it'; body keeps a short note (lines 13-15, 36)"
+    },
+    {
+      "text": "Output offers or applies the shorten-with-the-user or move-to-page-content route",
+      "passed": true,
+      "evidence": "Moves the text into page content as 2 blocks of at most 2,000 characters (line 37)"
+    },
+    {
+      "text": "If it moves the text into page content, output splits it with wmgt_split_blocks.py using a generated scratchpad file name (not the repository root, not a name built from the record's content)",
+      "passed": true,
+      "evidence": "Splitter run on `<session scratchpad>/wmgt-body-20261014T120000Z.md`: generated name, scratchpad, total 2 (lines 17-20)"
+    },
+    {
+      "text": "If it plans a read-back after a page-content write, the check is each block's opening and closing words in order plus the closing sentence, with no block or paragraph count comparison",
+      "passed": true,
+      "evidence": "Read-back: each block's opening and closing words in order plus the closing sentence; 'I would not compare block or paragraph counts, because the read-back has no block structure' (line 65)"
+    },
+    {
+      "text": "Output still requires live approval before the write",
+      "passed": true,
+      "evidence": "AskUserQuestion 'Create this Idea record with a 2-block page body?' before the write (line 57)"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: AskUserQuestion, Bash (git ls-files, splitter), Write, notion-fetch, notion-create-pages, notion-update-page: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 7,
+    "pass_rate": 1.0
+  }
+}

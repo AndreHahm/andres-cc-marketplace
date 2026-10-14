@@ -23,9 +23,9 @@
       "evidence": "Splitter run on `<session scratchpad>/wmgt-body-20261014T120000Z.md`: generated name, scratchpad, total 2 (1,567 and 1,250 units)"
     },
     {
-      "text": "If it plans a read-back after a page-content write, the check is paragraph count and the closing sentence, not a block count",
-      "passed": true,
-      "evidence": "Read-back: a block count cannot be observed; checks six paragraphs equal to the source and that the last ends with the source's closing sentence"
+      "text": "If it plans a read-back after a page-content write, the check is each block's opening and closing words in order plus the closing sentence, with no block or paragraph count comparison",
+      "passed": false,
+      "evidence": "REGRADED 2026-10-14 under the corrected read-back criterion (see eval 11). This run planned 'six paragraphs, equal to the source' plus the closing sentence, which compares a paragraph count. Re-run in iteration-8."
     },
     {
       "text": "Output still requires live approval before the write",
@@ -40,7 +40,7 @@
   ],
   "summary": {
     "assertions_total": 7,
-    "assertions_passed": 7,
-    "pass_rate": 1.0
+    "assertions_passed": 6,
+    "pass_rate": 0.8571
   }
 }

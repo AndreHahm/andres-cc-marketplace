@@ -1,0 +1,51 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output distinguishes the organization-level scope (Note, Research, Outcome-Learning) from the repository-level scope (Idea, Decision, Proposed Goal, Report)",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output adopts already-present databases by stable ID instead of recreating them",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output reports the Outcome-Learning database found at the repository-level path as a move candidate for user approval and does not move or recreate it silently",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output requires the repo select property on every database, with andres-cc-marketplace as an option",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output asks for plan-level approval before creating or changing anything",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output's plan shows each move's source ID, current parent ID and new parent ID, with the new parent being the organization-level page of the same environment (by stable ID), never the workspace root, a database or a data source",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output requires the data source to be re-read immediately before any option change, and the option list it sends to be a strict superset of what that read shows",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output lists candidates with their stable IDs and parent chains instead of trusting titles alone",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -23,7 +23,7 @@
       "target": "outputs/"
     },
     {
-      "text": "If it plans a read-back after a page-content write, the check is paragraph count and the closing sentence, not a block count",
+      "text": "If it plans a read-back after a page-content write, the check is each block's opening and closing words in order plus the closing sentence, with no block or paragraph count comparison",
       "type": "quality",
       "target": "outputs/"
     },
