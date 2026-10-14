@@ -73,7 +73,7 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match m
 
 Then load the activation-description standards each component type is judged against — do not invent criteria that duplicate what `skill-reviewer`/`subagent-reviewer` already own:
 
-1. `<skill-development-dir>/../../references/pdk-content-guidelines.md` (`<skill-development-dir>` is the directory of the `skill-development` skill, located with Glob for `**/skill-development/SKILL.md`) — description formula, trigger-phrase library, activation examples (for skill targets)
+1. `<skill-development-dir>/../../references/pdk-content-guidelines.md` (`<skill-development-dir>` is the directory of the `skill-development` skill, located with Glob for `**/skill-development/SKILL.md`; prefer the `plugins/*/skills/skill-development/` copy and never use a `.agents/` copy, whose `../../references/` siblings do not exist) — description formula, trigger-phrase library, activation examples (for skill targets)
 2. `agent-development/references/delegation.md` — description format, trigger-phrase library, the four triggering-pattern axes (for agent targets)
 
 If neither can be found for the types present in the resolved set, report this clearly and proceed with reduced fidelity rather than halting — note it in the report's Inspection Limits.
