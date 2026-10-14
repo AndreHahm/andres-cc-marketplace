@@ -46,6 +46,12 @@ fi
 exit 0
 ```
 
+This script is a best-effort denylist, not a security control. It misses statements such as `COPY`, `GRANT`,
+`VACUUM` and `CALL`, and psql shell escapes (`\!`, `\copy`); it also blocks a `SELECT` that merely contains
+one of the listed words in a column name or string. For real containment use a read-only database
+credential or a read-only MCP tool, and remember that in a plugin's `agents/` directory the hook does not
+run at all.
+
 ### Code Review Agent (Interactive, Approval-Based)
 
 Template file: `${CLAUDE_SKILL_DIR}/assets/example-code-reviewer.md`
