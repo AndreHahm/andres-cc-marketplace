@@ -386,6 +386,7 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
                 "git-review-scope.py",
                 "git-review-scope-run.sh",
                 "git-review-copy-index.sh",
+                "git-review-intent-add.sh",
             ):
                 source = SKILL_DIR.parent.parent / "scripts" / name
                 (mirror / name).write_bytes(source.read_bytes())

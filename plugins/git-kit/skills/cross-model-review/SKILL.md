@@ -6,14 +6,14 @@ description: >-
   through codex-kit (codex-review-bridge, falling back to codex-windows-guardrails when no
   sandboxed profile is available). Both cross-examine each other's findings (fresh-eyes
   persona, then challenger persona).
-  Report-only — edits nothing in the repository (it runs helper scripts that write scratch files
-  outside it), surfaces a ranked, confidence-scored table and asks which findings to act on; never
-  auto-applies fixes. Use for an adversarial review, a cross-model or second-opinion review, a
+  Surfaces a ranked, confidence-scored table and asks which findings to act on; never auto-applies
+  fixes. It runs helper scripts and a Codex subprocess, with the permissions listed under Boundaries.
+  Use for an adversarial review, a cross-model or second-opinion review, a
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-intent-add.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -61,7 +61,7 @@ on the working diff.
 - **Recovering a stuck "Await Codex review" GitHub check** on an already-open PR — that's
   `codex-review-recovery`, a different domain (a GitHub-side CI signal gap) despite the
   Codex-adjacent name.
-- **Applying fixes** — this skill is report-only end to end; route any accepted finding through the
+- **Applying fixes** — this skill never applies one; route any accepted finding through the
   normal edit/commit flow afterward.
 - **Triaging findings already posted to an open PR by an external reviewer** (Codex, Devin, CodeRabbit,
   a human) — that's `handling-review-findings`'s job. This skill only ever reviews the local working
@@ -113,7 +113,7 @@ UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
 bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" 2>/dev/null || INDEX_COPY_FAILED=1
-git add -N -- "${SCOPE:-.}" || true
+bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || true
 DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
@@ -439,9 +439,10 @@ for `$RUN/full.diff` (a full copy of the diff, including uncommitted content), t
 
 ## Boundaries
 
-Deliberately not in `allowed-tools`, so each prompts: `git add -N`, the `export GIT_INDEX_FILE` /
-`export CODEX_KIT_REVIEW_*` lines (a grant cannot pin the value they set) and the `guarded-dispatch.mjs`
-fallback (a grant would pre-approve a full-access dispatch).
+Deliberately not in `allowed-tools`, so each prompts: `git diff` and `git show` (both accept
+`--output=<file>`, a write to any path), the `export GIT_INDEX_FILE` / `export CODEX_KIT_REVIEW_*` lines
+(a grant cannot pin the value they set) and the `guarded-dispatch.mjs` fallback (a grant would
+pre-approve a full-access dispatch). `git add -N` runs only through `scripts/git-review-intent-add.sh`.
 
 ## Deliberately NOT done
 

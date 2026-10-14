@@ -1606,6 +1606,149 @@ def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path,
     assert not list((repo / "inside").iterdir()) and not list(shared.iterdir())
 
 
+INTENT_ADD = SCRIPT.with_name("git-review-intent-add.sh")
+
+
+def _intent_add(repo, *args, env=None):
+    return subprocess.run(
+        ["bash", str(INTENT_ADD), *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
+def _listed(repo, index):
+    out = subprocess.run(
+        ["git", "ls-files"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "GIT_INDEX_FILE": str(index)},
+    )
+    return out.stdout.split()
+
+
+def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktemp_dirs):
+    run_dir = mktemp_dirs()
+    (repo / "new.txt").write_text("brand new\n")
+    real_index = repo / ".git" / "index"
+    before = real_index.read_bytes()
+    copied = subprocess.run(["cp", str(real_index), str(run_dir / "index")], check=False)
+    assert copied.returncode == 0
+    env = {**os.environ, "GIT_INDEX_FILE": str(real_index)}  # a caller pointing at the real index
+    result = _intent_add(repo, str(run_dir), env=env)
+    assert result.returncode == 0, result.stderr
+    assert "new.txt" in _listed(repo, run_dir / "index")
+    assert real_index.read_bytes() == before  # the real index was never written
+    assert "new.txt" not in _listed(repo, real_index)
+
+
+def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
+    (repo / "new.txt").write_text("x")
+    victim = tmp_path / "victim-index"
+    victim.write_bytes(b"precious")
+    (run_dir / "index").symlink_to(victim)
+    result = _intent_add(repo, str(run_dir))
+    assert result.returncode == 2 and "regular file" in result.stderr
+    assert victim.read_bytes() == b"precious"
+
+
+def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
+    repo, tmp_path, mktemp_dirs
+):
+    (repo / "new.txt").write_text("x")
+    wrong_name = tmp_path / "run"
+    wrong_name.mkdir(mode=0o700)
+    loose = mktemp_dirs()
+    loose.chmod(0o750)
+    link = tmp_path / "link"
+    link.symlink_to(mktemp_dirs())
+    good = mktemp_dirs()
+    cases = [
+        [],
+        [str(good), "a", "b"],
+        [str(wrong_name)],
+        [str(loose)],
+        [str(link)],
+        [str(repo)],
+        [str(repo / ".git")],
+        ["-x"],
+        [str(good), "a\nb"],
+    ]
+    for args in cases:
+        result = _intent_add(repo, *args)
+        assert result.returncode == 2, args
+        assert result.stderr.startswith("git-review-intent-add.sh:"), (args, result.stderr)
+    assert not list(good.iterdir()) and not list(wrong_name.iterdir())
+    # a pathspec that looks like an option is a pathspec, never an option
+    odd = _intent_add(repo, str(good), "--all")
+    assert odd.returncode != 0 and "--all" in odd.stderr
+
+
+def test_the_intent_add_helper_does_not_run_a_hook_from_the_reviewed_tree(
+    repo, tmp_path, mktemp_dirs
+):
+    hooks = repo / ".githooks"
+    hooks.mkdir()
+    marker = tmp_path / "hook-ran"
+    hook = hooks / "post-index-change"
+    hook.write_text(f"#!/bin/sh\necho ran >> '{marker}'\n")
+    hook.chmod(0o755)
+    _git(repo, "config", "core.hooksPath", ".githooks")
+    (repo / "new.txt").write_text("x")
+    control_dir = mktemp_dirs()
+    control = subprocess.run(  # the premise: a plain intent-add does fire the hook
+        ["git", "add", "-N", "--", "new.txt"],
+        cwd=repo,
+        env={**os.environ, "GIT_INDEX_FILE": str(control_dir / "index")},
+        capture_output=True,
+        check=False,
+    )
+    if control.returncode != 0 or not marker.exists():
+        pytest.skip("this git does not run post-index-change for an intent-add")
+    marker.unlink()
+    run_dir = mktemp_dirs()
+    result = _intent_add(repo, str(run_dir))
+    assert result.returncode == 0, result.stderr
+    assert "new.txt" in _listed(repo, run_dir / "index")
+    assert not marker.exists()
+
+
+def test_the_intent_add_helper_ignores_inherited_git_variables(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
+    (repo / "new.txt").write_text("x")
+    other = tmp_path / "other"
+    other.mkdir()
+    _git(other, "init", "-q", "-b", "main")
+    real_index = repo / ".git" / "index"
+    before = real_index.read_bytes()
+    env = {**os.environ, "GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)}
+    env["GIT_CONFIG_GLOBAL"] = str(tmp_path / "evil-config")
+    result = _intent_add(repo, str(run_dir), env=env)
+    assert result.returncode == 0, result.stderr
+    assert "new.txt" in _listed(repo, run_dir / "index")  # the cwd repository, not $GIT_DIR's
+    assert real_index.read_bytes() == before
+
+
+def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
+    repo, tmp_path, mktemp_dirs
+):
+    (repo / "new.txt").write_text("x")
+    wrong_parent = tmp_path / "tmp.abcdefgh"
+    wrong_parent.mkdir(mode=0o700)
+    assert _intent_add(repo, str(wrong_parent)).returncode == 2
+    assert not list(wrong_parent.iterdir())
+    run_dir = mktemp_dirs()
+    (run_dir / "index").mkdir()
+    result = _intent_add(repo, str(run_dir))
+    assert result.returncode == 2 and "regular file" in result.stderr
+
+
 def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     good = mktemp_dirs()
     assert _write_run_file(repo, str(good), "out.md", "-", stdin="ok").returncode == 0
