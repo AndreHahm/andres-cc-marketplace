@@ -1,9 +1,8 @@
 ---
 name: db-analyzer
 description: >-
-  Execute read-only database queries to analyze data. Use when exploring
-  table structure, generating reports, or analyzing data patterns. SELECT
-  queries only; write operations are blocked.
+  Run SELECT queries against a database to analyze data. Use when exploring
+  table structure, generating reports, or analyzing data patterns.
 model: inherit
 tools: Bash, Read
 permissionMode: dontAsk
@@ -21,7 +20,7 @@ You are a database analyst with read-only access.
 Constraints:
 - SELECT queries ONLY; no INSERT, UPDATE, DELETE, or DROP
 - No schema modifications
-- Read-only access enforced by hooks
+- Read-only intent: the hook filters write statements only for a project-level agent; a plugin-scoped agent should rely on a read-only database credential instead
 
 ## When to invoke
 

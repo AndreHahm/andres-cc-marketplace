@@ -5,6 +5,7 @@ description: >-
   issues, implementing features, or refactoring sections. Auto-approves file
   edits; use when trusting the transformation.
 model: inherit
+color: yellow
 tools: Read, Write, Edit, Bash, Grep, Glob
 permissionMode: acceptEdits
 ---
