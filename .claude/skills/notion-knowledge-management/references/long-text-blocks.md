@@ -10,7 +10,7 @@ and the full text goes into the page as blocks of at most 2,000 characters.
    `wmgt-body-<timestamp>.md`. Never build the name from record content, and never use the repository
    root. This file is the only thing the splitter is ever pointed at. It holds the unredacted body, so
    do not copy it anywhere else.
-2. **Split it:** `${CLAUDE_PLUGIN_ROOT}/scripts/wmgt_split_blocks.py split "<that file>" --start <i>`.
+2. **Split it:** `${CLAUDE_PROJECT_DIR}/.claude/scripts/wmgt_split_blocks.py split "<that file>" --start <i>`.
    The result gives `total` (the block count) and ten blocks at a time; continue with `--start` set to
    the result's `next_start` while `has_more` is true. `--count` and `--max` are optional (`--max` must
    be at least 2), and a bad command line comes back as the same JSON failure (exit 1). A leading
