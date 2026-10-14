@@ -7,6 +7,7 @@ temporary git repository.
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -1346,10 +1347,9 @@ def _copy_index(repo, *args, env=None):
 
 
 def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_elsewhere(
-    repo, tmp_path
+    repo, tmp_path, mktemp_dirs
 ):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir(mode=0o700)
+    run_dir = mktemp_dirs()
     (repo / "a.py").write_text("1")
     _git(repo, "add", "a.py")
     real = (repo / ".git" / "index").read_bytes()
@@ -1361,9 +1361,8 @@ def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_
     assert _copy_index(repo, str(run_dir)).returncode == 2  # never overwrites
 
 
-def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir(mode=0o700)
+def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
+    run_dir = mktemp_dirs()
     target = tmp_path / "victim.txt"
     target.write_text("precious")
     (run_dir / "index").symlink_to(target)
@@ -1376,9 +1375,8 @@ def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path)
     assert not (tmp_path / "does-not-exist").exists()
 
 
-def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, tmp_path):
-    run_dir = tmp_path / "shared"
-    run_dir.mkdir(mode=0o700)
+def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, mktemp_dirs):
+    run_dir = mktemp_dirs()
     for mode in (0o770, 0o707):
         run_dir.chmod(mode)
         result = _copy_index(repo, str(run_dir))
@@ -1386,9 +1384,24 @@ def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, tmp_pat
     assert not (run_dir / "index").exists()
 
 
-def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(repo, tmp_path):
-    run_dir = tmp_path / "run"
-    run_dir.mkdir(mode=0o700)
+def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
+    wrong_name = tmp_path / "run"
+    wrong_name.mkdir(mode=0o700)
+    wrong_parent = tmp_path / "tmp.abcdefgh"
+    wrong_parent.mkdir(mode=0o700)
+    loose = mktemp_dirs()
+    loose.chmod(0o750)
+    for target in (wrong_name, wrong_parent, loose, repo / ".git"):
+        result = _copy_index(repo, str(target))
+        assert result.returncode == 2, target
+        assert result.stderr.startswith("git-review-copy-index.sh:"), (target, result.stderr)
+        assert not (target / "index").exists() or target == repo / ".git"
+
+
+def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
+    repo, tmp_path, mktemp_dirs
+):
+    run_dir = mktemp_dirs()
     link = tmp_path / "link"
     link.symlink_to(run_dir)
     (repo / "inside").mkdir()
@@ -1406,3 +1419,180 @@ def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(repo, 
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-copy-index.sh:"), (args, result.stderr)
     assert not list(run_dir.iterdir())
+
+
+# --- the fixed-shape run-file writer the skill's allowed-tools grant names (replaces Write) ------
+
+WRITE_RUN_FILE = SCRIPT.with_name("git-review-write-run-file.sh")
+
+
+def _write_run_file(repo, *args, stdin=""):
+    return subprocess.run(
+        ["bash", str(WRITE_RUN_FILE), *args],
+        cwd=repo,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.fixture
+def mktemp_dirs():
+    """Directories shaped like `mktemp -d` output (tmp.<random>, 0700, under the temp dir)."""
+    made: list[Path] = []
+
+    def make() -> Path:
+        out = subprocess.run(["mktemp", "-d"], capture_output=True, text=True, check=True)
+        path = Path(out.stdout.strip())
+        made.append(path)
+        return path
+
+    yield make
+    for path in made:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def _run_dir(mktemp_dirs):
+    return mktemp_dirs()
+
+
+def test_the_writer_concatenates_stdin_run_files_and_the_fixed_prompt_in_order(
+    repo, tmp_path, mktemp_dirs
+):
+    run_dir = _run_dir(mktemp_dirs)
+    (run_dir / "diffs").mkdir()
+    (run_dir / "diffs" / "s1.codex.diff").write_text("DIFF\n")
+    result = _write_run_file(
+        repo, str(run_dir), "out.md", "@plugin:review", "-", "@diffs/s1.codex.diff", stdin="\nMID\n"
+    )
+    assert result.returncode == 0, result.stderr
+    review = (SCRIPT.parent.parent / "skills/cross-model-review/prompts/review.md").read_text()
+    assert (run_dir / "out.md").read_text() == review + "\nMID\nDIFF\n"
+    assert oct((run_dir / "out.md").stat().st_mode & 0o777) == "0o600"
+    again = _write_run_file(repo, str(run_dir), "out.md", "-", stdin="new")  # replaces
+    assert again.returncode == 0 and (run_dir / "out.md").read_text() == "new"
+    appended = _write_run_file(repo, str(run_dir), "out.md", "--append", "-", stdin="+more")
+    assert appended.returncode == 0 and (run_dir / "out.md").read_text() == "new+more"
+    assert sorted(p.name for p in run_dir.iterdir()) == ["diffs", "out.md"]  # no temp left behind
+
+
+def test_the_writer_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
+    run_dir = _run_dir(mktemp_dirs)
+    victim = tmp_path / "victim.txt"
+    victim.write_text("precious")
+    (run_dir / "out.md").symlink_to(victim)
+    result = _write_run_file(repo, str(run_dir), "out.md", "-", stdin="x")
+    assert result.returncode == 0, result.stderr
+    assert victim.read_text() == "precious"  # the link itself was replaced, not followed
+    assert not (run_dir / "out.md").is_symlink()
+    (run_dir / "link.md").symlink_to(victim)
+    refused = _write_run_file(repo, str(run_dir), "link.md", "--append", "-", stdin="x")
+    assert refused.returncode == 2 and victim.read_text() == "precious"
+
+
+def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, mktemp_dirs):
+    run_dir = _run_dir(mktemp_dirs)
+    secret = tmp_path / "secret.txt"
+    secret.write_text("S")
+    (run_dir / "link").symlink_to(secret)
+    (run_dir / "dirlink").symlink_to(tmp_path)
+    (run_dir / "sub").mkdir()
+    for part in (
+        "@link",
+        "@dirlink/secret.txt",
+        "@../secret.txt",
+        "@sub/../../secret.txt",
+        f"@{secret}",
+        "@sub/",
+        "@sub",
+        "@missing",
+        "@plugin:other",
+        "plain",
+        "@a b",
+    ):
+        result = _write_run_file(repo, str(run_dir), "out.md", part)
+        assert result.returncode == 2, part
+        assert result.stderr.startswith("git-review-write-run-file.sh:"), (part, result.stderr)
+    assert not (run_dir / "out.md").exists()  # a bad part leaves no partial file
+    assert _write_run_file(repo, str(run_dir), "out.md", "-", "-").returncode == 2
+    assert _write_run_file(repo, str(run_dir), "out.md", "@out.md").returncode == 2
+
+
+def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path, mktemp_dirs):
+    run_dir = _run_dir(mktemp_dirs)
+    link = tmp_path / "link"
+    link.symlink_to(run_dir)
+    (repo / "inside").mkdir()
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o700)
+    shared.chmod(0o770)
+    (run_dir / "adir").mkdir()
+    cases = [
+        [],
+        [str(run_dir)],
+        [str(run_dir), "out.md"],
+        [str(run_dir), "../x", "-"],
+        [str(run_dir), "a/b", "-"],
+        [str(run_dir), ".hidden", "-"],
+        [str(run_dir), "", "-"],
+        [str(run_dir), "x" * 200, "-"],
+        [str(run_dir), "adir", "-"],
+        [str(run_dir), "missing.md", "--append", "-"],
+        [str(link), "out.md", "-"],
+        [str(tmp_path / "missing"), "out.md", "-"],
+        [str(repo / "inside"), "out.md", "-"],
+        [str(repo), "out.md", "-"],
+        [str(shared), "out.md", "-"],
+        ["-", "out.md", "-"],
+        [str(run_dir) + "\n", "out.md", "-"],
+    ]
+    for args in cases:
+        result = _write_run_file(repo, *args, stdin="x")
+        assert result.returncode == 2, args
+        assert result.stderr.startswith("git-review-write-run-file.sh:"), (args, result.stderr)
+    assert sorted(p.name for p in run_dir.iterdir()) == ["adir"]
+    assert not list((repo / "inside").iterdir()) and not list(shared.iterdir())
+
+
+def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
+    good = mktemp_dirs()
+    assert _write_run_file(repo, str(good), "out.md", "-", stdin="ok").returncode == 0
+    wrong_name = tmp_path / "run"  # owned, 0700, outside the repo, but not tmp.<random>
+    wrong_name.mkdir(mode=0o700)
+    wrong_parent = tmp_path / "tmp.abcdefgh"  # right name, not directly under the temp dir
+    wrong_parent.mkdir(mode=0o700)
+    loose = mktemp_dirs()
+    loose.chmod(0o750)  # right shape, but not exactly 0700
+    home_like = tmp_path / "home"
+    (home_like / ".claude").mkdir(parents=True, mode=0o700)
+    for target in (wrong_name, wrong_parent, loose, home_like / ".claude", repo / ".git"):
+        result = _write_run_file(repo, str(target), "settings.json", "-", stdin="x")
+        assert result.returncode == 2, target
+        assert result.stderr.startswith("git-review-write-run-file.sh:"), (target, result.stderr)
+        assert not (target / "settings.json").exists()
+    assert not list(wrong_name.iterdir()) and not list(wrong_parent.iterdir())
+
+
+def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variables(
+    repo, mktemp_dirs
+):
+    run_dir = _run_dir(mktemp_dirs)
+    old = run_dir / "out.md"
+    old.write_text("A")
+    old.chmod(0o644)
+    result = _write_run_file(repo, str(run_dir), "out.md", "--append", "-", stdin="B")
+    assert result.returncode == 0, result.stderr
+    assert old.read_text() == "AB" and oct(old.stat().st_mode & 0o777) == "0o600"
+    env = {**os.environ, "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.worktree"}
+    env["GIT_CONFIG_VALUE_0"] = str(run_dir)
+    ran = subprocess.run(
+        ["bash", str(WRITE_RUN_FILE), str(run_dir), "env.md", "-"],
+        cwd=repo,
+        input="x",
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert ran.returncode == 0, ran.stderr  # no hijacked rev-parse: still sees the real repo

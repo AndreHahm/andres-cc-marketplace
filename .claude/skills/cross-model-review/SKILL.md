@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-write-run-file.sh:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -26,8 +26,9 @@ review: self-ratification (a model won't critique its own work) and confident fa
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
 via a raw `codex exec`.
 
-**`Write` is deliberately not in `allowed-tools`** (its grant cannot be limited to a path), so each write
-asks for permission; approve only paths under `$RUN`, this skill's own scratch dir. Never write to any path inside
+**This skill has no `Write` grant** (it cannot be limited to a path). Every file it creates goes through
+`scripts/git-review-write-run-file.sh` (`references/codex-pass-assembly.md`, "Writing a run file"), which
+writes one file directly under `$RUN`, this skill's own scratch dir. Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
 this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
 deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
@@ -137,10 +138,10 @@ steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool
 an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
 `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `PLAN_FAILED`, `DIFF_STATUS`, the manifest path,
 `TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, and whether
-`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as separate `Read`/
-`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for that
-literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`/
-`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
+`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as a separate write-helper
+call afterward). From that point on, every `$VAR` reference here is shorthand for that
+literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`
+call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
 
 1. **Plan the scope and check the diff exists.** In this same chained call, run the review scope planner
    and send the diff to a file so its text stays out of context (details: `references/scoped-review.md`
@@ -199,12 +200,11 @@ literal, already-resolved value — substitute the concrete string into every la
    A `git show` failure (non-zero exit, or an empty `$RUN/review.md`/`$RUN/refute.md` — reflected in
    the closing `echo`'s non-empty/empty signal for each file) means the file doesn't exist on `$BASE`
    yet (e.g. this skill's own not-yet-merged first run). Once the chain returns and its echoed state
-   is captured, fall back — as separate tool calls, using the just-resolved `$RUN` value — by
-   `Read`-ing the working-tree copy at
-   `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/review.md` (respectively `refute.md` —
-   note the `skills/cross-model-review/` segment: `${CLAUDE_PLUGIN_ROOT}` is the *plugin* root,
-   `plugins/git-kit/`, not this skill's own directory) and `Write`-ing that content to
-   `$RUN/review.md`/`$RUN/refute.md`, but never silently: set `REVIEW_UNVERIFIED=1` /
+   is captured, fall back — as separate tool calls, using the just-resolved `$RUN` value — by copying
+   the plugin's own working-tree prompt:
+   `bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-write-run-file.sh" "$RUN" review.md @plugin:review`
+   (respectively `refute.md` / `@plugin:refute`; the helper resolves them under its own plugin root, no
+   `Read` needed), but never silently: set `REVIEW_UNVERIFIED=1` /
    `REFUTE_UNVERIFIED=1` and record it in Phase 3's `inspection_limits` ("reviewer instructions were
    not trust-boundary-verified against $BASE this run"). Every later reference to `review.md` /
    `refute.md` below means these materialized `$RUN` copies, never the live path under
@@ -326,7 +326,7 @@ field, not something the schema itself enumerates).
 **Claude's native pass:** review as yourself, following `$RUN/review.md` (`Grep`/`Glob` the repo to
 trace call sites when checking semantic correctness — not just the diff hunks). Read the diff batch by
 batch, `Read`ing the batch's `.diff` files in `$RUN/diffs-1/` (`references/scoped-review.md` section 3):
-Preflight step 1 deliberately did not put the diff text in context. Review every manifest `files` entry. Hold the findings in that envelope shape; write to `$RUN/claude_fresh_eyes.json`
+Preflight step 1 deliberately did not put the diff text in context. Review every manifest `files` entry. Hold the findings in that envelope shape; write them with the write helper (stdin) to `$RUN/claude_fresh_eyes.json`
 (`dispatch.reviewer: "claude-fresh-eyes"`, `dispatch.backend: "claude"`, and every other field —
 nothing fills `dispatch`/`provenance`/`contract_version` automatically the way Codex's dispatch does
 — set explicitly per `references/self-authored-envelope-fields.md`).
@@ -361,8 +361,8 @@ separate schema, since the bridge's envelope shape is fixed and has no verdict-o
 slot.
 
 **Claude's native pass:** follow `$RUN/refute.md`, given the Codex Phase 1 envelopes
-(`$RUN/codex_fresh_eyes.<N>.json`) as the findings to cross-examine. Write to
-`$RUN/claude_challenger.json`.
+(`$RUN/codex_fresh_eyes.<N>.json`) as the findings to cross-examine. Write them with the write helper
+to `$RUN/claude_challenger.json`.
 
 **Codex's pass, once per dispatch batch:** assemble and dispatch each challenger file as
 `references/codex-pass-assembly.md` says. The invariants, which that reference spells out in full and
