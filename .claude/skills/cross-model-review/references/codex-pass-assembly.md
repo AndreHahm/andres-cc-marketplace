@@ -1,7 +1,7 @@
 # Codex Pass Assembly (per dispatch batch)
 
 Extracted from SKILL.md per plugin-rulebook's R13 line-count threshold. Everything here applies **once
-per dispatch batch** (the scoped-review reference defines batches); with a single batch it is the
+per dispatch batch** (SKILL.md's Preflight step 2 defines batches); with a single batch it is the
 same procedure as an unscoped run. `$BATCH_PATHS` means the batch's eligible files, `$TARGET_PATHS`
 their comma-separated form for `--target-paths`.
 
@@ -18,7 +18,8 @@ is narrowed. A path that fails the pattern is never typed into a command, so thi
 **`$UNTRACKED_FILES` is still filtered by this skill, since the planner does not see it as a list:**
 exclude a path from it that fails the pattern above, or is a symlink resolving outside the repository
 (`realpath -- <path>`, compared against `$(git rev-parse --show-toplevel)` with an exact match or a
-path-separator boundary, never a bare string-prefix test; see `symlink-exclusion-rationale.md`).
+path-separator boundary, never a bare string-prefix test, which a sibling directory such as
+`/repo-evil` would satisfy for `/repo`).
 
 **The Codex-scoped diff is the batch's `.codex.diff` files, kept separate from Claude's diff.** Both
 dispatch scripts reject an envelope whose finding `location` falls outside `--target-paths`, and
@@ -35,7 +36,8 @@ enter single-model mode as in Phase 3, with the reason "zero Codex-eligible path
 ## Phase 1 Codex instruction file (per batch)
 
 Codex has no prior context, so its instruction file contains the diff **content itself**. Never
-instruct Codex to run `git diff` (issue #78, `embed-diff-not-run-rationale.md`). `Read` `$RUN/review.md`,
+instruct Codex to run `git diff` (issue #78: on a real Windows machine a Codex-run diff of a large change
+failed every time, while the embedded diff succeeded). `Read` `$RUN/review.md`,
 `Read` the batch's `.codex.diff` files, append their text as `\n<diff>\n<diff text>\n</diff>\n` preceded
 by a line telling Codex not to run `git diff` or any shell command to fetch it. If `$UNTRACKED_FILES`
 contains paths of this batch, add a labeled block `<untracked_files>` naming only those paths (each

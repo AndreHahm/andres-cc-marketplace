@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope.py:*)", "Bash(python3 -I .claude/scripts/git-review-scope.py:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -145,16 +145,16 @@ literal, already-resolved value — substitute the concrete string into every la
    ```bash
    UNSCOPED_CHANGED_FILES=$(git diff --no-renames --name-only "$MERGE_BASE")
    echo "$UNSCOPED_CHANGED_FILES" | grep -qiE 'plugins/git-kit/scripts/|\.claude/scripts/|skills/cross-model-review/' && PLANNER_TOUCHED=1 || true
-   if [ -z "$PLANNER_TOUCHED" ]; then python3 -I "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope.py" --merge-base "$MERGE_BASE" --base-ref "$BASE" ${SCOPE:+--scope "$SCOPE"} --diff-dir "$RUN/diffs-1" --output "$RUN/manifest-1.json" || PLAN_FAILED=1; fi
+   if [ -z "$PLANNER_TOUCHED" ]; then bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-scope-run.sh" "$RUN" 1 "$MERGE_BASE" "$BASE" ${SCOPE:+--scope "$SCOPE"} || PLAN_FAILED=1; fi
    "${DIFF[@]}" > "$RUN/full.diff"; DIFF_STATUS=$?
    ```
 
-   The planner runs from the installed plugin (`${CLAUDE_PLUGIN_ROOT}`), outside the repository under
-   review, so a file at some path inside a third-party repository is never what runs. When
-   `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions, where the skill itself loads from the
-   `.claude/` mirror), the `:-.claude` default selects that mirror, relative to the checkout root this
-   chain runs from; the mirror is as trusted as the skill text that named it
-   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`). If the file is missing, `PLAN_FAILED=1`.
+   The planner runs through a fixed-shape wrapper from the installed plugin (`${CLAUDE_PLUGIN_ROOT}`),
+   which binds the repository, writes only `$RUN/manifest-1.json` and `$RUN/diffs-1`, and passes through
+   just four options. With `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) the `:-.claude`
+   default selects the `.claude/` mirror, deliberately **not** granted in `allowed-tools`, so it prompts
+   (`.claude/rules/resolve-plugin-root-to-claude-mirror.md`; details in `references/scoped-review.md`
+   section 1). A missing file means `PLAN_FAILED=1`.
    **`PLANNER_TOUCHED=1` means the planner has not run**: it executes code from the working tree, which may
    be the branch under review, so ask via `AskUserQuestion` before running it (`references/scoped-review.md`
    section 1). A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a
@@ -332,7 +332,8 @@ Codex has no prior context, so each instruction file must contain the diff **con
 command for Codex to run (`references/embed-diff-not-run-rationale.md`, issue #78). **Once per dispatch
 batch**, build the Phase 1 file and dispatch it as `references/codex-pass-assembly.md` says (dispatch id
 `cross-model-review-$(date +%s)-fresh-eyes-codex-<N>`), saving each envelope to `$RUN/codex_fresh_eyes.<N>.json`. On a typed failure, apply the resolver's step 3 fallback;
-for a `timeout`, `references/scoped-review.md` section 4 applies first.
+for a `timeout`, `references/scoped-review.md` section 4 applies first (a retry sets
+`export CODEX_KIT_REVIEW_TIMEOUT_MS=480000` before the `node` call).
 
 ## Phase 2 — Cross-examine (challenger persona)
 

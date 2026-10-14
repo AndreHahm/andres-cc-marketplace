@@ -100,7 +100,7 @@ NEVER_EXCLUDE = tuple(
         r"(^|/)skills/(codex-review-bridge|codex-windows-guardrails)/",
         r"(^|/)git-kit\.(settings|local)\.json\Z",
         r"(^|/)skills/cross-model-review/",
-        r"(^|/)git-review-scope\.py\Z",
+        r"(^|/)git-review-scope(-run\.sh|\.py)\Z",
         r"(^|/)marketplace-sync\.json\Z",
         r"(^|/)\.gitattributes\Z",
         r"(^|/)\.gitmodules\Z",
@@ -881,7 +881,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         sync,
         read=_make_reader(repo),
         diff_size=diff_size,
-        base_read=lambda path: _git_show_bytes(repo, args.merge_base, path),
+        # The verified base ref, not the older merge-base: a mirror counts as identical on the base
+        # only if its canonical copy is unchanged on the ref the branch will land on.
+        base_read=lambda path: _git_show_bytes(repo, base_sha, path) if base_sha else None,
         fingerprint=_make_fingerprint(repo),
         picks=picks,
         recheck=args.recheck,
