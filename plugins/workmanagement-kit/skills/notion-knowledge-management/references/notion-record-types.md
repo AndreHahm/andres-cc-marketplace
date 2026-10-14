@@ -26,7 +26,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
 | `supersedes` / `superseded-by` | No | Set only on the superseding/superseded pair |
 | `related-artifact` | No | Idea, Report, or other record this Decision responds to |
 | `linear-link` | No | Populated by `work-linking` after `idea-to-implementation` promotes this Decision |
-| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Decision is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
+| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Decision is the open-item source; accumulates, never overwritten — see `FOUNDATION_CONTRACTS.md`'s Disposition Record |
 
 ## Proposed Goal
 
@@ -63,7 +63,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
 | `summary` | Yes | Executive summary of the report's content |
 | `body` | Yes | A short note only (at most 2,000 characters); the full report goes into page content as blocks — see SKILL.md's Long Text and Page-Content Blocks |
 | `open-items` | No | Enumerated follow-ups — feeds `open-item-management` |
-| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Report is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
+| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Report is the open-item source; accumulates, never overwritten — see `FOUNDATION_CONTRACTS.md`'s Disposition Record |
 
 ## Outcome / Learning
 
@@ -81,7 +81,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
   previews and approval prompts.
 - `related-record`/`related-*` fields always store a stable ID, never a display name.
 - `repo` is a required select property on every type, set from the plugin's `notion.repo`
-  configuration value (`../../../FOUNDATION_CONTRACTS.md`), never from the record's content or a
+  configuration value (`FOUNDATION_CONTRACTS.md` at the plugin root), never from the record's content or a
   caller's message. It must equal an existing option; if `notion.repo` is unset or matches no option,
   stop and report instead of writing the record without it. Note, Research and Outcome/Learning live in
   organization-level databases shared by all repositories, so `repo` is what tells their rows apart; the
