@@ -137,10 +137,17 @@ def launcher_scenarios():
             failures.append("registered command: no command line found in SKILL.md frontmatter")
         else:
             command = found.group(1).replace('\\"', '"')
-            plugin_root = tmp / "plugin root with space"
-            target = plugin_root / "skills" / "notion-knowledge-management" / "hooks"
+            # The canonical SKILL.md registers the hook under ${CLAUDE_PLUGIN_ROOT}; the .claude/
+            # mirror copy registers it under ${CLAUDE_PROJECT_DIR}/.claude/skills/<name>/. Lay the
+            # copy out the way the command being tested expects.
+            if "${CLAUDE_PROJECT_DIR}" in command:
+                root, var = tmp / "project root with space", "CLAUDE_PROJECT_DIR"
+                target = root / ".claude" / "skills" / "notion-knowledge-management" / "hooks"
+            else:
+                root, var = tmp / "plugin root with space", "CLAUDE_PLUGIN_ROOT"
+                target = root / "skills" / "notion-knowledge-management" / "hooks"
             shutil.copytree(HERE, target, ignore=shutil.ignore_patterns("__pycache__"))
-            env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(plugin_root).replace("\\", "/")}
+            env = {**os.environ, var: str(root).replace("\\", "/")}
             check("registered command allow", run_bash([bash, "-c", command], allowed, env), None)
             check("registered command deny", run_bash([bash, "-c", command], dropped, env), "deny")
     return failures

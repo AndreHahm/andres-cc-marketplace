@@ -144,36 +144,38 @@ host profile. An installation's real stable IDs belong in `.claude/workmanagemen
 never committed to `versioned-configuration.json` itself (a workspace/team ID is installation-
 specific, not a fact about the plugin).
 
-**Schema:**
+**Schema:** one JSON object with these top-level keys, shown in two fragments so each code block stays
+short (the outer braces and the comma between the fragments are implied):
 
 ```json
-{
-  "version": 2,
-  "notion": {
-    "production_workspace_id": null,
-    "test_workspace_id": null,
-    "repo": null,
-    "databases": {
-      "test": {},
-      "prod": {}
-    }
-  },
-  "linear": {
-    "organization_id": null,
-    "production_team_id": null,
-    "test_team_id": null,
-    "repositories": {}
-  },
-  "github": {
-    "repository_slug": null,
-    "canonical_url": null,
-    "default_branch": null,
-    "native_automation": "unconfigured"
-  },
-  "repository_policy": {
-    "provider_profile": null,
-    "gate_discovery": "unconfigured"
+"version": 2,
+"notion": {
+  "production_workspace_id": null,
+  "test_workspace_id": null,
+  "repo": null,
+  "databases": {
+    "test": {},
+    "prod": {}
   }
+},
+```
+
+```json
+"linear": {
+  "organization_id": null,
+  "production_team_id": null,
+  "test_team_id": null,
+  "repositories": {}
+},
+"github": {
+  "repository_slug": null,
+  "canonical_url": null,
+  "default_branch": null,
+  "native_automation": "unconfigured"
+},
+"repository_policy": {
+  "provider_profile": null,
+  "gate_discovery": "unconfigured"
 }
 ```
 
@@ -729,7 +731,7 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
   prod database IDs, and the previously-documented flat shape could only hold one set.
 - 2026-10-13 — Notion layout split into organization-level (`note`, `research`, `outcome-learning`) and
   repository-level (`idea`, `decision`, `proposed-goal`, `report`) databases (decision D46), and a required
-  `repo` select property added to all seven record types (D61). `notion.databases` keeps its flat
-  per-environment shape; scope per type is fixed by the layout. Added `notion.repo` (ships `null`)
+  `repo` select property added to all seven record types (D61). `notion.databases` keeps its nested
+  per-environment shape (a `test` and a `prod` map); scope per type is fixed by the layout. Added `notion.repo` (ships `null`)
   as the value written into every record's `repo` property. Additive within schema v2. The live
   Notion workspace was migrated by hand beforehand (moves keep database IDs).
