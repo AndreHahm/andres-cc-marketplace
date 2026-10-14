@@ -9,8 +9,8 @@ How to choose the right tools for skills, agents, and subagents.
 | Component | What it is | When to use | How it's triggered |
 |-----------|-----------|-------------|-------------------|
 | **Skill** | Knowledge/guidance (SKILL.md) | Teaching patterns, providing domain expertise, guiding decisions | Auto-activated when frontmatter `description` matches user intent |
-| **Agent** | Autonomous executor (agents/*.md) | Tasks that run independently, produce structured output | Spawned via Task tool with `subagent_type` |
-| **Subagent** | Agent spawned by another agent | Delegating subtasks within a larger workflow | Parent agent uses Task tool |
+| **Agent** | Autonomous executor (agents/*.md) | Tasks that run independently, produce structured output | Spawned via Agent tool with `subagent_type` |
+| **Subagent** | Agent spawned by another agent | Delegating subtasks within a larger workflow | Parent agent uses Agent tool |
 | **Command** | User-invoked action (commands/*.md) | Explicit operations the user triggers with `/command-name` | User types the slash command |
 | **Hook** | Event-driven interceptor (hooks/) | Validating or transforming tool calls automatically | System events (PreToolUse, PostToolUse, etc.) |
 | **LSP Server** | Code intelligence provider (.lsp.json) | Language-specific completions, diagnostics, hover info | Plugin includes `.lsp.json` config |
@@ -85,7 +85,7 @@ This is the one place the path conventions are stated; the other files point her
 | **Edit** | Modify existing files | Targeted changes to existing files |
 | **Bash** | Execute shell commands | Running tools, scripts, git operations |
 | **AskUserQuestion** | Get user input | Disambiguation, confirmation, preferences |
-| **Task** | Spawn subagents | Delegating complex subtasks |
+| **Agent** (older docs: Task) | Spawn subagents | Delegating complex subtasks |
 | **TaskCreate/TaskUpdate/TaskList** | Track progress | Multi-step workflows with dependencies |
 | **Todo tools** (names unverified; check the live tool list) | Track progress via todo list | Only a long pipeline whose instructions actually call them |
 | **WebFetch** | Fetch URL content | Reading web pages |
@@ -107,7 +107,7 @@ Map the operation you need to the correct tool:
 | Run a shell command | **Bash** | — |
 | Run a Python script | **Bash** (`uv run`) | — |
 | Get user confirmation | **AskUserQuestion** | Printing and hoping |
-| Delegate analysis | **Task** (subagent) | Doing everything inline |
+| Delegate analysis | **Agent** (subagent) | Doing everything inline |
 
 **Rule:** If a dedicated tool exists for the operation, use it. Only use Bash for operations that genuinely require shell execution (running programs, git commands, build tools).
 
@@ -135,7 +135,7 @@ tools: Read, Grep, Glob
 
 ## Subagent Context Passing
 
-When spawning a subagent via the Task tool, include:
+When spawning a subagent via the Agent tool, include:
 
 1. **What to analyze** — specific file paths, function names, or patterns
 2. **What to look for** — explicit criteria, not vague "analyze this"
@@ -159,14 +159,14 @@ Review the skill and tell me if it's good.
 
 ### Skills with `context: fork`
 
-A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). **Don't confuse this with `Agent(subagent_type: "fork")`** (`agent-development/references/how-subagents-work.md`'s "Context Isolation" section) — that's a separate mechanism, invoked via the Agent tool rather than a skill's frontmatter, that inherits the parent's *full* conversation context, the opposite of what this field does. Both are called "fork," but one starts empty and the other starts with everything; check which one a given instruction actually means before relying on either behavior. This differs from spawning subagents via the Task tool:
+A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). **Don't confuse this with `Agent(subagent_type: "fork")`** (`agent-development/references/how-subagents-work.md`'s "Context Isolation" section) — that's a separate mechanism, invoked via the Agent tool rather than a skill's frontmatter, that inherits the parent's *full* conversation context, the opposite of what this field does. Both are called "fork," but one starts empty and the other starts with everything; check which one a given instruction actually means before relying on either behavior. This differs from spawning subagents via the Agent tool:
 
 | Approach | System prompt | Task prompt | Use when |
 |----------|--------------|-------------|----------|
 | Skill + `context: fork` | From `agent` field type | SKILL.md content | Self-contained actions needing isolation (deploy, research, review) |
-| Task tool subagent | Subagent's definition | Parent's delegation message | Dynamic delegation within a workflow |
+| Agent tool subagent | Subagent's definition | Parent's delegation message | Dynamic delegation within a workflow |
 
-**Design rule:** If the skill represents one action the user triggers directly, use `context: fork`. If a workflow needs to delegate variable subtasks at runtime, use the Task tool.
+**Design rule:** If the skill represents one action the user triggers directly, use `context: fork`. If a workflow needs to delegate variable subtasks at runtime, use the Agent tool.
 
 ---
 
@@ -176,7 +176,7 @@ A skill with `context: fork` runs its content as a subagent prompt in isolation 
 |---------|---------|-----|
 | Listing `Bash` for file operations | Fragile, verbose, permission issues | Use Read/Write/Glob/Grep |
 | Listing `Write` on a read-only skill | Principle of least privilege violation | Remove Write if skill never creates files |
-| Listing `Task` without using subagents | Unused tools clutter the permission model | Only list tools you actually use |
+| Listing `Agent` without using subagents | Unused tools clutter the permission model | Only list tools you actually use |
 | Agent with `Bash` for `grep` | Dedicated Grep tool is more reliable | Use Grep tool instead |
 | No `AskUserQuestion` on interactive skill | Skill can't get user confirmation | Add AskUserQuestion if any gate/confirmation exists |
 | Missing `TaskCreate`/`TaskUpdate` on pipeline | Can't track multi-step progress | Add task tools for pipeline patterns |
