@@ -389,6 +389,7 @@ Commands can be designed to work with plugin hooks:
 ```markdown
 ---
 description: Commit with pre-commit validation
+argument-hint: [files] [message]
 allowed-tools: Bash(git:*)
 ---
 
@@ -450,10 +451,8 @@ argument-hint: [environment]
 
 Validate environment: !\`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"\`
 
-$IF($0 in [dev, staging, prod],
-  Deploy to $0 environment using validated configuration,
-  ERROR: Invalid environment '$0'. Must be one of: dev, staging, prod
-)
+If the validation above printed INVALID, stop and report: Invalid environment '$0'. Must be one of: dev, staging, prod.
+Otherwise deploy to the $0 environment using the validated configuration.
 ```
 
 **Validation approaches:**
@@ -493,10 +492,8 @@ argument-hint: [environment] [version]
 
 Validate inputs: !\`test -n "$0" -a -n "$1" && echo "OK" || echo "MISSING"\`
 
-$IF($0 AND $1,
-  Deploy version $1 to $0 environment,
-  ERROR: Both environment and version required. Usage: /deploy [env] [version]
-)
+If the validation above printed MISSING, stop and report: Both environment and version required. Usage: /deploy [env] [version].
+Otherwise deploy version $1 to the $0 environment.
 ```
 
 ### Plugin Resource Validation
