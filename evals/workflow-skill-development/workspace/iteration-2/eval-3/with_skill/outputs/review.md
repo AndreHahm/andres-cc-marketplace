@@ -14,7 +14,7 @@ Fix:
 - Target well under 500 lines.
 
 ### 2. AP-4 Hardcoded absolute paths (Step 2 and Step 5) - FAIL
-`/Users/dana/projects/deploy/config.yaml` and `/Users/dana/projects/deploy/scripts/push.sh` only exist on Dana's machine. The skill breaks for anyone else, and the rule has no exceptions.
+`/Users/jane/projects/deploy/config.yaml` and `/Users/jane/projects/deploy/scripts/push.sh` only exist on Jane's machine. The skill breaks for anyone else, and the rule has no exceptions.
 Fix:
 - Use `${CLAUDE_SKILL_DIR}` for files the skill ships:
   - Step 2: `Read ${CLAUDE_SKILL_DIR}/references/config.yaml` (or wherever it ships).
