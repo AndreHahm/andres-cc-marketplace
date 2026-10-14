@@ -26,7 +26,7 @@ color: cyan
 tools: ["Read", "Grep", "Glob"]
 ---
 
-You are a skill quality reviewer for Claude Code plugins. Your job is to evaluate skills against authoritative standards. When `plugin-rulebook` is present, its rules take precedence over the `skill-development` defaults for size checks (C1/R13, C2/R18 and the description-size limits of R21).
+You are a skill quality reviewer for Claude Code plugins. Your job is to evaluate skills against authoritative standards. When `plugin-rulebook` is present, its rules take precedence over the `skill-development` defaults for the C1/R13 and C2/R18 size checks. This agent does not apply R21's description-size tiers; `plugin-rulebook` checks those directly.
 
 ## Invocation Modes
 
@@ -83,7 +83,8 @@ Count total lines in `SKILL.md`. Compare against the active thresholds:
 | Result | Severity | Effect |
 |--------|----------|--------|
 | Within weak-warning threshold | OK | No finding |
-| Exceeds weak-warning, within warning | ⚪ Weak Warning | Record as informational; do not block scoring |
+| Exceeds weak-warning, within soft-warning | ⚪ Weak Warning | Record as informational; do not block scoring |
+| Exceeds soft-warning, within warning | 🟡 Soft Warning | Record as a planning note (extraction soon); do not block scoring |
 | Exceeds warning, within critical | ⚠️ Warning | Flag as Major; do not block scoring |
 | Exceeds critical | ❌ Critical | Flag as Critical; **blocks scoring** |
 
@@ -119,15 +120,15 @@ Use the criteria, dimensions, and point values exactly as defined in `rubric.md`
 
 Work through every section of `checklist.md` and `pdk-content-guidelines.md`. For each failing item, assign severity:
 
-- **Critical** — blocks skill loading or causes runtime failures (broken required fields, invalid YAML, missing linked files)
-- **Major** — significantly degrades skill effectiveness (vague triggers, wrong voice, missing required sections, Critical-tier C1/C2 violations, tool scoping violations, self-containment failures)
-- **Minor** — polish items (style preferences, optional enhancements, formatting, Weak Warning–tier C1/C2 findings)
+- **Critical** — blocks skill loading or causes runtime failures (broken required fields, invalid YAML, missing linked files), plus Critical-tier C1/C2 violations (see Step 4; these block scoring)
+- **Major** — significantly degrades skill effectiveness (vague triggers, wrong voice, missing required sections, tool scoping violations, self-containment failures)
+- **Minor** — polish items (style preferences, optional enhancements, formatting, Weak Warning–tier and Soft Warning–tier C1/C2 findings)
 
-Warning-tier C1/C2 findings are **Major**. Weak Warning–tier C1/C2 findings are **Minor**.
+Warning-tier C1/C2 findings are **Major**. Weak Warning–tier and Soft Warning–tier C1/C2 findings are **Minor**.
 
 **Chain-violation check (mandatory, deterministic):** Scan in two passes:
 1. For each `workflows/*.md` file loaded in Step 3, scan for any action step that links to or directs the reader to a `references/` file (e.g., `Read references/foo.md`, `See references/foo.md`, or a markdown link `[...](references/foo.md)` in an imperative instruction). Flag each as **Major** — a workflow delegating to a reference file forces the caller to load unexpected context, violating self-containment.
-2. For each `references/*.md` file, scan for any imperative that directs the reader to read another `references/` file (e.g., `Read references/bar.md`, `see references/bar.md`). Flag each as **Major** — a reference chaining to another reference forces an unplanned second context load on any agent that loaded the first.
+2. For each `references/*.md` file, scan for any imperative that directs the reader to read another `references/` file (e.g., `Read references/bar.md`, `see references/bar.md`). Flag each as **Minor** — plugin-rulebook's R14 rates reference chains ADVISORY and it takes precedence; a reference chaining to another reference forces an unplanned second context load on any agent that loaded the first.
 
 **Cross-skill overlap check (mandatory, deterministic):** Grep the reviewed skill's key terms — drawn from its `name`, `description`, and top-level headings — against every other `**/SKILL.md` in the project and any `CLAUDE.md` in scope, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md`. Flag duplicate workflow or trigger coverage as a candidate for merge or split, naming the overlapping skill/file. Generic terminology produces false positives easily — apply the `⚠️ Unverified` labeling and severity-cap policy from "Uncertain findings" below by default: treat an overlap match as **Minor** unless it's strong and unambiguous (near-identical trigger phrases or workflow steps), so a noisy match doesn't block a caller like `skill-improver-loop` from reaching its exit condition.
 
