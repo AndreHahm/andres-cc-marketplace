@@ -1,0 +1,36 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output identifies this as status-and-learning's request and says status-and-learning drafts the content first",
+      "passed": true,
+      "evidence": "'It belongs to status-and-learning, which drafts' the content; 'Hand off to status-and-learning' is step 1"
+    },
+    {
+      "text": "Output does not build and preview an Outcome/Learning record from scratch itself",
+      "passed": true,
+      "evidence": "'So I am not writing an Outcome/Learning record from here'; the only preview is labelled 'illustrative ... PREVIEW, NOT WRITTEN' with content unfilled (weak pass: the sketch carries a filled title)"
+    },
+    {
+      "text": "Output says this skill only executes the write once status-and-learning has drafted the content, under the live approval gate",
+      "passed": true,
+      "evidence": "Flow ends with the write through this skill under AskUserQuestion approval, after status-and-learning has drafted"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "passed": true,
+      "evidence": "Does not claim a write; 'No Notion or Linear tool was called'"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls that belong to this skill (notion-fetch, notion-search, notion-create-pages, notion-update-page, Write, splitter) are granted; the Skill(status-and-learning), Skill(linear-work-management) and Linear read calls belong to the routed skill, not this one"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

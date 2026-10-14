@@ -1,0 +1,41 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output notices the body is over 2,000 characters before showing the preview",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not write the over-limit text as a property value and does not truncate it silently",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output offers or applies the shorten-with-the-user or move-to-page-content route",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "If it moves the text into page content, output splits it with wmgt_split_blocks.py using a generated scratchpad file name (not the repository root, not a name built from the record's content)",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "If it plans a read-back after a page-content write, the check is paragraph count and the closing sentence, not a block count",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output still requires live approval before the write",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

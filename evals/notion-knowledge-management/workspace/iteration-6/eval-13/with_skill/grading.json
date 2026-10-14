@@ -1,0 +1,36 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output stops and reports that notion.repo matches no option of the `repo` select",
+      "passed": true,
+      "evidence": "'Result: I would not write this record. The write stops at the repo check'; value unmatched against other-repo"
+    },
+    {
+      "text": "Output does not write the Decision record and does not present the write as ready for approval",
+      "passed": true,
+      "evidence": "Does not write; the Decision preview is not offered for approval before the stop is resolved"
+    },
+    {
+      "text": "Output does not silently add the missing option or change the database schema",
+      "passed": true,
+      "evidence": "Rejects 'Silently adding the option to the select as a side effect of the Decision write'; writing repo = other-repo also rejected"
+    },
+    {
+      "text": "Output tells the user how to resolve it (an approved Bootstrap schema change adding the option, or a corrected notion.repo)",
+      "passed": true,
+      "evidence": "Offers an AskUserQuestion with: add the option via an approved schema-change plan, fix the config, or stop"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "passed": true,
+      "evidence": "Planned calls: Read, Bash(git ls-files), notion-fetch, AskUserQuestion, then (only if chosen) notion-update-data-source, notion-create-pages: all granted"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

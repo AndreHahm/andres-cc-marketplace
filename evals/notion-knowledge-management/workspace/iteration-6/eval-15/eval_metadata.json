@@ -1,0 +1,31 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output identifies this as status-and-learning's request and says status-and-learning drafts the content first",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not build and preview an Outcome/Learning record from scratch itself",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output says this skill only executes the write once status-and-learning has drafted the content, under the live approval gate",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Output does not claim to have written to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Every tool this skill itself plans to call is within its allowed-tools",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

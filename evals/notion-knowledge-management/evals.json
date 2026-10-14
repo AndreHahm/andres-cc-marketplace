@@ -42,7 +42,7 @@
       "id": 6,
       "name": "Log a Research note",
       "prompt": "Log this as a research note: users are hitting rate limits on the bulk export API more than expected, worth investigating pagination strategies.",
-      "expected_output": "Builds a Research record per the record-type property table (title, area, body, shared fields), previews it, states approval is required before writing, and does not claim to have actually written to Notion without a working connector.",
+      "expected_output": "Builds a Research record per the record-type property table (title, question, findings, source-link, shared fields), previews it, states approval is required before writing, and does not claim to have actually written to Notion without a working connector.",
       "files": []
     },
     {
@@ -89,13 +89,50 @@
       "files": [
         "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
       ]
+    },
+    {
+      "id": 12,
+      "name": "Bootstrap with null notion.repo and an adopted database missing the repo option",
+      "prompt": "Bootstrap the Notion databases for the prod environment. notion.repo is null in the plugin's configuration and nobody has told you the repository name. The organization-level page 'AndreHahm / prod' holds Note, Research and Outcome-Learning databases whose `repo` select currently has only the option 'other-repo'. The repository-level page for this repository holds Idea, Decision, Proposed Goal and Report databases that already exist. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Asks the user for the repository name instead of guessing it, plans an approval-gated schema change adding the option to the adopted organization-level databases via notion-update-data-source, records notion.repo through the local override, and gets plan-level approval first.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Stop when notion.repo matches no option of the repo select",
+      "prompt": "Record a decision: we're moving the transition history export to a background job. notion.repo is set to \"andres-cc-marketplace\", but the Decision database's `repo` select has only the option \"other-repo\". This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Stops and reports the unmatched option; does not write the record, and does not silently add the option (that is an approval-gated Bootstrap schema change).",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "A text property over 2,000 characters is not written as is",
+      "prompt": "Capture this as an idea in Notion. Title: 'Rework the export pipeline'. The body is a design write-up of about 2,600 characters (generate plausible placeholder prose of that length; it is plain prose with no tables or code). notion.repo is \"andres-cc-marketplace\" and the Idea database's repo select has that option. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Notices the body exceeds the 2,000-character limit before the preview; does not truncate silently; shortens it with the user or moves it into page content blocks via the splitter, with a read-back that checks paragraph count and closing sentence, not a block count.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Outcome/learning capture belongs to status-and-learning",
+      "prompt": "Capture what we learned from finishing the export migration project and write it to Notion. This is a simulation: do not call any Notion or Linear tool; describe the calls you would make and show the preview or plan you would put in front of me.",
+      "expected_output": "Does not draft an Outcome/Learning record from scratch; routes the request to status-and-learning, which drafts the content from Linear facts and then calls this skill only to execute the write.",
+      "files": [
+        "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
     "declared_scenarios_covered": 4,
     "uncovered": [],
-    "methodology_note_iteration_5": "Evals 8-11 cover the 2026-10-13 org-level migration behavior (repo select, unset notion.repo, two-scope bootstrap, long-text blocks). Simulation only: agents were told not to call Notion."
+    "methodology_note_iteration_5": "Evals 8-11 cover the 2026-10-13 org-level migration behavior (repo select, unset notion.repo, two-scope bootstrap, long-text blocks). Simulation only: agents were told not to call Notion.",
+    "methodology_note_iteration_6": "Iteration 6 re-runs evals 8-11 after the audit-driven edits (Bootstrap steps, tool grants, long-text reference) and adds evals 12-15 (null repo with an adopted database lacking the option, unmatched repo option, over-limit property, status-and-learning boundary). Simulation only, with_skill agents, graded with the skill's allowed-tools checked per planned call."
   },
   "methodology_note_eval_7": "This run's with_skill grading was performed directly by the orchestrating fork (a 'Do NOT spawn subagents' hard rule barred the normal Agent-tool dispatch this pipeline's WITH_SKILL_ONLY template calls for) via description-vs-trigger-phrase textual/semantic consistency checking, not a full agentic task simulation. No SKILL.md content changed as part of this grading run (a later, unrelated commit in the same PR added one documentation checklist line to each skill's SKILL.md) -- this run's purpose was a sanity check that adding scripts/smoke_test.py to each skill didn't coincide with any drift between the skill's own documented trigger claims and its frontmatter, not a search for new behavioral defects."
 }
