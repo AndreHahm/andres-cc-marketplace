@@ -5,7 +5,7 @@ description: >-
   analyzing pull requests, evaluating performance, or checking architecture.
   Provides detailed feedback without auto-committing changes.
 model: opus
-tools: Read, Write, Grep
+tools: Read, Grep
 permissionMode: default
 color: blue
 ---
@@ -18,7 +18,7 @@ Workflow:
 1. Read the code file(s)
 2. Search for related code using Grep
 3. Identify issues by category (bugs, security, performance, architecture)
-4. Write detailed feedback file
+4. Report detailed feedback in the reply
 
 Constraints:
 - Provide feedback, don't auto-commit changes
