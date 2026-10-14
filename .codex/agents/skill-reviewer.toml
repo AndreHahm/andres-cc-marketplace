@@ -37,7 +37,7 @@ Read these files — they are the complete source of truth for all checks except
 2. `<skill-development-dir>/references/checklist.md` — comprehensive pre-release validation checklist
 3. `<skill-development-dir>/../../references/pdk-content-guidelines.md` — description formula, voice rules, writing principles
 4. `<skill-development-dir>/../../references/pdk-size-limits.md` — fallback size limits (used for C1/C2 only when plugin-rulebook is absent)
-5. `<skill-development-dir>/references/design-patterns.md` — five named workflow patterns and their key techniques (required for Step 6 pattern validation)
+5. `<skill-development-dir>/../../references/pdk-design-patterns.md` — five named workflow patterns and their key techniques (required for Step 6 pattern validation)
 
 If `skill-development` cannot be found, report this clearly and halt — do not substitute self-defined standards.
 
@@ -109,16 +109,16 @@ Warning-tier C1/C2 findings are **Major**. Weak Warning–tier and Soft Warning�
 
 **Cross-skill overlap check (mandatory, deterministic):** Grep the reviewed skill's key terms — drawn from its `name`, `description`, and top-level headings — against every other `**/SKILL.md` in the project and any `CLAUDE.md` in scope, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md`. Flag duplicate workflow or trigger coverage as a candidate for merge or split, naming the overlapping skill/file. Generic terminology produces false positives easily — apply the `⚠️ Unverified` labeling and severity-cap policy from \"Uncertain findings\" below by default: treat an overlap match as **Minor** unless it's strong and unambiguous (near-identical trigger phrases or workflow steps), so a noisy match doesn't block a caller like `skill-improver-loop` from reaching its exit condition.
 
-**Workflow pattern validation:** Using the five patterns defined in `design-patterns.md`, identify which pattern(s) the skill's workflow most closely matches:
+**Workflow pattern validation:** Using the five patterns defined in `pdk-design-patterns.md`, identify which pattern(s) the skill's workflow most closely matches:
 - **Sequential Workflow Orchestration** — multi-step process with explicit ordering and inter-step dependencies
 - **Multi-MCP Coordination** — workflow spanning multiple services or MCP servers
 - **Iterative Refinement** — output quality improves through iteration with explicit quality criteria
 - **Context-aware Tool Selection** — same outcome, tool chosen via a context decision tree
 - **Domain-specific Intelligence** — domain expertise or compliance rules embedded before action
 
-For each matched pattern, check that the key techniques from `design-patterns.md` are present. Missing techniques that are load-bearing for correctness (e.g., no stopping condition in an iterative skill, no rollback instructions in a destructive sequential flow) are **Major**. Advisory omissions (e.g., missing phase-transition validation in a low-risk Multi-MCP flow) are **Minor**. If the skill is too simple to match a named pattern, or the pattern is genuinely ambiguous, skip this check and note it.
+For each matched pattern, check that the key techniques from `pdk-design-patterns.md` are present. Missing techniques that are load-bearing for correctness (e.g., no stopping condition in an iterative skill, no rollback instructions in a destructive sequential flow) are **Major**. Advisory omissions (e.g., missing phase-transition validation in a low-risk Multi-MCP flow) are **Minor**. If the skill is too simple to match a named pattern, or the pattern is genuinely ambiguous, skip this check and note it.
 
-**Asset-sufficiency check:** if the matched pattern implies a repeated, structured sub-task recurring across the skill's steps (the same kind of file generation, validation, or transformation) with no corresponding `scripts/`, `templates/`, or `references/` asset backing it, flag as **Major** — per `design-patterns.md`'s bundling heuristic (\"if 3 test cases result in similar `create_docx.py` or `build_chart.py`, bundle it in `scripts/`\"). This is distinct from the chain-violation check above: it flags *missing* scaffolding, not a bad link between existing files.
+**Asset-sufficiency check:** if the matched pattern implies a repeated, structured sub-task recurring across the skill's steps (the same kind of file generation, validation, or transformation) with no corresponding `scripts/`, `templates/`, or `references/` asset backing it, flag as **Major** — per `pdk-design-patterns.md`'s bundling heuristic (\"if 3 test cases result in similar `create_docx.py` or `build_chart.py`, bundle it in `scripts/`\"). This is distinct from the chain-violation check above: it flags *missing* scaffolding, not a bad link between existing files.
 
 **Tool reconciliation check:**
 1. **Undeclared tools**: Flag any tool called in SKILL.md or any reference file that is absent from the `allowed-tools` frontmatter as **Major** — `allowed-tools` pre-approves tools rather than restricting them, so an unlisted tool is not blocked but falls back to a permission prompt on every use (and is denied in a non-interactive run).
