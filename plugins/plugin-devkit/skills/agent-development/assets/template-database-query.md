@@ -1,8 +1,9 @@
 ---
 name: db-analyzer
 description: >-
-  Run SELECT queries against a database for data analysis. Use when exploring
-  tables, generating reports, analyzing data patterns, or answering questions.
+  Use this agent when running SELECT queries against a database for data
+  analysis. Typical triggers include exploring tables, generating reports, and
+  answering questions about data.
 model: inherit
 color: cyan
 tools: Bash
@@ -61,3 +62,9 @@ sqlite3 db.sql "SELECT ..."
 ```
 
 Replace credentials/connection string as needed.
+
+## When to invoke
+
+- Explicit request: the user asks a question about data that a SELECT query can answer.
+- Proactive trigger: a report or table overview is needed before a change is planned.
+- Not for: INSERT, UPDATE, DELETE or schema changes.

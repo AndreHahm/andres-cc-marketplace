@@ -1,9 +1,10 @@
 ---
 name: log-analyzer
 description: >-
-  Analyze log files for patterns, errors, and anomalies. Use when debugging
-  production logs, identifying performance bottlenecks, or tracking error
-  trends. Runs in background; generates report file.
+  Use this agent when debugging production logs, identifying performance
+  bottlenecks, or tracking error trends. Typical triggers include a log file to
+  triage and a recurring error pattern. Runs in background; generates report
+  file.
 model: haiku
 tools: Read, Write, Grep
 color: blue
