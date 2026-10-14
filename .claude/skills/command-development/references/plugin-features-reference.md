@@ -91,7 +91,7 @@ Reference files within your plugin:
 ```markdown
 ---
 description: Analyze using plugin script
-allowed-tools: Bash(node:*), Read
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js *), Read
 ---
 
 Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js\`
@@ -113,7 +113,7 @@ Read template: @/path/to/plugins/plugin-name/templates/report.md
 ```markdown
 ---
 description: Run custom linter from plugin
-allowed-tools: Bash(node:*)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js *)
 ---
 
 Lint results: !\`node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js $0\`
