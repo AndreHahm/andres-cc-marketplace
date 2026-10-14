@@ -46,13 +46,16 @@ def fix_frontmatter_format(skill_path):
             print("  Added missing frontmatter delimiter")
 
         # Extract and fix frontmatter
-        frontmatter_end = content.find("---", 3)
+        # The closing delimiter is a line that is exactly `---`, not any `---` inside a value.
+        closing = re.search(r"^---[ \t]*$", content[3:], re.MULTILINE)
+        frontmatter_end = closing.start() + 3 if closing else -1
         if frontmatter_end == -1:
             # Add closing delimiter
             first_line_end = content.find("\n")
             if first_line_end != -1:
                 content = content[:first_line_end] + "\n---\n" + content[first_line_end:]
-                frontmatter_end = content.find("---", 3)
+                closing = re.search(r"^---[ \t]*$", content[3:], re.MULTILINE)
+                frontmatter_end = closing.start() + 3 if closing else -1
                 print("  Added missing frontmatter closing delimiter")
 
         if frontmatter_end != -1:
