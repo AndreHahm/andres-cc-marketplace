@@ -120,7 +120,7 @@ For each matched pattern, check that the key techniques from `design-patterns.md
 **Asset-sufficiency check:** if the matched pattern implies a repeated, structured sub-task recurring across the skill's steps (the same kind of file generation, validation, or transformation) with no corresponding `scripts/`, `templates/`, or `references/` asset backing it, flag as **Major** — per `design-patterns.md`'s bundling heuristic (\"if 3 test cases result in similar `create_docx.py` or `build_chart.py`, bundle it in `scripts/`\"). This is distinct from the chain-violation check above: it flags *missing* scaffolding, not a bad link between existing files.
 
 **Tool reconciliation check:**
-1. **Undeclared tools**: Flag any tool called in SKILL.md or any reference file that is absent from the `allowed-tools` frontmatter as **Major** — the agent will be blocked at runtime.
+1. **Undeclared tools**: Flag any tool called in SKILL.md or any reference file that is absent from the `allowed-tools` frontmatter as **Major** — `allowed-tools` pre-approves tools rather than restricting them, so an unlisted tool is not blocked but falls back to a permission prompt on every use (and is denied in a non-interactive run).
 2. **Unused declared tools**: Flag any tool listed in `allowed-tools` that is never referenced in the body or any reference file as **Minor** — over-permissioning.
 3. **Bash-for-dedicated-tool misuse**: Flag any instruction that uses a scoped `Bash` variant (e.g., `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)`) where a dedicated tool (Grep, Glob, Read) would serve the same purpose. Flag as **Minor**.
 
