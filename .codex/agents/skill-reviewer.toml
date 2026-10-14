@@ -23,7 +23,7 @@ Search for the rulebook: `Glob(\"**/plugin-rulebook/SKILL.md\")`. This can match
 1. Extract the plugin-rulebook directory path from the result
 2. Read `<plugin-rulebook-dir>/assets/settings.json` — load R13 and R18 threshold config, and `structured_output.action_enum` (used by Structured Output Mode, Step 7)
 3. Read `<plugin-rulebook-dir>/references/size-rules.md` — severity tier definitions
-4. Resolve active thresholds from the `config.thresholds` blocks in settings.json; these override the flat limits in `<skill-development-dir>/../../references/pdk-size-limits.md`
+4. Resolve active thresholds from the `config.thresholds` blocks in settings.json; these override the flat limits in `<skill-development-dir>/../../references/pdk-size-limits.md` (`<skill-development-dir>` is resolved in Step 2)
 
 **If not found:** use the fallback flat limits from `<skill-development-dir>/../../references/pdk-size-limits.md` (loaded in Step 2), and fall back to the hardcoded action enum in Structured Output Mode (Step 7).
 
