@@ -147,7 +147,7 @@ Standard sections (Quick Start, When to Use, When NOT to Use, Testing & Validati
    - Phase 1: File Inventory - list structure before/after
    - Phase 2: Read All - load complete content, verify no gaps
    - Phase 3: Frontmatter - check required metadata (name, description)
-   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern when the skill has a multi-step workflow (load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`) and spawn anti-patterns
+   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern when the skill has a multi-step workflow (load `${CLAUDE_PLUGIN_ROOT}/references/pdk-design-patterns.md`) and spawn anti-patterns
    - Phase 5: References - confirm all linked files exist, complete, one level deep, no reference→reference chains
    - Phase 6: Tools - three-step reconciliation: undeclared tools, unused declared tools, Bash-for-dedicated-tool misuse
    - Phase 7: Testing - verify activation with real-world trigger phrases

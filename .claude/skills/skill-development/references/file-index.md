@@ -11,7 +11,6 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `references/slash-command-conversion.md` | Detection, mapping, conversion logic, validation | Phase 1 — Convert entry path |
 | `references/web-search-research.md` | Web search research for unfamiliar domains | Phase 1 (understand) |
 | `references/platform-reference.md` | Frontmatter fields, string substitutions, hook system, platform gotchas | Phase 2 (design) |
-| `references/design-patterns.md` | Gotchas patterns, progressive disclosure, hooks, setup, composability | Phase 2 (design) |
 | `references/templates.md` | Full skill creation templates (token-optimized Basic, Complex, patterns, description examples) | Phase 1 (Greenfield) and Phase 2 (design) — scaffold |
 | `references/skill-workflow.md` | 80% Rule, content distribution, preservation gates | Phase 2 (design) — content placement decisions |
 | `references/resource-organization.md` | Content placement decision framework | Phase 2 (design) |
