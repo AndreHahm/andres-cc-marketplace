@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery, nor
   `handling-review-findings`'s triage of findings already posted to an open PR — this skill never
   posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add -N:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export GIT_INDEX_FILE:*)", "Bash(export CODEX_KIT_REVIEW_REPO_ROOT:*)", "Bash(export CODEX_KIT_REVIEW_TIMEOUT_MS:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-copy-index.sh:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh:*)", "Read", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -26,8 +26,8 @@ review: self-ratification (a model won't critique its own work) and confident fa
 second reviewer, dispatched as an independent subprocess through codex-kit — never invoked ad hoc
 via a raw `codex exec`.
 
-**`Write` is scoped in practice to `$RUN`, this skill's own scratch dir, even though the frontmatter
-grant has no path-restriction syntax to enforce that mechanically.** Never write to any path inside
+**`Write` is deliberately not in `allowed-tools`** (its grant cannot be limited to a path), so each write
+asks for permission; approve only paths under `$RUN`, this skill's own scratch dir. Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
 this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
 deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
