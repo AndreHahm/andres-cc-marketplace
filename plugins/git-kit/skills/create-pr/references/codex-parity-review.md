@@ -12,7 +12,8 @@ pass; this step runs CI's own entry point so those findings surface before the p
 
 - Reads the Codex CLI pin from `.github/workflows/marketplace-ci.yml`, so it cannot drift from CI.
 - Reads `CODEX_KIT_REVIEW_TIMEOUT_MS` the way CI does: the repository variable of that name (via
-  `gh variable list --json`) when it is a valid number, else the fallback in the workflow's
+  `gh variable list --json`) when node confirms the bridge accepts it (`Number(value)` is a positive
+  integer; a fractional value such as `600000.5` is not), else the fallback in the workflow's
   `vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '<fallback>'` expression. The output says which one it used.
 - Reads `CODEX_KIT_REVIEW_MODEL` with `gh variable list --json` (it is a repository variable, not a workflow
   value). Unset, unreadable or malformed means the local Codex default runs, and the output says so.

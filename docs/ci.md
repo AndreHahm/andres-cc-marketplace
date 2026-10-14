@@ -164,6 +164,15 @@ verbatim; otherwise the wrapper uses the fallback it parses from the workflow's 
 warning, whether the variable was rejected or node could not be run. Keep the expression in that exact
 shape, because the wrapper parses it.
 
+Usable range of the variable: the bridge accepts any positive integer, but two limits sit behind that test.
+Above 2,147,483,647 ms Node clamps the timer to 1 ms, so every Codex call times out at once; and above about
+2,340,000 ms (39 minutes) one call plus its 60 seconds of slack no longer fits in the 40-minute dispatch
+budget, so the dispatcher refuses every reviewer with "dispatch budget exhausted". Both fail closed (the
+review fails, never passes), but one bad value fails `codex-review` on every PR until it is fixed. Below those
+limits a large value still shrinks the room for retries and for reviewers that start later, since each needs a
+full call plus slack in what remains of the budget; the current value, 720000, leaves room for about three
+full-length calls in sequence.
+
 ## Diff-scoped blocking
 
 `run-codex-review` fails the `codex-review` job (exit 1) only for findings that belong to the PR. A reviewer
