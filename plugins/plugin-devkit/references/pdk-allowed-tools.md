@@ -43,9 +43,9 @@ Use when: Analyzing code, searching files, reading documentation without modific
 
 ### Example 2: Python execution + file operations
 ```yaml
-allowed-tools: Read Write Bash(python:*)
+allowed-tools: Read Write Bash(python ${CLAUDE_SKILL_DIR}/scripts/process.py *)
 ```
-Use when: Processing data with Python, writing results to files.
+Use when: Processing data with a bundled Python script, writing results to files. The grant is pinned to that one script; `Bash(python:*)` would also pre-approve `python -c "..."`.
 
 ### Example 3: Git workflow only
 ```yaml
@@ -71,8 +71,11 @@ Use when: Fetching remote content and analyzing local files.
 
 **Wildcard filtering:**
 - `Bash(git:*)` — pre-approves all git commands
-- `Bash(python:*)` — pre-approves python only
+- `Bash(python:*)` — pre-approves every command that starts with `python`, including `python -c "..."`, so it is as broad as arbitrary code execution
+- `Bash(python ${CLAUDE_SKILL_DIR}/scripts/check.py *)` — pre-approves one bundled script (preferred for interpreters); Claude Code substitutes the variable in the rule and in the skill body, so the rule matches the command the body tells Claude to run
 - `Bash(git:*) Bash(mkdir:*)` — pre-approves several specific commands, each named
+
+Matching is literal over the command text, and `:*` at the end of a pattern means the same as a trailing ` *`.
 
 **Case-sensitive:** Use exact names (e.g., `Read` not `read`)
 
@@ -95,6 +98,7 @@ Use when: Fetching remote content and analyzing local files.
 ### Anti-Patterns
 
 - **Don't use** `allowed-tools: Bash(*)` — too broad, violates principle of least privilege
+- **Prefer a script-pinned grant over an interpreter-wide one** (`Bash(python ${CLAUDE_SKILL_DIR}/scripts/x.py *)` over `Bash(python:*)`, likewise for `node`): the interpreter-wide form lets any code run without a prompt. plugin-rulebook R6 still accepts the interpreter-wide form; this is guidance, not a rule
 - **Don't assume** that because a tool works without `allowed-tools` you don't need to declare it — declare it explicitly for clarity
 - **Do use** minimal, specific permissions: `Read Write Edit` for file-only skills, `Bash(git:*)` for git workflows
 
@@ -110,7 +114,7 @@ Example team skill:
 ```yaml
 ---
 name: team-pdf-processor
-allowed-tools: Read Write Bash(python:*)
+allowed-tools: Read Write Bash(python ${CLAUDE_SKILL_DIR}/scripts/process_pdf.py *)
 description: >-
   Process PDF files as a team. Requires Python 3.8+.
 ---
