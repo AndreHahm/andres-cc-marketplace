@@ -307,7 +307,7 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 | Read-only analysis skill | Read, Glob, Grep |
 | Interactive analysis skill | Read, Glob, Grep, AskUserQuestion |
 | Code generation skill | Read, Glob, Grep, Write, `Bash(python <skill-dir>/scripts/gen.py *)` (pinned to the one bundled script invoked) |
-| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate |
+| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Agent, TaskCreate, TaskList, TaskUpdate |
 | Read-only agent | Read, Grep, Glob |
 | Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below) |
 
