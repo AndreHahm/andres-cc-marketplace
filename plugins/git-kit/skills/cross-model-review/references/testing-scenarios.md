@@ -173,8 +173,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
 - [ ] Single-model mode always skips Phase 1's Codex pass and all of Phase 2 — never dispatches Codex
       after the user chose to proceed single-model
 - [ ] A Codex-bound instruction file never embeds diff text for a file Preflight step 2 excluded from
-      `--target-paths` — `$CODEX_DIFF_STR` is used for every Codex-facing embed, `$DIFF_STR` only for
-      Claude's own native pass
+      `--target-paths` — a batch's `.codex.diff` files are used for every Codex-facing embed, the
+      `.diff` files only for Claude's own native pass
 - [ ] Neither Phase 1 nor Phase 2's Codex-bound instruction file ever tells Codex to run `git diff`
       (or any other command expected to produce large output) itself — the diff content is always
       embedded directly, computed by this skill's own Bash/Read steps beforehand (issue #78)

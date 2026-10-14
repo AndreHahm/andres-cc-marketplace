@@ -26,7 +26,8 @@ failure here is expected and harmless, not a sign anything is actually wrong.
 Codex never runs `git diff` itself at all — Phase 1 and Phase 2 both embed diff content directly into
 Codex's instruction file instead (a Codex-run diff of a large change failed every time on a real
 Windows machine while the embedded diff succeeded, issue #78). The diff
-they embed is `$CODEX_DIFF_STR`, not `$DIFF_STR` — scoped to eligible paths only (Preflight step 2).
+they embed is the batch's `.codex.diff` files, not Claude's `.diff` files — scoped to eligible paths
+only (Preflight step 2).
 Once an untracked file is intent-added, `git diff` shows its **full real content** as an addition, not
 an empty placeholder (verified empirically: intent-adding a two-line untracked file and diffing it
 shows both lines, not a contentless add) — so an untracked file inside `$SCOPE` normally already
@@ -34,10 +35,10 @@ appears in full in whatever diff includes it.
 
 The gap is narrower than "Codex can't see untracked files at all": an untracked path can still be
 present in `$UNTRACKED_FILES` while being *excluded* from `$TARGET_PATHS`/the eligible-files list that
-`$CODEX_DIFF_STR` is scoped to — the invalid-character check and the no-longer-exists check (Preflight
+the `.codex.diff` files are scoped to — the invalid-character check and the no-longer-exists check (Preflight
 step 2) only reassign `$TARGET_PATHS`, not `$UNTRACKED_FILES`; only the symlink-outside-repo check
 (also step 2) reassigns both. An untracked file dropped from `$TARGET_PATHS` for either of those two
-reasons stays fully visible in Claude's own native `$DIFF_STR` but never appears in `$CODEX_DIFF_STR` at
+reasons stays fully visible in Claude's own native `$DIFF_STR` but never appears in the `.codex.diff` files at
 all. If `$UNTRACKED_FILES` is non-empty, Phase 1 and Phase 2 both additionally append it explicitly to
 Codex's instructions (see each phase's Codex-facing assembly step) so Codex reads those files directly
 via a read-only file tool, covering exactly this gap rather than a general "Codex can't see untracked
