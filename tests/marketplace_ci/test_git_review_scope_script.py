@@ -217,14 +217,34 @@ def test_every_exclusion_is_disclosed_in_inspection_limits():
 # --- config loading ----------------------------------------------------------------------------
 
 
-def test_local_config_only_adds_to_tracked_lists():
+def test_local_config_adds_to_tracked_lists_and_overrides_numeric_limits():
     tracked = json.dumps({"cross_model_review_exclude_dirs": ["a/"]})
     local = json.dumps(
-        {"cross_model_review_exclude_dirs": ["b"], "cross_model_review_budget_bytes": 1}
+        {
+            "cross_model_review_exclude_dirs": ["b"],
+            "cross_model_review_budget_bytes": 1,
+            "cross_model_review_max_slice_bytes": 2,
+        }
     )
     config = M.load_config(tracked, local, False)
     assert config["dirs"] == ["a/", "b/"]
-    assert config["budget_bytes"] == M.DEFAULT_BUDGET_BYTES  # numeric keys come from tracked only
+    assert (config["budget_bytes"], config["max_slice_bytes"]) == (1, 2)
+
+
+def test_local_config_with_enabled_false_is_ignored_and_disclosed():
+    tracked = json.dumps({"cross_model_review_exclude_dirs": ["a/"]})
+    local = json.dumps(
+        {
+            "enabled": False,
+            "cross_model_review_exclude_dirs": ["b"],
+            "cross_model_review_budget_bytes": 1,
+        }
+    )
+    config = M.load_config(tracked, local, False)
+    assert config["dirs"] == ["a/"]
+    assert config["budget_bytes"] == M.DEFAULT_BUDGET_BYTES
+    assert not config["local_entries"]
+    assert any("enabled=false" in n for n in config["notes"])
 
 
 def test_tracked_local_config_is_ignored_and_disclosed():
