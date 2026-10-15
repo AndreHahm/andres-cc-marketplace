@@ -118,7 +118,9 @@ def normalize_risk(value: object) -> tuple[tuple[str, str | bool], ...]:
 @dataclass(frozen=True)
 class Reviewer:
     name: str
-    # `selector` names the rule review.py uses to put the reviewer in a scope: a label, not code.
+    # `selector` labels how review.py puts the reviewer in a scope. Only "delta-baseline" is read
+    # by review.py (DELTA_VALIDATE); the other labels document routes that stay hand-written there,
+    # and a test checks that every reviewer those routes name is in ROSTER.
     selector: str
 
     @property

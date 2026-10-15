@@ -96,6 +96,14 @@ def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
     return timeout.group(1) or timeout.group(2), pin.group(1)
 
 
+def workflow_exports_model_variable(workflow_text: str, name: str) -> bool:
+    """True when the dispatch step exports `name` from the repository variable of the same name,
+    the way CI does for the model. The contract may only name a variable CI really exports."""
+    block = _step_block(workflow_text, "Dispatch reviewers directly")
+    pattern = rf"^\s*{re.escape(name)}:\s*\$\{{\{{\s*vars\.{re.escape(name)}\s*\}}\}}\s*$"
+    return re.search(pattern, block, re.MULTILINE) is not None
+
+
 def read_contract_pins(contract_text: str) -> tuple[str, str] | None:
     """(Codex CLI version, model variable name) from the review contract's source, or None.
 
@@ -236,15 +244,18 @@ def main() -> int:
         print("PARITY: no marketplace CI in this checkout; nothing to run.")
         return 3
 
-    settings = parse_ci_settings(WORKFLOW.read_text(encoding="utf-8"))
+    workflow_text = WORKFLOW.read_text(encoding="utf-8")
+    settings = parse_ci_settings(workflow_text)
     if settings is None:
         print(f"PARITY: could not read the timeout and Codex pin from {WORKFLOW}.", file=sys.stderr)
         return 2
     timeout_ms, pin = settings
 
-    # The contract owns the pins; the workflow's own install line is a second copy of the version
-    # that a test keeps equal, so a disagreement here is a branch mid-change, worth saying aloud.
+    # CI installs the workflow's pin and exports the workflow's model variable, so those are what
+    # parity matches. The contract is a second copy that a test keeps equal; a disagreement is a
+    # branch mid-change and is reported as a difference of its own, never adopted silently.
     model_variable = MODEL_VARIABLE
+    differences: list[str] = []
     contract_file = Path(CONTRACT)
     if contract_file.is_file():
         try:
@@ -257,16 +268,26 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 2
-        contract_pin, model_variable = pins
+        contract_pin, contract_variable = pins
         if contract_pin != pin:
             print(
                 f"PARITY WARNING: the workflow installs {pin} but the review contract pins "
-                f"{contract_pin}; CI runs the workflow's install."
+                f"{contract_pin}; comparing against the workflow's, which is what CI runs."
             )
-        pin = contract_pin
+            differences.append(f"review contract pins {contract_pin}, workflow installs {pin}")
+        if workflow_exports_model_variable(workflow_text, contract_variable):
+            model_variable = contract_variable
+        else:
+            print(
+                f"PARITY WARNING: the review contract names {contract_variable} as the model "
+                f"variable but the workflow does not export it; using {MODEL_VARIABLE}, as CI does."
+            )
+            differences.append(
+                f"model variable: the contract names {contract_variable}, "
+                f"the workflow exports {MODEL_VARIABLE}"
+            )
     else:
         print("PARITY WARNING: no review contract in this checkout; using the workflow's pin.")
-    differences: list[str] = []
 
     codex = _run(["codex", "--version"])
     if codex is None or codex.returncode != 0:

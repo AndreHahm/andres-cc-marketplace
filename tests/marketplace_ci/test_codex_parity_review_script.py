@@ -792,12 +792,22 @@ def test_the_wrapper_reads_the_real_contracts_pins():
     assert _load_module().read_contract_pins(real) == (rc.CODEX_CLI_VERSION, rc.MODEL_VARIABLE)
 
 
-def test_the_pin_comes_from_the_contract_not_the_workflow(repo, tmp_path):
+def test_the_local_cli_is_compared_with_the_workflows_pin_not_the_contracts(repo, tmp_path):
+    """CI installs what the workflow says, so that is the version parity must match; a contract
+    that disagrees is reported as a difference of its own, never silently adopted."""
     (repo / CONTRACT_FILE).write_text(CONTRACT.replace("0.147.0", "0.151.0"), encoding="utf-8")
     result, args, _ = _run(repo, tmp_path, codex="codex-cli 0.147.0")
     assert result.returncode == 0 and args
-    assert "0.147.0 differs from CI's pin 0.151.0" in result.stdout
-    assert "workflow installs 0.147.0" in result.stdout  # the two copies disagree: said out loud
+    assert "differs from CI's pin" not in result.stdout  # local 0.147.0 is what CI installs
+    assert "workflow installs 0.147.0" in result.stdout and "contract pins 0.151.0" in result.stdout
+    assert "not a prediction of CI's result" in result.stdout
+    assert "review contract pins 0.151.0, workflow installs 0.147.0" in result.stdout
+
+
+def test_a_local_cli_matching_only_the_contract_still_differs_from_ci(repo, tmp_path):
+    (repo / CONTRACT_FILE).write_text(CONTRACT.replace("0.147.0", "0.151.0"), encoding="utf-8")
+    result, _, _ = _run(repo, tmp_path, codex="codex-cli 0.151.0")
+    assert "0.151.0 differs from CI's pin 0.147.0" in result.stdout
 
 
 def test_a_matching_local_run_is_not_labelled_a_non_prediction(repo, tmp_path):
@@ -840,10 +850,41 @@ def test_a_contract_that_cannot_be_read_as_data_is_never_a_pass(repo, tmp_path):
     assert "review_contract.py" in result.stdout + result.stderr
 
 
-def test_the_model_variable_name_comes_from_the_contract(repo, tmp_path):
+def test_a_model_variable_the_workflow_does_not_export_is_not_used(repo, tmp_path):
+    """The contract names a variable CI never exports: parity keeps CI's own variable and says
+    the contract and the workflow disagree, instead of querying a variable CI ignores."""
     (repo / CONTRACT_FILE).write_text(
         CONTRACT.replace("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL"), encoding="utf-8"
     )
-    _, _, uv_env = _run(repo, tmp_path)
+    result, _, uv_env = _run(repo, tmp_path)
+    assert "CODEX_KIT_REVIEW_MODEL=gpt-x" in uv_env
+    assert "CODEX_KIT_OTHER_MODEL" not in uv_env
+    assert "not a prediction of CI's result" in result.stdout
+    assert "model variable: the contract names CODEX_KIT_OTHER_MODEL" in result.stdout
+
+
+def test_a_model_variable_the_workflow_exports_is_used(repo, tmp_path):
+    workflow = repo / ".github/workflows/marketplace-ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL"
+        ),
+        encoding="utf-8",
+    )
+    (repo / CONTRACT_FILE).write_text(
+        CONTRACT.replace("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL"), encoding="utf-8"
+    )
+    result, _, uv_env = _run(repo, tmp_path)
     assert "CODEX_KIT_OTHER_MODEL=gpt-x" in uv_env
-    assert "CODEX_KIT_REVIEW_MODEL" not in uv_env
+    assert "not a prediction" not in result.stdout
+
+
+def test_workflow_exports_model_variable_reads_only_the_dispatch_step():
+    module = _load_module()
+    assert module.workflow_exports_model_variable(WORKFLOW, "CODEX_KIT_REVIEW_MODEL")
+    assert not module.workflow_exports_model_variable(WORKFLOW, "CODEX_KIT_OTHER_MODEL")
+    decoy = WORKFLOW.replace(
+        "CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}", "SOMETHING: else"
+    )
+    decoy += "\n      # CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}\n"
+    assert not module.workflow_exports_model_variable(decoy, "CODEX_KIT_REVIEW_MODEL")

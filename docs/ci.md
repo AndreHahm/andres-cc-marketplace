@@ -193,12 +193,14 @@ the reviewer is). Every vocabulary in use maps onto it:
 
 A test keeps the rulebook rows equal to `plugin-rulebook/references/evidence-schema.md`.
 
-**Finding envelope.** A reviewer's finding may carry `rule_class` (`line | measurement | graph | judgment`,
+**Finding envelope.** The contract defines `rule_class` (`line | measurement | graph | judgment`,
 default `judgment`), `evidence_type` (`verifier_output | hunk_level_code | repo_policy |
-contextual_reasoning`) and `risk` (`reachable`, `exposure`, `mitigation`), next to the `confidence` it
-already returns. An unknown value fails the reviewer's envelope (the run is `could_not_run`) rather than
-being ignored. Only `severity`, `rule_class` and the exception match feed the gate in this phase; the rest
-is recorded in the result and shown.
+contextual_reasoning`) and `risk` (`reachable`, `exposure`, `mitigation`), next to the `confidence` a
+reviewer already returns, and `validate_review_output` parses them. No current reviewer can emit them:
+the bridge's output schema (`bridge-invoke.mjs`) forbids extra properties, so until it gains them (Phase 2)
+every finding is `judgment` with no evidence type or risk. An unknown value in a parsed envelope fails it
+(the run is `could_not_run`) rather than being ignored. Only `severity`, `rule_class` and the exception
+match feed the gate in this phase; the rest is recorded in the result and shown.
 
 **The computed gate.** `gate_decision` in `review.py` is the one place that decides, per finding, `block`,
 `notice` or `suppressed`; `blocking_findings` and the result file both use it. A finding blocks when it is
@@ -234,13 +236,17 @@ and `?` stay inside one segment), `reason` and `authority` (the repo file that s
 No script emits rule-keyed findings yet (the Phase 2 verifiers will), so today the suppression path is
 exercised by the gate's unit tests, and the registry's live effect is the briefing.
 
-**Roster and pins.** `ROSTER` lists each reviewer with the selector that puts it in a scope (`DELTA_VALIDATE`
-is derived from it); every instruction file is `.codex/agents/<name>.toml`, read from the PR's base commit.
+**Roster and pins.** `ROSTER` lists every reviewer with a selector label. Only the baseline set
+(`DELTA_VALIDATE`) is derived from it; the audit and governance routes stay hand-written in `review.py`,
+and a test checks that every reviewer they name is in `ROSTER`. Every instruction file is
+`.codex/agents/<name>.toml`, read from the PR's base commit.
 `CODEX_CLI_VERSION` is the pinned Codex CLI, and `MODEL_VARIABLE` names the repository variable that holds
 the model. The workflow cannot import the contract, so its `npm install -g @openai/codex@<version>` line is
-a second copy of the version; a test fails if the two differ. The parity wrapper reads the pin and the
-variable name from the contract file as data (it parses the source, it does not import it) and falls back
-to the workflow's pin for a checkout that has no contract. Because it runs the same entry point from the
+a second copy of the version; a test fails if the two differ. The parity wrapper compares the local Codex CLI
+with the workflow's pin, since that is what CI installs, and reads the contract's pin and variable name as
+data (it parses the source, it does not import it) only to catch drift: a contract that disagrees with the
+workflow is reported as a difference, and a model variable the workflow does not export is not used. It falls
+back to the workflow alone for a checkout that has no contract. Because it runs the same entry point from the
 same checkout, it uses the same roster, severity scale and registry as CI. It says plainly when a run is
 not a prediction of CI's result: a different Codex CLI version, an unset model (the local default is
 used), or a timeout variable the bridge rejects.
