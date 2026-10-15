@@ -396,13 +396,16 @@ def check_improve_description_call_is_contained():
     improve = _load_script("improve_description")
     with tempfile.TemporaryDirectory() as tmp:
         shim = pathlib.Path(tmp) / "claude"
-        shim.write_text('#!/bin/sh\nif [ -n "$SLOW" ]; then sleep 5; fi\npwd\n', encoding="utf-8")
+        # A marker file, not an env var: the child's environment is filtered.
+        shim.write_text(
+            '#!/bin/sh\nif [ -e "$(dirname "$0")/slow" ]; then sleep 5; fi\npwd\n', encoding="utf-8"
+        )
         shim.chmod(0o755)
         old_path, old_cwd = os.environ["PATH"], os.getcwd()
         os.environ["PATH"] = f"{tmp}{os.pathsep}{old_path}"
         try:
             reply = improve._call_claude("prompt", None, timeout=5).strip()
-            os.environ["SLOW"] = "1"
+            (pathlib.Path(tmp) / "slow").touch()
             try:
                 improve._call_claude("prompt", None, timeout=1)
             except RuntimeError as exc:
@@ -411,12 +414,74 @@ def check_improve_description_call_is_contained():
                 timed_out = False
         finally:
             os.environ["PATH"] = old_path
-            os.environ.pop("SLOW", None)
     if os.path.realpath(reply) == os.path.realpath(old_cwd):
         return False, "claude -p ran in the caller's cwd instead of a neutral one"
     if not timed_out:
         return False, "a claude -p timeout did not surface as RuntimeError"
     return True, "claude -p runs in a neutral cwd and a timeout becomes a RuntimeError"
+
+
+def check_nested_claude_gets_no_secrets_and_few_tools():
+    if os.name == "nt":
+        return True, "POSIX-only fake `claude` shim (skip)"
+    _load_script("utils")  # puts the skill dir on sys.path for `from scripts.utils import`
+    from scripts.utils import child_env
+
+    planted = {
+        "CLAUDECODE": "1",
+        "ANTHROPIC_API_KEY": "keep-me",
+        "AWS_SECRET_ACCESS_KEY": "leak-me",
+        "GITHUB_TOKEN": "leak-me",
+    }
+    saved = {k: os.environ.get(k) for k in planted}
+    os.environ.update(planted)
+    try:
+        env = child_env()
+        improve = _load_script("improve_description")
+        with tempfile.TemporaryDirectory() as tmp:
+            shim = pathlib.Path(tmp) / "claude"
+            shim.write_text(
+                '#!/bin/sh\nprintf "%s|" "$@"\n'
+                'printf "%s|%s" "$GITHUB_TOKEN" "$ANTHROPIC_API_KEY"\n',
+                encoding="utf-8",
+            )
+            shim.chmod(0o755)
+            old_path = os.environ["PATH"]
+            os.environ["PATH"] = f"{tmp}{os.pathsep}{old_path}"
+            try:
+                seen = improve._call_claude("prompt", None, timeout=5)
+            finally:
+                os.environ["PATH"] = old_path
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+    if "CLAUDECODE" in env or "AWS_SECRET_ACCESS_KEY" in env or "GITHUB_TOKEN" in env:
+        return False, "child_env passes the nesting guard or an unrelated credential through"
+    if env.get("ANTHROPIC_API_KEY") != "keep-me":
+        return False, "child_env drops the variable the child needs to authenticate"
+    if "--tools||" not in seen:
+        return False, f"improve_description does not pass an empty --tools list: {seen!r}"
+    if "--strict-mcp-config|" not in seen:
+        return False, f"improve_description lets MCP servers into the child: {seen!r}"
+    run_eval = _load_script("run_eval")
+    for bad in ("../../x", "a/b", "..", ""):
+        try:
+            run_eval.run_eval([], bad, "d", 1, 1, pathlib.Path("."))
+        except ValueError:
+            continue
+        return False, f"run_eval accepted the unsafe skill name {bad!r}"
+    if not seen.endswith("|keep-me") or "leak-me" in seen:
+        return False, f"the shim saw an unfiltered environment: {seen!r}"
+    run_eval_source = (SKILL_DIR / "scripts" / "run_eval.py").read_text(encoding="utf-8")
+    restricted = '"--tools",\n            "Skill,Read"' in run_eval_source
+    if not restricted or "child_env()" not in run_eval_source:
+        return False, "run_eval.py does not restrict tools to Skill,Read or use child_env()"
+    if '"--strict-mcp-config"' not in run_eval_source:
+        return False, "run_eval.py lets MCP servers into the child"
+    return True, "nested claude -p gets no unrelated credentials and only the tools it needs"
 
 
 CHECKS = [
@@ -441,6 +506,7 @@ CHECKS = [
     check_package_skill_imports_as_script,
     check_report_icons_differ,
     check_improve_description_call_is_contained,
+    check_nested_claude_gets_no_secrets_and_few_tools,
 ]
 
 
