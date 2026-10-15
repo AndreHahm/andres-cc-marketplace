@@ -1199,7 +1199,9 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     structural_findings = run_delta_structural_checks(repo, changed)
     try:
-        verifier_outcomes = review_verifiers.run_verifiers(repo, changed, base_sha)
+        verifier_outcomes = review_verifiers.run_verifiers(
+            repo, changed, base_sha, structural=structural_findings
+        )
     except Exception as exc:  # fail closed: a verifier that crashed is not a clean pass
         return _fail_run_codex_review(args, f"script verifier failed: {exc!r}")
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
@@ -1299,14 +1301,13 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
     blocking = bool(blocking_set)
-    structural_blocking = len(structural_findings) > 0
 
     payload = {
         "mode": scope.mode,
         "reviewed_paths": list(scope.paths),
         "reviewers": [r.reviewer for r in reports],
         "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
-        "status": "findings" if (findings or structural_findings) else "clean",
+        "status": "findings" if findings else "clean",
         "reviewer_results": _reviewer_results(reports),
         "provenance": _run_provenance(repo, base_sha, reports),
         "structural_findings": [
@@ -1325,14 +1326,14 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             )
             for f in findings
         ],
-        "blocking": blocking or structural_blocking,
+        "blocking": blocking,
     }
     output_text = json.dumps(payload, indent=2)
     if args.output:
         Path(args.output).write_text(output_text + "\n", encoding="utf-8")
     print(output_text)
 
-    return 1 if (blocking or structural_blocking) else 0
+    return 1 if blocking else 0
 
 
 def build_parser() -> argparse.ArgumentParser:

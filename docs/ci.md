@@ -451,6 +451,51 @@ line, like any other finding) and a registry entry can suppress it; a model find
   Code uses the frontmatter name, two plugins with a component of the same name (they share call history; the
   flat `.claude/` mirror forces unique names), nested command directories (`sub:x` is skipped as a prefix),
   and the `.claude/` mirrors and Codex exports, which are the mirror family's.
+- **`r19-mirror-drift`** (rule class `graph`, severity `critical`, outcome `path-and-mirror`). For every
+  component a PR touches (both sides of a rename), a `.claude/` mirror or Codex export that has drifted from
+  its canonical `plugins/` source: a canonical file whose mirror is missing or different, in the way
+  `check-all` judges it. It is a thin wrapper over `run_delta_structural_checks` in `review.py`, which plans
+  the mirror and export sync with the real planner (`plan_plugin_sync`, `plan_exports`) against the registry
+  in `.claude/marketplace-sync.json`, so pairs, script mirrors, hook merging and declared divergences are
+  decided by the one implementation. Each result becomes a finding on the canonical file that cites every
+  changed path of its component as `path:*`, a component form only script findings may use (see Diff-scoped
+  blocking below): any change to that file, however small, makes the finding the PR's. So a PR that touches a
+  component owns the drift in it even when the drifted file itself is untouched, which is what the old check
+  did (it blocked on any drift in a touched component); more than 200 changed paths in one component fails
+  the run closed. Before #576 this check blocked through its own channel; it now goes through
+  `aggregate_findings` and `gate_decision` like every other script finding, so the exceptions registry can
+  suppress it. `run-codex-review` still lists the results under `structural_findings` (the parity wrapper
+  expects that key) but that list is informational: it no longer blocks by itself. Unchanged from the old
+  check, and stated so the claim stays honest: a mirror file with no canonical source (a stale copy) is not
+  reported, the planner reads the checked-out working tree rather than git objects (the CI job checks out the
+  PR head; a dirty local tree can differ), and `mirror-byte-identity` stays guidance for model reviewers (no
+  finding carries that id). The required `marketplace-parity` job (`check-all` on the whole tree) remains a
+  second, independent backstop.
+- **`removed-identifier-leftover`** (rule class `graph`, severity `major`, outcome `removed-identifier`). A
+  skill, agent or command whose name is in the base and not in the head while the live tree still references
+  it. Removal is by name within a namespace: a skill and a command share one (`Skill(name)` calls either), an
+  agent has its own, so deleting, renaming, or renaming the directory removes a name, while moving a component
+  to another plugin, or turning a skill into a command or back, keeps it. A reference is `Skill(name)` for a
+  skill or command, or `subagent_type: name` for an agent (positional or keyed, JSON-style quotes included,
+  with or without a `plugin:` prefix); and, only when no other component still has the name, `/name` or
+  `plugin:name` in backticks, and the bare name in backticks only if it is hyphenated (a single common word
+  such as `commit` or `docs` in backticks is ordinary prose). One finding per removed component, on its old
+  path (the deleted or renamed path is in the diff, so it is the PR's), with the number of references, the
+  number of files and up to five of them. The search is `git grep -a` at `HEAD` (`-a`, because whether a
+  file counts as binary can come from a `.gitattributes` the PR itself adds), so it is bounded by the number of
+  matching files and sits outside the Python read budget, over `plugins/`, `docs/`, `scripts/`, `.github/` and
+  root files, without any `CHANGELOG*` or `RELEASE_NOTES*` (history). `.claude/`, `.agents/` and `.codex/` are
+  the mirror family's, and `evals/` and `issues/` are history. A name the search cannot match safely (a
+  space, `+`, `@`, non-ASCII) is a finding of its own, never a skip. It needs a base: with none, nothing is
+  known to be removed. Each search has a 60-second timeout and the whole step the 30-second scan budget;
+  running out of either, or removing more than 200 components, fails the run closed. `checked` lists the
+  removed components that were searched. On the real tree, simulating the removal of `merge-pr` gives one
+  finding and `example-skill` one finding (2 references in 1 file). A deliberately historical mention (a
+  migration note) needs an entry in `review_exceptions.yaml`. **Accepted:** calls split across lines (git
+  grep matches line by line), a case mismatch, a nested command name (`commands/sub/x.md` is searched as
+  `sub/x`), the `plugin:` prefix also matching an external plugin's name, a removed `x` matching `Skill(x.v2)`,
+  live non-mirrored consumers under `.claude/` (such as `settings.json` permission entries), code
+  identifiers and rule ids, which `ty`, the tests and the R20 sweep already see.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
@@ -460,7 +505,8 @@ line, like any other finding) and a registry entry can suppress it; a model find
   paths declared in a manifest instead of the default directories are not covered.
 - **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
   nesting deeper than 100 is unverifiable before any parsing.
-- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`, `structure`, `call-graph`) with `status` (`clean`
+- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`, `structure`, `call-graph`,
+  `removed-identifier`) with `status` (`clean`
   or `findings`), the number of findings and the number of files checked.
 - **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
   run `could_not_run` (exit 2), like any other infrastructure failure.
@@ -481,7 +527,7 @@ called once per run through `_diff_scope` in `__main__.py`:
 | Critical or Major on an unchanged line of a touched file | No — kept in the artifact as a notice |
 | Any finding in a file the PR did not touch | No — kept in the artifact as a notice |
 | Minor | No |
-| A structural finding (`structural_findings`) | Yes, independent of the above |
+| A mirror or export drift finding (`r19-mirror-drift`) | Like any script finding: Yes when its component has a changed path (it cites them); the registry can suppress it. `structural_findings` still lists it, informationally |
 
 "On a line the PR changed" means the new-side line ranges of `git diff -U0 --text <base>...HEAD`, matched
 exactly (no slack window). A pure deletion counts the two lines either side of the removal, and a finding that
@@ -489,8 +535,11 @@ names no line counts as on a changed line whenever its file is touched. A cross-
 cited location and blocks when any one of them is on a changed line. A component that names a line is tested
 like the primary location. A component that names no line (a bare path) counts only when its file is changed
 in full (the list below), never merely because the file is touched: otherwise a one-line edit to a file would
-block every finding that cites it. The following all count as changed in full, so a finding on them blocks
-whichever line it names:
+block every finding that cites it. A script finding may instead cite a path as `path:*` (the
+`ANY_CHANGE_SUFFIX` in `review.py`), which counts when the file is touched at all; a model finding's `:*` is
+ignored, so a model cannot widen its own scope. Script verifiers use it only for paths they already know the
+PR changed (`r19-mirror-drift`, and the unreadable-document finding of `r37-executable-bit`). The following
+all count as changed in full, so a finding on them blocks whichever line it names:
 
 - a changed path that has no hunk: a pure rename (both the old and the new name), a mode change, an empty or
   binary file;

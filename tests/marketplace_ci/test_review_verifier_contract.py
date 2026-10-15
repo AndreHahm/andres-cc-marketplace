@@ -54,7 +54,9 @@ def _commit(root: Path, message: str) -> str:
 
 
 def _repo_exercising_every_verifier(git_repo):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
     git_repo.write("docs/guide.md", "guide")
     git_repo.write(SCRIPT, "#!/bin/sh\n").chmod(0o644)
     body = (

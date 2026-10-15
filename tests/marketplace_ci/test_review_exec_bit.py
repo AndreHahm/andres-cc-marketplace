@@ -293,7 +293,7 @@ def test_an_unreadable_unchanged_doc_is_reported_and_cites_the_plugins_changed_p
     outcome = _outcome(git_repo, (ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT),), base)
     (finding,) = outcome.findings
     assert finding.rule == "r37-executable-bit" and finding.path == BROKEN
-    assert finding.line is None and finding.components == (PLUGIN_SCRIPT,)
+    assert finding.line is None and finding.components == (f"{PLUGIN_SCRIPT}:*",)
     assert BROKEN not in outcome.checked
 
 
@@ -376,6 +376,34 @@ def test_a_chmod_alone_blocks_the_run_even_when_an_unchanged_doc_cannot_be_read(
     base = _commit(git_repo.root, "base")
     (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
     _commit(git_repo.root, "chmod")
+    real_run = subprocess.run
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess.CompletedProcess(argv, returncode=0, stdout=CLEAN, stderr=b"")
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "result.json"
+    rc = main(["run-codex-review", "--base-sha", base, "--output", str(out)])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert rc == 1
+    (finding,) = [f for f in payload["findings"] if f["rule"] == "r37-executable-bit"]
+    assert finding["gate"] == "block" and finding["path"] == BROKEN
+
+
+def test_an_unreadable_unchanged_doc_blocks_even_when_the_plugin_change_is_an_ordinary_edit(
+    monkeypatch, git_repo, tmp_path
+):
+    for name in ROSTER:
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
+    _broken_doc(git_repo)
+    base = _commit(git_repo.root, "base")
+    edited = git_repo.write(PLUGIN_SCRIPT, "#!/bin/sh\necho an ordinary content edit\n")
+    edited.chmod(0o755)
+    _commit(git_repo.root, "edit the script's content only")
     real_run = subprocess.run
 
     def fake_run(argv, **kw):

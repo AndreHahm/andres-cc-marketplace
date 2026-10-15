@@ -30,6 +30,7 @@ import bisect
 import json
 import posixpath
 import re
+import subprocess
 import time
 from collections import Counter
 from collections.abc import Iterable, Sequence
@@ -41,7 +42,14 @@ import yaml
 from markdown_it import MarkdownIt
 
 from scripts.marketplace_ci.git_state import ChangedPath
-from scripts.marketplace_ci.review import Finding, _run_git
+from scripts.marketplace_ci.review import (
+    ANY_CHANGE_SUFFIX,
+    Finding,
+    StructuralFinding,
+    _component_key,
+    _run_git,
+    run_delta_structural_checks,
+)
 
 VERIFIER_REVIEWER = "script-verifiers"
 GRANT_TO_BODY = "grant-to-body"
@@ -55,8 +63,11 @@ RULE_ESCAPING_PATH = "r34-escaping-path"
 PATH_AND_MIRROR = "path-and-mirror"
 STRUCTURE = "structure"
 RULE_EXECUTABLE_BIT = "r37-executable-bit"
+RULE_MIRROR_DRIFT = "r19-mirror-drift"
 CALL_GRAPH = "call-graph"
 RULE_CALL_GRAPH = "skill-agent-dependency-cycle"
+REMOVED_IDENTIFIER = "removed-identifier"
+RULE_REMOVED_IDENTIFIER = "removed-identifier-leftover"
 
 # Every rule id a verifier here can emit, with its rule class. A test keeps this equal to the rows
 # of docs/review-rule-inventory.md, so the inventory cannot drift from the code.
@@ -69,6 +80,8 @@ VERIFIER_RULES = {
     RULE_ESCAPING_PATH: "graph",
     RULE_EXECUTABLE_BIT: "graph",
     RULE_CALL_GRAPH: "graph",
+    RULE_REMOVED_IDENTIFIER: "graph",
+    RULE_MIRROR_DRIFT: "graph",
 }
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
@@ -79,6 +92,8 @@ MAX_BLOB_BYTES = 1_000_000
 MAX_FRONTMATTER_CHARS = 100_000
 MAX_ENTRIES = 2_000
 MAX_TOTAL_BYTES = 20_000_000
+GIT_GREP_TIMEOUT_SECONDS = 60  # one leftover search; a hang fails the run closed
+MAX_REMOVED_COMPONENTS = 200  # components one PR may remove before it cannot be judged
 MAX_CALL_FINDINGS = 500  # past this the PR is blocked many times over already
 MAX_CITED_PATHS = 200  # changed paths one unreadable-document finding may cite
 MAX_PARSE_BYTES = (
@@ -1745,6 +1760,159 @@ def check_call_graph(
     return tuple(findings)
 
 
+# --- removed identifiers: a component the PR deletes or renames is still referenced ---------------
+
+# Live consumers only. The `.claude/`, `.agents/` and `.codex/` copies are the mirror family's, and
+# `evals/` and `issues/` are history. `:(top,glob)*` is the repo root's own files.
+_LEFTOVER_PATHSPECS = (
+    "plugins",
+    "docs",
+    "scripts",
+    ".github",
+    ":(top,glob)*",
+    ":(top,exclude,glob)**/CHANGELOG*",  # history, not a consumer
+    ":(top,exclude,glob)**/RELEASE_NOTES*",
+)
+_SAFE_NAME = re.compile(r"[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*")
+_MAX_LISTED_REFERENCES = 5  # files named in one finding's evidence
+
+
+def _ere_escape(name: str) -> str:
+    return re.sub(r"([.\[\]()*+?{}|^$\\])", r"\\\1", name)
+
+
+def _leftover_patterns(kind: str, name: str, name_is_unique: bool) -> list[str]:
+    """ERE patterns for a reference to a removed component: a `Skill(name)` call (a command is
+    called the same way) or a `subagent_type: name` for an agent, positional or keyed, JSON-style
+    quotes included, with or without a `plugin:` prefix. When no other component keeps the name,
+    also `/name` and `plugin:name` in backticks, and the bare name in backticks only if it is
+    hyphenated: a single common word (`commit`, `docs`) in backticks is ordinary prose."""
+    escaped = _ere_escape(name)
+    quote = "[\"']?"
+    named = f"([A-Za-z0-9_-]+:)?{escaped}([^A-Za-z0-9_-]|$)"
+    if kind == "agent":
+        patterns = [f"subagent_type{quote}[[:space:]]*[:=][[:space:]]*{quote}{named}"]
+    else:
+        keyed = f"({quote}skill{quote}[[:space:]]*[:=][[:space:]]*)?"
+        patterns = [f"Skill\\([[:space:]]*(\\{{[[:space:]]*)?{keyed}{quote}{named}"]
+    if name_is_unique:
+        patterns.append(f"`/{escaped}`")
+        patterns.append(f"`[A-Za-z0-9_-]+:{escaped}`")
+        if "-" in name:
+            patterns.append(f"`{escaped}`")
+    return patterns
+
+
+def _git_grep_counts(repo, ref: str, patterns: Sequence[str]) -> dict[str, int]:
+    """{path: matching lines} for `patterns` in `ref`'s tree, for the live-consumer paths. Exit code
+    1 is git's "no match"; any other failure raises, so the run fails closed."""
+    # `-a`, not `-I`: whether a file is binary can come from a .gitattributes the PR itself adds
+    args = ["git", "grep", "-a", "-c", "-z", "-E"]
+    for pattern in patterns:
+        args += ["-e", pattern]
+    try:
+        result = subprocess.run(
+            [*args, ref, "--", *_LEFTOVER_PATHSPECS],
+            cwd=repo,
+            capture_output=True,
+            timeout=GIT_GREP_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"git grep timed out after {GIT_GREP_TIMEOUT_SECONDS} seconds") from exc
+    if result.returncode == 1:
+        return {}
+    if result.returncode != 0:
+        raise RuntimeError(f"git grep failed with exit code {result.returncode}")
+    counts: dict[str, int] = {}
+    prefix = f"{ref}:".encode()
+    for entry in result.stdout.split(b"\n"):
+        raw_path, _, raw_count = entry.rpartition(b"\0")
+        if not raw_path:
+            continue
+        if raw_path.startswith(prefix):
+            raw_path = raw_path[len(prefix) :]
+        counts[raw_path.decode("utf-8", errors="surrogateescape")] = int(raw_count)
+    return counts
+
+
+def _invocable_namespace(kind: str) -> str:
+    """`Skill(name)` calls a skill or a command, so they share a namespace; agents keep theirs."""
+    return "agent" if kind == "agent" else "invocable"
+
+
+def check_removed_identifiers(
+    repo, base_paths: Sequence[str], head_paths: Sequence[str], deadline: float
+) -> tuple[tuple[Finding, ...], list[str]]:
+    """`removed-identifier-leftover`: a skill, agent or command whose name is in the base and not in
+    the head (deleted, renamed, or its directory renamed; moving it to another plugin keeps the
+    name, and turning a skill into a command or back keeps it too) while the live tree still
+    references it. One finding per removed component, on its old path, so the deleted or renamed
+    path being in the diff makes it the PR's. Returns the findings and the old paths searched."""
+    head_nodes = {node for p in head_paths if (node := _node_of(p)) is not None}
+    head_names = {name for _, name in head_nodes}
+    head_keys = {(_invocable_namespace(kind), name) for kind, name in head_nodes}
+    removed: dict[Node, str] = {}
+    for path in sorted(base_paths):
+        node = _node_of(path)
+        if node is not None and (_invocable_namespace(node[0]), node[1]) not in head_keys:
+            removed.setdefault(node, path)
+    if len(removed) > MAX_REMOVED_COMPONENTS:
+        raise RuntimeError(
+            f"{len(removed)} components removed, more than {MAX_REMOVED_COMPONENTS}; "
+            "the leftover references cannot be checked"
+        )
+    findings: list[Finding] = []
+    checked: list[str] = []
+    for (kind, name), old_path in sorted(removed.items()):
+        if time.monotonic() > deadline:
+            raise RuntimeError("the leftover search used up its time budget")
+        if not _SAFE_NAME.fullmatch(name):
+            findings.append(
+                _unreadable_finding(
+                    old_path,
+                    f"the {kind} name {name!r} cannot be searched for safely, so its references "
+                    "were not checked",
+                    RULE_REMOVED_IDENTIFIER,
+                )
+            )
+            continue
+        checked.append(old_path)
+        counts = _git_grep_counts(
+            repo, "HEAD", _leftover_patterns(kind, name, name not in head_names)
+        )
+        if not counts:
+            continue
+        files = sorted(counts)
+        references = sum(counts.values())
+        listed = ", ".join(files[:_MAX_LISTED_REFERENCES])
+        more = len(files) - _MAX_LISTED_REFERENCES
+        findings.append(
+            Finding(
+                reviewer=VERIFIER_REVIEWER,
+                severity="Major",
+                rule=RULE_REMOVED_IDENTIFIER,
+                path=old_path,
+                evidence=(
+                    f"the {kind} `{name}` was removed or renamed, but {references} "
+                    f"reference{'s' if references != 1 else ''} to it remain in {len(files)} "
+                    f"file{'s' if len(files) != 1 else ''}, e.g. {listed}"
+                    + (f", and {more} more" if more > 0 else "")
+                ),
+                remediation=(
+                    "Update or remove each reference. A mention that is deliberately historical "
+                    "(a migration note) needs an entry in scripts/marketplace_ci/"
+                    "review_exceptions.yaml (a Tier-1 file), which then covers this rule and path."
+                ),
+                line=None,
+                confidence="high",
+                evidence_type="verifier_output",
+                rule_class="graph",
+                source="script",
+            )
+        )
+    return tuple(findings), checked
+
+
 # --- running the verifiers over a change set --------------------------------------------------
 
 
@@ -1837,7 +2005,11 @@ def _tree_listing(repo, ref: str) -> list[str]:
 
 
 def run_verifiers(
-    repo, changed: Sequence[ChangedPath], base_sha: str | None = None
+    repo,
+    changed: Sequence[ChangedPath],
+    base_sha: str | None = None,
+    *,
+    structural: Sequence[StructuralFinding] | None = None,
 ) -> tuple[VerifierOutcome, ...]:
     """Run every verifier over the files `changed` leaves at HEAD, comparing measurements with
     `base_sha` (None treats every file as new). Any unexpected failure raises, so the caller
@@ -1948,6 +2120,39 @@ def run_verifiers(
                 )
             )
             path_checked.append(path)
+    # Mirror and export drift of every touched component, from the same planner `check-all` uses.
+    # The finding sits on the canonical file and cites the component's changed paths, so a PR
+    # touching the component owns the drift even when the drifted file itself is untouched.
+    drift = run_delta_structural_checks(repo, tuple(changed)) if structural is None else structural
+    if drift:
+        changed_paths = {p for c in changed for p in (c.new_path, c.old_path) if p is not None}
+        for item in drift:
+            component = _component_key(item.path)
+            cited = sorted(p for p in changed_paths if _component_key(p) == component)
+            if len(cited) > MAX_CITED_PATHS:
+                raise RuntimeError(
+                    f"too many changed paths in {component} to cite beside mirror drift"
+                )
+            path_findings.append(
+                Finding(
+                    reviewer=VERIFIER_REVIEWER,
+                    severity="Critical",
+                    rule=RULE_MIRROR_DRIFT,
+                    path=item.path,
+                    evidence=f"{item.operation}: {item.reason}",
+                    remediation=(
+                        "Run `uv run python -m scripts.marketplace_ci sync-plugin-mirrors` and "
+                        "`convert-codex-exports` and commit the result; never hand-edit a "
+                        "generated .claude/.agents/.codex file."
+                    ),
+                    line=None,
+                    components=tuple(f"{p}{ANY_CHANGE_SUFFIX}" for p in cited),
+                    confidence="high",
+                    evidence_type="verifier_output",
+                    rule_class="graph",
+                    source="script",
+                )
+            )
     structure_findings: list[Finding] = []
     structure_checked: list[str] = []
     touched = sorted(
@@ -1997,7 +2202,7 @@ def run_verifiers(
                         f"too many changed paths in {plugin} to cite beside an unreadable "
                         f"grant document ({doc})"
                     )
-                cited = tuple(sorted(names))
+                cited = tuple(f"{n}{ANY_CHANGE_SUFFIX}" for n in sorted(names))
             return _unreadable_finding(doc, reason, RULE_EXECUTABLE_BIT, cited)
 
         found: dict[str, list[ScriptGrant]] = {}
@@ -2071,6 +2276,20 @@ def run_verifiers(
             check_call_graph(head_edges, base_edges, node_paths, changed_now, deadline)
         )
         call_checked = sorted(p for p in head_texts if p in changed_now and p not in head_faults)
+    removed_findings: list[Finding] = []
+    removed_checked: list[str] = []
+    if base_sha is not None and any(
+        name is not None and _CALLABLE_DOC.match(name)
+        for c in changed
+        for name in (c.new_path, c.old_path)
+    ):
+        leftovers, removed_checked = check_removed_identifiers(
+            repo,
+            [n for n in files_of(base_sha) if _CALLABLE_DOC.match(n)],
+            [n for n in files_of("HEAD") if _CALLABLE_DOC.match(n)],
+            time.monotonic() + MAX_PARSE_SECONDS,
+        )
+        removed_findings.extend(leftovers)
     return (
         VerifierOutcome(
             name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
@@ -2086,5 +2305,10 @@ def run_verifiers(
         ),
         VerifierOutcome(
             name=CALL_GRAPH, findings=tuple(call_findings), checked=tuple(call_checked)
+        ),
+        VerifierOutcome(
+            name=REMOVED_IDENTIFIER,
+            findings=tuple(removed_findings),
+            checked=tuple(removed_checked),
         ),
     )
