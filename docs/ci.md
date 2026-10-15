@@ -461,7 +461,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   are not components), the frontmatter ending early at an unindented `...` inside a block scalar, a path matched
   case-insensitively while Claude Code may load only `SKILL.md`, an agent named by its file name while Claude
   Code uses the frontmatter name, two plugins with a component of the same name (they share call history; the
-  flat `.claude/` mirror forces unique names), nested command directories (`sub:x` is skipped as a prefix; a nested agent file is named by its file name),
+  flat `.claude/` mirror forces unique names), nested command directories (`sub:x` is skipped as a prefix; a nested agent file is named by its file name, and two agent files of one plugin with the same name are reported),
   and the `.claude/` mirrors and Codex exports, which are the mirror family's.
 - **`r19-mirror-drift`** (rule class `graph`, severity `critical`, outcome `path-and-mirror`). For every
   component a PR touches (both sides of a rename), a `.claude/` mirror or Codex export that has drifted from

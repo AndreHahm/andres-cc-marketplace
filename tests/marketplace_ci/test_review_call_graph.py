@@ -503,3 +503,35 @@ def test_a_nested_agent_that_adds_a_call_to_a_missing_skill_is_a_finding(git_rep
     _commit(git_repo.root, "head")
     (finding,) = _outcome(git_repo, (_modify(nested),), base).findings
     assert finding.path == nested and finding.rule == RULE
+
+
+def _duplicate_agents(git_repo, second="plugins/demo-kit/agents/b/reviewer.md"):
+    first = "plugins/demo-kit/agents/a/reviewer.md"
+    git_repo.write(first, _doc("reviewer", "Nothing here.\n"))
+    git_repo.write(second, _doc("reviewer", "Nothing here.\n"))
+    git_repo.write(_skill("user"), _doc("user", "Nothing here.\n"))
+    return first, second, _commit(git_repo.root, "base")
+
+
+def test_two_agent_files_with_the_same_name_in_one_plugin_are_a_finding_when_one_changes(git_repo):
+    first, second, base = _duplicate_agents(git_repo)
+    git_repo.write(second, _doc("reviewer", "Nothing here.\n\nMore.\n"))
+    _commit(git_repo.root, "head")
+    (finding,) = _outcome(git_repo, (_modify(second),), base).findings
+    assert finding.rule == RULE and "same name" in finding.evidence
+    assert finding.path in (first, second)
+    assert {finding.path, finding.components[0].removesuffix(":*")} == {first, second}
+
+
+def test_duplicate_agent_names_that_the_pr_did_not_touch_are_not_the_prs(git_repo):
+    _, _, base = _duplicate_agents(git_repo)
+    git_repo.write(_skill("user"), _doc("user", "Still nothing.\n"))
+    _commit(git_repo.root, "head")
+    assert _outcome(git_repo, (_modify(_skill("user")),), base).findings == ()
+
+
+def test_agents_with_the_same_name_in_different_plugins_are_not_reported(git_repo):
+    _, other, base = _duplicate_agents(git_repo, second="plugins/other-kit/agents/reviewer.md")
+    git_repo.write(other, _doc("reviewer", "Nothing here.\n\nMore.\n"))
+    _commit(git_repo.root, "head")
+    assert _outcome(git_repo, (_modify(other),), base).findings == ()
