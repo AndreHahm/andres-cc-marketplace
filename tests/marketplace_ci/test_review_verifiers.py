@@ -37,7 +37,10 @@ AGENT = "plugins/demo-kit/agents/demo-agent.md"
 
 
 def _doc(key: str, value: str) -> str:
-    return f"---\nname: demo\ndescription: A demo.\n{key}: {value}\n---\n\n# Body\n"
+    description = (
+        "A demo component used only by the verifier tests, long enough for R21 to accept it."
+    )
+    return f"---\nname: demo\ndescription: {description}\n{key}: {value}\n---\n\n# Body\n"
 
 
 def _skill(value: str) -> str:
@@ -493,7 +496,7 @@ def test_run_verifiers_reads_the_committed_blob_not_the_working_tree(git_repo):
     git_repo.write(SKILL, _skill("Bash"))
     _commit(git_repo.root, "add")
     git_repo.write(SKILL, _skill("Read"))  # uncommitted, must be ignored
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL))
     assert _rules(outcome.findings) == ["r6-bash-scope"]
 
 
@@ -501,7 +504,7 @@ def test_run_verifiers_reports_the_verifier_name_and_what_it_checked(git_repo):
     git_repo.write(SKILL, _skill("Read"))
     git_repo.write("README.md", "x")
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL, "README.md"))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL, "README.md"))
     assert outcome.name == "grant-to-body"
     assert outcome.findings == ()
     assert outcome.checked == (SKILL,)
@@ -511,7 +514,7 @@ def test_run_verifiers_skips_a_deleted_file(git_repo):
     git_repo.write("README.md", "x")
     _commit(git_repo.root, "base")
     deleted = (ChangedPath(status="D", old_path=SKILL, new_path=None),)
-    (outcome,) = rv.run_verifiers(git_repo.root, deleted)
+    outcome, _ = rv.run_verifiers(git_repo.root, deleted)
     assert outcome.findings == () and outcome.checked == ()
 
 
@@ -521,9 +524,9 @@ def test_run_verifiers_does_not_follow_a_symlink(git_repo):
     target.parent.mkdir(parents=True)
     target.symlink_to(git_repo.root / "outside.md")
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL))
     (finding,) = outcome.findings
-    assert finding.rule == "r6-bash-scope-unverifiable"
+    assert finding.rule == "frontmatter-unverifiable"
     assert "symlink" in finding.evidence
 
 
@@ -531,10 +534,10 @@ def test_a_file_that_cannot_be_verified_is_a_blocking_finding_not_a_skip(git_rep
     """An adversarial PR must not be able to keep a Bash grant by making its file unreadable."""
     git_repo.write(SKILL, "---\nname: [unclosed\n---\n")
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL))
     assert outcome.checked == ()
     (finding,) = outcome.findings
-    assert finding.rule == "r6-bash-scope-unverifiable"
+    assert finding.rule == "frontmatter-unverifiable"
     assert finding.severity == "Major" and finding.line is None and finding.source == "script"
     assert gate_decision(finding, in_diff=True).outcome == "block"
 
@@ -544,16 +547,16 @@ def test_stray_bytes_in_the_body_do_not_hide_a_grant(git_repo):
     target.parent.mkdir(parents=True)
     target.write_bytes(_skill("Bash").encode() + b"\xff\xfe body bytes\n")
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL))
     assert _rules(outcome.findings) == ["r6-bash-scope"]
 
 
 def test_a_file_over_the_size_cap_is_unverifiable_and_never_fully_read(git_repo):
     git_repo.write(SKILL, _skill("Read") + "x" * (rv.MAX_BLOB_BYTES + 1))
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(SKILL))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(SKILL))
     (finding,) = outcome.findings
-    assert finding.rule == "r6-bash-scope-unverifiable" and "bytes" in finding.evidence
+    assert finding.rule == "frontmatter-unverifiable" and "bytes" in finding.evidence
 
 
 def test_the_total_bytes_read_are_capped(monkeypatch, git_repo):
@@ -562,9 +565,9 @@ def test_the_total_bytes_read_are_capped(monkeypatch, git_repo):
     for path in paths:
         git_repo.write(path, _skill("Read"))
     _commit(git_repo.root, "add")
-    (outcome,) = rv.run_verifiers(git_repo.root, _changes(*paths))
+    outcome, _ = rv.run_verifiers(git_repo.root, _changes(*paths))
     assert len(outcome.checked) == 2
-    assert [f.rule for f in outcome.findings] == ["r6-bash-scope-unverifiable"] * 2
+    assert [f.rule for f in outcome.findings] == ["frontmatter-unverifiable"] * 2
     assert all("total" in f.evidence for f in outcome.findings)
 
 
@@ -579,9 +582,9 @@ def test_run_verifiers_checks_both_sides_of_a_rename(git_repo):
     git_repo.write(SKILL, _skill("Bash"))
     _commit(git_repo.root, "add")
     renamed = (
-        ChangedPath(status="R", old_path="plugins/demo-kit/skills/old/SKILL.md", new_path=SKILL),
+        ChangedPath(status="R", old_path="plugins/demo-kit/skills/legacy/SKILL.md", new_path=SKILL),
     )
-    (outcome,) = rv.run_verifiers(git_repo.root, renamed)
+    outcome, _ = rv.run_verifiers(git_repo.root, renamed)
     assert outcome.checked == (SKILL,)
     assert len(outcome.findings) == 1
 
@@ -656,7 +659,8 @@ def test_a_clean_skill_leaves_the_run_clean_and_records_the_verifier(
     assert rc == 0
     assert payload["status"] == "clean" and payload["findings"] == []
     assert payload["verifiers"] == [
-        {"name": "grant-to-body", "status": "clean", "findings": 0, "checked": 1}
+        {"name": "grant-to-body", "status": "clean", "findings": 0, "checked": 1},
+        {"name": "measurement", "status": "clean", "findings": 0, "checked": 1},
     ]
 
 
@@ -665,9 +669,10 @@ def test_an_unverifiable_file_blocks_the_run(monkeypatch, git_repo, tmp_path):
     rc, payload = _run(monkeypatch, root, base, tmp_path)
     assert rc == 1 and payload["blocking"] is True
     (finding,) = payload["findings"]
-    assert finding["rule"] == "r6-bash-scope-unverifiable" and finding["gate"] == "block"
-    (verifier,) = payload["verifiers"]
-    assert verifier["status"] == "findings" and verifier["checked"] == 0
+    assert finding["rule"] == "frontmatter-unverifiable" and finding["gate"] == "block"
+    grants, measures = payload["verifiers"]
+    assert grants["status"] == "findings" and grants["checked"] == 0
+    assert measures["status"] == "findings"  # the same unverifiable finding, kept once overall
 
 
 def test_a_grant_added_to_an_existing_file_blocks_even_in_an_unusual_form(

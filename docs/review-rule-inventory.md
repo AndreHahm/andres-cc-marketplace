@@ -50,7 +50,7 @@ rulebook rule that has several independent checks gets one id per check.
 | `r5-forbidden-frontmatter-field` | R5 | line | `version` in skill or agent frontmatter; the no-op agent fields as advisory | none | candidate | - |
 | `r5-r6-ask-user-question-grant` | R5, R6 | graph | `AskUserQuestion` listed in `allowed-tools` is redundant, never a violation or a missing grant | registry entry | phase-2 | grant-to-body |
 | `r6-bash-scope` | R6 | line | bare `Bash`, `Bash(*)` or a shell-interpreter grant; for an agent, the reverse (a scoped `Bash(cmd:*)`) | none | phase-2 | grant-to-body |
-| `r6-bash-scope-unverifiable` | R6 | line | a changed component file whose Bash grants cannot be read exactly (bad or repeated frontmatter key, merge key, symlink, oversized) | none | phase-2 | grant-to-body |
+| `frontmatter-unverifiable` | R6 | line | a changed component file whose frontmatter cannot be read exactly (bad or repeated frontmatter key, merge key, symlink, oversized) | none | phase-2 | grant-to-body |
 | `r6-missing-grant` | R6 | graph | a tool or Bash command the body instructs has no matching `allowed-tools` grant | `check_tool_grants.py` (documented false-positive classes) | phase-2 | grant-to-body |
 | `prompt-library-undeclared-grant` | R6 | graph | `Read`, `Write` and `WebFetch` are deliberately ungranted in the prompt-library skill | registry entry | phase-2 | grant-to-body |
 | `r7-emoji-in-structure` | R7 | line | emoji in a heading, frontmatter field or step label | none | candidate | - |
