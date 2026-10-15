@@ -17,7 +17,8 @@ A file a verifier cannot read is never reported clean: it becomes a blocking `-u
 finding, because otherwise a PR could keep a violation by making its file unreadable.
 
 Verifiers so far: `r6-bash-scope` (the frontmatter half of the grant-to-body family) and the
-measurement family, `r13-skillmd-line-count` and `r21-description-length`. A measurement is compared
+measurement family, `r13-skillmd-line-count`, `r21-description-length` and
+`r18-code-block-line-count`. A measurement is compared
 with the base, so only a PR that makes a value worse across a blocking threshold is blocked.
 """
 
@@ -40,6 +41,7 @@ RULE_UNVERIFIABLE = "frontmatter-unverifiable"
 MEASUREMENT = "measurement"
 RULE_SKILLMD_LINES = "r13-skillmd-line-count"
 RULE_DESCRIPTION_LENGTH = "r21-description-length"
+RULE_CODE_BLOCK_LINES = "r18-code-block-line-count"
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
 # is equivalent to unrestricted Bash. A test keeps this equal to that setting (R20).
@@ -62,6 +64,8 @@ DESCRIPTION_HIGH_WARNING = 1018
 DESCRIPTION_HIGH_CRITICAL = 1024
 WHEN_TO_USE_WARNING = 506
 WHEN_TO_USE_CRITICAL = 512
+R18_WARNING = 20
+R18_CRITICAL = 30
 MAX_FLOW_DEPTH = 100
 MAX_CONTEXT_LINES = 200
 _MAX_QUOTED_CHARS = 200
@@ -595,6 +599,217 @@ def check_measurements(
     return tuple(findings)
 
 
+# --- R18: fenced code block size -----------------------------------------------------------------
+
+_R18_KINDS = ("skill", "command", "agent")
+_MAX_LISTED_BLOCKS = 5  # blocks named in one finding's evidence
+_BLOCK_LINE_BREAK = re.compile(r"\r\n|\r|\n")
+_MAX_NESTING_PREFIX = 100  # container markers read before a fence; more is not a fence
+
+
+@dataclass(frozen=True)
+class FencedBlock:
+    start: int  # 1-based line of the opening fence (counting lone CRs as breaks)
+    end: int  # 1-based line of the closing fence (the last line when unclosed)
+    size: int  # content lines between the fences
+    closed: bool
+    content: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _Fence:
+    depth: int  # blockquote markers before the fence
+    column: int  # display column of the fence characters (tabs to multiples of 4)
+    marker: bool  # a list marker came before the fence
+    char: str
+    length: int
+    rest: str  # what follows the fence characters
+
+
+def block_tier(lines: int) -> int:
+    """0 = fine, 1 = Warning (Major), 2 = Critical, for a fenced block of `lines` lines (R18)."""
+    return _above(lines, R18_WARNING, R18_CRITICAL)
+
+
+def _scan_prefix(line: str) -> tuple[int, int]:
+    """(index after the blockquote markers and spaces, blockquote depth) for a line. A plain
+    left-to-right scan, never a backtracking pattern, so hostile whitespace cannot make it slow."""
+    index, depth, size = 0, 0, len(line)
+    while index < size and depth <= _MAX_NESTING_PREFIX:
+        if line[index] == ">":
+            depth += 1
+            index += 1
+            if index < size and line[index] in " \t":
+                index += 1
+        elif line[index] in " \t":
+            index += 1
+        else:
+            break
+    return index, depth
+
+
+def _indent(line: str) -> int:
+    """Display columns of the whitespace that starts the line."""
+    stripped = line.lstrip(" \t")
+    return len(line[: len(line) - len(stripped)].expandtabs(4))
+
+
+def _fence(line: str) -> _Fence | None:
+    """The fence a line starts, after blockquote markers and one list marker, or None."""
+    index, depth = _scan_prefix(line)
+    size = len(line)
+    marker = False
+    if index < size and line[index] in "-+*" and line[index + 1 : index + 2] in (" ", "\t"):
+        marker, index = True, index + 1
+    elif index < size and line[index].isdigit():
+        end = index
+        while end < size and line[end].isdigit() and end - index < 9:
+            end += 1
+        if end < size and line[end] in ".)" and line[end + 1 : end + 2] in (" ", "\t"):
+            marker, index = True, end + 1
+    while index < size and line[index] in " \t":
+        index += 1
+    if index >= size or line[index] not in "`~":
+        return None
+    char = line[index]
+    run = index
+    while run < size and line[run] == char:
+        run += 1
+    if run - index < 3:
+        return None
+    column = len(line[:index].expandtabs(4))
+    return _Fence(depth, column, marker, char, run - index, line[run:])
+
+
+def _is_closer(candidate: _Fence | None, opener: _Fence) -> bool:
+    return (
+        candidate is not None
+        and not candidate.marker
+        and candidate.depth == opener.depth
+        and candidate.char == opener.char
+        and candidate.length >= opener.length
+        and not candidate.rest.strip()
+        and candidate.column <= opener.column + 3  # four or more columns deeper is content
+    )
+
+
+def _container_ended(line: str, opener: _Fence) -> bool:
+    """Whether `line` ends the blockquote or list item that holds the fence: a line with fewer
+    blockquote markers, or (for a fence after a list marker) a non-blank line indented less than the
+    item's content. The block then ends before it, unclosed, so what follows is read afresh."""
+    if _scan_prefix(line)[1] < opener.depth:
+        return True
+    return opener.marker and bool(line.strip()) and _indent(line) < opener.column
+
+
+def _parse_blocks(lines: list[str]) -> list[FencedBlock]:
+    blocks: list[FencedBlock] = []
+    index = 0
+    while index < len(lines):
+        opener = _fence(lines[index])
+        if opener is None or (opener.char == "`" and "`" in opener.rest):
+            index += 1
+            continue
+        end: int | None = None
+        stop = len(lines)  # first line that is no longer part of the block
+        for i in range(index + 1, len(lines)):
+            if _container_ended(lines[i], opener):
+                stop = i
+                break
+            if _is_closer(_fence(lines[i]), opener):
+                end = i
+                break
+        if end is None:
+            content = tuple(lines[index + 1 : stop])
+            last = stop - 1
+            next_index = stop
+        else:
+            content = tuple(lines[index + 1 : end])
+            last = end
+            next_index = end + 1
+        blocks.append(FencedBlock(index + 1, last + 1, len(content), end is not None, content))
+        index = max(next_index, index + 1)
+    return blocks
+
+
+def fenced_blocks(text: str) -> list[FencedBlock]:
+    """The fenced code blocks of a markdown file, as CommonMark reads them: a fence of three or more
+    backticks or tildes (after blockquote markers and a list marker), closed at the same blockquote
+    depth by a fence of the same character that is at least as long, with no other text and not
+    indented four or more columns past the opener; so a longer fence holds shorter ones as content.
+    A block ends, unclosed, where its blockquote or list item ends, or at the end of the file. A
+    lone carriage return is a line break."""
+    lines = _BLOCK_LINE_BREAK.split(text)
+    if lines and lines[-1] == "":
+        lines.pop()
+    return _parse_blocks(lines)
+
+
+def _counted_blocks(text: str) -> list[FencedBlock]:
+    """The blocks R18 judges: Warning tier or worse. One reading of the file, not two: merging a
+    lenient and a strict reading double-counted a region and could block a legitimate PR. R18 is a
+    size heuristic, not a security boundary (blocks of 20 lines or fewer are never reported, so
+    splitting a block always avoids it); what this reading cannot see is listed in docs/ci.md.
+    The rulebook's in-file `R18 exception` note is deliberately not honored: a PR could type one
+    above its own block and waive its own finding, so a waiver must be an entry in the Tier-1
+    exceptions registry."""
+    return [b for b in fenced_blocks(text) if block_tier(b.size) > 0]
+
+
+def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Finding, ...]:
+    """R18 for one skill, command or agent file: at most one finding, with no line. A block counts
+    when it is in the Warning tier or worse and is not an identical block already in the base; the
+    file is reported when the PR raised the number of blocks at some tier or worse (so editing a
+    block without crossing a threshold, or moving it, is not reported). A finding only exists when
+    the PR made the file worse against the real base, so it is the PR's by construction and carries
+    no line: a line would let an edit that leaves the fences alone (filling a block in the middle)
+    fall outside the diff."""
+    if component_kind(path) not in _R18_KINDS:
+        return ()
+    head = _counted_blocks(text)
+    base = _counted_blocks(base_text) if base_text is not None else []
+    head_at = [sum(block_tier(b.size) >= rank for b in head) for rank in (1, 2)]
+    base_at = [sum(block_tier(b.size) >= rank for b in base) for rank in (1, 2)]
+    unmatched: dict[tuple[str, ...], int] = {}
+    for block in base:
+        unmatched[block.content] = unmatched.get(block.content, 0) + 1
+    new: list[FencedBlock] = []
+    for block in head:
+        if unmatched.get(block.content, 0) > 0:
+            unmatched[block.content] -= 1
+        else:
+            new.append(block)
+    reported = [b for b in new if head_at[block_tier(b.size) - 1] > base_at[block_tier(b.size) - 1]]
+    if not reported:
+        return ()
+    rank = max(block_tier(b.size) for b in reported)
+    listed = ", ".join(f"line {b.start} ({b.size} lines)" for b in reported[:_MAX_LISTED_BLOCKS])
+    more = len(reported) - _MAX_LISTED_BLOCKS
+    severity = _SEVERITY_BY_RANK[rank]
+    return (
+        Finding(
+            reviewer=VERIFIER_REVIEWER,
+            severity=severity,
+            rule=RULE_CODE_BLOCK_LINES,
+            path=path,
+            evidence=(
+                f"{len(reported)} fenced code block(s) past the threshold, the worst in the "
+                f"{severity.lower()} tier: {listed}" + (f" and {more} more" if more > 0 else "")
+            ),
+            remediation=(
+                "Move the block to scripts/ or references/, or add an exception for this rule "
+                "and path to scripts/marketplace_ci/review_exceptions.yaml (a Tier-1 file); a "
+                "note typed above the block does not waive this check."
+            ),
+            line=None,
+            confidence="high",
+            evidence_type="verifier_output",
+            rule_class=MEASUREMENT,
+            source="script",
+        ),
+    )
+
+
 # --- running the verifiers over a change set --------------------------------------------------
 
 
@@ -689,21 +904,19 @@ def run_verifiers(
         {c.new_path for c in changed if c.new_path is not None and component_kind(c.new_path)}
     )
     texts, problems = _read_blobs(repo, candidates)
-    # A base counts only when the old path is itself a skill: a rename of a large reference or agent
-    # file into a SKILL.md must not lend its size to the new skill.
-    base_paths = {
+    # A base counts only when the old path is itself a component of the right kind: a rename of a
+    # large reference file into a SKILL.md must not lend its size to the new skill (R13 and R21
+    # need a skill as the old path, R18 any skill, command or agent).
+    old_of = {
         c.new_path: (c.old_path or c.new_path)
         for c in changed
-        if c.new_path in candidates
-        and c.status != "A"
-        and component_kind(c.old_path or c.new_path) == "skill"
+        if c.new_path in candidates and c.status != "A"
     }
-    skills = [p for p in base_paths if component_kind(p) == "skill"]
     base_texts: dict[str, str] = {}
-    if base_sha is not None and skills:
-        old_paths = sorted({base_paths[p] for p in skills})
+    if base_sha is not None and old_of:
+        old_paths = sorted({old for old in old_of.values() if component_kind(old) is not None})
         old_texts, _ = _read_blobs(repo, old_paths, base_sha, missing_ok=True)
-        base_texts = {p: old_texts[base_paths[p]] for p in skills if base_paths[p] in old_texts}
+        base_texts = {p: old_texts[old] for p, old in old_of.items() if old in old_texts}
 
     grant_findings: list[Finding] = []
     grant_checked: list[str] = []
@@ -726,9 +939,13 @@ def run_verifiers(
             grant_findings.append(unverifiable_finding(path, str(exc)))
             if is_skill:
                 measure_findings.append(grant_findings[-1])  # the same; the aggregate keeps one
-        if not is_skill:
-            continue
         base_text = base_texts.get(path) if base_sha is not None else None
+        measure_findings.extend(check_code_blocks(path, texts[path], base_text))
+        if not is_skill:
+            measure_checked.append(path)
+            continue
+        if component_kind(old_of.get(path, path)) != "skill":
+            base_text = None  # R13 and R21 compare only with an old skill
         try:
             measure_findings.extend(
                 check_measurements(
