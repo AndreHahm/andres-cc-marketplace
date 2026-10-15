@@ -113,7 +113,7 @@ Findings named in #568 as unstable or out of scope for the changed lines:
 
 These need an owner decision before the matching verifier PR, and are not settled by this inventory:
 
-1. **Candidates (decided 2026-10-15).** 14 rows are `candidate` and stay for a follow-up. The owner added
+1. **Candidates (decided 2026-10-15).** 17 rows are `candidate` and stay for a follow-up. The owner added
    `r37-executable-bit` and `skill-agent-dependency-cycle` to this issue, and both are built. `r29-testing-section`
    and `r35-standard-sections` are not scripts: the rulebook matches their headings "by substance", and a literal
    scan found 47 of 150 real skills without a `Quick Start` heading, so a script would block on wording.

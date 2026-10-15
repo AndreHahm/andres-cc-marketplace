@@ -535,3 +535,26 @@ def test_agents_with_the_same_name_in_different_plugins_are_not_reported(git_rep
     git_repo.write(other, _doc("reviewer", "Nothing here.\n\nMore.\n"))
     _commit(git_repo.root, "head")
     assert _outcome(git_repo, (_modify(other),), base).findings == ()
+
+
+@pytest.mark.parametrize(
+    "collection,member",
+    [("skills", _skill("a")), ("agents", _agent("a")), ("commands", _command("a"))],
+)
+def test_a_symlinked_component_collection_root_is_a_blocking_finding(git_repo, collection, member):
+    import shutil
+
+    git_repo.write(f"elsewhere/{collection}/placeholder.md", "x\n")
+    git_repo.write(member, _doc("a", "Nothing.\n"))
+    base = _commit(git_repo.root, "base")
+    root = git_repo.root / f"plugins/demo-kit/{collection}"
+    shutil.rmtree(root)
+    root.symlink_to(git_repo.root / f"elsewhere/{collection}")
+    _commit(git_repo.root, "replace the whole collection with a symlink")
+    changed = (
+        ChangedPath("D", member, None),
+        ChangedPath("A", None, f"plugins/demo-kit/{collection}"),
+    )
+    (finding,) = _outcome(git_repo, changed, base).findings
+    assert finding.rule == RULE and finding.path == f"plugins/demo-kit/{collection}"
+    assert "symlink" in finding.evidence

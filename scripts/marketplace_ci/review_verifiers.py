@@ -1624,7 +1624,7 @@ _CALLABLE_DOC = re.compile(
     r"^plugins/[^/]+/(?:skills/([^/]+)/SKILL\.md|agents/(?:.+/)?([^/]+)\.md|commands/(.+)\.md)$",
     re.IGNORECASE,
 )
-_COMPONENT_TREE = re.compile(r"^plugins/[^/]+/(?:skills|agents|commands)/", re.IGNORECASE)
+_COMPONENT_TREE = re.compile(r"^plugins/[^/]+/(?:skills|agents|commands)(?:/|$)", re.IGNORECASE)
 _CALL_OPEN = re.compile(r"\b(Skill|Agent)\(")
 _NAME = r"[A-Za-z0-9_.:/-]{1,100}"
 _SKILL_POSITIONAL = re.compile(rf"\s*[\"']?({_NAME})[\"']?\s*(?=[,)])")
