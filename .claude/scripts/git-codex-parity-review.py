@@ -98,9 +98,14 @@ def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
 
 def workflow_exports_model_variable(workflow_text: str, name: str) -> bool:
     """True when the dispatch step exports `name` from the repository variable of the same name,
-    the way CI does for the model. The contract may only name a variable CI really exports."""
+    the way CI does for the model. The contract may only name a variable CI really exports.
+    Matches the one-line `NAME: ${{ vars.NAME }}` form (optionally quoted, optionally followed by a
+    comment), not a full YAML parse."""
     block = _step_block(workflow_text, "Dispatch reviewers directly")
-    pattern = rf"^\s*{re.escape(name)}:\s*\$\{{\{{\s*vars\.{re.escape(name)}\s*\}}\}}\s*$"
+    # Valid YAML around the same expression still counts: matching quotes, and a comment that
+    # starts after whitespace (a `#` glued to the value is part of the value, not a comment).
+    var = re.escape(name)
+    pattern = rf"^\s*{var}:\s*(?P<q>[\"']?)\$\{{\{{\s*vars\.{var}\s*\}}\}}(?P=q)(?:\s+#.*)?\s*$"
     return re.search(pattern, block, re.MULTILINE) is not None
 
 

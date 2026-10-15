@@ -901,6 +901,48 @@ def test_a_model_variable_the_workflow_exports_is_used(repo, tmp_path):
     assert "not a prediction" not in result.stdout
 
 
+_MODEL_LINE = "CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}"
+
+
+@pytest.mark.parametrize(
+    "line,expected",
+    [
+        (_MODEL_LINE, True),
+        (_MODEL_LINE + "  # the model slug", True),
+        (_MODEL_LINE + "# no space: part of the value, not a comment", False),
+        ('CODEX_KIT_REVIEW_MODEL: "${{ vars.CODEX_KIT_REVIEW_MODEL }}"', True),
+        ("CODEX_KIT_REVIEW_MODEL: '${{ vars.CODEX_KIT_REVIEW_MODEL }}'  # quoted", True),
+        ("CODEX_KIT_REVIEW_MODEL:   ${{vars.CODEX_KIT_REVIEW_MODEL}}", True),
+        (
+            "CODEX_KIT_REVIEW_MODEL: \"${{ vars.CODEX_KIT_REVIEW_MODEL }}'",
+            False,
+        ),  # mismatched quote
+        (_MODEL_LINE + "-suffix", False),  # more than the expression
+        ("CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_OTHER_MODEL }}", False),  # another variable
+        ("CODEX_KIT_REVIEW_MODEL: literal", False),
+        ("# " + _MODEL_LINE, False),  # commented out
+    ],
+)
+def test_workflow_exports_model_variable_accepts_valid_yaml_forms_only(line, expected):
+    workflow = WORKFLOW.replace(_MODEL_LINE, line)
+    assert (
+        _load_module().workflow_exports_model_variable(workflow, "CODEX_KIT_REVIEW_MODEL")
+        is expected
+    )
+
+
+def test_a_trailing_comment_on_the_workflows_model_line_keeps_model_parity(repo, tmp_path):
+    workflow = repo / ".github/workflows/marketplace-ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(_MODEL_LINE, _MODEL_LINE + "  # model slug"),
+        encoding="utf-8",
+    )
+    result, _, uv_env = _run(repo, tmp_path)
+    assert "CODEX_KIT_REVIEW_MODEL=gpt-x" in uv_env
+    assert "not a prediction" not in result.stdout
+    assert "exports neither" not in result.stdout
+
+
 def test_workflow_exports_model_variable_reads_only_the_dispatch_step():
     module = _load_module()
     assert module.workflow_exports_model_variable(WORKFLOW, "CODEX_KIT_REVIEW_MODEL")
