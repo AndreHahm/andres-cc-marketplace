@@ -18,8 +18,9 @@ finding, because otherwise a PR could keep a violation by making its file unread
 
 Verifiers so far: `r6-bash-scope` (the frontmatter half of the grant-to-body family), the
 measurement family (`r13-skillmd-line-count`, `r21-description-length`,
-`r18-code-block-line-count`) and `r34-escaping-path` (the path family). A measurement is compared
-with the base, so only a PR that makes a value worse across a blocking threshold is blocked.
+`r18-code-block-line-count`), `r34-escaping-path` (the path family) and `r37-executable-bit`
+(the structure family). A measurement is compared with the base, so only a PR that makes a value
+worse across a blocking threshold is blocked.
 """
 
 from __future__ import annotations
@@ -47,6 +48,8 @@ RULE_DESCRIPTION_LENGTH = "r21-description-length"
 RULE_CODE_BLOCK_LINES = "r18-code-block-line-count"
 RULE_ESCAPING_PATH = "r34-escaping-path"
 PATH_AND_MIRROR = "path-and-mirror"
+STRUCTURE = "structure"
+RULE_EXECUTABLE_BIT = "r37-executable-bit"
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
 # is equivalent to unrestricted Bash. A test keeps this equal to that setting (R20).
@@ -934,15 +937,15 @@ def _resolve(
     return None
 
 
-def _unreadable_finding(path: str, reason: str) -> Finding:
+def _unreadable_finding(path: str, reason: str, rule: str = RULE_ESCAPING_PATH) -> Finding:
     """A blocking finding for a skill document the path check could not read: otherwise a PR could
     keep an escaping link by making its file a symlink or oversized."""
     return Finding(
         reviewer=VERIFIER_REVIEWER,
         severity="Major",
-        rule=RULE_ESCAPING_PATH,
+        rule=rule,
         path=path,
-        evidence=f"the links of this file could not be checked: {reason}",
+        evidence=f"this file could not be checked: {reason}",
         remediation="Replace the symlink or oversized file with a regular file of normal size.",
         line=None,
         confidence="high",
@@ -1034,6 +1037,131 @@ def _scripts_mirrors(repo, ref: str) -> frozenset[str]:
         return frozenset(n for n in names if isinstance(n, str))
     except (KeyError, TypeError, ValueError):
         return frozenset()
+
+
+# --- R37: executable bit of directly-run scripts ------------------------------------------------
+
+_GRANT_DOC = re.compile(
+    r"^plugins/([^/]+)/(?:skills/([^/]+)/SKILL\.md|commands/.+\.md)$", re.IGNORECASE
+)
+_PLUGIN_ROOT_PREFIX = "${CLAUDE_PLUGIN_ROOT}/"
+
+
+@dataclass(frozen=True)
+class ScriptGrant:
+    script: str  # repo path of the script a grant runs directly
+    line: int | None  # file line of the grant, None when it cannot be pinned down
+
+
+_RUN_WRAPPERS = ("env", "exec", "command", "time")  # run the next word directly all the same
+_PLUGIN_ROOT_FORMS = ("${CLAUDE_PLUGIN_ROOT}/", "$CLAUDE_PLUGIN_ROOT/")
+_SKILL_DIR_FORMS = ("${CLAUDE_SKILL_DIR}/", "$CLAUDE_SKILL_DIR/")
+
+
+def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) -> list[ScriptGrant]:
+    """The scripts a skill or command grants by path as the command itself
+    (`Bash(${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`, `Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`),
+    quoted or unbraced, after an `env`/`exec`/`command`/`time` word. A script an interpreter runs
+    (`Bash(bash ${...}/x.sh:*)`) is not listed: it needs no executable bit. A glob names no single
+    script, and a path that climbs out of its plugin names nothing."""
+    scope = _GRANT_DOC.match(path)
+    if scope is None or root is None:
+        return []
+    plugin_root = f"plugins/{scope.group(1)}"
+    skill_dir = f"{plugin_root}/skills/{scope.group(2)}" if scope.group(2) else None
+    grants: list[ScriptGrant] = []
+    for token, line in _grant_entries(root, block, "allowed-tools")[0]:
+        match = _BASH_TOKEN.fullmatch(token)
+        if match is None or match.group(1) is None:
+            continue
+        words = match.group(1).strip().removesuffix(":*").split()
+        if words and words[0] in _RUN_WRAPPERS:
+            words = words[1:]
+        if not words:
+            continue
+        word = words[0].replace('"', "").replace("'", "")
+        if word.startswith(_PLUGIN_ROOT_FORMS):
+            folder, rest = plugin_root, word.split("/", 1)[1]
+        elif skill_dir is not None and word.startswith(_SKILL_DIR_FORMS):
+            folder, rest = skill_dir, word.split("/", 1)[1]
+        else:
+            continue
+        if any(char in rest for char in "*?["):
+            continue
+        script = posixpath.normpath(f"{folder}/{rest}")
+        if script.startswith(plugin_root + "/"):
+            grants.append(ScriptGrant(script, line))
+    return grants
+
+
+_MODE_WORDS = {
+    b"100644": "is committed with git mode 100644",
+    b"120000": "is a symlink",
+    b"160000": "is a submodule",
+    b"040000": "is a directory",
+}
+
+
+def check_executable_bits(
+    path: str, grants: Sequence[ScriptGrant], modes: dict[str, bytes]
+) -> tuple[Finding, ...]:
+    """R37 (`r37-executable-bit`): a script run directly by path must be committed as mode 100755.
+    Anything else at that path is reported with the reason: mode 100644, a symlink or submodule
+    (a shell follows the link, and the rulebook wants the real file), or no such file (the rulebook
+    calls a missing file a FAIL too). Each grant line is reported, so a new grant of an already
+    bad script is never hidden behind an old line. The script's own path is cited, so a PR that
+    only drops the bit (a chmod with no content change) makes the finding its own even though the
+    grant line is untouched."""
+    findings: list[Finding] = []
+    reported: set[tuple[str, int | None]] = set()
+    for grant in grants:
+        mode = modes.get(grant.script)
+        if mode == b"100755" or (grant.script, grant.line) in reported:
+            continue
+        reported.add((grant.script, grant.line))
+        why = (
+            "does not exist at HEAD"
+            if mode is None
+            else _MODE_WORDS.get(mode, f"has git mode {mode.decode('ascii', 'replace')}")
+        )
+        findings.append(
+            Finding(
+                reviewer=VERIFIER_REVIEWER,
+                severity="Critical",
+                rule=RULE_EXECUTABLE_BIT,
+                path=path,
+                evidence=(
+                    f"`{_quote(grant.script)}` is run directly by this file's allowed-tools grant "
+                    f"but {why}"
+                ),
+                remediation=(
+                    "Commit the script as a regular file with mode 100755 (`git update-index "
+                    "--chmod=+x <path>`); a shell running a non-executable path fails with "
+                    "`Permission denied`."
+                ),
+                line=grant.line,
+                components=(grant.script,),
+                confidence="high",
+                evidence_type="verifier_output",
+                rule_class="graph",
+                source="script",
+            )
+        )
+    return tuple(findings)
+
+
+def _modes(repo, paths: Sequence[str]) -> dict[str, bytes]:
+    """{path: git mode} for the paths present in HEAD's tree."""
+    if not paths:
+        return {}
+    tree = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", *paths)
+    modes: dict[str, bytes] = {}
+    for entry in tree.split(b"\0"):
+        meta, _, raw_path = entry.partition(b"\t")
+        fields = meta.split()
+        if len(fields) == 3:
+            modes[raw_path.decode("utf-8", errors="surrogateescape")] = fields[0]
+    return modes
 
 
 # --- running the verifiers over a change set --------------------------------------------------
@@ -1201,6 +1329,55 @@ def run_verifiers(
                 continue
             path_findings.extend(check_escaping_paths(path, doc_texts[path], tree, mirrors))
             path_checked.append(path)
+    structure_findings: list[Finding] = []
+    structure_checked: list[str] = []
+    touched = sorted(
+        {
+            name.split("/")[1]
+            for c in changed
+            for name in (c.new_path, c.old_path)
+            if name is not None and name.startswith("plugins/") and name.count("/") >= 2
+        }
+        - {".", ".."}
+    )
+    if touched:
+        listing = _run_git(
+            repo,
+            "--literal-pathspecs",
+            "ls-tree",
+            "-r",
+            "-z",
+            "--name-only",
+            "HEAD",
+            "--",
+            *[f"plugins/{plugin}/" for plugin in touched],
+        )
+        grant_docs = sorted(
+            n
+            for n in (raw.decode("utf-8", errors="surrogateescape") for raw in listing.split(b"\0"))
+            if _GRANT_DOC.match(n)
+        )
+        doc_texts, doc_problems = _read_blobs(repo, grant_docs)
+        found: dict[str, list[ScriptGrant]] = {}
+        for doc in grant_docs:
+            if doc in doc_problems:
+                if "total size" in doc_problems[doc]:
+                    # Skipping a doc past the budget would let a chmod through unseen: fail closed.
+                    raise RuntimeError(
+                        "the grant documents of the touched plugins exceed the read budget"
+                    )
+                structure_findings.append(
+                    _unreadable_finding(doc, doc_problems[doc], RULE_EXECUTABLE_BIT)
+                )
+                continue
+            try:
+                found[doc] = script_grants(doc, *_frontmatter(doc_texts[doc]))
+            except VerifierError:
+                continue  # the grant verifier already reports an unreadable changed file
+            structure_checked.append(doc)
+        modes = _modes(repo, sorted({g.script for grants in found.values() for g in grants}))
+        for doc, grants in found.items():
+            structure_findings.extend(check_executable_bits(doc, grants, modes))
     return (
         VerifierOutcome(
             name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
@@ -1210,5 +1387,8 @@ def run_verifiers(
         ),
         VerifierOutcome(
             name=PATH_AND_MIRROR, findings=tuple(path_findings), checked=tuple(path_checked)
+        ),
+        VerifierOutcome(
+            name=STRUCTURE, findings=tuple(structure_findings), checked=tuple(structure_checked)
         ),
     )

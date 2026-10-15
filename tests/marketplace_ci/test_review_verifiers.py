@@ -565,10 +565,21 @@ def test_the_total_bytes_read_are_capped(monkeypatch, git_repo):
     for path in paths:
         git_repo.write(path, _skill("Read"))
     _commit(git_repo.root, "add")
-    outcome, *_ = rv.run_verifiers(git_repo.root, _changes(*paths))
-    assert len(outcome.checked) == 2
-    assert [f.rule for f in outcome.findings] == ["frontmatter-unverifiable"] * 2
-    assert all("total" in f.evidence for f in outcome.findings)
+    texts, problems = rv._read_blobs(git_repo.root, paths)
+    assert len(texts) == 2 and len(problems) == 2
+    assert all("total size" in why for why in problems.values())
+
+
+def test_a_run_whose_files_overflow_the_budget_never_passes_quietly(monkeypatch, git_repo):
+    """The component pass reports the overflow as unverifiable findings; the structure pass, which
+    reads every skill of a touched plugin, fails the whole run closed."""
+    monkeypatch.setattr(rv, "MAX_TOTAL_BYTES", len(_skill("Read")) * 2 + 1)
+    paths = [f"plugins/demo-kit/skills/s{i}/SKILL.md" for i in range(4)]
+    for path in paths:
+        git_repo.write(path, _skill("Read"))
+    _commit(git_repo.root, "add")
+    with pytest.raises(RuntimeError, match="budget"):
+        rv.run_verifiers(git_repo.root, _changes(*paths))
 
 
 def test_a_changed_path_missing_from_head_is_an_error_not_a_silent_drop(git_repo):
@@ -662,6 +673,7 @@ def test_a_clean_skill_leaves_the_run_clean_and_records_the_verifier(
         {"name": "grant-to-body", "status": "clean", "findings": 0, "checked": 1},
         {"name": "measurement", "status": "clean", "findings": 0, "checked": 1},
         {"name": "path-and-mirror", "status": "clean", "findings": 0, "checked": 1},
+        {"name": "structure", "status": "clean", "findings": 0, "checked": 1},
     ]
 
 
@@ -671,7 +683,7 @@ def test_an_unverifiable_file_blocks_the_run(monkeypatch, git_repo, tmp_path):
     assert rc == 1 and payload["blocking"] is True
     (finding,) = payload["findings"]
     assert finding["rule"] == "frontmatter-unverifiable" and finding["gate"] == "block"
-    grants, measures, _ = payload["verifiers"]
+    grants, measures, *_ = payload["verifiers"]
     assert grants["status"] == "findings" and grants["checked"] == 0
     assert measures["status"] == "findings"  # the same unverifiable finding, kept once overall
 
