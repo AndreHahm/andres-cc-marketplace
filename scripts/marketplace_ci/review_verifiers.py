@@ -2447,6 +2447,25 @@ def run_verifiers(
         deadline = time.monotonic() + MAX_PARSE_SECONDS
         head_files = files_of("HEAD")
         head_paths = [n for n in head_files if _CALLABLE_DOC.match(n)]
+        # Calls name an agent by its file name, so two agent files of one plugin with the same name
+        # (one nested deeper) cannot be told apart in the graph: report the pair instead.
+        agent_names: dict[tuple[str, str], str] = {}
+        for path in sorted(head_paths):
+            node = _node_of(path)
+            if node is None or node[0] != "agent":
+                continue
+            other = agent_names.setdefault((path.split("/")[1], node[1]), path)
+            if other != path and (path in changed_now or other in changed_now):
+                call_findings.append(
+                    _unreadable_finding(
+                        path,
+                        f"another agent file of this plugin, `{_quote(other)}`, has the same name",
+                        RULE_CALL_GRAPH,
+                        (f"{other}{ANY_CHANGE_SUFFIX}",),
+                        "Give each agent file of a plugin a distinct file name: a call names an "
+                        "agent by its file name.",
+                    )
+                )
         head_texts, head_problems = _read_blobs(repo, head_paths)
         for path, reason in sorted(head_problems.items()):
             if "total size" in reason:
