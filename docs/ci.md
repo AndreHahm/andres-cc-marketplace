@@ -341,25 +341,54 @@ line, like any other finding) and a registry entry can suppress it; a model find
   `scripts_mirrors`; anything else (`docs/`, a repo-root file, a sibling skill's folder, another plugin) is a
   finding on the line that holds it, as is a path that climbs only to come back (`references/../SKILL.md`,
   `references/./../SKILL.md`, a `${CLAUDE_SKILL_DIR}/../...` path that ends inside the skill). A leading `..`
-  chain is normal. Links are read in their Markdown forms (inline, with a title, with whitespace or `<...>`
-  around the destination, reference definitions), HTML `href` and `src`, and `${CLAUDE_SKILL_DIR}` paths; the
-  target is read as a person following it would (percent escapes and backslash separators undone, fragment
-  and query dropped, a leading `/` a repo-root path). A repo-root path such as `.github/x.md` is tried against
-  the repo root when it does not exist under the skill, and then counts as leaving the skill. Fenced blocks
-  (an opener indented four or more columns at the top level is code, not a fence) and inline code spans (a
-  span closes at a backtick run of the same length) are skipped, but a `${CLAUDE_SKILL_DIR}` path is read
-  even in code, as the rulebook says; URLs, anchors and placeholders are skipped. `scripts_mirrors` is read
+  chain is normal. Links are the ones a CommonMark parser (`markdown-it-py` 4.x, a dev dependency
+  hash-pinned in `uv.lock`) finds, read three ways and united: plain CommonMark, CommonMark with GFM tables
+  (GitHub splits table cells before it reads code spans), and CommonMark with a leading YAML frontmatter
+  block emptied (GitHub and Claude Code split it off). Each reading takes inline links and images,
+  reference definitions, GFM footnote definitions (their text is read again as Markdown), and the `href`,
+  `src`, `poster`, `data`, `action` and `srcset` attributes of raw HTML. Code (fenced, indented, inline),
+  HTML comments, backslash escapes and character references are handled as a renderer handles them. The HTML
+  attribute reader has the standard library parser's raw-text (`<xmp>`, `<textarea>`, `<script>`...) and
+  CDATA modes switched off, because a renderer shows the tags that follow them; a test pins this against the
+  installed Python, whose behaviour changed between releases. A fence that never closes is code to the end
+  of its container, as a renderer shows it. `${CLAUDE_SKILL_DIR}` paths (braced or unbraced, quoted or not)
+  are read on every raw line, fenced blocks included, as the rulebook says. The target is read as a browser
+  would: tab, newline and carriage return dropped, fragment and query split off before percent escapes are
+  undone, a backslash read as a separator only when CommonMark does not treat it as an escape, a leading `/`
+  a repo-root path. A placeholder (`...`, `*`, `{x}`, `$x`, `<x>`) is skipped only if it survives resolving
+  the path: `docs/*/../x.md` is just `docs/`. A repo-root path such as `.github/x.md` is tried against the
+  repo root when it does not exist under the skill, and then counts as leaving the skill. URLs, anchors and
+  other placeholders are skipped. A finding sits on the line that holds its target within its Markdown block
+  and cites every line of that block, the resolved target and the code or HTML block just above it. Because
+  an edit anywhere (an indent, a blank line, a fence) can make an old link live, a finding that the same
+  check over the base text did not already have (counted per resolved target) is reported for the whole
+  file, with its line in the evidence; a new file, with no base, keeps its lines; a block too long to cite
+  (over 200 lines) also gives a file-level finding. A document the parser cannot read is a Major finding,
+  never a pass: it raised (deep nesting raises `RecursionError`), it is over 250,000 characters (the largest
+  real one is 83 KB), or the run's 30-second parse budget was used up (the parser is quadratic on hostile
+  input, each document is parsed up to three times plus its base, and all 534 real docs take about three
+  seconds). A file stops at 500 findings and then gets one file-level finding, which blocks.
+  `scripts_mirrors` is read
   from the **base** copy of `.claude/marketplace-sync.json`, so a PR cannot widen its own allowed folders; a
   missing or unreadable file allows none. A SKILL.md or reference file that cannot be read (a symlink,
-  oversized, over the size budget) is a Major finding, not a skip. Every pattern is bounded and possessive,
-  so a hostile line cannot make a scan quadratic. **Dead links are deliberately not checked:** a script found
+  oversized, over the size budget) is a Major finding, not a skip. **Dead links are deliberately not checked:** a script found
   11 on the real tree and 10 were illustrative examples (`attachment-name.png`, `path/to/file.md`), which only
   a human or a model can tell from a real miss, so dead links stay with the model reviewers. On the real tree
   the check reports the two genuine escapes (`../../docs/agy-migration.md` and
   `.github/pull_request_template.md`), which are notices until a PR touches those lines. Accepted: a PR that
   removes a plugin from `scripts_mirrors` and links to its scripts in the same change passes (the base still
   lists it; the file is a governance path a maintainer reviews), and a dead link a later PR makes live is not
-  caught by the PR that creates the target.
+  caught by the PR that creates the target. Also accepted, because they depend on one renderer's reading: where
+  `markdown-it-py` and GitHub's `cmark-gfm` disagree on block structure (for example `<search>` is a block
+  tag in CommonMark 0.31 and a plain paragraph start in GitHub's older spec), HTML attributes other than
+  those listed (`xlink:href`, `background`, `formaction`, `<meta http-equiv=refresh>`), a path written in
+  plain prose that is not a link (other than a `${CLAUDE_SKILL_DIR}` path), a `${CLAUDE_SKILL_DIR}` form
+  with a default (`:-.`) or a space, a cited path that ends in `:<digits>` (read as a path and a line), and
+  the parse budget being wall-clock time, so a very slow runner can refuse documents a fast one reads. A
+  parser release can change which links count, so the version is bounded (`>=4.2,<5`); a Dependabot bump
+  is covered by `pr_policy.TRUSTED_BOT_PATHS`: a verified Dependabot PR that changes only manifest files
+  (`uv.lock`, `pyproject.toml`, ...) passes the merge-rights check without a CODEOWNERS match, as a PyYAML
+  bump already does.
 - **`r37-executable-bit`** (rule class `graph`, severity `critical`, outcome `structure`). A script that a
   skill or command runs directly by path, because its `allowed-tools` grant starts with
   `${CLAUDE_PLUGIN_ROOT}/` or `${CLAUDE_SKILL_DIR}/` (braced or not, quoted, or after `env`, `exec`, `command`
@@ -370,8 +399,10 @@ line, like any other finding) and a registry entry can suppress it; a model find
   climbs out of its plugin names nothing. Because a `chmod` changes no line of the skill, the verifier reads
   **every** skill and command of a plugin the PR touches. The finding sits on each grant line and cites the
   script's own path, so dropping the bit makes it the PR's. A document in such a plugin that cannot be read
-  (a symlink, oversized) is reported, and running out of the read budget fails the run closed, so a chmod is
-  never let through unseen. The real tree has no violation, so this guards against a repeat of the bug that
+  (a symlink, oversized, a frontmatter the parser refuses) is reported, and when the PR left that document
+  alone the finding cites every path the PR changed in that plugin (up to 200; more fails the run closed),
+  so a chmod there blocks. A changed document the grant verifier already refuses is reported only by it.
+  Running out of the read budget also fails the run closed, so a chmod is never let through unseen. The real tree has no violation, so this guards against a repeat of the bug that
   made the rule. **Not covered, and stated here so the claim stays honest:** hook commands (`hooks.json`, or a
   `hooks:` block in skill frontmatter) that are a bare path, the `.claude/` mirror copy of a script, and a
   grant the skill's body never runs directly (the rulebook gives that an informational note; the verifier

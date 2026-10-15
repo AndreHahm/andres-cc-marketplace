@@ -6,7 +6,8 @@ computed gate (`review.gate_decision`) can block on them, and the exceptions reg
 them, which it never does for a model finding.
 
 This module is Tier 1 (review-dispatch-critical): `run-codex-review` imports it, so it imports only
-Tier-1 modules and the standard library plus PyYAML. It reads the PR's files as data from the
+Tier-1 modules and the standard library plus PyYAML and markdown-it-py (a CommonMark parser, hash-
+pinned in uv.lock). It reads the PR's files as data from the
 checked-out commit's git objects (never the working tree, never following a symlink) and never
 executes or imports anything from them. The frontmatter is composed into a YAML node tree and never
 constructed into Python objects, so no tag, timestamp or alias in a PR file can run code or expand
@@ -29,11 +30,15 @@ import bisect
 import json
 import posixpath
 import re
+import time
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from urllib.parse import unquote
 
 import yaml
+from markdown_it import MarkdownIt
 
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import Finding, _run_git
@@ -71,6 +76,13 @@ MAX_BLOB_BYTES = 1_000_000
 MAX_FRONTMATTER_CHARS = 100_000
 MAX_ENTRIES = 2_000
 MAX_TOTAL_BYTES = 20_000_000
+MAX_CITED_PATHS = 200  # changed paths one unreadable-document finding may cite
+MAX_PARSE_BYTES = (
+    250_000  # a skill document larger than this is not parsed (the largest real one is 83 KB)
+)
+MAX_PARSE_SECONDS = (
+    30.0  # parse time one run may spend on skill documents before the rest are refused
+)
 
 # plugin-rulebook R13 and R21 thresholds (assets/settings.json), kept equal by a test (R20). A value
 # above `*_WARNING` is a Major finding and above `*_CRITICAL` a Critical one; the Weak and Soft
@@ -840,17 +852,27 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
 _SKILL_DOC = re.compile(
     r"^plugins/([^/]+)/skills/([^/]+)/(?:SKILL\.md|references/[^/]+\.md)$", re.IGNORECASE
 )
-# Every quantifier below is bounded and possessive (no backtracking), and every pattern starts at a
-# fixed anchor, so a hostile line cannot make a scan quadratic. Paths longer than the bound are not
-# read as links, which no real path reaches.
-_LINK_DEST = re.compile(
-    r"\]\(\s{0,20}+(<[^>\n]{0,300}+>|[^)\s]{1,300}+)"
-    r"(?:\s{1,20}+(?:\"[^\"\n]{0,300}+\"|'[^'\n]{0,300}+'|\([^)\n]{0,300}+\)))?+\s{0,20}+\)"
+# Links are read with a CommonMark parser (markdown-it-py), so a link is live when a renderer would
+# show it: code, comments, escapes, entities, containers and reference definitions are the parser's
+# business, not a pattern's. The parser is quadratic on hostile input, so a document over
+# MAX_PARSE_BYTES is not parsed and a run stops parsing after MAX_PARSE_SECONDS; both are blocking
+# findings, never a skip. `maxNesting` is raised from 20 so deep nesting cannot hide a link; what is
+# too deep for the recursion limit raises RecursionError, which is also a finding.
+_MAX_NESTING = 10**6  # far above any depth the recursion limit lets through, so no silent cutoff
+_MARKDOWN = MarkdownIt("commonmark", {"maxNesting": _MAX_NESTING})
+# GFM splits table cells on pipes before it reads inline code, so a code span can end up covering a
+# link in the plain reading and not in the GFM one: both readings are scanned.
+_MARKDOWN_TABLES = MarkdownIt("commonmark", {"maxNesting": _MAX_NESTING}).enable("table")
+_FOOTNOTE_DEF = re.compile(r"^ {0,3}\[\^[^\]]*\]:[ \t]*")
+_URL_CONTROLS = re.compile(r"[\t\n\r]")  # a browser drops these before it resolves a URL
+_HTML_URL_ATTRIBUTES = frozenset({"href", "src", "poster", "data", "action"})
+# A `${CLAUDE_SKILL_DIR}` path is plain text, not Markdown syntax, so it is read on every raw line,
+# fenced blocks included, as the rulebook says. The bounds keep the scan linear.
+_SKILL_DIR_PATH = re.compile(
+    r"\$(?:\{CLAUDE_SKILL_DIR\}|CLAUDE_SKILL_DIR(?![A-Za-z0-9_]))[\"']?+/([A-Za-z0-9._~/%+@-]{0,300}+)"
 )
-_REF_DEF = re.compile(r"^ {0,3}+\[[^\]\n]{1,300}+\]:\s{0,20}+(<[^>\n]{0,300}+>|\S{1,300}+)")
-_HTML_ATTR = re.compile(r"\b(?:href|src)\s{0,5}+=\s{0,5}+[\"']?+([^\"'\s>]{1,300}+)")
-_SKILL_DIR_PATH = re.compile(r"\$\{CLAUDE_SKILL_DIR\}/([A-Za-z0-9._~/%+@-]{0,300}+)")
-_BACKTICK_RUN = re.compile(r"`+")
+_MAX_TARGET = 300  # a `${CLAUDE_SKILL_DIR}` path this long was cut off by the bound above
+_MAX_PATH_FINDINGS = 500  # past this the file gets one file-level finding, which blocks
 _SKILL_DIR_PREFIX = "${CLAUDE_SKILL_DIR}/"
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _MIRRORED_ROOT_FOLDERS = ("references", "assets")
@@ -869,34 +891,6 @@ class RepoTree:
             return True
         below = bisect.bisect_left(self._files, path + "/")
         return below < len(self._files) and self._files[below].startswith(path + "/")
-
-
-def _strip_code_spans(line: str) -> str:
-    """The line with inline code spans blanked out. A span opens at a run of backticks and closes at
-    the next run of exactly the same length (CommonMark), found in one pass over the runs."""
-    runs = [(m.start(), m.end()) for m in _BACKTICK_RUN.finditer(line)]
-    if not runs:
-        return line
-    next_same: list[int | None] = [None] * len(runs)
-    latest: dict[int, int] = {}
-    for position in range(len(runs) - 1, -1, -1):
-        length = runs[position][1] - runs[position][0]
-        next_same[position] = latest.get(length)
-        latest[length] = position
-    pieces: list[str] = []
-    cursor = 0
-    position = 0
-    while position < len(runs):
-        closing = next_same[position]
-        if closing is None:
-            position += 1
-            continue
-        pieces.append(line[cursor : runs[position][0]])
-        pieces.append(" ")
-        cursor = runs[closing][1]
-        position = closing + 1
-    pieces.append(line[cursor:])
-    return "".join(pieces)
 
 
 def _obfuscated(written: str, *, from_skill_dir: bool, lands_inside: bool) -> bool:
@@ -923,18 +917,21 @@ def _resolve(
     target = target.strip()
     if target.startswith("<") and target.endswith(">"):
         target = target[1:-1].strip()
-    target = unquote(target).replace("\\", "/")
-    target = target.split("#", 1)[0].split("?", 1)[0]
-    if not target or _SCHEME.match(target) or any(c in target for c in "<>*"):
+    target = _URL_CONTROLS.sub("", target)
+    target = unquote(target.split("#", 1)[0].split("?", 1)[0]).replace("\\", "/")
+    if not target or _SCHEME.match(target):
         return None
-    if "..." in target.split("/"):
+    # A placeholder counts only if it survives resolving the path: `docs/*/../x.md` is just `docs/`.
+    body = target[len(_SKILL_DIR_PREFIX) :] if target.startswith(_SKILL_DIR_PREFIX) else target
+    flat = posixpath.normpath(body) if body else body
+    if any(c in flat for c in "<>*") or "..." in flat.split("/"):
         return None
     if target.startswith(_SKILL_DIR_PREFIX):
         rest = target[len(_SKILL_DIR_PREFIX) :]
         resolved = posixpath.normpath(f"{skill_dir}/{rest}")
         found = not resolved.startswith("..") and tree.exists(resolved)
         return (resolved, rest, True) if found else None
-    if any(c in target for c in "{}$"):
+    if any(c in flat for c in "{}$"):
         return None
     if target.startswith("/"):
         at_root = posixpath.normpath(target.lstrip("/"))
@@ -949,9 +946,12 @@ def _resolve(
     return None
 
 
-def _unreadable_finding(path: str, reason: str, rule: str = RULE_ESCAPING_PATH) -> Finding:
+def _unreadable_finding(
+    path: str, reason: str, rule: str = RULE_ESCAPING_PATH, components: tuple[str, ...] = ()
+) -> Finding:
     """A blocking finding for a skill document the path check could not read: otherwise a PR could
-    keep an escaping link by making its file a symlink or oversized."""
+    keep an escaping link by making its file a symlink or oversized. `components` cite what else
+    the PR changed when the document itself did not, so the finding is the PR's."""
     return Finding(
         reviewer=VERIFIER_REVIEWER,
         severity="Major",
@@ -960,6 +960,178 @@ def _unreadable_finding(path: str, reason: str, rule: str = RULE_ESCAPING_PATH) 
         evidence=f"this file could not be checked: {reason}",
         remediation="Replace the symlink or oversized file with a regular file of normal size.",
         line=None,
+        components=components,
+        confidence="high",
+        evidence_type="verifier_output",
+        rule_class="graph",
+        source="script",
+    )
+
+
+class _HtmlUrls(HTMLParser):
+    """The URL attributes of the tags in raw HTML: names case-folded, entities decoded. A renderer
+    shows the tags that follow an unclosed `<xmp>`, `<textarea>` or `<script>`, and the tag inside
+    `<![CDATA[ > ... ]]>`, as live HTML, so the parser's raw-text and CDATA modes are turned off
+    (a test pins this against the installed Python, whose behaviour changed between releases)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.urls = []
+        self.CDATA_CONTENT_ELEMENTS = ()
+        self.RCDATA_CONTENT_ELEMENTS = ()
+        self._support_cdata = False
+
+    def set_cdata_mode(self, *args, **kwargs) -> None:
+        return None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if not value:
+                continue
+            if name in _HTML_URL_ATTRIBUTES:
+                self.urls.append(value)
+            elif name == "srcset":  # `url descriptor, url descriptor`
+                self.urls.extend(parts[0] for part in value.split(",") if (parts := part.split()))
+
+    urls: list[str]
+
+
+def _html_urls(html: str) -> list[str]:
+    parser = _HtmlUrls()
+    parser.feed(html)
+    parser.close()
+    return parser.urls
+
+
+@dataclass(frozen=True)
+class _LinkSite:
+    target: str
+    start: (
+        int | None
+    )  # 1-based first line of the block that holds it; None when the parser has none
+    end: int | None  # 1-based last line of that block
+    above: tuple[int, ...]  # the first and last line of the code or HTML block just above it
+
+
+def _frontmatter_blanked(lines: list[str]) -> str | None:
+    """The text with a leading YAML frontmatter block emptied (keeping every line number), or None.
+    GitHub and Claude Code split the frontmatter off, so markup inside it must not decide how the
+    body is read."""
+    if lines and lines[0].strip() == "---":
+        for index in range(1, len(lines)):
+            if lines[index].strip() in ("---", "..."):
+                return "\n".join([""] * (index + 1) + lines[index + 1 :])
+    return None
+
+
+def _footnote_sites(lines: list[str], references: dict) -> list[_LinkSite]:
+    """The links inside GFM footnote definitions. The plain reading takes `[^1]: [text](url)` for a
+    reference definition whose destination is the whole `[text](url)`; GitHub renders a footnote
+    whose text holds a live link. The definition and its indented continuation are read again as
+    Markdown."""
+    sites: list[_LinkSite] = []
+    for label, reference in references.items():
+        span = reference.get("map")
+        if not label.startswith("^") or not span:
+            continue
+        end = span[1]
+        while end < len(lines) and (
+            lines[end].startswith(("    ", "\t"))
+            or (
+                not lines[end].strip()
+                and end + 1 < len(lines)
+                and lines[end + 1].startswith(("    ", "\t"))
+            )
+        ):
+            end += 1
+        chunk = lines[span[0] : end]
+        body = "\n".join(
+            [_FOOTNOTE_DEF.sub("", chunk[0], count=1)]
+            + [line[4:] if line.startswith("    ") else line.lstrip("\t") for line in chunk[1:]]
+        )
+        for site in _sites_of(_MARKDOWN, body):
+            sites.append(_LinkSite(site.target, span[0] + 1, end, ()))
+    return sites
+
+
+def _sites_of(parser: MarkdownIt, source: str) -> list[_LinkSite]:
+    env: dict = {}
+    sites: list[_LinkSite] = []
+    above: tuple[int, ...] = ()
+    for token in parser.parse(source, env):
+        mapped = token.map is not None
+        start, end = (token.map[0] + 1, token.map[1]) if token.map else (None, None)
+        if token.type == "inline":
+            for child in token.children or []:
+                if child.type == "link_open":
+                    urls = [child.attrGet("href")]
+                elif child.type == "image":
+                    urls = [child.attrGet("src")]
+                elif child.type == "html_inline":
+                    urls = _html_urls(child.content)
+                else:
+                    continue
+                sites.extend(_LinkSite(str(u), start, end, above) for u in urls if u)
+        elif token.type in ("fence", "code_block", "html_block"):
+            if token.type == "html_block":
+                sites.extend(_LinkSite(u, start, end, above) for u in _html_urls(token.content))
+            if mapped:
+                above = (start, end)  # ty: ignore[invalid-assignment]
+    references = env.get("references", {})
+    for reference in references.values():
+        span = reference.get("map")
+        href = reference.get("href")
+        if href:
+            sites.append(
+                _LinkSite(href, span[0] + 1 if span else None, span[1] if span else None, ())
+            )
+    sites.extend(_footnote_sites(source.split("\n"), references))
+    return sites
+
+
+def _link_sites(text: str) -> list[_LinkSite]:
+    """Every link target a renderer would show, as the union of three readings: plain CommonMark,
+    CommonMark with GFM tables, and CommonMark with the YAML frontmatter emptied. Within each:
+    inline links and images, reference definitions, footnote definitions, and the URL attributes of
+    raw HTML. Code (fenced, indented, inline) and HTML comments hold none."""
+    readings = [(_MARKDOWN, text), (_MARKDOWN_TABLES, text)]
+    blanked = _frontmatter_blanked(_BLOCK_LINE_BREAK.split(text))
+    if blanked is not None:
+        readings.append((_MARKDOWN, blanked))
+    seen: set[tuple[str, int | None, int | None]] = set()
+    sites: list[_LinkSite] = []
+    for parser, source in readings:
+        for site in _sites_of(parser, source):
+            key = (site.target, site.start, site.end)
+            if key not in seen:
+                seen.add(key)
+                sites.append(site)
+    return sites
+
+
+def _site_line(lines: list[str], site: _LinkSite) -> int | None:
+    """The line of `site` within its block: the first line that holds its target as written (or
+    as the parser normalized it), else the block's first line (the parser gives block ranges)."""
+    if site.start is None:
+        return None
+    for needle in dict.fromkeys((site.target, unquote(site.target))):
+        for number in range(site.start, (site.end or site.start) + 1):
+            if number <= len(lines) and needle in lines[number - 1]:
+                return number
+    return site.start
+
+
+def _unreadable_link(path: str, line: int | None, why: str) -> Finding:
+    """A blocking finding for links the path check could not read: counting them as a pass would
+    let a PR keep an escaping link by writing the file in a form the check gives up on."""
+    return Finding(
+        reviewer=VERIFIER_REVIEWER,
+        severity="Major",
+        rule=RULE_ESCAPING_PATH,
+        path=path,
+        evidence=f"a link in this file could not be read ({why}), so it was not checked",
+        remediation="Split the file or simplify the Markdown that makes the parse fail.",
+        line=line,
         confidence="high",
         evidence_type="verifier_output",
         rule_class="graph",
@@ -968,17 +1140,29 @@ def _unreadable_finding(path: str, reason: str, rule: str = RULE_ESCAPING_PATH) 
 
 
 def check_escaping_paths(
-    path: str, text: str, tree: RepoTree, scripts_mirrors: frozenset[str]
+    path: str,
+    text: str,
+    tree: RepoTree,
+    scripts_mirrors: frozenset[str],
+    *,
+    parse: bool = True,
+    known: Sequence[Finding] | None = None,
 ) -> tuple[Finding, ...]:
     """R34 (`r34-escaping-path`): a link or `${CLAUDE_SKILL_DIR}` path in a skill's SKILL.md or
     references/*.md that resolves outside the skill folder may land only in the plugin root's
     references/ or assets/, or scripts/ for a plugin in `scripts_mirrors` (the base's list).
-    Anything else, and a path that climbs only to come back, is a Critical finding on the line that
-    holds it. Links are read in their Markdown forms (inline with a title, `<...>`, reference
-    definitions), HTML `href`/`src` and `${CLAUDE_SKILL_DIR}` paths. Dead links are deliberately not
-    checked: on the real tree 10 of 11 were illustrative examples that only a human can tell from a
-    real miss. Fenced blocks and inline code spans are skipped (a `${CLAUDE_SKILL_DIR}` path is read
-    even in code, as the rulebook says)."""
+    Anything else, and a path that climbs only to come back, is a Critical finding. Links are the
+    ones a CommonMark parser finds (inline, images, reference definitions, and the `href`, `src`,
+    `poster`, `data` and `action` attributes of raw HTML) plus every `${CLAUDE_SKILL_DIR}` path in
+    the raw text, code included, as the rulebook says. A document the parser cannot read (it
+    raised, is over MAX_PARSE_BYTES, or `parse` is False because the run's time budget ran out) is
+    a Major finding, never a pass. Dead links are deliberately not checked: on the real tree 10 of
+    11 were illustrative examples that only a human can tell from a real miss. Each finding sits on
+    the first line of its block and cites every line of that block, the resolved target, and the
+    code block above it, so a change to any of them makes the finding the PR's. `known` is the
+    same check run over the base text (None for a new file, `()` when the base cannot be read): a
+    finding the base did not already have, in count per resolved target, becomes file-level, since
+    an edit anywhere (an indent, a blank line, a fence) can make an old link live."""
     scope = _SKILL_DOC.match(path)
     if scope is None:
         return ()
@@ -987,55 +1171,93 @@ def check_escaping_paths(
     folders = [f"{plugin_root}/{name}" for name in _MIRRORED_ROOT_FOLDERS]
     if scope.group(1) in scripts_mirrors:
         folders.append(f"{plugin_root}/scripts")
-    fenced: set[int] = set()
-    for block in fenced_blocks(text, indented_is_code=True):
-        fenced.update(range(block.start, block.end + 1))
     unnumbered = re.search(r"\r(?!\n)", text) is not None  # lone CRs make line numbers unreliable
+    lines = _BLOCK_LINE_BREAK.split(text)
     findings: list[Finding] = []
-    seen: set[tuple[int, str]] = set()
-    for number, line in enumerate(_BLOCK_LINE_BREAK.split(text), 1):
-        if number in fenced:
-            continue
-        prose = _strip_code_spans(line)
-        targets = [m.group(1) for m in _LINK_DEST.finditer(prose)]
-        targets += [m.group(1) for m in _HTML_ATTR.finditer(prose)]
-        targets += [m.group(1) for m in _REF_DEF.finditer(line)]
-        targets += [
-            _SKILL_DIR_PREFIX + m.group(1).rstrip(".,;:!?") for m in _SKILL_DIR_PATH.finditer(line)
-        ]
-        for target in targets:
-            found = _resolve(path, target, skill_dir, tree)
-            if found is None or (number, found[0]) in seen:
-                continue
-            resolved, written, from_skill_dir = found
-            inside = resolved == skill_dir or resolved.startswith(skill_dir + "/")
-            allowed = any(resolved == f or resolved.startswith(f + "/") for f in folders)
-            if _obfuscated(written, from_skill_dir=from_skill_dir, lands_inside=inside):
-                why = "climbs only to come back (an obfuscated path)"
-            elif not inside and not allowed:
-                why = "leaves the skill folder for a place the .claude/ mirror does not carry"
-            else:
-                continue
-            seen.add((number, resolved))
+    sites: list[_LinkSite] = []
+    if not parse:
+        findings.append(_unreadable_link(path, None, "this run's parse time budget was used up"))
+    elif len(text) > MAX_PARSE_BYTES:
+        findings.append(_unreadable_link(path, None, f"it is larger than {MAX_PARSE_BYTES} bytes"))
+    else:
+        try:
+            sites = _link_sites(text)
+        except Exception as exc:  # RecursionError on deep nesting, or any parser fault
             findings.append(
-                Finding(
-                    reviewer=VERIFIER_REVIEWER,
-                    severity="Critical",
-                    rule=RULE_ESCAPING_PATH,
-                    path=path,
-                    evidence=f"`{_quote(target)}` resolves to {_quote(resolved)} and {why}",
-                    remediation=(
-                        "Point at the plugin-root references/, assets/ or scripts/ folder, or move "
-                        "the shared file there; do not reach into docs/, a repo-root file or "
-                        "another skill's folder."
-                    ),
-                    line=None if unnumbered else number,
-                    confidence="high",
-                    evidence_type="verifier_output",
-                    rule_class="graph",
-                    source="script",
-                )
+                _unreadable_link(path, None, f"the parser failed: {type(exc).__name__}")
             )
+    for number, line in enumerate(lines, 1):
+        for match in _SKILL_DIR_PATH.finditer(line):
+            if len(match.group(1)) >= _MAX_TARGET:
+                findings.append(
+                    _unreadable_link(
+                        path,
+                        None if unnumbered else number,
+                        "a `${CLAUDE_SKILL_DIR}` path too long",
+                    )
+                )
+            written = _SKILL_DIR_PREFIX + match.group(1).rstrip(".,;:!?")
+            sites.append(_LinkSite(written, number, number, ()))
+    sites.sort(key=lambda site: site.start or 0)
+    seen: set[tuple[int | None, str]] = set()
+    unmatched = (
+        Counter(f.components[0] for f in known if f.severity == "Critical" and f.components)
+        if known is not None
+        else None
+    )
+    for site in sites:
+        found = _resolve(path, site.target, skill_dir, tree)
+        if found is None:
+            continue
+        resolved, written, from_skill_dir = found
+        inside = resolved == skill_dir or resolved.startswith(skill_dir + "/")
+        allowed = any(resolved == f or resolved.startswith(f + "/") for f in folders)
+        if _obfuscated(written, from_skill_dir=from_skill_dir, lands_inside=inside):
+            why = "climbs only to come back (an obfuscated path)"
+        elif not inside and not allowed:
+            why = "leaves the skill folder for a place the .claude/ mirror does not carry"
+        else:
+            continue
+        line: int | None = None
+        cited: tuple[str, ...] = ()
+        if not unnumbered and site.start is not None:
+            span = range(site.start, (site.end or site.start) + 1)
+            if len(span) <= MAX_CONTEXT_LINES:
+                line = _site_line(lines, site)
+                cited = tuple(f"{path}:{n}" for n in sorted({*span, *site.above} - {line}))
+        where = ""
+        if unmatched is not None:
+            if unmatched[resolved] > 0:
+                unmatched[resolved] -= 1
+            elif line is not None:
+                where = f" (at line {line}; not in the base, so reported for the whole file)"
+                line, cited = None, ()
+        if (line, resolved) in seen:
+            continue
+        seen.add((line, resolved))
+        findings.append(
+            Finding(
+                reviewer=VERIFIER_REVIEWER,
+                severity="Critical",
+                rule=RULE_ESCAPING_PATH,
+                path=path,
+                evidence=f"`{_quote(site.target)}` resolves to {_quote(resolved)} and {why}{where}",
+                remediation=(
+                    "Point at the plugin-root references/, assets/ or scripts/ folder, or move "
+                    "the shared file there; do not reach into docs/, a repo-root file or "
+                    "another skill's folder."
+                ),
+                line=line,
+                components=(resolved, *cited),
+                confidence="high",
+                evidence_type="verifier_output",
+                rule_class="graph",
+                source="script",
+            )
+        )
+    if len(findings) > _MAX_PATH_FINDINGS:
+        findings = findings[:_MAX_PATH_FINDINGS]
+        findings.append(_unreadable_link(path, None, "more findings than the per-file cap"))
     return tuple(findings)
 
 
@@ -1335,11 +1557,37 @@ def run_verifiers(
             if name
         )
         mirrors = _scripts_mirrors(repo, base_sha or "HEAD")
+        base_doc_texts: dict[str, str] = {}
+        if base_sha is not None:
+            old_doc = {
+                c.new_path: (c.old_path or c.new_path)
+                for c in changed
+                if c.new_path in doc_paths and c.status != "A"
+            }
+            old_texts, _ = _read_blobs(
+                repo, sorted(set(old_doc.values())), base_sha, missing_ok=True
+            )
+            base_doc_texts = {p: old_texts[o] for p, o in old_doc.items() if o in old_texts}
+        added = {c.new_path for c in changed if c.status == "A"}
+        parse_started = time.monotonic()
         for path in doc_paths:
             if path in doc_problems:
                 path_findings.append(_unreadable_finding(path, doc_problems[path]))
                 continue
-            path_findings.extend(check_escaping_paths(path, doc_texts[path], tree, mirrors))
+            in_budget = time.monotonic() - parse_started <= MAX_PARSE_SECONDS
+            known: tuple[Finding, ...] | None = None  # a new file: all of it is in the diff
+            if base_sha is not None and path not in added:
+                known = ()  # a base that cannot be read makes every finding file-level
+                if path in base_doc_texts:
+                    known = check_escaping_paths(
+                        path, base_doc_texts[path], tree, mirrors, parse=in_budget
+                    )
+            in_budget = time.monotonic() - parse_started <= MAX_PARSE_SECONDS
+            path_findings.extend(
+                check_escaping_paths(
+                    path, doc_texts[path], tree, mirrors, parse=in_budget, known=known
+                )
+            )
             path_checked.append(path)
     structure_findings: list[Finding] = []
     structure_checked: list[str] = []
@@ -1370,6 +1618,29 @@ def run_verifiers(
             if _GRANT_DOC.match(n)
         )
         doc_texts, doc_problems = _read_blobs(repo, grant_docs)
+        changed_now = {c.new_path for c in changed if c.new_path is not None}
+
+        def unreadable(doc: str, reason: str) -> Finding:
+            """A document the grant scan cannot read might hold the grant a chmod breaks. When the
+            PR left it alone, the finding cites the plugin's changed paths (a script whose mode
+            changed counts as changed), so a PR touching the plugin cannot pass over it."""
+            plugin = f"plugins/{doc.split('/')[1]}/"
+            cited: tuple[str, ...] = ()
+            if doc not in changed_now:
+                names = {
+                    n
+                    for c in changed
+                    for n in (c.new_path, c.old_path)
+                    if n and n.startswith(plugin)
+                }
+                if len(names) > MAX_CITED_PATHS:
+                    raise RuntimeError(
+                        f"too many changed paths in {plugin} to cite beside an unreadable "
+                        f"grant document ({doc})"
+                    )
+                cited = tuple(sorted(names))
+            return _unreadable_finding(doc, reason, RULE_EXECUTABLE_BIT, cited)
+
         found: dict[str, list[ScriptGrant]] = {}
         for doc in grant_docs:
             if doc in doc_problems:
@@ -1378,14 +1649,14 @@ def run_verifiers(
                     raise RuntimeError(
                         "the grant documents of the touched plugins exceed the read budget"
                     )
-                structure_findings.append(
-                    _unreadable_finding(doc, doc_problems[doc], RULE_EXECUTABLE_BIT)
-                )
+                structure_findings.append(unreadable(doc, doc_problems[doc]))
                 continue
             try:
                 found[doc] = script_grants(doc, *_frontmatter(doc_texts[doc]))
-            except VerifierError:
-                continue  # the grant verifier already reports an unreadable changed file
+            except VerifierError as exc:
+                if doc not in changed_now:  # the grant verifier reports a changed file itself
+                    structure_findings.append(unreadable(doc, str(exc)))
+                continue
             structure_checked.append(doc)
         modes = _modes(repo, sorted({g.script for grants in found.values() for g in grants}))
         for doc, grants in found.items():
