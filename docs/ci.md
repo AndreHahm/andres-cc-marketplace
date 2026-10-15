@@ -315,9 +315,10 @@ line, like any other finding) and a registry entry can suppress it; a model find
 - **`r18-code-block-line-count`** (rule class `measurement`). A fenced code block of more than 20 lines is
   Major and of more than 30 is Critical, in a skill, command or agent file (not in `references/`, where the
   rulebook itself sends large blocks). Blocks are read as CommonMark does: a fence of three or more backticks
-  or tildes, after blockquote markers and a list marker; closed at the same blockquote depth by a fence of the
-  same character at least as long, with no other text and not indented four or more columns past the opener,
-  so a longer fence holds shorter ones as content; a block that is unclosed ends where its blockquote or list
+  or tildes, after any blockquote and list markers (nested ones too); closed at the same blockquote depth by a
+  fence of the same character at least as long, with no other text and not indented more than three columns
+  into its container (absolute for a fence at the top level, the opener's column plus three inside a
+  blockquote or list item), so a longer fence holds shorter ones as content; a block that is unclosed ends where its blockquote or list
   item ends, or at the end of the file; a lone carriage return is a line break. The repo already holds
   hundreds of blocks over 20 lines, so a block is counted only when it is not an identical block already in
   the base, and the file is reported only when the PR raised the number of blocks at some tier or worse:
@@ -333,7 +334,8 @@ line, like any other finding) and a registry entry can suppress it; a model find
   reported, however many a file has, so splitting always avoids it. It reads the file once; a stray
   four-space-indented fence at the top level (indented code that contains a fence) can pair with a later
   fence and shift which lines count as a block, which is accepted rather than read twice, since a second
-  reading double-counted a region and could block a legitimate PR.
+  reading double-counted a region and could block a legitimate PR. Nesting is read to 100 list markers and
+  101 blockquote markers per line; an opener nested deeper reads as an empty block, which is accepted.
 - **`r34-escaping-path`** (rule class `graph`, severity `critical`, outcome `path-and-mirror`). In a skill's
   `SKILL.md` and its `references/*.md` under `plugins/` (matched case-insensitively), a link or a
   `${CLAUDE_SKILL_DIR}` path that resolves to something that exists outside the skill folder may land only in
@@ -391,8 +393,9 @@ line, like any other finding) and a registry entry can suppress it; a model find
   bump already does.
 - **`r37-executable-bit`** (rule class `graph`, severity `critical`, outcome `structure`). A script that a
   skill or command runs directly by path, because its `allowed-tools` grant starts with
-  `${CLAUDE_PLUGIN_ROOT}/` or `${CLAUDE_SKILL_DIR}/` (braced or not, quoted, or after `env`, `exec`, `command`
-  or `time`), must be committed as a regular file with git mode 100755: a shell running a 100644 path fails
+  `${CLAUDE_PLUGIN_ROOT}/` or `${CLAUDE_SKILL_DIR}/` (braced or not, quoted, or after any run of `env`, `exec`, `command`,
+  `time`, `nohup` or `nice` words, their options and `NAME=VALUE` assignments; `timeout`, `sudo` and other
+  wrappers are not read), must be committed as a regular file with git mode 100755: a shell running a 100644 path fails
   with `Permission denied`. The finding names the reason: mode 100644, a symlink, a submodule, a directory, or
   no such file (the rulebook calls a missing file a FAIL too). A script an interpreter runs
   (`Bash(bash ${...}/x.sh:*)`) needs no bit and is not listed, a glob names no single script, and a path that
@@ -404,7 +407,10 @@ line, like any other finding) and a registry entry can suppress it; a model find
   so a chmod there blocks (each cited path counts for any change to it, `path:*`; see Diff-scoped blocking). A
   grant document that stays unreadable therefore blocks every PR that touches its plugin until it is fixed or a
   registry entry covers it; that is deliberate. A changed document the grant verifier already refuses is
-  reported only by it.
+  reported only by it. A grant inside a multi-line YAML value has no file line; it is skipped when the base
+  document holds as many such grants of that script (matched one for one) and the script has the same mode there, so an unrelated edit is not blamed for
+  an old violation. A script name ending in `:<digits>` is cited as a whole path (`path:*`), since a bare
+  citation would read the digits as a line.
   Running out of the read budget also fails the run closed, so a chmod is never let through unseen. The real tree has no violation, so this guards against a repeat of the bug that
   made the rule. **Not covered, and stated here so the claim stays honest:** hook commands (`hooks.json`, or a
   `hooks:` block in skill frontmatter) that are a bare path, the `.claude/` mirror copy of a script, and a

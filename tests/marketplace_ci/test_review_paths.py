@@ -762,3 +762,9 @@ def test_unchanged_files_are_not_scanned(git_repo):
     base = _repo(git_repo, _skill_text("Bad: [g](../../../../docs/guide.md)."))
     outcome = rv.run_verifiers(git_repo.root, (), base)[2]
     assert outcome.findings == () and outcome.checked == ()
+
+
+def test_a_resolved_path_with_markdown_in_its_name_is_quoted_in_the_evidence():
+    odd = "docs/odd [x](y) @team.md"
+    (finding,) = _check(_lines("See [t](</docs/odd [x](y) @team.md>)."), extra=(odd,))
+    assert f"resolves to `{odd}`" in finding.evidence

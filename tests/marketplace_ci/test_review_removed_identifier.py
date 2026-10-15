@@ -435,3 +435,14 @@ def test_the_unsafe_name_finding_gives_advice_that_fits_it(git_repo):
     _commit(git_repo.root, "delete")
     (finding,) = _outcome(git_repo, (change,), base).findings
     assert "symlink" not in finding.remediation and "name" in finding.remediation
+
+
+def test_a_leftover_file_with_markdown_in_its_name_is_quoted_in_the_evidence(git_repo):
+    git_repo.write(_skill("gone"), _doc("gone"))
+    odd = "docs/[approve](https:--evil) @team.md"
+    git_repo.write(odd, "See `/gone`.\n")
+    base = _commit(git_repo.root, "base")
+    change = _delete(git_repo, _skill("gone"))
+    _commit(git_repo.root, "delete")
+    (finding,) = _outcome(git_repo, (change,), base).findings
+    assert f"e.g. `{odd}`" in finding.evidence

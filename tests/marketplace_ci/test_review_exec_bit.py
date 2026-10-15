@@ -419,3 +419,104 @@ def test_an_unreadable_unchanged_doc_blocks_even_when_the_plugin_change_is_an_or
     assert rc == 1
     (finding,) = [f for f in payload["findings"] if f["rule"] == "r37-executable-bit"]
     assert finding["gate"] == "block" and finding["path"] == BROKEN
+
+
+# --- wrappers, trailing colons and `:N` names ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env FOO=1 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(env -i ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(command -p ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(exec -a name ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(env exec ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(FOO=1 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:)",
+    ],
+)
+def test_stacked_wrappers_options_and_assignments_do_not_hide_a_direct_run(grant):
+    assert [g.script for g in _grants(SKILL, _doc(grant))] == [PLUGIN_SCRIPT]
+
+
+def test_a_wrapper_with_an_interpreter_after_it_still_names_no_script():
+    text = _doc("Bash(env FOO=1 bash ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)")
+    assert _grants(SKILL, text) == []
+
+
+def test_a_script_name_ending_in_a_colon_and_digits_is_cited_as_a_whole_path():
+    script = "plugins/demo-kit/scripts/run.sh:7"
+    (finding,) = rv.check_executable_bits(SKILL, [rv.ScriptGrant(script, 4)], {script: b"100644"})
+    assert finding.components == (f"{script}{rv.ANY_CHANGE_SUFFIX}",)
+
+
+def test_an_ordinary_script_name_is_cited_bare():
+    (finding,) = rv.check_executable_bits(
+        SKILL, [rv.ScriptGrant(PLUGIN_SCRIPT, 4)], {PLUGIN_SCRIPT: b"100644"}
+    )
+    assert finding.components == (PLUGIN_SCRIPT,)
+
+
+# --- a grant inside a multi-line scalar ------------------------------------------
+
+_MULTILINE_GRANT = (
+    "---\nname: demo\ndescription: " + "d" * 100 + "\nallowed-tools:\n  Read,\n"
+    "  Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)\n---\n"
+)
+
+
+def test_a_multi_line_grant_the_pr_did_not_touch_is_not_blamed_on_an_unrelated_edit(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=False)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
+    _commit(git_repo.root, "edit")
+    assert _outcome(git_repo, (ChangedPath("M", SKILL, SKILL),), base).findings == ()
+
+
+def test_a_multi_line_grant_is_reported_when_the_pr_drops_the_scripts_bit(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    base = _commit(git_repo.root, "base")
+    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
+    _commit(git_repo.root, "chmod and edit")
+    changed = (ChangedPath("M", SKILL, SKILL), ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT))
+    assert len(_outcome(git_repo, changed, base).findings) == 1
+
+
+def test_a_multi_line_grant_added_by_the_pr_is_reported(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=False)
+    git_repo.write(SKILL, _doc("Read") + "body\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    _commit(git_repo.root, "add grant")
+    assert len(_outcome(git_repo, (ChangedPath("M", SKILL, SKILL),), base).findings) == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env --unset NAME ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(env --chdir DIR ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(env --unset=NAME ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(nohup ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(nice -n 5 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+    ],
+)
+def test_long_options_with_a_separate_value_and_more_wrappers_do_not_hide_a_direct_run(grant):
+    assert [g.script for g in _grants(SKILL, _doc(grant))] == [PLUGIN_SCRIPT]
+
+
+def test_a_new_multi_line_grant_of_a_script_the_base_already_granted_is_reported(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=False)
+    git_repo.write(SKILL, _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)") + "body\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(
+        SKILL,
+        "---\nname: demo\ndescription: " + "d" * 100 + "\nallowed-tools:\n  Read,\n"
+        "  Bash(env ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)\n---\nbody\n",
+    )
+    _commit(git_repo.root, "add a second grant")
+    assert len(_outcome(git_repo, (ChangedPath("M", SKILL, SKILL),), base).findings) == 1
