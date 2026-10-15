@@ -194,6 +194,35 @@ def _entry(raw: object, index: int) -> ExceptionEntry:
     return ExceptionEntry(**values)
 
 
+def _first_duplicate_key(root: yaml.Node | None) -> object | None:
+    """The first mapping key that appears twice in the same mapping, or None.
+
+    PyYAML's loaders keep the last value of a repeated key, so a reader of the file sees one glob
+    while the matcher uses another. This walks the composed node graph (no objects are built from
+    it, and aliases are visited once, so a cycle terminates) and compares scalar keys by their
+    constructed value, so `1` and `0x1` count as one key."""
+    constructor = yaml.SafeLoader("")
+    stack: list[yaml.Node | None] = [root]
+    visited: set[int] = set()
+    while stack:
+        node = stack.pop()
+        if node is None or id(node) in visited:
+            continue
+        visited.add(id(node))
+        if isinstance(node, yaml.MappingNode):
+            keys: set[object] = set()
+            for key_node, value_node in node.value:
+                if isinstance(key_node, yaml.ScalarNode):
+                    key = constructor.construct_object(key_node)
+                    if key in keys:
+                        return key
+                    keys.add(key)
+                stack.extend((key_node, value_node))
+        elif isinstance(node, yaml.SequenceNode):
+            stack.extend(node.value)
+    return None
+
+
 def load_exceptions(path: Path) -> tuple[ExceptionEntry, ...]:
     """Parse and validate the registry. Any problem raises, so a gate that cannot read its
     exceptions blocks instead of running with none."""
@@ -202,6 +231,7 @@ def load_exceptions(path: Path) -> tuple[ExceptionEntry, ...]:
     except (OSError, UnicodeDecodeError) as exc:
         raise ContractError(f"cannot read exceptions registry {str(path)!r}: {exc}") from exc
     try:
+        duplicate = _first_duplicate_key(yaml.compose(text, Loader=yaml.SafeLoader))
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:
         raise ContractError(f"exceptions registry is not valid YAML: {exc}") from exc
@@ -209,6 +239,8 @@ def load_exceptions(path: Path) -> tuple[ExceptionEntry, ...]:
         # PyYAML's own constructors raise these for some scalars (a bad timestamp) and for
         # absurd nesting; none may escape as anything but a fail-closed ContractError.
         raise ContractError(f"exceptions registry cannot be parsed as YAML: {exc!r}") from exc
+    if duplicate is not None:
+        raise ContractError(f"exceptions registry has a duplicate key {duplicate!r}")
     if not isinstance(data, dict):
         raise ContractError("exceptions registry must be a mapping with an 'exceptions' key")
     if "exceptions" not in data:
