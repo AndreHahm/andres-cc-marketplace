@@ -384,3 +384,43 @@ def test_touching_a_file_that_already_has_a_large_block_does_not_block(
     after = before + "one more line of prose\n"
     rc, payload = _review(monkeypatch, git_repo, tmp_path, before, after)
     assert rc == 0 and payload["findings"] == []
+
+
+def test_a_closing_fence_is_indented_at_most_three_columns_from_the_container():
+    text = "   ```\n      ```\n" + "x\n" * 30 + "```\n"
+    (block,) = rv.fenced_blocks(text)
+    assert (block.size, block.closed) == (31, True)
+
+
+@pytest.mark.parametrize(
+    "opener,content,closer",
+    [
+        ("> - ```", ">   x", ">   ```"),
+        ("- > ```", "  > x", "  > ```"),
+        ("- - ```", "    x", "    ```"),
+    ],
+)
+def test_a_fence_inside_nested_blockquotes_and_lists_is_one_block(opener, content, closer):
+    text = f"{opener}\n" + f"{content}\n" * 30 + f"{closer}\n"
+    (block,) = rv.fenced_blocks(text)
+    assert (block.size, block.closed) == (30, True)
+
+
+def test_only_the_blocks_that_raised_the_count_are_listed():
+    before = _doc(_block(35, tag="c"))
+    after = _doc(_block(35, tag="e"), _block(35, tag="d"))
+    (finding,) = rv.check_code_blocks(SKILL, after, before)
+    assert finding.evidence.startswith("1 fenced code block(s)")
+    assert "line 41" in finding.evidence and "line 3 " not in finding.evidence
+
+
+def test_a_blockquote_inside_a_list_item_keeps_the_block_open_without_a_space_after_the_marker():
+    text = "- > ```\n" + "  >x\n" * 30 + "  > ```\n"
+    (block,) = rv.fenced_blocks(text)
+    assert (block.size, block.closed) == (30, True)
+
+
+def test_a_closer_indented_past_the_blockquote_content_is_content():
+    text = ">    ```\n" + ">    x\n" * 30 + ">       ```\n"
+    (block,) = rv.fenced_blocks(text)
+    assert (block.size, block.closed) == (31, False)

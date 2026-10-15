@@ -672,6 +672,9 @@ class _Fence:
     depth: int  # blockquote markers before the fence
     column: int  # display column of the fence characters (tabs to multiples of 4)
     marker: bool  # a list marker came before the fence
+    base: int  # content column of the innermost container (0 at the top level)
+    item_col: int  # content column of the last list item (0 without a list marker)
+    item_quotes: int  # blockquote markers before that list marker
     char: str
     length: int
     rest: str  # what follows the fence characters
@@ -682,10 +685,11 @@ def block_tier(lines: int) -> int:
     return _above(lines, R18_WARNING, R18_CRITICAL)
 
 
-def _scan_prefix(line: str) -> tuple[int, int]:
-    """(index after the blockquote markers and spaces, blockquote depth) for a line. A plain
-    left-to-right scan, never a backtracking pattern, so hostile whitespace cannot make it slow."""
-    index, depth, size = 0, 0, len(line)
+def _scan_prefix(line: str, start: int = 0) -> tuple[int, int]:
+    """(index after the blockquote markers and spaces, blockquote depth) for a line, read from
+    `start`. A plain left-to-right scan, never a backtracking pattern, so hostile whitespace cannot
+    make it slow."""
+    index, depth, size = start, 0, len(line)
     while index < size and depth <= _MAX_NESTING_PREFIX:
         if line[index] == ">":
             depth += 1
@@ -699,27 +703,68 @@ def _scan_prefix(line: str) -> tuple[int, int]:
     return index, depth
 
 
-def _indent(line: str) -> int:
-    """Display columns of the whitespace that starts the line."""
-    stripped = line.lstrip(" \t")
-    return len(line[: len(line) - len(stripped)].expandtabs(4))
+def _list_marker_end(line: str, index: int) -> int | None:
+    """The index after a list marker (`-`, `+`, `*`, digits then `.` or `)`) at `index`, or None."""
+    size = len(line)
+    if index >= size:
+        return None
+    if line[index] in "-+*":
+        return index + 1 if line[index + 1 : index + 2] in (" ", "\t") else None
+    end = index
+    while end < size and line[end].isdigit() and end - index < 9:
+        end += 1
+    if end > index and end < size and line[end] in ".)" and line[end + 1 : end + 2] in (" ", "\t"):
+        return end + 1
+    return None
+
+
+def _column(line: str, index: int) -> int:
+    """Display column of `index` (tabs to multiples of 4)."""
+    return len(line[:index].expandtabs(4))
+
+
+def _column_after_quotes(line: str, quotes: int) -> int:
+    """Display column of the first non-space character after at most `quotes` blockquote markers:
+    where the text of a list item that sits `quotes` levels into blockquotes starts on this line."""
+    index, seen, size = 0, 0, len(line)
+    while index < size:
+        if line[index] in " \t":
+            index += 1
+        elif line[index] == ">" and seen < quotes:
+            seen += 1
+            index += 1
+            if index < size and line[index] in " \t":
+                index += 1
+        else:
+            break
+    return _column(line, index)
+
+
+def _item_content_column(line: str, marker_end: int, index: int) -> int:
+    """Content column of a list item whose marker ends at `marker_end` and whose text starts at
+    `index`: one column past the marker plus the spaces after it, or just one past it when there are
+    five or more (the rest is indented code) or none."""
+    spaces = _column(line, index) - _column(line, marker_end)
+    return _column(line, marker_end) + (1 if index >= len(line) or spaces >= 5 else spaces)
 
 
 def _fence(line: str) -> _Fence | None:
-    """The fence a line starts, after blockquote markers and one list marker, or None."""
+    """The fence a line starts, after any blockquote and list markers, or None."""
     index, depth = _scan_prefix(line)
     size = len(line)
     marker = False
-    if index < size and line[index] in "-+*" and line[index + 1 : index + 2] in (" ", "\t"):
-        marker, index = True, index + 1
-    elif index < size and line[index].isdigit():
-        end = index
-        while end < size and line[end].isdigit() and end - index < 9:
-            end += 1
-        if end < size and line[end] in ".)" and line[end + 1 : end + 2] in (" ", "\t"):
-            marker, index = True, end + 1
-    while index < size and line[index] in " \t":
-        index += 1
+    item_col, item_quotes = 0, 0
+    for _ in range(_MAX_NESTING_PREFIX):
+        end = _list_marker_end(line, index)
+        if end is None:
+            break
+        marker, item_quotes = True, depth
+        text = end
+        while text < size and line[text] in " \t":
+            text += 1
+        item_col = _item_content_column(line, end, text)
+        index, more = _scan_prefix(line, end)
+        depth += more
     if index >= size or line[index] not in "`~":
         return None
     char = line[index]
@@ -728,8 +773,33 @@ def _fence(line: str) -> _Fence | None:
         run += 1
     if run - index < 3:
         return None
-    column = len(line[:index].expandtabs(4))
-    return _Fence(depth, column, marker, char, run - index, line[run:])
+    quote = line.rfind(">", 0, index)
+    quote_col = 0
+    if quote >= 0:  # the prefix holds only blockquote markers, spaces and list markers
+        after = quote + 1 + (1 if line[quote + 1 : quote + 2] in (" ", "\t") else 0)
+        quote_col = _column(line, after)
+    column = _column(line, index)
+    return _Fence(
+        depth,
+        column,
+        marker,
+        max(item_col, quote_col),
+        item_col,
+        item_quotes,
+        char,
+        run - index,
+        line[run:],
+    )
+
+
+def _closer_limit(opener: _Fence) -> int:
+    """The deepest column a closing fence may start at: three past the content column of its
+    innermost blockquote or list item (the document's column 0 at the top level). A fence deeper
+    than that with no container to explain it sits in a container this reading cannot see (a list
+    item continued by indentation), so its own column stands in for the content column."""
+    if opener.base == 0 and opener.column > 3:
+        return opener.column + 3
+    return opener.base + 3
 
 
 def _is_closer(candidate: _Fence | None, opener: _Fence) -> bool:
@@ -740,7 +810,7 @@ def _is_closer(candidate: _Fence | None, opener: _Fence) -> bool:
         and candidate.char == opener.char
         and candidate.length >= opener.length
         and not candidate.rest.strip()
-        and candidate.column <= opener.column + 3  # four or more columns deeper is content
+        and candidate.column <= _closer_limit(opener)
     )
 
 
@@ -750,7 +820,11 @@ def _container_ended(line: str, opener: _Fence) -> bool:
     item's content. The block then ends before it, unclosed, so what follows is read afresh."""
     if _scan_prefix(line)[1] < opener.depth:
         return True
-    return opener.marker and bool(line.strip()) and _indent(line) < opener.column
+    return (
+        opener.marker
+        and bool(line.strip())
+        and _column_after_quotes(line, opener.item_quotes) < opener.item_col
+    )
 
 
 def _parse_blocks(lines: list[str], *, indented_is_code: bool = False) -> list[FencedBlock]:
@@ -835,7 +909,14 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
             unmatched[block.content] -= 1
         else:
             new.append(block)
-    reported = [b for b in new if head_at[block_tier(b.size) - 1] > base_at[block_tier(b.size) - 1]]
+    budget = [head_at[0] - base_at[0], head_at[1] - base_at[1]]
+    chosen: set[int] = set()
+    for tier in (2, 1):  # the count rose by `budget[tier - 1]` at this tier: name that many blocks
+        for block in reversed([b for b in new if block_tier(b.size) == tier]):
+            if budget[tier - 1] > 0:
+                budget[tier - 1] -= 1
+                chosen.add(block.start)
+    reported = [b for b in new if b.start in chosen]
     if not reported:
         return ()
     rank = max(block_tier(b.size) for b in reported)
@@ -1273,7 +1354,9 @@ def check_escaping_paths(
                 severity="Critical",
                 rule=RULE_ESCAPING_PATH,
                 path=path,
-                evidence=f"`{_quote(site.target)}` resolves to {_quote(resolved)} and {why}{where}",
+                evidence=(
+                    f"`{_quote(site.target)}` resolves to `{_quote(resolved)}` and {why}{where}"
+                ),
                 remediation=(
                     "Point at the plugin-root references/, assets/ or scripts/ folder, or move "
                     "the shared file there; do not reach into docs/, a repo-root file or "
@@ -1319,9 +1402,29 @@ class ScriptGrant:
     line: int | None  # file line of the grant, None when it cannot be pinned down
 
 
-_RUN_WRAPPERS = ("env", "exec", "command", "time")  # run the next word directly all the same
+_RUN_WRAPPERS = ("env", "exec", "command", "time", "nohup", "nice")  # run the next word as is
+_WRAPPER_OPTIONS_WITH_VALUE = frozenset(
+    {"-a", "-u", "-C", "-S", "-f", "-o", "-n", "--unset", "--chdir", "--split-string", "--argv0"}
+)
+_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+_NUMBERED_NAME = re.compile(r":\d+$")  # reads as `path:line` to the gate
 _PLUGIN_ROOT_FORMS = ("${CLAUDE_PLUGIN_ROOT}/", "$CLAUDE_PLUGIN_ROOT/")
 _SKILL_DIR_FORMS = ("${CLAUDE_SKILL_DIR}/", "$CLAUDE_SKILL_DIR/")
+
+
+def _command_words(words: list[str]) -> list[str]:
+    """`words` without the leading wrappers, their options and `NAME=VALUE` assignments, so the
+    first word left is the program a shell runs (`env -i FOO=1 exec -a n x.sh` runs `x.sh`)."""
+    index = 0
+    while index < len(words):
+        word = words[index]
+        if word in _RUN_WRAPPERS or _ASSIGNMENT.match(word):
+            index += 1
+        elif word.startswith("-") and len(word) > 1:
+            index += 2 if word in _WRAPPER_OPTIONS_WITH_VALUE else 1
+        else:
+            break
+    return words[index:]
 
 
 def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) -> list[ScriptGrant]:
@@ -1341,11 +1444,10 @@ def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) ->
         if match is None or match.group(1) is None:
             continue
         words = match.group(1).strip().removesuffix(":*").split()
-        if words and words[0] in _RUN_WRAPPERS:
-            words = words[1:]
+        words = _command_words(words)
         if not words:
             continue
-        word = words[0].replace('"', "").replace("'", "")
+        word = words[0].replace('"', "").replace("'", "").rstrip(":")  # as R6 reads the word
         if word.startswith(_PLUGIN_ROOT_FORMS):
             folder, rest = plugin_root, word.split("/", 1)[1]
         elif skill_dir is not None and word.startswith(_SKILL_DIR_FORMS):
@@ -1406,7 +1508,12 @@ def check_executable_bits(
                     "`Permission denied`."
                 ),
                 line=grant.line,
-                components=(grant.script,),
+                # `run.sh:7` would read as `run.sh`, line 7: cite such a name as a whole path
+                components=(
+                    (f"{grant.script}{ANY_CHANGE_SUFFIX}",)
+                    if _NUMBERED_NAME.search(grant.script)
+                    else (grant.script,)
+                ),
                 confidence="high",
                 evidence_type="verifier_output",
                 rule_class="graph",
@@ -1416,11 +1523,40 @@ def check_executable_bits(
     return tuple(findings)
 
 
-def _modes(repo, paths: Sequence[str]) -> dict[str, bytes]:
-    """{path: git mode} for the paths present in HEAD's tree."""
+def _drop_unchanged_multiline_grants(
+    repo, base_sha: str, found: dict[str, list[ScriptGrant]], modes: dict[str, bytes]
+) -> None:
+    """Remove from `found` a grant that has no file line (it sits in a multi-line scalar) when the
+    base document holds the same grant and the script has the same mode there: the PR did not
+    cause it, and with no line the gate would blame every edit to the document for it. A grant the
+    base did not hold, or a script whose mode the PR changed, stays."""
+    pending = {doc: [g for g in grants if g.line is None] for doc, grants in found.items()}
+    pending = {doc: grants for doc, grants in pending.items() if grants}
+    if not pending:
+        return
+    base_texts, _ = _read_blobs(repo, sorted(pending), base_sha, missing_ok=True)
+    base_modes = _modes(repo, sorted({g.script for gs in pending.values() for g in gs}), base_sha)
+    for doc, unlined in pending.items():
+        try:
+            base_grants = script_grants(doc, *_frontmatter(base_texts[doc]))
+        except (KeyError, VerifierError):
+            continue  # no readable base document: every grant is the PR's
+        # A script's grants without a line are matched one for one, so a grant the PR adds beside an
+        # old one is still its own.
+        old_count = Counter(g.script for g in base_grants if g.line is None)
+        for grant in unlined:
+            if old_count[grant.script] > 0 and base_modes.get(grant.script) == modes.get(
+                grant.script
+            ):
+                old_count[grant.script] -= 1
+                found[doc].remove(grant)
+
+
+def _modes(repo, paths: Sequence[str], ref: str = "HEAD") -> dict[str, bytes]:
+    """{path: git mode} for the paths present in `ref`'s tree."""
     if not paths:
         return {}
-    tree = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", *paths)
+    tree = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", ref, "--", *paths)
     modes: dict[str, bytes] = {}
     for entry in tree.split(b"\0"):
         meta, _, raw_path = entry.partition(b"\t")
@@ -1896,7 +2032,7 @@ def check_removed_identifiers(
             continue
         files = sorted(counts)
         references = sum(counts.values())
-        listed = ", ".join(files[:_MAX_LISTED_REFERENCES])
+        listed = ", ".join(f"`{_quote(f)}`" for f in files[:_MAX_LISTED_REFERENCES])
         more = len(files) - _MAX_LISTED_REFERENCES
         findings.append(
             Finding(
@@ -2235,6 +2371,8 @@ def run_verifiers(
                 continue
             structure_checked.append(doc)
         modes = _modes(repo, sorted({g.script for grants in found.values() for g in grants}))
+        if base_sha is not None:
+            _drop_unchanged_multiline_grants(repo, base_sha, found, modes)
         for doc, grants in found.items():
             structure_findings.extend(check_executable_bits(doc, grants, modes))
     call_findings: list[Finding] = []
