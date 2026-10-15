@@ -232,7 +232,7 @@ def test_a_repeated_description_key_is_unverifiable_not_clean(git_repo, extra):
     )
     git_repo.write(SKILL, text)
     _commit(git_repo.root, "add")
-    _, measures = rv.run_verifiers(
+    _, measures, _ = rv.run_verifiers(
         git_repo.root, (ChangedPath(status="A", old_path=None, new_path=SKILL),)
     )
     assert _rules(measures.findings) == ["frontmatter-unverifiable"]
@@ -241,7 +241,7 @@ def test_a_repeated_description_key_is_unverifiable_not_clean(git_repo, extra):
 def test_a_non_string_description_is_unverifiable_not_clean(git_repo):
     git_repo.write(SKILL, "---\nname: demo\ndescription:\n  - " + "d" * 3000 + "\n---\nbody\n")
     _commit(git_repo.root, "add")
-    _, measures = rv.run_verifiers(
+    _, measures, _ = rv.run_verifiers(
         git_repo.root, (ChangedPath(status="A", old_path=None, new_path=SKILL),)
     )
     assert _rules(measures.findings) == ["frontmatter-unverifiable"]
@@ -264,7 +264,7 @@ def test_run_verifiers_returns_the_grant_and_measurement_outcomes(git_repo):
     git_repo.write(SKILL, _skill(lines=520))
     _commit(git_repo.root, "grow")
     change = (ChangedPath(status="M", old_path=SKILL, new_path=SKILL),)
-    grants, measures = rv.run_verifiers(git_repo.root, change, base)
+    grants, measures, _ = rv.run_verifiers(git_repo.root, change, base)
     assert (grants.name, measures.name) == ("grant-to-body", "measurement")
     assert grants.findings == ()
     assert _rules(measures.findings) == ["r13-skillmd-line-count"]
@@ -279,7 +279,7 @@ def test_run_verifiers_compares_with_the_base_of_a_renamed_file(git_repo):
     (git_repo.root / old).rename(git_repo.root / SKILL)
     _commit(git_repo.root, "rename")
     change = (ChangedPath(status="R", old_path=old, new_path=SKILL),)
-    _, measures = rv.run_verifiers(git_repo.root, change, base)
+    _, measures, _ = rv.run_verifiers(git_repo.root, change, base)
     assert measures.findings == ()
 
 
@@ -301,7 +301,7 @@ def test_a_rename_from_a_large_non_skill_file_is_measured_as_new(git_repo):
     (git_repo.root / reference).rename(git_repo.root / target)
     _commit(git_repo.root, "inline the reference")
     change = (ChangedPath(status="R", old_path=reference, new_path=target),)
-    _, measures = rv.run_verifiers(git_repo.root, change, base)
+    _, measures, _ = rv.run_verifiers(git_repo.root, change, base)
     assert "r13-skillmd-line-count" in _rules(measures.findings)
 
 
@@ -311,7 +311,7 @@ def test_a_skill_the_verifier_cannot_read_is_not_counted_as_measured(git_repo):
     (git_repo.root / SKILL).symlink_to(git_repo.root / "target.md")
     _commit(git_repo.root, "add")
     change = (ChangedPath(status="A", old_path=None, new_path=SKILL),)
-    grants, measures = rv.run_verifiers(git_repo.root, change)
+    grants, measures, _ = rv.run_verifiers(git_repo.root, change)
     assert measures.checked == () and grants.checked == ()
     assert _rules(measures.findings) == ["frontmatter-unverifiable"]
 
@@ -320,7 +320,7 @@ def test_a_skill_with_unreadable_frontmatter_is_not_counted_as_measured(git_repo
     git_repo.write(SKILL, "---\nname: [unclosed\n---\n" + "body\n" * 10)
     _commit(git_repo.root, "add")
     change = (ChangedPath(status="A", old_path=None, new_path=SKILL),)
-    grants, measures = rv.run_verifiers(git_repo.root, change)
+    grants, measures, _ = rv.run_verifiers(git_repo.root, change)
     assert measures.checked == () and grants.checked == ()
     assert _rules(measures.findings) == ["frontmatter-unverifiable"]
 
@@ -342,7 +342,7 @@ def test_run_verifiers_without_a_base_treats_every_file_as_new(git_repo):
     git_repo.write(SKILL, _skill(lines=520))
     _commit(git_repo.root, "add")
     change = (ChangedPath(status="A", old_path=None, new_path=SKILL),)
-    _, measures = rv.run_verifiers(git_repo.root, change)
+    _, measures, _ = rv.run_verifiers(git_repo.root, change)
     assert _rules(measures.findings) == ["r13-skillmd-line-count"]
 
 
@@ -399,7 +399,11 @@ def test_a_pr_that_grows_a_skill_past_the_limit_is_blocked(monkeypatch, git_repo
     assert finding["rule"] == "r13-skillmd-line-count"
     assert finding["rule_class"] == "measurement" and finding["source"] == "script"
     assert finding["gate"] == "block"
-    assert [v["name"] for v in payload["verifiers"]] == ["grant-to-body", "measurement"]
+    assert [v["name"] for v in payload["verifiers"]] == [
+        "grant-to-body",
+        "measurement",
+        "path-and-mirror",
+    ]
 
 
 def test_a_pr_that_only_touches_an_already_oversized_skill_is_not_blocked(

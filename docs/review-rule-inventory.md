@@ -84,7 +84,7 @@ rulebook rule that has several independent checks gets one id per check.
 | `r31-eval-fixture-integrity` | R31 | measurement | zero-match guard, anchored matching and coverage arithmetic in `evals.json` and smoke tests | `check_evals.py` (the iteration-registry check is not in the script) | existing | - |
 | `r32-data-only-boundary` | R32 | judgment | whether a skill that reads another component's output carries the boundary statement | none | model | - |
 | `r33-component-file-prefix` | R33 | line | a file basename without the plugin's registered prefix | `prefix_check.py`, wired into `check-all` | existing | - |
-| `r34-dead-reference` | R34 | graph | a relative link or `${CLAUDE_SKILL_DIR}` path that does not resolve | none | phase-2 | path-and-mirror |
+| `r34-dead-reference` | R34 | judgment | a link that resolves to nothing and is not an illustrative example; a script found 11 on the real tree and 10 were examples, so only a human or model can tell | none | model | - |
 | `r34-escaping-path` | R34 | graph | a path that leaves the skill folder into a folder the `.claude/` mirror does not carry | none | phase-2 | path-and-mirror |
 | `r35-standard-sections` | R35 | line | `Quick Start`, `When to Use`, `When NOT to Use` and, with `references/`, `Reference Guide` present | none | phase-2 | structure |
 | `r36-reciprocal-exclusion` | R36 | judgment | whether an exclusion pointer is named back where the domains overlap | none | model | - |

@@ -16,18 +16,21 @@ matches `Finding.rule` exactly.
 A file a verifier cannot read is never reported clean: it becomes a blocking `-unverifiable`
 finding, because otherwise a PR could keep a violation by making its file unreadable.
 
-Verifiers so far: `r6-bash-scope` (the frontmatter half of the grant-to-body family) and the
-measurement family, `r13-skillmd-line-count`, `r21-description-length` and
-`r18-code-block-line-count`. A measurement is compared
+Verifiers so far: `r6-bash-scope` (the frontmatter half of the grant-to-body family), the
+measurement family (`r13-skillmd-line-count`, `r21-description-length`,
+`r18-code-block-line-count`) and `r34-escaping-path` (the path family). A measurement is compared
 with the base, so only a PR that makes a value worse across a blocking threshold is blocked.
 """
 
 from __future__ import annotations
 
+import bisect
+import json
 import posixpath
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from urllib.parse import unquote
 
 import yaml
 
@@ -42,6 +45,8 @@ MEASUREMENT = "measurement"
 RULE_SKILLMD_LINES = "r13-skillmd-line-count"
 RULE_DESCRIPTION_LENGTH = "r21-description-length"
 RULE_CODE_BLOCK_LINES = "r18-code-block-line-count"
+RULE_ESCAPING_PATH = "r34-escaping-path"
+PATH_AND_MIRROR = "path-and-mirror"
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
 # is equivalent to unrestricted Bash. A test keeps this equal to that setting (R20).
@@ -702,12 +707,16 @@ def _container_ended(line: str, opener: _Fence) -> bool:
     return opener.marker and bool(line.strip()) and _indent(line) < opener.column
 
 
-def _parse_blocks(lines: list[str]) -> list[FencedBlock]:
+def _parse_blocks(lines: list[str], *, indented_is_code: bool = False) -> list[FencedBlock]:
     blocks: list[FencedBlock] = []
     index = 0
     while index < len(lines):
         opener = _fence(lines[index])
-        if opener is None or (opener.char == "`" and "`" in opener.rest):
+        if (
+            opener is None
+            or (opener.char == "`" and "`" in opener.rest)
+            or (indented_is_code and opener.depth == 0 and not opener.marker and opener.column >= 4)
+        ):
             index += 1
             continue
         end: int | None = None
@@ -732,17 +741,18 @@ def _parse_blocks(lines: list[str]) -> list[FencedBlock]:
     return blocks
 
 
-def fenced_blocks(text: str) -> list[FencedBlock]:
+def fenced_blocks(text: str, *, indented_is_code: bool = False) -> list[FencedBlock]:
     """The fenced code blocks of a markdown file, as CommonMark reads them: a fence of three or more
     backticks or tildes (after blockquote markers and a list marker), closed at the same blockquote
     depth by a fence of the same character that is at least as long, with no other text and not
     indented four or more columns past the opener; so a longer fence holds shorter ones as content.
     A block ends, unclosed, where its blockquote or list item ends, or at the end of the file. A
-    lone carriage return is a line break."""
+    lone carriage return is a line break. With `indented_is_code`, an unindented-context line
+    indented four or more columns is indented code, not a fence."""
     lines = _BLOCK_LINE_BREAK.split(text)
     if lines and lines[-1] == "":
         lines.pop()
-    return _parse_blocks(lines)
+    return _parse_blocks(lines, indented_is_code=indented_is_code)
 
 
 def _counted_blocks(text: str) -> list[FencedBlock]:
@@ -808,6 +818,222 @@ def check_code_blocks(path: str, text: str, base_text: str | None) -> tuple[Find
             source="script",
         ),
     )
+
+
+# --- R34: paths that leave the skill folder ---------------------------------------------------
+
+_SKILL_DOC = re.compile(
+    r"^plugins/([^/]+)/skills/([^/]+)/(?:SKILL\.md|references/[^/]+\.md)$", re.IGNORECASE
+)
+# Every quantifier below is bounded and possessive (no backtracking), and every pattern starts at a
+# fixed anchor, so a hostile line cannot make a scan quadratic. Paths longer than the bound are not
+# read as links, which no real path reaches.
+_LINK_DEST = re.compile(
+    r"\]\(\s{0,20}+(<[^>\n]{0,300}+>|[^)\s]{1,300}+)"
+    r"(?:\s{1,20}+(?:\"[^\"\n]{0,300}+\"|'[^'\n]{0,300}+'|\([^)\n]{0,300}+\)))?+\s{0,20}+\)"
+)
+_REF_DEF = re.compile(r"^ {0,3}+\[[^\]\n]{1,300}+\]:\s{0,20}+(<[^>\n]{0,300}+>|\S{1,300}+)")
+_HTML_ATTR = re.compile(r"\b(?:href|src)\s{0,5}+=\s{0,5}+[\"']?+([^\"'\s>]{1,300}+)")
+_SKILL_DIR_PATH = re.compile(r"\$\{CLAUDE_SKILL_DIR\}/([A-Za-z0-9._~/%+@-]{0,300}+)")
+_BACKTICK_RUN = re.compile(r"`+")
+_SKILL_DIR_PREFIX = "${CLAUDE_SKILL_DIR}/"
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+_MIRRORED_ROOT_FOLDERS = ("references", "assets")
+
+
+class RepoTree:
+    """The files (and so the folders) of a commit, for existence checks, kept as one sorted list so
+    a tree of very deep paths costs no more memory than its file names."""
+
+    def __init__(self, files: Iterable[str]) -> None:
+        self._files = sorted(set(files))
+
+    def exists(self, path: str) -> bool:
+        index = bisect.bisect_left(self._files, path)
+        if index < len(self._files) and self._files[index] == path:
+            return True
+        below = bisect.bisect_left(self._files, path + "/")
+        return below < len(self._files) and self._files[below].startswith(path + "/")
+
+
+def _strip_code_spans(line: str) -> str:
+    """The line with inline code spans blanked out. A span opens at a run of backticks and closes at
+    the next run of exactly the same length (CommonMark), found in one pass over the runs."""
+    runs = [(m.start(), m.end()) for m in _BACKTICK_RUN.finditer(line)]
+    if not runs:
+        return line
+    next_same: list[int | None] = [None] * len(runs)
+    latest: dict[int, int] = {}
+    for position in range(len(runs) - 1, -1, -1):
+        length = runs[position][1] - runs[position][0]
+        next_same[position] = latest.get(length)
+        latest[length] = position
+    pieces: list[str] = []
+    cursor = 0
+    position = 0
+    while position < len(runs):
+        closing = next_same[position]
+        if closing is None:
+            position += 1
+            continue
+        pieces.append(line[cursor : runs[position][0]])
+        pieces.append(" ")
+        cursor = runs[closing][1]
+        position = closing + 1
+    pieces.append(line[cursor:])
+    return "".join(pieces)
+
+
+def _obfuscated(written: str, *, from_skill_dir: bool, lands_inside: bool) -> bool:
+    """A path that climbs only to come back: a `..` that follows a real segment
+    (`references/../SKILL.md`, wherever it lands), or a `${CLAUDE_SKILL_DIR}` path that starts with
+    `..` and still ends up inside the skill folder. Leading `..` segments are normal navigation."""
+    segments = [part for part in written.split("/") if part not in ("", ".")]
+    if from_skill_dir and lands_inside and segments[:1] == [".."]:
+        return True
+    return any(
+        part == ".." and index > 0 and segments[index - 1] != ".."
+        for index, part in enumerate(segments)
+    )
+
+
+def _resolve(
+    path: str, target: str, skill_dir: str, tree: RepoTree
+) -> tuple[str, str, bool] | None:
+    """(resolved path, normalized target, written through ${CLAUDE_SKILL_DIR}) for a target that
+    points at something that exists, else None: URLs, anchors, placeholders and dead links are not
+    this rule's business. A target is read the way a person following it would: an angle-bracket
+    destination is unwrapped, percent escapes and backslash separators are undone, the fragment and
+    query are dropped, and a leading `/` is a repo-root path."""
+    target = target.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1].strip()
+    target = unquote(target).replace("\\", "/")
+    target = target.split("#", 1)[0].split("?", 1)[0]
+    if not target or _SCHEME.match(target) or any(c in target for c in "<>*"):
+        return None
+    if "..." in target.split("/"):
+        return None
+    if target.startswith(_SKILL_DIR_PREFIX):
+        rest = target[len(_SKILL_DIR_PREFIX) :]
+        resolved = posixpath.normpath(f"{skill_dir}/{rest}")
+        found = not resolved.startswith("..") and tree.exists(resolved)
+        return (resolved, rest, True) if found else None
+    if any(c in target for c in "{}$"):
+        return None
+    if target.startswith("/"):
+        at_root = posixpath.normpath(target.lstrip("/"))
+        found = not at_root.startswith("..") and tree.exists(at_root)
+        return (at_root, target.lstrip("/"), False) if found else None
+    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
+    if not resolved.startswith("..") and tree.exists(resolved):
+        return resolved, target, False
+    at_root = posixpath.normpath(target)  # a repo-root path such as `.github/x.md`
+    if not at_root.startswith("..") and tree.exists(at_root):
+        return at_root, target, False
+    return None
+
+
+def _unreadable_finding(path: str, reason: str) -> Finding:
+    """A blocking finding for a skill document the path check could not read: otherwise a PR could
+    keep an escaping link by making its file a symlink or oversized."""
+    return Finding(
+        reviewer=VERIFIER_REVIEWER,
+        severity="Major",
+        rule=RULE_ESCAPING_PATH,
+        path=path,
+        evidence=f"the links of this file could not be checked: {reason}",
+        remediation="Replace the symlink or oversized file with a regular file of normal size.",
+        line=None,
+        confidence="high",
+        evidence_type="verifier_output",
+        rule_class="graph",
+        source="script",
+    )
+
+
+def check_escaping_paths(
+    path: str, text: str, tree: RepoTree, scripts_mirrors: frozenset[str]
+) -> tuple[Finding, ...]:
+    """R34 (`r34-escaping-path`): a link or `${CLAUDE_SKILL_DIR}` path in a skill's SKILL.md or
+    references/*.md that resolves outside the skill folder may land only in the plugin root's
+    references/ or assets/, or scripts/ for a plugin in `scripts_mirrors` (the base's list).
+    Anything else, and a path that climbs only to come back, is a Critical finding on the line that
+    holds it. Links are read in their Markdown forms (inline with a title, `<...>`, reference
+    definitions), HTML `href`/`src` and `${CLAUDE_SKILL_DIR}` paths. Dead links are deliberately not
+    checked: on the real tree 10 of 11 were illustrative examples that only a human can tell from a
+    real miss. Fenced blocks and inline code spans are skipped (a `${CLAUDE_SKILL_DIR}` path is read
+    even in code, as the rulebook says)."""
+    scope = _SKILL_DOC.match(path)
+    if scope is None:
+        return ()
+    plugin_root = f"plugins/{scope.group(1)}"
+    skill_dir = f"{plugin_root}/skills/{scope.group(2)}"
+    folders = [f"{plugin_root}/{name}" for name in _MIRRORED_ROOT_FOLDERS]
+    if scope.group(1) in scripts_mirrors:
+        folders.append(f"{plugin_root}/scripts")
+    fenced: set[int] = set()
+    for block in fenced_blocks(text, indented_is_code=True):
+        fenced.update(range(block.start, block.end + 1))
+    unnumbered = re.search(r"\r(?!\n)", text) is not None  # lone CRs make line numbers unreliable
+    findings: list[Finding] = []
+    seen: set[tuple[int, str]] = set()
+    for number, line in enumerate(_BLOCK_LINE_BREAK.split(text), 1):
+        if number in fenced:
+            continue
+        prose = _strip_code_spans(line)
+        targets = [m.group(1) for m in _LINK_DEST.finditer(prose)]
+        targets += [m.group(1) for m in _HTML_ATTR.finditer(prose)]
+        targets += [m.group(1) for m in _REF_DEF.finditer(line)]
+        targets += [
+            _SKILL_DIR_PREFIX + m.group(1).rstrip(".,;:!?") for m in _SKILL_DIR_PATH.finditer(line)
+        ]
+        for target in targets:
+            found = _resolve(path, target, skill_dir, tree)
+            if found is None or (number, found[0]) in seen:
+                continue
+            resolved, written, from_skill_dir = found
+            inside = resolved == skill_dir or resolved.startswith(skill_dir + "/")
+            allowed = any(resolved == f or resolved.startswith(f + "/") for f in folders)
+            if _obfuscated(written, from_skill_dir=from_skill_dir, lands_inside=inside):
+                why = "climbs only to come back (an obfuscated path)"
+            elif not inside and not allowed:
+                why = "leaves the skill folder for a place the .claude/ mirror does not carry"
+            else:
+                continue
+            seen.add((number, resolved))
+            findings.append(
+                Finding(
+                    reviewer=VERIFIER_REVIEWER,
+                    severity="Critical",
+                    rule=RULE_ESCAPING_PATH,
+                    path=path,
+                    evidence=f"`{_quote(target)}` resolves to {_quote(resolved)} and {why}",
+                    remediation=(
+                        "Point at the plugin-root references/, assets/ or scripts/ folder, or move "
+                        "the shared file there; do not reach into docs/, a repo-root file or "
+                        "another skill's folder."
+                    ),
+                    line=None if unnumbered else number,
+                    confidence="high",
+                    evidence_type="verifier_output",
+                    rule_class="graph",
+                    source="script",
+                )
+            )
+    return tuple(findings)
+
+
+def _scripts_mirrors(repo, ref: str) -> frozenset[str]:
+    """The plugins whose scripts/ folder the `.claude/` mirror carries, read from `ref`'s copy of
+    `.claude/marketplace-sync.json` (the base, so a PR cannot widen its own allowed folders). A
+    missing or unreadable file allows none, which only produces more findings."""
+    texts, _ = _read_blobs(repo, [".claude/marketplace-sync.json"], ref, missing_ok=True)
+    try:
+        names = json.loads(texts[".claude/marketplace-sync.json"])["scripts_mirrors"]
+        return frozenset(n for n in names if isinstance(n, str))
+    except (KeyError, TypeError, ValueError):
+        return frozenset()
 
 
 # --- running the verifiers over a change set --------------------------------------------------
@@ -956,11 +1182,33 @@ def run_verifiers(
                 measure_checked.append(path)
         except VerifierError as exc:
             measure_findings.append(unverifiable_finding(path, str(exc)))
+    path_findings: list[Finding] = []
+    path_checked: list[str] = []
+    doc_paths = sorted(
+        {c.new_path for c in changed if c.new_path is not None and _SKILL_DOC.match(c.new_path)}
+    )
+    if doc_paths:
+        doc_texts, doc_problems = _read_blobs(repo, doc_paths)
+        tree = RepoTree(
+            name.decode("utf-8", errors="surrogateescape")
+            for name in _run_git(repo, "ls-tree", "-r", "-z", "--name-only", "HEAD").split(b"\0")
+            if name
+        )
+        mirrors = _scripts_mirrors(repo, base_sha or "HEAD")
+        for path in doc_paths:
+            if path in doc_problems:
+                path_findings.append(_unreadable_finding(path, doc_problems[path]))
+                continue
+            path_findings.extend(check_escaping_paths(path, doc_texts[path], tree, mirrors))
+            path_checked.append(path)
     return (
         VerifierOutcome(
             name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
         ),
         VerifierOutcome(
             name=MEASUREMENT, findings=tuple(measure_findings), checked=tuple(measure_checked)
+        ),
+        VerifierOutcome(
+            name=PATH_AND_MIRROR, findings=tuple(path_findings), checked=tuple(path_checked)
         ),
     )
