@@ -259,7 +259,61 @@ def test_an_unreadable_skill_in_a_touched_plugin_does_not_hide_the_others(git_re
     git_repo.write(SKILL, _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)"))
     _commit(git_repo.root, "add")
     outcome = _outcome(git_repo, (ChangedPath("A", None, SKILL),))
-    assert [f.rule for f in outcome.findings] == ["r37-executable-bit"]
+    assert sorted(f.path for f in outcome.findings) == [
+        "plugins/demo-kit/skills/broken/SKILL.md",
+        SKILL,
+    ]
+    assert {f.rule for f in outcome.findings} == {"r37-executable-bit"}
+
+
+# A security pass found that a chmod-only PR passed unseen when an unchanged grant document of the
+# plugin could not be read: the skipped document might hold the very grant the chmod breaks.
+
+BROKEN = "plugins/demo-kit/skills/broken/SKILL.md"
+
+
+def _broken_doc(git_repo, symlink=False):
+    if symlink:
+        git_repo.write("elsewhere.md", "x")
+        (git_repo.root / "plugins/demo-kit/skills/broken").mkdir(parents=True)
+        (git_repo.root / BROKEN).symlink_to(git_repo.root / "elsewhere.md")
+    else:
+        git_repo.write(BROKEN, "---\nname: [unclosed\n---\n")
+
+
+@pytest.mark.parametrize("symlink", [False, True])
+def test_an_unreadable_unchanged_doc_is_reported_and_cites_the_plugins_changed_paths(
+    git_repo, symlink
+):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
+    _broken_doc(git_repo, symlink)
+    base = _commit(git_repo.root, "base")
+    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _commit(git_repo.root, "chmod")
+    outcome = _outcome(git_repo, (ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT),), base)
+    (finding,) = outcome.findings
+    assert finding.rule == "r37-executable-bit" and finding.path == BROKEN
+    assert finding.line is None and finding.components == (PLUGIN_SCRIPT,)
+    assert BROKEN not in outcome.checked
+
+
+def test_a_changed_doc_the_grant_verifier_already_refuses_is_not_reported_twice(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
+    _broken_doc(git_repo)
+    _commit(git_repo.root, "add")
+    outcome = _outcome(git_repo, (ChangedPath("A", None, BROKEN),))
+    assert outcome.findings == ()
+
+
+def test_a_plugin_with_too_many_changes_to_cite_fails_closed_when_a_doc_is_unreadable(git_repo):
+    _broken_doc(git_repo)
+    _commit(git_repo.root, "add")
+    changed = tuple(
+        ChangedPath("M", f"plugins/demo-kit/scripts/s{n}.sh", f"plugins/demo-kit/scripts/s{n}.sh")
+        for n in range(rv.MAX_CITED_PATHS + 1)
+    )
+    with pytest.raises(RuntimeError, match="too many"):
+        rv.run_verifiers(git_repo.root, changed, "0" * 40)
 
 
 # --- run-codex-review wiring ------------------------------------------------------------------
@@ -310,3 +364,30 @@ def test_a_chmod_alone_blocks_the_run(monkeypatch, git_repo, tmp_path):
     assert rc == 1
     (finding,) = [f for f in payload["findings"] if f["rule"] == "r37-executable-bit"]
     assert finding["gate"] == "block" and finding["severity"] == "Critical"
+
+
+def test_a_chmod_alone_blocks_the_run_even_when_an_unchanged_doc_cannot_be_read(
+    monkeypatch, git_repo, tmp_path
+):
+    for name in ROSTER:
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
+    _broken_doc(git_repo)
+    base = _commit(git_repo.root, "base")
+    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _commit(git_repo.root, "chmod")
+    real_run = subprocess.run
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess.CompletedProcess(argv, returncode=0, stdout=CLEAN, stderr=b"")
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "result.json"
+    rc = main(["run-codex-review", "--base-sha", base, "--output", str(out)])
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert rc == 1
+    (finding,) = [f for f in payload["findings"] if f["rule"] == "r37-executable-bit"]
+    assert finding["gate"] == "block" and finding["path"] == BROKEN

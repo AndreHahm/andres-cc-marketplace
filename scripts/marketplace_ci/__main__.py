@@ -1103,7 +1103,8 @@ def _instructions_dir_problem(path: Path, repo: Path, output: str | None) -> str
 
 def _verifier_result(outcome) -> dict:
     """One verifier's entry in the result file. A file it could not read is a finding of its own, so
-    `clean` always means every candidate file was read and judged."""
+    `clean` always means every candidate file was read and judged (except that `structure` leaves a
+    changed grant document the parser refuses to `grant-to-body`, which reports it)."""
     return {
         "name": outcome.name,
         "status": "findings" if outcome.findings else "clean",
