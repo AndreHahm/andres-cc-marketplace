@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -17,7 +18,7 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import child_env, parse_skill_md
 
 
 def _pump_stdout(stream, out_queue: "queue.Queue[bytes]") -> None:
@@ -89,14 +90,21 @@ def run_single_query(
             "stream-json",
             "--verbose",
             "--include-partial-messages",
+            # Triggering is detected from Skill/Read tool calls only; the skill under
+            # test is untrusted text, so the child gets no shell, edit or network tools.
+            "--tools",
+            "Skill,Read",
+            # --tools names built-in tools only; this also keeps MCP servers (user,
+            # project or IDE) out of the child.
+            "--strict-mcp-config",
         ]
         if model:
             cmd.extend(["--model", model])
 
-        # Remove CLAUDECODE env var to allow nesting claude -p inside a
-        # Claude Code session. The guard is for interactive terminal conflicts;
-        # programmatic subprocess usage is safe.
-        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        # child_env() drops CLAUDECODE (allowing claude -p nested inside a Claude Code
+        # session; the guard is for interactive terminal conflicts) and withholds
+        # credentials the child does not need.
+        env = child_env()
 
         process = subprocess.Popen(
             cmd,
@@ -211,6 +219,10 @@ def run_eval(
     model: str | None = None,
 ) -> dict:
     """Run the full eval set and return results."""
+    # skill_name comes from the untrusted SKILL.md and becomes part of a file path below;
+    # failing here keeps run_single_query's swallowed-exception path from hiding it.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", skill_name):
+        raise ValueError(f"unsafe skill name {skill_name!r}: use letters, digits, '-' and '_'")
     results = []
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
