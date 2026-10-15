@@ -863,6 +863,28 @@ def test_a_model_variable_the_workflow_does_not_export_is_not_used(repo, tmp_pat
     assert "model variable: the contract names CODEX_KIT_OTHER_MODEL" in result.stdout
 
 
+def test_no_model_variable_is_passed_when_the_workflow_exports_neither_name(repo, tmp_path):
+    """The workflow renamed the variable and the contract still names another one: parity cannot
+    know which variable CI reads, so it passes none and says so, rather than guessing a name."""
+    workflow = repo / ".github/workflows/marketplace-ci.yml"
+    workflow.write_text(
+        workflow.read_text(encoding="utf-8").replace(
+            "CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_THIRD_MODEL"
+        ),
+        encoding="utf-8",
+    )
+    (repo / CONTRACT_FILE).write_text(
+        CONTRACT.replace("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL"), encoding="utf-8"
+    )
+    result, args, uv_env = _run(repo, tmp_path)
+    assert result.returncode == 0 and args
+    for name in ("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL", "CODEX_KIT_THIRD_MODEL"):
+        assert f"{name}=" not in uv_env
+    assert "exports neither" in result.stdout
+    assert "not a prediction of CI's result" in result.stdout
+    assert "model: the local default, not CI's" in result.stdout
+
+
 def test_a_model_variable_the_workflow_exports_is_used(repo, tmp_path):
     workflow = repo / ".github/workflows/marketplace-ci.yml"
     workflow.write_text(

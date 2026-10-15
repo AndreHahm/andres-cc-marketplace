@@ -245,7 +245,8 @@ the model. The workflow cannot import the contract, so its `npm install -g @open
 a second copy of the version; a test fails if the two differ. The parity wrapper compares the local Codex CLI
 with the workflow's pin, since that is what CI installs, and reads the contract's pin and variable name as
 data (it parses the source, it does not import it) only to catch drift: a contract that disagrees with the
-workflow is reported as a difference, and a model variable the workflow does not export is not used. It falls
+workflow is reported as a difference, and a model variable the workflow does not export is not used (if
+the workflow exports neither the contract's name nor `CODEX_KIT_REVIEW_MODEL`, no model variable is passed). It falls
 back to the workflow alone for a checkout that has no contract. Because it runs the same entry point from the
 same checkout, it uses the same roster, severity scale and registry as CI. It says plainly when a run is
 not a prediction of CI's result: a different Codex CLI version, an unset model (the local default is

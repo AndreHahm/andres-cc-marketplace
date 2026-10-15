@@ -254,7 +254,7 @@ def main() -> int:
     # CI installs the workflow's pin and exports the workflow's model variable, so those are what
     # parity matches. The contract is a second copy that a test keeps equal; a disagreement is a
     # branch mid-change and is reported as a difference of its own, never adopted silently.
-    model_variable = MODEL_VARIABLE
+    model_variable: str | None = MODEL_VARIABLE
     differences: list[str] = []
     contract_file = Path(CONTRACT)
     if contract_file.is_file():
@@ -277,14 +277,21 @@ def main() -> int:
             differences.append(f"review contract pins {contract_pin}, workflow installs {pin}")
         if workflow_exports_model_variable(workflow_text, contract_variable):
             model_variable = contract_variable
-        else:
+        elif workflow_exports_model_variable(workflow_text, MODEL_VARIABLE):
             print(
                 f"PARITY WARNING: the review contract names {contract_variable} as the model "
-                f"variable but the workflow does not export it; using {MODEL_VARIABLE}, as CI does."
+                f"variable but the workflow exports {MODEL_VARIABLE}; using {MODEL_VARIABLE}."
             )
             differences.append(
                 f"model variable: the contract names {contract_variable}, "
                 f"the workflow exports {MODEL_VARIABLE}"
+            )
+        else:
+            # Guessing a name here would query a variable CI may never read.
+            model_variable = None
+            print(
+                f"PARITY WARNING: the workflow exports neither {contract_variable} (the review "
+                f"contract's model variable) nor {MODEL_VARIABLE}; no model variable is passed."
             )
     else:
         print("PARITY WARNING: no review contract in this checkout; using the workflow's pin.")
@@ -376,13 +383,16 @@ def main() -> int:
             f"PARITY: timeout {timeout_ms} ms (workflow fallback; "
             f"{TIMEOUT_VARIABLE} unset or unreadable)."
         )
-    model = resolve_model(model_variable)
-    if model:
+    model = resolve_model(model_variable) if model_variable else None
+    if model_variable and model:
         env[model_variable] = model
         print(f"PARITY: model {model} (from repository variable {model_variable}).")
     else:
-        env.pop(model_variable, None)
-        print(f"PARITY WARNING: {model_variable} unset or unreadable; using the local default.")
+        env.pop(model_variable or MODEL_VARIABLE, None)
+        if model_variable:
+            print(f"PARITY WARNING: {model_variable} unset or unreadable; using the local default.")
+        else:
+            print("PARITY WARNING: no model variable known for CI; using the local default.")
         differences.append("model: the local default, not CI's")
     if differences:
         print(
