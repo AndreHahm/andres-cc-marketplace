@@ -481,7 +481,7 @@ def test_the_findings_are_deterministic():
 
 
 def _commit(root: Path, message: str) -> str:
-    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(["git", "add", "-A", "-f"], cwd=root, check=True)
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=root, check=True)
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
@@ -794,6 +794,9 @@ def test_a_registry_entry_suppresses_a_script_finding(monkeypatch, git_repo, tmp
         "Bash(/usr/bin/env sh:*)",
         "Bash(exec -a name bash:*)",
         "Bash(nohup bash:*)",
+        "Bash(env:*)",
+        "Bash(time:*)",
+        "Bash(env env:*)",
     ],
 )
 def test_a_wrapper_in_front_of_an_interpreter_is_still_an_interpreter_grant(grant):
@@ -807,7 +810,6 @@ def test_a_wrapper_in_front_of_an_interpreter_is_still_an_interpreter_grant(gran
         "Bash(FOO=1 bash scripts/x.sh:*)",
         "Bash(env git:*)",
         "Bash(env FOO=1 ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
-        "Bash(env:*)",
     ],
 )
 def test_a_wrapper_in_front_of_a_pinned_script_or_a_named_tool_passes(grant):
@@ -848,3 +850,39 @@ def test_quoted_escaped_and_case_variant_wrappers_and_long_options_are_read(gran
 @pytest.mark.parametrize("grant", ["Bash(*\u00a0*)", "Bash(* *)"])
 def test_odd_whitespace_between_wildcards_is_a_finding_not_a_crash(grant):
     assert len(rv.check_bash_scope(SKILL, _skill(grant))) == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env '-i' bash:*)",
+        "Bash(env \\-i bash:*)",
+        "Bash(env 'FOO=1' bash:*)",
+        "Bash(FOO='a b' bash:*)",
+        "Bash(env -iS bash:*)",
+        "Bash(env --split=bash:*)",
+        "Bash(env --sp=bash:*)",
+        "Bash(env --not-an-option bash:*)",
+    ],
+)
+def test_a_wrapper_word_this_check_cannot_read_makes_the_grant_unverifiable(grant):
+    with pytest.raises(rv.VerifierError):
+        rv.check_bash_scope(SKILL, _skill(grant))
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env - bash:*)",
+        "Bash(env -P /x bash:*)",
+        "Bash(nice -5 bash:*)",
+        "Bash(env --ignore-environment bash:*)",
+        "Bash(env --unset=NAME bash:*)",
+    ],
+)
+def test_known_wrapper_options_are_skipped_and_the_shell_behind_them_is_found(grant):
+    assert len(rv.check_bash_scope(SKILL, _skill(grant))) == 1
+
+
+def test_a_known_wrapper_option_in_front_of_a_named_tool_passes():
+    assert rv.check_bash_scope(SKILL, _skill("Bash(nice -5 git status:*)")) == ()

@@ -380,7 +380,9 @@ line, like any other finding) and a registry entry can suppress it; a model find
   `.github/pull_request_template.md`), which are notices until a PR touches those lines. Accepted: a PR that
   removes a plugin from `scripts_mirrors` and links to its scripts in the same change passes (the base still
   lists it; the file is a governance path a maintainer reviews), and a dead link a later PR makes live is not
-  caught by the PR that creates the target. Also accepted, because they depend on one renderer's reading: where
+  caught by the PR that creates the target when the document is not otherwise changed (when it is, the base
+  text is read against the HEAD tree, so the old line is kept, and the finding still cites the target the PR
+  added, which makes it the PR's; a test pins this). Also accepted, because they depend on one renderer's reading: where
   `markdown-it-py` and GitHub's `cmark-gfm` disagree on block structure (for example `<search>` is a block
   tag in CommonMark 0.31 and a plain paragraph start in GitHub's older spec), HTML attributes other than
   those listed (`xlink:href`, `background`, `formaction`, `<meta http-equiv=refresh>`), a path written in
@@ -456,7 +458,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   finds nothing. **Accepted, and stated here so the claim stays honest:** a call written with an escape,
   entity or emphasis (`Skill\(x)`, `**Skill**(x)`) or with a homoglyph (the literal syntax is the contract; a
   looser one would flag `skill(s)` in prose), `references/*.md` files (which hold calls on the real tree but
-  are not components), the frontmatter ending early at an indented `...` inside a block scalar, a path matched
+  are not components), the frontmatter ending early at an unindented `...` inside a block scalar, a path matched
   case-insensitively while Claude Code may load only `SKILL.md`, an agent named by its file name while Claude
   Code uses the frontmatter name, two plugins with a component of the same name (they share call history; the
   flat `.claude/` mirror forces unique names), nested command directories (`sub:x` is skipped as a prefix),
@@ -515,9 +517,11 @@ line, like any other finding) and a registry entry can suppress it; a model find
   `pwsh` and other interpreters are outside it. A shell behind a wrapper (`env bash:*`, `FOO=1 bash:*`,
   `/usr/bin/env sh:*`) is read as the shell, using the wrapper list R37 uses (`env`, `exec`, `command`,
   `time`, `nohup`, `nice`, also quoted, by absolute path or in another case; a step beyond R6's text). A
-  wrapper option that hides the program (`env -S`, or options with nothing after them) makes the file
-  unverifiable, which blocks. Not judged: a bare `env:*`, other wrappers (`timeout`, `sudo`, `xargs`,
-  `setsid`, `stdbuf`, `ionice`, `chroot`), and `command -v bash`, which is flagged although it only looks the
+  wrapper word the check cannot read makes the file unverifiable, which blocks: an option outside its table
+  (`env -S`, a clustered or abbreviated option), a quoted or escaped option or assignment, or options with
+  nothing after them. A bare wrapper grant (`env:*`, `time:*`) lets the caller name any program
+  after it, so it is reported like an interpreter. Not judged: other wrappers (`timeout`, `sudo`, `xargs`,
+  `setsid`, `stdbuf`, `ionice`, `chroot`); `command -v bash` is flagged although it only looks the
   program up. Also outside it is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
   `forbidden_bash_scopes` and to the verifier together, keeping the settings-equality test). It reads the

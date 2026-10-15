@@ -470,3 +470,21 @@ def test_a_symlinked_component_directory_is_a_blocking_finding(git_repo):
     (finding,) = outcome.findings
     assert finding.rule == RULE and finding.path == "plugins/demo-kit/skills/foo"
     assert "symlink" in finding.evidence
+
+
+def test_a_call_after_a_fence_with_a_leading_space_is_a_call_because_that_is_not_frontmatter():
+    assert _calls(" ---\nSkill(nope)\n---\n") == [("skill", "nope", 2)]
+
+
+def test_a_call_inside_real_frontmatter_after_a_bom_is_not_a_call():
+    text = "﻿---\nname: x\ndescription: 'Use Skill(nope)'\n---\nBody.\n"
+    assert _calls(text) == []
+
+
+def test_a_call_in_the_body_after_bom_frontmatter_keeps_its_file_line():
+    text = "﻿---\nname: x\ndescription: d\n---\nSee Skill(b).\n"
+    assert _calls(text) == [("skill", "b", 5)]
+
+
+def test_a_fence_made_of_lone_carriage_returns_does_not_hide_a_call():
+    assert _calls("---\rSkill(evil)\r---\n") == [("skill", "evil", None)]

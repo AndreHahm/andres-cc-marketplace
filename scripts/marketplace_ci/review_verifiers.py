@@ -360,9 +360,12 @@ def _bash_grant_problem(token: str) -> str | None:
     if not command.strip("*? \t"):
         return f"grants `{_quote(token)}`, unrestricted Bash"
     words = command.split()
-    # `env bash:*` and `FOO=1 bash:*` run the interpreter all the same; a bare wrapper (`env:*`) has
-    # no program to read, so it stays as written
-    words = _command_words(words) or words
+    # `env bash:*` and `FOO=1 bash:*` run the interpreter all the same, and a bare wrapper
+    # (`env:*`, `time:*`) lets the caller name any program after it: as open as an interpreter
+    program = _command_words(words)
+    if not program:
+        return f"grants `{_quote(token)}`, a command wrapper with no pinned program"
+    words = program
     first = words[0].rstrip(":")
     variable = _PLUGIN_VARIABLE.match(first)
     plain = first[variable.end() :] if variable else first  # `${CLAUDE_PLUGIN_ROOT}/scripts/x.sh`
@@ -1125,9 +1128,11 @@ def _frontmatter_blanked(lines: list[str]) -> str | None:
     """The text with a leading YAML frontmatter block emptied (keeping every line number), or None.
     GitHub and Claude Code split the frontmatter off, so markup inside it must not decide how the
     body is read."""
-    if lines and lines[0].strip() == "---":
+    # The fence is read as `_frontmatter` reads it (a leading BOM allowed, no leading space), so a
+    # line the renderer takes for body text is never blanked out of the call graph.
+    if lines and lines[0].removeprefix("\ufeff").rstrip(" \t") == "---":
         for index in range(1, len(lines)):
-            if lines[index].strip() in ("---", "..."):
+            if lines[index].rstrip(" \t") in ("---", "..."):
                 return "\n".join([""] * (index + 1) + lines[index + 1 :])
     return None
 
@@ -1406,22 +1411,17 @@ class ScriptGrant:
 
 
 _RUN_WRAPPERS = ("env", "exec", "command", "time", "nohup", "nice")  # run the next word as is
-_WRAPPER_OPTIONS_WITH_VALUE = frozenset(
-    {
-        "-a",
-        "-u",
-        "-C",
-        "-f",
-        "-o",
-        "-n",
-        "--unset",
-        "--chdir",
-        "--argv0",
-        "--adjustment",
-        "--format",
-        "--output",
-    }
+# Options a wrapper can take. Anything else before the program makes the grant unverifiable, so an
+# option this table does not know can never be read as the program (fail closed).
+_WRAPPER_FLAGS = frozenset(
+    {"-", "--", "-i", "-0", "-v", "-V", "-p", "-c", "-l"}
+    | {"--ignore-environment", "--null", "--debug", "--verbose", "--portability", "--append"}
 )
+_WRAPPER_OPTIONS_WITH_VALUE = frozenset(
+    {"-a", "-u", "-C", "-f", "-o", "-n", "-P", "-L", "-U"}
+    | {"--unset", "--chdir", "--argv0", "--adjustment", "--format", "--output"}
+)
+_NICE_LEVEL = re.compile(r"-\d+")  # `nice -5`
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 _NUMBERED_NAME = re.compile(r":\d+$")  # reads as `path:line` to the gate
 _PLUGIN_ROOT_FORMS = ("${CLAUDE_PLUGIN_ROOT}/", "$CLAUDE_PLUGIN_ROOT/")
@@ -1441,24 +1441,35 @@ def _wrapper_name(word: str) -> str:
 
 def _command_words(words: list[str]) -> list[str]:
     """`words` without the leading wrappers, their options and `NAME=VALUE` assignments, so the
-    first word left is the program a shell runs (`env -i FOO=1 exec -a n x.sh` runs `x.sh`). Raises
-    VerifierError when the program cannot be told: `env -S` runs a command string, and options or
-    assignments with nothing after them leave no program to read. A bare wrapper (`env`) returns [],
-    which the caller reads as the wrapper itself."""
+    first word left is the program a shell runs (`env -i FOO=1 exec -a n x.sh` runs `x.sh`). Fails
+    closed with VerifierError when the program cannot be told: an option this table does not know
+    (`env -S` runs a command string), a quoted or escaped option or assignment (a shell would read
+    it differently from a whitespace split), or options with nothing after them. A bare wrapper
+    (`env`) returns [], which the caller reads as the wrapper itself."""
     index = 0
     consumed = False  # an option or an assignment was skipped
     while index < len(words):
         word = words[index]
+        plain = word.replace('"', "").replace("'", "").replace("\\", "")
+        quoted = plain != word
         if _wrapper_name(word) in _RUN_WRAPPERS:
             index += 1
-        elif _ASSIGNMENT.match(word):
+        elif _ASSIGNMENT.match(plain):
+            if quoted:
+                raise VerifierError("an assignment before the program is quoted")
             consumed = True
             index += 1
-        elif word.startswith("-") and len(word) > 1:
-            if word.startswith(("-S", "--split-string")):
-                raise VerifierError("a wrapper option runs a command string this check cannot read")
+        elif plain.startswith("-"):
+            if quoted:
+                raise VerifierError("an option before the program is quoted")
+            name = word.split("=", 1)[0] if word.startswith("--") else word
+            if name in _WRAPPER_OPTIONS_WITH_VALUE:
+                index += 1 if name != word else 2  # `--unset=NAME` carries its value
+            elif word in _WRAPPER_FLAGS or _NICE_LEVEL.fullmatch(word):
+                index += 1
+            else:
+                raise VerifierError("a wrapper option this check does not know hides the program")
             consumed = True
-            index += 2 if word in _WRAPPER_OPTIONS_WITH_VALUE else 1
         else:
             break
     rest = words[index:]
@@ -1675,7 +1686,7 @@ def extract_calls(text: str) -> list[Call]:
     has no line."""
     lines = _BLOCK_LINE_BREAK.split(text)
     unnumbered = re.search(r"\r(?!\n)", text) is not None
-    blanked = _frontmatter_blanked(lines)
+    blanked = None if unnumbered else _frontmatter_blanked(lines)
     source = blanked if blanked is not None else text
     source_lines = _BLOCK_LINE_BREAK.split(source)
     env: dict = {}
