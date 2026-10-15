@@ -306,12 +306,34 @@ line, like any other finding) and a registry entry can suppress it; a model find
   already oversized file is not blocked by it. Weak and Soft Warning tiers are never reported. The finding
   has no line, so it counts as changed whenever its file is. The combined `description` + `when_to_use` limit
   is not checked on its own: it can only be exceeded together with one of the two individual limits. Only
-  `SKILL.md` is measured; the R18 code-block size check is not part of the verifier yet. Details that close
+  `SKILL.md` is measured for R13 and R21. Details that close
   evasions: too-short and too-long descriptions are ranked separately (swapping one for the other is
   reported); a missing `description` counts as length 0, so deleting it dodges nothing; the base is used only
   when the old path is itself a skill, so renaming a large reference file into a `SKILL.md` is measured as a
   new file; a lone carriage return counts as a line break; and a repeated or non-string `description` or
   `when_to_use` is an unverifiable finding, not a clean pass.
+- **`r18-code-block-line-count`** (rule class `measurement`). A fenced code block of more than 20 lines is
+  Major and of more than 30 is Critical, in a skill, command or agent file (not in `references/`, where the
+  rulebook itself sends large blocks). Blocks are read as CommonMark does: a fence of three or more backticks
+  or tildes, after blockquote markers and a list marker; closed at the same blockquote depth by a fence of the
+  same character at least as long, with no other text and not indented four or more columns past the opener,
+  so a longer fence holds shorter ones as content; a block that is unclosed ends where its blockquote or list
+  item ends, or at the end of the file; a lone carriage return is a line break. The repo already holds
+  hundreds of blocks over 20 lines, so a block is counted only when it is not an identical block already in
+  the base, and the file is reported only when the PR raised the number of blocks at some tier or worse:
+  editing a block without crossing a threshold, or moving it, is not reported. The result is **one finding per
+  file with no line**, naming up to five blocks in its evidence. A finding exists only when the PR made the
+  file worse against the real base, so it is the PR's by construction; a line would let an edit that leaves
+  the fences alone (filling a block in the middle) fall outside the diff. Splitting a Critical block into a
+  Critical and a Major one raises the count at the Major tier and is reported; split into blocks of 20 lines
+  or fewer instead. The rulebook's in-file `R18 exception` note is **not** honored by the script: a PR could
+  type one above its own block and waive its own finding, so a waiver is an entry for
+  `r18-code-block-line-count` in the Tier-1 exceptions registry (the note still tells model reviewers and
+  humans why). R18 is a size heuristic, not a security boundary: blocks of 20 lines or fewer are never
+  reported, however many a file has, so splitting always avoids it. It reads the file once; a stray
+  four-space-indented fence at the top level (indented code that contains a fence) can pair with a later
+  fence and shift which lines count as a block, which is accepted rather than read twice, since a second
+  reading double-counted a region and could block a legitimate PR.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's

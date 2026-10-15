@@ -119,9 +119,9 @@ These need an owner decision before the matching verifier PR, and are not settle
    need the changed-component list, not just the diff. The other 14 stay candidates for a follow-up.
 2. **`mirror-byte-identity`.** The registry entry suppresses a script finding by this id, but no finding
    carries it yet. The mirror verifier PR must define it, or the entry stays guidance for model reviewers.
-3. **R18 recorded exception.** The rulebook lets a block stay over the limit when a one-line note above it
-   says it is an intentional whole-example illustration. A verifier needs either that marker honored or a
-   registry entry; a registry entry is Tier-1 and needs a maintainer attestation per exception.
+3. **R18 recorded exception (decided).** The verifier does not honor the in-file note, because a PR could
+   type one and waive its own finding; a waiver is a registry entry, which is Tier-1 and needs a maintainer
+   attestation per exception.
 4. **Frontmatter parsing.** `r21-description-length` needs the folded value of a `>-` scalar, so it parses
    YAML (`pyyaml` is already locked) rather than counting raw lines. The verifier modules are Tier-1 and must
    not import other Tier-2 code.
