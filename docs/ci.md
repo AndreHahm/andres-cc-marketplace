@@ -235,8 +235,8 @@ and `?` stay inside one segment), `reason` and `authority` (the repo file that s
 - It is Tier 1, so a PR cannot suppress a finding about itself by editing it: editing it hits the
   Tier-1 hard-refuse step, and every later registry edit needs the maintainer bypass attestation.
 
-No script emits rule-keyed findings yet (the Phase 2 verifiers will), so today the suppression path is
-exercised by the gate's unit tests, and the registry's live effect is the briefing.
+A script finding is built by `review_verifiers.py` (see [Script verifiers](#script-verifiers)); only
+the verifiers whose rule id has a registry entry can be suppressed, and `r6-bash-scope` has none.
 
 **Roster and pins.** `ROSTER` lists every reviewer with a selector label. Only the baseline set
 (`DELTA_VALIDATE`) is derived from it; the audit and governance routes stay hand-written in `review.py`,
@@ -253,6 +253,64 @@ back to the workflow alone for a checkout that has no contract. Because it runs 
 same checkout, it uses the same roster, severity scale and registry as CI. It says plainly when a run is
 not a prediction of CI's result: a different Codex CLI version, an unset model (the local default is
 used), or a timeout variable the bridge rejects.
+
+## Script verifiers
+
+`scripts/marketplace_ci/review_verifiers.py` (issue #576, #568 Phase 2) decides mechanical review rules
+with code instead of a model, so the same head gives the same answer on every run. It is the first part of
+the Phase 2 verifier set; `docs/review-rule-inventory.md` lists every rule a script can decide and which are
+planned. `run-codex-review` runs the verifiers in-process, next to the structural check and before any
+reviewer is dispatched, and adds their findings to the model reviewers' findings before aggregation. A script
+finding carries `source: "script"`, so the computed gate can block on it (Critical or Major on a changed
+line, like any other finding) and a registry entry can suppress it; a model finding is never suppressed.
+
+- **What it reads.** The PR's files as committed at `HEAD`, through git objects: never the working tree,
+  never a symlink, nothing larger than 1 MB each or 20 MB in total (sizes are checked with
+  `cat-file --batch-check` before any content is read), and a body with stray bytes is decoded leniently.
+  The frontmatter (at most 100,000 characters) is composed into a YAML node tree and never constructed into
+  Python objects, so no tag, timestamp or alias in a PR file can run code or expand in memory. It parses
+  data and never executes or imports anything from the PR.
+- **`r6-bash-scope`** (rule class `line`, severity `critical`). A skill or command (`allowed-tools`)
+  that grants bare `Bash`, `Bash(*)`, a wildcard-only command or a wildcard in the program name
+  (`bash*`, `*sh`; a wildcard directory such as `*/scan.sh` still pins a script and passes), or a shell
+  interpreter (`sh`, `bash`, `cmd`, `powershell`, however spelled: a path, `.exe`, case, quotes, a backslash
+  escape) with no single pinned script, is a finding. The first argument pins a script only when it is a
+  plain script path ending in a script extension (`.sh`, `.bash`, `.ps1`, `.cmd`, `.bat`), with a variable
+  allowed only as a leading `${CLAUDE_PLUGIN_ROOT}/`, `${CLAUDE_SKILL_DIR}/` or `${CLAUDE_PROJECT_DIR}/`: an option (`-c`, `+x`,
+  `cmd /c`), a device (`/dev/stdin`, `/proc/...`), an expansion (`$X`, `${IFS}`) or a pattern does not. An
+  agent's `tools` entry of the form `Bash(...)` is a finding, since an agent's `tools` field has no Bash
+  scoping and only bare `Bash` grants it. Paths covered (case-insensitively):
+  `plugins/*/skills/*/SKILL.md`, `plugins/*/commands/**/*.md` and `plugins/*/agents/**/*.md`, and the same
+  under `.claude/`. A finding's line is the YAML node's own position when the value is a single-line scalar
+  or a list item, and it cites the opening and closing fence and every line from the key to the entry, so
+  an edit to any of them (renaming `disallowed-tools:` to `allowed-tools:`, deleting a line above the
+  fence) makes it the PR's. A value that spans lines, or a context over 200 lines, gives no line, and a
+  finding without a line counts as changed whenever its file is. A pre-existing grant on an untouched line is a notice, not a block.
+- **`r6-bash-scope-unverifiable`** (severity `major`, no line). A changed component file whose Bash grants
+  cannot be read exactly is a blocking finding rather than a skip, because otherwise a PR could keep a
+  violation by making its file unreadable. The causes are: frontmatter that is not closed, whose fence is
+  not exactly `---` on the first line, or that is not valid YAML, a mapping or a single document; a YAML
+  alias, explicit tag or merge key; a key that is not a plain scalar; a repeated `allowed-tools` or `tools`
+  key, or a column-0 line that looks like that key but is not it; a line break git does not count (a bare
+  CR, NEL, LS or PS), which would shift every reported line; a value that is not a string or a list of
+  strings; an unbalanced parenthesis or a malformed `Bash(...)` entry; more than 2,000 entries; and a file
+  that is a symlink, a submodule, over 1 MB or past the 20 MB total. A file with no frontmatter at all
+  grants nothing and is clean.
+- **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
+  `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
+  after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
+  `forbidden_bash_scopes` and to the verifier together, keeping the settings-equality test). It reads the
+  frontmatter with PyYAML; where Claude Code's own parser could read a file differently, the strict
+  acceptance above is what limits the gap, and a form it cannot rule out stays an accepted limit. Component
+  paths declared in a manifest instead of the default directories are not covered.
+- **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
+  nesting deeper than 100 is unverifiable before any parsing.
+- **Result file.** `verifiers` lists each verifier with `status` (`clean` or `findings`), the number of
+  findings and the number of files checked.
+- **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
+  run `could_not_run` (exit 2), like any other infrastructure failure.
+- **Trust.** The module is Tier 1 (see below): a PR that edits it is refused automated review and needs the
+  maintainer bypass attestation, because a verifier it could weaken would be the PR deciding its own gate.
 
 ## Diff-scoped blocking
 
@@ -439,6 +497,8 @@ the `codex-kit` copy of it): editing either would weaken redaction in the job th
 The review contract (`review_contract.py`) and the exceptions registry it loads
 (`review_exceptions.yaml`) are on the list for the same reason: a PR that could edit the registry
 could suppress a finding about itself (see [The review contract](#the-review-contract)).
+The script verifiers (`review_verifiers.py`) are on it too: they feed the blocking gate, so a PR must not be
+able to weaken its own verifier (see [Script verifiers](#script-verifiers)).
 
 Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
 including the Node files and the uv/Python-version config, and the shadow checks above), because
@@ -500,7 +560,7 @@ dispatch actually *runs*, or the `codex-review` job refuses outright and require
 protocol below, depends on which part of `scripts/marketplace_ci/` changed (issue #351, direction #3):
 
 - **Tier 1 (review-dispatch-critical)** — `scripts/__init__.py`, and `scripts/marketplace_ci/`'s
-  `__init__.py`, `__main__.py`, `review.py`, `review_contract.py`, `git_state.py`, `registry.py`,
+  `__init__.py`, `__main__.py`, `review.py`, `review_contract.py`, `review_verifiers.py`, `git_state.py`, `registry.py`,
   `sync_plan.py`, `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
   `uv.toml`, `.python-version` and `.python-versions`, and the three Node files `codex-review` runs
   with the API key (`plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs`,

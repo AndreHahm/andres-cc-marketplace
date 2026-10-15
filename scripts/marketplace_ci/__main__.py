@@ -1101,6 +1101,17 @@ def _instructions_dir_problem(path: Path, repo: Path, output: str | None) -> str
     return None
 
 
+def _verifier_result(outcome) -> dict:
+    """One verifier's entry in the result file. A file it could not read is a finding of its own, so
+    `clean` always means every candidate file was read and judged."""
+    return {
+        "name": outcome.name,
+        "status": "findings" if outcome.findings else "clean",
+        "findings": len(outcome.findings),
+        "checked": len(outcome.checked),
+    }
+
+
 def _handle_run_codex_review(args: argparse.Namespace) -> int:
     """The single entry point the Codex GitHub Actions workflow calls: scope
     the diff since `base_sha`, run the deterministic structural check
@@ -1111,11 +1122,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     Exit 1 only for a genuine blocking finding (see _diff_scope: a Major/Critical
     on a changed line).
     """
-    from scripts.marketplace_ci import review_contract
+    from scripts.marketplace_ci import review_contract, review_verifiers
     from scripts.marketplace_ci.review import (
         FULL_ESCALATION_PATHS,
         PrDeltaError,
         ReviewOutputError,
+        ReviewResult,
         _changed_path_set,
         aggregate_findings,
         collapse_identical_mirrors,
@@ -1185,6 +1197,10 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
 
     structural_findings = run_delta_structural_checks(repo, changed)
+    try:
+        verifier_outcomes = review_verifiers.run_verifiers(repo, changed)
+    except Exception as exc:  # fail closed: a verifier that crashed is not a clean pass
+        return _fail_run_codex_review(args, f"script verifier failed: {exc!r}")
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
     if instructions_dir is not None:
         # Claim it exclusively and privately: the validation above is only a check, and
@@ -1263,6 +1279,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             message += f" (also unusable: {', '.join(name for name, _ in unusable[1:])})"
         return _fail_run_codex_review(args, message, reports, [name for name, _ in unusable])
 
+    # Script findings join the model findings before aggregation, so the gate, dedup and the result
+    # file treat both alike (`source` stays part of the dedup key and the gate's inputs).
+    validated.extend(
+        ReviewResult(reviewer=outcome.name, verdict="script", findings=outcome.findings)
+        for outcome in verifier_outcomes
+    )
     findings = aggregate_findings(validated)
     try:
         blocking_set, in_diff, diff_scoped = _diff_scope(
@@ -1290,6 +1312,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             {"path": f.path, "operation": f.operation, "reason": f.reason}
             for f in structural_findings
         ],
+        "verifiers": [_verifier_result(outcome) for outcome in verifier_outcomes],
         "diff_scoped": diff_scoped,
         "exceptions_loaded": len(exceptions),
         "findings": [
