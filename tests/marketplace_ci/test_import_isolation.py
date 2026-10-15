@@ -42,6 +42,7 @@ TIER1_MODULES = frozenset(
         "scripts.marketplace_ci",
         "scripts.marketplace_ci.__main__",
         "scripts.marketplace_ci.review",
+        "scripts.marketplace_ci.review_contract",
         "scripts.marketplace_ci.git_state",
         "scripts.marketplace_ci.registry",
         "scripts.marketplace_ci.sync_plan",
@@ -56,6 +57,7 @@ TIER1_MODULES = frozenset(
 # CRITICAL_HANDLERS below for the __main__.py-specific, function-scoped check.
 TIER1_SOURCE_FILES = (
     "scripts/marketplace_ci/review.py",
+    "scripts/marketplace_ci/review_contract.py",
     "scripts/marketplace_ci/git_state.py",
     "scripts/marketplace_ci/registry.py",
     "scripts/marketplace_ci/sync_plan.py",
@@ -244,3 +246,34 @@ def test_workflow_hard_refuse_gate_pathspec_matches_tier1_file_set():
     }
 
     assert pathspec == set(TIER1_FILES)
+
+
+def test_the_review_contract_and_its_registry_are_tier1():
+    """A PR cannot suppress a finding about itself: editing the exceptions registry, or the
+    contract that loads it, is refused automated review like any other gate code (issue #573)."""
+    assert "scripts/marketplace_ci/review_contract.py" in TIER1_FILES
+    assert "scripts/marketplace_ci/review_exceptions.yaml" in TIER1_FILES
+
+
+def test_a_pr_editing_the_registry_hits_the_hard_refuse_gate(tmp_path):
+    from scripts.marketplace_ci.trust_boundary import find_tier1_touches
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@example.invalid")
+    git("config", "user.name", "t")
+    registry = tmp_path / "scripts" / "marketplace_ci" / "review_exceptions.yaml"
+    registry.parent.mkdir(parents=True)
+    registry.write_text("exceptions: []\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    git("checkout", "-q", "-b", "pr")
+    registry.write_text(
+        "exceptions:\n  - {rule: r, path: p, reason: why, authority: docs/ci.md}\n",
+        encoding="utf-8",
+    )
+    git("commit", "-qam", "suppress my own finding")
+
+    assert find_tier1_touches("main", tmp_path) == {"scripts/marketplace_ci/review_exceptions.yaml"}

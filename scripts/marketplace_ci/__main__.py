@@ -932,7 +932,10 @@ def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
     return 0
 
 
-def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None = None) -> dict:
+def _finding_to_dict(
+    finding, in_diff: bool | None = None, blocking: bool | None = None, decision=None
+) -> dict:
+    entry = decision.exception if decision is not None else None
     return {
         "reviewer": finding.reviewer,
         "severity": finding.severity,
@@ -945,10 +948,24 @@ def _finding_to_dict(finding, in_diff: bool | None = None, blocking: bool | None
         "components": list(finding.components),
         "in_diff": in_diff,
         "blocking": blocking,
+        "confidence": finding.confidence,
+        "evidence_type": finding.evidence_type,
+        "rule_class": finding.rule_class,
+        "risk": dict(finding.risk) or None,
+        "source": finding.source,
+        "gate": decision.outcome if decision is not None else None,
+        "suppressed": decision is not None and decision.outcome == "suppressed",
+        "exception": (
+            {"rule": entry.rule, "path": entry.path, "authority": entry.authority}
+            if entry is not None
+            else None
+        ),
     }
 
 
-def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_ranges=None):
+def _diff_scope(
+    findings, repo: Path, base_sha: str, changed_paths, precomputed_ranges=None, exceptions=()
+):
     """(blocking, in_diff, diff_scoped) for the aggregated findings. A
     Major/Critical on a line this PR changed blocks; every other finding stays
     in the artifact as a non-blocking notice. `in_diff` is None, and every
@@ -959,6 +976,7 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_
     are computed here."""
     from scripts.marketplace_ci.review import (
         compute_changed_line_ranges,
+        gate_decision,
         split_findings_by_diff,
     )
 
@@ -975,7 +993,11 @@ def _diff_scope(findings, repo: Path, base_sha: str, changed_paths, precomputed_
         text=True,
         check=True,
     ).stdout.rstrip("\n")
-    gated = {f for f in findings if f.severity in ("Critical", "Major")}
+    gated = {
+        f
+        for f in findings
+        if gate_decision(f, in_diff=True, exceptions=exceptions).outcome == "block"
+    }
     if ranges is None:
         return gated, None, False
     # One classification pass (one tree lookup); blocking is the gated subset of
@@ -1089,6 +1111,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     Exit 1 only for a genuine blocking finding (see _diff_scope: a Major/Critical
     on a changed line).
     """
+    from scripts.marketplace_ci import review_contract
     from scripts.marketplace_ci.review import (
         FULL_ESCALATION_PATHS,
         PrDeltaError,
@@ -1100,12 +1123,20 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         compute_pr_delta,
         derive_review_scope,
         dispatch_reviewers,
+        gate_decision,
         run_delta_structural_checks,
         validate_review_output,
     )
 
     repo = Path.cwd()
     base_sha = args.base_sha
+
+    # Read before anything is dispatched or claimed: a gate that cannot read its exceptions
+    # must stop, not run as if there were none.
+    try:
+        exceptions = review_contract.load_exceptions(review_contract.EXCEPTIONS_PATH)
+    except review_contract.ContractError as exc:
+        return _fail_run_codex_review(args, f"exceptions registry unusable: {exc}")
 
     instructions_dir = Path(args.instructions_dir) if args.instructions_dir else None
     if instructions_dir is not None:
@@ -1173,6 +1204,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             instructions_dir=instructions_dir,
             changed_ranges=changed_ranges,
             changed_paths=_changed_path_set(changed),
+            exceptions=exceptions,
         )
     except OSError as exc:
         # Raised only before any reviewer starts (e.g. the default instruction
@@ -1234,7 +1266,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     findings = aggregate_findings(validated)
     try:
         blocking_set, in_diff, diff_scoped = _diff_scope(
-            findings, repo, base_sha, _changed_path_set(changed), (changed_ranges,)
+            findings,
+            repo,
+            base_sha,
+            _changed_path_set(changed),
+            (changed_ranges,),
+            exceptions,
         )
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
@@ -1254,8 +1291,14 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             for f in structural_findings
         ],
         "diff_scoped": diff_scoped,
+        "exceptions_loaded": len(exceptions),
         "findings": [
-            _finding_to_dict(f, None if in_diff is None else f in in_diff, f in blocking_set)
+            _finding_to_dict(
+                f,
+                None if in_diff is None else f in in_diff,
+                f in blocking_set,
+                gate_decision(f, in_diff=in_diff is None or f in in_diff, exceptions=exceptions),
+            )
             for f in findings
         ],
         "blocking": blocking or structural_blocking,

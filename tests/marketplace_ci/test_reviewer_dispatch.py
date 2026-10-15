@@ -1559,3 +1559,65 @@ def test_instruction_marks_a_path_under_a_changed_symlink_target_as_entire_file(
     )
     assert f"{_SKILL_PATH}: entire file" in text
     assert "lines 1" not in text
+
+
+# --- Documented-exceptions briefing (issue #573) ---------------------------------------------
+
+
+def _exception():
+    from scripts.marketplace_ci.review_contract import ExceptionEntry
+
+    return ExceptionEntry(
+        rule="r5-r6-ask-user-question-grant",
+        path="plugins/**",
+        reason="A redundant grant is a no-op.",
+        authority="docs/ci.md",
+    )
+
+
+def test_every_reviewer_is_briefed_with_the_documented_exceptions(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(review, "_changed_symlinks", lambda candidates, root: (frozenset(), ()))
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            reviewer = argv[argv.index("--reviewer-type") + 1]
+            seen[reviewer] = Path(argv[argv.index("--instruction-file") + 1]).read_text("utf-8")
+            return completed(0)
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    scope = derive_review_scope([change(_SKILL_PATH)], dependency_index())
+    dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        changed_ranges={_SKILL_PATH: ((3, 5),)},
+        exceptions=(_exception(),),
+    )
+
+    assert set(seen) == {*scope.validate, *scope.audit}
+    for reviewer, text in seen.items():
+        assert text.lstrip().startswith("review this"), reviewer
+        assert "[documented exceptions]" in text, reviewer
+        assert "r5-r6-ask-user-question-grant" in text, reviewer
+        assert "[diff scope]" in text, reviewer  # both briefings, neither replaces the other
+
+
+def test_the_exceptions_briefing_does_not_depend_on_the_diff_scope_briefing(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    text = _dispatch_and_read_instruction(
+        monkeypatch, repo, change, dependency_index, completed, exceptions=(_exception(),)
+    )
+    assert "[documented exceptions]" in text
+    assert "[diff scope]" not in text  # no ranges were computed, so no narrowing briefing
+
+
+def test_no_exceptions_leaves_the_instruction_exactly_as_before(
+    monkeypatch, repo, change, dependency_index, completed
+):
+    text = _dispatch_and_read_instruction(monkeypatch, repo, change, dependency_index, completed)
+    assert "[documented exceptions]" not in text

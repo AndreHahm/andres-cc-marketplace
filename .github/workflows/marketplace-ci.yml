@@ -1091,6 +1091,7 @@ jobs:
               scripts/marketplace_ci/__init__.py \
               scripts/marketplace_ci/__main__.py \
               scripts/marketplace_ci/review.py \
+              scripts/marketplace_ci/review_contract.py \
               scripts/marketplace_ci/git_state.py \
               scripts/marketplace_ci/registry.py \
               scripts/marketplace_ci/sync_plan.py \
@@ -1105,8 +1106,9 @@ jobs:
               plugins/codex-kit/scripts/lib/codex-exec.mjs \
               plugins/codex-kit/scripts/lib/cdx-process.mjs \
               scripts/marketplace_ci/token_shapes.json \
+              scripts/marketplace_ci/review_exceptions.yaml \
               plugins/codex-kit/scripts/lib/cdx-token-shapes.json; then
-            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec or uv/Python-version config (pyproject.toml, uv.lock, uv.toml, .python-version, .python-versions), or the Node bridge this job runs with the API key (plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs, plugins/codex-kit/scripts/lib/codex-exec.mjs, plugins/codex-kit/scripts/lib/cdx-process.mjs) or the secret-redaction shapes those two load at import (scripts/marketplace_ci/token_shapes.json, plugins/codex-kit/scripts/lib/cdx-token-shapes.json) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
+            echo "::error::This PR changes review-dispatch-critical code (scripts/__init__.py, scripts/marketplace_ci/{__init__,__main__,review,review_contract,git_state,registry,sync_plan,conversion,pr_policy}.py) or its dependency spec or uv/Python-version config (pyproject.toml, uv.lock, uv.toml, .python-version, .python-versions), or the Node bridge this job runs with the API key (plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs, plugins/codex-kit/scripts/lib/codex-exec.mjs, plugins/codex-kit/scripts/lib/cdx-process.mjs) or the secret-redaction shapes those two load at import (scripts/marketplace_ci/token_shapes.json, plugins/codex-kit/scripts/lib/cdx-token-shapes.json), or the exceptions registry that can suppress findings (scripts/marketplace_ci/review_exceptions.yaml) -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi
 
@@ -1140,7 +1142,7 @@ jobs:
           PR_BASE=$(git merge-base "$BASE_SHA" "$PR_HEAD_SHA")
           git diff -z --no-renames --name-only --diff-filter=AT "$PR_BASE" "$PR_HEAD_SHA" -- scripts > "$RUNNER_TEMP/scripts-added-files.z"
           rc=0
-          grep -zqE '^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|^scripts/marketplace_ci/(__init__|__main__|review|git_state|registry|sync_plan|conversion|pr_policy)(/|$)' "$RUNNER_TEMP/scripts-added-files.z" || rc=$?
+          grep -zqE '^scripts/(.*/)?__pycache__(/|$)|^scripts/.*\.(pyc|pyw|pyd|so)$|^scripts/.*/__init__\.|^scripts/marketplace_ci/(__init__|__main__|review|review_contract|git_state|registry|sync_plan|conversion|pr_policy)(/|$)' "$RUNNER_TEMP/scripts-added-files.z" || rc=$?
           if [ "$rc" -ne 1 ]; then
             echo "::error::this PR adds a file under scripts/ that could replace a review-dispatch-critical module (a same-named package, an extension or bytecode file, or a __pycache__ entry), or the check could not run (grep exit $rc) -- refusing to dispatch Codex reviewers with the API key over this PR's files. A maintainer must review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable)"
             exit 1

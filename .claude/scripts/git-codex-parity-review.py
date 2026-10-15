@@ -9,7 +9,9 @@ settings that must match CI from the workflow file itself, so they cannot drift:
   - CODEX_KIT_REVIEW_TIMEOUT_MS: the repository variable of that name when node confirms the bridge
     would accept it (as in CI, where the workflow takes `vars.CODEX_KIT_REVIEW_TIMEOUT_MS ||
     '<fallback>'`), else the fallback parsed from .github/workflows/marketplace-ci.yml.
-  - Codex CLI pin: parsed from the same file; a differing local version only warns.
+  - Codex CLI pin and model variable name: read as data from scripts/marketplace_ci/
+    review_contract.py (never imported, so the branch's code is not run to learn them); a differing
+    local version only warns. A checkout without that file falls back to the workflow's pin.
   - Warns when the branch changed a Tier-1 file (list read from the base-tip copy).
   - Base: `origin/main` is fetched first (best effort); its tip SHA, used as CI's base.sha, is
     printed.
@@ -38,6 +40,7 @@ from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
+CONTRACT = "scripts/marketplace_ci/review_contract.py"
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 TIMEOUT_VARIABLE = "CODEX_KIT_REVIEW_TIMEOUT_MS"
@@ -62,6 +65,10 @@ _NODE_TIMEOUT_CHECK = (
 )
 _PIN_RE = re.compile(r"npm install -g @openai/codex@(\d+\.\d+\.\d+)")
 _VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
+_EXACT_VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
+# Only a CODEX_KIT_* name: the contract's name is set or removed in the child's environment, so it
+# must not be able to name PATH or a credential variable.
+_VARIABLE_NAME_RE = re.compile(r"CODEX_KIT_[A-Z0-9_]{1,50}")
 _SLUG_RE = re.compile(r"^(?:https://github\.com/|git@github\.com:)([\w.-]+/[\w.-]+?)(?:\.git)?$")
 
 
@@ -87,6 +94,40 @@ def parse_ci_settings(workflow_text: str) -> tuple[str, str] | None:
     if not timeout or not pin:
         return None
     return timeout.group(1) or timeout.group(2), pin.group(1)
+
+
+def read_contract_pins(contract_text: str) -> tuple[str, str] | None:
+    """(Codex CLI version, model variable name) from the review contract's source, or None.
+
+    Parsed with `ast`, not imported: the file is the branch's own, and learning two constants must
+    not run its code. Only plain string-literal assignments count, and each value must have the
+    shape CI uses (an x.y.z version, an upper-case variable name).
+    """
+    try:
+        tree = ast.parse(contract_text)
+    except (SyntaxError, ValueError, RecursionError, MemoryError):
+        return None
+    found: dict[str, str] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if (
+            isinstance(target, ast.Name)
+            and target.id in ("CODEX_CLI_VERSION", "MODEL_VARIABLE")
+            and isinstance(value, ast.Constant)
+            and isinstance(value.value, str)
+        ):
+            found[target.id] = value.value
+    version, variable = found.get("CODEX_CLI_VERSION"), found.get("MODEL_VARIABLE")
+    if not (version and variable):
+        return None
+    if not (_EXACT_VERSION_RE.fullmatch(version) and _VARIABLE_NAME_RE.fullmatch(variable)):
+        return None
+    return version, variable
 
 
 def _run(argv: list[str], **kwargs) -> subprocess.CompletedProcess[str] | None:
@@ -150,8 +191,8 @@ def _gh_variable(name: str) -> str | None:
     return result.stdout.strip() or None
 
 
-def resolve_model() -> str | None:
-    model = _gh_variable(MODEL_VARIABLE)
+def resolve_model(variable: str = MODEL_VARIABLE) -> str | None:
+    model = _gh_variable(variable)
     return model if model and _MODEL_RE.match(model) else None
 
 
@@ -201,6 +242,32 @@ def main() -> int:
         return 2
     timeout_ms, pin = settings
 
+    # The contract owns the pins; the workflow's own install line is a second copy of the version
+    # that a test keeps equal, so a disagreement here is a branch mid-change, worth saying aloud.
+    model_variable = MODEL_VARIABLE
+    contract_file = Path(CONTRACT)
+    if contract_file.is_file():
+        try:
+            pins = read_contract_pins(contract_file.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            pins = None
+        if pins is None:
+            print(
+                f"PARITY: could not read the Codex pin and model variable from {CONTRACT}.",
+                file=sys.stderr,
+            )
+            return 2
+        contract_pin, model_variable = pins
+        if contract_pin != pin:
+            print(
+                f"PARITY WARNING: the workflow installs {pin} but the review contract pins "
+                f"{contract_pin}; CI runs the workflow's install."
+            )
+        pin = contract_pin
+    else:
+        print("PARITY WARNING: no review contract in this checkout; using the workflow's pin.")
+    differences: list[str] = []
+
     codex = _run(["codex", "--version"])
     if codex is None or codex.returncode != 0:
         print("PARITY: the Codex CLI is not available locally; cannot run.", file=sys.stderr)
@@ -209,6 +276,7 @@ def main() -> int:
     local_version = found.group(0) if found else "unknown"
     if local_version != pin:
         print(f"PARITY WARNING: local Codex CLI {local_version} differs from CI's pin {pin}.")
+        differences.append(f"Codex CLI {local_version} vs CI's {pin}")
 
     # CI reviews against the PR's current base tip; a stale local origin/main would mean older
     # reviewer instructions.
@@ -271,11 +339,13 @@ def main() -> int:
     if timeout_source == "variable":
         print(f"PARITY: timeout {timeout_ms} ms (from repository variable {TIMEOUT_VARIABLE}).")
     elif timeout_source == "unchecked":
+        differences.append("timeout: the workflow fallback, which CI may not use")
         print(
             f"PARITY WARNING: could not check {TIMEOUT_VARIABLE} with node as the bridge does; "
             f"using the workflow fallback, {timeout_ms} ms, which may differ from CI."
         )
     elif timeout_source == "rejected":
+        differences.append("timeout: the workflow fallback, where CI would fail")
         print(
             f"PARITY WARNING: {TIMEOUT_VARIABLE} is set but not a positive integer the bridge "
             f"accepts; using the workflow fallback, {timeout_ms} ms. CI would fail on it."
@@ -285,13 +355,19 @@ def main() -> int:
             f"PARITY: timeout {timeout_ms} ms (workflow fallback; "
             f"{TIMEOUT_VARIABLE} unset or unreadable)."
         )
-    model = resolve_model()
+    model = resolve_model(model_variable)
     if model:
-        env[MODEL_VARIABLE] = model
-        print(f"PARITY: model {model} (from repository variable {MODEL_VARIABLE}).")
+        env[model_variable] = model
+        print(f"PARITY: model {model} (from repository variable {model_variable}).")
     else:
-        env.pop(MODEL_VARIABLE, None)
-        print(f"PARITY WARNING: {MODEL_VARIABLE} unset or unreadable; using the local default.")
+        env.pop(model_variable, None)
+        print(f"PARITY WARNING: {model_variable} unset or unreadable; using the local default.")
+        differences.append("model: the local default, not CI's")
+    if differences:
+        print(
+            "PARITY NOTE: this run is not a prediction of CI's result "
+            f"({'; '.join(differences)}). Treat a clean result as indicative only."
+        )
 
     argv = [
         "uv", "run", "python", "-m", "scripts.marketplace_ci", "run-codex-review",
