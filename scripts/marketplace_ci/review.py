@@ -1229,9 +1229,10 @@ def _classify(
         # the verifier cites only paths it already knows the PR changed. A model finding never gets
         # this, so it cannot widen its own scope.
         anywhere = finding.source == "script" and component.endswith(ANY_CHANGE_SUFFIX)
-        path, line = _split_location(
-            component[: -len(ANY_CHANGE_SUFFIX)] if anywhere else component
-        )
+        if anywhere:  # the rest is a whole path: a file named `a:1` is not path `a`, line 1
+            path, line = component[: -len(ANY_CHANGE_SUFFIX)], None
+        else:
+            path, line = _split_location(component)
         if _classify_location(
             path, line, ranges, changed_paths, repo_root, symlinks, bare_widens=anywhere
         ):

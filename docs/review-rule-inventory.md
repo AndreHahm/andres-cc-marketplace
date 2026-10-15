@@ -51,7 +51,7 @@ rulebook rule that has several independent checks gets one id per check.
 | `r5-r6-ask-user-question-grant` | R5, R6 | graph | `AskUserQuestion` listed in `allowed-tools` is redundant, never a violation or a missing grant | registry entry | phase-2 | grant-to-body |
 | `r6-bash-scope` | R6 | line | bare `Bash`, `Bash(*)` or a shell-interpreter grant; for an agent, the reverse (a scoped `Bash(cmd:*)`) | none | phase-2 | grant-to-body |
 | `frontmatter-unverifiable` | R6 | line | a changed component file whose frontmatter cannot be read exactly (bad or repeated frontmatter key, merge key, symlink, oversized) | none | phase-2 | grant-to-body |
-| `r6-missing-grant` | R6 | graph | a tool or Bash command the body instructs has no matching `allowed-tools` grant | `check_tool_grants.py` (documented false-positive classes) | phase-2 | grant-to-body |
+| `r6-missing-grant` | R6 | graph | a tool or Bash command the body instructs has no matching `allowed-tools` grant | `check_tool_grants.py` (documented false-positive classes) | candidate | - |
 | `prompt-library-undeclared-grant` | R6 | graph | `Read`, `Write` and `WebFetch` are deliberately ungranted in the prompt-library skill | registry entry | phase-2 | grant-to-body |
 | `r7-emoji-in-structure` | R7 | line | emoji in a heading, frontmatter field or step label | none | candidate | - |
 | `r8-description-block-scalar` | R8 | line | a description over 80 characters not written as a `>-` block; a command description of 61 to 80 characters as advisory | none | candidate | - |
@@ -68,10 +68,10 @@ rulebook rule that has several independent checks gets one id per check.
 | `r18-code-block-line-count` | R18 | measurement | fenced block lines against the tiers, with a real fence parser (character and length tracked, nested fences) | none | phase-2 | measurement |
 | `r19-mirror-drift` | R19 | graph | a `.claude/` copy differs from its `plugins/` source, except a declared divergence | `mirror-parity-check.sh`; CI job `marketplace-parity` | phase-2 | path-and-mirror |
 | `mirror-byte-identity` | R19 | graph | a `.claude/` file that is a byte-identical copy of its source is reviewed once, as the canonical file; which finding carries this id is open | registry entry; `collapse_identical_mirrors` in `review.py` | phase-2 | path-and-mirror |
-| `r20-stale-sibling-value` | R20 | graph | a canonical value changed in `settings.json` is still stated elsewhere in the tree | `r20-sweep.sh` (rule-count ceiling only) | phase-2 | removed-identifier |
+| `r20-stale-sibling-value` | R20 | graph | a canonical value changed in `settings.json` is still stated elsewhere in the tree | `r20-sweep.sh` (rule-count ceiling only) | candidate | - |
 | `removed-identifier-leftover` | R20; sibling-sweep rule | graph | an identifier the diff removes or renames is still referenced elsewhere | none | phase-2 | removed-identifier |
 | `r21-description-length` | R21 | measurement | `description`, `when_to_use` and combined length against the tiers, from the parsed frontmatter | none | phase-2 | measurement |
-| `r21-description-split-hint` | R21 | measurement | a description over 900 characters with a Use-when clause and no `when_to_use` | none | phase-2 | measurement |
+| `r21-description-split-hint` | R21 | measurement | a description over 900 characters with a Use-when clause and no `when_to_use` | none | candidate | - |
 | `r22-argument-consistency` | R22 | graph | `argument-hint` and `arguments` against the placeholders the body consumes | none | candidate | - |
 | `r23-external-reference` | R23 | graph | a reference classified against the whitelist and blacklist, or one that resolves to nothing | `external-references-reviewer` (model) | candidate | - |
 | `r24-disallowed-language` | R24 | line | a script extension or a fence tag outside Python, Bash and JavaScript or TypeScript | none | candidate | - |
@@ -113,12 +113,17 @@ Findings named in #568 as unstable or out of scope for the changed lines:
 
 These need an owner decision before the matching verifier PR, and are not settled by this inventory:
 
-1. **Candidates.** 14 rows are `candidate`: deterministic, but outside this issue's scope. The owner added four
-   (`r29-testing-section`, `r35-standard-sections`, `r37-executable-bit`, `skill-agent-dependency-cycle`) on
-   2026-10-15. R29 and R35 apply to newly-created or structurally-modified skills only, so their verifiers
-   need the changed-component list, not just the diff. The other 14 stay candidates for a follow-up.
-2. **`mirror-byte-identity`.** The registry entry suppresses a script finding by this id, but no finding
-   carries it yet. The mirror verifier PR must define it, or the entry stays guidance for model reviewers.
+1. **Candidates (decided 2026-10-15).** 14 rows are `candidate` and stay for a follow-up. The owner added
+   `r37-executable-bit` and `skill-agent-dependency-cycle` to this issue, and both are built. `r29-testing-section`
+   and `r35-standard-sections` are not scripts: the rulebook matches their headings "by substance", and a literal
+   scan found 47 of 150 real skills without a `Quick Start` heading, so a script would block on wording.
+2. **Rows no script emits (decided 2026-10-15).** `r6-missing-grant` (a tool the body uses must be in
+   `allowed-tools`) is not built and is a `candidate`: `check_tool_grants.py` documents six false-positive
+   classes, so a script would block legitimate PRs. `mirror-byte-identity`, `r5-r6-ask-user-question-grant`
+   and `prompt-library-undeclared-grant` stay `phase-2` because the registry holds entries under those ids, but
+   no script finding carries them: they brief the model reviewers, and a finding with that id would be what an
+   entry suppresses. `r20-stale-sibling-value` and `r21-description-split-hint` are candidates (the latter is
+   an advisory by definition).
 3. **R18 recorded exception (decided).** The verifier does not honor the in-file note, because a PR could
    type one and waive its own finding; a waiver is a registry entry, which is Tier-1 and needs a maintainer
    attestation per exception.
