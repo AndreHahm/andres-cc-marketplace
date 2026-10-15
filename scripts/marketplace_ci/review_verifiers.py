@@ -1621,7 +1621,7 @@ def _modes(repo, paths: Sequence[str], ref: str = "HEAD") -> dict[str, bytes]:
 # --- call graph: a Skill() or Agent() call that does not resolve or closes a cycle ---------------
 
 _CALLABLE_DOC = re.compile(
-    r"^plugins/[^/]+/(?:skills/([^/]+)/SKILL\.md|agents/([^/]+)\.md|commands/(.+)\.md)$",
+    r"^plugins/[^/]+/(?:skills/([^/]+)/SKILL\.md|agents/(?:.+/)?([^/]+)\.md|commands/(.+)\.md)$",
     re.IGNORECASE,
 )
 _COMPONENT_TREE = re.compile(r"^plugins/[^/]+/(?:skills|agents|commands)/", re.IGNORECASE)

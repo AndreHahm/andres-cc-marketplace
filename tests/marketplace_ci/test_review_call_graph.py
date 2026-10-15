@@ -488,3 +488,18 @@ def test_a_call_in_the_body_after_bom_frontmatter_keeps_its_file_line():
 
 def test_a_fence_made_of_lone_carriage_returns_does_not_hide_a_call():
     assert _calls("---\rSkill(evil)\r---\n") == [("skill", "evil", None)]
+
+
+def test_a_nested_agent_file_is_a_callable_component_named_by_its_file_name():
+    path = "plugins/demo-kit/agents/team/reviewer.md"
+    assert rv._node_of(path) == ("agent", "reviewer")
+
+
+def test_a_nested_agent_that_adds_a_call_to_a_missing_skill_is_a_finding(git_repo):
+    nested = "plugins/demo-kit/agents/team/reviewer.md"
+    git_repo.write(nested, _doc("reviewer", "Nothing here.\n"))
+    base = _commit(git_repo.root, "base")
+    git_repo.write(nested, _doc("reviewer", "Run Skill(missing).\n"))
+    _commit(git_repo.root, "head")
+    (finding,) = _outcome(git_repo, (_modify(nested),), base).findings
+    assert finding.path == nested and finding.rule == RULE
