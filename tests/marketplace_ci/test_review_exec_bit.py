@@ -520,3 +520,20 @@ def test_a_new_multi_line_grant_of_a_script_the_base_already_granted_is_reported
     )
     _commit(git_repo.root, "add a second grant")
     assert len(_outcome(git_repo, (ChangedPath("M", SKILL, SKILL),), base).findings) == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(/usr/bin/env ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(/usr/bin/env FOO=1 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+        "Bash(/bin/nice -n 5 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)",
+    ],
+)
+def test_a_wrapper_given_by_its_absolute_path_does_not_hide_a_direct_run(grant):
+    assert [g.script for g in _grants(SKILL, _doc(grant))] == [PLUGIN_SCRIPT]
+
+
+def test_a_plugin_script_that_is_named_like_a_wrapper_is_still_a_direct_run():
+    text = _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/env:*)")
+    assert [g.script for g in _grants(SKILL, text)] == ["plugins/demo-kit/scripts/env"]

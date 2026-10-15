@@ -863,9 +863,10 @@ def _parse_blocks(lines: list[str], *, indented_is_code: bool = False) -> list[F
 
 def fenced_blocks(text: str, *, indented_is_code: bool = False) -> list[FencedBlock]:
     """The fenced code blocks of a markdown file, as CommonMark reads them: a fence of three or more
-    backticks or tildes (after blockquote markers and a list marker), closed at the same blockquote
+    backticks or tildes (after any blockquote and list markers), closed at the same blockquote
     depth by a fence of the same character that is at least as long, with no other text and not
-    indented four or more columns past the opener; so a longer fence holds shorter ones as content.
+    indented more than three columns into its container; so a longer fence holds shorter ones as
+    content.
     A block ends, unclosed, where its blockquote or list item ends, or at the end of the file. A
     lone carriage return is a line break. With `indented_is_code`, an unindented-context line
     indented four or more columns is indented code, not a fence."""
@@ -1393,7 +1394,6 @@ def _scripts_mirrors(repo, ref: str) -> frozenset[str]:
 _GRANT_DOC = re.compile(
     r"^plugins/([^/]+)/(?:skills/([^/]+)/SKILL\.md|commands/.+\.md)$", re.IGNORECASE
 )
-_PLUGIN_ROOT_PREFIX = "${CLAUDE_PLUGIN_ROOT}/"
 
 
 @dataclass(frozen=True)
@@ -1418,7 +1418,10 @@ def _command_words(words: list[str]) -> list[str]:
     index = 0
     while index < len(words):
         word = words[index]
-        if word in _RUN_WRAPPERS or _ASSIGNMENT.match(word):
+        # `/usr/bin/env` runs its command like `env`; a plugin script merely named `env` is written
+        # with a variable (`${CLAUDE_PLUGIN_ROOT}/scripts/env`), never as an absolute path
+        wrapper = word.rsplit("/", 1)[-1] if word.startswith("/") else word
+        if wrapper in _RUN_WRAPPERS or _ASSIGNMENT.match(word):
             index += 1
         elif word.startswith("-") and len(word) > 1:
             index += 2 if word in _WRAPPER_OPTIONS_WITH_VALUE else 1
@@ -1430,9 +1433,10 @@ def _command_words(words: list[str]) -> list[str]:
 def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) -> list[ScriptGrant]:
     """The scripts a skill or command grants by path as the command itself
     (`Bash(${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`, `Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`),
-    quoted or unbraced, after an `env`/`exec`/`command`/`time` word. A script an interpreter runs
-    (`Bash(bash ${...}/x.sh:*)`) is not listed: it needs no executable bit. A glob names no single
-    script, and a path that climbs out of its plugin names nothing."""
+    quoted or unbraced, after any run of `env`/`exec`/`command`/`time`/`nohup`/`nice` words (also
+    given by absolute path), their options and `NAME=VALUE` assignments. A script an interpreter
+    runs (`Bash(bash ${...}/x.sh:*)`) is not listed: it needs no executable bit. A glob names no
+    single script, and a path that climbs out of its plugin names nothing."""
     scope = _GRANT_DOC.match(path)
     if scope is None or root is None:
         return []

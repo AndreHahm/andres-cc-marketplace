@@ -394,7 +394,8 @@ line, like any other finding) and a registry entry can suppress it; a model find
 - **`r37-executable-bit`** (rule class `graph`, severity `critical`, outcome `structure`). A script that a
   skill or command runs directly by path, because its `allowed-tools` grant starts with
   `${CLAUDE_PLUGIN_ROOT}/` or `${CLAUDE_SKILL_DIR}/` (braced or not, quoted, or after any run of `env`, `exec`, `command`,
-  `time`, `nohup` or `nice` words, their options and `NAME=VALUE` assignments; `timeout`, `sudo` and other
+  `time`, `nohup` or `nice` words, also by absolute path such as `/usr/bin/env`, their options and
+  `NAME=VALUE` assignments; `timeout`, `sudo` and other
   wrappers are not read), must be committed as a regular file with git mode 100755: a shell running a 100644 path fails
   with `Permission denied`. The finding names the reason: mode 100644, a symlink, a submodule, a directory, or
   no such file (the rulebook calls a missing file a FAIL too). A script an interpreter runs
