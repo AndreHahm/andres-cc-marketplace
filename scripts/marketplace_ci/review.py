@@ -639,6 +639,7 @@ _REQUIRED_FINDING_KEYS = {
 # -- mirrors bridge-invoke.mjs's own locateInSemanticScope regex exactly, so
 # the two layers agree on where the path ends and the line number begins.
 _LOCATION_LINE_SUFFIX = re.compile(r":(\d+)(?::\d+)?$")
+ANY_CHANGE_SUFFIX = ":*"  # a script finding's component: any change to the path counts
 
 
 class ReviewOutputError(ValueError):
@@ -1224,9 +1225,15 @@ def _classify(
     if _classify_location(finding.path, finding.line, ranges, changed_paths, repo_root, symlinks):
         return True
     for component in finding.components:
-        path, line = _split_location(component)
+        # A script verifier may cite a path as `path:*`: any change to that file counts, because
+        # the verifier cites only paths it already knows the PR changed. A model finding never gets
+        # this, so it cannot widen its own scope.
+        anywhere = finding.source == "script" and component.endswith(ANY_CHANGE_SUFFIX)
+        path, line = _split_location(
+            component[: -len(ANY_CHANGE_SUFFIX)] if anywhere else component
+        )
         if _classify_location(
-            path, line, ranges, changed_paths, repo_root, symlinks, bare_widens=False
+            path, line, ranges, changed_paths, repo_root, symlinks, bare_widens=anywhere
         ):
             return True
     return False

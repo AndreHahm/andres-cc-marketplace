@@ -405,6 +405,7 @@ def test_a_pr_that_grows_a_skill_past_the_limit_is_blocked(monkeypatch, git_repo
         "path-and-mirror",
         "structure",
         "call-graph",
+        "removed-identifier",
     ]
 
 

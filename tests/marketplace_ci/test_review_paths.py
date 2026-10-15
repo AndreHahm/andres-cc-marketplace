@@ -17,6 +17,14 @@ from scripts.marketplace_ci import review_verifiers as rv
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import gate_decision
 
+
+@pytest.fixture(autouse=True)
+def _no_mirror_plan(monkeypatch):
+    """These tests are about R34. Mirror drift has its own file (`test_review_mirror.py`); here the
+    structural plan is switched off so a registry with only `scripts_mirrors` stays valid."""
+    monkeypatch.setattr(rv, "run_delta_structural_checks", lambda repo, changed: ())
+
+
 SKILL = "plugins/demo-kit/skills/demo/SKILL.md"
 REFERENCE = "plugins/demo-kit/skills/demo/references/notes.md"
 EXISTING = [
@@ -369,7 +377,9 @@ def test_a_document_after_the_parse_time_budget_is_a_blocking_finding():
 
 
 def test_the_parse_time_budget_is_enforced_across_the_docs_of_a_run(monkeypatch, git_repo):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
     other = "plugins/demo-kit/skills/demo/references/other.md"
     git_repo.write(other, _lines("Fine."))
     git_repo.write(REFERENCE, _lines("Fine."))
@@ -629,7 +639,9 @@ def test_with_no_base_text_every_finding_is_file_level():
 
 
 def test_run_verifiers_reads_the_base_of_a_modified_doc_and_flags_an_exposure(git_repo):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
     git_repo.write("plugins/demo-kit/docs/guide.md", "guide")
     git_repo.write(SKILL, _skill_text("Example:", "", f"    [g]({ESCAPE})"))
     base = _commit(git_repo.root, "base")
@@ -641,7 +653,9 @@ def test_run_verifiers_reads_the_base_of_a_modified_doc_and_flags_an_exposure(gi
 
 
 def test_run_verifiers_keeps_the_line_of_a_finding_the_base_already_had(git_repo):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
     git_repo.write("plugins/demo-kit/docs/guide.md", "guide")
     git_repo.write(SKILL, _skill_text("Bad: [g](" + ESCAPE + ")."))
     base = _commit(git_repo.root, "base")
@@ -664,7 +678,10 @@ def _commit(root: Path, message: str) -> str:
 
 
 def _repo(git_repo, skill_text, mirrors=("demo-kit",)):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": list(mirrors)}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json",
+        json.dumps({"version": 1, "scripts_mirrors": list(mirrors)}),
+    )
     git_repo.write("docs/guide.md", "guide")
     git_repo.write("plugins/demo-kit/scripts/tool.sh", "#!/bin/sh\n")
     git_repo.write(SKILL, skill_text)
@@ -700,7 +717,9 @@ def test_run_verifiers_reports_escaping_paths_in_skills_and_their_references(git
 def test_the_allowed_scripts_folder_comes_from_the_base_not_the_pr(git_repo):
     """A PR that adds its plugin to scripts_mirrors must not widen its own allowed folders."""
     base = _repo(git_repo, _skill_text("Fine."), mirrors=())
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": ["demo-kit"]}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": ["demo-kit"]})
+    )
     git_repo.write(SKILL, _skill_text("Run [t](../../scripts/tool.sh)."))
     _commit(git_repo.root, "widen and link")
     outcome = rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)[2]
@@ -712,12 +731,19 @@ def test_an_unreadable_mirror_config_in_the_base_allows_no_scripts_folder(git_re
     git_repo.write("plugins/demo-kit/scripts/tool.sh", "#!/bin/sh\n")
     git_repo.write(SKILL, _skill_text("Run [t](../../scripts/tool.sh)."))
     base = _commit(git_repo.root, "base")
-    outcome = rv.run_verifiers(git_repo.root, (ChangedPath("A", None, SKILL),), base)[2]
+    # the head repairs the file; only the BASE copy decides which folders are allowed
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
+    _commit(git_repo.root, "head")
+    outcome = rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)[2]
     assert [f.rule for f in outcome.findings] == ["r34-escaping-path"]
 
 
 def test_a_doc_file_that_cannot_be_read_is_a_finding_not_a_pass(git_repo):
-    git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
     (git_repo.root / REFERENCE).parent.mkdir(parents=True, exist_ok=True)
     git_repo.write("elsewhere.md", "[x](../../docs/guide.md)\n")
     (git_repo.root / REFERENCE).symlink_to(git_repo.root / "elsewhere.md")
