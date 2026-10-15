@@ -25,6 +25,7 @@ TIER1_FILES = frozenset(
         "scripts/marketplace_ci/__init__.py",
         "scripts/marketplace_ci/__main__.py",
         "scripts/marketplace_ci/review.py",
+        "scripts/marketplace_ci/review_contract.py",
         "scripts/marketplace_ci/git_state.py",
         "scripts/marketplace_ci/registry.py",
         "scripts/marketplace_ci/sync_plan.py",
@@ -45,6 +46,9 @@ TIER1_FILES = frozenset(
         # redaction from these files, so a PR editing one could weaken redaction in the job
         # that holds the API key. Gated like the code that loads them.
         "scripts/marketplace_ci/token_shapes.json",
+        # The documented-exceptions registry: it suppresses script findings and is briefed to the
+        # reviewers, so a PR editing it could silence a finding about itself.
+        "scripts/marketplace_ci/review_exceptions.yaml",
         "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     }
 )

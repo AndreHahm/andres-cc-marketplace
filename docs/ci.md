@@ -173,6 +173,78 @@ limits a large value still shrinks the room for retries and for reviewers that s
 full call plus slack in what remains of the budget; the current value, 720000, leaves room for about three
 full-length calls in sequence.
 
+## The review contract
+
+`scripts/marketplace_ci/review_contract.py` is the one place CI's Codex delta review and the local parity
+wrapper (`git-codex-parity-review.py`) agree on severity, the finding envelope, the exceptions registry,
+the reviewer roster and the pins (issue #573). It is Tier 1: `run-codex-review` imports it, so it imports
+nothing else from the repo, and a PR that edits it needs the maintainer bypass attestation.
+
+**Severity.** One scale, `critical | major | minor`, meaning the impact if the finding is true (not how sure
+the reviewer is). Every vocabulary in use maps onto it:
+
+| Source | Native value | Canonical |
+|---|---|---|
+| review envelope, `*-reviewer` agents | `critical` / `major` / `minor` | unchanged |
+| `plugin-validator` | `critical` / `warning` | `critical` / `major` |
+| `plugin-rulebook-checker` | `fail` / `advisory` | `critical` / `minor` |
+| R13/R18 size tiers | `Critical` / `Warning` | `critical` / `major` |
+| R13/R18 size tiers | `Soft Warning` / `Weak Warning` | `minor` |
+
+A test keeps the rulebook rows equal to `plugin-rulebook/references/evidence-schema.md`.
+
+**Finding envelope.** A reviewer's finding may carry `rule_class` (`line | measurement | graph | judgment`,
+default `judgment`), `evidence_type` (`verifier_output | hunk_level_code | repo_policy |
+contextual_reasoning`) and `risk` (`reachable`, `exposure`, `mitigation`), next to the `confidence` it
+already returns. An unknown value fails the reviewer's envelope (the run is `could_not_run`) rather than
+being ignored. Only `severity`, `rule_class` and the exception match feed the gate in this phase; the rest
+is recorded in the result and shown.
+
+**The computed gate.** `gate_decision` in `review.py` is the one place that decides, per finding, `block`,
+`notice` or `suppressed`; `blocking_findings` and the result file both use it. A finding blocks when it is
+Critical or Major and on a changed line (see [Diff-scoped blocking](#diff-scoped-blocking)). A model
+reviewer's `measurement` finding is a notice until the Phase 2 verifiers can confirm the measurement;
+that lets a model's own label downgrade its finding, which is safe only while the bridge's output schema
+has no `rule_class` property (a test fails if it gains one).
+Each finding in the result records `gate`, `rule_class`, `source`, `suppressed` and the `exception` it
+cites, and the result records `exceptions_loaded`.
+
+**The exceptions registry.** `review_exceptions.yaml` lists documented repo decisions that reviewers
+otherwise report the opposite of. Each entry has `rule`, `path` (a glob: `**/` crosses directories, `*`
+and `?` stay inside one segment), `reason` and `authority` (the repo file that states the exception).
+
+- It suppresses **script** findings only: a script finding for that rule on a matching path is kept with
+  `suppressed: true` and the entry cited, and never blocks. A model finding is never suppressed.
+- It is appended to every model reviewer's instruction as a `[documented exceptions]` briefing, so the
+  reviewer is told the decision exists. The briefing says an entry covers only the exact rule and paths it
+  names, never excuses a security, permission or trust-boundary finding, and that a finding an entry seems
+  to cover is reported as minor with the entry cited, not omitted. A reviewer's free-text `axis` is not a
+  registry rule id, so this part is guidance to the model, not a mechanical suppression.
+- A finding path that is absolute, climbs with `..`, or contains a backslash or control character matches
+  no entry. A `**` in a pattern must be a whole path segment, and fields may not contain control
+  characters (only `reason` may span lines) or exceed 1000 characters.
+- When reviewers' findings are merged, `source` is part of the dedup key and the copy kept is one the
+  gate can still block on, so a merge never turns a blocking finding into a notice or lets a script
+  finding absorb a model finding.
+- It is git-tracked only, with no local override. If it cannot be read or is malformed,
+  `run-codex-review` exits 2 (`could_not_run`) before dispatching anything.
+- It is Tier 1, so a PR cannot suppress a finding about itself by editing it: editing it hits the
+  Tier-1 hard-refuse step, and every later registry edit needs the maintainer bypass attestation.
+
+No script emits rule-keyed findings yet (the Phase 2 verifiers will), so today the suppression path is
+exercised by the gate's unit tests, and the registry's live effect is the briefing.
+
+**Roster and pins.** `ROSTER` lists each reviewer with the selector that puts it in a scope (`DELTA_VALIDATE`
+is derived from it); every instruction file is `.codex/agents/<name>.toml`, read from the PR's base commit.
+`CODEX_CLI_VERSION` is the pinned Codex CLI, and `MODEL_VARIABLE` names the repository variable that holds
+the model. The workflow cannot import the contract, so its `npm install -g @openai/codex@<version>` line is
+a second copy of the version; a test fails if the two differ. The parity wrapper reads the pin and the
+variable name from the contract file as data (it parses the source, it does not import it) and falls back
+to the workflow's pin for a checkout that has no contract. Because it runs the same entry point from the
+same checkout, it uses the same roster, severity scale and registry as CI. It says plainly when a run is
+not a prediction of CI's result: a different Codex CLI version, an unset model (the local default is
+used), or a timeout variable the bridge rejects.
+
 ## Diff-scoped blocking
 
 `run-codex-review` fails the `codex-review` job (exit 1) only for findings that belong to the PR. A reviewer
@@ -355,6 +427,9 @@ marker, or any symlink. The Node chain it runs with the key (`bridge-invoke.mjs`
 `cdx-process.mjs`) is on the Tier-1 list too, as are the two secret-redaction shapes files that
 `review.py` and `codex-exec.mjs` load at import (`scripts/marketplace_ci/token_shapes.json` and
 the `codex-kit` copy of it): editing either would weaken redaction in the job that holds the key.
+The review contract (`review_contract.py`) and the exceptions registry it loads
+(`review_exceptions.yaml`) are on the list for the same reason: a PR that could edit the registry
+could suppress a finding about itself (see [The review contract](#the-review-contract)).
 
 Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
 including the Node files and the uv/Python-version config, and the shadow checks above), because
@@ -416,14 +491,15 @@ dispatch actually *runs*, or the `codex-review` job refuses outright and require
 protocol below, depends on which part of `scripts/marketplace_ci/` changed (issue #351, direction #3):
 
 - **Tier 1 (review-dispatch-critical)** — `scripts/__init__.py`, and `scripts/marketplace_ci/`'s
-  `__init__.py`, `__main__.py`, `review.py`, `git_state.py`, `registry.py`, `sync_plan.py`,
-  `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
+  `__init__.py`, `__main__.py`, `review.py`, `review_contract.py`, `git_state.py`, `registry.py`,
+  `sync_plan.py`, `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
   `uv.toml`, `.python-version` and `.python-versions`, and the three Node files `codex-review` runs
   with the API key (`plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs`,
   `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `plugins/codex-kit/scripts/lib/cdx-process.mjs`)
   and the data those two load at import: the canonical secret token shapes
   `scripts/marketplace_ci/token_shapes.json` and the byte-identical `codex-kit` copy
-  `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`. The canonical file is copied into
+  `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`, and the documented-exceptions registry
+  `scripts/marketplace_ci/review_exceptions.yaml`. The canonical file is copied into
   `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
   drifted copy, and `sync-token-shapes` rewrites the copies (run `sync-plugin-mirrors` after it so
   the `.claude/` mirrors follow). Edit the canonical file only.

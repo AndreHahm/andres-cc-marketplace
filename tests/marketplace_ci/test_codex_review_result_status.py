@@ -9,6 +9,7 @@ records what the review ran on.
 
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -307,3 +308,80 @@ def test_provenance_helpers_return_none_outside_a_repository(tmp_path):
     provenance = _run_provenance(tmp_path, "abc", [])
     assert provenance["head_sha"] is None and provenance["merge_ref_sha"] is None
     assert provenance["base_sha"] == "abc"
+
+
+# --- review contract: registry, gate fields, briefing (issue #573) -----------------------------
+
+
+def _registry(tmp_path, text):
+    path = tmp_path / "exceptions.yaml"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+MATCHING_EXCEPTION = (
+    "exceptions:\n"
+    "  - rule: R6\n"
+    f"    path: {CHANGED}\n"
+    "    reason: Deliberate.\n"
+    "    authority: docs/ci.md\n"
+)
+
+
+def test_the_shipped_registry_path_is_the_file_beside_the_contract():
+    from scripts.marketplace_ci import review_contract
+
+    assert review_contract.EXCEPTIONS_PATH.name == "review_exceptions.yaml"
+    assert (
+        review_contract.EXCEPTIONS_PATH.parent
+        == Path(__file__).resolve().parents[2] / "scripts" / "marketplace_ci"
+    )
+
+
+@pytest.mark.parametrize("text", ["exceptions: nope\n", "not: [valid", None])
+def test_an_unreadable_or_invalid_registry_fails_closed(monkeypatch, review_repo, tmp_path, text):
+    from scripts.marketplace_ci import review_contract
+
+    path = tmp_path / "absent.yaml" if text is None else _registry(tmp_path, text)
+    monkeypatch.setattr(review_contract, "EXCEPTIONS_PATH", path)
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
+    assert rc == 2
+    assert payload["status"] == "could_not_run"
+    assert payload["blocking"] is True
+    assert "exceptions registry" in payload["error"]
+
+
+def test_a_blocking_finding_records_its_gate_decision_and_class(monkeypatch, review_repo, tmp_path):
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(BLOCKING))
+    assert rc == 1
+    (finding,) = payload["findings"]
+    assert finding["gate"] == "block" and finding["suppressed"] is False
+    assert finding["rule_class"] == "judgment" and finding["source"] == "model"
+    assert finding["confidence"] == "high" and finding["exception"] is None
+    assert payload["exceptions_loaded"] >= 3
+
+
+def test_a_registry_entry_does_not_suppress_a_model_finding(monkeypatch, review_repo, tmp_path):
+    from scripts.marketplace_ci import review_contract
+
+    monkeypatch.setattr(review_contract, "EXCEPTIONS_PATH", _registry(tmp_path, MATCHING_EXCEPTION))
+    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(BLOCKING))
+    assert rc == 1
+    assert payload["findings"][0]["gate"] == "block"
+    assert payload["exceptions_loaded"] == 1
+
+
+def test_every_reviewer_is_briefed_with_the_registry(monkeypatch, review_repo, tmp_path):
+    from scripts.marketplace_ci import review_contract
+
+    monkeypatch.setattr(review_contract, "EXCEPTIONS_PATH", _registry(tmp_path, MATCHING_EXCEPTION))
+    briefed = []
+
+    def bridge(argv):
+        text = open(argv[argv.index("--instruction-file") + 1], encoding="utf-8").read()
+        briefed.append("[documented exceptions]" in text and "rule: R6" in text)
+        return subprocess.CompletedProcess(argv, returncode=0, stdout=CLEAN, stderr=b"")
+
+    rc, _ = _run(monkeypatch, review_repo, tmp_path, bridge)
+    assert rc == 0
+    assert briefed == [True] * len(ROSTER)

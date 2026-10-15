@@ -41,6 +41,9 @@ WORKFLOW = """\
 """
 
 
+CONTRACT = 'CODEX_CLI_VERSION = "0.147.0"\nMODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"\n'
+
+
 def _load_module():
     spec = importlib.util.spec_from_file_location("git_codex_parity_review", SCRIPT)
     assert spec is not None and spec.loader is not None
@@ -117,6 +120,7 @@ def repo(tmp_path: Path) -> Path:
     (repo / "scripts/marketplace_ci").mkdir(parents=True)
     (repo / ".github/workflows/marketplace-ci.yml").write_text(WORKFLOW, encoding="utf-8")
     (repo / "scripts/marketplace_ci/__main__.py").write_text("", encoding="utf-8")
+    (repo / "scripts/marketplace_ci/review_contract.py").write_text(CONTRACT, encoding="utf-8")
     for cmd in (["init", "-q"], ["add", "-A"]):
         subprocess.run(["git", *cmd], cwd=repo, check=True, capture_output=True)
     subprocess.run(
@@ -747,3 +751,99 @@ def test_the_real_workflow_takes_the_timeout_from_the_repository_variable():
         "CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}" in text
     )
     assert 'CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"' not in text
+
+
+# --- the shared review contract (issue #573) ----------------------------------------------------
+
+CONTRACT_FILE = "scripts/marketplace_ci/review_contract.py"
+
+
+def test_read_contract_pins_reads_the_two_constants():
+    module = _load_module()
+    assert module.read_contract_pins(CONTRACT) == ("0.147.0", "CODEX_KIT_REVIEW_MODEL")
+    annotated = 'CODEX_CLI_VERSION: str = "1.2.3"\nMODEL_VARIABLE: str = "CODEX_KIT_X_MODEL"\n'
+    assert module.read_contract_pins(annotated) == ("1.2.3", "CODEX_KIT_X_MODEL")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "def broken(:\n",
+        'CODEX_CLI_VERSION = "0.147.0"\n',  # no model variable
+        'MODEL_VARIABLE = "M"\n',  # no version
+        'CODEX_CLI_VERSION = f"0.{1}"\nMODEL_VARIABLE = "M"\n',  # not a literal
+        'CODEX_CLI_VERSION = "latest"\nMODEL_VARIABLE = "M"\n',  # not x.y.z
+        'CODEX_CLI_VERSION = "0.147.0"\nMODEL_VARIABLE = "bad name"\n',  # not a variable name
+        'CODEX_CLI_VERSION = "0.147.0"\nMODEL_VARIABLE = "PATH"\n',  # outside CODEX_KIT_*
+        'CODEX_CLI_VERSION = "0.147.0"\nMODEL_VARIABLE = "OPENAI_API_KEY"\n',
+        'CODEX_CLI_VERSION = "0.147.0\\n"\nMODEL_VARIABLE = "CODEX_KIT_M"\n',  # trailing newline
+        'CODEX_CLI_VERSION = "0.147.0"\nMODEL_VARIABLE = "CODEX_KIT_M\\n"\n',
+    ],
+)
+def test_read_contract_pins_refuses_anything_it_cannot_read_as_data(text):
+    assert _load_module().read_contract_pins(text) is None
+
+
+def test_the_wrapper_reads_the_real_contracts_pins():
+    from scripts.marketplace_ci import review_contract as rc
+
+    real = (Path(__file__).resolve().parents[2] / CONTRACT_FILE).read_text("utf-8")
+    assert _load_module().read_contract_pins(real) == (rc.CODEX_CLI_VERSION, rc.MODEL_VARIABLE)
+
+
+def test_the_pin_comes_from_the_contract_not_the_workflow(repo, tmp_path):
+    (repo / CONTRACT_FILE).write_text(CONTRACT.replace("0.147.0", "0.151.0"), encoding="utf-8")
+    result, args, _ = _run(repo, tmp_path, codex="codex-cli 0.147.0")
+    assert result.returncode == 0 and args
+    assert "0.147.0 differs from CI's pin 0.151.0" in result.stdout
+    assert "workflow installs 0.147.0" in result.stdout  # the two copies disagree: said out loud
+
+
+def test_a_matching_local_run_is_not_labelled_a_non_prediction(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path)
+    assert result.returncode == 0
+    assert "not a prediction" not in result.stdout
+
+
+def test_a_differing_cli_says_the_run_is_not_a_prediction_of_ci(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, codex="codex-cli 0.150.0")
+    assert "not a prediction of CI's result" in result.stdout
+    assert "Codex CLI 0.150.0 vs CI's 0.147.0" in result.stdout
+
+
+def test_an_unset_model_says_the_run_is_not_a_prediction_of_ci(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, model="")
+    assert "not a prediction of CI's result" in result.stdout
+    assert "model: the local default, not CI's" in result.stdout
+
+
+@needs_node
+def test_a_rejected_timeout_says_the_run_is_not_a_prediction_of_ci(repo, tmp_path):
+    result, _, _ = _run(repo, tmp_path, timeout_var="0x")
+    assert "not a prediction of CI's result" in result.stdout
+    assert "timeout" in result.stdout.split("not a prediction")[1]
+
+
+def test_a_missing_contract_falls_back_to_the_workflow_pin_with_a_warning(repo, tmp_path):
+    (repo / CONTRACT_FILE).unlink()
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 0 and args
+    assert "no review contract in this checkout" in result.stdout
+
+
+def test_a_contract_that_cannot_be_read_as_data_is_never_a_pass(repo, tmp_path):
+    (repo / CONTRACT_FILE).write_text("CODEX_CLI_VERSION = compute()\n", encoding="utf-8")
+    result, args, _ = _run(repo, tmp_path)
+    assert result.returncode == 2
+    assert args == ""
+    assert "review_contract.py" in result.stdout + result.stderr
+
+
+def test_the_model_variable_name_comes_from_the_contract(repo, tmp_path):
+    (repo / CONTRACT_FILE).write_text(
+        CONTRACT.replace("CODEX_KIT_REVIEW_MODEL", "CODEX_KIT_OTHER_MODEL"), encoding="utf-8"
+    )
+    _, _, uv_env = _run(repo, tmp_path)
+    assert "CODEX_KIT_OTHER_MODEL=gpt-x" in uv_env
+    assert "CODEX_KIT_REVIEW_MODEL" not in uv_env

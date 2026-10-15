@@ -28,6 +28,17 @@ from pathlib import Path
 from scripts.marketplace_ci.conversion import plan_exports
 from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
 from scripts.marketplace_ci.registry import Registry
+from scripts.marketplace_ci.review_contract import (
+    SEVERITY_MAPPINGS,
+    ContractError,
+    ExceptionEntry,
+    match_exception,
+    normalize_risk,
+    normalize_rule_class,
+    render_exceptions_briefing,
+    reviewers_for_selector,
+    validate_evidence_type,
+)
 from scripts.marketplace_ci.sync_plan import plan_plugin_sync
 
 BRIDGE_INVOKE_RELATIVE_PATH = Path(
@@ -113,7 +124,7 @@ def _is_bypass_scoped_path(path: str) -> bool:
 
 # Delta Validate's 3 baseline reviewers, dispatched on every delta PR
 # regardless of component type (design v4 amendment 14).
-DELTA_VALIDATE = ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+DELTA_VALIDATE = reviewers_for_selector("delta-baseline")
 
 # Delta Audit's launch-time type-specific reviewer, keyed by the plugin
 # component-directory name (plugins/<name>/<component-type>/...). Every
@@ -592,7 +603,10 @@ _SEVERITY_RANK = {"Minor": 0, "Major": 1, "Critical": 2}
 # The envelope's own severity enum is lowercase (codex-review-bridge/references/
 # envelope-schema.md); Finding.severity stays capitalized internally so
 # aggregate_findings/blocking checks below don't need to change.
-_ENVELOPE_SEVERITY_TO_CANONICAL = {"critical": "Critical", "major": "Major", "minor": "Minor"}
+_ENVELOPE_SEVERITY_TO_CANONICAL = {
+    native: canonical.capitalize()
+    for native, canonical in SEVERITY_MAPPINGS["review-envelope"].items()
+}
 
 # Matches the single reviewer envelope bridge-invoke.mjs's dispatch_reviewers()
 # call actually returns per dispatch (codex-review-bridge/references/
@@ -642,6 +656,14 @@ class Finding:
     line: int | None = None
     reporters: tuple[str, ...] = ()
     components: tuple[str, ...] = ()
+    # Review contract (issue #573). Only `rule_class` and `source` feed the gate; the rest is
+    # recorded and shown. `source` is "script" only for a finding built by this repo's own code,
+    # never for one a reviewer's envelope returned (validate_review_output refuses that).
+    confidence: str | None = None
+    evidence_type: str | None = None
+    rule_class: str = "judgment"
+    risk: tuple[tuple[str, str | bool], ...] = ()
+    source: str = "model"
 
 
 @dataclass(frozen=True)
@@ -696,6 +718,14 @@ def validate_review_output(data: dict) -> ReviewResult:
             components = []
         if not isinstance(components, list) or not all(isinstance(c, str) for c in components):
             raise ReviewOutputError("finding 'components' must be null or a list of strings")
+        if raw.get("source", "model") != "model":
+            raise ReviewOutputError("a reviewer envelope cannot set a finding's source")
+        try:
+            rule_class = normalize_rule_class(raw.get("rule_class"))
+            evidence_type = validate_evidence_type(raw.get("evidence_type"))
+            risk = normalize_risk(raw.get("risk"))
+        except ContractError as exc:
+            raise ReviewOutputError(str(exc)) from exc
         findings.append(
             Finding(
                 reviewer=reviewer,
@@ -706,20 +736,31 @@ def validate_review_output(data: dict) -> ReviewResult:
                 remediation=raw["fix"],
                 line=line,
                 components=tuple(components),
+                confidence=raw["confidence"],
+                evidence_type=evidence_type,
+                rule_class=rule_class,
+                risk=risk,
             )
         )
 
     return ReviewResult(reviewer=reviewer, verdict=data["verdict"], findings=tuple(findings))
 
 
+def _is_downgraded_measurement(finding: Finding) -> bool:
+    return finding.source == "model" and finding.rule_class == "measurement"
+
+
 def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
-    """Deduplicate only identical (rule, path, line) findings, keeping the
-    highest reported severity and every distinct reporting reviewer."""
-    grouped: dict[tuple[str, str, int | None], list[Finding]] = {}
-    order: list[tuple[str, str, int | None]] = []
+    """Deduplicate only identical (rule, path, line, source) findings, keeping every distinct
+    reporting reviewer. `source` is part of the key so a script finding can never absorb a model
+    finding (an exception could then suppress it). The copy kept is the one the gate can still
+    block on (a model `measurement` copy is a notice), then the highest reported severity, so a
+    merge never turns a blocking finding into a notice."""
+    grouped: dict[tuple[str, str, int | None, str], list[Finding]] = {}
+    order: list[tuple[str, str, int | None, str]] = []
     for report in reports:
         for finding in report.findings:
-            key = (finding.rule, finding.path, finding.line)
+            key = (finding.rule, finding.path, finding.line, finding.source)
             if key not in grouped:
                 grouped[key] = []
                 order.append(key)
@@ -728,7 +769,10 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
     aggregated: list[Finding] = []
     for key in order:
         group = grouped[key]
-        highest = max(group, key=lambda f: _SEVERITY_RANK[f.severity])
+        highest = max(
+            group,
+            key=lambda f: (not _is_downgraded_measurement(f), _SEVERITY_RANK[f.severity]),
+        )
         reporters = tuple(sorted({f.reviewer for f in group}))
         components = tuple(dict.fromkeys(c for f in group for c in f.components))
         aggregated.append(replace(highest, reporters=reporters, components=components))
@@ -1249,25 +1293,67 @@ def split_findings_by_diff(
     return tuple(in_diff), tuple(out_of_diff)
 
 
+GATE_BLOCK = "block"
+GATE_NOTICE = "notice"
+GATE_SUPPRESSED = "suppressed"
+
+
+@dataclass(frozen=True)
+class GateDecision:
+    finding: Finding
+    outcome: str  # GATE_BLOCK | GATE_NOTICE | GATE_SUPPRESSED
+    exception: ExceptionEntry | None = None
+
+
+def gate_decision(
+    finding: Finding, *, in_diff: bool, exceptions: Sequence[ExceptionEntry] = ()
+) -> GateDecision:
+    """The one place that decides whether a finding blocks, is shown as a notice, or is
+    suppressed. Pure: severity, `rule_class`, `source`, whether the finding is on a changed
+    line, and the registry.
+
+    - A SCRIPT finding matching a registry entry is suppressed. A model finding is never
+      suppressed by an entry; the entry is in its briefing and the finding stays visible.
+    - Only Critical/Major can block, and only on a changed line (severity does not widen the
+      scope; accepted residual: a PR that deletes a guard on one line and leaves the exposed use
+      elsewhere is not caught here).
+    - A MODEL `measurement` finding is a notice until the Phase 2 verifiers can confirm the
+      measurement; a script's own measurement blocks like any other script finding. This lets a
+      model's own label downgrade its finding, which is safe only while the bridge's output schema
+      has no `rule_class` property, so a model cannot set it (a test pins that; decide who may
+      assert `measurement` before the schema gains one)."""
+    if finding.source == "script":
+        entry = match_exception(exceptions, finding.rule, finding.path)
+        if entry is not None:
+            return GateDecision(finding, GATE_SUPPRESSED, entry)
+    if finding.severity not in ("Critical", "Major"):
+        return GateDecision(finding, GATE_NOTICE)
+    if _is_downgraded_measurement(finding):
+        return GateDecision(finding, GATE_NOTICE)
+    return GateDecision(finding, GATE_BLOCK if in_diff else GATE_NOTICE)
+
+
 def blocking_findings(
     findings: Sequence[Finding],
     ranges: _RangesView | None,
     *,
     changed_paths: Iterable[str] = (),
     repo_root: Path | None = None,
+    exceptions: Sequence[ExceptionEntry] = (),
 ) -> tuple[Finding, ...]:
-    """The findings that fail the gate: a Major/Critical on a changed line.
-    Severity does not widen the scope, so a finding on an unchanged line stays a
-    notice (accepted residual: a PR that deletes a guard on one line and leaves
-    the exposed use elsewhere is not caught here). `ranges` of None means the
-    changed lines could not be computed: every Critical/Major blocks, as before
-    diff scoping."""
-    gated = [f for f in findings if f.severity in ("Critical", "Major")]
+    """The findings that fail the gate (see `gate_decision`). `ranges` of None means the
+    changed lines could not be computed: every finding the gate would block on a changed line
+    blocks, as before diff scoping."""
+    candidates = [
+        f
+        for f in findings
+        if gate_decision(f, in_diff=True, exceptions=exceptions).outcome == GATE_BLOCK
+    ]
     if ranges is None:
-        return tuple(gated)
+        return tuple(candidates)
     ranges, changed, symlinks = _scope_views(ranges, changed_paths, repo_root)
     blocking: list[Finding] = []
-    for finding in gated:
+    for finding in candidates:
         if _classify(finding, ranges, changed, repo_root, symlinks):
             blocking.append(finding)
     return tuple(blocking)
@@ -1279,9 +1365,16 @@ def has_blocking_findings(
     *,
     changed_paths: Iterable[str] = (),
     repo_root: Path | None = None,
+    exceptions: Sequence[ExceptionEntry] = (),
 ) -> bool:
     return bool(
-        blocking_findings(findings, ranges, changed_paths=changed_paths, repo_root=repo_root)
+        blocking_findings(
+            findings,
+            ranges,
+            changed_paths=changed_paths,
+            repo_root=repo_root,
+            exceptions=exceptions,
+        )
     )
 
 
@@ -1746,6 +1839,7 @@ def _dispatch_one(
     changed_ranges: LineRanges | None = None,
     changed_paths: Iterable[str] = (),
     whole_file: Iterable[str] = (),
+    exceptions_briefing: str = "",
 ) -> ReviewerReport:
     reviewer_scope = scope.paths
     if name == "plugin-rulebook-checker":
@@ -1778,6 +1872,8 @@ def _dispatch_one(
                 attempts=0,
             )
         briefing = render_diff_scope(reviewer_scope, changed_ranges, changed_paths, whole_file)
+    if exceptions_briefing:
+        briefing = f"{briefing}\n\n{exceptions_briefing}" if briefing else exceptions_briefing
     try:
         prepare_reviewer_instruction(
             name, base_sha=base_sha, out=instruction_path, repo=repo, briefing=briefing
@@ -1901,6 +1997,7 @@ def dispatch_reviewers(
     budget_seconds: float = DISPATCH_BUDGET_SECONDS,
     changed_ranges: LineRanges | None = None,
     changed_paths: Iterable[str] = (),
+    exceptions: Sequence[ExceptionEntry] = (),
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -1916,7 +2013,9 @@ def dispatch_reviewers(
 
     `changed_ranges` (from `compute_changed_line_ranges`) adds a `[diff scope]`
     briefing to each instruction so the reviewer reports on the PR's changed
-    lines only; `None` leaves the instruction exactly as the base SHA has it.
+    lines only; `None` leaves the instruction exactly as the base SHA has it. `exceptions`
+    (the documented-exceptions registry) is appended to every reviewer's instruction as its own
+    briefing, whatever `changed_ranges` is.
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
     `None` they go in a fresh temporary directory outside `repo`, removed after
@@ -1930,6 +2029,7 @@ def dispatch_reviewers(
     # per-reviewer instruction file at once.
     names = tuple(dict.fromkeys((*scope.validate, *scope.audit)))
     changed_paths = tuple(changed_paths)
+    exceptions_briefing = render_exceptions_briefing(exceptions)
     whole_file: frozenset[str] = frozenset()
     if changed_ranges is not None:
         try:
@@ -1972,6 +2072,7 @@ def dispatch_reviewers(
                 changed_ranges=changed_ranges,
                 changed_paths=changed_paths,
                 whole_file=whole_file,
+                exceptions_briefing=exceptions_briefing,
             )
             for name in names
         ]
