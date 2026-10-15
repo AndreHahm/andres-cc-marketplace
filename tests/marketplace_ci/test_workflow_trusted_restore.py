@@ -174,6 +174,8 @@ def test_codex_review_refuses_shadow_forms_below_the_top_level_of_scripts():
         "scripts/marketplace_ci/registry/helper.py",  # directory shadowing registry.py
         "scripts/marketplace_ci/review_contract/helper.py",  # directory shadowing the contract
         "scripts/marketplace_ci/review_contract.so",
+        "scripts/marketplace_ci/review_verifiers/helper.py",  # directory shadowing the verifiers
+        "scripts/marketplace_ci/review_verifiers.so",
         # A symlink is one path with no trailing slash, so the directory alternatives
         # must also match the bare name.
         "scripts/marketplace_ci/review",

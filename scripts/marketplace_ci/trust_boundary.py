@@ -26,6 +26,7 @@ TIER1_FILES = frozenset(
         "scripts/marketplace_ci/__main__.py",
         "scripts/marketplace_ci/review.py",
         "scripts/marketplace_ci/review_contract.py",
+        "scripts/marketplace_ci/review_verifiers.py",
         "scripts/marketplace_ci/git_state.py",
         "scripts/marketplace_ci/registry.py",
         "scripts/marketplace_ci/sync_plan.py",

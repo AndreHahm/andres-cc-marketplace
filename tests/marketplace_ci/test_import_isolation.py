@@ -43,6 +43,7 @@ TIER1_MODULES = frozenset(
         "scripts.marketplace_ci.__main__",
         "scripts.marketplace_ci.review",
         "scripts.marketplace_ci.review_contract",
+        "scripts.marketplace_ci.review_verifiers",
         "scripts.marketplace_ci.git_state",
         "scripts.marketplace_ci.registry",
         "scripts.marketplace_ci.sync_plan",
@@ -58,6 +59,7 @@ TIER1_MODULES = frozenset(
 TIER1_SOURCE_FILES = (
     "scripts/marketplace_ci/review.py",
     "scripts/marketplace_ci/review_contract.py",
+    "scripts/marketplace_ci/review_verifiers.py",
     "scripts/marketplace_ci/git_state.py",
     "scripts/marketplace_ci/registry.py",
     "scripts/marketplace_ci/sync_plan.py",
@@ -253,6 +255,12 @@ def test_the_review_contract_and_its_registry_are_tier1():
     contract that loads it, is refused automated review like any other gate code (issue #573)."""
     assert "scripts/marketplace_ci/review_contract.py" in TIER1_FILES
     assert "scripts/marketplace_ci/review_exceptions.yaml" in TIER1_FILES
+
+
+def test_the_script_verifiers_are_tier1():
+    """The verifiers feed the blocking gate, so a PR must not be able to weaken its own verifier
+    (issue #576): editing them is refused automated review like the gate itself."""
+    assert "scripts/marketplace_ci/review_verifiers.py" in TIER1_FILES
 
 
 def test_a_pr_editing_the_registry_hits_the_hard_refuse_gate(tmp_path):
