@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from scripts.marketplace_ci import review_verifiers as rv
 from scripts.marketplace_ci.git_state import ChangedPath
-from scripts.marketplace_ci.review import gate_decision
+from scripts.marketplace_ci.review import gate_decision, split_findings_by_diff
 
 
 @pytest.fixture(autouse=True)
@@ -768,3 +769,43 @@ def test_a_resolved_path_with_markdown_in_its_name_is_quoted_in_the_evidence():
     odd = "docs/odd [x](y) @team.md"
     (finding,) = _check(_lines("See [t](</docs/odd [x](y) @team.md>)."), extra=(odd,))
     assert f"resolves to `{odd}`" in finding.evidence
+
+
+def test_a_link_made_live_by_adding_its_target_is_still_the_prs_through_the_cited_target(
+    git_repo,
+):
+    # The base text is read against the HEAD tree, so the link counts as already present and keeps
+    # its line; the finding still cites the resolved target, which the PR added, so the gate blocks.
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
+    git_repo.write(SKILL, _skill_text("Example: [g](../../docs/guide.md)."))
+    base = _commit(git_repo.root, "base")
+    target = "plugins/demo-kit/docs/guide.md"
+    git_repo.write(target, "guide")
+    git_repo.write(SKILL, _skill_text("Example: [g](../../docs/guide.md).", "", "Unrelated edit."))
+    _commit(git_repo.root, "head")
+    changed = (ChangedPath("M", SKILL, SKILL), ChangedPath("A", None, target))
+    (finding,) = rv.run_verifiers(git_repo.root, changed, base)[2].findings
+    assert target in finding.components
+    in_diff, out_of_diff = split_findings_by_diff(
+        [finding],
+        {SKILL: ((7, 8),), target: ((1, sys.maxsize),)},
+        changed_paths=[SKILL, target],
+        repo_root=git_repo.root,
+    )
+    assert (len(in_diff), len(out_of_diff)) == (1, 0)
+
+
+def test_a_link_that_was_already_live_in_the_base_keeps_its_line(git_repo):
+    git_repo.stage(
+        ".claude/marketplace-sync.json", json.dumps({"version": 1, "scripts_mirrors": []})
+    )
+    git_repo.write("plugins/demo-kit/docs/guide.md", "guide")
+    git_repo.write(SKILL, _skill_text("Example: [g](../../docs/guide.md)."))
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _skill_text("Example: [g](../../docs/guide.md).", "", "Unrelated edit."))
+    _commit(git_repo.root, "head")
+    outcome = rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)[2]
+    (finding,) = outcome.findings
+    assert finding.line is not None

@@ -537,3 +537,14 @@ def test_a_wrapper_given_by_its_absolute_path_does_not_hide_a_direct_run(grant):
 def test_a_plugin_script_that_is_named_like_a_wrapper_is_still_a_direct_run():
     text = _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/env:*)")
     assert [g.script for g in _grants(SKILL, text)] == ["plugins/demo-kit/scripts/env"]
+
+
+def test_a_quoted_wrapper_name_does_not_hide_a_direct_run():
+    text = _doc('Bash("env" ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)')
+    assert [g.script for g in _grants(SKILL, text)] == [PLUGIN_SCRIPT]
+
+
+def test_a_wrapper_option_that_hides_the_program_makes_the_grant_unverifiable():
+    text = _doc("Bash(env -S ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)")
+    with pytest.raises(rv.VerifierError):
+        _grants(SKILL, text)

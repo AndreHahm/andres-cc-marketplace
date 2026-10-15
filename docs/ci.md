@@ -512,7 +512,13 @@ line, like any other finding) and a registry entry can suppress it; a model find
   live non-mirrored consumers under `.claude/` (such as `settings.json` permission entries), code
   identifiers and rule ids, which `ty`, the tests and the R20 sweep already see.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
-  `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
+  `pwsh` and other interpreters are outside it. A shell behind a wrapper (`env bash:*`, `FOO=1 bash:*`,
+  `/usr/bin/env sh:*`) is read as the shell, using the wrapper list R37 uses (`env`, `exec`, `command`,
+  `time`, `nohup`, `nice`, also quoted, by absolute path or in another case; a step beyond R6's text). A
+  wrapper option that hides the program (`env -S`, or options with nothing after them) makes the file
+  unverifiable, which blocks. Not judged: a bare `env:*`, other wrappers (`timeout`, `sudo`, `xargs`,
+  `setsid`, `stdbuf`, `ionice`, `chroot`), and `command -v bash`, which is flagged although it only looks the
+  program up. Also outside it is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
   `forbidden_bash_scopes` and to the verifier together, keeping the settings-equality test). It reads the
   frontmatter with PyYAML; where Claude Code's own parser could read a file differently, the strict

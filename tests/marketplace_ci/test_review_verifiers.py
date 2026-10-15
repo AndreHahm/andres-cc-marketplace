@@ -783,3 +783,68 @@ def test_a_registry_entry_suppresses_a_script_finding(monkeypatch, git_repo, tmp
     (finding,) = payload["findings"]
     assert finding["gate"] == "suppressed" and finding["suppressed"] is True
     assert finding["exception"]["rule"] == "r6-bash-scope"
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env bash:*)",
+        "Bash(env FOO=1 bash -c:*)",
+        "Bash(FOO=1 bash:*)",
+        "Bash(/usr/bin/env sh:*)",
+        "Bash(exec -a name bash:*)",
+        "Bash(nohup bash:*)",
+    ],
+)
+def test_a_wrapper_in_front_of_an_interpreter_is_still_an_interpreter_grant(grant):
+    assert len(rv.check_bash_scope(SKILL, _skill(grant))) == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(FOO=1 bash scripts/x.sh:*)",
+        "Bash(env git:*)",
+        "Bash(env FOO=1 ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(env:*)",
+    ],
+)
+def test_a_wrapper_in_front_of_a_pinned_script_or_a_named_tool_passes(grant):
+    assert rv.check_bash_scope(SKILL, _skill(grant)) == ()
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(env -S bash:*)",
+        "Bash(env -Sbash:*)",
+        "Bash(env --split-string=bash:*)",
+        "Bash(env -i:*)",
+        "Bash(FOO=1:*)",
+    ],
+)
+def test_a_grant_whose_program_cannot_be_read_is_unverifiable_not_clean(grant):
+    with pytest.raises(rv.VerifierError):
+        rv.check_bash_scope(SKILL, _skill(grant))
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        'Bash("env" bash:*)',
+        "Bash('/usr/bin/env' sh:*)",
+        "Bash(\\env bash:*)",
+        "Bash(ENV bash:*)",
+        "Bash(nice --adjustment 5 bash:*)",
+        "Bash(time --format x bash:*)",
+        "Bash(time --output f bash:*)",
+    ],
+)
+def test_quoted_escaped_and_case_variant_wrappers_and_long_options_are_read(grant):
+    assert len(rv.check_bash_scope(SKILL, _skill(grant))) == 1
+
+
+@pytest.mark.parametrize("grant", ["Bash(*\u00a0*)", "Bash(* *)"])
+def test_odd_whitespace_between_wildcards_is_a_finding_not_a_crash(grant):
+    assert len(rv.check_bash_scope(SKILL, _skill(grant))) == 1
