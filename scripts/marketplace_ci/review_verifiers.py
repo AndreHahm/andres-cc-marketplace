@@ -51,6 +51,18 @@ PATH_AND_MIRROR = "path-and-mirror"
 STRUCTURE = "structure"
 RULE_EXECUTABLE_BIT = "r37-executable-bit"
 
+# Every rule id a verifier here can emit, with its rule class. A test keeps this equal to the rows
+# of docs/review-rule-inventory.md, so the inventory cannot drift from the code.
+VERIFIER_RULES = {
+    RULE_BASH_SCOPE: "line",
+    RULE_UNVERIFIABLE: "line",
+    RULE_SKILLMD_LINES: "measurement",
+    RULE_DESCRIPTION_LENGTH: "measurement",
+    RULE_CODE_BLOCK_LINES: "measurement",
+    RULE_ESCAPING_PATH: "graph",
+    RULE_EXECUTABLE_BIT: "graph",
+}
+
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
 # is equivalent to unrestricted Bash. A test keeps this equal to that setting (R20).
 SHELL_INTERPRETERS = ("sh", "bash", "cmd", "powershell")
