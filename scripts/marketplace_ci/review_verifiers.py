@@ -360,6 +360,9 @@ def _bash_grant_problem(token: str) -> str | None:
     if not command.strip("*? \t"):
         return f"grants `{_quote(token)}`, unrestricted Bash"
     words = command.split()
+    # `env bash:*` and `FOO=1 bash:*` run the interpreter all the same; a bare wrapper (`env:*`) has
+    # no program to read, so it stays as written
+    words = _command_words(words) or words
     first = words[0].rstrip(":")
     variable = _PLUGIN_VARIABLE.match(first)
     plain = first[variable.end() :] if variable else first  # `${CLAUDE_PLUGIN_ROOT}/scripts/x.sh`
@@ -1404,7 +1407,20 @@ class ScriptGrant:
 
 _RUN_WRAPPERS = ("env", "exec", "command", "time", "nohup", "nice")  # run the next word as is
 _WRAPPER_OPTIONS_WITH_VALUE = frozenset(
-    {"-a", "-u", "-C", "-S", "-f", "-o", "-n", "--unset", "--chdir", "--split-string", "--argv0"}
+    {
+        "-a",
+        "-u",
+        "-C",
+        "-f",
+        "-o",
+        "-n",
+        "--unset",
+        "--chdir",
+        "--argv0",
+        "--adjustment",
+        "--format",
+        "--output",
+    }
 )
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 _NUMBERED_NAME = re.compile(r":\d+$")  # reads as `path:line` to the gate
@@ -1412,22 +1428,43 @@ _PLUGIN_ROOT_FORMS = ("${CLAUDE_PLUGIN_ROOT}/", "$CLAUDE_PLUGIN_ROOT/")
 _SKILL_DIR_FORMS = ("${CLAUDE_SKILL_DIR}/", "$CLAUDE_SKILL_DIR/")
 
 
+def _wrapper_name(word: str) -> str:
+    """The wrapper a command word names however it is spelled: quotes and escapes removed, an
+    absolute path reduced to its file name, case folded, `.exe` dropped (as `_is_interpreter` reads
+    a shell). A word that is not an absolute path keeps its whole text, so a plugin script merely
+    named `env` (written `${CLAUDE_PLUGIN_ROOT}/scripts/env`) is never taken for the wrapper."""
+    plain = word.replace('"', "").replace("'", "").replace("\\", "")
+    if plain.startswith("/"):
+        plain = plain.rsplit("/", 1)[-1]
+    return plain.lower().removesuffix(".exe")
+
+
 def _command_words(words: list[str]) -> list[str]:
     """`words` without the leading wrappers, their options and `NAME=VALUE` assignments, so the
-    first word left is the program a shell runs (`env -i FOO=1 exec -a n x.sh` runs `x.sh`)."""
+    first word left is the program a shell runs (`env -i FOO=1 exec -a n x.sh` runs `x.sh`). Raises
+    VerifierError when the program cannot be told: `env -S` runs a command string, and options or
+    assignments with nothing after them leave no program to read. A bare wrapper (`env`) returns [],
+    which the caller reads as the wrapper itself."""
     index = 0
+    consumed = False  # an option or an assignment was skipped
     while index < len(words):
         word = words[index]
-        # `/usr/bin/env` runs its command like `env`; a plugin script merely named `env` is written
-        # with a variable (`${CLAUDE_PLUGIN_ROOT}/scripts/env`), never as an absolute path
-        wrapper = word.rsplit("/", 1)[-1] if word.startswith("/") else word
-        if wrapper in _RUN_WRAPPERS or _ASSIGNMENT.match(word):
+        if _wrapper_name(word) in _RUN_WRAPPERS:
+            index += 1
+        elif _ASSIGNMENT.match(word):
+            consumed = True
             index += 1
         elif word.startswith("-") and len(word) > 1:
+            if word.startswith(("-S", "--split-string")):
+                raise VerifierError("a wrapper option runs a command string this check cannot read")
+            consumed = True
             index += 2 if word in _WRAPPER_OPTIONS_WITH_VALUE else 1
         else:
             break
-    return words[index:]
+    rest = words[index:]
+    if consumed and not rest:
+        raise VerifierError("a wrapper's options leave no program to read")
+    return rest
 
 
 def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) -> list[ScriptGrant]:
