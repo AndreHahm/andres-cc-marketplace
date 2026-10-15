@@ -229,8 +229,9 @@ and `?` stay inside one segment), `reason` and `authority` (the repo file that s
 - When reviewers' findings are merged, `source` is part of the dedup key and the copy kept is one the
   gate can still block on, so a merge never turns a blocking finding into a notice or lets a script
   finding absorb a model finding.
-- It is git-tracked only, with no local override. If it cannot be read or is malformed,
-  `run-codex-review` exits 2 (`could_not_run`) before dispatching anything.
+- It is git-tracked only, with no local override. If it cannot be read or is malformed (a repeated YAML
+  key included, since the parser would otherwise keep the last value and hide the first), `run-codex-review`
+  exits 2 (`could_not_run`) before dispatching anything.
 - It is Tier 1, so a PR cannot suppress a finding about itself by editing it: editing it hits the
   Tier-1 hard-refuse step, and every later registry edit needs the maintainer bypass attestation.
 

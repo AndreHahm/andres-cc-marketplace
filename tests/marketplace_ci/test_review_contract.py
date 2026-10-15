@@ -334,3 +334,41 @@ def test_each_entry_is_one_json_escaped_line_that_cannot_break_out():
     parsed = [json.loads(line[2:]) for line in entry_lines]
     assert parsed[0]["why"] == hostile.reason and parsed[0]["rule"] == hostile.rule
     assert set(parsed[1]) == {"rule", "paths", "why", "authority"}
+
+
+# --- duplicate mapping keys fail closed (CodeRabbit, PR #575) ----------------------------------
+
+DUPLICATE_PATH = """\
+exceptions:
+  - rule: r
+    path: "plugins/a/**"
+    path: "plugins/**"
+    reason: why
+    authority: docs/ci.md
+"""
+
+
+def test_a_repeated_key_in_an_entry_is_refused_not_resolved_to_the_last_value(tmp_path):
+    with pytest.raises(rc.ContractError, match="^exceptions registry has a duplicate key 'path'$"):
+        rc.load_exceptions(_write(tmp_path, DUPLICATE_PATH))
+
+
+def test_a_repeated_top_level_key_is_refused(tmp_path):
+    with pytest.raises(rc.ContractError, match="duplicate key 'exceptions'"):
+        rc.load_exceptions(_write(tmp_path, "exceptions: []\nexceptions: []\n"))
+
+
+def test_two_spellings_of_one_key_are_one_key(tmp_path):
+    text = "exceptions:\n  - {1: a, 0x1: b}\n"
+    with pytest.raises(rc.ContractError, match="duplicate key"):
+        rc.load_exceptions(_write(tmp_path, text))
+
+
+def test_the_same_key_in_different_entries_is_fine(tmp_path):
+    second = GOOD.split("exceptions:\n")[1].replace("r5-ask-user-question", "another-rule")
+    assert len(rc.load_exceptions(_write(tmp_path, GOOD + second))) == 2
+
+
+def test_an_alias_cycle_neither_hangs_nor_escapes_as_a_raw_error(tmp_path):
+    with pytest.raises(rc.ContractError):
+        rc.load_exceptions(_write(tmp_path, "exceptions: &a [*a]\n"))
