@@ -334,6 +334,32 @@ line, like any other finding) and a registry entry can suppress it; a model find
   four-space-indented fence at the top level (indented code that contains a fence) can pair with a later
   fence and shift which lines count as a block, which is accepted rather than read twice, since a second
   reading double-counted a region and could block a legitimate PR.
+- **`r34-escaping-path`** (rule class `graph`, severity `critical`, outcome `path-and-mirror`). In a skill's
+  `SKILL.md` and its `references/*.md` under `plugins/` (matched case-insensitively), a link or a
+  `${CLAUDE_SKILL_DIR}` path that resolves to something that exists outside the skill folder may land only in
+  the plugin root's `references/` or `assets/`, or in its `scripts/` when the plugin is listed under
+  `scripts_mirrors`; anything else (`docs/`, a repo-root file, a sibling skill's folder, another plugin) is a
+  finding on the line that holds it, as is a path that climbs only to come back (`references/../SKILL.md`,
+  `references/./../SKILL.md`, a `${CLAUDE_SKILL_DIR}/../...` path that ends inside the skill). A leading `..`
+  chain is normal. Links are read in their Markdown forms (inline, with a title, with whitespace or `<...>`
+  around the destination, reference definitions), HTML `href` and `src`, and `${CLAUDE_SKILL_DIR}` paths; the
+  target is read as a person following it would (percent escapes and backslash separators undone, fragment
+  and query dropped, a leading `/` a repo-root path). A repo-root path such as `.github/x.md` is tried against
+  the repo root when it does not exist under the skill, and then counts as leaving the skill. Fenced blocks
+  (an opener indented four or more columns at the top level is code, not a fence) and inline code spans (a
+  span closes at a backtick run of the same length) are skipped, but a `${CLAUDE_SKILL_DIR}` path is read
+  even in code, as the rulebook says; URLs, anchors and placeholders are skipped. `scripts_mirrors` is read
+  from the **base** copy of `.claude/marketplace-sync.json`, so a PR cannot widen its own allowed folders; a
+  missing or unreadable file allows none. A SKILL.md or reference file that cannot be read (a symlink,
+  oversized, over the size budget) is a Major finding, not a skip. Every pattern is bounded and possessive,
+  so a hostile line cannot make a scan quadratic. **Dead links are deliberately not checked:** a script found
+  11 on the real tree and 10 were illustrative examples (`attachment-name.png`, `path/to/file.md`), which only
+  a human or a model can tell from a real miss, so dead links stay with the model reviewers. On the real tree
+  the check reports the two genuine escapes (`../../docs/agy-migration.md` and
+  `.github/pull_request_template.md`), which are notices until a PR touches those lines. Accepted: a PR that
+  removes a plugin from `scripts_mirrors` and links to its scripts in the same change passes (the base still
+  lists it; the file is a governance path a maintainer reviews), and a dead link a later PR makes live is not
+  caught by the PR that creates the target.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
@@ -343,7 +369,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   paths declared in a manifest instead of the default directories are not covered.
 - **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
   nesting deeper than 100 is unverifiable before any parsing.
-- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`) with `status` (`clean`
+- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`) with `status` (`clean`
   or `findings`), the number of findings and the number of files checked.
 - **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
   run `could_not_run` (exit 2), like any other infrastructure failure.
