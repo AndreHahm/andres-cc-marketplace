@@ -379,7 +379,7 @@ def test_every_reviewer_is_briefed_with_the_registry(monkeypatch, review_repo, t
 
     def bridge(argv):
         text = open(argv[argv.index("--instruction-file") + 1], encoding="utf-8").read()
-        briefed.append("[documented exceptions]" in text and "rule: R6" in text)
+        briefed.append("[documented exceptions]" in text and '"rule": "R6"' in text)
         return subprocess.CompletedProcess(argv, returncode=0, stdout=CLEAN, stderr=b"")
 
     rc, _ = _run(monkeypatch, review_repo, tmp_path, bridge)

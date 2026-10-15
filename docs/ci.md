@@ -218,7 +218,8 @@ and `?` stay inside one segment), `reason` and `authority` (the repo file that s
 - It suppresses **script** findings only: a script finding for that rule on a matching path is kept with
   `suppressed: true` and the entry cited, and never blocks. A model finding is never suppressed.
 - It is appended to every model reviewer's instruction as a `[documented exceptions]` briefing, so the
-  reviewer is told the decision exists. The briefing says an entry covers only the exact rule and paths it
+  reviewer is told the decision exists. The entries are rendered as one JSON-escaped line each and framed as
+  repository data, never instructions. The briefing says an entry covers only the exact rule and paths it
   names, never excuses a security, permission or trust-boundary finding, and that a finding an entry seems
   to cover is reported as minor with the entry cited, not omitted. A reviewer's free-text `axis` is not a
   registry rule id, so this part is guidance to the model, not a mechanical suppression.
