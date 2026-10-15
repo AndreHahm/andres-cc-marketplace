@@ -292,7 +292,7 @@ def test_run_verifiers_measures_commands_and_agents_too(git_repo):
     git_repo.write(AGENT, _doc(_block(25)))
     _commit(git_repo.root, "add")
     change = tuple(ChangedPath("A", None, p) for p in (AGENT, COMMAND))
-    _, measures, _ = rv.run_verifiers(git_repo.root, change)
+    _, measures, *_ = rv.run_verifiers(git_repo.root, change)
     assert sorted(_rules(measures.findings)) == ["r18-code-block-line-count"] * 2
     assert measures.checked == (AGENT, COMMAND)
 
@@ -304,7 +304,7 @@ def test_a_rename_from_a_non_component_file_has_no_block_base(git_repo):
     (git_repo.root / REFERENCE).rename(git_repo.root / SKILL)
     _commit(git_repo.root, "inline")
     change = (ChangedPath("R", REFERENCE, SKILL),)
-    _, measures, _ = rv.run_verifiers(git_repo.root, change, base)
+    _, measures, *_ = rv.run_verifiers(git_repo.root, change, base)
     assert "r18-code-block-line-count" in _rules(measures.findings)
 
 
@@ -316,7 +316,7 @@ def test_a_rename_between_components_keeps_the_block_base(git_repo):
     (git_repo.root / legacy).rename(git_repo.root / SKILL)
     _commit(git_repo.root, "move")
     change = (ChangedPath("R", legacy, SKILL),)
-    _, measures, _ = rv.run_verifiers(git_repo.root, change, base)
+    _, measures, *_ = rv.run_verifiers(git_repo.root, change, base)
     assert "r18-code-block-line-count" not in _rules(measures.findings)
 
 

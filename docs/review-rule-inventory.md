@@ -79,14 +79,14 @@ rulebook rule that has several independent checks gets one id per check.
 | `r26-expensive-action-opt-in` | R26 | judgment | whether an expensive action is gated by an explicit question | none | model | - |
 | `r27-component-name-form` | R27 | judgment | the grammatical form of a component name | none | model | - |
 | `r28-skill-testing-mandate` | R28 | graph | `evals.json` with the minimum scenarios, or a justification in the testing section | none | candidate | - |
-| `r29-testing-section` | R29 | line | a `Testing & Validation` heading with positive, negative and pass-criteria subsections | none | phase-2 | structure |
+| `r29-testing-section` | R29 | judgment | a `Testing & Validation` heading with positive, negative and pass-criteria subsections, matched by substance; a script cannot read the substance | none | model | - |
 | `r30-eval-sample-inline` | R30 | judgment | a worked eval walkthrough left inline | none | model | - |
 | `r31-eval-fixture-integrity` | R31 | measurement | zero-match guard, anchored matching and coverage arithmetic in `evals.json` and smoke tests | `check_evals.py` (the iteration-registry check is not in the script) | existing | - |
 | `r32-data-only-boundary` | R32 | judgment | whether a skill that reads another component's output carries the boundary statement | none | model | - |
 | `r33-component-file-prefix` | R33 | line | a file basename without the plugin's registered prefix | `prefix_check.py`, wired into `check-all` | existing | - |
 | `r34-dead-reference` | R34 | judgment | a link that resolves to nothing and is not an illustrative example; a script found 11 on the real tree and 10 were examples, so only a human or model can tell | none | model | - |
 | `r34-escaping-path` | R34 | graph | a path that leaves the skill folder into a folder the `.claude/` mirror does not carry | none | phase-2 | path-and-mirror |
-| `r35-standard-sections` | R35 | line | `Quick Start`, `When to Use`, `When NOT to Use` and, with `references/`, `Reference Guide` present | none | phase-2 | structure |
+| `r35-standard-sections` | R35 | judgment | the standard sections, matched by substance rather than wording; a literal-heading scan found 47 of 150 real skills without a `Quick Start` heading, so it would block on wording | none | model | - |
 | `r36-reciprocal-exclusion` | R36 | judgment | whether an exclusion pointer is named back where the domains overlap | none | model | - |
 | `r37-executable-bit` | R37 | graph | a directly-invoked script whose git mode in `git ls-files -s` is not `100755` | none | phase-2 | structure |
 | `skill-agent-dependency-cycle` | dependency-reviewer | graph | a cycle or an unresolved target in the `Skill()` and `Agent()` call graph | none | phase-2 | call-graph |

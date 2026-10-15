@@ -360,6 +360,25 @@ line, like any other finding) and a registry entry can suppress it; a model find
   removes a plugin from `scripts_mirrors` and links to its scripts in the same change passes (the base still
   lists it; the file is a governance path a maintainer reviews), and a dead link a later PR makes live is not
   caught by the PR that creates the target.
+- **`r37-executable-bit`** (rule class `graph`, severity `critical`, outcome `structure`). A script that a
+  skill or command runs directly by path, because its `allowed-tools` grant starts with
+  `${CLAUDE_PLUGIN_ROOT}/` or `${CLAUDE_SKILL_DIR}/` (braced or not, quoted, or after `env`, `exec`, `command`
+  or `time`), must be committed as a regular file with git mode 100755: a shell running a 100644 path fails
+  with `Permission denied`. The finding names the reason: mode 100644, a symlink, a submodule, a directory, or
+  no such file (the rulebook calls a missing file a FAIL too). A script an interpreter runs
+  (`Bash(bash ${...}/x.sh:*)`) needs no bit and is not listed, a glob names no single script, and a path that
+  climbs out of its plugin names nothing. Because a `chmod` changes no line of the skill, the verifier reads
+  **every** skill and command of a plugin the PR touches. The finding sits on each grant line and cites the
+  script's own path, so dropping the bit makes it the PR's. A document in such a plugin that cannot be read
+  (a symlink, oversized) is reported, and running out of the read budget fails the run closed, so a chmod is
+  never let through unseen. The real tree has no violation, so this guards against a repeat of the bug that
+  made the rule. **Not covered, and stated here so the claim stays honest:** hook commands (`hooks.json`, or a
+  `hooks:` block in skill frontmatter) that are a bare path, the `.claude/` mirror copy of a script, and a
+  grant the skill's body never runs directly (the rulebook gives that an informational note; the verifier
+  reports it, which is stricter).
+  `r29-testing-section` and `r35-standard-sections` are not verifiers: the rulebook matches those headings
+  "by substance", and a literal scan found 47 of 150 real skills without a `Quick Start` heading, so a script
+  would block on wording.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
@@ -369,7 +388,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   paths declared in a manifest instead of the default directories are not covered.
 - **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
   nesting deeper than 100 is unverifiable before any parsing.
-- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`) with `status` (`clean`
+- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`, `structure`) with `status` (`clean`
   or `findings`), the number of findings and the number of files checked.
 - **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
   run `could_not_run` (exit 2), like any other infrastructure failure.
