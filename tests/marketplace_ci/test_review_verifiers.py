@@ -674,6 +674,7 @@ def test_a_clean_skill_leaves_the_run_clean_and_records_the_verifier(
         {"name": "measurement", "status": "clean", "findings": 0, "checked": 1},
         {"name": "path-and-mirror", "status": "clean", "findings": 0, "checked": 1},
         {"name": "structure", "status": "clean", "findings": 0, "checked": 1},
+        {"name": "call-graph", "status": "clean", "findings": 0, "checked": 1},
     ]
 
 

@@ -24,7 +24,7 @@ SCRIPT = "plugins/demo-kit/scripts/tool.sh"
 def _inventory() -> dict[str, dict[str, str]]:
     rows = {}
     for line in INVENTORY.read_text(encoding="utf-8").splitlines():
-        if not line.startswith("| `r") and not line.startswith("| `f"):
+        if not line.startswith("| `"):
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) == 7:

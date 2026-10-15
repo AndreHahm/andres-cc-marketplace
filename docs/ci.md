@@ -410,6 +410,47 @@ line, like any other finding) and a registry entry can suppress it; a model find
   `r29-testing-section` and `r35-standard-sections` are not verifiers: the rulebook matches those headings
   "by substance", and a literal scan found 47 of 150 real skills without a `Quick Start` heading, so a script
   would block on wording.
+- **`skill-agent-dependency-cycle`** (rule class `graph`, severity `major`, outcome `call-graph`). A call is a
+  literal `Skill(name)` or `Agent(subagent_type: name)` in the body of a skill, agent or command, read from the
+  parsed Markdown: running text and inline code spans, raw HTML blocks (a `<details>` block is read, HTML
+  comments are not) and link and footnote definitions. Both argument shapes are read, positional and keyed
+  (`Skill(skill: x)`, `Skill({ skill: x })`, `Agent({"subagent_type": "x"})`); an agent call may carry a long
+  prompt first (the key is looked for up to 4,000 characters on, and never past the next call). A frontmatter
+  `allowed-tools` grant (a grant is not a call), a fenced or indented code block and a mention without the
+  call syntax are not calls. `Skill(x)` resolves to a skill or a command named `x`, `Agent(subagent_type: x)`
+  to an agent. A `plugin:name` target is looked up in that plugin when it is a plugin of this tree (the real
+  tree writes `Skill(git-kit:commit)` across plugins, so a typo behind a prefix is a dangling call and a cycle
+  written with prefixes is a cycle); a prefix that names no plugin here (`codex:rescue`) is external and
+  skipped, as are a placeholder such as `...`, a file name (`x.md`) and a component calling itself (same kind
+  and name; a skill and an agent that share a name and call each other are a cycle). Two things are findings:
+  a call to a component that does not exist, and a call that closes a cycle among the resolved calls (the
+  evidence spells out the cycle). **Only a call the PR introduces blocks**, since the real tree has an
+  intentional `commit` <-> `create-pr` cycle (each skips the other's step when it is the nested one) and
+  two more skills in the same group that a script would otherwise flag forever. Against the base: a dangling call is new
+  when its (caller, kind, target) was not called at all before (a target the PR deleted is a removed-identifier
+  matter, not this check's), and a resolved call in a cycle is new when it did not resolve to that component
+  before, so creating the target of an old dangling call that closes a cycle counts, and cites the target's
+  path. A new call in a document that has a base is reported for the whole file, with its line in the
+  evidence, because an edit elsewhere (an indent, a blank line, a fence) can turn old text into a call; with
+  no base every call in a changed document is new and keeps its line (the line of the call's target, so a
+  call split over several lines reports where the name is), and lone carriage returns, which git does not
+  count as line breaks, leave a call with no line. The verifier reads every skill, agent and command of the
+  repo (only when the PR touches one), at HEAD and at the base, so a deletion elsewhere is seen. A changed
+  component that cannot be read (symlink, oversized, a parser fault such as `RecursionError`) is a finding;
+  one the PR left alone adds no call of its own and is ignored. A changed skill, agent or command
+  *directory* that is a symlink or submodule is a finding too, since it hides what is behind it. Running out
+  of the read budget or of the 30-second parse budget, or more than 500 call problems, fails the run closed.
+  An intentional guarded cycle a PR adds takes an entry in `review_exceptions.yaml`, which then covers every
+  call problem in that file (an entry matches rule and path, not target). On the real tree it finds no
+  unresolved target and, with no base, only the six calls of the existing git-kit cycles; against the base it
+  finds nothing. **Accepted, and stated here so the claim stays honest:** a call written with an escape,
+  entity or emphasis (`Skill\(x)`, `**Skill**(x)`) or with a homoglyph (the literal syntax is the contract; a
+  looser one would flag `skill(s)` in prose), `references/*.md` files (which hold calls on the real tree but
+  are not components), the frontmatter ending early at an indented `...` inside a block scalar, a path matched
+  case-insensitively while Claude Code may load only `SKILL.md`, an agent named by its file name while Claude
+  Code uses the frontmatter name, two plugins with a component of the same name (they share call history; the
+  flat `.claude/` mirror forces unique names), nested command directories (`sub:x` is skipped as a prefix),
+  and the `.claude/` mirrors and Codex exports, which are the mirror family's.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
@@ -419,7 +460,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   paths declared in a manifest instead of the default directories are not covered.
 - **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
   nesting deeper than 100 is unverifiable before any parsing.
-- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`, `structure`) with `status` (`clean`
+- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`, `path-and-mirror`, `structure`, `call-graph`) with `status` (`clean`
   or `findings`), the number of findings and the number of files checked.
 - **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
   run `could_not_run` (exit 2), like any other infrastructure failure.
