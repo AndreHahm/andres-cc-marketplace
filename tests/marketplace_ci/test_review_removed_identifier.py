@@ -383,3 +383,55 @@ def test_checked_lists_the_removed_components_that_were_searched(git_repo):
     _commit(git_repo.root, "delete")
     outcome = _outcome(git_repo, (change,), base)
     assert outcome.findings == () and outcome.checked == (_skill("gone"),)
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "Use `/demo-kit:gone` here.",
+        "Run `/gone --dry-run` first.",
+        "Run `/demo-kit:gone --dry-run` first.",
+        "Run `demo-kit:gone --dry-run` first.",
+    ],
+)
+def test_slash_and_prefixed_command_forms_with_arguments_count(git_repo, reference):
+    git_repo.write(_skill("gone"), _doc("gone"))
+    git_repo.write("docs/x.md", reference + "\n")
+    base = _commit(git_repo.root, "base")
+    change = _delete(git_repo, _skill("gone"))
+    _commit(git_repo.root, "delete")
+    assert len(_outcome(git_repo, (change,), base).findings) == 1
+
+
+def test_a_slash_form_does_not_match_a_longer_name(git_repo):
+    git_repo.write(_skill("gone"), _doc("gone"))
+    git_repo.write("docs/x.md", "Use `/gone-away` and `/gone2`.\n")
+    base = _commit(git_repo.root, "base")
+    change = _delete(git_repo, _skill("gone"))
+    _commit(git_repo.root, "delete")
+    assert _outcome(git_repo, (change,), base).findings == ()
+
+
+def test_only_the_exact_history_files_are_excluded_not_a_name_prefix(git_repo):
+    git_repo.write(_skill("gone"), _doc("gone"))
+    git_repo.write("plugins/demo-kit/commands/CHANGELOG-release.md", "Run Skill(gone).\n")
+    git_repo.write("plugins/demo-kit/CHANGELOG-d/x.md", "Run Skill(gone).\n")
+    git_repo.write("plugins/demo-kit/CHANGELOG.md", "Run Skill(gone).\n")
+    git_repo.write("plugins/demo-kit/changelog.md", "Run Skill(gone).\n")
+    git_repo.write("plugins/demo-kit/RELEASE_NOTES.md", "Run Skill(gone).\n")
+    base = _commit(git_repo.root, "base")
+    change = _delete(git_repo, _skill("gone"))
+    _commit(git_repo.root, "delete")
+    (finding,) = _outcome(git_repo, (change,), base).findings
+    assert "CHANGELOG-release.md" in finding.evidence and "CHANGELOG-d/x.md" in finding.evidence
+    assert "CHANGELOG.md" not in finding.evidence.replace("CHANGELOG-release.md", "")
+    assert "changelog.md" not in finding.evidence and "RELEASE_NOTES.md" not in finding.evidence
+
+
+def test_the_unsafe_name_finding_gives_advice_that_fits_it(git_repo):
+    git_repo.write(_command("odd name"), _doc("odd name"))
+    base = _commit(git_repo.root, "base")
+    change = _delete(git_repo, _command("odd name"))
+    _commit(git_repo.root, "delete")
+    (finding,) = _outcome(git_repo, (change,), base).findings
+    assert "symlink" not in finding.remediation and "name" in finding.remediation

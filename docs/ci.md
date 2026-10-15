@@ -401,7 +401,10 @@ line, like any other finding) and a registry entry can suppress it; a model find
   script's own path, so dropping the bit makes it the PR's. A document in such a plugin that cannot be read
   (a symlink, oversized, a frontmatter the parser refuses) is reported, and when the PR left that document
   alone the finding cites every path the PR changed in that plugin (up to 200; more fails the run closed),
-  so a chmod there blocks. A changed document the grant verifier already refuses is reported only by it.
+  so a chmod there blocks (each cited path counts for any change to it, `path:*`; see Diff-scoped blocking). A
+  grant document that stays unreadable therefore blocks every PR that touches its plugin until it is fixed or a
+  registry entry covers it; that is deliberate. A changed document the grant verifier already refuses is
+  reported only by it.
   Running out of the read budget also fails the run closed, so a chmod is never let through unseen. The real tree has no violation, so this guards against a repeat of the bug that
   made the rule. **Not covered, and stated here so the claim stays honest:** hook commands (`hooks.json`, or a
   `hooks:` block in skill frontmatter) that are a bare path, the `.claude/` mirror copy of a script, and a
@@ -478,20 +481,25 @@ line, like any other finding) and a registry entry can suppress it; a model find
   to another plugin, or turning a skill into a command or back, keeps it. A reference is `Skill(name)` for a
   skill or command, or `subagent_type: name` for an agent (positional or keyed, JSON-style quotes included,
   with or without a `plugin:` prefix); and, only when no other component still has the name, `/name` or
-  `plugin:name` in backticks, and the bare name in backticks only if it is hyphenated (a single common word
+  `plugin:name` in backticks (a slash command may carry arguments, `/name --flag`), and the bare name in
+  backticks only if it is hyphenated (a single common word
   such as `commit` or `docs` in backticks is ordinary prose). One finding per removed component, on its old
   path (the deleted or renamed path is in the diff, so it is the PR's), with the number of references, the
   number of files and up to five of them. The search is `git grep -a` at `HEAD` (`-a`, because whether a
   file counts as binary can come from a `.gitattributes` the PR itself adds), so it is bounded by the number of
   matching files and sits outside the Python read budget, over `plugins/`, `docs/`, `scripts/`, `.github/` and
-  root files, without any `CHANGELOG*` or `RELEASE_NOTES*` (history). `.claude/`, `.agents/` and `.codex/` are
+  root files, without the exact history files `CHANGELOG`, `CHANGELOG.md` and `RELEASE_NOTES.md` in any
+  case (a prefix would also hide a live file such as `commands/CHANGELOG-release.md`). `.claude/`, `.agents/` and `.codex/` are
   the mirror family's, and `evals/` and `issues/` are history. A name the search cannot match safely (a
   space, `+`, `@`, non-ASCII) is a finding of its own, never a skip. It needs a base: with none, nothing is
-  known to be removed. Each search has a 60-second timeout and the whole step the 30-second scan budget;
-  running out of either, or removing more than 200 components, fails the run closed. `checked` lists the
+  known to be removed. The 30-second scan budget is checked before each search and each search has its own 60-second
+  timeout, so the step can take longer than 30 seconds in all; running out of either, or removing more than
+  200 components, fails the run closed. `checked` lists the
   removed components that were searched. On the real tree, simulating the removal of `merge-pr` gives one
   finding and `example-skill` one finding (2 references in 1 file). A deliberately historical mention (a
-  migration note) needs an entry in `review_exceptions.yaml`. **Accepted:** calls split across lines (git
+  migration note) needs an entry in `review_exceptions.yaml`. **Accepted:** an agent's frontmatter `skills:`
+  preload list that names a removed skill, and a rename done only in the frontmatter `name:` (a component's name
+  comes from its path), calls split across lines (git
   grep matches line by line), a case mismatch, a nested command name (`commands/sub/x.md` is searched as
   `sub/x`), the `plugin:` prefix also matching an external plugin's name, a removed `x` matching `Skill(x.v2)`,
   live non-mirrored consumers under `.claude/` (such as `settings.json` permission entries), code

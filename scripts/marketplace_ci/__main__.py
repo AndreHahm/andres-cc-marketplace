@@ -1197,12 +1197,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             f"automated pass. Trigger: {reason}",
         )
 
-    structural_findings = run_delta_structural_checks(repo, changed)
     try:
+        structural_findings = run_delta_structural_checks(repo, changed)
         verifier_outcomes = review_verifiers.run_verifiers(
             repo, changed, base_sha, structural=structural_findings
         )
-    except Exception as exc:  # fail closed: a verifier that crashed is not a clean pass
+    except Exception as exc:  # fail closed: a check that crashed is not a clean pass
         return _fail_run_codex_review(args, f"script verifier failed: {exc!r}")
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
     if instructions_dir is not None:

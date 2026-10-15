@@ -303,3 +303,35 @@ def test_drift_in_an_untouched_file_of_a_touched_component_blocks_the_run(
     assert rc == 1 and payload["blocking"] is True
     (finding,) = [f for f in payload["findings"] if f["rule"] == RULE]
     assert finding["path"] == REF and finding["gate"] == "block"
+
+
+def test_a_starred_component_is_not_run_through_the_line_number_parser():
+    """A changed file named `a:1` is cited as `a:1:*`; stripping the star must give the whole path
+    back, not path `a` with line 1."""
+    from dataclasses import replace
+
+    from scripts.marketplace_ci.review import split_findings_by_diff
+
+    finding = replace(
+        rv._unreadable_finding("plugins/x/skills/y/references/b.md", "reason", RULE),
+        components=("plugins/x/skills/y/a:1:*",),
+    )
+    in_diff, _ = split_findings_by_diff(
+        [finding],
+        {"plugins/x/skills/y/a:1": ((1, 1),)},
+        changed_paths=["plugins/x/skills/y/a:1"],
+    )
+    assert in_diff == (finding,)
+
+
+def test_a_malformed_registry_is_a_could_not_run_failure_not_a_traceback(
+    monkeypatch, git_repo, tmp_path
+):
+    for name in ROSTER:
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    base = _base(git_repo)
+    git_repo.write(".claude/marketplace-sync.json", "{not json")
+    git_repo.write(CANON, "edited\n")
+    _commit(git_repo.root, "break the registry")
+    rc, payload = _run(monkeypatch, git_repo.root, base, tmp_path)
+    assert rc == 2 and payload["status"] == "could_not_run" and payload["blocking"] is True

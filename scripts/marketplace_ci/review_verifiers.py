@@ -966,7 +966,11 @@ def _resolve(
 
 
 def _unreadable_finding(
-    path: str, reason: str, rule: str = RULE_ESCAPING_PATH, components: tuple[str, ...] = ()
+    path: str,
+    reason: str,
+    rule: str = RULE_ESCAPING_PATH,
+    components: tuple[str, ...] = (),
+    remediation: str = "Replace the symlink or oversized file with a regular file of normal size.",
 ) -> Finding:
     """A blocking finding for a skill document the path check could not read: otherwise a PR could
     keep an escaping link by making its file a symlink or oversized. `components` cite what else
@@ -977,7 +981,7 @@ def _unreadable_finding(
         rule=rule,
         path=path,
         evidence=f"this file could not be checked: {reason}",
-        remediation="Replace the symlink or oversized file with a regular file of normal size.",
+        remediation=remediation,
         line=None,
         components=components,
         confidence="high",
@@ -1770,8 +1774,11 @@ _LEFTOVER_PATHSPECS = (
     "scripts",
     ".github",
     ":(top,glob)*",
-    ":(top,exclude,glob)**/CHANGELOG*",  # history, not a consumer
-    ":(top,exclude,glob)**/RELEASE_NOTES*",
+    # The exact history files only, in any case: a prefix glob would also hide a live file or folder
+    # such as `commands/CHANGELOG-release.md`.
+    ":(top,exclude,glob,icase)**/CHANGELOG",
+    ":(top,exclude,glob,icase)**/CHANGELOG.md",
+    ":(top,exclude,glob,icase)**/RELEASE_NOTES.md",
 )
 _SAFE_NAME = re.compile(r"[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*")
 _MAX_LISTED_REFERENCES = 5  # files named in one finding's evidence
@@ -1796,10 +1803,11 @@ def _leftover_patterns(kind: str, name: str, name_is_unique: bool) -> list[str]:
         keyed = f"({quote}skill{quote}[[:space:]]*[:=][[:space:]]*)?"
         patterns = [f"Skill\\([[:space:]]*(\\{{[[:space:]]*)?{keyed}{quote}{named}"]
     if name_is_unique:
-        patterns.append(f"`/{escaped}`")
-        patterns.append(f"`[A-Za-z0-9_-]+:{escaped}`")
+        arguments = "([[:space:]][^`]*)?`"  # a slash command is often written with its arguments
+        patterns.append(f"`/([A-Za-z0-9_-]+:)?{escaped}{arguments}")
+        patterns.append(f"`[A-Za-z0-9_-]+:{escaped}{arguments}")
         if "-" in name:
-            patterns.append(f"`{escaped}`")
+            patterns.append(f"`{escaped}{arguments}")
     return patterns
 
 
@@ -1873,6 +1881,10 @@ def check_removed_identifiers(
                     f"the {kind} name {name!r} cannot be searched for safely, so its references "
                     "were not checked",
                     RULE_REMOVED_IDENTIFIER,
+                    remediation=(
+                        "Rename the component to letters, digits, '.', '_' or '-' only, or confirm "
+                        "by hand that nothing still references this name."
+                    ),
                 )
             )
             continue
