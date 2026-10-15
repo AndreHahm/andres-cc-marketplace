@@ -16,7 +16,9 @@ matches `Finding.rule` exactly.
 A file a verifier cannot read is never reported clean: it becomes a blocking `-unverifiable`
 finding, because otherwise a PR could keep a violation by making its file unreadable.
 
-First verifier: `r6-bash-scope`, the frontmatter half of the grant-to-body family.
+Verifiers so far: `r6-bash-scope` (the frontmatter half of the grant-to-body family) and the
+measurement family, `r13-skillmd-line-count` and `r21-description-length`. A measurement is compared
+with the base, so only a PR that makes a value worse across a blocking threshold is blocked.
 """
 
 from __future__ import annotations
@@ -34,7 +36,10 @@ from scripts.marketplace_ci.review import Finding, _run_git
 VERIFIER_REVIEWER = "script-verifiers"
 GRANT_TO_BODY = "grant-to-body"
 RULE_BASH_SCOPE = "r6-bash-scope"
-RULE_BASH_SCOPE_UNVERIFIABLE = "r6-bash-scope-unverifiable"
+RULE_UNVERIFIABLE = "frontmatter-unverifiable"
+MEASUREMENT = "measurement"
+RULE_SKILLMD_LINES = "r13-skillmd-line-count"
+RULE_DESCRIPTION_LENGTH = "r21-description-length"
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
 # is equivalent to unrestricted Bash. A test keeps this equal to that setting (R20).
@@ -44,10 +49,24 @@ MAX_BLOB_BYTES = 1_000_000
 MAX_FRONTMATTER_CHARS = 100_000
 MAX_ENTRIES = 2_000
 MAX_TOTAL_BYTES = 20_000_000
+
+# plugin-rulebook R13 and R21 thresholds (assets/settings.json), kept equal by a test (R20). A value
+# above `*_WARNING` is a Major finding and above `*_CRITICAL` a Critical one; the Weak and Soft
+# Warning tiers are never reported. The combined description + when_to_use limit is not checked:
+# it can only be exceeded together with one of the two individual limits.
+R13_WARNING = 490
+R13_CRITICAL = 500
+DESCRIPTION_LOW_WARNING = 80  # shorter than this is a Major finding
+DESCRIPTION_LOW_CRITICAL = 20  # shorter than this is a Critical one
+DESCRIPTION_HIGH_WARNING = 1018
+DESCRIPTION_HIGH_CRITICAL = 1024
+WHEN_TO_USE_WARNING = 506
+WHEN_TO_USE_CRITICAL = 512
 MAX_FLOW_DEPTH = 100
 MAX_CONTEXT_LINES = 200
 _MAX_QUOTED_CHARS = 200
 _REGULAR_FILE_MODES = (b"100644", b"100755")
+_OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 _MERGE_TAG = "tag:yaml.org,2002:merge"
 _COMPONENT_PATH = re.compile(
     r"^(?:plugins/[^/]+|\.claude)/(?:(skills)/[^/]+/SKILL\.md|(commands)/.+\.md|(agents)/.+\.md)$",
@@ -135,6 +154,8 @@ def _frontmatter(text: str) -> tuple[yaml.MappingNode | None, list[str]]:
         raise VerifierError("the frontmatter is not a mapping")
     if any(not isinstance(key, yaml.ScalarNode) for key, _ in root.value):
         raise VerifierError("the frontmatter has a key that is not a plain scalar")
+    if any(key.tag == _MERGE_TAG for key, _ in root.value):
+        raise VerifierError("the frontmatter uses a YAML merge key")
     return root, block
 
 
@@ -186,8 +207,6 @@ def _grant_entries(
     entry's line is the line it is written on, or None when that cannot be determined exactly; a
     finding without a line counts as changed whenever its file is. Editing only the key line or a
     fence can also activate an entry, so `check_bash_scope` cites those lines too."""
-    if any(k.tag == _MERGE_TAG for k, _ in root.value):
-        raise VerifierError("the frontmatter uses a YAML merge key")
     fields = [(k, v) for k, v in root.value if k.value == key]
     if len(fields) > 1:
         raise VerifierError(f"the frontmatter repeats the `{key}` key")
@@ -307,13 +326,18 @@ def check_bash_scope(path: str, text: str) -> tuple[Finding, ...]:
     """R6: a skill or command may not grant unrestricted Bash; an agent's `tools` has no Bash
     scoping syntax at all, so a scoped `Bash(...)` there is the violation. Raises VerifierError when
     the file's frontmatter cannot be read exactly."""
+    if component_kind(path) is None:
+        return ()
+    return _bash_scope_findings(path, *_frontmatter(text))
+
+
+def _bash_scope_findings(
+    path: str, root: yaml.MappingNode | None, block: list[str]
+) -> tuple[Finding, ...]:
     kind = component_kind(path)
-    if kind is None:
+    if kind is None or root is None:
         return ()
     key = "tools" if kind == "agent" else "allowed-tools"
-    root, block = _frontmatter(text)
-    if root is None:
-        return ()
     findings: list[Finding] = []
     entries, key_file_line = _grant_entries(root, block, key)
     closing_fence = len(block) + 2
@@ -371,7 +395,7 @@ def unverifiable_finding(path: str, reason: str) -> Finding:
     return Finding(
         reviewer=VERIFIER_REVIEWER,
         severity="Major",
-        rule=RULE_BASH_SCOPE_UNVERIFIABLE,
+        rule=RULE_UNVERIFIABLE,
         path=path,
         evidence=f"the Bash grants of this file could not be verified: {reason}",
         remediation=(
@@ -387,6 +411,190 @@ def unverifiable_finding(path: str, reason: str) -> Finding:
     )
 
 
+# --- measurements: R13 and R21 -----------------------------------------------------------------
+
+_SEVERITY_BY_RANK = {1: "Major", 2: "Critical"}
+
+
+def _above(value: int, warning: int, critical: int) -> int:
+    return 2 if value > critical else 1 if value > warning else 0
+
+
+_LINE_BREAK = re.compile(r"\r\n|\r|\n")
+
+
+def count_lines(text: str) -> int:
+    """Lines as `wc -l` and git count them, with a lone carriage return counted as a break too so a
+    body cannot hide its length behind old-Mac line endings: line breaks, plus an unterminated last
+    line."""
+    breaks = len(_LINE_BREAK.findall(text))
+    return breaks + (0 if not text or text.endswith(("\n", "\r")) else 1)
+
+
+def line_tier(lines: int) -> int:
+    """0 = fine, 1 = Warning (Major), 2 = Critical, for a SKILL.md of `lines` lines (R13)."""
+    return _above(lines, R13_WARNING, R13_CRITICAL)
+
+
+def description_low_tier(length: int) -> int:
+    return 2 if length < DESCRIPTION_LOW_CRITICAL else 1 if length < DESCRIPTION_LOW_WARNING else 0
+
+
+def description_high_tier(length: int) -> int:
+    return _above(length, DESCRIPTION_HIGH_WARNING, DESCRIPTION_HIGH_CRITICAL)
+
+
+def description_tier(length: int) -> int:
+    return max(description_low_tier(length), description_high_tier(length))
+
+
+def when_to_use_tier(length: int) -> int:
+    return _above(length, WHEN_TO_USE_WARNING, WHEN_TO_USE_CRITICAL)
+
+
+def _field_length(root: yaml.MappingNode | None, key: str) -> int | None:
+    """The length of the folded string value of a frontmatter field, or None when it is absent."""
+    if root is None:
+        return None
+    fields = [value for k, value in root.value if k.value == key]
+    if len(fields) > 1:
+        raise VerifierError(f"the frontmatter repeats the `{key}` key")
+    if not fields:
+        return None
+    node = fields[0]
+    if not isinstance(node, yaml.ScalarNode):
+        raise VerifierError(f"`{key}` is not a string")
+    return 0 if node.tag == "tag:yaml.org,2002:null" else len(node.value)
+
+
+def description_length(text: str) -> int | None:
+    """The length of a skill's folded `description`, None when it has none or cannot be read."""
+    try:
+        root, _ = _frontmatter(text)
+        return _field_length(root, "description")
+    except VerifierError:
+        return None
+
+
+_Parsed = tuple["yaml.MappingNode | None", list[str]]
+
+
+def _skill_measures(
+    text: str,
+    parsed: _Parsed | None = None,
+    *,
+    parse_failed: bool = False,
+    strict: bool = False,
+) -> dict[str, int | None]:
+    """{metric: value} for one SKILL.md. The line count never needs readable frontmatter. A missing
+    `description` is length 0 (as bad as an empty one, so deleting it dodges nothing); `when_to_use`
+    is optional. Frontmatter that cannot be parsed leaves the lengths None (the caller reports the
+    file as unverifiable). With `strict`, a field this check cannot read (a repeated key, a
+    non-string) raises VerifierError; the base side is not strict and never raises."""
+    measures: dict[str, int | None] = {
+        "lines": count_lines(text),
+        "description_low": None,
+        "description_high": None,
+        "when_to_use": None,
+    }
+    if parse_failed:
+        return measures
+    if parsed is None:
+        try:
+            parsed = _frontmatter(text)
+        except VerifierError:
+            return measures
+    try:
+        description = _field_length(parsed[0], "description") or 0
+        measures["description_low"] = measures["description_high"] = description
+        measures["when_to_use"] = _field_length(parsed[0], "when_to_use")
+    except VerifierError:
+        if strict:
+            raise
+        measures["description_low"] = measures["description_high"] = None
+    return measures
+
+
+def _rank(metric: str, value: int | None) -> int:
+    if value is None:
+        return 0
+    if metric == "lines":
+        return line_tier(value)
+    if metric == "description_low":
+        return description_low_tier(value)
+    if metric == "description_high":
+        return description_high_tier(value)
+    return when_to_use_tier(value)
+
+
+_METRIC_RULES = {
+    "lines": RULE_SKILLMD_LINES,
+    "description_low": RULE_DESCRIPTION_LENGTH,
+    "description_high": RULE_DESCRIPTION_LENGTH,
+    "when_to_use": RULE_DESCRIPTION_LENGTH,
+}
+_METRIC_LABELS = {
+    "lines": "SKILL.md",
+    "description_low": "description",
+    "description_high": "description",
+    "when_to_use": "when_to_use",
+}
+
+
+def check_measurements(
+    path: str,
+    text: str,
+    base_text: str | None,
+    parsed: _Parsed | None = None,
+    *,
+    parse_failed: bool = False,
+) -> tuple[Finding, ...]:
+    """R13 and R21 for one SKILL.md: a finding for each metric whose tier is worse than in the base
+    (`base_text` None means the file is new, so any blocking tier counts). A value that is no worse
+    than the base is never reported, so a PR that only touches an already oversized file is not
+    blocked by it."""
+    if component_kind(path) != "skill":
+        return ()
+    head = _skill_measures(text, parsed, parse_failed=parse_failed, strict=True)
+    base = _skill_measures(base_text) if base_text is not None else {}
+    findings: list[Finding] = []
+    for metric, value in head.items():
+        rank = _rank(metric, value)
+        if rank == 0 or value is None or rank <= _rank(metric, base.get(metric)):
+            continue
+        previous = base.get(metric)
+        unit = "lines" if metric == "lines" else "characters"
+        label = _METRIC_LABELS[metric]
+        was = (
+            "new file"
+            if base_text is None
+            else f"was {previous}"
+            if previous is not None
+            else "was unmeasured"
+        )
+        tier = _SEVERITY_BY_RANK[rank].lower()
+        findings.append(
+            Finding(
+                reviewer=VERIFIER_REVIEWER,
+                severity=_SEVERITY_BY_RANK[rank],
+                rule=_METRIC_RULES[metric],
+                path=path,
+                evidence=f"{label} is {value} {unit} ({was}), past the {tier} threshold",
+                remediation=(
+                    "Move content out of SKILL.md into references/ or scripts/."
+                    if metric == "lines"
+                    else "Bring the field back inside its documented length."
+                ),
+                line=None,
+                confidence="high",
+                evidence_type="verifier_output",
+                rule_class=MEASUREMENT,
+                source="script",
+            )
+        )
+    return tuple(findings)
+
+
 # --- running the verifiers over a change set --------------------------------------------------
 
 
@@ -397,14 +605,16 @@ class VerifierOutcome:
     checked: tuple[str, ...]  # the files read and judged; every other candidate has a finding
 
 
-def _read_blobs(repo, paths: Sequence[str]) -> tuple[dict[str, str], dict[str, str]]:
-    """({path: text}, {path: why it cannot be read}) for `paths` as committed at HEAD. Reads git
+def _read_blobs(
+    repo, paths: Sequence[str], ref: str = "HEAD", *, missing_ok: bool = False
+) -> tuple[dict[str, str], dict[str, str]]:
+    """({path: text}, {path: why it cannot be read}) for `paths` as committed at `ref`. Reads git
     objects, so a symlink is never followed and the working tree is ignored. A path that is not in
-    HEAD's tree raises: both come from the same checkout, so that is an infrastructure fault, not a
-    file to skip."""
+    the tree raises, unless `missing_ok` (a base that does not have the file yet): HEAD's own paths
+    come from the same checkout, so a miss there is an infrastructure fault, not a file to skip."""
     if not paths:
         return {}, {}
-    tree = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", *paths)
+    tree = _run_git(repo, "--literal-pathspecs", "ls-tree", "-z", ref, "--", *paths)
     entries: dict[str, tuple[bytes, str]] = {}
     for entry in tree.split(b"\0"):
         meta, _, raw_path = entry.partition(b"\t")
@@ -418,7 +628,9 @@ def _read_blobs(repo, paths: Sequence[str]) -> tuple[dict[str, str], dict[str, s
     wanted: list[tuple[str, str]] = []
     for path in paths:
         if path not in entries:
-            raise RuntimeError(f"changed path is not in HEAD's tree: {path!r}")
+            if missing_ok:
+                continue
+            raise RuntimeError(f"changed path is not in {ref}'s tree: {path!r}")
         mode, sha = entries[path]
         if mode == b"120000":
             problems[path] = "it is a symlink, which is not followed"
@@ -465,23 +677,73 @@ def _read_blobs(repo, paths: Sequence[str]) -> tuple[dict[str, str], dict[str, s
     return texts, problems
 
 
-def run_verifiers(repo, changed: Sequence[ChangedPath]) -> tuple[VerifierOutcome, ...]:
-    """Run every verifier over the files `changed` leaves at HEAD. Any unexpected failure raises,
-    so the caller reports the run as `could_not_run` instead of clean."""
+def run_verifiers(
+    repo, changed: Sequence[ChangedPath], base_sha: str | None = None
+) -> tuple[VerifierOutcome, ...]:
+    """Run every verifier over the files `changed` leaves at HEAD, comparing measurements with
+    `base_sha` (None treats every file as new). Any unexpected failure raises, so the caller
+    reports the run as `could_not_run` instead of clean."""
+    if base_sha is not None and not _OBJECT_ID.fullmatch(base_sha):
+        raise RuntimeError(f"base is not a full object id: {base_sha!r}")
     candidates = sorted(
         {c.new_path for c in changed if c.new_path is not None and component_kind(c.new_path)}
     )
     texts, problems = _read_blobs(repo, candidates)
-    findings: list[Finding] = []
-    checked: list[str] = []
+    # A base counts only when the old path is itself a skill: a rename of a large reference or agent
+    # file into a SKILL.md must not lend its size to the new skill.
+    base_paths = {
+        c.new_path: (c.old_path or c.new_path)
+        for c in changed
+        if c.new_path in candidates
+        and c.status != "A"
+        and component_kind(c.old_path or c.new_path) == "skill"
+    }
+    skills = [p for p in base_paths if component_kind(p) == "skill"]
+    base_texts: dict[str, str] = {}
+    if base_sha is not None and skills:
+        old_paths = sorted({base_paths[p] for p in skills})
+        old_texts, _ = _read_blobs(repo, old_paths, base_sha, missing_ok=True)
+        base_texts = {p: old_texts[base_paths[p]] for p in skills if base_paths[p] in old_texts}
+
+    grant_findings: list[Finding] = []
+    grant_checked: list[str] = []
+    measure_findings: list[Finding] = []
+    measure_checked: list[str] = []
     for path in candidates:
+        is_skill = component_kind(path) == "skill"
         if path in problems:
-            findings.append(unverifiable_finding(path, problems[path]))
+            finding = unverifiable_finding(path, problems[path])
+            grant_findings.append(finding)
+            if is_skill:
+                measure_findings.append(finding)  # identical, so the aggregate keeps one
             continue
+        parsed = None
         try:
-            findings.extend(check_bash_scope(path, texts[path]))
+            parsed = _frontmatter(texts[path])
+            grant_findings.extend(_bash_scope_findings(path, *parsed))
+            grant_checked.append(path)
         except VerifierError as exc:
-            findings.append(unverifiable_finding(path, str(exc)))
+            grant_findings.append(unverifiable_finding(path, str(exc)))
+            if is_skill:
+                measure_findings.append(grant_findings[-1])  # the same; the aggregate keeps one
+        if not is_skill:
             continue
-        checked.append(path)
-    return (VerifierOutcome(name=GRANT_TO_BODY, findings=tuple(findings), checked=tuple(checked)),)
+        base_text = base_texts.get(path) if base_sha is not None else None
+        try:
+            measure_findings.extend(
+                check_measurements(
+                    path, texts[path], base_text, parsed, parse_failed=parsed is None
+                )
+            )
+            if parsed is not None:  # a file whose lengths could not be read was not fully measured
+                measure_checked.append(path)
+        except VerifierError as exc:
+            measure_findings.append(unverifiable_finding(path, str(exc)))
+    return (
+        VerifierOutcome(
+            name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
+        ),
+        VerifierOutcome(
+            name=MEASUREMENT, findings=tuple(measure_findings), checked=tuple(measure_checked)
+        ),
+    )

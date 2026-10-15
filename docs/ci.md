@@ -286,7 +286,7 @@ line, like any other finding) and a registry entry can suppress it; a model find
   an edit to any of them (renaming `disallowed-tools:` to `allowed-tools:`, deleting a line above the
   fence) makes it the PR's. A value that spans lines, or a context over 200 lines, gives no line, and a
   finding without a line counts as changed whenever its file is. A pre-existing grant on an untouched line is a notice, not a block.
-- **`r6-bash-scope-unverifiable`** (severity `major`, no line). A changed component file whose Bash grants
+- **`frontmatter-unverifiable`** (severity `major`, no line). A changed component file whose Bash grants
   cannot be read exactly is a blocking finding rather than a skip, because otherwise a PR could keep a
   violation by making its file unreadable. The causes are: frontmatter that is not closed, whose fence is
   not exactly `---` on the first line, or that is not valid YAML, a mapping or a single document; a YAML
@@ -296,6 +296,22 @@ line, like any other finding) and a registry entry can suppress it; a model find
   strings; an unbalanced parenthesis or a malformed `Bash(...)` entry; more than 2,000 entries; and a file
   that is a symlink, a submodule, over 1 MB or past the 20 MB total. A file with no frontmatter at all
   grants nothing and is clean.
+- **`r13-skillmd-line-count`** and **`r21-description-length`** (rule class `measurement`, severity `major`
+  or `critical`). A skill's `SKILL.md` over 490 lines is Major and over 500 is Critical (R13); a `description`
+  shorter than 80 or longer than 1018 characters is Major, shorter than 20 or longer than 1024 is Critical,
+  and `when_to_use` over 506 is Major and over 512 Critical (R21). The lengths are those of the folded YAML
+  value, not the raw text. The thresholds are the rulebook's (`assets/settings.json`); a test keeps them
+  equal. Each value is compared with the base (`HEAD^1`, or the old path of a rename): a finding is reported
+  only when the PR moves a value into a worse blocking tier, or adds the file, so a PR that merely touches an
+  already oversized file is not blocked by it. Weak and Soft Warning tiers are never reported. The finding
+  has no line, so it counts as changed whenever its file is. The combined `description` + `when_to_use` limit
+  is not checked on its own: it can only be exceeded together with one of the two individual limits. Only
+  `SKILL.md` is measured; the R18 code-block size check is not part of the verifier yet. Details that close
+  evasions: too-short and too-long descriptions are ranked separately (swapping one for the other is
+  reported); a missing `description` counts as length 0, so deleting it dodges nothing; the base is used only
+  when the old path is itself a skill, so renaming a large reference file into a `SKILL.md` is measured as a
+  new file; a lone carriage return counts as a line break; and a repeated or non-string `description` or
+  `when_to_use` is an unverifiable finding, not a clean pass.
 - **Accepted limits.** The verifier mirrors R6 as written: it judges the four shells R6 names, so `zsh`,
   `pwsh`, `env bash` and other wrappers are outside it, and so is PowerShell's habit of joining the arguments
   after a script into one command string (Windows only, not verified here) (widening them is a change to R6's
@@ -305,8 +321,8 @@ line, like any other finding) and a registry entry can suppress it; a model find
   paths declared in a manifest instead of the default directories are not covered.
 - **Cost.** The frontmatter is parsed twice by pure-Python PyYAML, so a bracket bomb is refused first: flow
   nesting deeper than 100 is unverifiable before any parsing.
-- **Result file.** `verifiers` lists each verifier with `status` (`clean` or `findings`), the number of
-  findings and the number of files checked.
+- **Result file.** `verifiers` lists each verifier (`grant-to-body`, `measurement`) with `status` (`clean`
+  or `findings`), the number of findings and the number of files checked.
 - **Failure.** A verifier that raises, or a changed component path that is missing from `HEAD`, makes the
   run `could_not_run` (exit 2), like any other infrastructure failure.
 - **Trust.** The module is Tier 1 (see below): a PR that edits it is refused automated review and needs the
