@@ -1158,12 +1158,11 @@ def test_symlink_target_comparison_folds_case_off_linux(tmp_path, monkeypatch):
     (tmp_path / "Target.md").write_text("x\n" * 5)
     (tmp_path / "L").symlink_to("Target.md")
     cited = _finding("Major", "target.md", 3)
-    args = ([cited], {"L": ((1, 1),)})
-    kwargs = {"changed_paths": ("L",), "repo_root": tmp_path}
+    ranges = {"L": ((1, 1),)}
     monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
-    assert blocking_findings(*args, **kwargs) == (cited,)
+    assert blocking_findings([cited], ranges, changed_paths=("L",), repo_root=tmp_path) == (cited,)
     monkeypatch.setattr(review_module, "_FOLD_PATHS", False)
-    assert blocking_findings(*args, **kwargs) == ()
+    assert blocking_findings([cited], ranges, changed_paths=("L",), repo_root=tmp_path) == ()
 
 
 def test_fold_keeps_a_hunkless_changed_path_changed_in_full(monkeypatch):
