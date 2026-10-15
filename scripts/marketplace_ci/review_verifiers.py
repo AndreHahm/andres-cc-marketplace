@@ -55,6 +55,8 @@ RULE_ESCAPING_PATH = "r34-escaping-path"
 PATH_AND_MIRROR = "path-and-mirror"
 STRUCTURE = "structure"
 RULE_EXECUTABLE_BIT = "r37-executable-bit"
+CALL_GRAPH = "call-graph"
+RULE_CALL_GRAPH = "skill-agent-dependency-cycle"
 
 # Every rule id a verifier here can emit, with its rule class. A test keeps this equal to the rows
 # of docs/review-rule-inventory.md, so the inventory cannot drift from the code.
@@ -66,6 +68,7 @@ VERIFIER_RULES = {
     RULE_CODE_BLOCK_LINES: "measurement",
     RULE_ESCAPING_PATH: "graph",
     RULE_EXECUTABLE_BIT: "graph",
+    RULE_CALL_GRAPH: "graph",
 }
 
 # plugin-rulebook R6 `forbidden_bash_scopes` (assets/settings.json): the interpreters whose grant
@@ -76,6 +79,7 @@ MAX_BLOB_BYTES = 1_000_000
 MAX_FRONTMATTER_CHARS = 100_000
 MAX_ENTRIES = 2_000
 MAX_TOTAL_BYTES = 20_000_000
+MAX_CALL_FINDINGS = 500  # past this the PR is blocked many times over already
 MAX_CITED_PATHS = 200  # changed paths one unreadable-document finding may cite
 MAX_PARSE_BYTES = (
     250_000  # a skill document larger than this is not parsed (the largest real one is 83 KB)
@@ -1024,6 +1028,22 @@ def _frontmatter_blanked(lines: list[str]) -> str | None:
     return None
 
 
+def _footnote_end(lines: list[str], span: list[int]) -> int:
+    """The exclusive end line of a footnote definition: its own lines plus the indented
+    continuation that follows (a blank line only continues it when an indented line comes next)."""
+    end = span[1]
+    while end < len(lines) and (
+        lines[end].startswith(("    ", "\t"))
+        or (
+            not lines[end].strip()
+            and end + 1 < len(lines)
+            and lines[end + 1].startswith(("    ", "\t"))
+        )
+    ):
+        end += 1
+    return end
+
+
 def _footnote_sites(lines: list[str], references: dict) -> list[_LinkSite]:
     """The links inside GFM footnote definitions. The plain reading takes `[^1]: [text](url)` for a
     reference definition whose destination is the whole `[text](url)`; GitHub renders a footnote
@@ -1034,16 +1054,7 @@ def _footnote_sites(lines: list[str], references: dict) -> list[_LinkSite]:
         span = reference.get("map")
         if not label.startswith("^") or not span:
             continue
-        end = span[1]
-        while end < len(lines) and (
-            lines[end].startswith(("    ", "\t"))
-            or (
-                not lines[end].strip()
-                and end + 1 < len(lines)
-                and lines[end + 1].startswith(("    ", "\t"))
-            )
-        ):
-            end += 1
+        end = _footnote_end(lines, span)
         chunk = lines[span[0] : end]
         body = "\n".join(
             [_FOOTNOTE_DEF.sub("", chunk[0], count=1)]
@@ -1121,13 +1132,15 @@ def _site_line(lines: list[str], site: _LinkSite) -> int | None:
     return site.start
 
 
-def _unreadable_link(path: str, line: int | None, why: str) -> Finding:
+def _unreadable_link(
+    path: str, line: int | None, why: str, rule: str = RULE_ESCAPING_PATH
+) -> Finding:
     """A blocking finding for links the path check could not read: counting them as a pass would
     let a PR keep an escaping link by writing the file in a form the check gives up on."""
     return Finding(
         reviewer=VERIFIER_REVIEWER,
         severity="Major",
-        rule=RULE_ESCAPING_PATH,
+        rule=rule,
         path=path,
         evidence=f"a link in this file could not be read ({why}), so it was not checked",
         remediation="Split the file or simplify the Markdown that makes the parse fail.",
@@ -1398,6 +1411,340 @@ def _modes(repo, paths: Sequence[str]) -> dict[str, bytes]:
     return modes
 
 
+# --- call graph: a Skill() or Agent() call that does not resolve or closes a cycle ---------------
+
+_CALLABLE_DOC = re.compile(
+    r"^plugins/[^/]+/(?:skills/([^/]+)/SKILL\.md|agents/([^/]+)\.md|commands/(.+)\.md)$",
+    re.IGNORECASE,
+)
+_COMPONENT_TREE = re.compile(r"^plugins/[^/]+/(?:skills|agents|commands)/", re.IGNORECASE)
+_CALL_OPEN = re.compile(r"\b(Skill|Agent)\(")
+_NAME = r"[A-Za-z0-9_.:/-]{1,100}"
+_SKILL_POSITIONAL = re.compile(rf"\s*[\"']?({_NAME})[\"']?\s*(?=[,)])")
+_SKILL_KEYED = re.compile(rf"[\"']?\bskill[\"']?\s*[:=]\s*[\"']?({_NAME})")
+_AGENT_KEYED = re.compile(rf"[\"']?\bsubagent_type[\"']?\s*[:=]\s*[\"']?({_NAME})")
+# Characters read after a call opens (cut at the next call), so every scan stays linear. An agent
+# call carries a prompt, so it gets a long window; a skill call is short.
+_SKILL_WINDOW = 400
+_AGENT_WINDOW = 4000
+
+
+@dataclass(frozen=True)
+class Call:
+    kind: str  # "skill" for `Skill(name)`, "agent" for `Agent(subagent_type: name)`
+    target: str
+    line: (
+        int | None
+    )  # 1-based file line of the target; None when lone carriage returns make it unsafe
+
+
+def _without_html_comments(content: str) -> str:
+    """`content` with every HTML comment replaced by as many newlines, so line numbers hold."""
+    pieces: list[str] = []
+    position = 0
+    while (start := content.find("<!--", position)) != -1:
+        end = content.find("-->", start + 4)
+        stop = len(content) if end == -1 else end + 3
+        pieces.append(content[position:start])
+        pieces.append("\n" * content.count("\n", start, stop))
+        position = stop
+    pieces.append(content[position:])
+    return "".join(pieces)
+
+
+def _scan_calls(content: str, first_line: int | None, calls: list[Call]) -> None:
+    for match in _CALL_OPEN.finditer(content):
+        is_skill = match.group(1) == "Skill"
+        window = content[match.end() : match.end() + (_SKILL_WINDOW if is_skill else _AGENT_WINDOW)]
+        following = _CALL_OPEN.search(window)
+        if following is not None:
+            window = window[: following.start()]
+        if is_skill:
+            found = _SKILL_POSITIONAL.match(window) or _SKILL_KEYED.search(window)
+        else:
+            found = _AGENT_KEYED.search(window)
+        if found is not None:
+            line = None
+            if first_line is not None:
+                line = first_line + content.count("\n", 0, match.end() + found.start(1))
+            calls.append(Call(match.group(1).lower(), found.group(1), line))
+
+
+def extract_calls(text: str) -> list[Call]:
+    """The literal `Skill(name)` and `Agent(subagent_type: name)` calls in a component's body.
+    Only running text counts: paragraphs, headings and list items (an inline code span is running
+    text), raw HTML blocks without their comments (a `<details>` block is read), and link and
+    footnote definitions. A frontmatter grant, a fenced or indented code block and a mention without
+    the call syntax are not calls. Lone carriage returns make file lines unreliable, so a call then
+    has no line."""
+    lines = _BLOCK_LINE_BREAK.split(text)
+    unnumbered = re.search(r"\r(?!\n)", text) is not None
+    blanked = _frontmatter_blanked(lines)
+    source = blanked if blanked is not None else text
+    source_lines = _BLOCK_LINE_BREAK.split(source)
+    env: dict = {}
+    calls: list[Call] = []
+    for token in _MARKDOWN.parse(source, env):
+        if token.map is None:
+            continue
+        first = None if unnumbered else token.map[0] + 1
+        if token.type == "inline":
+            _scan_calls(token.content, first, calls)
+        elif token.type == "html_block":
+            _scan_calls(_without_html_comments(token.content), first, calls)
+    for label, reference in env.get("references", {}).items():
+        span = reference.get("map")
+        if not span:
+            continue
+        end = _footnote_end(source_lines, span) if label.startswith("^") else span[1]
+        _scan_calls(
+            "\n".join(source_lines[span[0] : end]), None if unnumbered else span[0] + 1, calls
+        )
+    return calls
+
+
+Node = tuple[str, str]  # ("skill" | "agent" | "command", component name)
+
+
+def _node_of(path: str) -> Node | None:
+    match = _CALLABLE_DOC.match(path)
+    if match is None:
+        return None
+    if match.group(1):
+        return ("skill", match.group(1))
+    if match.group(2):
+        return ("agent", match.group(2))
+    return ("command", match.group(3))
+
+
+@dataclass(frozen=True)
+class _Edge:
+    path: str  # the document that makes the call
+    src: Node
+    call: Call
+    dst: Node | None  # None when no such component exists
+
+
+def _skipped_target(target: str) -> bool:
+    """A placeholder such as `...`, or a file name, is not a call to check."""
+    return ".." in target or not target.strip(".") or target.endswith(".md")
+
+
+def _plugin_nodes(files: Iterable[str]) -> dict[str, set[Node]]:
+    """{plugin directory name: its callable components} for every plugin of a tree, including a
+    plugin with none, so `plugin:name` can be told from a prefix that names no plugin here."""
+    plugins: dict[str, set[Node]] = {}
+    for name in files:
+        if name.startswith("plugins/") and name.count("/") >= 2:
+            bucket = plugins.setdefault(name.split("/")[1], set())
+            node = _node_of(name)
+            if node is not None:
+                bucket.add(node)
+    return plugins
+
+
+def _graph_edges(
+    texts: dict[str, str], plugins: dict[str, set[Node]], deadline: float
+) -> tuple[list[_Edge], dict[str, str]]:
+    """The call edges of `texts` and {path: parser fault name} for a document the parser failed on.
+    `Skill(name)` resolves to a skill or command, `Agent(subagent_type: name)` to an agent; a
+    `plugin:name` target is looked up in that plugin only, and a prefix that is not a plugin of this
+    tree is an external target and is skipped."""
+    nodes = {node for bucket in plugins.values() for node in bucket}
+    edges: list[_Edge] = []
+    faults: dict[str, str] = {}
+    for path in sorted(texts):
+        if time.monotonic() > deadline:
+            raise RuntimeError("the call graph scan used up its parse time budget")
+        src = _node_of(path)
+        if src is None:
+            continue
+        try:
+            calls = extract_calls(texts[path])
+        except Exception as exc:  # RecursionError on deep nesting, or any parser fault
+            faults[path] = type(exc).__name__
+            continue
+        for call in calls:
+            if _skipped_target(call.target):
+                continue
+            name, scope = call.target, nodes
+            if ":" in call.target:
+                plugin, name = call.target.split(":", 1)
+                if plugin not in plugins:
+                    continue
+                scope = plugins[plugin]
+            kinds = ("skill", "command") if call.kind == "skill" else ("agent",)
+            dst = next(((k, name) for k in kinds if (k, name) in scope), None)
+            if dst == src:
+                continue  # a component naming itself describes its own use; it is not a call
+            edges.append(_Edge(path, src, call, dst))
+    return edges, faults
+
+
+def _cycle_components(edges: Sequence[_Edge]) -> dict[Node, int]:
+    """Strongly connected component id of every node on a resolved edge (iterative Tarjan)."""
+    adjacent: dict[Node, list[Node]] = {}
+    for edge in edges:
+        if edge.dst is not None:
+            adjacent.setdefault(edge.src, []).append(edge.dst)
+            adjacent.setdefault(edge.dst, [])
+    index: dict[Node, int] = {}
+    low: dict[Node, int] = {}
+    component: dict[Node, int] = {}
+    stack: list[Node] = []
+    on_stack: set[Node] = set()
+    counter = 0
+    next_id = 0
+    for root in sorted(adjacent):
+        if root in index:
+            continue
+        work = [(root, iter(adjacent[root]))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, children = work[-1]
+            advanced = False
+            for child in children:
+                if child not in index:
+                    index[child] = low[child] = counter
+                    counter += 1
+                    stack.append(child)
+                    on_stack.add(child)
+                    work.append((child, iter(adjacent[child])))
+                    advanced = True
+                    break
+                if child in on_stack:
+                    low[node] = min(low[node], index[child])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component[member] = next_id
+                    if member == node:
+                        break
+                next_id += 1
+    return component
+
+
+def _adjacency(edges: Sequence[_Edge]) -> dict[Node, list[Node]]:
+    adjacent: dict[Node, set[Node]] = {}
+    for edge in edges:
+        if edge.dst is not None:
+            adjacent.setdefault(edge.src, set()).add(edge.dst)
+    return {node: sorted(children) for node, children in adjacent.items()}
+
+
+def _cycle_path(adjacent: dict[Node, list[Node]], start: Node, goal: Node) -> list[Node]:
+    """A shortest resolved path from `start` to `goal`, for the finding's evidence."""
+    previous: dict[Node, Node | None] = {start: None}
+    queue = [start]
+    for node in queue:
+        if node == goal:
+            break
+        for child in adjacent.get(node, ()):
+            if child not in previous:
+                previous[child] = node
+                queue.append(child)
+    path: list[Node] = []
+    step: Node | None = goal if goal in previous else None
+    while step is not None:
+        path.append(step)
+        step = previous[step]
+    return path[::-1]
+
+
+def check_call_graph(
+    head: Sequence[_Edge],
+    base: Sequence[_Edge] | None,
+    paths: dict[Node, str],
+    changed: frozenset[str],
+    deadline: float,
+) -> tuple[Finding, ...]:
+    """`skill-agent-dependency-cycle`: a call that names no component, or that closes a cycle among
+    the resolved calls, is a Major finding, but only for a call the PR introduces. Against the base:
+    a dangling call is new when its (caller, kind, target) was not called at all before (a target
+    the PR deleted is the removed-identifier check's business), and a resolved call in a cycle is
+    new when it did not resolve to that component before, so creating the target of an old dangling
+    call counts. A new call in a document that has a base is reported for the whole file, with its
+    line in the evidence, because an edit elsewhere (an indent, a blank line, a fence) can make old
+    text a call. With no base every call in a changed document is new and keeps its line. More
+    problems than
+    MAX_CALL_FINDINGS, or a scan past the deadline, fails the run closed."""
+    old_pairs = {(e.src, e.call.kind, e.call.target) for e in base or ()}
+    old_resolved = {(e.src, e.dst) for e in base or () if e.dst is not None}
+    components = _cycle_components(head)
+    adjacent = _adjacency(head)
+    findings: list[Finding] = []
+    reported: set[tuple[str, Node | str]] = set()
+    for edge in head:
+        if time.monotonic() > deadline:
+            raise RuntimeError("the call graph scan used up its parse time budget")
+        if base is None and edge.path not in changed:
+            continue
+        if edge.dst is None:
+            if (edge.src, edge.call.kind, edge.call.target) in old_pairs:
+                continue
+            key: tuple[str, Node | str] = (edge.path, edge.call.target)
+            what = f"calls {edge.call.kind} `{edge.call.target}`, which does not exist"
+            cited: tuple[str, ...] = ()
+        else:
+            if (edge.src, edge.dst) in old_resolved:
+                continue
+            if components.get(edge.src) is None or components.get(edge.src) != components.get(
+                edge.dst
+            ):
+                continue
+            key = (edge.path, edge.dst)
+            route = [edge.src, *_cycle_path(adjacent, edge.dst, edge.src)]
+            what = f"calls `{edge.dst[1]}`, which closes a cycle: " + " -> ".join(
+                name for _, name in route
+            )
+            cited = (paths[edge.dst],) if edge.dst in paths else ()
+        if key in reported:
+            continue
+        reported.add(key)
+        line = edge.call.line
+        where = ""
+        if base is not None and line is not None:
+            where = f" (at line {line}; not in the base, so reported for the whole file)"
+            line = None
+        if len(findings) >= MAX_CALL_FINDINGS:
+            raise RuntimeError(
+                f"more than {MAX_CALL_FINDINGS} call problems in this change; it cannot be judged"
+            )
+        findings.append(
+            Finding(
+                reviewer=VERIFIER_REVIEWER,
+                severity="Major",
+                rule=RULE_CALL_GRAPH,
+                path=edge.path,
+                evidence=f"`{edge.call.kind.capitalize()}(...)` {what}{where}",
+                remediation=(
+                    "Call a component that exists, or break the cycle (hand a result back instead "
+                    "of calling the caller). To show an example without making a call, put it in "
+                    "a fenced code block. An intentional guarded cycle needs an entry in "
+                    "scripts/marketplace_ci/review_exceptions.yaml (a Tier-1 file), which then "
+                    "covers every call problem in that file."
+                ),
+                line=line,
+                components=cited,
+                confidence="high",
+                evidence_type="verifier_output",
+                rule_class="graph",
+                source="script",
+            )
+        )
+    return tuple(findings)
+
+
 # --- running the verifiers over a change set --------------------------------------------------
 
 
@@ -1480,6 +1827,15 @@ def _read_blobs(
     return texts, problems
 
 
+def _tree_listing(repo, ref: str) -> list[str]:
+    """Every file path of `ref`'s tree."""
+    return [
+        name.decode("utf-8", errors="surrogateescape")
+        for name in _run_git(repo, "ls-tree", "-r", "-z", "--name-only", ref).split(b"\0")
+        if name
+    ]
+
+
 def run_verifiers(
     repo, changed: Sequence[ChangedPath], base_sha: str | None = None
 ) -> tuple[VerifierOutcome, ...]:
@@ -1544,6 +1900,13 @@ def run_verifiers(
                 measure_checked.append(path)
         except VerifierError as exc:
             measure_findings.append(unverifiable_finding(path, str(exc)))
+    listings: dict[str, list[str]] = {}
+
+    def files_of(ref: str) -> list[str]:
+        if ref not in listings:
+            listings[ref] = _tree_listing(repo, ref)
+        return listings[ref]
+
     path_findings: list[Finding] = []
     path_checked: list[str] = []
     doc_paths = sorted(
@@ -1551,11 +1914,7 @@ def run_verifiers(
     )
     if doc_paths:
         doc_texts, doc_problems = _read_blobs(repo, doc_paths)
-        tree = RepoTree(
-            name.decode("utf-8", errors="surrogateescape")
-            for name in _run_git(repo, "ls-tree", "-r", "-z", "--name-only", "HEAD").split(b"\0")
-            if name
-        )
+        tree = RepoTree(files_of("HEAD"))
         mirrors = _scripts_mirrors(repo, base_sha or "HEAD")
         base_doc_texts: dict[str, str] = {}
         if base_sha is not None:
@@ -1661,6 +2020,57 @@ def run_verifiers(
         modes = _modes(repo, sorted({g.script for grants in found.values() for g in grants}))
         for doc, grants in found.items():
             structure_findings.extend(check_executable_bits(doc, grants, modes))
+    call_findings: list[Finding] = []
+    call_checked: list[str] = []
+    changed_now = frozenset(c.new_path for c in changed if c.new_path is not None)
+    # A skill, agent or command directory that is a symlink or submodule hides the components behind
+    # it from every scan here, so a changed one is a finding of its own.
+    in_tree = sorted(name for name in changed_now if _COMPONENT_TREE.match(name))
+    for start in range(0, len(in_tree), 500):
+        modes = _modes(repo, in_tree[start : start + 500])
+        for name in in_tree[start : start + 500]:
+            if modes.get(name) in (b"120000", b"160000") and not _CALLABLE_DOC.match(name):
+                word = _MODE_WORDS[modes[name]]
+                call_findings.append(_unreadable_finding(name, f"it {word}", RULE_CALL_GRAPH))
+    if any(
+        name is not None and _CALLABLE_DOC.match(name)
+        for c in changed
+        for name in (c.new_path, c.old_path)
+    ):
+        deadline = time.monotonic() + MAX_PARSE_SECONDS
+        head_files = files_of("HEAD")
+        head_paths = [n for n in head_files if _CALLABLE_DOC.match(n)]
+        head_texts, head_problems = _read_blobs(repo, head_paths)
+        for path, reason in sorted(head_problems.items()):
+            if "total size" in reason:
+                raise RuntimeError("the documents of the call graph exceed the read budget")
+            if path in changed_now:  # an unreadable file the PR left alone adds no call of its own
+                call_findings.append(_unreadable_finding(path, reason, RULE_CALL_GRAPH))
+        for path in [p for p, text in head_texts.items() if len(text) > MAX_PARSE_BYTES]:
+            if path in changed_now:
+                call_findings.append(
+                    _unreadable_finding(
+                        path, f"it is larger than {MAX_PARSE_BYTES} characters", RULE_CALL_GRAPH
+                    )
+                )
+            del head_texts[path]
+        head_edges, head_faults = _graph_edges(head_texts, _plugin_nodes(head_files), deadline)
+        for path, fault in sorted(head_faults.items()):
+            if path in changed_now:
+                why = f"the parser failed: {fault}"
+                call_findings.append(_unreadable_link(path, None, why, RULE_CALL_GRAPH))
+        base_edges: list[_Edge] | None = None
+        if base_sha is not None:
+            base_files = files_of(base_sha)
+            base_paths = [n for n in base_files if _CALLABLE_DOC.match(n)]
+            base_texts, _ = _read_blobs(repo, base_paths, base_sha, missing_ok=True)
+            base_texts = {p: t for p, t in base_texts.items() if len(t) <= MAX_PARSE_BYTES}
+            base_edges, _ = _graph_edges(base_texts, _plugin_nodes(base_files), deadline)
+        node_paths = {node: p for p in head_paths if (node := _node_of(p)) is not None}
+        call_findings.extend(
+            check_call_graph(head_edges, base_edges, node_paths, changed_now, deadline)
+        )
+        call_checked = sorted(p for p in head_texts if p in changed_now and p not in head_faults)
     return (
         VerifierOutcome(
             name=GRANT_TO_BODY, findings=tuple(grant_findings), checked=tuple(grant_checked)
@@ -1673,5 +2083,8 @@ def run_verifiers(
         ),
         VerifierOutcome(
             name=STRUCTURE, findings=tuple(structure_findings), checked=tuple(structure_checked)
+        ),
+        VerifierOutcome(
+            name=CALL_GRAPH, findings=tuple(call_findings), checked=tuple(call_checked)
         ),
     )

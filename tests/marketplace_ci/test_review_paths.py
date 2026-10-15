@@ -370,13 +370,15 @@ def test_a_document_after_the_parse_time_budget_is_a_blocking_finding():
 
 def test_the_parse_time_budget_is_enforced_across_the_docs_of_a_run(monkeypatch, git_repo):
     git_repo.stage(".claude/marketplace-sync.json", json.dumps({"scripts_mirrors": []}))
-    git_repo.write(SKILL, _skill_text("Fine."))
+    other = "plugins/demo-kit/skills/demo/references/other.md"
+    git_repo.write(other, _lines("Fine."))
     git_repo.write(REFERENCE, _lines("Fine."))
     base = _commit(git_repo.root, "base")
     monkeypatch.setattr(rv, "MAX_PARSE_SECONDS", -1.0)
-    change = (ChangedPath("M", SKILL, SKILL), ChangedPath("M", REFERENCE, REFERENCE))
+    # reference files only: a changed SKILL.md also starts the call-graph scan (its own budget)
+    change = (ChangedPath("M", other, other), ChangedPath("M", REFERENCE, REFERENCE))
     outcome = rv.run_verifiers(git_repo.root, change, base)[2]
-    assert sorted(f.path for f in outcome.findings) == sorted([SKILL, REFERENCE])
+    assert sorted(f.path for f in outcome.findings) == sorted([other, REFERENCE])
     assert all(f.severity == "Major" for f in outcome.findings)
 
 
