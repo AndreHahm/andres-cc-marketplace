@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, AskUserQuestion, Skill(commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit)
 ---
 
 # Handling Review Findings
@@ -255,8 +255,9 @@ session.
    (PR #407, CodeRabbit round 2). Run `git-review-api.py push-destinations`
    (it queries `git remote get-url --push --all origin` and strips the `https://github.com/` or
    `git@github.com:` prefix and `.git` suffix from every line, the same normalization `commit`'s own
-   bypass-attestation step uses) and require **every** printed line to
-   equal `<headRepositoryOwner.login>/<headRepository.name>` — re-fetched via `gh pr view <the
+   bypass-attestation step uses) and require that it exits 0, prints at least one line, and that **every**
+   printed line equals `<headRepositoryOwner.login>/<headRepository.name>` (a non-zero exit, empty
+   output or an `unsupported-push-url` line is a stop, never a pass) — re-fetched via `gh pr view <the
    resolved PR reference> --json headRepositoryOwner,headRepository` — the PR's actual head repository,
    whether or not it differs from the base repository step 1 resolved (a same-repo PR's head
    repository is simply the base repository, so this one check covers both cases uniformly; a
@@ -444,24 +445,9 @@ passes, and the specific findings from three rounds of live GitHub review on PR 
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
 
-**Fixed 2026-09-26 (issue #401 Part 1):** a malformed skill `args` value corrupted Workflow step 1's
-returned text via the dispatch mechanism's literal-token substitution — contained to exactly one
-occurrence of the argument placeholder (the validation line) after a two-round fix; full incident
-narrative in `references/development-history.md`'s "Issue #401 Part 1" entry. **Scenario**: invoke this
-skill with `args` set to a long free-text narrative instead of empty/a bare PR number/a PR URL — pass
-criterion: the returned Workflow text is corrupted (if at all) only at the single validation line, and
-every other step's text reads normally, so the mismatch is immediately visible as a validation failure
-rather than an unreadable wall of text.
-
-**Fixed 2026-09-26 (PR #407, CodeRabbit rounds 1-3):** Workflow step 1's checkout-identity check now
-compares against the PR's base repository (parsed from its `url`) instead of `headRepositoryOwner`/
-`headRepository`, and step 4 checks every actual push URL (`--push --all`) against the PR's head
-repository before `Skill(commit) --push` — full narrative of all three rounds in
-`references/development-history.md`'s "PR #407" entry.
-
-**Fixed 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception severity
-definition had no fallback for a finding with no reviewer-stated severity label — full narrative in
-`references/development-history.md`'s "Issue #95" entry.
+**Fix history:** the dated fixes (issue #401 Part 1 argument-substitution corruption and its regression
+scenario, PR #407's checkout-identity and push-destination checks, issue #95's severity fallback) are
+recorded in `references/development-history.md`.
 
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md` — kept out of the main procedure a reader follows on every triage

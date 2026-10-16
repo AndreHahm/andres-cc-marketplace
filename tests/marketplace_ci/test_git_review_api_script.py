@@ -36,9 +36,12 @@ M = _load_module()
 class FakeRun:
     """Stands in for subprocess.run: answers `git rev-parse --git-dir`, records every other call."""
 
-    def __init__(self, git_dir, stdout=""):
+    def __init__(self, git_dir, stdout="", returncode=0, raises=None, probe_raises=None):
         self.git_dir = git_dir
         self.stdout = stdout
+        self.returncode = returncode
+        self.raises = raises  # raised by every call except the git-dir probe
+        self.probe_raises = probe_raises  # raised by the git-dir probe
         self.calls = []  # (argv, input) for everything except the git-dir probe
 
     @property
@@ -48,10 +51,15 @@ class FakeRun:
     def __call__(self, argv, **kwargs):
         assert isinstance(argv, list), "must run with a static argv, never a shell string"
         assert not kwargs.get("shell"), "must never run through a shell"
+        assert kwargs.get("timeout", 0) > 0, "every child process needs a finite timeout"
         if argv[:2] == ["git", "rev-parse"]:
+            if self.probe_raises:
+                raise self.probe_raises
             return subprocess.CompletedProcess(argv, 0, stdout=f"{self.git_dir}\n", stderr="")
+        if self.raises:
+            raise self.raises
         self.calls.append((argv, kwargs.get("input")))
-        return subprocess.CompletedProcess(argv, 0, stdout=self.stdout, stderr="")
+        return subprocess.CompletedProcess(argv, self.returncode, stdout=self.stdout, stderr="")
 
 
 @pytest.fixture
@@ -215,12 +223,6 @@ def test_push_destinations_lists_normalized_slugs_and_needs_no_marker(env, capsy
         ("git@github.com:AndreHahm/repo.git", "AndreHahm/repo"),
         ("ssh://git@github.com/AndreHahm/repo.git", "AndreHahm/repo"),
         ("ssh://github.com/AndreHahm/repo", "AndreHahm/repo"),
-        # another host is never rewritten into a matching slug
-        (
-            "https://evil.example/github.com/AndreHahm/repo.git",
-            "https://evil.example/github.com/AndreHahm/repo",
-        ),
-        ("https://gitlab.com/AndreHahm/repo.git", "https://gitlab.com/AndreHahm/repo"),
     ],
 )
 def test_push_destinations_normalizes_every_github_remote_form(env, capsys, url, expected):
@@ -228,6 +230,63 @@ def test_push_destinations_normalizes_every_github_remote_form(env, capsys, url,
     fake = FakeRun(git_dir, stdout=f"{url}\n")
     assert _run(fake, ["push-destinations"]) == 0
     assert capsys.readouterr().out.strip() == expected
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.example/github.com/AndreHahm/repo.git",
+        "https://gitlab.com/AndreHahm/repo.git",
+        "https://user:s3cret-token@evil.example/AndreHahm/repo.git",
+        "https://github.com@evil.example/AndreHahm/repo.git",
+        "ssh://git@github.com:2222/AndreHahm/repo.git",
+    ],
+)
+def test_an_unsupported_push_url_is_never_printed_and_fails(env, capsys, url):
+    git_dir, _, _ = env
+    fake = FakeRun(git_dir, stdout=f"{url}\n")
+    assert _run(fake, ["push-destinations"]) == 1
+    out = capsys.readouterr().out
+    assert out.strip() == M.UNSUPPORTED_URL
+    assert "s3cret-token" not in out and "evil.example" not in out
+
+
+def test_push_destinations_with_one_unsupported_url_among_good_ones_fails(env, capsys):
+    git_dir, _, _ = env
+    stdout = "https://github.com/AndreHahm/repo.git\nhttps://token@evil.example/x/y.git\n"
+    assert _run(FakeRun(git_dir, stdout=stdout), ["push-destinations"]) == 1
+    assert capsys.readouterr().out.splitlines() == ["AndreHahm/repo", M.UNSUPPORTED_URL]
+
+
+def test_push_destinations_with_no_url_fails_instead_of_passing_vacuously(env, capsys):
+    git_dir, _, _ = env
+    assert _run(FakeRun(git_dir, stdout="\n"), ["push-destinations"]) == 1
+    assert capsys.readouterr().out == ""
+
+
+def test_push_destinations_propagates_a_failing_git_call_without_output(env, capsys):
+    git_dir, _, _ = env
+    assert _run(FakeRun(git_dir, stdout="", returncode=2), ["push-destinations"]) == 2
+    assert capsys.readouterr().out == ""
+
+
+# --- timeouts: no child process can block the skill forever -------------------------------------
+
+
+def test_a_gh_call_that_times_out_returns_a_nonzero_result(env, capsys):
+    git_dir, _, _ = env
+    fake = FakeRun(git_dir, raises=subprocess.TimeoutExpired(["gh"], M.CALL_TIMEOUT))
+    assert _run(fake, ["list-comments", *COMMON]) == 124
+    assert "timed out" in capsys.readouterr().err
+
+
+def test_a_marker_probe_that_times_out_refuses_the_write(env, capsys):
+    git_dir, _, _ = env
+    fake = FakeRun(git_dir, probe_raises=subprocess.TimeoutExpired(["git"], M.PROBE_TIMEOUT))
+    _write_marker(git_dir)
+    assert _run(fake, ["resolve", "--thread-id", "PRRT_a"]) == 2
+    assert fake.gh_calls == []
+    assert "timed out" in capsys.readouterr().err
 
 
 # --- marker handshake --------------------------------------------------------------------------
@@ -535,3 +594,60 @@ def test_marker_writer_accepts_the_wrapper_guard_type(tmp_path):
     guard, ts, skill = (tmp_path / ".git/git-kit-marker.txt").read_text().split()
     assert (guard, skill) == (GUARD, "handling-review-findings")
     assert ts.isdigit()
+
+
+# --- the skill's smoke check rejects broad raw grants ------------------------------------------
+
+SMOKE = ROOT / "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py"
+WRAPPER_GRANT = "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*)"
+MARKER_GRANT = "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*)"
+KEPT_GRANTS = (
+    "Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh issue list:*)"
+)
+
+
+def _smoke_module():
+    spec = importlib.util.spec_from_file_location("handling_review_findings_smoke", SMOKE)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _skill_md(tmp_path, grants):
+    path = tmp_path / "SKILL.md"
+    path.write_text(f"---\nname: x\nallowed-tools: {grants}\n---\nbody\n")
+    return path
+
+
+def test_smoke_check_accepts_the_intended_grants(tmp_path):
+    grants = f"{KEPT_GRANTS}, {WRAPPER_GRANT}, {MARKER_GRANT}, Read, Write, Skill(commit)"
+    ok, message = _smoke_module().check_no_raw_github_grants(_skill_md(tmp_path, grants))
+    assert ok, message
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "Bash(gh:*)",
+        "Bash(gh api:*)",
+        "Bash(gh " + "api graphql:*)",
+        "Bash(gh " + "api user:*)",
+        "Bash(gh " + "pr comment:*)",
+        "Bash(gh " + "issue create:*)",
+        "Bash(sed -E:*)",
+        "Bash(sed:*)",
+        "Bash(git remote get-url:*)",
+    ],
+)
+def test_smoke_check_rejects_any_broad_or_replaced_grant(tmp_path, extra):
+    grants = f"{KEPT_GRANTS}, {WRAPPER_GRANT}, {MARKER_GRANT}, {extra}"
+    ok, message = _smoke_module().check_no_raw_github_grants(_skill_md(tmp_path, grants))
+    assert not ok and "replaced" in message
+
+
+def test_smoke_check_rejects_an_unpinned_marker_writer(tmp_path):
+    unpinned = "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)"
+    grants = f"{KEPT_GRANTS}, {WRAPPER_GRANT}, {unpinned}"
+    ok, message = _smoke_module().check_no_raw_github_grants(_skill_md(tmp_path, grants))
+    assert not ok and "pinned" in message
