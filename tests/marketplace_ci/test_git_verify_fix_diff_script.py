@@ -204,6 +204,57 @@ def test_worktree_mode_leaves_the_repository_untouched(repo):
     assert (repo / ".git" / "index").read_bytes() == index_before
 
 
+def test_worktree_mode_writes_no_snapshot_object_into_the_repository(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _write(repo, SKILL, GOOD + "\nMore text.\n")
+    _write(repo, "untracked-secret.txt", "api-key-for-the-test-only\n")
+    changed_blob = _git(repo, "hash-object", SKILL)
+    untracked_blob = _git(repo, "hash-object", "untracked-secret.txt")
+    result = _run(repo, "--worktree", "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    for blob in (changed_blob, untracked_blob):
+        probe = subprocess.run(["git", "cat-file", "-e", blob], cwd=repo, capture_output=True)
+        assert probe.returncode != 0, f"{blob} was written into the repository's object store"
+
+
+def test_worktree_mode_from_a_linked_worktree_writes_nothing_into_the_common_store(repo, tmp_path):
+    _commit(repo, SKILL, GOOD, "add skill")
+    linked = tmp_path / "linked"
+    _git(repo, "worktree", "add", "-q", "-b", "linked-branch", str(linked))
+    base = _git(linked, "rev-parse", "HEAD")
+    _write(linked, SKILL, GOOD + "\nMore text.\n")
+    _write(linked, "untracked-secret.txt", "linked-worktree-secret\n")
+    blobs = [_git(linked, "hash-object", p) for p in (SKILL, "untracked-secret.txt")]
+    result = _run(linked, "--worktree", "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    for blob in blobs:
+        probe = subprocess.run(["git", "cat-file", "-e", blob], cwd=repo, capture_output=True)
+        assert probe.returncode != 0, f"{blob} reached the common object store"
+
+
+def test_worktree_mode_works_in_a_repository_path_containing_a_colon(repo, tmp_path):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    moved = tmp_path / "re:po"
+    repo.rename(moved)
+    _write(moved, SKILL, GOOD + "\nMore text.\n")
+    result = _run(moved, "--worktree", "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("mode", [["--worktree"], []])
+def test_no_temporary_directory_is_left_behind(repo, tmp_path, mode):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    if mode:
+        _write(repo, SKILL, GOOD + "\nMore text.\n")
+    else:
+        _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    result = _run(repo, *mode, "--base", base, extra_env={"TMPDIR": str(scratch)})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert list(scratch.iterdir()) == []
+
+
 # --- security review (#578): fail-open paths --------------------------------------------------
 
 BAD = "---\nname: demo\ndescription: [unclosed\n---\n"
@@ -257,6 +308,14 @@ def test_fix_cannot_weaken_the_verifier_that_judges_it(repo):
     result = _run(repo, "--worktree", "--base", base)
     assert result.returncode == 2, result.stdout + result.stderr
     assert "cannot judge" in (result.stdout + result.stderr)
+
+
+def test_git_failure_in_a_subdirectory_is_not_nothing_to_check(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    (repo / ".git" / "config").write_text("[broken\n", encoding="utf-8")
+    result = _run(repo / "scripts", "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "nothing to check" not in result.stdout
 
 
 def test_verifiers_present_at_base_but_missing_now_is_not_nothing_to_check(repo):

@@ -275,8 +275,8 @@ session.
    the same as a verification failure and leave the finding open in the same round until the fix is
    actually pushed. Once the push is confirmed landed, reply to the finding's own thread stating both
    the fixing commit's SHA *and* a one-line summary of what verification confirmed (mechanics in
-   `references/github-api-mechanics.md`), and only then resolve that thread. **If verification fails**,
-   don't reply or resolve — the finding stays open in the same round. Record its disposition in the outcomes ledger (4e).
+   `references/github-api-mechanics.md`), and only then resolve that thread and record it in the outcomes ledger (4e). **If verification fails**,
+   don't reply or resolve — the finding stays open in the same round, with no ledger entry until it is settled.
 5. **Issue path** (one of the three named exceptions, or budget-exhaustion when
    `review_findings_generate_issues: true`): before drafting, check
    `gh issue list -R "<owner>/<repo>" --search "PR #<N>" --state all --limit 100` for an existing issue

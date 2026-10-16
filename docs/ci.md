@@ -546,8 +546,9 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
 
 - **Invocation.** `--base <full object id>` diffs the commit before the fix against `HEAD`; `--worktree`
   checks the uncommitted working tree instead, through a throwaway commit built with a temporary index and
-  checked out in a temporary shared clone (no ref, index or working-tree change; the snapshot's objects,
-  including untracked non-ignored files, stay in the object store as unreachable objects until `git gc`).
+  checked out in a temporary shared clone (no ref, index, working-tree or object-store change; the snapshot's
+  objects, including untracked non-ignored files, go to a temporary object directory deleted on exit; a hard
+  kill leaves it in the system temp directory).
 - **Which code runs.** The verifier modules are extracted from `--base` with `git archive` and imported from
   a private copy, never from the tree being judged. The driver script runs from wherever it is started, so
   its exit 2 for a fix that edits it catches an honest edit only; CI still judges the pushed head.
