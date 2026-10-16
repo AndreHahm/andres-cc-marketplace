@@ -41,7 +41,7 @@ Auto-compact triggers at context limits, often mid-task. Strategic compaction pr
 - A live, in-the-moment read of the current window's percentage-full state — that's
   `context-window-analysis`'s job (see its own "When NOT to Use" section, which states this same
   distinction reciprocally)
-- A behavioral-posture question (which context mode to use) — see "Relationship to context-mode" below
+- A behavioral-posture question (which `context-mode` profile to use) — see "Relationship to context-mode" below
 
 ## When to Suggest Compaction
 
