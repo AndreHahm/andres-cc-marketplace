@@ -2,7 +2,7 @@
   "purpose": "Premise eval for the context-mode refactor: does injecting a mode profile change behavior beyond what CLAUDE.md and the always-loaded .claude/rules/ already produce?",
   "arms": {
     "baseline": "No profile. Runner sees only the task wrapper and the scenario prompt (plus whatever project instructions a subagent loads by itself).",
-    "with_profile": "The full text of plugins/context-kit/skills/context-mode/references/<mode>.md is prepended as injected session context."
+    "with_profile": "The full text of plugins/context-kit/skills/context-mode/references/<mode>.md is prepended as injected session context. The dev profile was removed from references/; for the two dev scenarios use profiles/dev-profile.md in this directory instead."
   },
   "runner_wrapper": "Plan-only run. Do NOT call any tool and do NOT modify anything. Reply as you would in your first response to the user message below: state exactly which skills, agents, commands and questions you would use next, in order, and why. Start your reply with one line 'CLAUDE.md visible: yes' or 'CLAUDE.md visible: no'.",
   "scenarios": [
