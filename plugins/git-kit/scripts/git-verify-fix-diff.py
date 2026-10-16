@@ -111,30 +111,19 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
         }
         env = _clean_env(GIT_INDEX_FILE=os.path.join(tmp, "index"), **ident)
 
-        def run(*cmd: str, cwd: Path = repo_root, env: dict[str, str] = env) -> str:
-            out = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, check=True, text=True)
-            return out.stdout.strip()
+        def run(*args: str, cwd: Path = repo_root, env: dict[str, str] = env) -> str:
+            return _git(cwd, *args, env=env).decode().strip()
 
-        run("git", "read-tree", head_sha)
-        run("git", "add", "-A")
-        tree = run("git", "write-tree")
+        run("read-tree", head_sha)
+        run("add", "-A")
+        tree = run("write-tree")
         sha = run(
-            "git",
-            "-c",
-            "commit.gpgsign=false",
-            "commit-tree",
-            tree,
-            "-p",
-            head_sha,
-            "-m",
-            "snapshot",
+            "-c", "commit.gpgsign=false", "commit-tree", tree, "-p", head_sha, "-m", "snapshot"
         )
         clone = Path(tmp) / "clone"
         plain = _clean_env(**ident)
-        run(
-            "git", "clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone), env=plain
-        )
-        run("git", "checkout", "-q", "--detach", sha, cwd=clone, env=plain)
+        run("clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone), env=plain)
+        run("checkout", "-q", "--detach", sha, cwd=clone, env=plain)
         yield clone, sha
 
 
@@ -143,15 +132,8 @@ def _commit_clone(repo_root: Path, sha: str) -> Iterator[tuple[Path, str]]:
     """A temporary shared clone checked out at `sha`: the files on disk are exactly that commit."""
     with tempfile.TemporaryDirectory(prefix="verify-fix-") as tmp:
         clone = Path(tmp) / "clone"
-        env = _clean_env()
-        for cmd, cwd in (
-            (
-                ["git", "clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone)],
-                repo_root,
-            ),
-            (["git", "checkout", "-q", "--detach", sha], clone),
-        ):
-            subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, check=True)
+        _git(repo_root, "clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone))
+        _git(clone, "checkout", "-q", "--detach", sha)
         yield clone, sha
 
 
