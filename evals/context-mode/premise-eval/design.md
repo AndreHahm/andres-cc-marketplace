@@ -61,3 +61,5 @@ Decision rules:
   generic instruction text and the mode's content is folded into the single posture block.
 - A mode keeps its own profile when it meets both its keep rule above and the mode-specific check.
   Dev stays cut. The owner decides the outcome; this file only fixes how the evidence is read.
+  The owner's decision for round 3 (kept admin, review and ship despite 2 of 4) is recorded in `results.md`
+  under "Owner decision (2026-10-16)".

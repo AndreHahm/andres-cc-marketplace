@@ -130,6 +130,20 @@ Matched = mean over all matched runs; baseline = mean over all baseline runs; wr
 - By the design's overall rule (at least 3 of 4 modes keep their own profile) the result is 2 of 4. The design
   sends that to the owner: reduce the rest to a single short posture block.
 
+## Owner decision (2026-10-16)
+
+The owner kept the admin, review and ship profiles as separate files, overriding the design's "reduce to a
+single short posture block" outcome for a 2-of-4 result. Reasons the owner gave:
+
+- The evidence is thin: n = 1 per cell, borderline scenarios, plan-only runs with no baseline arm, so the eval
+  cannot justify a redesign either way.
+- A mode loads only when the user types `/context-mode`, so its profile cost is chosen per session, not paid by
+  default.
+- The review, ship and admin postures follow the owner's PR-lifecycle workflow (review from PR creation, ship
+  before merge, admin after merge).
+
+Review still did not clear its own bar (see Reading above); it ships on this decision, not on the eval result.
+
 ## Grading inconsistencies noticed
 
 - Assertion 3e: the round 3 graders passed a closing-line promise ("each with file:line") although they were told it
