@@ -91,6 +91,11 @@ _HERE = Path(__file__).resolve()
 # Plugin layout (and the .claude/scripts mirror): <root>/scripts/<this file>. The project-local hook
 # copy sits deeper, at .claude/hooks/_external-scripts/context-kit/scripts/, so its profiles are in
 # .claude/skills/ four levels up. The first directory that holds generic.md wins.
+# Trust model: both candidates are derived from this file's own location, never from the working
+# directory or CLAUDE_PROJECT_DIR. The profile text therefore comes from the same tree as the code
+# that is executing it, so a project that could tamper with the profile could already tamper with
+# this hook. Only the mode name is read from outside that tree (the state file), and it is checked
+# against CONTEXT_MODES before any profile path is built.
 _MODE_REFERENCE_DIRS = tuple(
     _HERE.parents[depth] / "skills" / "context-mode" / "references"
     for depth in (1, 4)
@@ -243,7 +248,9 @@ def format_restoration_message(
     lines = ["[Context Restored After Compaction]", ""]
 
     if mode_profile:
-        # Plugin-shipped text for a mode the user set earlier in this session, not project data.
+        # Profile text for a mode the user set earlier in this session. It is read from the tree
+        # this hook runs from (the plugin, or this project's own .claude/ mirror of it), not from
+        # project data.
         lines.append("Active context mode (set earlier in this session; still in force):")
         lines.append("")
         lines.append(mode_profile)
