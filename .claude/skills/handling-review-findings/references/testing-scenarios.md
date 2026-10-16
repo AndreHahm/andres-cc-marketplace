@@ -132,7 +132,7 @@
       off an unverified push.
 - [ ] A finding matching one of the three named exceptions (direct instruction, out-of-scope component,
       too large for this session) is never fixed in-session — each is filed via the
-      draft-then-`gh issue create` pattern, using a non-closing reference, with its thread replied-to
+      draft-then-`git-review-api.py issue-create` pattern, using a non-closing reference, with its thread replied-to
       (issue number cited) but left unresolved.
 - [ ] A round-3 (or any in-budget round) finding matching none of the three named exceptions gets
       **fixed**, never automatically filed just for arriving in a later round.

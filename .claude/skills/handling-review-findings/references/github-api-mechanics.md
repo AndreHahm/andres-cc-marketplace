@@ -47,7 +47,8 @@ without a new marker.
 **`--body-file`** is never handed to `gh` as a path. The script refuses a path that is itself a symlink,
 resolves it (so a symlinked directory cannot hide the real location), requires the result to sit below a
 directory named `scratchpad` inside `<temp>/claude-<uid>` (the session scratchpad's location), opens it
-without following a final symlink, requires a regular file owned by you, reads it itself (at most 256
+without following a final symlink, requires a single-link regular file owned by you (a hard link to a
+file elsewhere is refused), reads it itself (at most 256
 KiB, valid UTF-8, non-empty, at most 65,536 characters, which is GitHub's comment limit) and passes the
 content to `gh` on stdin. A file anywhere else — including an issue draft under the repo's `issues/` —
 must first be copied into the scratchpad with `Write`. Other sessions' scratchpads of the same user stay

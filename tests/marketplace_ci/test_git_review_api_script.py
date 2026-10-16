@@ -425,6 +425,16 @@ def test_a_symlink_to_another_file_inside_the_scratchpad_is_rejected(env):
     assert code != 0 and fake.gh_calls == []
 
 
+def test_a_hard_link_to_a_file_outside_the_scratchpad_is_rejected(env):
+    _, _, body = env
+    outside = body.parent.parent / "owned-file-outside-scratchpad.txt"
+    outside.write_text("an owned file elsewhere in the scratch tree")
+    link = body.parent / "reply.txt"
+    os.link(outside, link)
+    code, fake = _trigger(env, link)
+    assert code != 0 and fake.gh_calls == []
+
+
 def test_a_file_in_the_scratch_tree_but_outside_a_scratchpad_directory_is_rejected(env):
     _, _, body = env
     tasks = body.parent.parent / "tasks"

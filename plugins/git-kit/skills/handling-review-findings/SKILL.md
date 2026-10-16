@@ -406,7 +406,7 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
       advances it, never a pre-push review pass, rebase, or unrelated commit
 - [ ] Round 1/2 findings are fixed, committed via `Skill(commit)`, pushed, and verified before
       their thread is replied-to and resolved — never resolved off an unverified push
-- [ ] A finding matching one of the three named exceptions is filed via `gh issue create`, never fixed
+- [ ] A finding matching one of the three named exceptions is filed via `git-review-api.py issue-create`, never fixed
       in-session; every other in-budget finding gets fixed, never automatically filed
 - [ ] Workflow step 8's reviewer/mode `AskUserQuestion` fires at most once per conversation — a later
       round reuses the earlier answer rather than asking again
