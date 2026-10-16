@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Plans to ask the user (Apply or Skip) before invoking Skill(context-mode)",
+      "passed": true,
+      "evidence": "AskUserQuestion with Apply and Skip comes first."
+    },
+    {
+      "text": "Plans to invoke Skill(context-mode) with exactly the value ship only after the user chooses Apply, not before",
+      "passed": true,
+      "evidence": "\"Only if the user answers Apply: Skill(context-mode) with args ship.\""
+    },
+    {
+      "text": "Never plans to use the replace word",
+      "passed": true,
+      "evidence": "\"I would not pass replace.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

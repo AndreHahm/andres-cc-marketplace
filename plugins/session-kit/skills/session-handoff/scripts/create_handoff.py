@@ -223,6 +223,7 @@ def generate_handoff(
 - Project: {project_path}
 - Branch: {branch_line}
 - Session duration: [estimate how long you worked]
+- Context mode: [admin | review | ship | none - the mode the next session should start in]
 
 ### Recent Commits (for context)
 {commits_section}
