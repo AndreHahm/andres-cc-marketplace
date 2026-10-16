@@ -177,3 +177,17 @@ def test_local_and_tracked_must_be_different_files(tmp_path):
     same = str(tmp_path / ".claude" / "same.json")
     result = _run(tmp_path, "--local", same, "--tracked", same, "promote", "--pr", "7")
     assert result.returncode == 2
+
+
+def test_ledger_files_must_be_json(tmp_path):
+    result = _run(
+        tmp_path, "--tracked", str(tmp_path / ".claude" / "rules.md"), "promote", "--pr", "7"
+    )
+    assert result.returncode == 2
+
+
+def test_refuted_also_reads_the_promoted_entries(tmp_path):
+    _record(tmp_path, finding="a", pr="7", disposition="false_positive")
+    _run(tmp_path, "promote", "--pr", "7")
+    result = _run(tmp_path, "refuted", "--pr", "7")
+    assert {e["finding"] for e in json.loads(result.stdout)["refuted"]} == {"a"}
