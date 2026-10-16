@@ -646,6 +646,30 @@ def test_smoke_check_rejects_any_broad_or_replaced_grant(tmp_path, extra):
     assert not ok and "replaced" in message
 
 
+@pytest.mark.parametrize(
+    ("grants", "expected"),
+    [
+        # the wrapper named only in a non-Bash grant, or in an unrelated Bash grant
+        (f"{KEPT_GRANTS}, Read(/x/git-review-api.py), {MARKER_GRANT}", "pinned"),
+        (f"{KEPT_GRANTS}, Bash(cat /x/git-review-api.py:*), {MARKER_GRANT}", "pinned"),
+        # the wrapper grant without the isolated-interpreter flag
+        (
+            f"{KEPT_GRANTS}, Bash(python3 ${{CLAUDE_PLUGIN_ROOT}}/scripts/git-review-api.py:*), "
+            f"{MARKER_GRANT}",
+            "pinned",
+        ),
+        # the marker writer named only in a non-Bash grant
+        (
+            f"{KEPT_GRANTS}, {WRAPPER_GRANT}, Read(git-write-marker.sh gh-pr-review-wrapper)",
+            "pinned",
+        ),
+    ],
+)
+def test_smoke_check_requires_both_pinned_commands_as_bash_grants(tmp_path, grants, expected):
+    ok, message = _smoke_module().check_no_raw_github_grants(_skill_md(tmp_path, grants))
+    assert not ok and expected in message
+
+
 def test_smoke_check_rejects_an_unpinned_marker_writer(tmp_path):
     unpinned = "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*)"
     grants = f"{KEPT_GRANTS}, {WRAPPER_GRANT}, {unpinned}"
