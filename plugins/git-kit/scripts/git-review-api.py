@@ -84,6 +84,13 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
 }
 """
 
+# list-comments prints only what triage, dedup and the authorship check use, one JSON object per
+# line: the full REST comment carries ~26 fields plus a 19-field user object (about 7x the bytes).
+COMMENT_PROJECTION = (
+    ".[] | {id, in_reply_to_id, user: .user.login, path, line, original_line, commit_id, "
+    "created_at, html_url, body}"
+)
+
 RESOLVE_MUTATION = (
     "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) "
     "{ thread { id isResolved } } }"
@@ -254,7 +261,8 @@ def build_call(args) -> tuple[list[str], bytes | None]:
     if command == "trigger-comment":
         body = read_body(args.body_file)
         return ["gh", "pr", "comment", pr, "-R", f"{owner}/{repo}", "--body-file", "-"], body
-    return ["gh", "api", f"repos/{owner}/{repo}/pulls/{pr}/comments", "--paginate"], None
+    endpoint = f"repos/{owner}/{repo}/pulls/{pr}/comments"
+    return ["gh", "api", endpoint, "--paginate", "--jq", COMMENT_PROJECTION], None
 
 
 def consume_marker(run, now: float) -> None:

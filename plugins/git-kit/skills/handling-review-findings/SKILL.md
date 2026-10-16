@@ -306,8 +306,10 @@ session.
    filing**, per `github-issue-creator`'s own guideline: a finding that quotes a secret, token, email or
    local path is cited by location and uses a placeholder (`[REDACTED_TOKEN]`, `[EMAIL]`,
    `[LOCAL_PATH]`), never reproduced. File it with
-   `git-review-api.py issue-create --owner <owner> --repo <repo> --title "<Summary>" --body-file <path>`
-   (the script reads only from the scratchpad, so `Write` the draft's text there first), using a plain,
+   `git-review-api.py issue-create --owner <owner> --repo <repo> --title "<Summary>" --body-file
+   <scratchpad-path>`. **Two files, two steps:** the canonical draft stays under `issues/` (that is what
+   gets staged), and the identical redacted text is `Write`n to a scratchpad file whose path goes to
+   `--body-file` — the script refuses the `issues/` path, because it reads only from the scratchpad. Use a plain,
    non-closing reference ("Found in PR #N") — never "Fixes #N"/"Closes #N", so a merge doesn't
    auto-close a still-open, still-unaddressed issue. Keep the draft file and stage it alongside the
    round's own fix commit when both exist in the same round; if the issue is the round's only outcome,

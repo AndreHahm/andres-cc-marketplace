@@ -191,8 +191,24 @@ def test_list_comments_is_a_paginated_read_and_needs_no_marker(env):
     _, fake, _ = env
     assert _run(fake, ["list-comments", *COMMON]) == 0
     assert fake.gh_calls == [
-        ["gh", "api", "repos/AndreHahm/andres-cc-marketplace/pulls/579/comments", "--paginate"]
+        [
+            "gh",
+            "api",
+            "repos/AndreHahm/andres-cc-marketplace/pulls/579/comments",
+            "--paginate",
+            "--jq",
+            M.COMMENT_PROJECTION,
+        ]
     ]
+
+
+def test_list_comments_projects_to_the_fields_triage_uses_and_drops_the_bulk():
+    projection = M.COMMENT_PROJECTION
+    for field in ("id", "in_reply_to_id", "path", "line", "commit_id", "created_at", "body"):
+        assert field in projection, f"triage and dedup need {field}"
+    assert "user: .user.login" in projection, "authorship check needs the login only"
+    for bulk in ("diff_hunk", "_links", "reactions", "node_id", "avatar_url"):
+        assert bulk not in projection
 
 
 def test_whoami_reads_only_the_login_and_needs_no_marker(env):
