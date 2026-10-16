@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import stat
 import sys
 import tempfile
 from pathlib import Path
@@ -43,14 +44,23 @@ def state_file() -> Path | None:
 
 
 def read_mode(path: Path | None) -> str | None:
-    """Read the saved mode: a regular, non-symlink file, bounded read, closed-set value only."""
+    """Read the saved mode: a regular file, bounded read, closed-set value only.
+
+    A symlink is rejected on POSIX only (O_NOFOLLOW does not exist on Windows).
+    """
     if path is None:
         return None
     try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_STATE_BYTES:
-            return None
-        with open(path, "rb") as handle:
-            value = handle.read(MAX_STATE_BYTES).decode("utf-8").strip()
+        fd = os.open(
+            path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        )
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_STATE_BYTES:
+                return None
+            value = os.read(fd, MAX_STATE_BYTES).decode("utf-8").strip()
+        finally:
+            os.close(fd)
     except (OSError, UnicodeDecodeError):
         return None
     return value if value in MODES else None

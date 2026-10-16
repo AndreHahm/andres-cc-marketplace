@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -104,10 +105,16 @@ def read_active_mode_profile(session_id: str = "") -> str | None:
     digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:8]
     state_file = Path.home() / ".claude" / "context-kit" / f"mode-{digest}"
     try:
-        if state_file.is_symlink() or not state_file.is_file() or state_file.stat().st_size > 16:
-            return None
-        with open(state_file, "rb") as handle:
-            mode = handle.read(16).decode("utf-8").strip()
+        fd = os.open(
+            state_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        )
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 16:
+                return None
+            mode = os.read(fd, 16).decode("utf-8").strip()
+        finally:
+            os.close(fd)
         if mode not in CONTEXT_MODES:
             return None
         generic = (_MODE_REFERENCES / "generic.md").read_text(encoding="utf-8")
