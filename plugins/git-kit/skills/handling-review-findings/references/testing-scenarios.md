@@ -122,6 +122,10 @@
   `AskUserQuestion` offers run / skip / stop (`references/fix-self-review.md` 4a). "Run" is asked once and
   covers the run's later fixes; "skip" puts the skipped self-review in the reply's verification line and
   still records the disposition; "stop" leaves the finding open; the verifier is never run on silence.
+- Step 7 has just reported and the user then answers "No further round for now" in step 8 (or the
+  triggered-cycle count already sits at `max_rounds`): the ledger promotion (`references/fix-self-review.md`
+  4e) runs on that terminal path before the run stops. It never runs inside step 7, and it does not run
+  when step 8 posts a trigger, since that round's dispositions are still to be recorded.
 
 ## Quality gates
 

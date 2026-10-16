@@ -332,7 +332,7 @@ session.
    thread. **This disclosure is informational, never an override**: `merge-pr`'s own independent
    readiness gate — required status checks, no outstanding `CHANGES_REQUESTED` review, any branch
    protection "require conversation resolution" setting — still applies in full regardless of this
-   workflow's fixed/filed/declined classification. When no further round will follow, promote the ledger first (`references/fix-self-review.md` 4e).
+   workflow's fixed/filed/declined classification. Promote the ledger only once step 8 ends with no trigger posted (`references/fix-self-review.md` 4e), never here.
 8. **Trigger the next round, if the budget allows one.** Four sub-steps, full detail in
    `references/next-round-trigger.md`: resolve how many cycles this skill has already triggered (8a —
    1 for round 1's automatic CI trigger, plus one per distinct self-authored `<batch-id>` marker found
@@ -345,7 +345,7 @@ session.
    `.claude/rules/recheck-state-before-side-effecting-action.md`, a fresh marker and scratchpad file
    per reviewer, one shared `<batch-id>` across the whole decision). `max_rounds` is the authoritative
    ceiling if `min_rounds` is ever misconfigured higher than it; at `max_rounds`, skip this step
-   entirely.
+   except for the ledger promotion.
 
 ## GitHub API Mechanics
 
@@ -439,7 +439,7 @@ typed `-F cursor=null` and `-F body=@` with every subcommand documented in
 `references/github-api-mechanics.md`. The wrapper's own behavior is covered by
 `tests/marketplace_ci/test_git_review_api_script.py`.
 
-**Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals, **except that evals
+**Last dated run record:** 2026-09-26 — 100% with_skill pass rate across evals 1–24, **except that evals
 19 and 21 were rewritten on 2026-10-16 for the `git-review-api.py` wrapper (#580) and have not been
 re-run** (eval 21's saved iteration-4 run predates that rewrite; the wrapper itself is covered by
 `tests/marketplace_ci/test_git_review_api_script.py` and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
@@ -470,4 +470,4 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
 | `references/development-history.md` | Build-time audit trail: eval run records, security-review passes, and dated fix narratives for issues found in live GitHub review (PR #101, #407) |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 28 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 28 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate; iteration 8 (evals 25-28): 11/12 with_skill vs. 8/12 baseline; iteration 9 (eval 27 rerun): 3/3 with_skill-only |
