@@ -30,7 +30,8 @@ over the changed paths and prints `{"checked", "blocking"}`.
   diff. Exit 0 means the fix made no verifier-judged value worse than at `--base` (the commit before the
   fix); it does not mean an earlier finding is resolved and it is **not the CI verdict** - a size tier that
   was already over its limit before the fix and is not worse after it passes here, and CI can still block.
-- **Verifier modules come from `--base`**, never from the tree being judged. The driver script itself runs from
+- **Verifier modules come from the target branch** (where `HEAD` last met `refs/remotes/origin/HEAD`; without
+  that ref the run exits 2), never from the tree being judged and never from `--base`. The driver script itself runs from
   wherever you start it, so a fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the
   script cannot be judged by them: it exits 2 (this catches an honest edit only). Report that instead of
   claiming a pass. `--base` must be an ancestor of `HEAD`; without `--worktree` the committed `HEAD` is
@@ -77,7 +78,7 @@ Reviewer-derived values (`--path`, `--rule`, a comment id) go in single quotes w
   `--note` is text you write yourself, never copied from the comment: a PR author controls those strings.
   Recording again for the same finding replaces its entry. A note is copied into a tracked file at promotion:
   never put a secret or a reviewer's quoted credential in it. The working ledger is local and gitignored
-(`.claude/review-ledger.local.json`). **A corrupt ledger, a ledger path outside `.claude/`, or a working ledger that git tracks (a force-add could plant dispositions) is refused (exit 2) and never overwritten** - report
+(`.claude/review-ledger.local.json`; `record` adds it to the repository's `.git/info/exclude` when no ignore rule covers it). **A corrupt ledger, a ledger path outside `.claude/`, or a working ledger that git tracks (a force-add could plant dispositions) is refused (exit 2) and never overwritten** - report
 it instead of continuing without a record.
 
 - **Refuted findings are not raised again.** In step 2's dedup, run

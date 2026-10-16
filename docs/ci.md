@@ -549,8 +549,11 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   checked out in a temporary shared clone (no ref, index, working-tree or object-store change; the snapshot's
   objects, including untracked non-ignored files, go to a temporary object directory deleted on exit; a hard
   kill leaves it in the system temp directory).
-- **Which code runs.** The verifier modules are extracted from `--base` with `git archive` and imported from
-  a private copy, never from the tree being judged. The driver script runs from wherever it is started, so
+- **Which code runs.** The verifier modules are extracted with `git archive` from the commit where `HEAD`
+  last met the target branch (`git merge-base HEAD refs/remotes/origin/HEAD`) and imported from a private
+  copy: never from the tree being judged, and never from `--base`, because a PR's own earlier commit can
+  precede `--base` and the extracted modules are executed. Without `refs/remotes/origin/HEAD` the run exits
+  2 (`git remote set-head origin -a` sets it). The driver script runs from wherever it is started, so
   its exit 2 for a fix that edits it catches an honest edit only; CI still judges the pushed head.
 - **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; the script has
   no touched-line filter of its own. Verifiers that compare with a base compare with `--base` (the commit
@@ -559,13 +562,15 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   script itself exits 2, because the verifiers cannot grade a change to themselves. `--base` must be an
   ancestor of `HEAD`; without `--worktree` the committed `HEAD` is verified in a temporary clone.
 - **Output and exit codes.** One JSON object with `checked` and `blocking`. Exit 0 is clean,
-  1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at `--base` but not
-  in the tree, the diff is empty, `--worktree` runs in a sparse checkout, or the fix touches what grades it. Exit 0 with "nothing to check" happens only where neither the base nor
+  1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at the target
+  branch but not in the tree, the diff is empty, `--worktree` runs in a sparse checkout, or the fix touches
+  what grades it. Exit 0 with "nothing to check" happens only where neither the target branch nor
   the tree has `scripts/marketplace_ci/review_verifiers.py` (git-kit is installed in other repositories).
 - **Not covered.** It does not run the model reviewers, the structural check or the computed gate, and a
   clean result is not the CI verdict: CI still judges the pushed head.
 - **Outcomes ledger.** `scripts/git-review-ledger.py` records one disposition per finding in a gitignored
-  `.claude/review-ledger.local.json` and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
+  `.claude/review-ledger.local.json` (`record` adds it to the repository's `.git/info/exclude` when no ignore
+  rule covers it, and refuses to write it if git still does not ignore it) and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
   before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger.
   Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
 

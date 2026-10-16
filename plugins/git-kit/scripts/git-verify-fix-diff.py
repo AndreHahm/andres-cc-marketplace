@@ -10,10 +10,13 @@ with `--base`, the commit before the fix, so a value that was already over a lim
 and is not worse after it passes here, and CI can still block it.
 Prints one JSON object: {"checked": [...], "blocking": [...]}.
 
-The verifier modules are loaded from `--base` (`git archive`), never from the tree being judged;
-this driver runs from wherever it was started, so the exit 2 below for a fix that changes the
-verifiers (scripts/marketplace_ci/), their registry (.claude/marketplace-sync.json) or this
-script only catches an honest edit. Such a fix cannot be judged by them, so it exits 2. A
+The verifier modules are loaded (`git archive`) from the commit where HEAD last met the target
+branch (`refs/remotes/origin/HEAD`), never from the tree being judged and never from `--base`: a
+PR's own earlier commit can precede `--base`, and the loaded modules are imported and run. Without
+that ref the run exits 2. This driver runs from wherever it was started, so the exit 2 below for a
+fix that changes the verifiers (scripts/marketplace_ci/), their registry
+(.claude/marketplace-sync.json) or this script only catches an honest edit. Such a fix cannot be
+judged by them, so it exits 2. A
 `--worktree` run snapshots the working tree into a throwaway commit built with a temporary
 index and verifies it in a temporary shared clone: no ref, the real index or the working tree is
 touched, and no object is written to the repository's object store. The snapshot's objects
@@ -27,7 +30,7 @@ Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every
 
 Exit codes: 0 clean, 1 a blocking finding, 2 not verified (the verifiers could not run, nothing
 changed, or the fix touches what grades it) - never a pass. Exit 0 with "nothing to check" only
-where neither the base nor the working tree has scripts/marketplace_ci/review_verifiers.py
+where neither the target branch nor the working tree has scripts/marketplace_ci/review_verifiers.py
 (git-kit is installed in other repositories). A clean result with an empty `checked` list means
 no changed file was a verifier-covered component: do not report it as "verifiers passed".
 """
@@ -79,6 +82,37 @@ def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> bytes:
     return subprocess.run(
         ["git", *args], cwd=cwd, env=env or _clean_env(), capture_output=True, check=True
     ).stdout
+
+
+def _trusted_commit(repo_root: Path) -> tuple[str | None, str]:
+    """The commit the verifiers are loaded from: where HEAD last met the target branch.
+
+    The target branch is whatever `refs/remotes/origin/HEAD` points at. Nothing on the PR's own
+    branch (including --base, which a PR author's earlier commit can precede) is trusted to
+    supply code that this script then imports. Returns (sha, "") or (None, why not)."""
+    target = subprocess.run(
+        ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
+        cwd=repo_root,
+        env=_clean_env(),
+        capture_output=True,
+        text=True,
+    )
+    if target.returncode != 0 or not target.stdout.strip():
+        return (
+            None,
+            "no refs/remotes/origin/HEAD to anchor the verifiers (git remote set-head origin -a)",
+        )
+    merged = subprocess.run(
+        ["git", "merge-base", "HEAD", target.stdout.strip()],
+        cwd=repo_root,
+        env=_clean_env(),
+        capture_output=True,
+        text=True,
+    )
+    sha = merged.stdout.strip()
+    if merged.returncode != 0 or not _OBJECT_ID.fullmatch(sha):
+        return None, "HEAD shares no history with the target branch; no trusted verifiers to load"
+    return sha, ""
 
 
 def _load_verifiers(extract_root: Path, base: str):
@@ -180,26 +214,29 @@ def main(argv: list[str] | None = None) -> int:
         here = (repo_root / _VERIFIERS).is_file()
         if in_repo and not _OBJECT_ID.fullmatch(args.base):
             raise RuntimeError(f"base is not a full object id: {args.base!r}")
-        at_base = in_repo and (
+        trusted, trusted_error = _trusted_commit(repo_root) if in_repo else (None, "")
+        at_trusted = trusted is not None and (
             subprocess.run(
-                ["git", "cat-file", "-e", f"{args.base}^{{commit}}:{_VERIFIERS}"],
+                ["git", "cat-file", "-e", f"{trusted}^{{commit}}:{_VERIFIERS}"],
                 cwd=repo_root,
                 env=_clean_env(),
                 capture_output=True,
             ).returncode
             == 0
         )
-        if not here and not at_base:
+        if not here and not at_trusted:
             print(
                 f"No scripts/marketplace_ci/review_verifiers.py in {repo_root}; nothing to check."
             )
             return 0
-        if not at_base:
+        if trusted is None:
+            raise RuntimeError(trusted_error)
+        if not at_trusted:
             raise RuntimeError(
-                "the verifiers are not present at --base; nothing trustworthy to run"
+                "the verifiers are not present at the target branch; nothing trustworthy to run"
             )
         if not here:
-            raise RuntimeError("the verifiers exist at --base but not in this working tree")
+            raise RuntimeError("the verifiers exist at the target branch but not in this tree")
         head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         ancestor = subprocess.run(
             ["git", "merge-base", "--is-ancestor", args.base, head_sha],
@@ -213,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.worktree and sparse.decode().strip() == "true":
             raise RuntimeError("--worktree does not support a sparse checkout")
 
-        run_verifiers, parse_name_status_z = _load_verifiers(repo_root, args.base)
+        run_verifiers, parse_name_status_z = _load_verifiers(repo_root, trusted)
         with contextlib.ExitStack() as stack:
             if args.worktree:
                 verify_repo, head = stack.enter_context(_snapshot(repo_root, head_sha))
