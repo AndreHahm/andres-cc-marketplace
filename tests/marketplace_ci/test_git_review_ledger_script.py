@@ -171,3 +171,9 @@ def test_tracked_local_ledger_is_refused(tmp_path):
     for args in (["refuted", "--pr", "7"], ["promote", "--pr", "7"]):
         assert _run(tmp_path, *args).returncode == 2
     assert _record(tmp_path, finding="b").returncode == 2
+
+
+def test_local_and_tracked_must_be_different_files(tmp_path):
+    same = str(tmp_path / ".claude" / "same.json")
+    result = _run(tmp_path, "--local", same, "--tracked", same, "promote", "--pr", "7")
+    assert result.returncode == 2

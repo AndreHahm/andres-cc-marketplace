@@ -243,7 +243,7 @@ session.
    mechanism from `.claude/rules/require-tests-for-behavior-changes.md` if the fix changes
    skill/agent/script behavior, otherwise a re-read of the fix against the finding it addresses.
    **Verification is a hard precondition on replying and resolving — a reply-and-resolve never happens
-   on the strength of a pushed commit alone.** Once verification passes, **self-review the fix first (`references/fix-self-review.md` 4a-4d, at most 2 iterations): a blocking finding on a line the fix touched stops the push, reply and resolve.** Then, **before invoking
+   on the strength of a pushed commit alone.** Once verification passes, **self-review the fix first (`references/fix-self-review.md` 4a-4d, at most 2 iterations): a blocking finding in a file the fix touched stops the push, reply and resolve.** Then, **before invoking
    `Skill(commit) --push`, verify every one of `origin`'s actual push destinations matches the PR's
    head repository** — `commit`'s own step 16 always runs `git push origin HEAD`, which pushes to
    whatever `origin`'s configured *push* URL(s) are, not its fetch URL. `git remote get-url origin`

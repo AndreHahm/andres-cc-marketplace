@@ -43,7 +43,7 @@ def _commit(repo, rel, text, message):
     path = repo / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
-    _git(repo, "add", "--", rel)
+    _git(repo, "add", "-f", "--", rel)
     _git(repo, "commit", "-q", "-m", message)
     return _git(repo, "rev-parse", "HEAD")
 
@@ -72,37 +72,6 @@ def _run(repo, *args):
         text=True,
         env=env,
     )
-
-
-# --- the lane: touched lines ---------------------------------------------------------------------
-
-
-def test_hunk_ranges_reads_only_hunk_headers():
-    diff = "@@ -3,0 +4,2 @@\n+a\n+b\n@@ -10 +12 @@\n-c\n+d\n@@ -20,2 +22,0 @@\n-e\n-f\n"
-    assert M.hunk_ranges(diff) == [(4, 5), (12, 12)]
-
-
-def test_content_that_looks_like_a_file_header_does_not_hide_later_hunks():
-    diff = "@@ -1,0 +10 @@\n+++ note\n@@ -30,0 +40 @@\n+x\n"
-    assert M.hunk_ranges(diff) == [(10, 10), (40, 40)]
-
-
-def test_line_separator_characters_do_not_split_the_diff():
-    diff = "@@ -1,0 +10 @@\n+x\x85+++ b/other\n@@ -30,0 +40 @@\n+y\n"
-    assert M.hunk_ranges(diff) == [(10, 10), (40, 40)]
-
-
-def test_finding_outside_the_touched_lines_does_not_block():
-    ranges = {"x.md": [(4, 5)]}
-    assert M.on_touched_line("x.md", 4, ranges)
-    assert M.on_touched_line("x.md", 5, ranges)
-    assert not M.on_touched_line("x.md", 6, ranges)
-    assert not M.on_touched_line("y.md", 4, ranges)
-
-
-def test_finding_without_a_line_counts_as_touching_its_changed_component():
-    assert M.on_touched_line("x.md", None, {"x.md": [(4, 5)]})
-    assert not M.on_touched_line("y.md", None, {"x.md": [(4, 5)]})
 
 
 # --- outside this repository ---------------------------------------------------------------------
@@ -280,7 +249,8 @@ def test_fix_cannot_weaken_the_verifier_that_judges_it(repo):
     )
     _write(repo, SKILL, BAD)
     result = _run(repo, "--worktree", "--base", base)
-    assert result.returncode == 1, result.stdout + result.stderr
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "cannot judge" in (result.stdout + result.stderr)
 
 
 def test_verifiers_present_at_base_but_missing_now_is_not_nothing_to_check(repo):
@@ -288,3 +258,70 @@ def test_verifiers_present_at_base_but_missing_now_is_not_nothing_to_check(repo)
     _git(repo, "rm", "-q", "-r", "scripts/marketplace_ci")
     _git(repo, "commit", "-q", "-m", "remove verifiers")
     assert _run(repo, "--base", base).returncode == 2
+
+
+# --- security re-review (#578): touched-file logic and untrusted-grader guards -------------------
+
+
+def _fake_finding(path, line, components=()):
+    from types import SimpleNamespace
+
+    finding = SimpleNamespace(
+        rule="r-x", path=path, line=line, evidence="e", remediation="r", components=components
+    )
+    return SimpleNamespace(name="fake", findings=(finding,), checked=(path,))
+
+
+def test_every_finding_on_the_changed_set_blocks_whatever_its_line_or_path(repo, monkeypatch):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
+    outcome = _fake_finding("plugins/old/skills/gone/SKILL.md", None, ("a:*",))
+    monkeypatch.syspath_prepend(str(REPO))
+    from scripts.marketplace_ci.git_state import parse_name_status_z
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(
+        M, "_load_verifiers", lambda _r, _b: (lambda *a, **k: (outcome,), parse_name_status_z)
+    )
+    assert M.main(["--base", base]) == 1
+
+
+def test_fix_touching_the_verifiers_cannot_be_judged_by_them(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, "scripts/marketplace_ci/extra.py", "x = 1\n", "touch verifiers")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2
+    assert "cannot judge" in (result.stdout + result.stderr)
+
+
+def test_fix_touching_the_sync_registry_is_not_verified(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, ".claude/marketplace-sync.json", "{}\n", "touch registry")
+    assert _run(repo, "--base", base).returncode == 2
+
+
+def test_fix_touching_the_driver_itself_is_not_verified(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, "plugins/git-kit/scripts/git-verify-fix-diff.py", "x = 1\n", "touch driver")
+    assert _run(repo, "--base", base).returncode == 2
+
+
+def test_committed_mode_refuses_a_dirty_working_tree(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
+    _write(repo, "scratch.txt", "dirty\n")
+    assert _run(repo, "--base", base).returncode == 2
+
+
+def test_base_that_is_not_an_ancestor_is_refused(repo):
+    _commit(repo, SKILL, GOOD, "add skill")
+    _git(repo, "checkout", "-q", "-b", "other")
+    other = _commit(repo, "other.txt", "o\n", "other branch")
+    _git(repo, "checkout", "-q", "main")
+    _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
+    assert _run(repo, "--base", other).returncode == 2
+
+
+def test_malformed_base_inside_a_repository_is_not_nothing_to_check(repo):
+    _commit(repo, SKILL, GOOD, "add skill")
+    assert _run(repo, "--base", "").returncode == 2

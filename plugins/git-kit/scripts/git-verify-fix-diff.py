@@ -3,23 +3,28 @@
 
 Diffs `--base` (the commit before the fix) against HEAD - or, with `--worktree`, against the
 uncommitted working tree (tracked changes and new, non-ignored files), so a fix can be checked
-before it is committed. Runs `run_verifiers` over the changed paths and reports a finding as
-blocking only when it sits on a line the fix touched, or has no line (it speaks for a changed
-component). A changed file whose hunks cannot be read (pure rename, mode-only change, binary)
-counts as touched throughout, so it fails closed. Prints one JSON object: {"checked": [...],
-"blocking": [...], "outside_lane": [...]}.
+before it is committed. Runs `run_verifiers` over the changed paths; every finding it returns
+blocks. The verifiers only judge the changed set, so this is touched-file logic: no touched-line
+filter, hence no gap between this script's idea of "the fix's own finding" and the gate's.
+Prints one JSON object: {"checked": [...], "blocking": [...]}.
 
-The verifier code is loaded from `--base` (`git archive`), never from the tree being judged, so
-a fix cannot weaken the check that grades it. A `--worktree` run snapshots the working tree into
-a throwaway commit built with a temporary index and verifies it in a temporary shared clone: no
-ref, the real index or the working tree is touched, but the snapshot's objects (including any
-untracked, non-ignored file) are written to the repository's object store as unreachable objects
-until `git gc` prunes them.
+The verifier code is loaded from `--base` (`git archive`), never from the tree being judged. A
+fix that changes the verifiers (scripts/marketplace_ci/), their registry
+(.claude/marketplace-sync.json) or this script cannot be judged by them, so it exits 2. A
+`--worktree` run snapshots the working tree into a throwaway commit built with a temporary
+index and verifies it in a temporary shared clone: no ref, the real index or the working tree
+is touched, but the snapshot's objects (including any untracked, non-ignored file) are written
+to the repository's object store as unreachable objects until `git gc` prunes them. Without
+`--worktree` the working tree must be clean.
 
-Exit codes: 0 clean, 1 a blocking finding, 2 not verified (verifiers could not run, or nothing
-changed) - never a pass. Exit 0 with "nothing to check" only where neither the base nor the
-working tree has scripts/marketplace_ci/review_verifiers.py (git-kit is installed in other
-repositories)."""
+Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
+
+Exit codes: 0 clean, 1 a blocking finding, 2 not verified (the verifiers could not run, nothing
+changed, or the fix touches what grades it) - never a pass. Exit 0 with "nothing to check" only
+where neither the base nor the working tree has scripts/marketplace_ci/review_verifiers.py
+(git-kit is installed in other repositories). A clean result with an empty `checked` list means
+no changed file was a verifier-covered component: do not report it as "verifiers passed".
+"""
 
 from __future__ import annotations
 
@@ -39,9 +44,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 _OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-_HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
 _VERIFIERS = "scripts/marketplace_ci/review_verifiers.py"
-_WHOLE_FILE = [(1, 10**9)]
+_UNJUDGEABLE = (
+    "scripts/marketplace_ci/",
+    ".claude/marketplace-sync.json",
+    "plugins/git-kit/scripts/git-verify-fix-diff.py",
+    ".claude/scripts/git-verify-fix-diff.py",
+)
 _GIT_LOCATION_VARS = (
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -52,30 +61,6 @@ _GIT_LOCATION_VARS = (
     "GIT_NAMESPACE",
     "GIT_PREFIX",
 )
-
-
-def hunk_ranges(diff_text: str) -> list[tuple[int, int]]:
-    """New-side line ranges of one file's `git diff -U0` text; a pure deletion touches none.
-
-    Only `@@` lines count and the text is split on newlines alone, so file content can never
-    pass for a header."""
-    ranges: list[tuple[int, int]] = []
-    for line in diff_text.split("\n"):
-        match = _HUNK.match(line)
-        if match:
-            start = int(match.group(1))
-            count = 1 if match.group(2) is None else int(match.group(2))
-            if count:
-                ranges.append((start, start + count - 1))
-    return ranges
-
-
-def on_touched_line(path: str, line: int | None, ranges: dict[str, list[tuple[int, int]]]) -> bool:
-    if path not in ranges:
-        return False
-    if line is None:
-        return True
-    return any(start <= line <= end for start, end in ranges[path])
 
 
 def _clean_env(**extra: str) -> dict[str, str]:
@@ -130,7 +115,9 @@ def _snapshot(repo_root: Path) -> Iterator[tuple[Path, str]]:
         run("git", "read-tree", "HEAD")
         run("git", "add", "-A")
         tree = run("git", "write-tree")
-        sha = run("git", "commit-tree", tree, "-p", "HEAD", "-m", "verify-fix snapshot")
+        sha = run(
+            "git", "-c", "commit.gpgsign=false", "commit-tree", tree, "-p", "HEAD", "-m", "snapshot"
+        )
         clone = Path(tmp) / "clone"
         plain = _clean_env(**ident)
         run(
@@ -138,28 +125,6 @@ def _snapshot(repo_root: Path) -> Iterator[tuple[Path, str]]:
         )
         run("git", "checkout", "-q", "--detach", sha, cwd=clone, env=plain)
         yield clone, sha
-
-
-def _lanes(repo_root: Path, base: str, head: str, changed) -> dict[str, list[tuple[int, int]]]:
-    """Touched line ranges per changed, non-deleted path, each from its own literal-path diff."""
-    flags = ("--no-ext-diff", "--no-textconv", "--text", "-U0", "--no-color", "--find-renames")
-    lanes: dict[str, list[tuple[int, int]]] = {}
-    for c in changed:
-        if c.new_path is None:
-            continue
-        paths = [c.new_path] if c.old_path in (None, c.new_path) else [c.old_path, c.new_path]
-        text = _git(
-            repo_root,
-            "diff",
-            *flags,
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            f"{base}..{head}",
-            "--",
-            *[f":(literal){p}" for p in paths],
-        ).decode("utf-8", errors="replace")
-        lanes[c.new_path] = hunk_ranges(text) or list(_WHOLE_FILE)
-    return lanes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -181,17 +146,14 @@ def main(argv: list[str] | None = None) -> int:
             capture_output=True,
             text=True,
         )
-        repo_root = Path(top.stdout.strip()) if top.returncode == 0 else Path.cwd()
+        in_repo = top.returncode == 0
+        repo_root = Path(top.stdout.strip()) if in_repo else Path.cwd()
         here = (repo_root / _VERIFIERS).is_file()
-        if not _OBJECT_ID.fullmatch(args.base):
-            if not here:
-                print("No scripts/marketplace_ci/review_verifiers.py here; nothing to check.")
-                return 0
+        if in_repo and not _OBJECT_ID.fullmatch(args.base):
             raise RuntimeError(f"base is not a full object id: {args.base!r}")
-        at_base = (
-            top.returncode == 0
-            and subprocess.run(
-                ["git", "cat-file", "-e", f"{args.base}:{_VERIFIERS}"],
+        at_base = in_repo and (
+            subprocess.run(
+                ["git", "cat-file", "-e", f"{args.base}^{{commit}}:{_VERIFIERS}"],
                 cwd=repo_root,
                 env=_clean_env(),
                 capture_output=True,
@@ -207,29 +169,40 @@ def main(argv: list[str] | None = None) -> int:
             )
         if not here:
             raise RuntimeError("the verifiers exist at --base but not in this working tree")
+        if not args.worktree and _git(repo_root, "status", "--porcelain").strip():
+            raise RuntimeError("the working tree is not clean; commit it or use --worktree")
+        head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", args.base, head_sha],
+            cwd=repo_root,
+            env=_clean_env(),
+            capture_output=True,
+        )
+        if ancestor.returncode != 0:
+            raise RuntimeError("--base is not an ancestor of HEAD")
 
         run_verifiers, parse_name_status_z = _load_verifiers(repo_root, args.base)
         with contextlib.ExitStack() as stack:
             if args.worktree:
                 verify_repo, head = stack.enter_context(_snapshot(repo_root))
             else:
-                verify_repo = repo_root
-                head = _git(repo_root, "rev-parse", "HEAD").decode().strip()
+                verify_repo, head = repo_root, head_sha
             raw = _git(
                 repo_root, "diff", "--name-status", "-z", "--find-renames", f"{args.base}..{head}"
             )
             changed = parse_name_status_z(raw)
             if not changed:
-                print(
-                    json.dumps(
-                        {
-                            "nothing_changed": True,
-                            "note": "no diff between base and head; not a pass",
-                        }
-                    )
-                )
+                note = "no diff between base and head; not a pass"
+                print(json.dumps({"nothing_changed": True, "note": note}))
                 return 2
-            lanes = _lanes(repo_root, args.base, head, changed)
+            touched = {p for c in changed for p in (c.old_path, c.new_path) if p}
+            if any(p.startswith(prefix) for p in touched for prefix in _UNJUDGEABLE):
+                msg = (
+                    "the fix changes the verifiers, their registry or this script; cannot judge it"
+                )
+                print(msg, file=sys.stderr)
+                print(json.dumps({"cannot_judge": True, "note": msg}))
+                return 2
             outcomes = run_verifiers(verify_repo, changed, args.base)
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
         print(f"Verifiers could not run: {exc}", file=sys.stderr)
@@ -237,19 +210,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     checked = sorted({p for o in outcomes for p in o.checked})
-    blocking, outside = [], []
-    for outcome in outcomes:
-        for f in outcome.findings:
-            entry = {
-                "verifier": outcome.name,
-                "rule": f.rule,
-                "path": f.path,
-                "line": f.line,
-                "evidence": f.evidence,
-                "remediation": f.remediation,
-            }
-            (blocking if on_touched_line(f.path, f.line, lanes) else outside).append(entry)
-    print(json.dumps({"checked": checked, "blocking": blocking, "outside_lane": outside}, indent=2))
+    blocking = [
+        {
+            "verifier": outcome.name,
+            "rule": f.rule,
+            "path": f.path,
+            "line": f.line,
+            "evidence": f.evidence,
+            "remediation": f.remediation,
+        }
+        for outcome in outcomes
+        for f in outcome.findings
+    ]
+    print(json.dumps({"checked": checked, "blocking": blocking}, indent=2))
     return 1 if blocking else 0
 
 
