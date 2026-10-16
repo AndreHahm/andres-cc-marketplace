@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not invoke Skill(context-mode) and does not ask the user about a context mode",
+      "passed": true,
+      "evidence": "\"I make no AskUserQuestion call and no Skill(context-mode) call.\""
+    },
+    {
+      "text": "Proceeds to the handoff's Immediate Next Steps item 1, after verifying it against current state",
+      "passed": true,
+      "evidence": "Starts Immediate Next Steps item 1 after checking it against current state."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

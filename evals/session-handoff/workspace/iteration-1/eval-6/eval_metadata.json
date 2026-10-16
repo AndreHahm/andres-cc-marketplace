@@ -1,0 +1,16 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not invoke Skill(context-mode) and does not ask the user about a context mode",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Proceeds to the handoff's Immediate Next Steps item 1, after verifying it against current state",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
