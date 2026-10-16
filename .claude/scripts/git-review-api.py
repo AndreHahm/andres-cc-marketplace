@@ -49,6 +49,9 @@ MARKER_MAX_AGE = 60
 MAX_BODY_BYTES = 262144
 MAX_BODY_CHARS = 65536
 MAX_TITLE_CHARS = 256
+PROBE_TIMEOUT = 30  # seconds, the marker's git rev-parse probe
+CALL_TIMEOUT = 300  # seconds, the gh/git call itself (a paginated list can be slow)
+UNSUPPORTED_URL = "unsupported-push-url"
 
 OWNER_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*")
 REPO_RE = re.compile(r"[A-Za-z0-9._-]+")
@@ -256,7 +259,16 @@ def build_call(args) -> tuple[list[str], bytes | None]:
 
 def consume_marker(run, now: float) -> None:
     """Require a fresh wrapper marker and delete it; raise UsageError if there is none."""
-    probe = run(["git", "rev-parse", "--git-dir"], capture_output=True, text=True, check=False)
+    try:
+        probe = run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=PROBE_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise UsageError("git rev-parse timed out, so no marker can be checked") from exc
     if probe.returncode != 0 or not probe.stdout.strip():
         raise UsageError("not inside a git repository, so no marker can be checked")
     marker = Path(probe.stdout.strip()) / "git-kit-marker.txt"
@@ -299,10 +311,19 @@ def _missing_marker_message() -> str:
     )
 
 
-def _print_push_destinations(output: str) -> None:
-    for line in output.splitlines():
-        line = GITHUB_URL_PREFIX_RE.sub("", line.strip()).rstrip("/")
-        print(line.removesuffix(".git"))
+def _print_push_destinations(output: str) -> bool:
+    """Print one `owner/repo` per push URL; True only if there was at least one and all parsed.
+
+    A URL in an unsupported form prints a fixed marker instead of itself: it can carry credentials,
+    and the caller's comparison against the head repository fails on the marker anyway.
+    """
+    urls = [line.strip() for line in output.splitlines() if line.strip()]
+    for url in urls:
+        if GITHUB_URL_PREFIX_RE.match(url):
+            print(GITHUB_URL_PREFIX_RE.sub("", url).rstrip("/").removesuffix(".git"))
+        else:
+            print(UNSUPPORTED_URL)
+    return bool(urls) and all(GITHUB_URL_PREFIX_RE.match(url) for url in urls)
 
 
 def main(argv=None, *, run=subprocess.run, now=time.time) -> int:
@@ -318,14 +339,18 @@ def main(argv=None, *, run=subprocess.run, now=time.time) -> int:
         return exc.code if isinstance(exc.code, int) else 2
     try:
         if args.command == "push-destinations":
-            result = run(gh_argv, capture_output=True, text=True, check=False)
-            _print_push_destinations(result.stdout)
+            result = run(gh_argv, capture_output=True, text=True, check=False, timeout=CALL_TIMEOUT)
             sys.stderr.write(result.stderr)
-            return result.returncode
-        return run(gh_argv, input=stdin, check=False).returncode
+            if result.returncode != 0:
+                return result.returncode
+            return 0 if _print_push_destinations(result.stdout) else 1
+        return run(gh_argv, input=stdin, check=False, timeout=CALL_TIMEOUT).returncode
     except FileNotFoundError:
         print(f"git-review-api.py: {gh_argv[0]} is not installed", file=sys.stderr)
         return 127
+    except subprocess.TimeoutExpired:
+        print(f"git-review-api.py: {gh_argv[0]} timed out after {CALL_TIMEOUT}s", file=sys.stderr)
+        return 124
 
 
 if __name__ == "__main__":

@@ -226,6 +226,12 @@ documenting this very fix (this entry's own earlier draft) contained the literal
 time, inside a `grep` command example illustrating the verification — fixed by describing that
 check without reproducing the literal token either.
 
+**Regression scenario (moved here from SKILL.md's Testing & Validation):** invoke this skill with the
+argument set to a long free-text narrative instead of empty, a bare PR number or a PR URL. Pass
+criterion: the returned Workflow text is corrupted (if at all) only at the single validation line, and
+every other step's text reads normally, so the mismatch is immediately visible as a validation failure
+rather than an unreadable wall of text.
+
 ## PR #407 (2026-09-26): checkout-identity check rejected legitimate fork-PR-from-base-clone reviews
 
 Round 1 automated review (CodeRabbit) on this skill's own #401/#403 fix PR found a pre-existing

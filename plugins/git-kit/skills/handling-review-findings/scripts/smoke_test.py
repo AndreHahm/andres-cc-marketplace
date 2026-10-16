@@ -163,15 +163,20 @@ SUBCOMMANDS = [
     "whoami",
     "push-destinations",
 ]
-RAW_GRANTS = (
-    "gh api graphql",
-    "gh api repos",
-    "gh api user",
-    "gh pr comment",
-    "gh issue create",
-    "sed",
-    "git remote get-url",
-)
+# Every `gh` grant outside this set is rejected, so a broad `Bash(gh:*)` or `Bash(gh api:*)` cannot
+# slip past the wrapper; `sed` and `git remote get-url` were replaced by wrapper subcommands too.
+ALLOWED_GH_GRANTS = {"gh pr checks", "gh pr view", "gh repo view", "gh issue list"}
+RAW_GRANTS = ("sed", "git remote get-url")
+
+
+def _bash_grants(grants):
+    """The command part of every `Bash(<command>[:*])` entry in an allowed-tools value."""
+    found = []
+    for entry in grants.split(", "):
+        match = re.fullmatch(r"Bash\((.*?)(?::\*)?\)", entry.strip())
+        if match:
+            found.append(match.group(1))
+    return found
 
 
 def check_no_raw_github_grants(path=None):
@@ -185,9 +190,13 @@ def check_no_raw_github_grants(path=None):
     grants = line.group(1)
     if "git-review-api.py" not in grants:
         return False, "allowed-tools has no git-review-api.py grant"
-    raw = [g for g in RAW_GRANTS if f"Bash({g}" in grants]
-    if raw:
-        return False, "allowed-tools still has a raw grant the wrapper replaced: " + ", ".join(raw)
+    commands = _bash_grants(grants)
+    broad = [
+        c for c in commands if (c == "gh" or c.startswith("gh ")) and c not in ALLOWED_GH_GRANTS
+    ]
+    raw = [c for c in commands if any(c == r or c.startswith(r + " ") for r in RAW_GRANTS)]
+    if broad or raw:
+        return False, "allowed-tools has a grant the wrapper replaced: " + ", ".join(broad + raw)
     if "git-write-marker.sh gh-pr-review-wrapper" not in grants:
         return False, "the marker-writer grant is not pinned to the gh-pr-review-wrapper type"
     return True, "allowed-tools reaches GitHub only through git-review-api.py"
