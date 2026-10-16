@@ -549,12 +549,14 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   checked out in a temporary shared clone (no ref, index or working-tree change; the snapshot's objects,
   including untracked non-ignored files, stay in the object store as unreachable objects until `git gc`).
 - **Which code runs.** The verifier modules are extracted from `--base` with `git archive` and imported from
-  a private copy, never from the tree being judged, so a fix cannot weaken the check that grades it.
-- **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; there is no
-  touched-line filter, so the script cannot disagree with the gate about whose finding it is. A fix that
-  changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the script itself exits 2, because
-  the verifiers cannot grade a change to themselves. `--base` must be an ancestor of `HEAD`, and without
-  `--worktree` the working tree must be clean.
+  a private copy, never from the tree being judged. The driver script runs from wherever it is started, so
+  its exit 2 for a fix that edits it catches an honest edit only; CI still judges the pushed head.
+- **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; the script has
+  no touched-line filter of its own. Verifiers that compare with a base compare with `--base` (the commit
+  before the fix), so a value already over its limit before the fix and not worse after it passes here while
+  CI can still block. A fix that changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the
+  script itself exits 2, because the verifiers cannot grade a change to themselves. `--base` must be an
+  ancestor of `HEAD`; without `--worktree` the committed `HEAD` is verified in a temporary clone.
 - **Output and exit codes.** One JSON object with `checked` and `blocking`. Exit 0 is clean,
   1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at `--base` but not
   in the tree, the diff is empty, or the fix touches what grades it. Exit 0 with "nothing to check" happens only where neither the base nor

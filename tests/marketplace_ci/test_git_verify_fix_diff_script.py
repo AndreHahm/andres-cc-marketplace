@@ -1,6 +1,6 @@
 """git-kit's git-verify-fix-diff.py re-runs the Phase 2 verifiers on a fix's own diff (#578).
 
-Exit codes: 0 clean or nothing to check, 1 a blocking finding on a touched line, 2 the verifiers
+Exit codes: 0 clean or nothing to check, 1 a blocking finding on a changed file, 2 the verifiers
 could not run (fail closed, never a pass). The end-to-end cases run the script against a real
 temporary git repository whose `scripts/` is a copy of this repository's.
 """
@@ -63,8 +63,8 @@ def repo(tmp_path):
     return root
 
 
-def _run(repo, *args):
-    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+def _run(repo, *args, extra_env=None):
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **(extra_env or {})}
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         cwd=repo,
@@ -306,11 +306,19 @@ def test_fix_touching_the_driver_itself_is_not_verified(repo):
     assert _run(repo, "--base", base).returncode == 2
 
 
-def test_committed_mode_refuses_a_dirty_working_tree(repo):
+def test_committed_mode_judges_the_commit_not_the_disk(repo):
     base = _commit(repo, SKILL, GOOD, "add skill")
-    _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
-    _write(repo, "scratch.txt", "dirty\n")
-    assert _run(repo, "--base", base).returncode == 2
+    _commit(repo, SKILL, BAD, "bad fix")
+    _write(repo, SKILL, GOOD)  # an uncommitted "repair" must not rescue the committed fix
+    assert _run(repo, "--base", base).returncode == 1
+
+
+def test_git_dir_in_the_environment_cannot_redirect_the_verifiers(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _write(repo, SKILL, BAD)
+    env = {"GIT_DIR": str(repo / ".git")}
+    result = _run(repo, "--worktree", "--base", base, extra_env=env)
+    assert result.returncode == 1, result.stdout + result.stderr
 
 
 def test_base_that_is_not_an_ancestor_is_refused(repo):

@@ -4,18 +4,21 @@
 Diffs `--base` (the commit before the fix) against HEAD - or, with `--worktree`, against the
 uncommitted working tree (tracked changes and new, non-ignored files), so a fix can be checked
 before it is committed. Runs `run_verifiers` over the changed paths; every finding it returns
-blocks. The verifiers only judge the changed set, so this is touched-file logic: no touched-line
-filter, hence no gap between this script's idea of "the fix's own finding" and the gate's.
+blocks. This is touched-file logic with no touched-line filter of its own. It is not the CI
+verdict: the verifiers that compare with a base (size tiers, known paths, call-graph edges) compare
+with `--base`, the commit before the fix, so a value that was already over a limit before the fix
+and is not worse after it passes here, and CI can still block it.
 Prints one JSON object: {"checked": [...], "blocking": [...]}.
 
-The verifier code is loaded from `--base` (`git archive`), never from the tree being judged. A
-fix that changes the verifiers (scripts/marketplace_ci/), their registry
-(.claude/marketplace-sync.json) or this script cannot be judged by them, so it exits 2. A
+The verifier modules are loaded from `--base` (`git archive`), never from the tree being judged;
+this driver runs from wherever it was started, so the exit 2 below for a fix that changes the
+verifiers (scripts/marketplace_ci/), their registry (.claude/marketplace-sync.json) or this
+script only catches an honest edit. Such a fix cannot be judged by them, so it exits 2. A
 `--worktree` run snapshots the working tree into a throwaway commit built with a temporary
 index and verifies it in a temporary shared clone: no ref, the real index or the working tree
 is touched, but the snapshot's objects (including any untracked, non-ignored file) are written
 to the repository's object store as unreachable objects until `git gc` prunes them. Without
-`--worktree` the working tree must be clean.
+`--worktree` the committed HEAD is verified in a temporary clone, whatever the disk holds.
 
 Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
 
@@ -97,7 +100,7 @@ def _load_verifiers(extract_root: Path, base: str):
 
 
 @contextlib.contextmanager
-def _snapshot(repo_root: Path) -> Iterator[tuple[Path, str]]:
+def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
     """A repository whose HEAD is the working tree's current state, and that commit's id."""
     with tempfile.TemporaryDirectory(prefix="verify-fix-") as tmp:
         ident = {
@@ -112,11 +115,19 @@ def _snapshot(repo_root: Path) -> Iterator[tuple[Path, str]]:
             out = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, check=True, text=True)
             return out.stdout.strip()
 
-        run("git", "read-tree", "HEAD")
+        run("git", "read-tree", head_sha)
         run("git", "add", "-A")
         tree = run("git", "write-tree")
         sha = run(
-            "git", "-c", "commit.gpgsign=false", "commit-tree", tree, "-p", "HEAD", "-m", "snapshot"
+            "git",
+            "-c",
+            "commit.gpgsign=false",
+            "commit-tree",
+            tree,
+            "-p",
+            head_sha,
+            "-m",
+            "snapshot",
         )
         clone = Path(tmp) / "clone"
         plain = _clean_env(**ident)
@@ -127,7 +138,26 @@ def _snapshot(repo_root: Path) -> Iterator[tuple[Path, str]]:
         yield clone, sha
 
 
+@contextlib.contextmanager
+def _commit_clone(repo_root: Path, sha: str) -> Iterator[tuple[Path, str]]:
+    """A temporary shared clone checked out at `sha`: the files on disk are exactly that commit."""
+    with tempfile.TemporaryDirectory(prefix="verify-fix-") as tmp:
+        clone = Path(tmp) / "clone"
+        env = _clean_env()
+        for cmd, cwd in (
+            (
+                ["git", "clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone)],
+                repo_root,
+            ),
+            (["git", "checkout", "-q", "--detach", sha], clone),
+        ):
+            subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, check=True)
+        yield clone, sha
+
+
 def main(argv: list[str] | None = None) -> int:
+    for var in _GIT_LOCATION_VARS:  # the verifiers' own git calls inherit os.environ
+        os.environ.pop(var, None)
     parser = argparse.ArgumentParser(prog="git-verify-fix-diff.py")
     parser.add_argument("--base", required=True, help="full object id of the commit before the fix")
     parser.add_argument(
@@ -161,7 +191,9 @@ def main(argv: list[str] | None = None) -> int:
             == 0
         )
         if not here and not at_base:
-            print("No scripts/marketplace_ci/review_verifiers.py here; nothing to check.")
+            print(
+                f"No scripts/marketplace_ci/review_verifiers.py in {repo_root}; nothing to check."
+            )
             return 0
         if not at_base:
             raise RuntimeError(
@@ -169,8 +201,6 @@ def main(argv: list[str] | None = None) -> int:
             )
         if not here:
             raise RuntimeError("the verifiers exist at --base but not in this working tree")
-        if not args.worktree and _git(repo_root, "status", "--porcelain").strip():
-            raise RuntimeError("the working tree is not clean; commit it or use --worktree")
         head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         ancestor = subprocess.run(
             ["git", "merge-base", "--is-ancestor", args.base, head_sha],
@@ -184,9 +214,9 @@ def main(argv: list[str] | None = None) -> int:
         run_verifiers, parse_name_status_z = _load_verifiers(repo_root, args.base)
         with contextlib.ExitStack() as stack:
             if args.worktree:
-                verify_repo, head = stack.enter_context(_snapshot(repo_root))
+                verify_repo, head = stack.enter_context(_snapshot(repo_root, head_sha))
             else:
-                verify_repo, head = repo_root, head_sha
+                verify_repo, head = stack.enter_context(_commit_clone(repo_root, head_sha))
             raw = _git(
                 repo_root, "diff", "--name-status", "-z", "--find-renames", f"{args.base}..{head}"
             )

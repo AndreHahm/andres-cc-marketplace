@@ -40,6 +40,8 @@ def confine(raw: str, root: Path) -> Path:
     """A ledger lives only under the repository's .claude/ directory (symlinks resolved)."""
     path = Path(raw)
     resolved = (path if path.is_absolute() else root / path).resolve()
+    if resolved.suffix != ".json":
+        raise LedgerError(f"{raw} is not a .json file; ledgers are JSON files only")
     if (root / ".claude").resolve() not in resolved.parents:
         raise LedgerError(f"{raw} is outside {root / '.claude'}; ledgers live under .claude/ only")
     return resolved
@@ -53,6 +55,10 @@ def refuse_if_tracked(path: Path, root: Path) -> None:
         cwd=root,
         capture_output=True,
     )
+    if tracked.returncode not in (0, 1):
+        raise LedgerError(
+            f"could not check whether {rel} is tracked (git exit {tracked.returncode})"
+        )
     if tracked.returncode == 0:
         raise LedgerError(f"{rel} is tracked by git; the local working ledger must stay untracked")
 
@@ -110,7 +116,9 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 def cmd_refuted(args: argparse.Namespace) -> int:
     refuted = [
-        e for e in load(args.local) if e.get("pr") == args.pr and e.get("disposition") in REFUTED
+        e
+        for e in [*load(args.local), *load(args.tracked)]
+        if e.get("pr") == args.pr and e.get("disposition") in REFUTED
     ]
     print(json.dumps({"refuted": refuted}, indent=2))
     return 0
@@ -159,6 +167,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+        os.environ.pop(var, None)
     try:
         args = build_parser().parse_args(argv)
     except SystemExit as exc:
