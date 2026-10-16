@@ -373,7 +373,7 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
 - The `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py` grant replaces this skill's former broad
   `gh api graphql`, `gh api .../pulls/*/comments`, `gh pr comment`, `gh issue create`, `gh api user`
   and `sed` grants: the script embeds the only two GraphQL documents this skill sends, validates every
-  argument, runs one fixed call per subcommand, reads a body file itself (scratchpad only, symlinks
+  argument, runs one fixed call per subcommand, reads a body file itself (scratchpad only, files you own, symlinks
   refused, content passed on stdin) and enforces the `gh-pr-review-wrapper` marker itself. It does not
   validate a comment's or issue's *content* — that is still Workflow step 8's allowlist and
   reviewer-name check plus the confirmation `AskUserQuestion` showing the exact body before posting.

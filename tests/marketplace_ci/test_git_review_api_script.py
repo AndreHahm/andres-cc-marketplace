@@ -58,11 +58,12 @@ class FakeRun:
 def env(tmp_path, monkeypatch):
     git_dir = tmp_path / "gitdir"
     git_dir.mkdir()
-    scratch = tmp_path / "scratch"
-    scratch.mkdir()
+    root = tmp_path / "claude-root"  # stands in for <temp>/claude-<uid>
+    scratch = root / "project" / "scratchpad"
+    scratch.mkdir(parents=True)
     body = scratch / "body.txt"
     body.write_text("hello")
-    monkeypatch.setattr(M, "allowed_body_root", lambda: os.path.realpath(scratch))
+    monkeypatch.setattr(M, "allowed_body_roots", lambda: [os.path.realpath(root)])
     return git_dir, FakeRun(git_dir), body
 
 
@@ -201,6 +202,32 @@ def test_push_destinations_lists_normalized_slugs_and_needs_no_marker(env, capsy
     assert _run(fake, ["push-destinations"]) == 0
     assert fake.gh_calls == [["git", "remote", "get-url", "--push", "--all", "origin"]]
     assert capsys.readouterr().out.splitlines() == ["AndreHahm/repo-a", "AndreHahm/repo-b"]
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://github.com/AndreHahm/repo.git", "AndreHahm/repo"),
+        ("https://github.com/AndreHahm/repo", "AndreHahm/repo"),
+        ("https://github.com/AndreHahm/repo/", "AndreHahm/repo"),
+        ("https://github.com/AndreHahm/repo.git/", "AndreHahm/repo"),
+        ("https://x-access-token@github.com/AndreHahm/repo.git", "AndreHahm/repo"),
+        ("git@github.com:AndreHahm/repo.git", "AndreHahm/repo"),
+        ("ssh://git@github.com/AndreHahm/repo.git", "AndreHahm/repo"),
+        ("ssh://github.com/AndreHahm/repo", "AndreHahm/repo"),
+        # another host is never rewritten into a matching slug
+        (
+            "https://evil.example/github.com/AndreHahm/repo.git",
+            "https://evil.example/github.com/AndreHahm/repo",
+        ),
+        ("https://gitlab.com/AndreHahm/repo.git", "https://gitlab.com/AndreHahm/repo"),
+    ],
+)
+def test_push_destinations_normalizes_every_github_remote_form(env, capsys, url, expected):
+    git_dir, _, _ = env
+    fake = FakeRun(git_dir, stdout=f"{url}\n")
+    assert _run(fake, ["push-destinations"]) == 0
+    assert capsys.readouterr().out.strip() == expected
 
 
 # --- marker handshake --------------------------------------------------------------------------
@@ -386,6 +413,38 @@ def test_body_file_that_is_a_symlink_is_rejected_even_inside_the_root(env):
     link.symlink_to(outside)
     code, fake = _trigger(env, link)
     assert code != 0 and fake.gh_calls == []
+
+
+def test_a_symlink_to_another_file_inside_the_scratchpad_is_rejected(env):
+    _, _, body = env
+    target = body.parent / "someone-elses-output.txt"
+    target.write_text("not the agent's own file")
+    link = body.parent / "reply.txt"
+    link.symlink_to(target)
+    code, fake = _trigger(env, link)
+    assert code != 0 and fake.gh_calls == []
+
+
+def test_a_file_in_the_scratch_tree_but_outside_a_scratchpad_directory_is_rejected(env):
+    _, _, body = env
+    tasks = body.parent.parent / "tasks"
+    tasks.mkdir()
+    (tasks / "transcript.output").write_text("session transcript")
+    code, fake = _trigger(env, tasks / "transcript.output")
+    assert code != 0 and fake.gh_calls == []
+
+
+def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
+    _, _, body = env
+    other_uid = os.getuid() + 1
+    monkeypatch.setattr(M.os, "getuid", lambda: other_uid)
+    code, fake = _trigger(env, body)
+    assert code != 0 and fake.gh_calls == []
+
+
+def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory():
+    roots = M.allowed_body_roots()
+    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)
 
 
 def test_body_file_reached_through_a_symlinked_directory_is_rejected(env):

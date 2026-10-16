@@ -44,13 +44,15 @@ Use the `gh-pr-review-wrapper` type, never `gh-pr-review`: `git-guard-raw-pr-rev
 find nothing. A refusal prints the exact reason on stderr and exits 2; the call is never retried
 without a new marker.
 
-**`--body-file`** is never handed to `gh` as a path. The script resolves it (symlinks followed, so a
-symlinked directory cannot hide the real location), requires the result to sit under the system temp
-directory (where the session scratchpad lives), opens it without following a final symlink, requires a
-regular file, reads it itself (at most 256 KiB, valid UTF-8, non-empty, at most 65,536 characters, which
-is GitHub's comment limit) and passes the content to `gh` on stdin. A file outside the temp directory —
-including an issue draft under the repo's `issues/` — must first be copied there with `Write`. The
-script exits with `gh`'s own status and does not print the body it sends.
+**`--body-file`** is never handed to `gh` as a path. The script refuses a path that is itself a symlink,
+resolves it (so a symlinked directory cannot hide the real location), requires the result to sit below a
+directory named `scratchpad` inside `<temp>/claude-<uid>` (the session scratchpad's location), opens it
+without following a final symlink, requires a regular file owned by you, reads it itself (at most 256
+KiB, valid UTF-8, non-empty, at most 65,536 characters, which is GitHub's comment limit) and passes the
+content to `gh` on stdin. A file anywhere else — including an issue draft under the repo's `issues/` —
+must first be copied into the scratchpad with `Write`. Other sessions' scratchpads of the same user stay
+readable (residual). The script needs a POSIX platform and refuses elsewhere. It exits with `gh`'s own
+status and does not print the body it sends.
 
 `whoami` prints the authenticated login (used by `references/next-round-trigger.md`'s authorship
 check). `push-destinations` prints each of `origin`'s push URLs as `owner/repo`, one per line (used by
