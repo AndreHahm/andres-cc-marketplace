@@ -167,6 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         root = repo_root()
         args.local = confine(args.local, root)
         args.tracked = confine(args.tracked, root)
+        if args.local == args.tracked:
+            raise LedgerError("--local and --tracked must be different files")
         refuse_if_tracked(args.local, root)
         return args.func(args)
     except LedgerError as exc:

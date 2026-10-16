@@ -538,6 +538,34 @@ line, like any other finding) and a registry entry can suppress it; a model find
 - **Trust.** The module is Tier 1 (see below): a PR that edits it is refused automated review and needs the
   maintainer bypass attestation, because a verifier it could weaken would be the PR deciding its own gate.
 
+### Re-running the verifiers on a fix (`handling-review-findings`, #578)
+
+`git-kit`'s `scripts/git-verify-fix-diff.py` is a second entry point to `run_verifiers`, for the fix loop
+(`handling-review-findings` step 4) rather than for CI. It is a plugin script, not a `marketplace_ci`
+subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path above is unchanged.
+
+- **Invocation.** `--base <full object id>` diffs the commit before the fix against `HEAD`; `--worktree`
+  checks the uncommitted working tree instead, through a throwaway commit built with a temporary index and
+  checked out in a temporary shared clone (no ref, index or working-tree change; the snapshot's objects,
+  including untracked non-ignored files, stay in the object store as unreachable objects until `git gc`).
+- **Which code runs.** The verifier modules are extracted from `--base` with `git archive` and imported from
+  a private copy, never from the tree being judged, so a fix cannot weaken the check that grades it.
+- **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; there is no
+  touched-line filter, so the script cannot disagree with the gate about whose finding it is. A fix that
+  changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the script itself exits 2, because
+  the verifiers cannot grade a change to themselves. `--base` must be an ancestor of `HEAD`, and without
+  `--worktree` the working tree must be clean.
+- **Output and exit codes.** One JSON object with `checked` and `blocking`. Exit 0 is clean,
+  1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at `--base` but not
+  in the tree, the diff is empty, or the fix touches what grades it. Exit 0 with "nothing to check" happens only where neither the base nor
+  the tree has `scripts/marketplace_ci/review_verifiers.py` (git-kit is installed in other repositories).
+- **Not covered.** It does not run the model reviewers, the structural check or the computed gate, and a
+  clean result is not the CI verdict: CI still judges the pushed head.
+- **Outcomes ledger.** `scripts/git-review-ledger.py` records one disposition per finding in a gitignored
+  `.claude/review-ledger.local.json` and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
+  before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger.
+  Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
+
 ## Diff-scoped blocking
 
 `run-codex-review` fails the `codex-review` job (exit 1) only for findings that belong to the PR. A reviewer
