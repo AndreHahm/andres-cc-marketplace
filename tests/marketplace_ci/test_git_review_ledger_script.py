@@ -218,3 +218,45 @@ def test_refuted_also_reads_the_promoted_entries(tmp_path):
     _run(tmp_path, "promote", "--pr", "7")
     result = _run(tmp_path, "refuted", "--pr", "7")
     assert {e["finding"] for e in json.loads(result.stdout)["refuted"]} == {"a"}
+
+
+def test_a_later_local_record_overrides_a_promoted_false_positive(tmp_path):
+    _record(tmp_path, finding="a", pr="7", disposition="false_positive")
+    _run(tmp_path, "promote", "--pr", "7")
+    _record(tmp_path, finding="a", pr="7", disposition="fixed")
+    result = _run(tmp_path, "refuted", "--pr", "7")
+    assert json.loads(result.stdout)["refuted"] == []
+
+
+def test_record_keeps_the_local_ledger_out_of_git_status(tmp_path):
+    assert _record(tmp_path).returncode == 0
+    status = subprocess.run(
+        ["git", "status", "--short", "--untracked-files=all"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    assert "local.json" not in status
+    exclude = tmp_path / ".git" / "info" / "exclude"
+    assert "/.claude/local.json" in exclude.read_text(encoding="utf-8")
+    assert _record(tmp_path, finding="c2").returncode == 0
+    assert exclude.read_text(encoding="utf-8").count("/.claude/local.json") == 1
+
+
+def test_a_ledger_a_repository_rule_already_ignores_is_not_excluded_again(tmp_path):
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / ".gitignore").write_text("*.local.*\n", encoding="utf-8")
+    (tmp_path / ".claude").mkdir()
+    local = tmp_path / ".claude" / "x.local.json"
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--local", str(local), "record"]
+        + ["--pr", "7", "--finding", "c1", "--disposition", "fixed"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+    )
+    assert result.returncode == 0, result.stderr
+    exclude = tmp_path / ".git" / "info" / "exclude"
+    assert "x.local.json" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else "")
