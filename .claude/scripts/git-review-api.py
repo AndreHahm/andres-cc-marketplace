@@ -133,9 +133,12 @@ def read_body(raw: str) -> bytes:
 
     The path itself must not be a symlink. It is then resolved (so a symlinked parent directory
     cannot hide the real location), must sit below a `scratchpad` directory of the per-user
-    scratch tree, and is opened with O_NOFOLLOW and checked with fstat (regular file, owned by the
-    caller) so a swap after the check cannot change what is read. procfs-style files fail the
-    location check. Other sessions' files in the same scratch tree remain readable (residual).
+    scratch tree, and is opened with O_NOFOLLOW and checked with fstat on the opened descriptor
+    (regular file, owned by the caller, a single link so a hard link to a file elsewhere is
+    refused). procfs-style files fail the location check. Residuals: other sessions' files in the
+    same scratch tree remain readable, and a concurrent process running as the same user could swap
+    a parent directory between the resolve and the open; such a process already holds the user's
+    GitHub credentials, so that race is outside this check's threat model.
     """
     if os.path.islink(raw):
         raise UsageError(f"--body-file must not be a symlink: {raw!r}")
@@ -149,9 +152,9 @@ def read_body(raw: str) -> bytes:
     except OSError as exc:
         raise UsageError(f"cannot open --body-file {raw!r}: {exc.strerror}") from exc
     info = os.fstat(fd)
-    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
         os.close(fd)
-        raise UsageError(f"--body-file is not a regular file owned by you: {raw!r}")
+        raise UsageError(f"--body-file is not a single-link regular file owned by you: {raw!r}")
     with os.fdopen(fd, "rb") as handle:
         data = handle.read(MAX_BODY_BYTES + 1)
     if len(data) > MAX_BODY_BYTES:
