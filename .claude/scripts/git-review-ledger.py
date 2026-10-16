@@ -38,6 +38,8 @@ def repo_root() -> Path:
 
 def confine(raw: str, root: Path) -> Path:
     """A ledger lives only under the repository's .claude/ directory (symlinks resolved)."""
+    if (root / ".claude").is_symlink():
+        raise LedgerError(f"{root / '.claude'} is a symlink; ledgers live in a real .claude/ only")
     path = Path(raw)
     resolved = (path if path.is_absolute() else root / path).resolve()
     if resolved.suffix != ".json":
