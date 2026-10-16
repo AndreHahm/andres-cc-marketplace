@@ -240,6 +240,13 @@ def test_push_destinations_normalizes_every_github_remote_form(env, capsys, url,
         "https://user:s3cret-token@evil.example/AndreHahm/repo.git",
         "https://github.com@evil.example/AndreHahm/repo.git",
         "ssh://git@github.com:2222/AndreHahm/repo.git",
+        # a recognized GitHub prefix must not make the rest of the URL safe to echo
+        "https://github.com/AndreHahm/repo?token=s3cret",
+        "https://github.com/AndreHahm/repo.git?access_token=s3cret",
+        "https://github.com/AndreHahm/repo#s3cret-fragment",
+        "https://github.com/AndreHahm/repo/extra/s3cret",
+        "git@github.com:AndreHahm/repo.git?x=s3cret",
+        "https://github.com/AndreHahm/repo\\s3cret",
     ],
 )
 def test_an_unsupported_push_url_is_never_printed_and_fails(env, capsys, url):
@@ -248,7 +255,7 @@ def test_an_unsupported_push_url_is_never_printed_and_fails(env, capsys, url):
     assert _run(fake, ["push-destinations"]) == 1
     out = capsys.readouterr().out
     assert out.strip() == M.UNSUPPORTED_URL
-    assert "s3cret-token" not in out and "evil.example" not in out
+    assert "s3cret" not in out and "evil.example" not in out and "AndreHahm" not in out
 
 
 def test_push_destinations_with_one_unsupported_url_among_good_ones_fails(env, capsys):
