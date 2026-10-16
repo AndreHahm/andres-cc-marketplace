@@ -288,7 +288,7 @@ suggest.sh` (the most complex script — async, cross-process locking), `ctx-com
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 28/28 checks passing as of 2026-10-16 (29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
+**Last dated run record:** `scripts/smoke_test.py` — 29/29 checks passing as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
 `check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
 `check_skill_category_*` checks for the new heavy_operation/session_analysis events,
 `check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`

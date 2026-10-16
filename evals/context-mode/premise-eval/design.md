@@ -8,7 +8,9 @@ always-loaded `.claude/rules/` already produce? Basis: `.draft/_open/context-kit
 
 - 8 scenarios (`scenarios.json`), 2 per mode, one prompt each.
 - 2 arms per scenario: `baseline` (no profile) and `with_profile` (full text of `references/<mode>.md`
-  prepended as injected context). One run per arm, so n = 1 per cell (see Limits).
+  prepended as injected context). One run per arm, so n = 1 per cell (see Limits). The `dev` profile was
+  removed from the plugin after this eval chose against it; the text the `dev` cells used is kept at
+  `profiles/dev-profile.md` so those cells can be re-run.
 - Plan-only: runners get the wrapper in `scenarios.json` and call no tools. They state what they would do.
 - Runners never see assertions or the other arm. Both arms use the same agent type and model.
 - Grading: one blind grader per scenario receives the two replies as "A" and "B" (arm order randomised),

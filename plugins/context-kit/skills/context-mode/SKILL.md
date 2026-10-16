@@ -114,7 +114,8 @@ exist there. The generic posture block and each profile's posture section do not
 
 **Last dated run record:** `scripts/smoke_test.py` exercises `set_mode.py` against an isolated `$HOME`
 (set, refresh, status, off, replace, refusal to switch, invalid and path-shaped values, missing session
-id, tampered or symlinked state file) and the skill's structure. The profiles were selected by the premise
+id, tampered or symlinked state file), the post-compact restore from both the plugin layout and the
+project-local `.claude/hooks/_external-scripts/` layout, and the skill's structure. The profiles were selected by the premise
 eval, `evals/context-mode/premise-eval/results.md` (2026-10-16, three rounds). `evals/context-mode/`
 (iteration-1, 2026-10-16) holds 8 scenarios covering every line above plus a handoff-reported value; all 8
 ran as plan-only, with-skill-only agents and passed 20/20 assertions. That shows the skill text produces the
