@@ -221,7 +221,9 @@ def check_restore_without_project_dir(tmp):
     r = run([], home, session=None, script=RESTORE, stdin=payload, extra_env=env)
     if "# Review Mode" not in r.stdout:
         return False, "restore skipped the saved mode when CLAUDE_PROJECT_DIR is unset"
-    return True, "restore re-injects the saved mode even without CLAUDE_PROJECT_DIR"
+    if "Recovery Actions" in r.stdout:
+        return False, "a mode-only restore should not list plan recovery actions"
+    return True, "restore re-injects the saved mode without CLAUDE_PROJECT_DIR or plan steps"
 
 
 def check_post_compact_restore(tmp):

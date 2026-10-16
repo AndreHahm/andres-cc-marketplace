@@ -295,10 +295,12 @@ def format_restoration_message(
         lines.append(f"  {session_log['log_name']}")
         lines.append("")
 
-    lines.append("Recovery Actions:")
-    lines.append("  1. Read the active plan to understand current objectives")
-    lines.append("  2. Check git status/diff for uncommitted changes")
-    lines.append("  3. Continue from where you left off")
+    # A resume with only a saved mode has no plan, state or log to recover from.
+    if pre_compact_state or plan_info or session_log:
+        lines.append("Recovery Actions:")
+        lines.append("  1. Read the active plan to understand current objectives")
+        lines.append("  2. Check git status/diff for uncommitted changes")
+        lines.append("  3. Continue from where you left off")
 
     return "\n".join(lines)
 
