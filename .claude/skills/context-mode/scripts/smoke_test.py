@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -258,6 +259,36 @@ def check_post_compact_restore(tmp):
     return True, "post-compact restore re-injects the saved mode, per session"
 
 
+def check_restore_from_project_mirror_layout(tmp):
+    # The project-local hook copy lives at .claude/hooks/_external-scripts/context-kit/scripts/ and
+    # must find the profiles in .claude/skills/; with them missing it stays silent, not crashed.
+    home = pathlib.Path(tmp) / "home_mirror"
+    home.mkdir()
+    run(["admin"], home)
+    root = pathlib.Path(tmp) / "mirror_project" / ".claude"
+    scripts = root / "hooks" / "_external-scripts" / "context-kit" / "scripts"
+    refs = root / "skills" / "context-mode" / "references"
+    scripts.mkdir(parents=True)
+    refs.mkdir(parents=True)
+    copied = scripts / RESTORE.name
+    shutil.copy(RESTORE, copied)
+    for name in ("generic.md", "admin.md"):
+        shutil.copy(SKILL_DIR / "references" / name, refs / name)
+    payload = json.dumps({"source": "compact", "session_id": SESSION})
+    env = {"CLAUDE_PROJECT_DIR": ""}
+    r = run([], home, session=None, script=copied, stdin=payload, extra_env=env)
+    if "# Admin Mode" not in r.stdout:
+        return False, "the project-local hook copy did not find the profiles in .claude/skills/"
+    shutil.rmtree(root / "skills")
+    r2 = run([], home, session=None, script=copied, stdin=payload, extra_env=env)
+    if r2.returncode != 0 or "Admin Mode" in r2.stdout:
+        return False, "missing profiles should leave the restore silent with exit 0"
+    return (
+        True,
+        "restore finds the profiles from the project-local hook layout, silent without them",
+    )
+
+
 def main():
     results = [check_structure(), check_hook_removed()]
     with tempfile.TemporaryDirectory() as tmp:
@@ -271,6 +302,7 @@ def main():
             check_state_file_hardening,
             check_post_compact_restore,
             check_restore_without_project_dir,
+            check_restore_from_project_mirror_layout,
         ):
             results.append(check(tmp))
     failed = 0
