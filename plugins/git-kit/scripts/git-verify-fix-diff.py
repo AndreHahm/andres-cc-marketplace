@@ -165,8 +165,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         args = parser.parse_args(argv)
-    except SystemExit:
-        return 2
+    except SystemExit as exc:
+        return 0 if exc.code == 0 else 2
 
     try:
         top = subprocess.run(
