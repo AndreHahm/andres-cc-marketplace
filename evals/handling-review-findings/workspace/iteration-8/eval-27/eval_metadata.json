@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-27",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Matches the new finding to the refuted c-88 entry by path and rule and answers with the recorded note instead of treating it as new work",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Makes no fix commit for it",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Keeps the false_positive disposition (records the new finding with it) and does not silently drop the finding without a reply",
+      "type": "functionality",
+      "target": "response"
+    }
+  ]
+}

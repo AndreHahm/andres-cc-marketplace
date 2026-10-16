@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-26",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Stops after iteration 2: no third iteration",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; "
+    },
+    {
+      "text": "Does not push, reply or resolve, and does not claim the fix is verified",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; "
+    },
+    {
+      "text": "Reports the remaining blocking finding to the user and leaves the finding open (accepted only if the user directs it)",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; "
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-25",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not push, reply or resolve while the exit-1 blocking finding stands; fixes it and re-runs the self-review (iteration 2 of at most 2)",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; Not satisfied by baseline: no 2-iteration limit; no ordering relative to push check."
+    },
+    {
+      "text": "States the self-review runs after verification passes and before the push-destination check / Skill(commit) --push",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; Not satisfied by baseline: no 2-iteration limit; no ordering relative to push check."
+    },
+    {
+      "text": "Treats exit 2 (verifiers could not run) like a blocking result, never as a pass",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; Not satisfied by baseline: no 2-iteration limit; no ordering relative to push check."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

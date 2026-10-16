@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit)
 ---
 
 # Handling Review Findings
@@ -209,7 +209,7 @@ session.
    silently lose later pages from dedup and triage) immediately before acting, never from a state
    snapshot taken earlier in the conversation — a reviewer can post a new round while a previous one is
    still being fixed.
-2. **Classify each finding**: dedup against earlier rounds (`references/round-and-dedup-rules.md`),
+2. **Classify each finding**: dedup against earlier rounds (`references/round-and-dedup-rules.md`) and the ledger's refuted entries (`references/fix-self-review.md` 4e),
    determine which round it belongs to, its severity, and whether one of the three named exceptions
    applies (`references/settings-and-round-budget.md`) — including the pre-existing "too large to fix
    in-session" case, which never consumes a round-budget slot regardless of which round raised it.
@@ -243,7 +243,7 @@ session.
    mechanism from `.claude/rules/require-tests-for-behavior-changes.md` if the fix changes
    skill/agent/script behavior, otherwise a re-read of the fix against the finding it addresses.
    **Verification is a hard precondition on replying and resolving — a reply-and-resolve never happens
-   on the strength of a pushed commit alone.** Once verification passes, **before invoking
+   on the strength of a pushed commit alone.** Once verification passes, **self-review the fix first (`references/fix-self-review.md` 4a-4d, at most 2 iterations): a blocking finding on a line the fix touched stops the push, reply and resolve.** Then, **before invoking
    `Skill(commit) --push`, verify every one of `origin`'s actual push destinations matches the PR's
    head repository** — `commit`'s own step 16 always runs `git push origin HEAD`, which pushes to
    whatever `origin`'s configured *push* URL(s) are, not its fetch URL. `git remote get-url origin`
@@ -276,7 +276,7 @@ session.
    actually pushed. Once the push is confirmed landed, reply to the finding's own thread stating both
    the fixing commit's SHA *and* a one-line summary of what verification confirmed (mechanics in
    `references/github-api-mechanics.md`), and only then resolve that thread. **If verification fails**,
-   don't reply or resolve — the finding stays open in the same round.
+   don't reply or resolve — the finding stays open in the same round. Record its disposition in the outcomes ledger (4e).
 5. **Issue path** (one of the three named exceptions, or budget-exhaustion when
    `review_findings_generate_issues: true`): before drafting, check
    `gh issue list -R "<owner>/<repo>" --search "PR #<N>" --state all --limit 100` for an existing issue
@@ -332,7 +332,7 @@ session.
    thread. **This disclosure is informational, never an override**: `merge-pr`'s own independent
    readiness gate — required status checks, no outstanding `CHANGES_REQUESTED` review, any branch
    protection "require conversation resolution" setting — still applies in full regardless of this
-   workflow's fixed/filed/declined classification.
+   workflow's fixed/filed/declined classification. When no further round will follow, promote the ledger first (`references/fix-self-review.md` 4e).
 8. **Trigger the next round, if the budget allows one.** Four sub-steps, full detail in
    `references/next-round-trigger.md`: resolve how many cycles this skill has already triggered (8a —
    1 for round 1's automatic CI trigger, plus one per distinct self-authored `<batch-id>` marker found
@@ -420,7 +420,7 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
 See `references/testing-scenarios.md`'s own `## Quality gates` section for the full checklist (more
 items than fit here).
 
-**Test suite:** `evals/handling-review-findings/evals.json` defines 24 scenarios and carries its own
+**Test suite:** `evals/handling-review-findings/evals.json` defines 28 scenarios and carries its own
 `testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (10 gates still
 without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
 quality-gates checklist text those fields map against. Eval 21 (the reply goes through
@@ -445,7 +445,7 @@ re-run** (eval 21's saved iteration-4 run predates that rewrite; the wrapper its
 `tests/marketplace_ci/test_git_review_api_script.py` and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
 iteration 3's 3 newest scenarios, evals 18-20, at 100%, with_skill-only; iteration 4's eval 21 at 100%
 against its earlier expectation, with_skill-only; iteration 5's eval 22 at 100%, with_skill-only;
-iteration 7's evals 23-24 at 100%, with_skill-only. Full run history, the security-review
+iteration 7's evals 23-24 at 100%, with_skill-only; iteration 8 (2026-10-16, evals 25-28, the Phase 3 fix self-review and outcomes ledger, blind comparison): with_skill 11/12 (91.7%) vs. baseline 8/12 (66.6%), +25 points — eval 27's miss exposed a gap in `references/fix-self-review.md` 4e; after the fix, iteration 9 re-ran it (with_skill only): 3/3. Full run history, the security-review
 passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
@@ -463,10 +463,11 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | Resource | Purpose |
 |---|---|
 | `references/round-and-dedup-rules.md` | Full round definition, dedup mechanism, Hard Cap exception, severity-gate interaction, why the next-round trigger doesn't poll, worked example |
+| `references/fix-self-review.md` | Full Workflow step 4 fix self-review (4a-4d: verifier re-run, sibling sweep, fix-diff review, 2-iteration budget) and the outcomes ledger (4e: record, refuted-finding dedup, promote at merge) |
 | `references/next-round-trigger.md` | Full Workflow step 8 procedure (8a-8d): triggered-cycle count, the two-question reviewer/mode ask, candidate validation, and the pre-post live re-check |
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
 | `references/development-history.md` | Build-time audit trail: eval run records, security-review passes, and dated fix narratives for issues found in live GitHub review (PR #101, #407) |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 24 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 28 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate |

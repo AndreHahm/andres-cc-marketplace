@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-25",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not push, reply or resolve while the exit-1 blocking finding stands; fixes it and re-runs the self-review (iteration 2 of at most 2)",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "States the self-review runs after verification passes and before the push-destination check / Skill(commit) --push",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Treats exit 2 (verifiers could not run) like a blocking result, never as a pass",
+      "type": "functionality",
+      "target": "response"
+    }
+  ]
+}

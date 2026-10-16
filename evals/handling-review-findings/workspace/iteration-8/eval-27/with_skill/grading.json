@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-27",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Matches the new finding to the refuted c-88 entry by path and rule and answers with the recorded note instead of treating it as new work",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; with_skill: skill said keep disposition but did not require recording the new finding id; fixed in references/fix-self-review.md 4e."
+    },
+    {
+      "text": "Makes no fix commit for it",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; with_skill: skill said keep disposition but did not require recording the new finding id; fixed in references/fix-self-review.md 4e."
+    },
+    {
+      "text": "Keeps the false_positive disposition (records the new finding with it) and does not silently drop the finding without a reply",
+      "passed": false,
+      "evidence": "graded from outputs/decision.md; with_skill: skill said keep disposition but did not require recording the new finding id; fixed in references/fix-self-review.md 4e."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.667
+  }
+}

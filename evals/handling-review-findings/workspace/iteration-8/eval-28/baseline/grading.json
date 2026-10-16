@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-28",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs ledger promote for PR 613 before the last push, moving entries into the tracked .claude/review-outcomes.json",
+      "passed": false,
+      "evidence": "graded from outputs/decision.md; Baseline lacks the tracked path and the records-only/head-SHA point (its prompt also stated the owner decision)."
+    },
+    {
+      "text": "Stages the tracked file with the pending final fix commit; with no pending fix commit, commits it alone via Skill(commit) --push and says it is a records-only commit that changes the head SHA",
+      "passed": false,
+      "evidence": "graded from outputs/decision.md; Baseline lacks the tracked path and the records-only/head-SHA point (its prompt also stated the owner decision)."
+    },
+    {
+      "text": "Explains that promoting after merge would leave an uncommitted change because main cannot take a direct commit",
+      "passed": true,
+      "evidence": "graded from outputs/decision.md; Baseline lacks the tracked path and the records-only/head-SHA point (its prompt also stated the owner decision)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.333
+  }
+}
