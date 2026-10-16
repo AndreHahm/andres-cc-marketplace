@@ -3,7 +3,8 @@
 
 Two JSON files with the same shape, {"entries": [...]}:
   - a local, gitignored working ledger (default .claude/review-ledger.local.json), written
-    during the fix loop;
+    during the fix loop (`record` adds it to the repository's .git/info/exclude when no ignore
+    rule covers it);
   - a git-tracked file (default .claude/review-outcomes.json) that `promote` fills with a
     PR's entries before its last push.
 
@@ -78,6 +79,45 @@ def refuse_if_tracked(path: Path, root: Path) -> None:
         raise LedgerError(f"{rel} is tracked by git; the local working ledger must stay untracked")
 
 
+def ensure_ignored(path: Path, root: Path) -> None:
+    """Keep the working ledger out of `git status`, whatever the repository's own ignore rules say.
+
+    Where nothing ignores it (a repository without a `*.local.*` rule), add it to this
+    repository's `info/exclude`; refuse to write the ledger if git still does not ignore it."""
+    rel = os.path.relpath(path, root.resolve())
+
+    def ignored() -> bool:
+        probe = subprocess.run(
+            ["git", "check-ignore", "-q", "--no-index", "--", rel],
+            cwd=root,
+            capture_output=True,
+        )
+        if probe.returncode not in (0, 1):
+            raise LedgerError(
+                f"could not check whether {rel} is ignored (git exit {probe.returncode})"
+            )
+        return probe.returncode == 0
+
+    if ignored():
+        return
+    located = subprocess.run(
+        ["git", "rev-parse", "--git-path", "info/exclude"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    if located.returncode != 0 or not located.stdout.strip():
+        raise LedgerError(f"could not locate this repository's info/exclude to ignore {rel}")
+    exclude = Path(located.stdout.strip())
+    exclude = exclude if exclude.is_absolute() else root / exclude
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    escaped = "".join("\\" + c if c in "*?[\\" else c for c in rel.replace(os.sep, "/"))
+    with exclude.open("a", encoding="utf-8") as handle:
+        handle.write(f"/{escaped}\n")
+    if not ignored():
+        raise LedgerError(f"{rel} is not ignored by git and could not be excluded; not writing it")
+
+
 def load(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -130,11 +170,10 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 
 def cmd_refuted(args: argparse.Namespace) -> int:
-    refuted = [
-        e
-        for e in [*load(args.local), *load(args.tracked)]
-        if e.get("pr") == args.pr and e.get("disposition") in REFUTED
-    ]
+    merged = load(args.tracked)
+    for entry in load(args.local):  # a later local record replaces the promoted one
+        merged = upsert(merged, entry)
+    refuted = [e for e in merged if e.get("pr") == args.pr and e.get("disposition") in REFUTED]
     print(json.dumps({"refuted": refuted}, indent=2))
     return 0
 
@@ -195,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.local == args.tracked:
             raise LedgerError("--local and --tracked must be different files")
         refuse_if_tracked(args.local, root)
+        if args.command == "record":
+            ensure_ignored(args.local, root)
         return args.func(args)
     except LedgerError as exc:
         print(f"Refused: {exc}", file=sys.stderr)
