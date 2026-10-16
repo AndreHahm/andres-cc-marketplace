@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word status",
+      "passed": true,
+      "evidence": "Single command with only the word status."
+    },
+    {
+      "text": "Reports the active mode from the script's answer rather than guessing from the conversation",
+      "passed": true,
+      "evidence": "\"I'd report what the script prints ... If the script printed something different, I would relay that instead.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

@@ -305,7 +305,7 @@ fi
 # Output JSON with suggestion if any
 if [ -n "$SUGGESTION" ]; then
     # Append this suggestion for the Stop hook to pick up -- other writers
-    # (detect_mode.py) may also append to this same file before Stop drains
+    # (formerly detect_mode.py, removed 2026-10-16) may also append to this same file before Stop drains
     # it, so this must never overwrite an already-queued, not-yet-delivered
     # suggestion (found by CodeRabbit's automated PR review, 2026-09-21,
     # against PR #368; see ctx-compact-stop-check.sh for the queue-draining

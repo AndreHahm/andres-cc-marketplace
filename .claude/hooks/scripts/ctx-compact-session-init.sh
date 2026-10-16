@@ -24,11 +24,8 @@ fi
 TRACK_DIR="${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact"
 mkdir -p "$TRACK_DIR"
 
-# Clean up old session files (older than 24 hours). Also sweeps mode-* --
-# detect_mode.py's own per-session mode-switch state file (added 2026-09-21) --
-# so it doesn't accumulate indefinitely the same way session-* wouldn't.
+# Clean up old session files (older than 24 hours).
 find "$TRACK_DIR" -name "session-*" -mtime +1 -delete 2>/dev/null || true
-find "$TRACK_DIR" -name "mode-*" -mtime +1 -delete 2>/dev/null || true
 
 # Get session hash
 if command -v md5sum &>/dev/null; then
@@ -37,8 +34,8 @@ elif command -v md5 &>/dev/null; then
     SESSION_HASH=$(echo "${SESSION_ID:-default}" | md5 -q | cut -c1-8)
 else
     # No md5 tool available -- fail open rather than fall back to a
-    # different hash algorithm (cksum). detect_mode.py's own Python-side
-    # session-hash computation only ever uses hashlib.md5 with no
+    # different hash algorithm (cksum). A Python-side hook once computed this hash
+    # with hashlib.md5 only (detect_mode.py, removed 2026-10-16), with no
     # cksum-equivalent fallback; a bash script computing a cksum-based
     # hash here would silently diverge from every other hash in this
     # plugin (Python and the other bash hooks alike), breaking
@@ -49,7 +46,6 @@ fi
 
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
 TRACK_LOCK="${TRACK_FILE}.lock"
-MODE_FILE="${TRACK_DIR}/mode-${SESSION_HASH}"
 
 # Get current timestamp
 START_TIME=$(date +%s)
@@ -137,15 +133,6 @@ if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compac
             echo "T3=$T3"
             echo "TIME_THRESHOLD=$TIME_THRESHOLD"
         } > "${TRACK_FILE}.tmp" && mv "${TRACK_FILE}.tmp" "$TRACK_FILE"
-
-        # Reset detect_mode.py's own per-session mode-switch state alongside
-        # $TRACK_FILE -- kept symmetric (found by scripts-reviewer, 2026-09-21):
-        # a switch relative to a mode observed before this reset shouldn't be
-        # treated as a real switch afterward, the same way stale tool-call
-        # counters aren't carried forward either. Single-writer file (only
-        # detect_mode.py itself writes it), so a plain rm -f under this same
-        # lock is sufficient -- no separate lock exists for it to race.
-        rm -f "$MODE_FILE" 2>/dev/null
 
         _owner_pid=$(head -n1 "${TRACK_LOCK}/created" 2>/dev/null)
         if [ -z "$_owner_pid" ] || [ "$_owner_pid" = "$$" ]; then

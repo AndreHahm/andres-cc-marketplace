@@ -5,11 +5,8 @@ that file within its own R13 line-budget tier. See `state-and-side-effects.md` f
 write to disk and the data-only boundary governing state read back from it.
 
 This skill's own hook wiring, by event (not necessarily every other entry `hooks.json` carries for
-sibling skills — e.g. `context-mode`'s `UserPromptSubmit` hook lives in the same file):
+sibling skills):
 
-- **`UserPromptSubmit`** — not this skill's own hook (`context-mode`'s `scripts/detect_mode.py` owns
-  it), but as of 2026-09-21 it also writes into this skill's own delivery mechanism on a
-  confidently-detected mode switch — see `SKILL.md`'s "Context-mode switch events" section.
 - **`SessionStart`** — `ctx-compact-session-init.sh` (always) initializes tool-call tracking for the new
   session. `ctx-post-compact-restore.py` (matcher `compact|resume`) reads back whatever
   `ctx-pre-compact.py` captured before the compaction that just happened, and re-injects it via
@@ -66,8 +63,8 @@ sibling skills — e.g. `context-mode`'s `UserPromptSubmit` hook lives in the sa
   (e.g. a suggestion detected on the very last tool call of a turn). In practice the write completes
   well within the hook's own timeout, so this is a narrow, disclosed edge case, not a routine failure
   mode. **The pending file is a queue, not a single slot (updated 2026-09-21):** two writers
-  (`ctx-compact-track-and-suggest.sh`, `context-mode`'s `detect_mode.py`) can each append a suggestion
-  before this hook drains it — a plain overwrite would let a later write silently clobber an earlier,
+  (`ctx-compact-track-and-suggest.sh`, and `context-mode`'s `detect_mode.py` until it was removed
+  2026-10-16) could each append a suggestion before this hook drains it — a plain overwrite would let a later write silently clobber an earlier,
   not-yet-delivered one (found by CodeRabbit's automated PR review, 2026-09-21, against PR #368). Both
   writers append rather than overwrite; this hook reads every line, validates each independently
   against the same strict single-line shape the original single-suggestion check used, and delivers all

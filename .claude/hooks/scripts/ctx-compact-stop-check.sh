@@ -42,7 +42,7 @@ if [ -f "$PENDING_FILE" ]; then
     # Writers now append (>>), not overwrite (>) -- more than one queued
     # suggestion between Stop events is the normal case, not corruption
     # (found by CodeRabbit's automated PR review, 2026-09-21, against
-    # PR #368: adding detect_mode.py as a second writer to this same file
+    # PR #368: adding detect_mode.py (since removed, 2026-10-16) as a second writer to this same file
     # made a prior single-slot overwrite a real, no-longer-rare collision
     # risk, silently dropping whichever suggestion lost the race). Read
     # every line before deleting the file.
@@ -54,7 +54,7 @@ if [ -f "$PENDING_FILE" ]; then
         [ "${#VALID_SUGGESTIONS[@]}" -ge 20 ] && break
         # Validate EACH line independently, same whole-payload check the
         # prior single-line version used (found by security-reviewer,
-        # 2026-09-17): ctx-compact-track-and-suggest.sh/detect_mode.py only ever
+        # 2026-09-17): ctx-compact-track-and-suggest.sh (and the former detect_mode.py) only ever
         # write a single-line, "[StrategicCompact] "-prefixed message under
         # ~200 chars per suggestion -- a prefix-only check would let a line
         # shaped "[StrategicCompact] ok" followed by an unprefixed

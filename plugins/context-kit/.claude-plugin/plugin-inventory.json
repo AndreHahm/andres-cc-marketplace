@@ -619,7 +619,7 @@
       "scoring_history": [],
       "security_score": null,
       "security_scoring_history": [],
-      "status": "active",
+      "status": "retired",
       "status_history": [
         {
           "evidence": [
@@ -628,6 +628,16 @@
           "reason": "Discovered by plugin-inventory Build/Plan.",
           "status": "active",
           "valid_from": "2026-09-16",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "plugins/context-kit/hooks/hooks.json has no UserPromptSubmit entry",
+            "evals/context-mode/premise-eval/results.md"
+          ],
+          "reason": "The UserPromptSubmit detection hook (context-mode detect_mode.py) was removed in the manual context-mode redesign.",
+          "status": "retired",
+          "valid_from": "2026-10-16",
           "valid_to": null
         }
       ],
@@ -640,5 +650,5 @@
   "plugin_name": "context-kit",
   "prefix": "ctx",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-28"
+  "updated_on": "2026-10-16"
 }

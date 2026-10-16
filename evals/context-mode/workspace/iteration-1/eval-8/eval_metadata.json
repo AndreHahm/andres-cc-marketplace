@@ -1,0 +1,16 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word status",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Reports the active mode from the script's answer rather than guessing from the conversation",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

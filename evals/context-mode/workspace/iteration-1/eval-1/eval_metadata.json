@@ -2,8 +2,20 @@
   "eval_id": 1,
   "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
   "assertions": [
-    {"text": "Response explicitly states a mode switch to 'ship' (e.g. contains 'ship' and 'activated')", "type": "functionality", "target": "outputs/"},
-    {"text": "Response never switches silently -- the switch is stated plainly, not just implied", "type": "quality", "target": "outputs/"},
-    {"text": "Response reflects ship mode's higher confirmation-bar posture (mentions confirming before a risky/visible action, e.g. merge/publish/release), not a generic acknowledgement", "type": "quality", "target": "outputs/"}
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word ship (no extra words or characters)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "States plainly, after running it, that the ship mode is active",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not plan to read references/ship.md or any profile file directly instead of running the script",
+      "type": "functionality",
+      "target": "outputs/"
+    }
   ]
 }

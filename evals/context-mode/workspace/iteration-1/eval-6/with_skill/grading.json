@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word refresh",
+      "passed": true,
+      "evidence": "One invocation with only refresh (a conditional mirror-path variant of the same command is given if CLAUDE_PLUGIN_ROOT is empty)."
+    },
+    {
+      "text": "Says it will follow the reprinted profile, not that it switches to a new mode",
+      "passed": true,
+      "evidence": "\"I am reprinting its profile now ... I would not switch modes in place.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

@@ -1,409 +1,285 @@
 #!/usr/bin/env python3
-"""Persisted smoke test for context-mode: exercises detect_mode.py's real
-UserPromptSubmit hook contract (stdin -> stdout/exit-code) -- happy path,
-order-of-mention, fail-open on malformed/non-UTF8 input, the closed
-VALID_MODES vocabulary guarantee documented in this skill's own Quality Gates,
-and (added 2026-09-21) the mode-switch-suggestion side effect this hook now
-also writes into strategic-compact's own tracking directory.
+"""Persisted smoke test for context-mode.
 
-Every subprocess check runs with HOME/USERPROFILE pointed at an isolated
-throwaway directory -- detect_mode.py previously had zero filesystem side
-effects, so the original checks never needed this; now that it writes
-mode-<hash>/pending-<hash> files under $HOME/.claude/strategic-compact/,
-every check (not just the new mode-switch ones) must be isolated or it would
-read/write the real machine's actual tracking state on every smoke-test run.
+Runs scripts/set_mode.py as a subprocess against an isolated throwaway $HOME and checks its contract
+(set, refresh, status, off, invalid and path-shaped values, missing session id, tampered state
+file), the post-compact restore that re-injects the saved mode, and the skill's structure.
+Model-driven activation of the /context-mode command is not covered here.
 """
 
-import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
-import time
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
-SCRIPT = SKILL_DIR / "scripts" / "detect_mode.py"
+PLUGIN_DIR = SKILL_DIR.parent.parent
+SET_MODE = SKILL_DIR / "scripts" / "set_mode.py"
+RESTORE = PLUGIN_DIR / "scripts" / "ctx-post-compact-restore.py"
+SESSION = "smoke-session-1"
+MODES = ("admin", "review", "ship")
 
 
-def run_hook(stdin_bytes, home):
-    env = {**os.environ, "HOME": str(home), "USERPROFILE": str(home)}
+def run(
+    args: list[str],
+    home: pathlib.Path,
+    session: str | None = SESSION,
+    script: pathlib.Path = SET_MODE,
+    stdin: str | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    env: dict[str, str] = {**os.environ, "HOME": str(home), "USERPROFILE": str(home)}
+    env.pop("CLAUDE_CODE_SESSION_ID", None)
+    if session is not None:
+        env["CLAUDE_CODE_SESSION_ID"] = session
+    env.update(extra_env or {})
     return subprocess.run(
-        [sys.executable, str(SCRIPT)],
-        input=stdin_bytes,
+        [sys.executable, "-I", str(script), *args],
+        input=stdin,
         capture_output=True,
+        text=True,
         timeout=15,
         env=env,
     )
 
 
-def _session_hash(session_id):
-    # Matches detect_mode.py's own _strategic_compact_session_hash() /
-    # the bash hooks' `echo "$SESSION_ID" | md5sum` formula.
-    return hashlib.md5((session_id + "\n").encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
+def state_files(home):
+    d = pathlib.Path(home) / ".claude" / "context-kit"
+    return sorted(d.glob("mode-*")) if d.exists() else []
 
 
-def _make_home_with_tracking_file(tmp_path, session_id):
-    home = tmp_path / f"home_{session_id}"
-    track_dir = home / ".claude" / "strategic-compact"
-    track_dir.mkdir(parents=True)
-    (track_dir / f"session-{_session_hash(session_id)}").write_text("", encoding="utf-8")
-    return home, track_dir
+def check_structure():
+    text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+    if not m:
+        return False, "SKILL.md has no frontmatter"
+    fm = m.group(1)
+    if not re.search(r"^name:\s*context-mode\s*$", fm, re.MULTILINE):
+        return False, "frontmatter name is not context-mode"
+    for rel in (
+        "references/generic.md",
+        "references/admin.md",
+        "references/review.md",
+        "references/ship.md",
+        "scripts/set_mode.py",
+    ):
+        if not (SKILL_DIR / rel).is_file():
+            return False, f"missing {rel}"
+        if rel not in text:
+            return False, f"SKILL.md does not reference {rel}"
+    for rel in ("scripts/detect_mode.py", "triggers.json", "references/dev.md"):
+        if (SKILL_DIR / rel).exists():
+            return False, f"removed automation file still present: {rel}"
+    return True, "frontmatter, references and removed files as expected"
 
 
-def check_single_candidate_ship(tmp_path):
-    home = tmp_path / "home_single_ship"
+def check_hook_removed():
+    hooks = json.loads((PLUGIN_DIR / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    raw = json.dumps(hooks)
+    if "detect_mode" in raw or "UserPromptSubmit" in hooks.get("hooks", {}):
+        return False, "hooks.json still wires the detection hook"
+    return True, "no detection hook in hooks.json"
+
+
+def check_set_each_mode(tmp):
+    for mode in MODES:
+        home = pathlib.Path(tmp) / f"home_{mode}"
+        home.mkdir()
+        r = run([mode], home)
+        if r.returncode != 0:
+            return False, f"{mode}: exit {r.returncode}: {r.stderr.strip()}"
+        if f"[Context-Mode] {mode} active" not in r.stdout:
+            return False, f"{mode}: announcement missing"
+        if "# Generic Posture" not in r.stdout or f"# {mode.capitalize()} Mode" not in r.stdout:
+            return False, f"{mode}: generic or mode profile missing from output"
+        files = state_files(home)
+        if len(files) != 1 or files[0].read_text(encoding="utf-8").strip() != mode:
+            return False, f"{mode}: state file not written correctly"
+    return True, "admin, review and ship each print the profile and save state"
+
+
+def check_refresh_status_off(tmp):
+    home = pathlib.Path(tmp) / "home_cycle"
     home.mkdir()
-    payload = json.dumps({"prompt": "ship it now"}).encode("utf-8")
-    result = run_hook(payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    out = json.loads(result.stdout.decode("utf-8"))
-    tag = out["hookSpecificOutput"]["additionalContext"]
-    if tag != "[Context-Mode candidate: ship]":
-        return False, f"expected single-ship tag, got {tag!r}"
-    return True, "single 'ship it' prompt correctly tags candidate: ship"
+    if "No context mode is active" not in run(["status"], home).stdout:
+        return False, "status before any mode should say none"
+    run(["review"], home)
+    if "Active context mode: review" not in run(["status"], home).stdout:
+        return False, "status did not report review"
+    r = run(["refresh"], home)
+    if "# Review Mode" not in r.stdout:
+        return False, "refresh did not reprint the review profile"
+    off = run(["off"], home)
+    if off.returncode != 0 or state_files(home):
+        return False, "off did not clear the state file"
+    if "No context mode is active" not in run(["refresh"], home).stdout:
+        return False, "refresh after off should say none"
+    return True, "status, refresh and off behave"
 
 
-def check_multi_candidate_order_of_mention(tmp_path):
-    # "review this pr" appears before "ship it" in the string -- order-of-mention
-    # says candidates must list review before ship.
-    home = tmp_path / "home_multi_order"
+def check_invalid_values(tmp):
+    home = pathlib.Path(tmp) / "home_invalid"
     home.mkdir()
-    payload = json.dumps({"prompt": "review this pr, then ship it"}).encode("utf-8")
-    result = run_hook(payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    out = json.loads(result.stdout.decode("utf-8"))
-    tag = out["hookSpecificOutput"]["additionalContext"]
-    if tag != "[Context-Mode candidates: review, ship]":
-        return False, f"expected order-of-mention 'review, ship', got {tag!r}"
-    return True, "multi-candidate prompt ordered by first-mention position (review, ship)"
+    run(["ship"], home)
+    before = [f.read_text(encoding="utf-8") for f in state_files(home)]
+    for bad in ("dev", "ADMIN", "../../etc/passwd", "admin;ls", ""):
+        r = run([bad], home)
+        if r.returncode != 2:
+            return False, f"{bad!r}: expected exit 2, got {r.returncode}"
+        if "Generic Posture" in r.stdout:
+            return False, f"{bad!r}: a profile was printed for an invalid value"
+    after = [f.read_text(encoding="utf-8") for f in state_files(home)]
+    if before != after:
+        return False, "an invalid value changed the saved state"
+    if run([], home).returncode != 2:
+        return False, "no argument should exit 2"
+    return True, "invalid and path-shaped values are rejected with state untouched"
 
 
-def check_no_match_produces_no_output(tmp_path):
-    home = tmp_path / "home_no_match"
+def check_no_session_id(tmp):
+    home = pathlib.Path(tmp) / "home_nosession"
     home.mkdir()
-    payload = json.dumps({"prompt": "how does authentication work here"}).encode("utf-8")
-    result = run_hook(payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    if result.stdout.strip():
-        return False, f"expected empty stdout for no-match prompt, got {result.stdout!r}"
-    return True, "no-match prompt produces exit 0 with empty stdout"
+    r = run(["admin"], home, session=None)
+    if r.returncode != 0 or "# Admin Mode" not in r.stdout or "not saved" not in r.stdout:
+        return False, "missing session id should print the profile and say it is not saved"
+    if state_files(home):
+        return False, "a state file was written without a session id"
+    return True, "missing session id degrades to print-only"
 
 
-def check_malformed_json_fails_open(tmp_path):
-    home = tmp_path / "home_malformed"
+def check_tampered_state(tmp):
+    home = pathlib.Path(tmp) / "home_tampered"
     home.mkdir()
-    result = run_hook(b"{not valid json at all", home)
-    if result.returncode != 0:
-        return False, f"malformed JSON exited {result.returncode}, expected 0 (fail-open)"
-    if result.stdout.strip():
-        return False, f"malformed JSON should produce no stdout, got {result.stdout!r}"
-    return True, "malformed JSON stdin fails open (exit 0, no output)"
+    run(["admin"], home)
+    (state,) = state_files(home)
+    state.write_text("../../../etc/passwd\n", encoding="utf-8")
+    if "No context mode is active" not in run(["status"], home).stdout:
+        return False, "a tampered state value was trusted"
+    if "Generic Posture" in run(["refresh"], home).stdout:
+        return False, "refresh read a profile for a tampered state value"
+    return True, "a tampered state file is ignored"
 
 
-def check_non_utf8_fails_open(tmp_path):
-    # A lone continuation byte is invalid UTF-8 on its own.
-    home = tmp_path / "home_non_utf8"
+def check_refuses_switch_and_replace(tmp):
+    home = pathlib.Path(tmp) / "home_switch"
     home.mkdir()
-    result = run_hook(b"\xff\xfe not valid utf-8 \x80", home)
-    if result.returncode != 0:
-        return False, f"non-UTF8 stdin exited {result.returncode}, expected 0 (fail-open)"
-    # Found by CodeRabbit, 2026-09-18: exit 0 alone doesn't prove the hook
-    # produced no output -- a regression emitting hook output for invalid
-    # bytes would still exit 0. Match check_malformed_json_fails_open's own
-    # stdout assertion.
-    if result.stdout.strip():
-        return False, f"non-UTF8 stdin should produce no stdout, got {result.stdout!r}"
-    return True, "non-UTF-8 stdin fails open (exit 0) with empty stdout, no crash"
-
-
-def check_valid_modes_vocabulary_is_closed(tmp_path):
-    # Direct-import check with a monkeypatched triggers.json containing an extra
-    # "research" key (a deferred mode not in VALID_MODES) -- load_triggers() must
-    # filter it out regardless of what the data file contains, per this skill's
-    # own documented guarantee ("only VALID_MODES may ever be emitted").
-    sys.path.insert(0, str(SKILL_DIR / "scripts"))
-    import importlib
-
-    import detect_mode as dm
-
-    importlib.reload(dm)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        fake_triggers = pathlib.Path(tmp) / "triggers.json"
-        fake_triggers.write_text(
-            json.dumps({"ship": ["ship it"], "research": ["deep dive into"]}),
-            encoding="utf-8",
-        )
-        original_path = dm.TRIGGERS_PATH
-        dm.TRIGGERS_PATH = fake_triggers
-        try:
-            triggers = dm.load_triggers()
-            if "research" in triggers:
-                return False, "load_triggers() did not filter out a non-VALID_MODES key"
-            if "ship" not in triggers:
-                return False, "load_triggers() incorrectly dropped a valid VALID_MODES key"
-            candidates = dm.detect_candidates("let's deep dive into this and ship it", triggers)
-            if "research" in candidates:
-                return False, f"'research' leaked into candidates outside VALID_MODES: {candidates}"
-        finally:
-            dm.TRIGGERS_PATH = original_path
-
-    return True, "non-VALID_MODES keys in triggers.json are filtered, never emitted"
-
-
-def check_skill_md_validates_candidates_before_reading(tmp_path):
-    # Regression guard for the 2026-09-17 security fix: SKILL.md's own Dispatch
-    # logic must validate a candidate value against the closed dev/review/ship/admin
-    # vocabulary BEFORE constructing a references/<value>.md read -- a forged tag
-    # (never produced by the hook, so VALID_MODES never applied to it) with a
-    # path-shaped value like "../../../../CLAUDE.local" would otherwise steer an
-    # arbitrary .md file read. This is a prose/dispatch-logic fix, not executable
-    # code, so the check is structural: confirm the closed-vocabulary guard text
-    # exists and sits before "Single candidate", "Multiple candidates", AND
-    # "Explicit manual request" dispatch steps, not just mentioned once in passing.
-    # The scope was widened the same day (still 2026-09-17) after a security-reviewer
-    # pass found the original fix only covered steps 2/3, leaving the manual-request
-    # channel (step 4) reachable with the identical unvalidated-read primitive.
-    skill_md = SKILL_DIR / "SKILL.md"
-    text = skill_md.read_text(encoding="utf-8")
-    guard_idx = text.find("Closed-vocabulary check")
-    # Match the actual numbered dispatch-step headers, not an earlier prose mention
-    # of the same words elsewhere in the doc (e.g. the tag-format example under
-    # "How activation reaches this skill").
-    single_idx = text.find("**Single candidate**")
-    multi_idx = text.find("**Multiple candidates**")
-    manual_idx = text.find("**Explicit manual request**")
-    if guard_idx == -1:
-        return False, "SKILL.md no longer states a closed-vocabulary check in Dispatch logic"
-    if not (guard_idx < single_idx and guard_idx < multi_idx and guard_idx < manual_idx):
+    run(["ship"], home)
+    r = run(["review"], home)
+    if r.returncode != 3 or "Generic Posture" in r.stdout:
         return (
             False,
-            "closed-vocabulary check does not precede all three dispatch steps it must gate",
+            f"switching to a different mode should exit 3 with no profile, got {r.returncode}",
         )
-    if "steps 2, 3, and 4" not in text[guard_idx : guard_idx + 200]:
-        return False, "closed-vocabulary check's own scope clause no longer names step 4"
-    if "read nothing" not in text[guard_idx : guard_idx + 1000]:
-        return False, "closed-vocabulary check does not state the 'read nothing' refusal action"
-    return True, "SKILL.md's closed-vocabulary check precedes all three dispatch steps it must gate"
+    if "Active context mode: ship" not in run(["status"], home).stdout:
+        return False, "a refused switch changed the saved mode"
+    if run(["ship"], home).returncode != 0:
+        return False, "re-setting the same mode should succeed"
+    for bad in (["replace"], ["replace", "dev"], ["replace", "review", "x"], ["swap", "review"]):
+        if run(bad, home).returncode != 2:
+            return False, f"{bad!r} should exit 2"
+    ok = run(["replace", "review"], home)
+    if ok.returncode != 0 or "# Review Mode" not in ok.stdout:
+        return False, "replace <mode> should switch and print the new profile"
+    if "Active context mode: review" not in run(["status"], home).stdout:
+        return False, "replace did not save the new mode"
+    return True, "a different mode is refused; only an explicit replace switches it"
 
 
-def check_mode_switch_skipped_without_tracking_file(tmp_path):
-    # No session-<hash> file exists -- the same "session already initialized"
-    # precondition strategic-compact's own bash hooks use. Confirms no
-    # mode-<hash> state file is created at all when this gate isn't met, and
-    # (regression guard, scripts-reviewer 2026-09-21) that the mkdir is
-    # correctly deferred past this gate -- ~/.claude/strategic-compact/
-    # itself must never be created as a side effect of context-mode alone in
-    # an install where strategic-compact's own SessionStart hook never ran.
-    home = tmp_path / "home_no_tracking_file"
+def check_state_file_hardening(tmp):
+    home = pathlib.Path(tmp) / "home_harden"
     home.mkdir()
-    session_id = "notinit"
-    payload = json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8")
-    result = run_hook(payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    track_dir = home / ".claude" / "strategic-compact"
-    if track_dir.exists():
-        return (
-            False,
-            "~/.claude/strategic-compact/ was created despite no session tracking file existing "
-            "-- the mkdir is not correctly deferred past the tracking-file gate",
-        )
-    return (
-        True,
-        "mode-switch side effect skipped, creates no directory, when no tracking file exists",
-    )
+    run(["admin"], home)
+    directory = home / ".claude" / "context-kit"
+    if (directory.stat().st_mode & 0o777) != 0o700:
+        return False, "state directory should be created with mode 0700"
+    if [p.name for p in directory.iterdir() if p.name.endswith(".tmp") or ".mode-" in p.name]:
+        return False, "a temp file was left behind"
+    (state,) = state_files(home)
+    target = pathlib.Path(tmp) / "elsewhere.txt"
+    target.write_text("ship\n", encoding="utf-8")
+    state.unlink()
+    state.symlink_to(target)
+    if "No context mode is active" not in run(["status"], home).stdout:
+        return False, "a symlinked state file was trusted"
+    state.unlink()
+    state.write_text("ship" + " " * 4000, encoding="utf-8")
+    if "No context mode is active" not in run(["status"], home).stdout:
+        return False, "an oversized state file was trusted"
+    return True, "state directory is 0700; symlinked and oversized state files are ignored"
 
 
-def check_mode_switch_future_timestamp_self_heals(tmp_path):
-    # Regression guard (scripts-reviewer, 2026-09-21): a corrupted/tampered
-    # mode-<hash> file with LAST_SWITCH_TIME set in the future must not
-    # permanently wedge the throttle -- `throttled = (now - last_switch_time)
-    # < 300` would otherwise stay True forever (an arbitrarily large negative
-    # gap), silently disabling the mode-switch suggestion until the 24h sweep
-    # deletes the file. A future timestamp must be treated the same as
-    # "never emitted" instead.
-    session_id = "futuretimestamp"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    state_file = track_dir / f"mode-{_session_hash(session_id)}"
-    far_future = int(time.time()) + 10_000_000
-    state_file.write_text(f"LAST_MODE=ship\nLAST_SWITCH_TIME={far_future}\n", encoding="utf-8")
-
-    result = run_hook(
-        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
-    )
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    if not pending_file.exists():
-        return (
-            False,
-            "a real mode switch was suppressed by a corrupted future LAST_SWITCH_TIME instead of "
-            "self-healing",
-        )
-    return (
-        True,
-        "a future/corrupted LAST_SWITCH_TIME self-heals, not a permanently wedged throttle",
-    )
+def check_restore_without_project_dir(tmp):
+    home = pathlib.Path(tmp) / "home_restore_noproj"
+    home.mkdir()
+    run(["review"], home)
+    payload = json.dumps({"source": "compact", "session_id": SESSION})
+    env = {"CLAUDE_PROJECT_DIR": ""}
+    r = run([], home, session=None, script=RESTORE, stdin=payload, extra_env=env)
+    if "# Review Mode" not in r.stdout:
+        return False, "restore skipped the saved mode when CLAUDE_PROJECT_DIR is unset"
+    return True, "restore re-injects the saved mode even without CLAUDE_PROJECT_DIR"
 
 
-def check_mode_switch_first_observation_no_suggestion(tmp_path):
-    session_id = "firstobs"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    payload = json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8")
-    result = run_hook(payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    if pending_file.exists():
-        return False, "a pending suggestion was written on the very first mode observation"
-    state_file = track_dir / f"mode-{_session_hash(session_id)}"
-    if "LAST_MODE=ship" not in state_file.read_text(encoding="utf-8"):
-        return False, f"expected LAST_MODE=ship persisted, got: {state_file.read_text()!r}"
-    return True, "first mode observation persists state with no false-positive suggestion"
-
-
-def check_mode_switch_emits_on_real_change(tmp_path):
-    session_id = "realswitch"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    run_hook(json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8"), home)
-    result = run_hook(
-        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
-    )
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    # The primary tag output must still be produced alongside the side effect.
-    out = json.loads(result.stdout.decode("utf-8"))
-    if out["hookSpecificOutput"]["additionalContext"] != "[Context-Mode candidate: review]":
-        return False, f"primary tag output missing/wrong on a turn with a real switch: {out!r}"
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    if not pending_file.exists():
-        return False, "no pending suggestion written on a real, unthrottled mode switch"
-    content = pending_file.read_text(encoding="utf-8")
-    if not content.startswith("[StrategicCompact] Context-mode switched (ship -> review)."):
-        return False, f"pending suggestion has unexpected content: {content!r}"
-    return True, "a real mode switch emits both the primary tag and a pending suggestion"
-
-
-def check_mode_switch_pending_write_is_additive(tmp_path):
-    # Regression guard (CodeRabbit's automated PR review, 2026-09-21, PR #368):
-    # detect_mode.py used to overwrite the pending file, so a not-yet-delivered
-    # suggestion another writer (ctx-compact-track-and-suggest.sh) already queued
-    # there would be silently clobbered. It must append instead.
-    session_id = "additivewrite"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    pending_file.write_text(
-        "[StrategicCompact] Pre-existing queued suggestion.\n", encoding="utf-8"
-    )
-
-    run_hook(json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8"), home)
-    result = run_hook(
-        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
-    )
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    content = pending_file.read_text(encoding="utf-8")
-    if "[StrategicCompact] Pre-existing queued suggestion." not in content:
-        return (
-            False,
-            f"a pre-existing queued suggestion was clobbered instead of preserved: {content!r}",
-        )
-    if "[StrategicCompact] Context-mode switched (ship -> review)." not in content:
-        return False, f"the new mode-switch suggestion was not appended: {content!r}"
-    return True, "a mode-switch suggestion is appended, never overwriting an already-queued one"
-
-
-def check_mode_switch_throttled_within_cooldown(tmp_path):
-    session_id = "throttled"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    run_hook(json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8"), home)
-    run_hook(
-        json.dumps({"session_id": session_id, "prompt": "review this pr"}).encode("utf-8"), home
-    )
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    pending_file.unlink()  # consume the first suggestion, as ctx-compact-stop-check.sh would
-    result = run_hook(
-        json.dumps({"session_id": session_id, "prompt": "fix this bug"}).encode("utf-8"), home
-    )
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    if pending_file.exists():
-        return (
-            False,
-            "a second mode switch within the 5-minute cooldown incorrectly produced a suggestion",
-        )
-    state_file = track_dir / f"mode-{_session_hash(session_id)}"
-    if "LAST_MODE=dev" not in state_file.read_text(encoding="utf-8"):
-        return False, "LAST_MODE should still track the newest mode even while throttled"
-    return (
-        True,
-        "a mode switch within the cooldown window is correctly suppressed, tracking continues",
-    )
-
-
-def check_mode_switch_ignores_ambiguous_multi_candidate_turn(tmp_path):
-    session_id = "ambiguous"
-    home, track_dir = _make_home_with_tracking_file(tmp_path, session_id)
-    run_hook(json.dumps({"session_id": session_id, "prompt": "ship it"}).encode("utf-8"), home)
-    # "review this pr, then ship it" matches both review and ship -- too
-    # ambiguous to treat as a confident mode reading.
-    result = run_hook(
-        json.dumps({"session_id": session_id, "prompt": "review this pr, then ship it"}).encode(
-            "utf-8"
-        ),
+def check_post_compact_restore(tmp):
+    home = pathlib.Path(tmp) / "home_restore"
+    home.mkdir()
+    run(["ship"], home)
+    payload = json.dumps({"source": "compact", "session_id": SESSION})
+    r = run(
+        [],
         home,
+        session=None,
+        script=RESTORE,
+        stdin=payload,
+        extra_env={"CLAUDE_PROJECT_DIR": str(home)},
     )
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0"
-    pending_file = track_dir / f"pending-{_session_hash(session_id)}"
-    if pending_file.exists():
-        return (
-            False,
-            "an ambiguous multi-candidate turn incorrectly produced a mode-switch suggestion",
-        )
-    state_file = track_dir / f"mode-{_session_hash(session_id)}"
-    if "LAST_MODE=ship" not in state_file.read_text(encoding="utf-8"):
-        return (
-            False,
-            "an ambiguous multi-candidate turn incorrectly overwrote the last confident mode",
-        )
-    return True, "an ambiguous multi-candidate turn is ignored for mode-switch tracking"
-
-
-CHECKS = [
-    check_single_candidate_ship,
-    check_multi_candidate_order_of_mention,
-    check_no_match_produces_no_output,
-    check_malformed_json_fails_open,
-    check_non_utf8_fails_open,
-    check_valid_modes_vocabulary_is_closed,
-    check_skill_md_validates_candidates_before_reading,
-    check_mode_switch_skipped_without_tracking_file,
-    check_mode_switch_first_observation_no_suggestion,
-    check_mode_switch_emits_on_real_change,
-    check_mode_switch_pending_write_is_additive,
-    check_mode_switch_throttled_within_cooldown,
-    check_mode_switch_ignores_ambiguous_multi_candidate_turn,
-    check_mode_switch_future_timestamp_self_heals,
-]
+    if r.returncode != 0:
+        return False, f"restore exited {r.returncode}"
+    try:
+        context = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+    except (ValueError, KeyError):
+        return False, "restore printed no additionalContext after a saved mode"
+    if "# Ship Mode" not in context or "# Generic Posture" not in context:
+        return False, "restore did not re-inject the saved mode's profile"
+    other = json.dumps({"source": "compact", "session_id": "another-session"})
+    r2 = run(
+        [],
+        home,
+        session=None,
+        script=RESTORE,
+        stdin=other,
+        extra_env={"CLAUDE_PROJECT_DIR": str(home)},
+    )
+    if "Ship Mode" in r2.stdout:
+        return False, "restore leaked one session's mode into another session"
+    return True, "post-compact restore re-injects the saved mode, per session"
 
 
 def main():
-    failed = False
+    results = [check_structure(), check_hook_removed()]
     with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = pathlib.Path(tmp)
-        for check in CHECKS:
-            ok, message = check(tmp_path)
-            print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
-            failed = failed or not ok
-    sys.exit(1 if failed else 0)
+        for check in (
+            check_set_each_mode,
+            check_refresh_status_off,
+            check_invalid_values,
+            check_no_session_id,
+            check_tampered_state,
+            check_refuses_switch_and_replace,
+            check_state_file_hardening,
+            check_post_compact_restore,
+            check_restore_without_project_dir,
+        ):
+            results.append(check(tmp))
+    failed = 0
+    for ok, msg in results:
+        print(("PASS " if ok else "FAIL ") + msg)
+        failed += 0 if ok else 1
+    print(f"{len(results) - failed}/{len(results)} checks passed")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
