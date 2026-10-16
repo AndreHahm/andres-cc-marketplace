@@ -57,8 +57,9 @@ status and does not print the body it sends.
 
 `whoami` prints the authenticated login (used by `references/next-round-trigger.md`'s authorship
 check). `push-destinations` prints each of `origin`'s push URLs as `owner/repo`, one per line (used by
-Workflow step 4's push-destination check). A URL in an unsupported form prints `unsupported-push-url`
-and never the URL itself, which can carry credentials; an unsupported URL, no push URL at all, or a
+Workflow step 4's push-destination check). A URL in an unsupported form (another host, or anything after
+the repository name such as a query, fragment or extra path) prints `unsupported-push-url` and never the
+URL itself, which can carry credentials; an unsupported URL, no push URL at all, or a
 failing `git` call makes it exit non-zero, and all of those mean "stop before pushing". `issue-create` files an issue in the named repo with
 `--title` (1-256 characters, no control characters) and the body file, and prints the issue URL.
 

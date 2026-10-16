@@ -311,19 +311,32 @@ def _missing_marker_message() -> str:
     )
 
 
+def _push_slug(url: str) -> str | None:
+    """`owner/repo` for a GitHub push URL, or None unless the whole remainder is exactly that.
+
+    Only the recognized prefix, one trailing slash and a `.git` suffix are removed; a query,
+    fragment, extra path segment or any other leftover makes the URL unsupported rather than echoed.
+    """
+    if not GITHUB_URL_PREFIX_RE.match(url):
+        return None
+    slug = GITHUB_URL_PREFIX_RE.sub("", url).rstrip("/").removesuffix(".git")
+    owner, _, repo = slug.partition("/")
+    if OWNER_RE.fullmatch(owner) and REPO_RE.fullmatch(repo) and repo not in (".", ".."):
+        return slug
+    return None
+
+
 def _print_push_destinations(output: str) -> bool:
     """Print one `owner/repo` per push URL; True only if there was at least one and all parsed.
 
-    A URL in an unsupported form prints a fixed marker instead of itself: it can carry credentials,
-    and the caller's comparison against the head repository fails on the marker anyway.
+    A URL in an unsupported form prints a fixed marker instead of itself: it can carry credentials
+    (in the userinfo, a query or a fragment), and the caller's comparison against the head
+    repository fails on the marker anyway.
     """
-    urls = [line.strip() for line in output.splitlines() if line.strip()]
-    for url in urls:
-        if GITHUB_URL_PREFIX_RE.match(url):
-            print(GITHUB_URL_PREFIX_RE.sub("", url).rstrip("/").removesuffix(".git"))
-        else:
-            print(UNSUPPORTED_URL)
-    return bool(urls) and all(GITHUB_URL_PREFIX_RE.match(url) for url in urls)
+    slugs = [_push_slug(line.strip()) for line in output.splitlines() if line.strip()]
+    for slug in slugs:
+        print(slug or UNSUPPORTED_URL)
+    return bool(slugs) and all(slugs)
 
 
 def main(argv=None, *, run=subprocess.run, now=time.time) -> int:

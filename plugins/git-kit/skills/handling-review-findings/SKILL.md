@@ -302,7 +302,10 @@ session.
    convention, following every section in that skill's `assets/issue-template.md` (the single source of
    truth for the template's structure — don't restate its section list here, since that list can drift
    out of sync with the real file), plus the traceability fields `references/github-api-mechanics.md`
-   specifies (PR URL, head SHA, thread/comment URL, reviewer, severity). File it with
+   specifies (PR URL, head SHA, thread/comment URL, reviewer, severity). **Redact before staging or
+   filing**, per `github-issue-creator`'s own guideline: a finding that quotes a secret, token, email or
+   local path is cited by location and uses a placeholder (`[REDACTED_TOKEN]`, `[EMAIL]`,
+   `[LOCAL_PATH]`), never reproduced. File it with
    `git-review-api.py issue-create --owner <owner> --repo <repo> --title "<Summary>" --body-file <path>`
    (the script reads only from the scratchpad, so `Write` the draft's text there first), using a plain,
    non-closing reference ("Found in PR #N") — never "Fixes #N"/"Closes #N", so a merge doesn't
