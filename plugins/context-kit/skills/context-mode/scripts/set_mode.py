@@ -174,7 +174,12 @@ def main(argv: list[str]) -> int:
                     f"Could not clear the saved mode ({exc.__class__.__name__}).", file=sys.stderr
                 )
                 return 1
-        print("Context mode cleared. Only CLAUDE.md and .claude/rules/ apply.")
+        print(
+            "Context mode cleared; it will not be restored after compaction. The earlier "
+            "profile's text is still in this conversation, so a different mode set now is the "
+            "user's explicit override of the one-mode-per-session rule. Only CLAUDE.md and "
+            ".claude/rules/ govern from here on."
+        )
         return 0
 
     print("Unknown mode. Valid values: admin, review, ship, refresh, status, off.", file=sys.stderr)
