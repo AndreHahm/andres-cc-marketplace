@@ -169,6 +169,12 @@ triage:
 python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" list-comments --owner <owner> --repo <repo> --pr <pr>
 ```
 
+The output is JSON Lines, one comment per line, projected to the fields triage uses: `id`,
+`in_reply_to_id`, `user` (the login only), `path`, `line`, `original_line`, `commit_id`, `created_at`,
+`html_url` and `body`. The raw REST comment (about 26 fields plus a 19-field user object, including the
+diff hunk) is about seven times larger and none of the rest is needed here. `commit_id` is the head the
+comment was posted against, which is what round classification compares.
+
 ## Issue traceability payload
 
 Every issue filed from the Issue path (SKILL.md Workflow step 5) must include, beyond
