@@ -15,10 +15,11 @@ this driver runs from wherever it was started, so the exit 2 below for a fix tha
 verifiers (scripts/marketplace_ci/), their registry (.claude/marketplace-sync.json) or this
 script only catches an honest edit. Such a fix cannot be judged by them, so it exits 2. A
 `--worktree` run snapshots the working tree into a throwaway commit built with a temporary
-index and verifies it in a temporary shared clone: no ref, the real index or the working tree
-is touched, but the snapshot's objects (including any untracked, non-ignored file) are written
-to the repository's object store as unreachable objects until `git gc` prunes them. Without
-`--worktree` the committed HEAD is verified in a temporary clone, whatever the disk holds.
+index and verifies it in a temporary shared clone: no ref, the real index or the working tree is
+touched, and no object is written to the repository's object store. The snapshot's objects
+(including any untracked, non-ignored file) go to a temporary object directory that a normal exit
+or an exception deletes; a SIGKILL or SIGTERM leaves it (mode 0700, in the system temp directory).
+Without `--worktree` the committed HEAD is verified in a temporary clone, whatever the disk holds.
 
 Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
 
@@ -109,7 +110,16 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
             "GIT_COMMITTER_NAME": "snapshot",
             "GIT_COMMITTER_EMAIL": "snapshot@example.invalid",
         }
-        env = _clean_env(GIT_INDEX_FILE=os.path.join(tmp, "index"), **ident)
+        objects = os.path.join(tmp, "objects")  # the snapshot's objects land here, not in the repo
+        os.makedirs(os.path.join(objects, "info"))
+        real_objects = _git(
+            repo_root, "rev-parse", "--path-format=absolute", "--git-path", "objects"
+        ).decode()
+        with open(os.path.join(objects, "info", "alternates"), "w", encoding="utf-8") as handle:
+            handle.write(real_objects.strip() + "\n")  # read the repo's objects, never write them
+        env = _clean_env(
+            GIT_INDEX_FILE=os.path.join(tmp, "index"), GIT_OBJECT_DIRECTORY=objects, **ident
+        )
 
         def run(*args: str, cwd: Path = repo_root, env: dict[str, str] = env) -> str:
             return _git(cwd, *args, env=env).decode().strip()
@@ -123,6 +133,9 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
         clone = Path(tmp) / "clone"
         plain = _clean_env(**ident)
         run("clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone), env=plain)
+        alternates = clone / ".git" / "objects" / "info" / "alternates"
+        with alternates.open("a", encoding="utf-8") as handle:
+            handle.write(objects + "\n")  # lets the clone read the snapshot commit
         run("checkout", "-q", "--detach", sha, cwd=clone, env=plain)
         yield clone, sha
 
@@ -154,10 +167,12 @@ def main(argv: list[str] | None = None) -> int:
         top = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             cwd=Path.cwd(),
-            env=_clean_env(),
+            env=_clean_env(LC_ALL="C"),
             capture_output=True,
             text=True,
         )
+        if top.returncode != 0 and "not a git repository" not in top.stderr:
+            raise RuntimeError(f"git could not locate the repository: {top.stderr.strip()}")
         in_repo = top.returncode == 0
         repo_root = Path(top.stdout.strip()) if in_repo else Path.cwd()
         here = (repo_root / _VERIFIERS).is_file()
@@ -200,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 verify_repo, head = stack.enter_context(_commit_clone(repo_root, head_sha))
             raw = _git(
-                repo_root, "diff", "--name-status", "-z", "--find-renames", f"{args.base}..{head}"
+                verify_repo, "diff", "--name-status", "-z", "--find-renames", f"{args.base}..{head}"
             )
             changed = parse_name_status_z(raw)
             if not changed:
