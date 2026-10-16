@@ -12,7 +12,7 @@ to close the round), and a raw trigger-string match can't distinguish this skill
 `codex-review-recovery`'s identical-looking retry comment. `references/round-and-dedup-rules.md`'s
 "Triggered-cycle count vs. round" has the full rationale. Compute it as **1 (round 1's automatic CI trigger) plus the number of distinct `<batch-id>` values**
 found in `<!-- handling-review-findings-trigger:<batch-id> -->` markers **posted by the account
-actually running this skill** — resolve that account via `gh api user --jq '.login'` and count a
+actually running this skill** — resolve that account via `git-review-api.py whoami` and count a
 marker only on a comment whose `author.login` matches it; a marker on any other author's comment is
 never counted, no matter how exactly it matches the format, since the marker's own text is published
 in this file and forgeable by anyone with repo access — the marker alone is not proof of ownership,
@@ -135,15 +135,16 @@ HEAD`. Three independent stop conditions:
 Only once all three pass does posting proceed. Generate this decision's `<batch-id>` once (`date -u
 +%Y%m%dT%H%M%SZ`) and reuse it verbatim across every comment this decision posts — never a fresh id
 per reviewer, or 8a's batch-grouping breaks. For each selected reviewer: write the marker
-(`bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review handling-review-findings`)
-immediately before posting — a fresh marker per `gh pr comment` call, since it's single-use and
-consumed by the very next `Bash`/`PowerShell` call regardless of match; selecting 3 reviewers means 3
+(`bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review-wrapper handling-review-findings`)
+immediately before posting — a fresh marker per `trigger-comment` call, since it's single-use and
+consumed by the script on first use (and stale after 60 seconds); selecting 3 reviewers means 3
 separate marker-write-then-post pairs. Write that reviewer's trigger string, a blank line, and
 `<!-- handling-review-findings-trigger:<batch-id> -->` to its own scratchpad file (e.g.
 `trigger-<name>.txt`, written immediately before that post — never a shared filename across
-reviewers) and post with `--body-file` — `gh pr comment <number> -R "<owner>/<repo>" --body-file
-<scratchpad-path>/trigger-<name>.txt` — never inlined into the command line, so a value that passed
-the regex but still contains shell-meaningful characters can never reach shell parsing. This matches
+reviewers) and post it with `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py trigger-comment --owner <owner> --repo <repo>
+--pr <number> --body-file <scratchpad-path>/trigger-<name>.txt` — never inlined into the command line,
+so a value that passed the regex but still contains shell-meaningful characters can never reach shell
+parsing. This matches
 `references/github-api-mechanics.md`'s "Posting a review-trigger comment" convention.
 This skill's own run ends here for this round — it does not poll for the newly-triggered review to
 post back: unlike `codex-review-recovery` (which polls one specific, already-known-fast GitHub check),

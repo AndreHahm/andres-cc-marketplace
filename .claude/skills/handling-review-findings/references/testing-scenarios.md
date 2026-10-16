@@ -191,8 +191,10 @@
 - [ ] `merge-pr`'s own independent readiness gate is never treated as satisfied by this skill's own
       disclosure — a branch-protection-blocked merge stays blocked regardless of what this workflow
       classified a finding as.
-- [ ] The reply-and-resolve marker (`gh-pr-review`) is always written immediately before the specific
-      `gh api` reply/resolve call it authorizes, never earlier in the run.
+- [ ] The wrapper marker (`gh-pr-review-wrapper`) is always written immediately before the specific
+      `git-review-api.py` `threads`/`resolve`/`reply`/`trigger-comment` call it authorizes, never
+      earlier in the run, and never as a `gh-pr-review` marker (the review guard deletes that type
+      before the script could read it).
 - [ ] Every issue filed via the Issue path includes the full traceability payload (PR URL, head SHA,
       thread/comment URL, reviewer, severity) — never just the standard `github-issue-creator` template
       fields alone.

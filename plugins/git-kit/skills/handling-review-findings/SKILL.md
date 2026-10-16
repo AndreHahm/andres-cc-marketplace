@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(git remote get-url:*), Bash(sed -E:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh:*), Read, Write, AskUserQuestion, Skill(commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, AskUserQuestion, Skill(commit)
 ---
 
 # Handling Review Findings
@@ -87,7 +87,7 @@ own round/dedup budgeting, severity-gate discipline, or marker-handshake step wa
   GitHub issue for a finding — this skill owns any of those actions once a finding is being formally
   triaged.
 - **Working an issue once it's already filed** (triage, relate, verify, prioritize, resolve or decline
-  it) — that's `github-issue-lifecycle`'s job. This skill's own `gh issue create` (Workflow step 5) only
+  it) — that's `github-issue-lifecycle`'s job. This skill's own issue filing (Workflow step 5, `git-review-api.py issue-create`) only
   covers *filing* a PR-review finding as a new issue when the round budget calls for it; once that issue
   exists, this skill never touches it again — it's a freestanding issue at that point, same as any other.
 
@@ -199,22 +199,16 @@ session.
    when the resolved PR reference was empty, which is inherently the current checkout's own PR), pass
    `-R "<owner>/<repo>"` (the same `url`-parsed base repository) on every `gh pr`/`gh issue` call below,
    since the resolved PR reference may name a PR in a different repository than the current checkout.
-   **`gh api` has no `-R`/`--repo` flag at all** (verified against
-   `gh api --help`) — never pass `-R` to it. Its REST calls already carry the resolved owner/repo
-   directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
-   `references/github-api-mechanics.md` mean the real resolved values, not `-R`); its `gh api graphql`
-   calls target a single fixed global endpoint with no per-call repo argument, so scope those by
-   passing `owner`/`name` as explicit GraphQL query variables (`-F owner=... -F name=...`, exactly as
-   `references/github-api-mechanics.md`'s `reviewThreads` query already does) rather than an
-   env-var-prefixed invocation whose interaction with this skill's own `Bash(gh api graphql:*)` grant
-   has not been verified. Per `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
+   **GitHub reads and writes beyond `gh pr`/`gh issue` go through `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py`**, which
+   takes the resolved `--owner`/`--repo`/`--pr` explicitly, never `-R` or an env-var-prefixed `gh`
+   (`references/github-api-mechanics.md` has each subcommand). Per
+   `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
    `gh pr checks` against the resolved PR reference, `gh pr view --json reviews,comments` against the
-   resolved PR reference, and
-   `gh api repos/{owner}/{repo}/pulls/{n}/comments --paginate` (the full inline-thread list — paginated,
-   since a PR with enough inline comments to span multiple API pages would otherwise silently lose
-   later pages from dedup and triage) immediately before acting, never from a state snapshot taken
-   earlier in the conversation — a reviewer can post a new round while a previous one is still being
-   fixed.
+   resolved PR reference, and the script's `list-comments` subcommand (the full inline-thread list —
+   paginated, since a PR with enough inline comments to span multiple API pages would otherwise
+   silently lose later pages from dedup and triage) immediately before acting, never from a state
+   snapshot taken earlier in the conversation — a reviewer can post a new round while a previous one is
+   still being fixed.
 2. **Classify each finding**: dedup against earlier rounds (`references/round-and-dedup-rules.md`),
    determine which round it belongs to, its severity, and whether one of the three named exceptions
    applies (`references/settings-and-round-budget.md`) — including the pre-existing "too large to fix
@@ -258,9 +252,10 @@ session.
    `--push`, push URLs are queried rather than fetch URLs"), so checking it alone misses a
    `remote.origin.pushurl` override or an additional push URL added via `git remote set-url --add
    --push` — either can silently send the push to a different repository than the one just verified
-   (PR #407, CodeRabbit round 2). Query `git remote get-url --push --all origin | sed -E
-   's#^(https://github\.com/|git@github\.com:)##; s#\.git$##'` (the same normalization `commit`'s own
-   bypass-attestation step already uses, applied to every returned line) and require **every** line to
+   (PR #407, CodeRabbit round 2). Run `git-review-api.py push-destinations`
+   (it queries `git remote get-url --push --all origin` and strips the `https://github.com/` or
+   `git@github.com:` prefix and `.git` suffix from every line, the same normalization `commit`'s own
+   bypass-attestation step uses) and require **every** printed line to
    equal `<headRepositoryOwner.login>/<headRepository.name>` — re-fetched via `gh pr view <the
    resolved PR reference> --json headRepositoryOwner,headRepository` — the PR's actual head repository,
    whether or not it differs from the base repository step 1 resolved (a same-repo PR's head
@@ -296,9 +291,9 @@ session.
    narrowing term regardless of total issue count; raise `--limit` further if `--search` alone still
    returns more than 100 hits. Two
    reviewers flagging the same defect in the same round must produce one issue, not two; if a match
-   exists, reply pointing at it instead of filing a duplicate. **Both `gh issue` commands below need the
-   same `-R "<owner>/<repo>"` step 1 resolved** — unlike `gh api`, `gh issue list`/`gh issue create` do
-   support `-R`, and omitting it means both commands silently default to the local checkout's own
+   exists, reply pointing at it instead of filing a duplicate. **Both the `gh issue list` dedup check and the filing call below need the
+   same `<owner>/<repo>` step 1 resolved** (`-R` for `gh issue list`, `--owner`/`--repo` for the script),
+   and omitting it means both silently default to the local checkout's own
    repository, which is wrong whenever the resolved PR reference named a PR in a different one: the dedup check would
    compare against the wrong repository's issues, and a new issue would get filed there too. Otherwise
    draft the issue as a local
@@ -307,7 +302,8 @@ session.
    truth for the template's structure — don't restate its section list here, since that list can drift
    out of sync with the real file), plus the traceability fields `references/github-api-mechanics.md`
    specifies (PR URL, head SHA, thread/comment URL, reviewer, severity). File it with
-   `gh issue create -R "<owner>/<repo>" --title "<Summary>" --body-file <path>`, using a plain,
+   `git-review-api.py issue-create --owner <owner> --repo <repo> --title "<Summary>" --body-file <path>`
+   (the script reads only from the scratchpad, so `Write` the draft's text there first), using a plain,
    non-closing reference ("Found in PR #N") — never "Fixes #N"/"Closes #N", so a merge doesn't
    auto-close a still-open, still-unaddressed issue. Keep the draft file and stage it alongside the
    round's own fix commit when both exist in the same round; if the issue is the round's only outcome,
@@ -347,21 +343,20 @@ session.
 
 ## GitHub API Mechanics
 
-Three operations here are easy to get wrong — replying to an inline review comment
-(`gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`), resolving a review
-thread (no REST endpoint at all, `gh api graphql` only), and posting a review-trigger comment — see
-`references/github-api-mechanics.md` for the exact command shapes and pitfalls; this section only states
-the marker-handshake requirement shared by all of them.
+Every GitHub write, GraphQL call and `gh api` read goes through `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py` — never a
+raw `gh api`, `gh pr comment`, `gh issue create` or `sed`, which this skill no longer has a grant for. Its
+subcommands are `threads` and `resolve` (GraphQL), `reply`, `trigger-comment`, `issue-create`,
+`list-comments`, `whoami` and `push-destinations`; see
+`references/github-api-mechanics.md` for the exact invocations and pitfalls. This section only states
+the marker-handshake requirement shared by the first five.
 
-Immediately before any reply call, resolve call, review-trigger post, or `gh api graphql` call of any
-kind (including the read-only `reviewThreads` lookup — the guard has no read-only carve-out, see
-`references/github-api-mechanics.md`'s "Resolving a review thread" section for why), run
-`bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review handling-review-findings` — this
-writes the marker git-kit's reviewer-action guard (`git-guard-raw-pr-review.sh`) requires before it allows
-these specific `gh api`/`gh pr comment` calls through; it must be written right before each such
-command, not earlier, since the hook only accepts a marker up to 60 seconds old and consumes it on
-first use — if two of these calls happen as separate `Bash` calls, write the marker again immediately
-before each one.
+Immediately before any `threads`, `resolve`, `reply`, `trigger-comment` or `issue-create` call, in its own `Bash` call, run
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review-wrapper handling-review-findings` —
+the script refuses without that marker and consumes it on first use. Use the `gh-pr-review-wrapper`
+type, never `gh-pr-review`: git-kit's reviewer-action guard (`git-guard-raw-pr-review.sh`) deletes every
+`gh-pr-review` marker on the very next `Bash` call, so the script would never see it. A marker is valid
+for 60 seconds and single-use, so write a fresh one immediately before each such call, not earlier;
+`list-comments`, `whoami` and `push-destinations` are read-only and need none.
 
 ## Boundaries
 
@@ -375,23 +370,18 @@ before each one.
 - Never merges, and never implies a PR is mergeable — that determination belongs entirely to `merge-pr`.
 - Never triggers a round beyond `review_findings_max_rounds`, and never asks the reviewer/mode question
   more than once per conversation — Workflow step 8 reuses the first answer for every later round.
-- The `Bash(gh pr comment:*)` grant permits any body/flags — the narrowest form this repo's
-  `allowed-tools` grammar can express (matching `codex-review-recovery`'s own note on the same grant).
-  What actually bounds it is Workflow step 8's own validation (the trigger-string allowlist and
-  reviewer-name match) and the confirmation `AskUserQuestion` showing the exact literal body before
-  posting — never assume the tool grant alone is the safety boundary.
-- Never substitutes a settings-derived trigger string directly into a `gh pr comment` command line —
-  always via a validated, file-based `--body-file` (Workflow step 8), never inline shell interpolation.
-- `Bash(gh api graphql:*)` grants the entire GraphQL surface (including mutations this skill never
-  intends, like `mergePullRequest`/`deleteRef`) — the narrowest form this repo's `allowed-tools`
-  grammar can express, since it can't limit *which* query/mutation document is sent. The only GraphQL
-  documents this skill ever sends are the verbatim `reviewThreads` query and `resolveReviewThread`
-  mutation from `references/github-api-mechanics.md` — never assume the tool grant alone bounds this to
-  those two operations.
-- `Bash(gh api repos/*/pulls/*/comments:*)` and `Bash(gh api repos/*/pulls/*/comments/*/replies:*)` are
-  method-unrestricted, same reasoning as the graphql grant above — `gh api`'s scoping syntax can't
-  separate GET from POST/PATCH/DELETE on the same path. The actual bound is the documented Workflow
-  steps that use them (reading and replying to review-thread comments), not the grant itself.
+- The `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py` grant replaces this skill's former broad
+  `gh api graphql`, `gh api .../pulls/*/comments`, `gh pr comment`, `gh issue create`, `gh api user`
+  and `sed` grants: the script embeds the only two GraphQL documents this skill sends, validates every
+  argument, runs one fixed call per subcommand, reads a body file itself (scratchpad only, symlinks
+  refused, content passed on stdin) and enforces the `gh-pr-review-wrapper` marker itself. It does not
+  validate a comment's or issue's *content* — that is still Workflow step 8's allowlist and
+  reviewer-name check plus the confirmation `AskUserQuestion` showing the exact body before posting.
+  `Write` remains unscoped, so the script's own file is not protected from an agent edit (issue #582).
+- Never substitutes a settings-derived trigger string directly into a command line — always via a
+  validated, file-based `--body-file` (Workflow step 8), never inline shell interpolation.
+- The marker handshake is a guardrail against forgetting the step, not a security boundary: anything
+  able to run `git-write-marker.sh` can satisfy it (see that script's own header and issue #406).
 
 ## Testing & Validation
 
@@ -427,8 +417,8 @@ items than fit here).
 **Test suite:** `evals/handling-review-findings/evals.json` defines 24 scenarios and carries its own
 `testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (10 gates still
 without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
-quality-gates checklist text those fields map against. Eval 21 (the `gh api -f`/`-F` mechanics warning in
-`references/github-api-mechanics.md`) isn't one of `testing-scenarios.md`'s round-budget/dedup scenarios
+quality-gates checklist text those fields map against. Eval 21 (the reply goes through
+`git-review-api.py reply` with a wrapper marker) isn't one of `testing-scenarios.md`'s round-budget/dedup scenarios
 and doesn't count against `testing_validation_coverage`'s declared totals — it's a standalone mechanical
 check, tracked separately in `workspace/iteration-4/`. Eval 22 (the step 8 extraction into
 `references/next-round-trigger.md`, tracked separately in `workspace/iteration-5/`) verifies the
@@ -438,13 +428,15 @@ triggered-cycle-count gate is still computed correctly from the extracted proced
 
 **Structural smoke test:** `scripts/smoke_test.py` — re-run after any `SKILL.md` edit; checks
 frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow step-header sequencing,
-`evals.json` presence, the `gh api -f`/`-F` @-path warning callout in
-`references/github-api-mechanics.md`, and that file's `reviewThreads` example sending a typed
-`-F cursor=null` (never `-f`).
+`evals.json` presence, no raw GitHub grant left in `allowed-tools`, and `git-review-api.py` sending a
+typed `-F cursor=null` and `-F body=@` with every subcommand documented in
+`references/github-api-mechanics.md`. The wrapper's own behavior is covered by
+`tests/marketplace_ci/test_git_review_api_script.py`.
 
-**Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals, **except that eval
-21 has not been re-run since its expected output was narrowed to `-F body=@<path>` only** (its saved
-iteration-4 run predates that change). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
+**Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals, **except that evals
+19 and 21 were rewritten on 2026-10-16 for the `git-review-api.py` wrapper (#580) and have not been
+re-run** (eval 21's saved iteration-4 run predates that rewrite; the wrapper itself is covered by
+`tests/marketplace_ci/test_git_review_api_script.py`, 81 tests, and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
 iteration 3's 3 newest scenarios, evals 18-20, at 100%, with_skill-only; iteration 4's eval 21 at 100%
 against its earlier expectation, with_skill-only; iteration 5's eval 22 at 100%, with_skill-only;
 iteration 7's evals 23-24 at 100%, with_skill-only. Full run history, the security-review

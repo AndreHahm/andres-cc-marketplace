@@ -1,5 +1,6 @@
 # GitHub API Mechanics
 
+- [The wrapper script](#the-wrapper-script)
 - [Replying to an inline PR review comment](#replying-to-an-inline-pr-review-comment)
 - [Resolving a review thread](#resolving-a-review-thread)
 - [Leaving a thread unresolved on purpose](#leaving-a-thread-unresolved-on-purpose)
@@ -9,130 +10,104 @@
 - [Issue-filing convention](#issue-filing-convention)
 - [Scratchpad path](#scratchpad-path)
 
+## The wrapper script
+
+This skill reaches GitHub's REST comment endpoints, GraphQL and top-level PR comments only through
+`${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py` (SKILL.md's GitHub API Mechanics). It runs one fixed `gh` call per
+subcommand, validates every argument, and embeds the only two GraphQL documents this skill sends, so
+the skill needs no broad `gh api graphql` or `gh pr comment` grant. Run it as:
+
+```
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" <subcommand> [flags]
+```
+
+In this repo's own sessions `CLAUDE_PLUGIN_ROOT` is empty; substitute the `.claude/` mirror per
+`.claude/rules/resolve-plugin-root-to-claude-mirror.md`. `<owner>`/`<repo>`/`<pr>` below are the real
+resolved values from Workflow step 1, never `-R`.
+
+| Subcommand | Flags | Marker |
+|---|---|---|
+| `threads` | `--owner --repo --pr [--cursor]` | yes |
+| `resolve` | `--thread-id` | yes |
+| `reply` | `--owner --repo --pr --comment-id --body-file` | yes |
+| `trigger-comment` | `--owner --repo --pr --body-file` | yes |
+| `issue-create` | `--owner --repo --title --body-file` | yes |
+| `list-comments` | `--owner --repo --pr` | no (read-only) |
+| `whoami` | none | no (read-only) |
+| `push-destinations` | none | no (read-only) |
+
+**The marker.** Immediately before each marker-requiring call, in its own `Bash` call, run
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh" gh-pr-review-wrapper handling-review-findings`.
+The script refuses without a fresh one (60 seconds) and deletes it on first use, so write one per call.
+Use the `gh-pr-review-wrapper` type, never `gh-pr-review`: `git-guard-raw-pr-review.sh` deletes every
+`gh-pr-review` marker on the next `Bash` call whether or not that call matches, so the script would
+find nothing. A refusal prints the exact reason on stderr and exits 2; the call is never retried
+without a new marker.
+
+**`--body-file`** is never handed to `gh` as a path. The script resolves it (symlinks followed, so a
+symlinked directory cannot hide the real location), requires the result to sit under the system temp
+directory (where the session scratchpad lives), opens it without following a final symlink, requires a
+regular file, reads it itself (at most 256 KiB, valid UTF-8, non-empty, at most 65,536 characters, which
+is GitHub's comment limit) and passes the content to `gh` on stdin. A file outside the temp directory —
+including an issue draft under the repo's `issues/` — must first be copied there with `Write`. The
+script exits with `gh`'s own status and does not print the body it sends.
+
+`whoami` prints the authenticated login (used by `references/next-round-trigger.md`'s authorship
+check). `push-destinations` prints each of `origin`'s push URLs as `owner/repo`, one per line (used by
+Workflow step 4's push-destination check). `issue-create` files an issue in the named repo with
+`--title` (1-256 characters, no control characters) and the body file, and prints the issue URL.
+
 ## Replying to an inline PR review comment
 
-**The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before this
-reply call, same as the `resolveReviewThread` mutation below** — `git-guard-raw-pr-review.sh` hard-blocks
-this endpoint without one. If a fresh marker isn't written right before it, the call is denied.
-
 ```
-gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies -f body="..."
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" reply --owner <owner> --repo <repo> \
+  --pr <pr> --comment-id <comment_id> --body-file "<scratchpad-path>/reply.txt"
 ```
 
-The shorter, more-intuitive-looking `repos/{owner}/{repo}/pulls/comments/{comment_id}/replies` (no
-`pull_number` segment) 404s — live-verified against this repository's own use of this endpoint. Always
-include `pull_number`.
-
-For a long or multi-line reply body, write it to a scratchpad file first rather than inline shell
-quoting — avoids shell-escaping failures on backtick- or quote-heavy finding text:
-
-```
-gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies \
-  -F body=@"<scratchpad-path>/reply.txt" --silent
-```
-
-**`-f`/`--raw-field` never interprets a leading `@`.** Only `-F`/`--field` reads `@<path>` as a file
-reference (`gh api --help`: `-F, --field key=value` — "use `@<path>` or `@-` to read value from file or
-stdin"; `-f, --raw-field key=value` carries no such behavior). `-f body=@<path>` silently posts the
-literal string `@<path>` as the comment body — no error, no file read. Use `-F body=@<path>` as above,
-never `-f body=@<path>`. Don't substitute `-f body="$(cat <path>)"`: it was reported to be refused by the
-worktree guard (issue #312 comment, 2026-10-07; not independently re-verified here).
+Write the reply text to a scratchpad file first rather than inline shell quoting — this avoids
+shell-escaping failures on backtick- or quote-heavy finding text. The script reads the file
+itself and posts its content as the body, on stdin (`gh api`'s `-F body=@-`; a `-f` field would post
+the literal string instead of the content, which the script never does). The endpoint it calls is
+`repos/<owner>/<repo>/pulls/<pr>/comments/<comment_id>/replies`; the shorter form without the `<pr>`
+segment 404s, so `--pr` is always required.
 
 ## Resolving a review thread
 
-There is no REST endpoint for this at all. It requires GitHub's GraphQL API — first a `reviewThreads`
-query on the PR to obtain the thread's opaque node `id`, then the `resolveReviewThread` mutation keyed
-by that `id`. Both calls go through `gh api graphql -f query=...`. `gh api` has no `-R`/`--repo` flag
-(SKILL.md's Workflow step 1) — if `$ARGUMENTS` named a PR outside the current checkout's repository,
-scope the `reviewThreads` query with explicit `owner`/`name` GraphQL variables (`-F owner=... -F
-name=...`, exactly as the query below already does) rather than an env-var-prefixed (`GH_REPO=...`)
-invocation, whose interaction with this skill's own `Bash(gh api graphql:*)` grant has not been
-verified. The `resolveReviewThread` mutation needs no repo scoping at all — it's keyed entirely by the
-thread's global node `id` resolved from that query.
-
-The complete, executable `reviewThreads` query — a bare `reviewThreads(...) { ... }` fragment with no
-`query`/variable declaration or `repository(owner:...) { pullRequest(number:...) { ... } }` wrapper is
-**not** a submittable GraphQL document (`gh api --help`'s own GraphQL example shows the same
-`repository(owner: $owner, name: $name)` wrapper for exactly this reason); this is the full shape,
-live-verified against this skill's own use this session. Includes the field that bridges a thread node
-back to the REST `comment_id` the reply endpoint above requires, and pagination via `pageInfo`/
-`endCursor` — a single `first: 50` page silently misses any thread beyond the 50th on a PR with more
-review threads than that, so loop on `hasNextPage` rather than treating one page as the complete set:
+There is no REST endpoint for this. It takes GitHub's GraphQL API: first a `reviewThreads` query on the
+PR to obtain the thread's opaque node `id`, then the `resolveReviewThread` mutation keyed by that `id`.
+Both are subcommands of the script; the mutation needs no repo scoping because it is keyed by the
+thread's global node `id`.
 
 ```
-gh api graphql -F owner="{owner}" -F name="{repo}" -F number={pull_number} -F cursor=null -f query='
-query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 50, after: $cursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          id
-          isResolved
-          path
-          line
-          comments(first: 1) {
-            nodes { databaseId body author { login } }
-          }
-        }
-      }
-    }
-  }
-}
-'
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" threads --owner <owner> --repo <repo> --pr <pr>
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" threads --owner <owner> --repo <repo> --pr <pr> \
+  --cursor "<endCursor>"
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" resolve --thread-id "<thread id>"
 ```
 
-Pass `$cursor` as a GraphQL variable: `-F cursor=null` on the first call, then each response's
-`pageInfo.endCursor` on the next via `-f cursor="<endCursor>"`, replacing `-F cursor=null` once a next page
-exists. The first call must use `-F`/`--field`, never `-f`/`--raw-field`: `-f` always sends a string, so
-`-f cursor=null` sends the literal four-character string `"null"` rather than a GraphQL `null`. That has
-been observed to return a silently truncated page with `hasNextPage: false` — zero threads, or the first
-one or more skipped — instead of an error (issue #312), presumably because the string is treated as a
-bogus `after` cursor. `-F` converts the
-bare literal `null` to a real JSON null. Keep querying while `pageInfo.hasNextPage` is `true` before
-treating the accumulated thread list as complete.
-`-F owner=`/`-F name=`/`-F number=` are typed GraphQL variables (`gh api`'s `-F` flag), distinct from
-`-f query=`'s plain string; get `{owner}`/`{repo}` the same way the REST endpoints above do.
+`threads` returns one page of 50: each thread's `id`, `isResolved`, `path`, `line` and its first
+comment's `databaseId`, body and author, plus `pageInfo { hasNextPage endCursor }`. A single page
+silently misses any thread beyond the 50th, so keep calling with the previous response's `endCursor`
+as `--cursor` while `hasNextPage` is `true` before treating the thread list as complete. The first
+call (no `--cursor`) sends a typed GraphQL `null`; the script never sends the string `"null"`, which
+was observed to return a silently truncated page with `hasNextPage: false` (issue #312).
 
-`comments.nodes[0].databaseId` is the REST `comment_id` — the missing link between the GraphQL thread
-list and the REST reply endpoint above.
+`comments.nodes[0].databaseId` is the REST `comment_id` — the link between the GraphQL thread list and
+the `reply` subcommand above.
 
-**The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before
-*every* `gh api graphql` call here, including this `reviewThreads` lookup, not just the
-`resolveReviewThread` mutation below.** An earlier revision of this guard carved out an exception for a
-"verifiably read-only" lookup, matched by checking the command string for `reviewThreads` with no
-`mutation` keyword — that carve-out was removed after three independent reviewers found four different
-ways to defeat a substring match against a raw shell command (indirection via `=@file`/`$(cmd)`/
-backtick/`--input`, a plain shell variable holding the query, and adjacent-quote string concatenation
-splitting the literal word "mutation" across a quote boundary so it never appears contiguously) — see
-`git-guard-raw-pr-review.sh`'s own header comment for the full history. The guard now denies every
-`gh api graphql` call unconditionally absent a fresh marker, so the lookup needs one too. Since a marker
-is single-use and consumed on the very next `Bash`/`PowerShell` call regardless of whether that call
-matches, if the lookup and the mutation happen as two separate `Bash` calls, write the marker again
-immediately before each one — a marker written once before the lookup is already consumed by the time
-the mutation call runs.
+Every `threads` and `resolve` call needs its own marker, including the read-only `threads` lookup. A
+verifiably-read-only carve-out was tried in the guard and removed after three independent reviewers
+found four ways to defeat a substring match on a raw command (see `git-guard-raw-pr-review.sh`'s header
+comment); the script applies the same rule to its own GraphQL calls.
 
-Resolving one thread:
-
-```
-gh api graphql -f query='mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { id isResolved } } }' -f id="$tid"
-```
-
-Batch resolution — several threads in one shot beats N separate calls (Bash-tool syntax, POSIX `for`;
-this repo's agent shell is PowerShell-primary, but the `Bash` tool is a separate, always-available
-surface for exactly this kind of POSIX scripting):
-
-```
-for tid in PRRT_xxx PRRT_yyy; do
-  gh api graphql -f query='mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { id isResolved } } }' -f id="$tid"
-done
-```
+To resolve several threads, make one `resolve` call per thread, each in its own `Bash` call with a
+fresh marker written just before it.
 
 ## Leaving a thread unresolved on purpose
 
 For a deferred (exception-filed, budget-exhausted-and-filed, or declined) finding, reply with the
 tracking-issue link (or the decline acknowledgment) and state explicitly that the thread is being left
-open until the issue is addressed — then simply never call `resolveReviewThread` for it. This is the
+open until the issue is addressed — then simply never call `resolve` for it. This is the
 mechanical counterpart to `references/round-and-dedup-rules.md`'s "deferred findings don't get
 resolved" rule.
 
@@ -157,7 +132,7 @@ not restated here. Write each reviewer's validated string plus this marker to it
 file — `trigger-<name>.txt`,
 written immediately before that specific reviewer's post, never one shared filename reused across
 reviewers (a shared name risks a stale prior reviewer's body surviving a failed or out-of-order write
-and getting posted under the next reviewer's marker instead) — then post with `--body-file`:
+and getting posted under the next reviewer's marker instead) — then post it:
 
 ```
 # trigger-<name>.txt content:
@@ -167,39 +142,25 @@ and getting posted under the next reviewer's marker instead) — then post with 
 ```
 
 ```
-gh pr comment <number> -R "<owner>/<repo>" --body-file "<scratchpad-path>/trigger-<name>.txt"
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" trigger-comment --owner <owner> \
+  --repo <repo> --pr <number> --body-file "<scratchpad-path>/trigger-<name>.txt"
 ```
-
-`--body-file` is a real, confirmed flag on `gh pr comment` specifically (`gh pr comment --help`: `-F,
---body-file file   Read body text from file`) — not assumed from its presence on other `gh` subcommands
-like `gh issue create`.
 
 Posting one comment per selected reviewer is fine; there's no requirement to combine multiple
 reviewers' trigger strings into a single comment, and combining them risks one reviewer's connector
-misparsing text meant for another.
-
-**The `gh-pr-review` marker goes immediately before this call too**, same as the reply/resolve calls
-above — one fresh marker per `gh pr comment` call, never one marker reused across several reviewers'
-posts, since the marker is consumed by the next `Bash`/`PowerShell` call regardless of match. Unlike
-those two, this call needed no *logic* change to `git-guard-raw-pr-review.sh` itself — that hook's `gh pr
-comment` branch already matches any `gh pr comment` invocation unconditionally, regardless of the
-comment body, so the existing guard already covers this new call site for the shapes it can see. Only
-this skill's own `allowed-tools` frontmatter needed the addition (`Bash(gh pr comment:*)`), since the
-skill had never posted a top-level comment before this redesign — only inline replies via the
-`.../replies` endpoint above. This coverage isn't unconditional, though: `git-guard-raw-pr-review.sh`'s own
-header comment discloses residual bypass shapes (command-substitution/backtick/quote-prefix
-indirection, and invocation via a script file the hook never inspects) that apply to every branch in
-that file, including this one — nothing about this new call site closes or reopens those, they're a
-pre-existing property of the guard itself.
+misparsing text meant for another. Write one fresh marker per `trigger-comment` call, never one reused
+across several reviewers' posts. The script checks the file's type and size, not what the trigger text
+says; Workflow step 8's own validation and confirmation are what bound that.
 
 ## Fetching all reviewers together
 
 Pull every reviewer's inline comments in one call and triage as one batch, rather than per-tool —
-consistent with "the round counter is per-PR, not per-reviewer". Paginate — a PR with enough inline
-comments to span multiple API pages otherwise silently loses later pages from dedup and triage:
+consistent with "the round counter is per-PR, not per-reviewer". The subcommand paginates — a PR with
+enough inline comments to span multiple API pages otherwise silently loses later pages from dedup and
+triage:
 
 ```
-gh api repos/{owner}/{repo}/pulls/{pull_number}/comments --paginate
+python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" list-comments --owner <owner> --repo <repo> --pr <pr>
 ```
 
 ## Issue traceability payload

@@ -8,6 +8,11 @@
 # `gh api .../pulls/*/comments/*/replies` / any `gh api graphql` call /
 # `git branch -D <protected-branch>` / `git worktree remove` through.
 #
+# `gh-pr-review-wrapper` is read by scripts/git-review-api.py, not by a PreToolUse hook: that
+# script's own command text contains none of the words git-guard-raw-pr-review.sh matches, so it
+# requires and consumes this marker itself. It is a separate type because the review guard
+# deletes every `gh-pr-review` marker on the next Bash call, before the wrapper could read it.
+#
 # Called by the allowlisted skills (commit, standalone-commits, create-pr,
 # merge-pr, starting-work, collaborating-on-a-pr, explain-pr-changes, git-cleanup,
 # codex-review-recovery, handling-review-findings)
@@ -44,9 +49,9 @@ GUARD_TYPE="${1:?usage: git-write-marker.sh <guard-type> <skill-name>}"
 SKILL_NAME="${2:?usage: git-write-marker.sh <guard-type> <skill-name>}"
 
 case "$GUARD_TYPE" in
-  git-commit|gh-pr-create|gh-pr-merge|git-branch-create|gh-pr-review|git-cleanup-destructive) ;;
+  git-commit|gh-pr-create|gh-pr-merge|git-branch-create|gh-pr-review|gh-pr-review-wrapper|git-cleanup-destructive) ;;
   *)
-    echo "Error: unknown guard type '$GUARD_TYPE' (expected git-commit, gh-pr-create, gh-pr-merge, git-branch-create, gh-pr-review, or git-cleanup-destructive)" >&2
+    echo "Error: unknown guard type '$GUARD_TYPE' (expected git-commit, gh-pr-create, gh-pr-merge, git-branch-create, gh-pr-review, gh-pr-review-wrapper, or git-cleanup-destructive)" >&2
     exit 1
     ;;
 esac

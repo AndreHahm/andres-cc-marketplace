@@ -3,9 +3,9 @@
 referenced-file existence, Bash-scope grant usage (searching SKILL.md's own
 body plus every references/*.md file, since some grants are only used inside
 an extracted reference), step-header sequencing (the "## Workflow" section),
-evals.json presence, the gh api -f/-F warning in
-references/github-api-mechanics.md, and the reviewThreads example's typed
--F cursor=null (7 checks total) -- structural checks
+evals.json presence, no raw GitHub grant left in allowed-tools, and the
+git-review-api.py wrapper's typed -F values plus its documented subcommands
+(7 checks total) -- structural checks
 only, since this is a conversational, gh-CLI-orchestration skill with no
 executable logic of its own to simulate. Adapted from codex-review-recovery's
 own smoke_test.py (same shape and check set)."""
@@ -152,45 +152,68 @@ def check_evals_json_exists():
     return True, f"evals.json present with {len(data['evals'])} scenario(s)"
 
 
-def check_github_api_mechanics_fF_warning():
-    path = SKILL_DIR / "references" / "github-api-mechanics.md"
-    if not path.is_file():
-        return False, f"references/github-api-mechanics.md not found at {path}"
-    text = path.read_text(encoding="utf-8")
-    if "-f" not in text or "-F" not in text:
-        return False, "github-api-mechanics.md doesn't mention both -f and -F flags"
-    if "@" not in text:
-        return (
-            False,
-            "github-api-mechanics.md doesn't mention the @<path> file-reference syntax at all",
-        )
-    if "never interprets a leading" not in text and "never interpret a leading" not in text:
-        return False, "github-api-mechanics.md is missing the -f/-F @-path warning callout"
-    return True, "references/github-api-mechanics.md carries the -f/-F @-path warning"
+WRAPPER = SKILL_DIR.parent.parent / "scripts" / "git-review-api.py"
+SUBCOMMANDS = [
+    "threads",
+    "resolve",
+    "reply",
+    "trigger-comment",
+    "issue-create",
+    "list-comments",
+    "whoami",
+    "push-destinations",
+]
+RAW_GRANTS = (
+    "gh api graphql",
+    "gh api repos",
+    "gh api user",
+    "gh pr comment",
+    "gh issue create",
+    "sed",
+    "git remote get-url",
+)
 
 
-def check_review_threads_cursor_typed(path=None):
-    """The reviewThreads first-page example must send a typed null (-F), not the string "null"."""
-    path = path or SKILL_DIR / "references" / "github-api-mechanics.md"
-    if not path.is_file():
-        return False, f"references/github-api-mechanics.md not found at {path}"
+def check_no_raw_github_grants(path=None):
+    """The skill must reach GitHub only through git-review-api.py (#580): no broad raw grant."""
+    path = path or SKILL_MD
     text = path.read_text(encoding="utf-8")
-    blocks = [
-        b
-        for b in re.findall(r"```[^\n]*\n(.*?)```", text, flags=re.DOTALL)
-        if "gh api graphql" in b and "$cursor" in b
-    ]
-    if not blocks:
-        return False, "no fenced reviewThreads example using $cursor found (issue #312)"
-    for block in blocks:
-        if re.search(r"(?<![A-Za-z])-f\s+cursor=null\b", block):
-            return (
-                False,
-                "reviewThreads example sends -f cursor=null (the string 'null'; issue #312)",
-            )
-        if not re.search(r"-F\s+cursor=null\b", block):
-            return False, "reviewThreads example does not send -F cursor=null on the first call"
-    return True, "reviewThreads first-page example sends a typed null (-F cursor=null)"
+    header_end = text.find("\n---\n", 4) + 5
+    line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
+    if not line:
+        return False, "no allowed-tools line found"
+    grants = line.group(1)
+    if "git-review-api.py" not in grants:
+        return False, "allowed-tools has no git-review-api.py grant"
+    raw = [g for g in RAW_GRANTS if f"Bash({g}" in grants]
+    if raw:
+        return False, "allowed-tools still has a raw grant the wrapper replaced: " + ", ".join(raw)
+    if "git-write-marker.sh gh-pr-review-wrapper" not in grants:
+        return False, "the marker-writer grant is not pinned to the gh-pr-review-wrapper type"
+    return True, "allowed-tools reaches GitHub only through git-review-api.py"
+
+
+def check_wrapper_documented_and_typed(path=None):
+    """The wrapper must exist, send a typed null cursor and body file (issue #312), and every
+    subcommand must be documented in references/github-api-mechanics.md."""
+    path = path or WRAPPER
+    if not path.is_file():
+        return False, f"scripts/git-review-api.py not found at {path}"
+    source = path.read_text(encoding="utf-8")
+    if '"-f", "cursor=null"' in source:
+        return False, "wrapper sends -f cursor=null (the string 'null'; issue #312)"
+    if '"-F", "cursor=null"' not in source:
+        return False, "wrapper does not send -F cursor=null on the first threads call"
+    if '"-F", "body=@-"' not in source:
+        return False, "wrapper does not post the reply body on stdin through -F body=@-"
+    ref = SKILL_DIR / "references" / "github-api-mechanics.md"
+    if not ref.is_file():
+        return False, f"references/github-api-mechanics.md not found at {ref}"
+    docs = ref.read_text(encoding="utf-8")
+    missing = [s for s in SUBCOMMANDS if f"`{s}`" not in docs]
+    if missing:
+        return False, "github-api-mechanics.md does not document: " + ", ".join(missing)
+    return True, "wrapper sends typed -F values and every subcommand is documented"
 
 
 CHECKS = [
@@ -199,8 +222,8 @@ CHECKS = [
     check_bash_grants,
     check_step_sequence,
     check_evals_json_exists,
-    check_github_api_mechanics_fF_warning,
-    check_review_threads_cursor_typed,
+    check_no_raw_github_grants,
+    check_wrapper_documented_and_typed,
 ]
 
 
