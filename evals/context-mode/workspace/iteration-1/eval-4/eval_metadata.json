@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not plan to run the script before the user confirms applying the handoff's mode",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Plans to ask the user (for example with AskUserQuestion) whether to apply the ship mode, or hands that confirmation back to session-handoff",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never plans to use the replace word for a value that came from a handoff",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

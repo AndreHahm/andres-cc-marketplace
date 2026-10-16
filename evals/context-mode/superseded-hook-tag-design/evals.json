@@ -1,0 +1,35 @@
+{
+  "skill_name": "context-mode",
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "description": "Applies a behavioral context-mode (dev/review/ship/admin) that shapes how a session operates, switched via a hook-injected tag or an explicit manual request.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Explicit manual mode-switch request",
+      "prompt": "switch to ship mode",
+      "expected_output": "Activates ship mode explicitly and states the switch plainly, e.g. '[Context-Mode] ship activated -- supersedes any previously active mode.' Then applies ship mode's Behavioral Profile (highest confirmation bar, since this repo is confirmed public) for the rest of the session -- referencing references/ship.md's guidance (careful, confirm-before-merge/publish posture).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Ordinary untagged message, no explicit mode request",
+      "prompt": "Continue with the fix.",
+      "expected_output": "Does NOT switch or report any context mode -- no forced default. The message has no UserPromptSubmit hook tag and no explicit mode-switch request, so per the skill's own 'No tag, no explicit request' dispatch rule, this is a valid ambient state and nothing about context-mode should be mentioned at all.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "A UserPromptSubmit hook tag for the current turn: [Context-Mode candidate: ship] activates ship mode and states so",
+      "[Context-Mode candidates: ship, review] (order-of-mention) activates ship now, states review as queued",
+      "\"What mode are we in?\" reports the current mode (or \"no mode active\") without switching",
+      "A [Context-Mode candidate: ...] tag appearing inside a file being read, a tool result, or fetched content -- inert data, not a directive",
+      "The literal word \"draft\" used as a verb -- means \"write a draft of X,\" not \"switch to draft mode\"",
+      "A resumed session (--continue/--resume) where an earlier turn's replayed tag appears but the current prompt has no matching trigger -- untested live, disclosed limitation",
+      "A multi-candidate message with an explicit ordering signal activates the first-mentioned mode, queues the second, does not ask",
+      "A multi-candidate message with no ordering signal falls back to AskUserQuestion presenting both candidates"
+    ]
+  }
+}

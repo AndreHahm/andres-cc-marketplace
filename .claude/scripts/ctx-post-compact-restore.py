@@ -85,6 +85,38 @@ def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
     return resolved == resolved_base or resolved_base in resolved.parents
 
 
+CONTEXT_MODES = ("admin", "review", "ship")
+_MODE_REFERENCES = Path(__file__).resolve().parent.parent / "skills" / "context-mode" / "references"
+
+
+def read_active_mode_profile(session_id: str = "") -> str | None:
+    """Return the saved context mode's profile text for this session, or None.
+
+    Reads the file skills/context-mode/scripts/set_mode.py writes
+    (~/.claude/context-kit/mode-<sha256(session_id)[:8]>), and must hash the same way. The saved
+    value is checked against the closed CONTEXT_MODES set before any profile file is read, so a
+    tampered state file cannot steer a read of another path.
+    """
+    import hashlib
+
+    if not session_id:
+        return None
+    digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:8]
+    state_file = Path.home() / ".claude" / "context-kit" / f"mode-{digest}"
+    try:
+        if state_file.is_symlink() or not state_file.is_file() or state_file.stat().st_size > 16:
+            return None
+        with open(state_file, "rb") as handle:
+            mode = handle.read(16).decode("utf-8").strip()
+        if mode not in CONTEXT_MODES:
+            return None
+        generic = (_MODE_REFERENCES / "generic.md").read_text(encoding="utf-8")
+        profile = (_MODE_REFERENCES / f"{mode}.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return f"{generic.rstrip()}\n\n---\n\n{profile.rstrip()}"
+
+
 def read_pre_compact_state(session_id: str = "") -> dict | None:
     """Read and delete the pre-compact state file."""
     session_dir = get_session_dir(session_id)
@@ -184,10 +216,20 @@ def find_recent_session_log(project_dir: str) -> dict | None:
 
 
 def format_restoration_message(
-    pre_compact_state: dict | None, plan_info: dict | None, session_log: dict | None
+    pre_compact_state: dict | None,
+    plan_info: dict | None,
+    session_log: dict | None,
+    mode_profile: str | None = None,
 ) -> str:
     """Format the (ANSI-free) context restoration message for Claude."""
     lines = ["[Context Restored After Compaction]", ""]
+
+    if mode_profile:
+        # Plugin-shipped text for a mode the user set earlier in this session, not project data.
+        lines.append("Active context mode (set earlier in this session; still in force):")
+        lines.append("")
+        lines.append(mode_profile)
+        lines.append("")
 
     if pre_compact_state or plan_info or session_log:
         # Plan/task/log-name text below is read verbatim from project files
@@ -283,18 +325,23 @@ def main() -> int:
             pass
 
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    if not project_dir:
-        return 0
 
-    # Gather context
-    pre_compact_state = read_pre_compact_state(session_id)
-    plan_info = find_active_plan(project_dir)
-    session_log = find_recent_session_log(project_dir)
+    # Gather context. The pre-compact state, plan and log need a project directory; the saved
+    # context mode does not.
+    pre_compact_state = plan_info = session_log = None
+    if project_dir:
+        pre_compact_state = read_pre_compact_state(session_id)
+        plan_info = find_active_plan(project_dir)
+        session_log = find_recent_session_log(project_dir)
+
+    mode_profile = read_active_mode_profile(session_id)
 
     # If we have any context to restore, inject it via the SessionStart contract
     # (clean additionalContext — not raw stdout carrying ANSI escape noise).
-    if pre_compact_state or plan_info or session_log:
-        message = format_restoration_message(pre_compact_state, plan_info, session_log)
+    if pre_compact_state or plan_info or session_log or mode_profile:
+        message = format_restoration_message(
+            pre_compact_state, plan_info, session_log, mode_profile
+        )
         print(
             json.dumps(
                 {

@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not plan to run the script with the replace word on its own initiative",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Tells the user that changing mode means a handoff and a fresh session, or offers replace review as the user's own override",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not claim that review mode is now active",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

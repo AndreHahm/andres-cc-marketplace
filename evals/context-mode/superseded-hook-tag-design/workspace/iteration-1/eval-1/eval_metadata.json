@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {"text": "Response explicitly states a mode switch to 'ship' (e.g. contains 'ship' and 'activated')", "type": "functionality", "target": "outputs/"},
+    {"text": "Response never switches silently -- the switch is stated plainly, not just implied", "type": "quality", "target": "outputs/"},
+    {"text": "Response reflects ship mode's higher confirmation-bar posture (mentions confirming before a risky/visible action, e.g. merge/publish/release), not a generic acknowledgement", "type": "quality", "target": "outputs/"}
+  ]
+}
