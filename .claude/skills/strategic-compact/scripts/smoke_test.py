@@ -863,6 +863,39 @@ def check_no_hook_script_falls_back_to_cksum(tmp_path):
     return True, "no hook script falls back to cksum for SESSION_HASH -- MD5 is the only algorithm"
 
 
+def check_session_init_sweeps_expired_mode_files(tmp_path):
+    # Session init removes day-old mode-* leftovers of the removed detect_mode.py hook from the
+    # strategic-compact tracking dir, and 30-day-old saved context modes from the context-kit
+    # state dir; fresher files of both kinds stay.
+    home = tmp_path / "home_mode_sweep"
+    legacy_dir = home / ".claude" / "strategic-compact"
+    state_dir = home / ".claude" / "context-kit"
+    legacy_dir.mkdir(parents=True)
+    state_dir.mkdir(parents=True)
+    now = time.time()
+    day = 86400
+    files = {
+        legacy_dir / "mode-stale": now - 3 * day,
+        legacy_dir / "mode-fresh": now - 60,
+        state_dir / "mode-aged": now - 40 * day,
+        state_dir / "mode-recent": now - 5 * day,
+    }
+    for path, mtime in files.items():
+        path.write_text("ship\n", encoding="utf-8")
+        os.utime(path, (mtime, mtime))
+    payload = json.dumps({"session_id": "sweeptest", "source": "startup"})
+    result = run(HOOKS_DIR / "ctx-compact-session-init.sh", payload, home)
+    if result.returncode != 0:
+        return False, f"session-init exited {result.returncode}, expected 0"
+    gone = sorted(path.name for path in files if not path.exists())
+    if gone != ["mode-aged", "mode-stale"]:
+        return False, f"expected only mode-stale and mode-aged to be swept, got {gone}"
+    return (
+        True,
+        "session-init sweeps day-old legacy and 30-day-old saved mode files, keeps fresher ones",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -892,6 +925,7 @@ CHECKS = [
     check_skill_category_local_override_is_additive,
     check_skill_category_unset_plugin_root_fails_open,
     check_no_hook_script_falls_back_to_cksum,
+    check_session_init_sweeps_expired_mode_files,
 ]
 
 

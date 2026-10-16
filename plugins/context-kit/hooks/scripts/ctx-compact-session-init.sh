@@ -26,6 +26,10 @@ mkdir -p "$TRACK_DIR"
 
 # Clean up old session files (older than 24 hours).
 find "$TRACK_DIR" -name "session-*" -mtime +1 -delete 2>/dev/null || true
+# Leftovers of the removed detect_mode.py hook (removed 2026-10-16); drop this line in a later release.
+find "$TRACK_DIR" -name "mode-*" -mtime +1 -delete 2>/dev/null || true
+# Saved context modes (context-mode's set_mode.py) expire after 30 days.
+find "${HOME:-${USERPROFILE:-/tmp}}/.claude/context-kit" -name "mode-*" -mtime +30 -delete 2>/dev/null || true
 
 # Get session hash
 if command -v md5sum &>/dev/null; then

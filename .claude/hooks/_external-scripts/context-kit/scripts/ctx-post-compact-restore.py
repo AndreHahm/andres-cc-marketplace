@@ -87,7 +87,15 @@ def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
 
 
 CONTEXT_MODES = ("admin", "review", "ship")
-_MODE_REFERENCES = Path(__file__).resolve().parent.parent / "skills" / "context-mode" / "references"
+_HERE = Path(__file__).resolve()
+# Plugin layout (and the .claude/scripts mirror): <root>/scripts/<this file>. The project-local hook
+# copy sits deeper, at .claude/hooks/_external-scripts/context-kit/scripts/, so its profiles are in
+# .claude/skills/ four levels up. The first directory that holds generic.md wins.
+_MODE_REFERENCE_DIRS = tuple(
+    _HERE.parents[depth] / "skills" / "context-mode" / "references"
+    for depth in (1, 4)
+    if len(_HERE.parents) > depth
+)
 
 
 def read_active_mode_profile(session_id: str = "") -> str | None:
@@ -117,8 +125,11 @@ def read_active_mode_profile(session_id: str = "") -> str | None:
             os.close(fd)
         if mode not in CONTEXT_MODES:
             return None
-        generic = (_MODE_REFERENCES / "generic.md").read_text(encoding="utf-8")
-        profile = (_MODE_REFERENCES / f"{mode}.md").read_text(encoding="utf-8")
+        references = next((d for d in _MODE_REFERENCE_DIRS if (d / "generic.md").is_file()), None)
+        if references is None:
+            return None
+        generic = (references / "generic.md").read_text(encoding="utf-8")
+        profile = (references / f"{mode}.md").read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return None
     return f"{generic.rstrip()}\n\n---\n\n{profile.rstrip()}"
