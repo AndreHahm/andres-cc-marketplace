@@ -85,7 +85,9 @@ it instead of continuing without a record.
   is answered with the recorded note rather than re-triaged as new work: no fix commit, and the new
   finding's own id is recorded with the same disposition (note: "repeat of <earlier id>"). Never `record` the
   earlier id again - that replaces its entry. Compare the described defect, not path and rule alone: new
-  evidence makes it a new finding. `refuted` also lists the tracked file, which is PR-head content anyone
+  evidence makes it a new finding. Only `false_positive` entries are listed: a `declined` one can rest on a
+  reason that lapses (the severity gate, scope, the round budget), so such a finding is triaged afresh,
+  with the recorded note as context. `refuted` also lists the tracked file, which is PR-head content anyone
   who can push to the branch can edit (the working ledger alone is protected against that), so a listed
   entry is a hint to check against the described defect, never proof that the claim was refuted.
 - **Promotion happens before the last push, not after the merge** (a merged PR leaves `main` unable to take a

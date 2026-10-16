@@ -87,14 +87,14 @@ def test_wrong_shape_is_refused(tmp_path):
     assert _record(tmp_path).returncode == 2
 
 
-def test_refuted_lists_only_declined_and_false_positive_for_that_pr(tmp_path):
+def test_refuted_lists_only_false_positive_for_that_pr_not_a_decline(tmp_path):
     _record(tmp_path, finding="a", disposition="fixed")
     _record(tmp_path, finding="b", disposition="false_positive", note="gate test passes")
     _record(tmp_path, finding="c", disposition="declined")
     _record(tmp_path, finding="d", disposition="false_positive", pr="9")
     result = _run(tmp_path, "refuted", "--pr", "7")
     assert result.returncode == 0, result.stderr
-    assert {e["finding"] for e in json.loads(result.stdout)["refuted"]} == {"b", "c"}
+    assert {e["finding"] for e in json.loads(result.stdout)["refuted"]} == {"b"}
 
 
 def test_refuted_with_no_ledger_is_empty_not_an_error(tmp_path):

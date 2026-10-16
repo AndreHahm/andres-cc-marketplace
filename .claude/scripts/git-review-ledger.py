@@ -22,7 +22,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 DISPOSITIONS = ("accepted", "fixed", "declined", "false_positive", "ignored")
-REFUTED = ("declined", "false_positive")
+REFUTED = (
+    "false_positive",
+)  # a decline can rest on a reason that lapses; only a refutation stands
 DEFAULT_LOCAL = ".claude/review-ledger.local.json"
 DEFAULT_TRACKED = ".claude/review-outcomes.json"
 
@@ -158,7 +160,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--note")
     record.set_defaults(func=cmd_record)
 
-    refuted = sub.add_parser("refuted", help="list a PR's declined and false-positive entries")
+    refuted = sub.add_parser("refuted", help="list a PR's false-positive entries")
     refuted.add_argument("--pr", type=int, required=True)
     refuted.set_defaults(func=cmd_refuted)
 
