@@ -141,8 +141,8 @@ consumed by the script on first use (and stale after 60 seconds); selecting 3 re
 separate marker-write-then-post pairs. Write that reviewer's trigger string, a blank line, and
 `<!-- handling-review-findings-trigger:<batch-id> -->` to its own scratchpad file (e.g.
 `trigger-<name>.txt`, written immediately before that post — never a shared filename across
-reviewers) and post it with `${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py trigger-comment --owner <owner> --repo <repo>
---pr <number> --body-file <scratchpad-path>/trigger-<name>.txt` — never inlined into the command line,
+reviewers) and post it with `python3 -I "${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py" trigger-comment --owner
+<owner> --repo <repo> --pr <number> --body-file <scratchpad-path>/trigger-<name>.txt` — never inlined into the command line,
 so a value that passed the regex but still contains shell-meaningful characters can never reach shell
 parsing. This matches
 `references/github-api-mechanics.md`'s "Posting a review-trigger comment" convention.

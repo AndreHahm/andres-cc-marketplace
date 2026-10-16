@@ -192,7 +192,7 @@
       disclosure — a branch-protection-blocked merge stays blocked regardless of what this workflow
       classified a finding as.
 - [ ] The wrapper marker (`gh-pr-review-wrapper`) is always written immediately before the specific
-      `git-review-api.py` `threads`/`resolve`/`reply`/`trigger-comment` call it authorizes, never
+      `git-review-api.py` `threads`/`resolve`/`reply`/`trigger-comment`/`issue-create` call it authorizes, never
       earlier in the run, and never as a `gh-pr-review` marker (the review guard deletes that type
       before the script could read it).
 - [ ] Every issue filed via the Issue path includes the full traceability payload (PR URL, head SHA,

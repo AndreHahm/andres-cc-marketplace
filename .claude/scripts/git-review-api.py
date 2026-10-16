@@ -7,9 +7,10 @@ The skill used to hold broad `gh api graphql`, `gh api .../pulls/*/comments`, `g
 This script replaces them with fixed subcommands. Each runs exactly one `gh` (or `git`) call built
 from a static argv (no shell), so no caller input can add an argument or swap the GraphQL document.
 
-A body file is never handed to `gh` as a path: it must resolve (symlinks followed) to a regular file
-under the system temp directory, is opened without following a final symlink, is size- and
-UTF-8-checked here, and its content is passed to `gh` on stdin.
+A body file is never handed to `gh` as a path: it must not be a symlink, must resolve to a regular
+file you own below a `scratchpad` directory of <temp>/claude-<uid>, is opened without following a
+final symlink, is size- and UTF-8-checked here, and its content is passed to `gh` on stdin. It
+needs a POSIX platform (owner and no-follow checks).
 
 The subcommands that write or use GraphQL can no longer be seen by git-guard-raw-pr-review.sh (this
 script's own command text contains none of the words that guard matches), so they enforce the
@@ -55,7 +56,9 @@ NUMBER_RE = re.compile(r"[1-9][0-9]{0,9}")
 THREAD_RE = re.compile(r"PRRT_[A-Za-z0-9_-]+")
 CURSOR_RE = re.compile(r"[A-Za-z0-9+/=_-]+")
 STAMP_RE = re.compile(r"[0-9]{1,10}")
-GITHUB_URL_PREFIX_RE = re.compile(r"^(https://github\.com/|git@github\.com:)")
+GITHUB_URL_PREFIX_RE = re.compile(
+    r"^(?:https?://(?:[^@/]+@)?github\.com/|ssh://(?:[^@/]+@)?github\.com/|git@github\.com:)"
+)
 
 THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
@@ -109,28 +112,46 @@ def _repo_slug(args) -> tuple[str, str]:
     return owner, repo
 
 
-def allowed_body_root() -> str:
-    return os.path.realpath(tempfile.gettempdir())
+def allowed_body_roots() -> list[str]:
+    """Per-user roots a body file may live under: <temp>/claude-<uid> (Claude Code's scratch)."""
+    if not hasattr(os, "getuid"):
+        raise UsageError("--body-file needs a POSIX platform (owner and no-follow checks)")
+    temps = {os.path.realpath(tempfile.gettempdir()), os.path.realpath("/tmp")}
+    return sorted(os.path.join(temp, f"claude-{os.getuid()}") for temp in temps)
+
+
+def _in_scratchpad(real: str, roots: list[str]) -> bool:
+    """True when `real` sits under a root and below a directory named `scratchpad`."""
+    for root in roots:
+        if os.path.commonpath([root, real]) == root:
+            return "scratchpad" in os.path.relpath(real, root).split(os.sep)[:-1]
+    return False
 
 
 def read_body(raw: str) -> bytes:
     """Return the body file's content, or raise UsageError.
 
-    The path is resolved first (so a symlinked parent directory cannot hide the real location),
-    must sit under the temp root, and is then opened with O_NOFOLLOW and checked with fstat so a
-    swap after the check cannot change what is read. procfs-style files fail the root check.
+    The path itself must not be a symlink. It is then resolved (so a symlinked parent directory
+    cannot hide the real location), must sit below a `scratchpad` directory of the per-user
+    scratch tree, and is opened with O_NOFOLLOW and checked with fstat (regular file, owned by the
+    caller) so a swap after the check cannot change what is read. procfs-style files fail the
+    location check. Other sessions' files in the same scratch tree remain readable (residual).
     """
-    root = allowed_body_root()
+    if os.path.islink(raw):
+        raise UsageError(f"--body-file must not be a symlink: {raw!r}")
     real = os.path.realpath(raw)
-    if os.path.commonpath([root, real]) != root:
-        raise UsageError(f"--body-file must be under {root}: {raw!r}")
+    if not _in_scratchpad(real, allowed_body_roots()):
+        raise UsageError(
+            f"--body-file must be in your scratchpad (<temp>/claude-<uid>/.../scratchpad): {raw!r}"
+        )
     try:
         fd = os.open(real, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     except OSError as exc:
         raise UsageError(f"cannot open --body-file {raw!r}: {exc.strerror}") from exc
-    if not stat.S_ISREG(os.fstat(fd).st_mode):
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
         os.close(fd)
-        raise UsageError(f"--body-file is not a regular file: {raw!r}")
+        raise UsageError(f"--body-file is not a regular file owned by you: {raw!r}")
     with os.fdopen(fd, "rb") as handle:
         data = handle.read(MAX_BODY_BYTES + 1)
     if len(data) > MAX_BODY_BYTES:
@@ -277,7 +298,7 @@ def _missing_marker_message() -> str:
 
 def _print_push_destinations(output: str) -> None:
     for line in output.splitlines():
-        line = GITHUB_URL_PREFIX_RE.sub("", line.strip())
+        line = GITHUB_URL_PREFIX_RE.sub("", line.strip()).rstrip("/")
         print(line.removesuffix(".git"))
 
 
