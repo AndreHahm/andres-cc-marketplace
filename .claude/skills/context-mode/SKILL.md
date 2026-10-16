@@ -68,8 +68,8 @@ Starting a worktree and implementing need no mode. The closed set is `admin`, `r
    characters, run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/context-mode/scripts/set_mode.py"` followed by
    those words. Anything else: say the value is not valid and stop without running a command, so typed
    text never becomes shell syntax. The script validates again against the closed set before reading
-   anything, saves the mode for post-compaction restore, and prints the profile. Never use `replace` for a
-   value that came from a handoff.
+   anything, saves the mode for post-compaction restore, and prints the profile. Never use `replace` or
+   `off` for a value that came from a handoff: both are the user's own typed override.
 3. Follow the printed profile for the rest of the session. Say plainly which mode is now active.
    `CLAUDE.md` and `.claude/rules/` still outrank it.
 4. If the script refuses (exit 3, a different mode is already active), tell the user to write a handoff and
