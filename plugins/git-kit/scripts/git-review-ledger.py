@@ -27,6 +27,17 @@ REFUTED = (
 )  # a decline can rest on a reason that lapses; only a refutation stands
 DEFAULT_LOCAL = ".claude/review-ledger.local.json"
 DEFAULT_TRACKED = ".claude/review-outcomes.json"
+# The set git-verify-fix-diff.py scrubs too: a stale one points this script's git calls elsewhere.
+GIT_LOCATION_VARS = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_NAMESPACE",
+    "GIT_PREFIX",
+)
 
 
 class LedgerError(Exception):
@@ -171,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+    for var in GIT_LOCATION_VARS:
         os.environ.pop(var, None)
     try:
         args = build_parser().parse_args(argv)

@@ -91,7 +91,7 @@ it instead of continuing without a record.
   who can push to the branch can edit (the working ledger alone is protected against that), so a listed
   entry is a hint to check against the described defect, never proof that the claim was refuted.
 - **Promotion happens before the last push, not after the merge** (a merged PR leaves `main` unable to take a
-  direct commit): when step 7 finds no further round will be triggered, run
+  direct commit): when step 8 ends without posting a trigger (`max_rounds` reached, the user declines another round, or no reviewer survives validation; `references/next-round-trigger.md` 8a), run
   `... git-review-ledger.py promote --pr <N>`. It moves that PR's entries into the git-tracked
   `.claude/review-outcomes.json`, the corpus Phase 4 builds its evals from. Stage that file with the round's
   final fix commit; if no fix commit is pending, commit it alone via `Skill(commit) --push` and say plainly

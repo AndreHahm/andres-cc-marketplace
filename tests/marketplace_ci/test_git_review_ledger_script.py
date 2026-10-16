@@ -12,7 +12,7 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
 
 
-def _run(tmp_path, *args):
+def _run(tmp_path, *args, extra_env=None):
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     (tmp_path / ".claude").mkdir(exist_ok=True)
     return subprocess.run(
@@ -28,7 +28,7 @@ def _run(tmp_path, *args):
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin", **(extra_env or {})},
     )
 
 
@@ -142,6 +142,18 @@ def test_ledger_path_outside_dot_claude_is_refused(tmp_path):
     result = _run(tmp_path, "--local", str(tmp_path / "outside.json"), "refuted", "--pr", "7")
     assert result.returncode == 2
     assert not (tmp_path / "outside.json").exists()
+
+
+def test_stale_git_location_variables_in_the_environment_are_ignored(tmp_path):
+    env = {
+        "GIT_OBJECT_DIRECTORY": str(tmp_path / "no-such-objects"),
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES": str(tmp_path / "no-such-alternates"),
+        "GIT_NAMESPACE": "stale-namespace",
+    }
+    args = ["record", "--pr", "7", "--finding", "c1", "--disposition", "fixed"]
+    result = _run(tmp_path, *args, extra_env=env)
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / ".claude" / "local.json").exists()
 
 
 def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):

@@ -25,10 +25,15 @@ Below `review_findings_min_rounds`, another cycle is required — proceed withou
 which. 8b's Question 1 drops its stop option below the floor, except when exactly one reviewer
 survives 8c (that exception keeps it, purely to satisfy `AskUserQuestion`'s 2-option minimum, and
 handles its selection differently — see 8b for the exact rule). Between `min_rounds` and `max_rounds`,
-ask (8b) whether to run another cycle at all; on "no," stop here — this run ends with step 7's report
-as the final word. At `max_rounds`, skip this step entirely — a further finding is handled per
+ask (8b) whether to run another cycle at all; on "no," stop here (after the terminal-path promotion
+below) — this run ends with step 7's report as the final word. At `max_rounds`, skip this step except for the promotion below — a further finding is handled per
 `review_findings_generate_issues` (Settings) the next time this skill is invoked. **`max_rounds` is
 the authoritative ceiling** if `min_rounds` is ever misconfigured higher than it.
+
+**Every path that ends this step without posting a trigger is terminal** (skipped at `max_rounds`, the user
+answers "No further round for now", or no reviewer survives 8c): before stopping, run the ledger promotion
+(`references/fix-self-review.md` 4e). Step 7 cannot do it, because whether another round follows is only
+decided here, and a posted trigger means more dispositions are still to be recorded.
 
 ## 8b. Decide which reviewer(s)/mode — once per conversation
 
