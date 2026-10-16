@@ -436,7 +436,7 @@ typed `-F cursor=null` and `-F body=@` with every subcommand documented in
 **Last dated run record:** 2026-09-26 — 100% with_skill pass rate across all 24 evals, **except that evals
 19 and 21 were rewritten on 2026-10-16 for the `git-review-api.py` wrapper (#580) and have not been
 re-run** (eval 21's saved iteration-4 run predates that rewrite; the wrapper itself is covered by
-`tests/marketplace_ci/test_git_review_api_script.py`, 81 tests, and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
+`tests/marketplace_ci/test_git_review_api_script.py` and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
 iteration 3's 3 newest scenarios, evals 18-20, at 100%, with_skill-only; iteration 4's eval 21 at 100%
 against its earlier expectation, with_skill-only; iteration 5's eval 22 at 100%, with_skill-only;
 iteration 7's evals 23-24 at 100%, with_skill-only. Full run history, the security-review

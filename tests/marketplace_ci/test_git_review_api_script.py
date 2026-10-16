@@ -232,6 +232,31 @@ def test_marker_is_consumed_so_a_second_call_is_refused(env):
     assert len(fake.gh_calls) == 1
 
 
+def test_consuming_a_marker_leaves_no_claim_file_behind(env):
+    git_dir, fake, _ = env
+    _write_marker(git_dir)
+    assert _run(fake, ["resolve", "--thread-id", "PRRT_a"]) == 0
+    assert list(git_dir.iterdir()) == []
+
+
+def test_a_marker_swapped_in_by_another_guard_before_the_claim_is_restored_not_deleted(
+    env, monkeypatch
+):
+    git_dir, fake, _ = env
+    _write_marker(git_dir)
+    real_rename = os.rename
+
+    def swap_then_rename(src, dst):
+        Path(src).write_text(f"gh-pr-review {int(time.time())} other\n")
+        real_rename(src, dst)
+
+    monkeypatch.setattr(M.os, "rename", swap_then_rename)
+    assert _run(fake, ["resolve", "--thread-id", "PRRT_a"]) != 0
+    assert fake.gh_calls == []
+    assert (git_dir / "git-kit-marker.txt").read_text().startswith("gh-pr-review ")
+    assert [p.name for p in git_dir.iterdir()] == ["git-kit-marker.txt"]
+
+
 def test_stale_marker_is_refused(env):
     git_dir, fake, _ = env
     _write_marker(git_dir, age=61)
