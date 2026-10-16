@@ -167,6 +167,11 @@ SUBCOMMANDS = [
 # slip past the wrapper; `sed` and `git remote get-url` were replaced by wrapper subcommands too.
 ALLOWED_GH_GRANTS = {"gh pr checks", "gh pr view", "gh repo view", "gh issue list"}
 RAW_GRANTS = ("sed", "git remote get-url")
+# The two Bash commands the skill must hold, compared as whole parsed grants, not as substrings of
+# the allowed-tools line (a `Read(...)` or unrelated `Bash(...)` grant naming the script would
+# satisfy a substring test).
+WRAPPER_GRANT = "python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py"
+MARKER_GRANT = "bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper"
 
 
 def _bash_grants(grants):
@@ -187,18 +192,17 @@ def check_no_raw_github_grants(path=None):
     line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
     if not line:
         return False, "no allowed-tools line found"
-    grants = line.group(1)
-    if "git-review-api.py" not in grants:
-        return False, "allowed-tools has no git-review-api.py grant"
-    commands = _bash_grants(grants)
+    commands = _bash_grants(line.group(1))
+    if WRAPPER_GRANT not in commands:
+        return False, f"allowed-tools has no Bash grant for the pinned `{WRAPPER_GRANT}`"
     broad = [
         c for c in commands if (c == "gh" or c.startswith("gh ")) and c not in ALLOWED_GH_GRANTS
     ]
     raw = [c for c in commands if any(c == r or c.startswith(r + " ") for r in RAW_GRANTS)]
     if broad or raw:
         return False, "allowed-tools has a grant the wrapper replaced: " + ", ".join(broad + raw)
-    if "git-write-marker.sh gh-pr-review-wrapper" not in grants:
-        return False, "the marker-writer grant is not pinned to the gh-pr-review-wrapper type"
+    if MARKER_GRANT not in commands:
+        return False, f"the marker-writer grant is not the pinned `{MARKER_GRANT}`"
     return True, "allowed-tools reaches GitHub only through git-review-api.py"
 
 
