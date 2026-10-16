@@ -9,6 +9,12 @@ A reply and a resolve never happen while 4a exits non-zero (1 or 2), or 4b/4c sh
 
 ## 4a. Re-run the verifiers on the fix's own diff
 
+**Ask first, once per run.** Before the first 4a of a run, ask via `AskUserQuestion`: run the verifier
+self-review (it re-runs this repository's Phase 2 verifiers in a throwaway clone; local only, nothing is
+pushed or posted), skip it for this run, or stop. "Run" covers every later fix in the same run. On "skip",
+the reply's verification line says the user skipped the self-review, and 4e still records the disposition;
+a skip is never assumed from silence or from an earlier run's answer. On "stop", leave the finding open.
+
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py" --worktree --base "$(git rev-parse HEAD)"
 ```

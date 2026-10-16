@@ -144,6 +144,21 @@ def test_ledger_path_outside_dot_claude_is_refused(tmp_path):
     assert not (tmp_path / "outside.json").exists()
 
 
+def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (tmp_path / ".claude").symlink_to(outside)
+    for args in (
+        ["record", "--pr", "7", "--finding", "c1", "--disposition", "fixed"],
+        ["refuted", "--pr", "7"],
+        ["promote", "--pr", "7"],
+    ):
+        result = _run(tmp_path, *args)
+        assert result.returncode == 2, (args, result.stderr)
+        assert "symlink" in result.stderr
+    assert list(outside.iterdir()) == []
+
+
 def test_symlink_escape_from_dot_claude_is_refused(tmp_path):
     outside = tmp_path / "elsewhere"
     outside.mkdir()

@@ -118,6 +118,10 @@
   warrants (`references/round-and-dedup-rules.md`'s Hard Cap section), not left undefined; if that
   content-based judgment is itself uncertain, the finding defaults to Major rather than silently
   defaulting to Minor and risking a real Critical/Major finding bypassing the Hard Cap exception.
+- The first fix of a run passes verification: before running `git-verify-fix-diff.py`, one
+  `AskUserQuestion` offers run / skip / stop (`references/fix-self-review.md` 4a). "Run" is asked once and
+  covers the run's later fixes; "skip" puts the skipped self-review in the reply's verification line and
+  still records the disposition; "stop" leaves the finding open; the verifier is never run on silence.
 
 ## Quality gates
 
