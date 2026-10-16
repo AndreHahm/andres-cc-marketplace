@@ -64,6 +64,6 @@
     "declared_scenarios_total": 7,
     "declared_scenarios_covered": 7,
     "uncovered": [],
-    "coverage_note": "The 3 'activates on' and 4 'does NOT activate on' lines of SKILL.md's Testing & Validation map to evals 1, 6, 8 and 2, 5, 7, 3. Eval 4 (a handoff-reported value) is extra. Runs are plan-only: they show the commands and statements the agent would produce, not the script's real execution, which scripts/smoke_test.py covers."
+    "coverage_note": "The 3 'activates on' and 4 'does NOT activate on' lines of SKILL.md's Testing & Validation map to evals 1, 6, 8 and 2, 5, 7, 3. Eval 4 (a handoff-reported value) is extra, so this file holds 8 evals against 7 declared scenarios. Runs are plan-only: they show the commands and statements the agent would produce, not the script's real execution, which scripts/smoke_test.py covers."
   }
 }
