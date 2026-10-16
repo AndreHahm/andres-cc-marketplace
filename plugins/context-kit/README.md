@@ -1,10 +1,10 @@
 # context-kit
 
-Context-window management and behavioral-mode switching for Claude Code sessions — `strategic-compact`,
+Context-window management and a manually set behavioral mode for Claude Code sessions — `strategic-compact`,
 a skill that owns an automatic, hook-driven layer; 5 more model-invoked skills covering footprint
 auditing, failure diagnosis, the Write/Select/Compress/Isolate framework, targeted retrieval, and live
-context-window health; and a `context-mode` skill that switches operating posture (dev/review/ship/
-admin) mid-session — 7 skills in total.
+context-window health; and a `context-mode` skill that sets the session's operating posture (admin/review/ship) on
+command — 7 skills in total.
 
 `context-kit` tracks tool-call and context usage through a session, suggests strategic compaction at
 natural phase transitions and milestones (rather than letting auto-compact fire at an arbitrary point),
@@ -39,19 +39,17 @@ This is a multi-wave build. Waves shipped so far:
 - **`context-window-analysis`** — a live, in-the-moment check of the current context window's health and
   remediation options, narrower in scope than `context-audit`'s broader footprint audit.
 
-**Wave 3 — behavioral-mode switching:**
+**Wave 3 — behavioral mode:**
 
-- **`context-mode`** — switches operating posture (dev/review/ship/admin, first-pass scope) mid-session
-  without needing a fresh session. A `UserPromptSubmit` hook (`scripts/detect_mode.py`)
-  substring-matches the submitted prompt against `triggers.json`'s phrase lists and injects a
-  `[Context-Mode candidate(s): ...]` tag into context via `additionalContext`; the skill activates only
-  off that hook-delivered tag for the current turn — never from the same string merely appearing in
-  file, tool-output, or fetched content — or an explicit user request. `research`/`plan`/`draft`/`doc`
-  modes are deferred to a later pass; too little real-transcript evidence to build detection against
-  yet. **The 4 mode profiles are written specifically for this marketplace's own toolset** (git-kit,
-  plugin-devkit) rather than generic guidance — installing `context-kit` standalone in an unrelated
-  repo will surface references to tools that don't exist there; see `context-mode`'s own SKILL.md for
-  the full disclosure.
+- **`context-mode`** — sets the session's operating posture (`admin`, `review` or `ship`) once, at the
+  start, with `/context-mode <mode>`; `session-handoff`'s load step passes on a mode named in the handoff.
+  There is no automatic detection and no in-place switching: changing mode means a handoff and a fresh
+  session. `/context-mode refresh` reprints the profile, and `ctx-post-compact-restore.py` re-injects it
+  after a compaction. Starting a worktree and implementing need no mode. **The profiles' repo-specific
+  sections name this marketplace's own toolset** (git-kit, plugin-devkit); installing `context-kit`
+  standalone in an unrelated repo will surface references to tools that don't exist there; see
+  `context-mode`'s own SKILL.md for the full disclosure. The mode set was chosen by a blind premise eval
+  (`evals/context-mode/premise-eval/`).
 
 ## Installation
 

@@ -1,5 +1,15 @@
 # Design History
 
+> **Superseded 2026-10-16.** Everything below describes the earlier detect-and-switch design: a
+> `UserPromptSubmit` hook (`detect_mode.py`) matched phrases from `triggers.json`, injected a
+> `[Context-Mode candidate(s): ...]` tag, and the skill switched among four modes (`dev`, `review`, `ship`,
+> `admin`) mid-session. It was removed after a session analysis (2026-10-14 to 2026-10-16: 86 tags, 0 skill
+> activations, about 80% of tags caused by automated messages such as subagent hand-backs, 8 mode switches
+> of which 2 followed a typed prompt, and every resulting `/compact` suggestion declined) and a three-round
+> blind premise eval (`evals/context-mode/premise-eval/`). The current design sets one of three modes
+> (`admin`, `review`, `ship`) by command at the start of a session; see `SKILL.md`. The trigger lists, hook
+> latency and validation data below are kept only as the record of what was tried.
+
 Summary of the design decisions and real-transcript validation behind `context-mode`, extracted from
 the review session that produced this skill so the rationale ships with the plugin instead of living
 only in a local, gitignored draft.

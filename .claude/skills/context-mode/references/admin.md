@@ -1,74 +1,52 @@
 # Admin Mode
 
-Mode: Setup, bootstrap, maintenance, configuration, installation
-Focus: change how the tooling itself is configured, without breaking or surprising a future session
+Mode: configuration, permissions, setup, and the post-merge cleanup session on the main checkout
+Focus: change how the tooling is configured or remove branches and worktrees, without breaking or
+surprising a future session
 
-You are in admin mode. Config/permission/settings changes outlive this session — they affect every
-future one — so the bar for "confirm first" is higher here than in `dev`.
+Config and permission changes outlive this session, and cleanup is destructive, so the bar for
+"confirm first" is higher here than in ordinary work.
 
-## Behavioral Profile
+## Posture
 
-- **Primary tools**: `update-config`, `plugin-settings`, `pdk-apply-permissions`/`pdk-find-permissions`/
-  `pdk-trim-permissions`, `fewer-permission-prompts`, `git-create-git-kit-local-json`
-- **Secondary tools**: Read/Edit on settings files, `plugin-lifecycle-maintenance`, Bash (to verify
-  install/config state)
-- **Risk tolerance**: Low — prefer the narrowest, most reversible config change that satisfies the
-  request; confirm before anything that weakens a safety gate or is hard to reverse
-- **Verbosity**: Low-medium — state what changed, its scope, and how to undo it
-- **Decision style**: default to the smallest scope (session > project > global) unless told otherwise
+- **Risk tolerance**: low. Prefer the narrowest, most reversible change that satisfies the request.
+- **Scope**: default to the smallest scope (session, then project, then global) unless told otherwise.
+  State the scope before applying anything.
+- **Reversibility**: say how to undo every change.
+- **Weakening a safety gate** (a deny becoming an allow, a blocking hook made non-blocking, a blanket
+  `Bash` allow): name the implication, offer the narrower alternative, and confirm even when the request
+  sounded routine.
+- **Verbosity**: low to medium. State what changed, its scope, and how to undo it.
 
-## Repo-Specific Guidelines
-
-- **"Do X automatically from now on" requires a hook** configured in `settings.json` — the harness
-  executes hooks, not Claude; a memory or stated preference cannot fulfill an automated-behavior
-  request on its own. Route through `update-config`.
-- **Permission changes**: `update-config` for allow/deny/env-var/hook wiring; `fewer-permission-prompts`
-  to reduce friction from observed transcript usage; `pdk-find-permissions`/`pdk-trim-permissions`/
-  `pdk-verify-permissions` to audit or narrow existing grants.
-- **Inventory bootstrap has no plan/apply gate of its own** — `marketplace-inventory`'s and
-  `plugin-inventory`'s `bootstrap` mode writes immediately and unconditionally the moment it's
-  invoked. Get explicit `AskUserQuestion` approval **before** calling bootstrap, never after
-  (`require-inventory-updates-for-new-plugins-and-components.md`'s "No silent writes").
-- **`~/.claude/settings.json`'s `autoMode` field is classifier-blocked from direct edit**, even on
-  explicit request. Don't retry the direct edit — draft the intended change to a `.local.json` for the
-  user to apply themselves.
-- **Ongoing plugin maintenance** (retro-driven improvement, comparison-driven enhancement, keeping
-  plugin-devkit's own rules current, self-checks) routes through `plugin-lifecycle-maintenance`, not
-  ad hoc edits — it ends every workflow in a human-approved, tested, documented, committed change, and
-  the human always picks what to act on next.
-- **Branch/worktree cleanup is destructive**: `git-cleanup` (reached via `finishing-work`'s hand-off),
-  never a raw `git branch -D`/`git worktree remove`. After a cleanup, don't trust `git status`/
-  `git log` alone as proof of being back on `main` — cross-check with a plain filesystem listing
-  (`orphaned-worktree-git-read-fallthrough.md`).
-- **Never update git config**, skip hooks (`--no-verify`), or bypass commit signing unless the user
-  explicitly asks — these are user-owned trust decisions, not admin conveniences.
-- **CODEOWNERS changes** go through `manage-codeowners`, not a raw edit — reviewer-rights changes are
-  shared state affecting who can merge.
-
-## Guidelines
-
-- State the scope of any config change explicitly (this session only / this project / global
-  `~/.claude`) before applying it.
-- For anything that weakens an existing safety gate (a `deny` → `allow`, a blocking hook made
-  non-blocking), confirm even if the specific request sounded routine.
-- Prefer editing an existing settings file over creating a new config location, unless a rule
-  (e.g. `ask-before-config-decisions.md`) says to ask storage/format first for a new configurable
-  component.
-
-## Output Structure
+## Output structure
 
 ```markdown
-## What's changing (config/permission/setup)
+## What's changing (config, permission, setup or cleanup)
 ## Scope (session / project / global ~/.claude)
 ## Reversibility (how to undo)
 ## Confirmation needed before applying?
 ```
 
-## Anti-Patterns
+## Repo-specific routing
 
-- Do NOT promise "I'll remember to do X every time" for something that actually needs a hook.
-- Do NOT run inventory `bootstrap` without prior explicit `AskUserQuestion` approval.
-- Do NOT edit `~/.claude/settings.json`'s `autoMode` directly — draft to `.local.json` instead.
-- Do NOT run a destructive branch/worktree/config operation without confirming scope and
+- "Do X automatically from now on" needs a hook in `settings.json`; a memory or stated preference cannot
+  do it. Route through `update-config`.
+- Permission friction: `fewer-permission-prompts` builds an allowlist from observed use;
+  `pdk-find-permissions`, `pdk-trim-permissions` and `pdk-verify-permissions` audit or narrow grants.
+- Inventory `bootstrap` writes immediately with no plan step. Get `AskUserQuestion` approval before it
+  runs, never after.
+- `~/.claude/settings.json`'s `autoMode` is classifier-blocked from direct edits. Draft the change to a
+  `.local.json` for the user to apply.
+- Post-merge cleanup: `finishing-work` hands branch and worktree deletion to `git-cleanup`; never a raw
+  `git branch -D` or `git worktree remove`. After a worktree is removed, a git read can fall through to
+  the primary checkout, so cross-check with a plain filesystem listing before trusting `git status`.
+- Never change git config, skip hooks (`--no-verify`) or bypass signing unless the user asks. CODEOWNERS
+  changes go through `manage-codeowners`.
+
+## Anti-patterns
+
+- Do not promise "I'll remember to do X every time" for something that needs a hook.
+- Do not run inventory `bootstrap` without prior approval.
+- Do not run a destructive branch, worktree or config operation without confirming scope and
   reversibility first.
-- Do NOT silently widen a permission grant beyond what was actually requested.
+- Do not widen a permission grant beyond what was asked.

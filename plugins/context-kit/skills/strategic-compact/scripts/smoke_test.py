@@ -369,7 +369,7 @@ def check_prefixed_content_with_hostile_tail_is_discarded(tmp_path):
 
 
 def check_stop_hook_delivers_multiple_queued_suggestions(tmp_path):
-    # Two writers (ctx-compact-track-and-suggest.sh, detect_mode.py) can each append a
+    # Two writers (ctx-compact-track-and-suggest.sh, formerly detect_mode.py) could each append a
     # suggestion to the same pending file before Stop drains it -- both must be
     # delivered in one decision:block, not just the first or the last.
     home = tmp_path / "home_multiqueue"
@@ -863,36 +863,6 @@ def check_no_hook_script_falls_back_to_cksum(tmp_path):
     return True, "no hook script falls back to cksum for SESSION_HASH -- MD5 is the only algorithm"
 
 
-def check_session_init_resets_mode_file_on_startup(tmp_path):
-    # Regression guard (scripts-reviewer, 2026-09-21): ctx-compact-session-init.sh's
-    # startup/clear/compact reset must also delete the session's own mode-<hash>
-    # file (detect_mode.py's state), kept symmetric with its existing $TRACK_FILE
-    # counter reset -- otherwise a mode observed before the reset could still be
-    # compared against as a "prior mode" after it.
-    session_init = HOOKS_DIR / "ctx-compact-session-init.sh"
-    home = tmp_path / "home_mode_reset"
-    home.mkdir()
-    import hashlib
-
-    session_id = "modereset"
-    session_hash = hashlib.md5((session_id + "\n").encode(), usedforsecurity=False).hexdigest()[:8]
-    track_dir = home / ".claude" / "strategic-compact"
-    track_dir.mkdir(parents=True)
-    mode_file = track_dir / f"mode-{session_hash}"
-    mode_file.write_text("LAST_MODE=ship\nLAST_SWITCH_TIME=0\n", encoding="utf-8")
-
-    payload = json.dumps({"session_id": session_id, "source": "startup"})
-    result = run(session_init, payload, home)
-    if result.returncode != 0:
-        return False, f"exited {result.returncode}, expected 0: {result.stderr[:300]}"
-    if mode_file.exists():
-        return False, "mode-<hash> file was not reset alongside TRACK_FILE on a startup source"
-    return (
-        True,
-        "ctx-compact-session-init.sh resets the session's mode-<hash> file alongside TRACK_FILE",
-    )
-
-
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -921,7 +891,6 @@ CHECKS = [
     check_skill_category_skipped_without_tracking_file,
     check_skill_category_local_override_is_additive,
     check_skill_category_unset_plugin_root_fails_open,
-    check_session_init_resets_mode_file_on_startup,
     check_no_hook_script_falls_back_to_cksum,
 ]
 

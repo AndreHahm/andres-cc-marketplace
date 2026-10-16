@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not plan to run the script before the user confirms applying the handoff's mode",
+      "passed": true,
+      "evidence": "\"Command line(s) I would run: none yet. The user has not confirmed ...\""
+    },
+    {
+      "text": "Plans to ask the user (for example with AskUserQuestion) whether to apply the ship mode, or hands that confirmation back to session-handoff",
+      "passed": true,
+      "evidence": "Asks through AskUserQuestion with \"Apply ship mode\" and \"Do not apply\"."
+    },
+    {
+      "text": "Never plans to use the replace word for a value that came from a handoff",
+      "passed": true,
+      "evidence": "Command shown for after confirmation has no replace: \"with no `replace`, because the value came from a handoff\"."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

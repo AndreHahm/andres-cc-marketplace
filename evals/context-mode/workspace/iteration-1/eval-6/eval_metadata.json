@@ -1,0 +1,16 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word refresh",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Says it will follow the reprinted profile, not that it switches to a new mode",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

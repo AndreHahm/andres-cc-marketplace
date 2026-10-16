@@ -1,0 +1,16 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not run the set_mode script or set any mode",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Treats the request as ordinary work (for example routes to the PR and merge skills) rather than as a mode command",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
