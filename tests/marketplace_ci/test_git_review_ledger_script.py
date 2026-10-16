@@ -5,6 +5,7 @@ entries into a git-tracked file. Both are JSON. A corrupt file is refused, never
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -242,6 +243,65 @@ def test_record_keeps_the_local_ledger_out_of_git_status(tmp_path):
     assert "/.claude/local.json" in exclude.read_text(encoding="utf-8")
     assert _record(tmp_path, finding="c2").returncode == 0
     assert exclude.read_text(encoding="utf-8").count("/.claude/local.json") == 1
+
+
+def _init_repo(tmp_path):
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / ".claude").mkdir(exist_ok=True)
+    return tmp_path
+
+
+def _exclude_text(tmp_path):
+    exclude = tmp_path / ".git" / "info" / "exclude"
+    return exclude.read_text(encoding="utf-8") if exclude.exists() else ""
+
+
+def test_a_newline_in_the_ledger_path_cannot_write_rules_into_info_exclude(tmp_path):
+    hostile = str(tmp_path / ".claude" / "x\n!/.env\nq.json")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--local", hostile, "record"]
+        + ["--pr", "7", "--finding", "c1", "--disposition", "fixed"],
+        capture_output=True,
+        text=True,
+        cwd=_init_repo(tmp_path),
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "!/.env" not in _exclude_text(tmp_path)
+
+
+def test_a_symlinked_ledger_path_is_refused(tmp_path):
+    root = _init_repo(tmp_path)
+    (root / ".claude" / "real.json").write_text('{"entries": []}\n', encoding="utf-8")
+    (root / ".claude" / "link.json").symlink_to("real.json")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--local", str(root / ".claude" / "link.json"), "record"]
+        + ["--pr", "7", "--finding", "c1", "--disposition", "fixed"],
+        capture_output=True,
+        text=True,
+        cwd=root,
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "symlink" in result.stderr
+    assert json.loads((root / ".claude" / "real.json").read_text(encoding="utf-8")) == {
+        "entries": []
+    }
+
+
+def test_a_path_that_is_not_utf8_is_refused_not_a_traceback(tmp_path):
+    root = _init_repo(tmp_path)
+    odd = os.fsdecode(bytes(root / ".claude") + b"/bad\xff.json")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--local", odd, "record"]
+        + ["--pr", "7", "--finding", "c1", "--disposition", "fixed"],
+        capture_output=True,
+        text=True,
+        cwd=root,
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_a_ledger_a_repository_rule_already_ignores_is_not_excluded_again(tmp_path):

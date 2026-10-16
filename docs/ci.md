@@ -553,8 +553,13 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   last met the target branch (`git merge-base HEAD refs/remotes/origin/HEAD`) and imported from a private
   copy: never from the tree being judged, and never from `--base`, because a PR's own earlier commit can
   precede `--base` and the extracted modules are executed. Without `refs/remotes/origin/HEAD` the run exits
-  2 (`git remote set-head origin -a` sets it). The driver script runs from wherever it is started, so
-  its exit 2 for a fix that edits it catches an honest edit only; CI still judges the pushed head.
+  2 (`git remote set-head origin -a` sets it). `origin` must be the canonical upstream: the ref is local
+  state, so a clone whose `origin` is a contributor's fork would trust that fork's default branch. The
+  branch still picks which version of the target's verifiers judges it (the one at the merge-base). The
+  driver script runs from wherever it is started, so its exit 2 for a fix that edits it catches an honest
+  edit only; it removes its own directory from `sys.path` before any other import, so a sibling module a PR
+  adds there cannot shadow the standard library or the verifiers' dependencies. CI still judges the pushed
+  head.
 - **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; the script has
   no touched-line filter of its own. Verifiers that compare with a base compare with `--base` (the commit
   before the fix), so a value already over its limit before the fix and not worse after it passes here while
@@ -570,7 +575,8 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   clean result is not the CI verdict: CI still judges the pushed head.
 - **Outcomes ledger.** `scripts/git-review-ledger.py` records one disposition per finding in a gitignored
   `.claude/review-ledger.local.json` (`record` adds it to the repository's `.git/info/exclude` when no ignore
-  rule covers it, and refuses to write it if git still does not ignore it) and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
+  rule covers it, and refuses to write it if git still does not ignore it; a ledger path that is a symlink or
+  contains a control character is refused) and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
   before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger.
   Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
 
