@@ -55,7 +55,12 @@ def confine(raw: str, root: Path) -> Path:
     if (root / ".claude").is_symlink():
         raise LedgerError(f"{root / '.claude'} is a symlink; ledgers live in a real .claude/ only")
     path = Path(raw)
-    resolved = (path if path.is_absolute() else root / path).resolve()
+    candidate = path if path.is_absolute() else root / path
+    if candidate.is_symlink():  # a tracked symlink could name a ledger the PR chose
+        raise LedgerError(f"{raw} is a symlink; ledgers are regular files only")
+    resolved = candidate.resolve()
+    if any(ord(c) < 32 for c in str(resolved)):
+        raise LedgerError("a ledger path may not contain control characters")
     if resolved.suffix != ".json":
         raise LedgerError(f"{raw} is not a .json file; ledgers are JSON files only")
     if (root / ".claude").resolve() not in resolved.parents:
@@ -240,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     except LedgerError as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 2
-    except OSError as exc:
+    except (OSError, ValueError) as exc:  # ValueError: a path that is not valid UTF-8
         print(f"Refused: could not read or write a ledger file: {exc}", file=sys.stderr)
         return 2
 

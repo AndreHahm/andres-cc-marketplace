@@ -37,16 +37,23 @@ no changed file was a verifier-covered component: do not report it as "verifiers
 
 from __future__ import annotations
 
+# ruff: noqa: E402
+import os
+import sys
+
+# Python puts this script's own directory first on sys.path. In a checked-out PR that directory is
+# PR content, so a sibling argparse.py or yaml.py would be imported in place of the real module.
+_HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path[:] = [p for p in sys.path if os.path.realpath(p or os.curdir) != _HERE]
+
 import argparse
 import atexit
 import contextlib
 import io
 import json
-import os
 import re
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 from collections.abc import Iterator
@@ -84,26 +91,41 @@ def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> bytes:
     ).stdout
 
 
-def _trusted_commit(repo_root: Path) -> tuple[str | None, str]:
-    """The commit the verifiers are loaded from: where HEAD last met the target branch.
+def _target_ref(repo_root: Path) -> str | None:
+    """The target branch: whatever `refs/remotes/origin/HEAD` points at, or None.
 
-    The target branch is whatever `refs/remotes/origin/HEAD` points at. Nothing on the PR's own
-    branch (including --base, which a PR author's earlier commit can precede) is trusted to
-    supply code that this script then imports. Returns (sha, "") or (None, why not)."""
-    target = subprocess.run(
+    `origin` must be the canonical upstream: this is local state, and a clone whose `origin` is a
+    contributor's fork would trust that fork's default branch."""
+    out = subprocess.run(
         ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
         cwd=repo_root,
         env=_clean_env(),
         capture_output=True,
         text=True,
     )
-    if target.returncode != 0 or not target.stdout.strip():
-        return (
-            None,
-            "no refs/remotes/origin/HEAD to anchor the verifiers (git remote set-head origin -a)",
-        )
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+
+def _has_verifiers(repo_root: Path, rev: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{rev}^{{commit}}:{_VERIFIERS}"],
+            cwd=repo_root,
+            env=_clean_env(),
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+
+
+def _trusted_commit(repo_root: Path, target: str, head_sha: str) -> str:
+    """The commit the verifiers are loaded from: where `head_sha` last met the target branch.
+
+    Nothing on the PR's own branch (including --base, which a PR author's earlier commit can
+    precede) is trusted to supply code that this script then imports. The branch still picks
+    which version of the target's verifiers judges it: the one at that merge-base."""
     merged = subprocess.run(
-        ["git", "merge-base", "HEAD", target.stdout.strip()],
+        ["git", "merge-base", head_sha, target],
         cwd=repo_root,
         env=_clean_env(),
         capture_output=True,
@@ -111,12 +133,14 @@ def _trusted_commit(repo_root: Path) -> tuple[str | None, str]:
     )
     sha = merged.stdout.strip()
     if merged.returncode != 0 or not _OBJECT_ID.fullmatch(sha):
-        return None, "HEAD shares no history with the target branch; no trusted verifiers to load"
-    return sha, ""
+        raise RuntimeError("HEAD shares no history with the target branch; no trusted verifiers")
+    return sha
 
 
 def _load_verifiers(extract_root: Path, base: str):
-    """`run_verifiers` and `parse_name_status_z` as at `base`, imported from a private copy."""
+    """`run_verifiers` and `parse_name_status_z` as at `base`, imported from a private copy.
+
+    `base` is the trusted commit (see `_trusted_commit`), never the caller's --base."""
     archive = _git(
         extract_root,
         "archive",
@@ -214,30 +238,29 @@ def main(argv: list[str] | None = None) -> int:
         here = (repo_root / _VERIFIERS).is_file()
         if in_repo and not _OBJECT_ID.fullmatch(args.base):
             raise RuntimeError(f"base is not a full object id: {args.base!r}")
-        trusted, trusted_error = _trusted_commit(repo_root) if in_repo else (None, "")
-        at_trusted = trusted is not None and (
-            subprocess.run(
-                ["git", "cat-file", "-e", f"{trusted}^{{commit}}:{_VERIFIERS}"],
-                cwd=repo_root,
-                env=_clean_env(),
-                capture_output=True,
-            ).returncode
-            == 0
-        )
-        if not here and not at_trusted:
+        target = _target_ref(repo_root) if in_repo else None
+        at_target = target is not None and _has_verifiers(repo_root, target)
+        if not here and not at_target:
             print(
                 f"No scripts/marketplace_ci/review_verifiers.py in {repo_root}; nothing to check."
             )
             return 0
-        if trusted is None:
-            raise RuntimeError(trusted_error)
-        if not at_trusted:
+        if not in_repo:
+            raise RuntimeError("not inside a git repository; the verifiers cannot be anchored")
+        if target is None:
             raise RuntimeError(
-                "the verifiers are not present at the target branch; nothing trustworthy to run"
+                "no refs/remotes/origin/HEAD to anchor the verifiers "
+                "(git remote set-head origin -a)"
+            )
+        head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
+        trusted = _trusted_commit(repo_root, target, head_sha)
+        if not _has_verifiers(repo_root, trusted):
+            raise RuntimeError(
+                "the verifiers are not present where HEAD met the target branch; "
+                "nothing trustworthy to run"
             )
         if not here:
             raise RuntimeError("the verifiers exist at the target branch but not in this tree")
-        head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         ancestor = subprocess.run(
             ["git", "merge-base", "--is-ancestor", args.base, head_sha],
             cwd=repo_root,

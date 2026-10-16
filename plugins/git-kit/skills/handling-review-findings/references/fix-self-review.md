@@ -31,7 +31,8 @@ over the changed paths and prints `{"checked", "blocking"}`.
   fix); it does not mean an earlier finding is resolved and it is **not the CI verdict** - a size tier that
   was already over its limit before the fix and is not worse after it passes here, and CI can still block.
 - **Verifier modules come from the target branch** (where `HEAD` last met `refs/remotes/origin/HEAD`; without
-  that ref the run exits 2), never from the tree being judged and never from `--base`. The driver script itself runs from
+  that ref the run exits 2; `origin` must be the canonical upstream, not a contributor's fork), never from the tree being
+  judged and never from `--base`. The driver script itself runs from
   wherever you start it, so a fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the
   script cannot be judged by them: it exits 2 (this catches an honest edit only). Report that instead of
   claiming a pass. `--base` must be an ancestor of `HEAD`; without `--worktree` the committed `HEAD` is

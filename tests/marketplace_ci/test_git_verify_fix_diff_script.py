@@ -353,6 +353,67 @@ def test_verifiers_come_from_the_target_branch_not_from_a_weakened_earlier_pr_co
     assert {f["path"] for f in json.loads(result.stdout)["blocking"]} == {SKILL}
 
 
+def _repo_with_verifiers_only_on_target(tmp_path):
+    """main gains the verifiers after `feat` forked from it, so `feat`'s own tree lacks them."""
+    root = tmp_path / "late"
+    root.mkdir()
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "config", "user.email", "t@example.com")
+    _git(root, "config", "user.name", "t")
+    _commit(root, "README.md", "x\n", "root")
+    _git(root, "branch", "feat")
+    shutil.copytree(
+        REPO / "scripts", root / "scripts", ignore=shutil.ignore_patterns("__pycache__")
+    )
+    _git(root, "add", "--", "scripts")
+    _git(root, "commit", "-q", "-m", "add verifiers")
+    _git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    _git(root, "checkout", "-q", "feat")
+    return root
+
+
+def test_branch_forked_before_the_verifiers_existed_is_not_nothing_to_check(tmp_path):
+    root = _repo_with_verifiers_only_on_target(tmp_path)
+    base = _commit(root, SKILL, GOOD, "add skill")
+    _commit(root, SKILL, GOOD + "\nMore text.\n", "fix")
+    result = _run(root, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "nothing to check" not in result.stdout
+
+
+def test_unrelated_history_is_not_nothing_to_check(repo):
+    _git(repo, "checkout", "-q", "--orphan", "other")
+    _git(repo, "rm", "-q", "-r", "-f", "scripts")
+    base = _commit(repo, "other.txt", "o\n", "unrelated root")
+    _commit(repo, "other.txt", "o2\n", "unrelated change")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "nothing to check" not in result.stdout
+
+
+def test_a_module_next_to_the_driver_cannot_shadow_the_standard_library(repo, tmp_path):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    driver_dir = tmp_path / "driver"
+    driver_dir.mkdir()
+    marker = tmp_path / "shadow-ran"
+    shutil.copy(SCRIPT, driver_dir / SCRIPT.name)
+    (driver_dir / "argparse.py").write_text(
+        f"open({str(marker)!r}, 'w').close()\nraise ImportError('shadow')\n", encoding="utf-8"
+    )
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+    result = subprocess.run(
+        [sys.executable, str(driver_dir / SCRIPT.name), "--base", base],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert not marker.exists(), "a PR-controlled sibling module was imported"
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_no_target_branch_ref_means_no_trusted_verifiers(repo):
     base = _commit(repo, SKILL, GOOD, "add skill")
     _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
