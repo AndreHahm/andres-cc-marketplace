@@ -255,6 +255,18 @@ def test_no_temporary_directory_is_left_behind(repo, tmp_path, mode):
     assert list(scratch.iterdir()) == []
 
 
+def test_worktree_mode_refuses_a_sparse_checkout_but_committed_mode_does_not(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _git(repo, "config", "core.sparseCheckout", "true")
+    _write(repo, SKILL, GOOD + "\nMore text.\n")
+    refused = _run(repo, "--worktree", "--base", base)
+    assert refused.returncode == 2, refused.stdout + refused.stderr
+    assert "sparse" in (refused.stdout + refused.stderr)
+    _git(repo, "add", "--", SKILL)
+    _git(repo, "commit", "-q", "-m", "fix")
+    assert _run(repo, "--base", base).returncode == 0
+
+
 # --- security review (#578): fail-open paths --------------------------------------------------
 
 BAD = "---\nname: demo\ndescription: [unclosed\n---\n"

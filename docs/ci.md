@@ -560,7 +560,7 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   ancestor of `HEAD`; without `--worktree` the committed `HEAD` is verified in a temporary clone.
 - **Output and exit codes.** One JSON object with `checked` and `blocking`. Exit 0 is clean,
   1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at `--base` but not
-  in the tree, the diff is empty, or the fix touches what grades it. Exit 0 with "nothing to check" happens only where neither the base nor
+  in the tree, the diff is empty, `--worktree` runs in a sparse checkout, or the fix touches what grades it. Exit 0 with "nothing to check" happens only where neither the base nor
   the tree has `scripts/marketplace_ci/review_verifiers.py` (git-kit is installed in other repositories).
 - **Not covered.** It does not run the model reviewers, the structural check or the computed gate, and a
   clean result is not the CI verdict: CI still judges the pushed head.

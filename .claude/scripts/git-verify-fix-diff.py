@@ -19,6 +19,8 @@ index and verifies it in a temporary shared clone: no ref, the real index or the
 touched, and no object is written to the repository's object store. The snapshot's objects
 (including any untracked, non-ignored file) go to a temporary object directory that a normal exit
 or an exception deletes; a SIGKILL or SIGTERM leaves it (mode 0700, in the system temp directory).
+A `--worktree` run in a sparse checkout exits 2: the snapshot's fresh index would record every
+file outside the sparse cone as deleted.
 Without `--worktree` the committed HEAD is verified in a temporary clone, whatever the disk holds.
 
 Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
@@ -207,6 +209,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         if ancestor.returncode != 0:
             raise RuntimeError("--base is not an ancestor of HEAD")
+        sparse = _git(repo_root, "config", "--bool", "--default", "false", "core.sparseCheckout")
+        if args.worktree and sparse.decode().strip() == "true":
+            raise RuntimeError("--worktree does not support a sparse checkout")
 
         run_verifiers, parse_name_status_z = _load_verifiers(repo_root, args.base)
         with contextlib.ExitStack() as stack:
