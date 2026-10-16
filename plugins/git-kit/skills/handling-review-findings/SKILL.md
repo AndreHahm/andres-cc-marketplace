@@ -445,7 +445,7 @@ re-run** (eval 21's saved iteration-4 run predates that rewrite; the wrapper its
 `tests/marketplace_ci/test_git_review_api_script.py` and the smoke test). Iteration 2's 17 scenarios passed at 100% vs. 86.6% baseline;
 iteration 3's 3 newest scenarios, evals 18-20, at 100%, with_skill-only; iteration 4's eval 21 at 100%
 against its earlier expectation, with_skill-only; iteration 5's eval 22 at 100%, with_skill-only;
-iteration 7's evals 23-24 at 100%, with_skill-only; iteration 8 (2026-10-16, evals 25-28, the Phase 3 fix self-review and outcomes ledger, blind comparison): with_skill 11/12 (91.7%) vs. baseline 8/12 (66.6%), +25 points — eval 27's miss exposed a gap in `references/fix-self-review.md` 4e; after the fix, iteration 9 re-ran it (with_skill only): 3/3. Full run history, the security-review
+iteration 7's evals 23-24 at 100%, with_skill-only; iteration 8 (2026-10-16, evals 25-28, the Phase 3 fix self-review and outcomes ledger, blind comparison, run before the touched-file logic replaced the touched-line one; only eval 27 was re-run): with_skill 11/12 (91.7%) vs. baseline 8/12 (66.6%), +25 points — eval 27's miss exposed a gap in `references/fix-self-review.md` 4e; after the fix, iteration 9 re-ran it (with_skill only): 3/3. Full run history, the security-review
 passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.

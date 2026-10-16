@@ -144,6 +144,12 @@ def test_missing_base_argument_is_a_usage_error(repo):
     assert _run(repo).returncode == 2
 
 
+def test_help_is_a_successful_usage_request(repo):
+    result = _run(repo, "--help")
+    assert result.returncode == 0
+    assert "--base" in result.stdout
+
+
 # --- --worktree: verify the uncommitted fix before it is committed ------------------------------
 
 
