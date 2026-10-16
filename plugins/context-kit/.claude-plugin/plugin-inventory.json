@@ -642,6 +642,47 @@
         }
       ],
       "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e40058bd",
+      "name": "PreToolUse-1",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PreToolUse-1",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-16",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-16",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
     }
   ],
   "domain_prefix": "context",

@@ -58,3 +58,5 @@ This gap is already disclosed in `plugins/context-kit/skills/strategic-compact/S
 & Validation section as a known, tracked limitation — not silently hidden. This issue exists to track
 the actual follow-up work; filing it (rather than writing the tests inline) was an explicit decision to
 defer the test-writing to a follow-up pass rather than block the wave-4 QA PR on it.
+
+> Note (2026-10-16): `detect_mode.py` and its hook were removed by the `context-mode` refactor; references to it above describe the state when this issue was written.
