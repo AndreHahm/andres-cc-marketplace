@@ -169,8 +169,8 @@
     {
       "id": 19,
       "name": "A multi-reviewer selection counts as one triggered cycle, not one per reviewer",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls, and you must NOT actually call AskUserQuestion.\n\nPR #200. Round 1 (CI-triggered) has been fully triaged. The user was already asked (via the two-question trigger-ask) which reviewer(s)/mode to trigger for round 2, and selected both Codex and Devin (Question 1) with the Default review profile (Question 2). `review_findings_max_rounds` is `3`.\n\nDescribe exactly what gets posted for this decision (how many separate `gh pr comment` calls, and what each comment's body contains), and then describe how this decision affects the triggered-cycle count when a round-3 decision is later being made. Write your answer to `outputs/batch.md`.",
-      "expected_output": "Describes exactly 2 separate `gh pr comment` calls for this decision -- one for Codex (body: `@codex review` followed by a blank line and the marker), one for Devin (body: `/devin review` followed by a blank line and the marker) -- and explicitly states both comments carry the *same* `<batch-id>` value, generated once for this decision and reused verbatim across both posts, never a fresh id per reviewer. States plainly that when the triggered-cycle count is next computed, these two comments count as exactly ONE additional cycle (not two), because they share one batch-id -- so the count after this decision is 2 (1 for round 1, 1 for this two-reviewer round-2 batch), not 3. Does not describe counting per-comment.",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls, and you must NOT actually call AskUserQuestion.\n\nPR #200. Round 1 (CI-triggered) has been fully triaged. The user was already asked (via the two-question trigger-ask) which reviewer(s)/mode to trigger for round 2, and selected both Codex and Devin (Question 1) with the Default review profile (Question 2). `review_findings_max_rounds` is `3`.\n\nDescribe exactly what gets posted for this decision (how many separate `git-review-api.py trigger-comment` calls, and what each comment's body contains), and then describe how this decision affects the triggered-cycle count when a round-3 decision is later being made. Write your answer to `outputs/batch.md`.",
+      "expected_output": "Describes exactly 2 separate `trigger-comment` calls for this decision -- one for Codex (body: `@codex review` followed by a blank line and the marker), one for Devin (body: `/devin review` followed by a blank line and the marker) -- and explicitly states both comments carry the *same* `<batch-id>` value, generated once for this decision and reused verbatim across both posts, never a fresh id per reviewer. States plainly that when the triggered-cycle count is next computed, these two comments count as exactly ONE additional cycle (not two), because they share one batch-id -- so the count after this decision is 2 (1 for round 1, 1 for this two-reviewer round-2 batch), not 3. Does not describe counting per-comment.",
       "files": [
         "outputs/batch.md"
       ]
@@ -186,9 +186,9 @@
     },
     {
       "id": 21,
-      "name": "gh api -f vs -F: does not use -f body=@<path>",
-      "prompt": "You need to reply to an inline PR review comment using `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`, per `references/github-api-mechanics.md`'s 'Replying to an inline PR review comment' section. The reply body is long (multi-paragraph, contains backticks and quotes) and has already been written to a scratchpad file at `/tmp/scratch/reply.txt`. Write the exact `gh api` command you would run to post this reply, and explain why you chose that exact form for passing the body. Save your answer to `outputs/command.md`.",
-      "expected_output": "Uses `-F body=@/tmp/scratch/reply.txt` -- never `-f body=@/tmp/scratch/reply.txt`, which silently posts the literal string `@/tmp/scratch/reply.txt` as the comment body instead of the file's content. Explains that `-f`/`--raw-field` never interprets a leading `@` as a file reference -- only `-F`/`--field` does.",
+      "name": "reply goes through git-review-api.py reply with --body-file and a wrapper marker",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR, and you must NOT run anything. You need to reply to inline review comment 4242 on PR 579 of AndreHahm/andres-cc-marketplace, per `references/github-api-mechanics.md`'s 'Replying to an inline PR review comment' section. The reply body is long (multi-paragraph, contains backticks and quotes) and has already been written to a scratchpad file at `/tmp/scratch/reply.txt`. Write the exact sequence of Bash commands you would run to post this reply, and explain why you chose that form. Save your answer to `outputs/command.md`.",
+      "expected_output": "Two separate Bash calls, in order: first `git-write-marker.sh gh-pr-review-wrapper handling-review-findings` (the `gh-pr-review-wrapper` type, not `gh-pr-review`), then `python3 -I .../scripts/git-review-api.py reply --owner AndreHahm --repo andres-cc-marketplace --pr 579 --comment-id 4242 --body-file /tmp/scratch/reply.txt`. Does not run a raw `gh api` command (the skill has no grant for one), does not inline the body, and does not pass the body with `-f`. Explains that the marker is single-use and consumed by the script, and that it is written in its own call right before the reply.",
       "files": [
         "outputs/command.md"
       ]
@@ -330,7 +330,7 @@
         "note": "asserted in the disclosure text produced by these evals; not independently exercised against a real merge-pr call"
       },
       {
-        "gate": "The gh-pr-review marker is written immediately before the specific gh api/gh pr comment call it authorizes, never earlier, and never reused across reviewers",
+        "gate": "The gh-pr-review-wrapper marker is written immediately before the specific git-review-api.py call it authorizes, never earlier, and never reused across reviewers",
         "covered_by": [],
         "note": "NOT exercised -- evals are explicitly instructed not to attempt any gh/API calls, so no eval exercises marker timing; this is mechanical/procedural, not a triage-decision behavior an eval can test"
       },
@@ -446,7 +446,7 @@
     "gates_fully_covered": 21,
     "uncovered_gates": [
       "State is always re-fetched immediately before a side-effecting action, never reused",
-      "The gh-pr-review marker is written immediately before the specific gh api/gh pr comment call it authorizes, never earlier, and never reused across reviewers",
+      "The gh-pr-review-wrapper marker is written immediately before the specific git-review-api.py call it authorizes, never earlier, and never reused across reviewers",
       "Step 8 never fires at all once max_rounds is reached",
       "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD",
       "A reviewer whose name field fails the identifier pattern is excluded from the trigger-ask before its trigger string is checked at all",

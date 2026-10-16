@@ -173,7 +173,7 @@ filed with no trace on the PR reads as the finding being silently dropped.
 
 ## Why the next-round trigger doesn't poll
 
-Workflow step 8 posts a trigger comment (`gh pr comment`) to start the next round, then ends this
+Workflow step 8 posts a trigger comment (`git-review-api.py trigger-comment`) to start the next round, then ends this
 skill's own run for that round rather than waiting for the review to actually post back. This is a
 deliberate difference from `codex-review-recovery`, which does poll (up to 10 times, 30 seconds apart)
 after posting its own retry comment — that skill can poll because it's watching one specific,
