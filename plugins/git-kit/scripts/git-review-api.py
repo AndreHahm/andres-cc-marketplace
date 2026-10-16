@@ -238,16 +238,34 @@ def consume_marker(run, now: float) -> None:
     marker = Path(probe.stdout.strip()) / "git-kit-marker.txt"
     if marker.is_symlink() or not marker.is_file():
         raise UsageError(_missing_marker_message())
-    fields = marker.read_text(errors="replace").split()
-    if len(fields) < 2 or fields[0] != GUARD or not STAMP_RE.fullmatch(fields[1]):
+    if not _is_wrapper_marker(marker.read_text(errors="replace").split()):
         raise UsageError(_missing_marker_message())
-    age = now - int(fields[1])
+    # Claim the marker with an atomic rename before trusting it: a concurrent caller loses the
+    # rename, and a marker another guard wrote after the check above is restored, never deleted.
+    claimed = marker.with_name(f"{marker.name}.claim.{os.getpid()}")
     try:
-        marker.unlink()
+        os.rename(marker, claimed)
+        fields = claimed.read_text(errors="replace").split()
     except OSError as exc:
         raise UsageError(f"could not consume the marker: {exc}") from exc
+    if not _is_wrapper_marker(fields):
+        try:
+            os.link(claimed, marker)
+        except OSError:
+            pass
+        claimed.unlink(missing_ok=True)
+        raise UsageError(_missing_marker_message())
+    try:
+        claimed.unlink()
+    except OSError as exc:
+        raise UsageError(f"could not consume the marker: {exc}") from exc
+    age = now - int(fields[1])
     if not 0 <= age <= MARKER_MAX_AGE:
         raise UsageError(f"the {GUARD} marker is stale or future-dated; write a fresh one")
+
+
+def _is_wrapper_marker(fields: list[str]) -> bool:
+    return len(fields) >= 2 and fields[0] == GUARD and bool(STAMP_RE.fullmatch(fields[1]))
 
 
 def _missing_marker_message() -> str:
