@@ -13,11 +13,12 @@ Prints one JSON object: {"checked": [...], "blocking": [...]}.
 The verifier modules are loaded (`git archive`) from the commit where HEAD last met the target
 branch (`refs/remotes/origin/HEAD`), never from the tree being judged and never from `--base`: a
 PR's own earlier commit can precede `--base`, and the loaded modules are imported and run. Without
-that ref the run exits 2. This driver runs from wherever it was started, so the exit 2 below for a
-fix that changes the verifiers (scripts/marketplace_ci/), their registry
+that ref, or when `origin`'s fetch URL is not the required `--upstream owner/repo` (the PR's base
+repository), the run exits 2. This driver runs from wherever it was started, so the exit 2 below
+for a fix that changes the verifiers (scripts/marketplace_ci/), their registry
 (.claude/marketplace-sync.json) or this script only catches an honest edit. Such a fix cannot be
-judged by them, so it exits 2. A
-`--worktree` run snapshots the working tree into a throwaway commit built with a temporary
+judged by them, so it exits 2. A `--worktree` run snapshots the working tree into a throwaway
+commit built with a temporary
 index and verifies it in a temporary shared clone: no ref, the real index or the working tree is
 touched, and no object is written to the repository's object store. The snapshot's objects
 (including any untracked, non-ignored file) go to a temporary object directory that a normal exit
@@ -60,6 +61,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 _OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+_REPO = r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"
+_UPSTREAM = re.compile(_REPO)
+_ORIGIN_URL = re.compile(
+    rf"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)({_REPO}?)(?:\.git)?/?"
+)
 _VERIFIERS = "scripts/marketplace_ci/review_verifiers.py"
 _UNJUDGEABLE = (
     "scripts/marketplace_ci/",
@@ -91,11 +97,23 @@ def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> bytes:
     ).stdout
 
 
+def _origin_repo(repo_root: Path) -> str | None:
+    """`owner/repo` named by origin's fetch URL when it is a GitHub URL, else None."""
+    out = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=repo_root,
+        env=_clean_env(),
+        capture_output=True,
+        text=True,
+    )
+    matched = _ORIGIN_URL.fullmatch(out.stdout.strip()) if out.returncode == 0 else None
+    return matched.group(1) if matched else None
+
+
 def _target_ref(repo_root: Path) -> str | None:
     """The target branch: whatever `refs/remotes/origin/HEAD` points at, or None.
 
-    `origin` must be the canonical upstream: this is local state, and a clone whose `origin` is a
-    contributor's fork would trust that fork's default branch."""
+    This is local state; main() only trusts it after `origin` is confirmed to be --upstream."""
     out = subprocess.run(
         ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
         cwd=repo_root,
@@ -216,6 +234,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="git-verify-fix-diff.py")
     parser.add_argument("--base", required=True, help="full object id of the commit before the fix")
     parser.add_argument(
+        "--upstream",
+        required=True,
+        help="owner/repo of the PR's base repository; origin's fetch URL must name it",
+    )
+    parser.add_argument(
         "--worktree", action="store_true", help="verify the uncommitted working tree, not HEAD"
     )
     try:
@@ -251,6 +274,14 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError(
                 "no refs/remotes/origin/HEAD to anchor the verifiers "
                 "(git remote set-head origin -a)"
+            )
+        if not _UPSTREAM.fullmatch(args.upstream):
+            raise RuntimeError(f"--upstream is not owner/repo: {args.upstream!r}")
+        origin = _origin_repo(repo_root)
+        if origin is None or origin.lower() != args.upstream.lower():
+            raise RuntimeError(
+                f"origin ({origin or 'not a GitHub URL'}) is not {args.upstream}; "
+                "refusing to import verifiers from its default branch"
             )
         head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         trusted = _trusted_commit(repo_root, target, head_sha)

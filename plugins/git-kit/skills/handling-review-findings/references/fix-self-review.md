@@ -16,8 +16,12 @@ the reply's verification line says the user skipped the self-review, and 4e stil
 a skip is never assumed from silence or from an earlier run's answer. On "stop", leave the finding open.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py" --worktree --base "$(git rev-parse HEAD)"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py" --worktree --base "$(git rev-parse HEAD)" \
+  --upstream <owner>/<repo>
 ```
+
+`<owner>/<repo>` is the PR's base repository, parsed from the PR's `url` in Workflow step 1. The script exits 2
+unless `origin`'s fetch URL names that repository, because it imports code from `origin`'s default branch.
 
 Run it with the fix applied but not yet committed: `--worktree` snapshots the uncommitted state into a
 throwaway commit, so the existing commit/push flow is untouched. (Once a fix is already committed, pass
@@ -31,7 +35,7 @@ over the changed paths and prints `{"checked", "blocking"}`.
   fix); it does not mean an earlier finding is resolved and it is **not the CI verdict** - a size tier that
   was already over its limit before the fix and is not worse after it passes here, and CI can still block.
 - **Verifier modules come from the target branch** (where `HEAD` last met `refs/remotes/origin/HEAD`; without
-  that ref the run exits 2; `origin` must be the canonical upstream, not a contributor's fork), never from the tree being
+  that ref, or when `origin`'s fetch URL is not `--upstream`, the run exits 2), never from the tree being
   judged and never from `--base`. The driver script itself runs from
   wherever you start it, so a fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the
   script cannot be judged by them: it exits 2 (this catches an honest edit only). Report that instead of

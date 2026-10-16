@@ -19,6 +19,7 @@ REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-verify-fix-diff.py"
 SKILL = "plugins/demo-kit/skills/demo/SKILL.md"
 GOOD = "---\nname: demo\ndescription: A demo skill.\nallowed-tools: Read\n---\n\n# Demo\n"
+UPSTREAM = "acme/demo"  # the repository the fixtures' origin remote names
 
 
 def _load_module():
@@ -61,12 +62,15 @@ def repo(tmp_path):
     _git(root, "add", "--", "scripts")
     _git(root, "commit", "-q", "-m", "scripts")
     # The target branch the verifiers are trusted from: origin/HEAD at the scripts commit.
+    _git(root, "remote", "add", "origin", f"https://github.com/{UPSTREAM}.git")
     _git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
     _git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
     return root
 
 
 def _run(repo, *args, extra_env=None):
+    if "--upstream" not in args and "--help" not in args:
+        args = (*args, "--upstream", UPSTREAM)
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **(extra_env or {})}
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
@@ -140,7 +144,7 @@ def test_verifier_exception_is_not_a_pass(repo, monkeypatch):
 
     monkeypatch.chdir(repo)
     monkeypatch.setattr(M, "_load_verifiers", lambda _root, _base: (boom, lambda _raw: ()))
-    assert M.main(["--base", base]) == 2
+    assert M.main(["--base", base, "--upstream", UPSTREAM]) == 2
 
 
 def test_missing_base_argument_is_a_usage_error(repo):
@@ -367,6 +371,7 @@ def _repo_with_verifiers_only_on_target(tmp_path):
     )
     _git(root, "add", "--", "scripts")
     _git(root, "commit", "-q", "-m", "add verifiers")
+    _git(root, "remote", "add", "origin", f"https://github.com/{UPSTREAM}.git")
     _git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
     _git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
     _git(root, "checkout", "-q", "feat")
@@ -404,7 +409,7 @@ def test_a_module_next_to_the_driver_cannot_shadow_the_standard_library(repo, tm
     )
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     result = subprocess.run(
-        [sys.executable, str(driver_dir / SCRIPT.name), "--base", base],
+        [sys.executable, str(driver_dir / SCRIPT.name), "--base", base, "--upstream", UPSTREAM],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -412,6 +417,62 @@ def test_a_module_next_to_the_driver_cannot_shadow_the_standard_library(repo, tm
     )
     assert not marker.exists(), "a PR-controlled sibling module was imported"
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _fix_pair(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    return base
+
+
+def test_origin_that_is_a_contributors_fork_is_refused(repo):
+    base = _fix_pair(repo)
+    _git(repo, "remote", "set-url", "origin", "https://github.com/mallory/demo.git")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "mallory/demo" in result.stdout + result.stderr
+
+
+def test_origin_that_is_not_a_github_url_is_refused(repo):
+    base = _fix_pair(repo)
+    _git(repo, "remote", "set-url", "origin", "/srv/git/demo.git")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "not a GitHub URL" in result.stdout + result.stderr
+
+
+def test_a_repository_with_no_origin_remote_is_refused(repo):
+    base = _fix_pair(repo)
+    _git(repo, "remote", "remove", "origin")
+    # removing the remote also deletes refs/remotes/origin/*, so origin/HEAD is gone as well
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "git@github.com:acme/demo.git",
+        "ssh://git@github.com/acme/demo.git",
+        "https://github.com/acme/demo",
+        "https://github.com/ACME/Demo.git",
+    ],
+)
+def test_the_usual_github_url_forms_of_the_upstream_are_accepted(repo, url):
+    base = _fix_pair(repo)
+    _git(repo, "remote", "set-url", "origin", url)
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_upstream_is_required_and_must_look_like_owner_repo(repo):
+    base = _fix_pair(repo)
+    missing = subprocess.run(
+        [sys.executable, str(SCRIPT), "--base", base], cwd=repo, capture_output=True, text=True
+    )
+    assert missing.returncode == 2
+    for bad in ("acme", "acme/demo/extra", "acme/de mo", "--evil"):
+        assert _run(repo, "--base", base, "--upstream", bad).returncode == 2, bad
 
 
 def test_no_target_branch_ref_means_no_trusted_verifiers(repo):
@@ -446,7 +507,7 @@ def test_every_finding_on_the_changed_set_blocks_whatever_its_line_or_path(repo,
     monkeypatch.setattr(
         M, "_load_verifiers", lambda _r, _b: (lambda *a, **k: (outcome,), parse_name_status_z)
     )
-    assert M.main(["--base", base]) == 1
+    assert M.main(["--base", base, "--upstream", UPSTREAM]) == 1
 
 
 def test_fix_touching_the_verifiers_cannot_be_judged_by_them(repo):

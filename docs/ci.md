@@ -553,8 +553,9 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   last met the target branch (`git merge-base HEAD refs/remotes/origin/HEAD`) and imported from a private
   copy: never from the tree being judged, and never from `--base`, because a PR's own earlier commit can
   precede `--base` and the extracted modules are executed. Without `refs/remotes/origin/HEAD` the run exits
-  2 (`git remote set-head origin -a` sets it). `origin` must be the canonical upstream: the ref is local
-  state, so a clone whose `origin` is a contributor's fork would trust that fork's default branch. The
+  2 (`git remote set-head origin -a` sets it). The ref is local state, so `--upstream <owner>/<repo>`
+  (required; the skill passes the PR's base repository) must match `origin`'s fetch URL, or the run exits 2:
+  a clone whose `origin` is a contributor's fork would otherwise trust that fork's default branch. The
   branch still picks which version of the target's verifiers judges it (the one at the merge-base). The
   driver script runs from wherever it is started, so its exit 2 for a fix that edits it catches an honest
   edit only; it removes its own directory from `sys.path` before any other import, so a sibling module a PR
