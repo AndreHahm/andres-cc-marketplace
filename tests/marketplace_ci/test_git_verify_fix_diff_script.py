@@ -60,6 +60,9 @@ def repo(tmp_path):
     )
     _git(root, "add", "--", "scripts")
     _git(root, "commit", "-q", "-m", "scripts")
+    # The target branch the verifiers are trusted from: origin/HEAD at the scripts commit.
+    _git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _git(root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
     return root
 
 
@@ -335,6 +338,28 @@ def test_verifiers_present_at_base_but_missing_now_is_not_nothing_to_check(repo)
     _git(repo, "rm", "-q", "-r", "scripts/marketplace_ci")
     _git(repo, "commit", "-q", "-m", "remove verifiers")
     assert _run(repo, "--base", base).returncode == 2
+
+
+def test_verifiers_come_from_the_target_branch_not_from_a_weakened_earlier_pr_commit(repo):
+    # The PR's own earlier commit stubs the grader out; --base is the commit after it, so the
+    # fix diff itself never touches scripts/marketplace_ci/. Loading the verifiers from --base
+    # would import that stub and pass the bad fix.
+    stub = "def run_verifiers(*_a, **_k):\n    return ()\n"
+    _commit(repo, "scripts/marketplace_ci/review_verifiers.py", stub, "weaken the grader")
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, "---\nname: demo\ndescription: [unclosed\n---\n", "bad fix")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert {f["path"] for f in json.loads(result.stdout)["blocking"]} == {SKILL}
+
+
+def test_no_target_branch_ref_means_no_trusted_verifiers(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    _git(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "origin/HEAD" in result.stdout + result.stderr
 
 
 # --- security re-review (#578): touched-file logic and untrusted-grader guards -------------------
