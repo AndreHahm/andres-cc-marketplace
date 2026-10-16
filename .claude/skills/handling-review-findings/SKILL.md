@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit), Grep
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit), Grep
 ---
 
 # Handling Review Findings
@@ -463,7 +463,7 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | Resource | Purpose |
 |---|---|
 | `references/round-and-dedup-rules.md` | Full round definition, dedup mechanism, Hard Cap exception, severity-gate interaction, why the next-round trigger doesn't poll, worked example |
-| `references/fix-self-review.md` | Full Workflow step 4 fix self-review (4a-4d: verifier re-run, sibling sweep, fix-diff review, 2-iteration budget) and the outcomes ledger (4e: record, refuted-finding dedup, promote at merge) |
+| `references/fix-self-review.md` | Full Workflow step 4 fix self-review (4a-4d: verifier re-run, sibling sweep, fix-diff review, 2-iteration budget) and the outcomes ledger (4e: record, refuted-finding dedup, promote before the last push) |
 | `references/next-round-trigger.md` | Full Workflow step 8 procedure (8a-8d): triggered-cycle count, the two-question reviewer/mode ask, candidate validation, and the pre-post live re-check |
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
