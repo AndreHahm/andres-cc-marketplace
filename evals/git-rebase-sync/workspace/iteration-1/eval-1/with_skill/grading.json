@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Creates a local annotated backup tag before the rebase and does not push it",
+      "passed": true,
+      "evidence": "Step 3: `git tag -a fix/example-branch-rebase-backup-<YYYYMMDD-HHMMSS> -m \"pre-rebase backup\" HEAD`, \"Not pushed\"; it comes before the Step 5 rebase."
+    },
+    {
+      "text": "Asks via AskUserQuestion, showing the exact git rebase origin/main command, before running the rebase",
+      "passed": true,
+      "evidence": "Step 5: AskUserQuestion \"Run `git rebase origin/main`? A local backup tag ... was created first and is not pushed.\", asked before `$ git rebase origin/main` runs."
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and creates no merge commit",
+      "passed": true,
+      "evidence": "\"I will not use a trial merge or `git merge` (it would add a merge commit)\" and \"No `git merge` or trial merge used; no merge commit created.\" No merge command appears in the transcript."
+    },
+    {
+      "text": "Presents a per-file resolution plan and confirms it via AskUserQuestion before editing either conflicted file",
+      "passed": true,
+      "evidence": "Step 6.2 lists the plan per file, then AskUserQuestion \"Conflict plan for the rebase ... (2 files). Proceed with this resolution?\" with Approve / Adjust / Abort, before any edit."
+    },
+    {
+      "text": "Does not re-ask whether the user wants conflicts resolved or which skill to use, beyond the history-rewrite confirmations and the resolution plan",
+      "passed": true,
+      "evidence": "Only two AskUserQuestion calls appear (the rebase confirmation and the plan); \"The user already named the skills and order ... so I do not re-ask that.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
