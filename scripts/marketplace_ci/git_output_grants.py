@@ -1,11 +1,13 @@
 """Read-only checker for wildcard `git diff` / `git log` / `git show` tool grants (issue #588).
 
 A prefix grant such as `Bash(git diff:*)` also permits `git diff --output=<path>`, which writes
-the diff to any file the user can write. A component whose `allowed-tools` carries one therefore
-holds a file-write grant it never declared. This check lists every such grant in a plugin
-component's frontmatter and fails on any that is not in the checked-in baseline, so no new one
-lands; each component scoped to an exact command or a pinned script is removed from the baseline,
-and a baseline entry whose grant is gone fails too, so the list cannot go stale.
+the diff to any file the user can write. The same holds for `diff-tree`, `diff-index`, `diff-files`
+and `whatchanged`, and for a grant with git global options (`git --no-pager diff:*`). A component
+whose `allowed-tools` carries one therefore holds a file-write grant it never declared. This check
+lists every such grant in a plugin component's frontmatter and fails on any that is not in the
+checked-in baseline, so no new one lands; each component scoped to an exact command or a pinned
+script is removed from the baseline, and a baseline entry whose grant is gone fails too, so the
+list cannot go stale.
 
 Arguments after a literal `--` are pathspecs, so `Bash(git log -n 5 --oneline --:*)` is not
 flagged. Only frontmatter is read: a grant quoted in a skill's prose is not a grant.
@@ -26,9 +28,21 @@ _COMPONENT_GLOBS = (
     "plugins/*/agents/*.md",
 )
 
-# `git diff|log|show`, any literal arguments, then a wildcard (`:*` or ` *`). The arguments may not
-# contain `:`, `*` or `)`, so one match never spans two grants inside a single `Bash(...)`.
-_WILDCARD_GRANT = re.compile(r"git (?:diff|log|show)(?![\w-])(?P<args>[^:*)\n\"']*?)(?::\*|\s\*)")
+# Every command below accepts `--output=<path>`, a write to any file (each wrote its file when run).
+_SUBCOMMANDS = "diff|diff-tree|diff-index|diff-files|log|show|whatchanged"
+# A git global option before the subcommand: `--no-pager`, `--git-dir=x`, or `-C`/`-c`/`--git-dir`
+# followed by its value.
+_GLOBAL_OPTION = (
+    r"\s+(?:-C|-c|--git-dir|--work-tree|--namespace)\s+[^\s:*)\"']+"
+    r"|\s+--?[\w-]+(?:=[^\s:*)\"']*)?"
+)
+# `git [global options] <subcommand>`, any literal arguments, then a wildcard (`:*` or ` *`). The
+# arguments may contain a `:` that does not start `:*`, but not `*` or `)`, so one match never
+# spans two grants inside a single `Bash(...)`.
+_WILDCARD_GRANT = re.compile(
+    rf"git(?:{_GLOBAL_OPTION})*\s+(?:{_SUBCOMMANDS})(?![\w-])"
+    r"(?P<args>(?:[^:*)\n\"']|:(?!\*))*?)(?::\*|\s\*)"
+)
 
 
 @dataclass(frozen=True)

@@ -844,8 +844,9 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
   drifted copy, and `sync-token-shapes` rewrites the copies (run `sync-plugin-mirrors` after it so
   the `.claude/` mirrors follow). Edit the canonical file only.
-  `check-all` also runs `check-git-output-grants`, which fails on a wildcard `git diff|log|show`
-  grant (it permits `--output=<path>`, a write to any file) in a plugin component's frontmatter that is
+  `check-all` also runs `check-git-output-grants`, which fails on a wildcard `git diff|log|show` grant
+  (also `diff-tree`, `diff-index`, `diff-files`, `whatchanged`, and any of them after git global options;
+  each permits `--output=<path>`, a write to any file) in a plugin component's frontmatter that is
   not in `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a stale baseline entry.
   These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
