@@ -138,13 +138,14 @@ middle of a long function, for example), inspect each side's full version direct
 When `git status` is clean but a PR conflicts with its base on GitHub, don't start a trial merge or a plain
 merge to put the conflict on disk. The conflicts exist only on the remote and appear on disk only once
 the rebase starts. Preview them (no worktree or index change; `git fetch` updates remote-tracking refs and
-`git merge-tree` writes objects), report the conflicted files, then route to `git-rebase-sync`, the entry
-point for "sync/rebase" wording; this skill is the entry for "resolve the conflicts on PR #N":
+`git merge-tree` writes objects), report the conflicted files, then route to `git-rebase-sync` with the PR's
+`baseRefName` as its base argument (it defaults to the repository default branch otherwise); this skill is
+the entry for "resolve the conflicts on PR #N", that one for "sync/rebase" wording:
 
 ```bash
-gh pr view <number> --json mergeable,mergeStateStatus
+gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefOid
 git fetch origin
-git merge-tree --write-tree --name-only origin/<base> HEAD
+git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed
 ```
 

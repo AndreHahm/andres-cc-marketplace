@@ -9,10 +9,15 @@ plain merge to put it there. Preview instead, with no change to the worktree or 
 updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 
 ```bash
-gh pr view <number> --json mergeable,mergeStateStatus
+gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefOid
 git fetch origin
-git merge-tree --write-tree --name-only origin/<base> HEAD
+git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 ```
+
+`<baseRefName>` is the PR's own base branch, which need not be the repository default: use it for the
+preview and pass it to `git-rebase-sync` as its explicit base argument. The preview merges your local
+`HEAD`; if it differs from the PR's `headRefOid` (unpushed or behind), say so, since the file list then
+describes your local branch and not the PR as GitHub sees it.
 
 - `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` confirms the remote conflict. `UNKNOWN` means
   GitHub has not computed it yet -- rely on the `git merge-tree` result and say so.
