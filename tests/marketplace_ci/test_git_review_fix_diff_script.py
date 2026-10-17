@@ -462,6 +462,20 @@ def _load_module():
     return module
 
 
+@pytest.mark.parametrize(
+    "path",
+    ["plugins/git-kit/scripts/git-review-fix-diff.py", ".claude/scripts/git-review-fix-diff.py"],
+)
+def test_the_script_is_committed_executable_like_its_sibling_pinned_scripts(path):
+    # CI's Codex delta review flagged a 100644 mode under R37. The sibling scripts the skill grants
+    # as `python3 -I <path>` (git-review-api.py, git-verify-fix-diff.py, git-review-ledger.py) are
+    # 100755, and R37 reads the mode git has, not the one on disk.
+    staged = subprocess.run(
+        ["git", "ls-files", "-s", "--", path], cwd=REPO, capture_output=True, text=True, check=True
+    ).stdout.split()
+    assert staged and staged[0] == "100755", staged
+
+
 def test_the_time_limit_does_not_use_sigalrm():
     source = SCRIPT.read_text(encoding="utf-8")
     assert "signal.alarm" not in source
