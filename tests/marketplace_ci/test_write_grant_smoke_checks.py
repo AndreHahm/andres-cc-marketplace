@@ -140,6 +140,15 @@ def _pinned(name):
         'allowed-tools: "Read {pinned} Ed\\u0069t(**)"',
         'allowed-tools: "Read {pinned} \\x57rite"',
         'allowed-tools: Read {pinned}\n  "Wri\\u0074e"',
+        "allowed-tools: Read {pinned}\n\n  Write",
+        "allowed-tools: >-\n  Read {pinned}\n\n  Write",
+        "allowed-tools: Read {pinned}\n\n\n  Edit(**)",
+        "allowed-tools: [Read, {pinned}, *x]",
+        "allowed-tools: Read {pinned} &x Write",
+        "allowed-tools: Read {pinned} !!str Write",
+        # A multi-line value is unsupported even when the pinned set alone would pass.
+        "allowed-tools: Read {pinned}\n  AskUserQuestion",
+        "allowed-tools: >-\n  Read {pinned}",
     ],
 )
 def test_a_hidden_extra_grant_in_another_yaml_spelling_fails(tmp_path, name, spelling):
@@ -162,8 +171,8 @@ def test_a_hidden_extra_grant_in_another_yaml_spelling_fails(tmp_path, name, spe
     [
         "allowed-tools: [Read, {pinned}]",
         'allowed-tools: "Read {pinned}"',
-        "allowed-tools: Read {pinned}\n  AskUserQuestion",
-        "allowed-tools: >-\n  Read {pinned}",
+        "allowed-tools: Read {pinned}\nargument-hint: [x]",
+        "allowed-tools: Read {pinned}\n\nargument-hint: [x]",
     ],
 )
 def test_the_pinned_set_passes_in_other_yaml_spellings(tmp_path, name, spelling):

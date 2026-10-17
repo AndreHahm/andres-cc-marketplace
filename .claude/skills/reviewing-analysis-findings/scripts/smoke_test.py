@@ -191,17 +191,18 @@ def check_file_write_grants_scoped(path=None):
     starts = [i for i, ln in enumerate(lines) if re.match(key, ln)]
     if len(starts) != 1:
         return False, "the frontmatter must hold exactly one allowed-tools key"
-    # A YAML value also continues over more-indented lines and block-list items, which a
-    # one-line read misses; flow-list brackets and quotes would hide a tool name from the match.
-    parts = [re.sub(key, "", lines[starts[0]])]
-    for ln in lines[starts[0] + 1 :]:
-        if not (ln[:1] in (" ", "\t") or ln.startswith("- ")):
-            break
-        parts.append(re.sub(r"^\s*-\s+", "", ln))
-    if any("\\" in part for part in parts):
-        # A YAML escape such as W decodes to a letter this regex never sees, so fail closed.
-        return False, "allowed-tools contains a backslash escape this check cannot decode"
-    value = re.sub(r"[\[\]\"']", " ", " ".join(parts))
+    # Only a single-line value is checked. A YAML scalar can also continue over indented lines,
+    # blank lines and block-list items, and each such form has hidden a tool name from a text
+    # match, so anything but a top-level key (or the end) after this line fails closed.
+    raw = re.sub(key, "", lines[starts[0]])
+    following = next((ln for ln in lines[starts[0] + 1 :] if ln.strip()), None)
+    if following is not None and not re.match(r"^[A-Za-z_][\w-]*[ \t]*:", following):
+        return False, "allowed-tools must be a single line followed by another top-level key"
+    if "\\" in raw or re.search(r"(?:^|[\s\[,])(?:[&!]|\*[A-Za-z_])", raw):
+        # A backslash escape (a backslash, u and four hex digits), a YAML anchor, alias or tag
+        # can each change what the value means once parsed, so fail closed.
+        return False, "allowed-tools has an escape, anchor, alias or tag this check cannot decode"
+    value = re.sub(r"[\[\]\"']", " ", raw)
     grants = [
         m.group(1) + (m.group(2) or "")
         for m in re.finditer(
