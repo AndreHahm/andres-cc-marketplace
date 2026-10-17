@@ -278,8 +278,8 @@ legitimate, common outcome, not a failure.
   `/tmp/claude-<uid>/<project>/<session>/scratchpad` the write falls back to a prompt). It does not bound
   the `Bash(python */analysis-kit/scripts/...:*)` grants: a probe showed that an inline code string
   passed to the interpreter ahead of a matching script path runs under such a grant, so those grants are
-  a separate write route, tracked in the issue
-  #587 follow-up. `anls_persist_report.py --final` is separately bounded: the script's own containment
+  a separate write route, tracked in #106.
+  `anls_persist_report.py --final` is separately bounded: the script's own containment
   check rejects any `--final` that doesn't resolve under `<cwd>/.claude/output/` — only the choice of
   subdirectory beneath that is a behavioral, unenforced commitment.
 - **`anls_pr_review_fetcher.py --fixture-file` accepts an arbitrary local path**, not just the fixture files

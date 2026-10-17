@@ -110,7 +110,7 @@ project):
   The leading `*` matches any text, so a scoped `Edit` does not stop writes in a skill that also holds such
   a grant. The three analysis-kit skills changed here hold one (19 skills, all in `analysis-kit`, have a
   `Bash(python */...)` grant, counted by pattern match on their `allowed-tools` lines), so their write scope bounds direct `Write`/`Edit` calls only. Pinning those grants to the
-  plugin root is left to a follow-up.
+  plugin root is tracked in #106.
 - Every probe ran in default permission mode. In `acceptEdits` or bypass mode edits inside the working
   directory are generally allowed whatever the rule says, so the scoping matters in default mode.
 - The scratchpad glob's `claude-*/*/*` matches every project and session of the same user, so an
@@ -120,7 +120,7 @@ Each of the four skills' smoke tests pins its exact file-write grant set (`check
 and `tests/marketplace_ci/test_write_grant_smoke_checks.py` checks that a bare or inert grant fails it.
 66 other skills still list a bare `Write` (counted by a pattern match on each `plugins/*/skills/*/SKILL.md`
 `allowed-tools` line, on the date of this change); each needs its own decision on write targets and is
-tracked in a separate triage issue.
+tracked in #591.
 
 ## Not checked
 

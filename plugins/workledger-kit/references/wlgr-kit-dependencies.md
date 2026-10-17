@@ -91,7 +91,7 @@ keeping those writes prompting). The grant is a bare `Write` with no path scope.
 is accepted but never matches (issue #587; checked live, Claude Code 2.1.302, Linux, headless run in default
 permission mode). These skills are left unscoped because their write targets (a working directory chosen at
 run time, a report path the person names) are not a fixed set; scoping them is a per-skill decision still
-open under #587. In default permission mode (the only mode probed), a prompt-injected run could therefore
+open under #591. In default permission mode (the only mode probed), a prompt-injected run could therefore
 write a file outside `.claude/` without a prompt.
 The same probe refused both `.claude/` paths it tried with the bare `Write` grant (`.claude/NOTES.md` and
 `.claude/workledger-kit.local.json`) as sensitive-file writes, so `.claude/workledger-kit.local.json` was not writable without a decision
