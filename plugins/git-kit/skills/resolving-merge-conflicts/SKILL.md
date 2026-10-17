@@ -139,7 +139,7 @@ When `git status` is clean but a PR conflicts with its base on GitHub, don't sta
 merge to put the conflict on disk. The conflicts exist only on the remote and appear on disk only once
 the rebase starts. Preview them (no worktree or index change; `git fetch` updates remote-tracking refs and
 `git merge-tree` writes objects), report the conflicted files, then route to `git-rebase-sync` with the PR's
-`baseRefName` as its base argument (it defaults to the repository default branch otherwise); this skill is
+`baseRefName` as its base argument, only if it matches `^[A-Za-z0-9._/-]+$` (a ref name can hold shell metacharacters); this skill is
 the entry for "resolve the conflicts on PR #N", that one for "sync/rebase" wording:
 
 ```bash

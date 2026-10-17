@@ -15,7 +15,10 @@ git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 ```
 
 `<baseRefName>` is the PR's own base branch, which need not be the repository default: use it for the
-preview and pass it to `git-rebase-sync` as its explicit base argument. The preview merges your local
+preview and pass it to `git-rebase-sync` as its explicit base argument (without one, that skill rebases
+onto the repository default branch). It is data from GitHub, and git accepts ref names containing shell
+metacharacters such as a semicolon, so use it in a command only after checking it matches
+`^[A-Za-z0-9._/-]+$`; on any other name, stop and ask the user. The preview merges your local
 `HEAD`. Compare `git rev-parse HEAD` with the PR's `headRefOid`: if they differ (unpushed commits, a stale
 or unrelated branch), stop and ask the user to confirm that this local branch is the one intended, before
 reporting a file list or routing on. The list then describes the local branch, not the PR as GitHub sees
