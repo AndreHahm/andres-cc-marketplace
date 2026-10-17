@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PLUGIN_SCRIPTS = SKILL_DIR.parent.parent / "scripts"
 FORBIDDEN_GRANT_NAMES = {"Read", "Write", "Edit", "WebFetch", "Bash"}
-ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)"}
+ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)", "AskUserQuestion"}
 
 
 def _load_common():
@@ -95,6 +95,27 @@ def check_body_uses_only_granted_subcommands():
     return True, f"body uses {len(used)} subcommands, all granted"
 
 
+def check_triage_is_a_dedicated_gate():
+    _, body = C.read_skill(SKILL_DIR)
+    start = body.find("5. **Triage.**")
+    end = body.find("6. **File the draft.**")
+    after = body.find("7. **Review and optimize.**")
+    if start < 0 or end < start or after < end:
+        return False, "triage step 5, step 6 or step 7 not found in the body"
+    step = body[start:end]
+    for needed in (
+        "AskUserQuestion",
+        '"Prompt (Recommended)"',
+        '"Skill: `skill-development`"',
+        '"Workflow skill: `workflow-skill-development`"',
+    ):
+        if needed not in step:
+            return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
+    if "AskUserQuestion" not in body[end:after]:
+        return False, "step 6 no longer has its own AskUserQuestion for the file-draft decision"
+    return True, "triage is its own AskUserQuestion with the three options, apart from step 6's"
+
+
 def check_live_web_secret_is_refused_and_nothing_filed():
     fx = C.Fixture()
     try:
@@ -147,6 +168,7 @@ def main() -> int:
         ("referenced files", check_referenced_files),
         ("grants", check_grants),
         ("body uses only granted subcommands", check_body_uses_only_granted_subcommands),
+        ("triage is a dedicated gate", check_triage_is_a_dedicated_gate),
         ("live: secret refused, nothing filed", check_live_web_secret_is_refused_and_nothing_filed),
         ("live: clean prompt lifecycle", check_live_clean_prompt_lifecycle),
     ]
