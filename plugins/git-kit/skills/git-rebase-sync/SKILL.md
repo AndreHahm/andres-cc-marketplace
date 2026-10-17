@@ -8,7 +8,7 @@ description: >-
   Never adds a new merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
-allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Read, Edit
+allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Read, Edit, AskUserQuestion
 ---
 
 # git-rebase-sync
@@ -88,7 +88,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
 - Ensure the working tree is clean and there is no operation in progress:
   - `git status`
 - If `git status` shows a rebase of this branch already in progress, skip Steps 2-5 and go to Step 6. For an in-progress merge or cherry-pick, stop and ask what to do (abort vs continue) and point at `resolving-merge-conflicts`.
-- Once Step 1's fetch has run, if the branch exists on origin, count the commits the remote branch has that this one lacks: `git rev-list --count HEAD..origin/{branch_name}` (skip if the ref does not exist). A non-zero count means a rebase plus Step 8's force-with-lease push would overwrite them, since the lease checks against the freshly fetched ref: stop and ask the user to update the local branch first.
+- Once Step 1's fetch has run, if the branch exists on origin, count the commits the remote branch has that this one lacks: `git rev-list --count HEAD..origin/{branch_name}` (skip if the ref does not exist). A non-zero count means a rebase plus Step 8's force-with-lease push would overwrite them, since the lease checks against the freshly fetched ref: stop and ask the user to update the local branch first. Otherwise record `{lease_oid}`: the remote tip this rebase starts from, `git rev-parse origin/{branch_name}` (none if the ref does not exist). Step 8 pushes against that exact value, so a commit that lands on the remote branch while the rebase runs, or while it is paused on a conflict, is never overwritten.
 
 ### 3) Create a local backup ref (do not push)
 - Create an annotated tag at current `HEAD`:
@@ -144,7 +144,8 @@ Helpful commands during conflicts:
 ### 8) Push updated branch (requires confirmation)
 - If the branch already exists on origin, rebasing rewrites history, so pushing requires force-with-lease.
 - Use `AskUserQuestion` to show the exact command and confirm before running it:
-  - `git push --force-with-lease origin HEAD:{branch_name}`
+  - `git push --force-with-lease={branch_name}:{lease_oid} origin HEAD:{branch_name}`, with the value recorded in Step 2. This `=` form is not named by the `--force-with-lease:*` grant, so it may prompt; that is acceptable for a history-rewriting push.
+  - If this run resumed a rebase it did not start, no `{lease_oid}` exists, and the plain lease checks against whatever the latest fetch brought in. Show `git log --oneline -5 origin/{branch_name}` in the confirmation, say that it cannot prove nothing landed while the rebase was paused, and run `git push --force-with-lease origin HEAD:{branch_name}` only if the user confirms that tip is expected.
 
 ## Recovery
 - If something goes wrong, use `{backup_ref}` to restore the pre-rebase state. When Step 2 resumed a rebase this skill did not start, no backup ref exists: offer `git rebase --abort` (after confirming) to return to the pre-rebase state.
@@ -195,6 +196,9 @@ baseline arm; the resume and behind-remote scenarios are documented but not run.
       either reaches a command
 - [ ] Step 2 stops and asks before any rebase when `origin/{branch_name}` has commits the local branch
       lacks, because Step 8's force-with-lease would otherwise overwrite them
+- [ ] Step 2 records `{lease_oid}` before the rebase and Step 8 pushes with an explicit
+      `--force-with-lease={branch_name}:{lease_oid}`; a resumed rebase shows the remote tip and asks
+      before using a plain lease
 - [ ] Never runs a destructive command like `git reset --hard` without explicit `AskUserQuestion`
       confirmation showing the exact command
 - [ ] The `git rebase` grant stays as 4 explicit per-form entries (`--continue`/`--abort`/
