@@ -10,6 +10,11 @@ parsed as JSON; nothing in it is executed or used to build a path. Only artifact
 repository (never a fork's, whose workflow file is the fork author's own) on the PR's own head
 branch are taken, so a stacked PR's shared commit does not pull in another PR's runs.
 
+No field of the artifact listing names the workflow that uploaded it, so any workflow of this
+repository could upload an artifact called `codex-review-result` and have it archived if its
+`provenance.head_sha` matches. That needs write access to the repository, the same trust as editing
+the real workflow, and the archive diff is reviewed before it is committed.
+
 Run it from a checkout you trust: on Windows `gh` can resolve from the current directory before
 `PATH`, and a symlink already committed under the output directory is a path this script writes
 through.
@@ -44,6 +49,10 @@ _ARTIFACT_FIELDS = (
     "repository_id",
     "head_repository_id",
 )
+# GitHub reports a null head_repository_id once the fork a run came from is deleted.
+_NULLABLE_FIELDS = ("head_repository_id",)
+_STR_FIELDS = ("head_sha", "head_branch")
+_BOOL_FIELDS = ("expired",)
 
 
 class ArchiveError(Exception):
@@ -137,8 +146,21 @@ def parse_artifact_lines(text: str) -> list[dict]:
             raise ArchiveError(f"artifact listing line {number} is not JSON") from exc
         if not isinstance(row, dict) or any(key not in row for key in _ARTIFACT_FIELDS):
             raise ArchiveError(f"artifact listing line {number} lacks one of {_ARTIFACT_FIELDS}")
+        for key in _ARTIFACT_FIELDS:
+            if row[key] is None and key in _NULLABLE_FIELDS:
+                continue
+            if not _has_expected_type(key, row[key]):
+                raise ArchiveError(f"artifact listing line {number}: {key} has the wrong type")
         rows.append(row)
     return rows
+
+
+def _has_expected_type(key: str, value: object) -> bool:
+    if key in _STR_FIELDS:
+        return isinstance(value, str)
+    if key in _BOOL_FIELDS:
+        return isinstance(value, bool)
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def archive_pr(pr: int, root: Path, source: Source) -> Report:
@@ -161,9 +183,13 @@ def archive_pr(pr: int, root: Path, source: Source) -> Report:
             if artifact["size_in_bytes"] > MAX_ARTIFACT_BYTES:
                 raise ArchiveError(f"artifact is larger than {MAX_ARTIFACT_BYTES} bytes")
             result = extract_result(source.download(artifact["id"]))
-            provenance = result.get("provenance")
-            if isinstance(provenance, dict) and provenance.get("head_sha") != artifact["head_sha"]:
-                raise ArchiveError("provenance names a different head than the run's")
+            if "provenance" in result:  # results from before the field existed have none
+                provenance = result["provenance"]
+                if (
+                    not isinstance(provenance, dict)
+                    or provenance.get("head_sha") != artifact["head_sha"]
+                ):
+                    raise ArchiveError("provenance names a different head than the run's")
             target.parent.mkdir(parents=True, exist_ok=True)
             try:
                 # "x" fails on any existing path, a dangling symlink included, and cannot race.

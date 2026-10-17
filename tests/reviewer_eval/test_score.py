@@ -127,6 +127,7 @@ def test_blocking_set_is_the_reviewers_blocking_findings_only():
         {"findings": [["a.py", 1]]},
         {"findings": [{"reviewer": "security", "path": ["a.py"], "line": 1, "blocking": True}]},
         {"findings": [{"reviewer": "security", "path": "a.py", "line": 1}]},
+        {"findings": [{"reviewer": "security", "path": "a.py", "line": True, "blocking": True}]},
     ],
 )
 def test_blocking_set_rejects_a_result_that_is_not_shaped_like_one(result):
@@ -146,6 +147,13 @@ def test_stability_requires_four_of_five_identical():
     assert score.stability([same, same, same, same, other])["stable"] is True
     result = score.stability([same, same, same, other, frozenset()])
     assert result == {"repeats": 5, "agree": 3, "stable": False}
+
+
+def test_stability_scales_the_four_of_five_rule_to_more_repeats():
+    same = frozenset({("a.py", 1)})
+    others = [frozenset({("b.py", i)}) for i in range(6)]
+    assert score.stability([same] * 4 + others) == {"repeats": 10, "agree": 4, "stable": False}
+    assert score.stability([same] * 8 + others[:2])["stable"] is True
 
 
 def test_empty_blocking_sets_agree_with_each_other():

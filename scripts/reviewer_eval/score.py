@@ -19,6 +19,11 @@ STABILITY_REPEATS = 5
 STABILITY_MIN_AGREE = 4
 
 
+def _is_int(value: object) -> bool:
+    """A real integer: `bool` is an `int` subclass and would otherwise pass as line 1 or 0."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def _rate(part: int, whole: int) -> float | None:
     return part / whole if whole else None
 
@@ -72,7 +77,7 @@ def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None
             and isinstance(finding.get("reviewer"), str)
             and isinstance(finding.get("path"), str)
             and isinstance(finding.get("blocking"), bool)
-            and (finding.get("line") is None or isinstance(finding["line"], int))
+            and (finding.get("line") is None or _is_int(finding["line"]))
         ):
             raise ValueError("archived result: a finding has a missing or mistyped field")
         if finding["reviewer"] == reviewer and finding["blocking"]:
@@ -83,12 +88,13 @@ def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None
 def stability(blocking_sets: list[frozenset]) -> dict:
     """How many repeats of one head gave the same blocking set; stable means at least 4 of 5.
 
-    `stable` is None until the full number of repeats exists, since fewer say nothing about it.
+    With more than 5 repeats the same 4-in-5 share applies (8 of 10, not 4 of 10). `stable` is None
+    until the full number of repeats exists, since fewer say nothing about it.
     """
     agree = max(Counter(blocking_sets).values(), default=0)
     stable = None
     if len(blocking_sets) >= STABILITY_REPEATS:
-        stable = agree >= STABILITY_MIN_AGREE
+        stable = agree * STABILITY_REPEATS >= len(blocking_sets) * STABILITY_MIN_AGREE
     return {"repeats": len(blocking_sets), "agree": agree, "stable": stable}
 
 

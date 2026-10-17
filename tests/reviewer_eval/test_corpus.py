@@ -100,6 +100,14 @@ def test_invalid_case_reports_the_problem(mutate, fragment):
     assert any(fragment in error for error in errors), errors
 
 
+@pytest.mark.parametrize("link", [["k1"], {"id": "k1"}, 1, True])
+def test_a_non_string_known_issue_is_a_validation_error_not_a_crash(link):
+    case = _case()
+    case["findings"][0]["known_issue"] = link
+    errors = corpus.validate_case(case)
+    assert any("known_issue" in error for error in errors)
+
+
 def test_clean_case_rejects_known_issues_and_true_findings():
     case = _case()
     case["kind"] = "clean"

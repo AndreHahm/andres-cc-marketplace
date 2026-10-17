@@ -12,7 +12,7 @@
       "rule": "verifier-trust-boundary",
       "label": "true",
       "source": "owner",
-      "note": "same defect class as the origin/HEAD trust finding; applied by inference, owner to confirm",
+      "note": "owner: same defect class as the origin/HEAD trust finding; confirmed real",
       "known_issue": "k1"
     },
     {
@@ -22,8 +22,8 @@
       "line": 72,
       "rule": "permission-risk-command-execution",
       "label": "true",
-      "source": "ledger",
-      "note": "related ledger entry 4292190594 fixed the git location variables only; GIT_EXTERNAL_DIFF/GIT_CONFIG_* not confirmed, owner to verify",
+      "source": "owner",
+      "note": "owner: GIT_EXTERNAL_DIFF/GIT_CONFIG_* left in the subprocess environment is a real defect; ledger entry 4292190594 fixed only the location variables",
       "known_issue": "k2"
     },
     {
