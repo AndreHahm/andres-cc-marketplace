@@ -36,6 +36,11 @@
       "source": "plugins/workmanagement-kit/skills/notion-knowledge-management/references/long-text-blocks.md",
       "dest": ".claude/skills/notion-knowledge-management/references/long-text-blocks.md",
       "reason": "Names the splitter script by its ${CLAUDE_PLUGIN_ROOT}/scripts/ path in the canonical copy; that variable is empty for a skill loaded from the .claude/ mirror, so the mirror copy uses ${CLAUDE_PROJECT_DIR}/.claude/scripts/, where the mirrored script lives (same reason as the SKILL.md entry above). Whole-file exception: only that script path differs between the two copies, so a later edit to either copy must be applied to both by hand."
+    },
+    {
+      "source": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "dest": ".claude/skills/collecting-analysis-findings/SKILL.md",
+      "reason": "The allowed-tools grant and step 4 name the adapter script by its ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/ path in the canonical copy, which is distributed and installed into other users' projects. ${CLAUDE_PLUGIN_ROOT} is empty for a skill loaded from the .claude/ mirror, so the mirror copy uses ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/, where the byte-identical script lives (same reason as the notion-knowledge-management entry above). Whole-file exception: only those two script paths differ between the two copies, so a later edit to either copy must be applied to both by hand."
     }
   ]
 }

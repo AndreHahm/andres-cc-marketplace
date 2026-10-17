@@ -11,7 +11,7 @@ description: >-
   (resolving-analysis-findings), not for ad hoc Codacy queries (codacy-skills:codacy-cloud-cli, when
   installed), and not for configuring Codacy (codacy-skills:configure-codacy, when installed).
 argument-hint: (optional) PR number, "repo" for the default branch's security list, or "ignored" for the ignore audit list
-allowed-tools: Read, Bash(gh pr view:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py:*)
+allowed-tools: Read, Bash(gh pr view:*), Bash(python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_codacy.py:*)
 ---
 
 # Collecting Analysis Findings
@@ -78,7 +78,7 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    Codacy commands are not pre-approved by this skill, so the command raises a normal permission prompt that shows
    its exact text: read it, and approve only the read forms listed in the reference, one time only (never "don't
    ask again").
-4. **Normalize.** `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py
+4. **Normalize.** `python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_codacy.py
    --kind pr|repo|ignored --input - [--category Security] [--group-by rule|file|rule,file]
    [--format json|table] --output "<scratchpad>/findings-record.<json|txt>"`. `--input -` reads the pipe. The script itself refuses
    an `--input` file path outside a scratchpad directory, so the pre-approved command cannot read a repository or
