@@ -292,9 +292,10 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
   `issues/<date>-<desc>.md` file `github-issue-lifecycle`'s own Step 2 just wrote, when "Edit before
   filing" is chosen at Phase 4's approval gate. The Phase 2 target,
   `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`, has no grant on purpose: a live probe (Claude Code
-  2.1.302, Linux, headless run in default permission mode) refused every write under `.claude/` as a
-  sensitive-file write, even with an exact `Edit(.claude/NOTES.md)` rule, so an Edit rule for it would
-  grant nothing. That edit therefore keeps prompting, in addition to the Phase 2 approval ask naming the
+  2.1.302, Linux, headless run in default permission mode) refused each of the three `.claude/` paths it
+  tried as a sensitive-file write, even with an exact `Edit(.claude/NOTES.md)` rule, so an Edit rule for
+  this path would very likely grant nothing. Leaving it ungranted is a deliberate choice that keeps the
+  prompt: that edit keeps prompting, in addition to the Phase 2 approval ask naming the
   resolved absolute path, which stays the human-verified gate on its content. The
   `.claude/output/managing-review-learnings/` final report path is written by `anls_persist_report.py`,
   not by a direct `Write` call. The `issues/**` rule is relative to the working directory, so it matches

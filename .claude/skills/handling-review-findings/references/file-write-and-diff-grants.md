@@ -95,11 +95,13 @@ the analysis-kit skills `reviewing-analysis-findings` and `mining-review-learnin
 headless run (Claude Code 2.1.302, Linux, default permission mode, a throwaway skill in a throwaway
 project):
 
-- **Writes under the project's `.claude/` directory are refused as sensitive files, whatever the grant.**
-  `Edit(.claude/NOTES.md)` did not allow a write to `.claude/NOTES.md`, and neither a bare `Write` nor
-  that exact rule allowed `.claude/other.md` or `.claude/workledger-kit.local.json`. So an `Edit` rule for a
-  path under `.claude/` grants nothing, and `managing-review-learnings` has none for
-  `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`: that edit keeps prompting.
+- **Writes under the project's `.claude/` directory were refused as sensitive files in every combination
+  tried.** A bare `Write` was refused for `.claude/NOTES.md` and `.claude/workledger-kit.local.json`, and the
+  exact rule `Edit(.claude/NOTES.md)` was refused for `.claude/NOTES.md` and `.claude/other.md`. Other
+  combinations were not tried. An `Edit` rule for a path under `.claude/` therefore appears to grant nothing,
+  and `managing-review-learnings` has none for `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`: that edit keeps
+  prompting, a deliberate choice that preserves the prompt rather than a verified result for every
+  `.claude/` path.
 - **A cwd-relative `Edit(issues/**)` allowed `issues/a.md` and denied a write to a repo-root file.** The
   bare `Write` allowed a repo-root file with no prompt. The same rule denied a write through an `issues`
   symlink that pointed at a directory outside it, and denied `issues/../root.md`.
