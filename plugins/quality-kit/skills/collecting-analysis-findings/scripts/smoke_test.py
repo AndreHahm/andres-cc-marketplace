@@ -493,6 +493,13 @@ def check_skills() -> None:
         )
         check(f"{skill_dir.name}: description present", len(fm.get("description", "")) >= 80)
         body = skill_md.read_text(encoding="utf-8")
+        flat_body = " ".join(body.split())
+        check(
+            f"{skill_dir.name}: the provider output is piped into the adapter, never saved raw",
+            "| python3 -I" in flat_body
+            and "--input -" in flat_body
+            and not re.search(r'--output json >|> "<scratchpad>/pr', flat_body),
+        )
         refs = set(re.findall(r"`((?:references|scripts)/[A-Za-z0-9_./-]+)`", body))
         missing = sorted(r for r in refs if not (skill_dir / r).exists())
         check(f"{skill_dir.name}: referenced files exist", not missing, ", ".join(missing))
