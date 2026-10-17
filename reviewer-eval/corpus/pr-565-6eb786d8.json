@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pr": 565,
+  "head_sha": "6eb786d8b4594f774b3c7af743158e806102e556",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md",
+      "line": 163,
+      "rule": "rulebook-compliance",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-validator",
+      "path": ".claude/skills/notion-knowledge-management/SKILL.md",
+      "line": 13,
+      "rule": "skills",
+      "label": "false_positive",
+      "source": "owner",
+      "note": "owner: a mirror grant is written with the variable by repo rule",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_split_blocks.py",
+      "line": 111,
+      "rule": "correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: splitter loses leading/trailing newlines",
+      "known_issue": "k1"
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_split_blocks.py",
+      "description": "split_blocks strips leading and trailing newlines, silently losing source text"
+    }
+  ]
+}

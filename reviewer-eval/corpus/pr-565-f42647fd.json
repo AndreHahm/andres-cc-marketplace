@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "pr": 565,
+  "head_sha": "f42647fd27faf7b141103fede618d54b75221aa7",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 300,
+      "rule": "rulebook-compliance",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 300,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": []
+}

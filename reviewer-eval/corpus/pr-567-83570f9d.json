@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "pr": 567,
+  "head_sha": "83570f9dc10f2023fdcdfc36a0df0802f88e3f44",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 42,
+      "rule": "plugin-rulebook",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: skill paths escape the skill folder",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/workmanagement-kit/versioned-configuration.json",
+      "line": 6,
+      "rule": "plugin-rulebook",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: config field removed while docs still require it",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f3",
+      "reviewer": "security-reviewer",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 13,
+      "rule": "tool-scoping",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: broad grant was already there",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "description": "skill text uses relative paths that escape the skill folder"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/workmanagement-kit/versioned-configuration.json",
+      "description": "notion.repo removed from versioned-configuration.json while docs still require it"
+    }
+  ]
+}

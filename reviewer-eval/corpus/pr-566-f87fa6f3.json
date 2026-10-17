@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pr": 566,
+  "head_sha": "f87fa6f3bd301248148426524ebb0c8d6acc1793",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 104,
+      "rule": "workflow correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: option has no marker; smoke check does not catch it",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py",
+      "line": 106,
+      "rule": "test coverage",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: option has no marker; smoke check does not catch it",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 108,
+      "rule": "maintainability",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "description": "triage option has no (Recommended) marker and the smoke check cannot detect that"
+    }
+  ]
+}

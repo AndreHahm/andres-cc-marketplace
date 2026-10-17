@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "pr": 566,
+  "head_sha": "ee9b361204e097d2183d24f1b949e5aff60f2e71",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 4,
+      "rule": "plugin-rulebook/R21",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 442,
+      "rule": "plugin-rulebook/R6",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: grant was already missing before the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 177,
+      "rule": "plugin-rulebook/R6",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: grant was already missing before the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f4",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 490,
+      "rule": "plugin-rulebook/R13",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f5",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 109,
+      "rule": "plugin-rulebook/R18",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f6",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 196,
+      "rule": "plugin-rulebook/R13",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f7",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 442,
+      "rule": "tool-scoping",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: grant was already missing before the PR",
+      "known_issue": null
+    },
+    {
+      "id": "f8",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/cross-model-review/references/scoped-review.md",
+      "line": 1,
+      "rule": "documentation-structure",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": []
+}

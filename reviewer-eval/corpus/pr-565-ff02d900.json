@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "pr": 565,
+  "head_sha": "ff02d900ba9022513c8c0816ecaedbb2b9de0ce1",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md",
+      "line": 164,
+      "rule": "plugin-rulebook R18 inline code block size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-validator",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 288,
+      "rule": "skills",
+      "label": "true",
+      "source": "owner",
+      "note": "inferred: minor docs/mode mismatch; owner to confirm",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_split_blocks.py",
+      "line": 95,
+      "rule": "implementation",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: four-newline run breaks reassembly",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f4",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "line": 300,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+      "description": "test file named as a runnable maintainer check is mode 0644"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/workmanagement-kit/scripts/wmgt_split_blocks.py",
+      "description": "split_blocks reassembly breaks on a run of four newlines before an oversized paragraph"
+    }
+  ]
+}
