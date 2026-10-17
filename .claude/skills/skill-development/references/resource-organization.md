@@ -11,7 +11,7 @@ See `how-skills-work.md`'s "Token Loading Hierarchy" for the authoritative expla
 ### **SKILL.md** (Required)
 
 **Loading Level**: 2 (Triggered)
-**Token Budget**: see `size-limits.md`'s tiered thresholds (300-line soft target, 500-line hard limit)
+**Token Budget**: see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`'s tiered thresholds (Soft Warning above 300 lines, Critical above 500)
 **Purpose**: Core workflow and essential guidance
 
 **Content Strategy**:
@@ -194,7 +194,7 @@ api-integration/
 
 ### Structure Validation
 
-- [ ] SKILL.md exists and within `size-limits.md`'s tiered thresholds
+- [ ] SKILL.md exists and within `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`'s tiered thresholds
 - [ ] Resources organized by purpose
 - [ ] Clear separation of concerns
 - [ ] No content duplication
@@ -240,7 +240,7 @@ api-integration/
 
 ### Optimization Triggers
 
-- SKILL.md exceeds `size-limits.md`'s soft-warning threshold (300 lines) → Split to references/
+- SKILL.md exceeds `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`'s soft-warning threshold (300 lines) → Split to references/
 - API documentation, schemas, or reference tables > ~100 lines → extract to references/ — a concrete size-based trigger that supplements the 80%-usage rule above
 - Frequent manual steps → Create scripts/
 - Large template usage → Move to assets/

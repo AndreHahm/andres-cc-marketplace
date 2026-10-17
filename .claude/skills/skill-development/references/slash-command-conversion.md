@@ -1,5 +1,22 @@
 # Slash Command to Skill Conversion Guide
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Why Convert?](#why-convert)
+- [Part 1: Analyze the Slash Command](#part-1-analyze-the-slash-command)
+- [Part 2: Map Command to Skill](#part-2-map-command-to-skill)
+- [Part 3: Convert Logic to Skill Instructions](#part-3-convert-logic-to-skill-instructions)
+- [Part 4: Determine Skill Location](#part-4-determine-skill-location)
+- [Part 5: Structure the Converted Skill](#part-5-structure-the-converted-skill)
+- [Part 6: Validation After Conversion](#part-6-validation-after-conversion)
+- [Part 7: Migration Path Decision](#part-7-migration-path-decision)
+- [Part 8: Documentation & Handoff](#part-8-documentation--handoff)
+- [Common Conversion Pitfalls](#common-conversion-pitfalls)
+- [Quick Reference: Conversion Checklist](#quick-reference-conversion-checklist)
+- [Examples by Complexity](#examples-by-complexity)
+- [Need Help?](#need-help)
+
 ## Overview
 
 Slash commands in `~/.claude/commands/` have been merged into Skills. While existing slash commands continue to work, migrating to skills provides better context management, subagent support, and project-scoped automation instead of user-space-wide effects.
@@ -112,7 +129,7 @@ name: test-runner
 description: >-
   Run tests and report results. Use when validating code before commit,
   ensuring test coverage, or running specific test suites.
-allowed-tools: Bash(npm:*,test:*)
+allowed-tools: Bash(npm:*),Bash(test:*)
 ---
 ```
 
@@ -160,8 +177,7 @@ name: release-coordinator
 description: >-
   Coordinate releases with versioning, building, and publishing. Use when
   preparing releases, bumping versions, or publishing packages to npm.
-allowed-tools: Bash(npm:*,git:*),Read,Write,Edit,Grep
-version: 1.0.0
+allowed-tools: Bash(npm:*),Bash(git:*),Read,Write,Edit,Grep
 ---
 ```
 
@@ -525,6 +541,6 @@ This project includes the following skills:
 If during conversion you:
 - **Find unclear command logic** → Ask user to explain original purpose
 - **Hit conversion blockers** → Refactor command or document workarounds
-- **Struggle with activation phrases** → Load `references/content-guidelines.md`
-- **Are unsure about tool scoping** → Load `references/allowed-tools.md`
+- **Struggle with activation phrases** → Load `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`
+- **Are unsure about tool scoping** → Load `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md`
 - **Need structural guidance** → Load `references/templates.md`

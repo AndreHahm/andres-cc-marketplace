@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Agent file has valid frontmatter with name, description, model, and color fields",
+      "passed": true,
+      "evidence": "frontmatter has name, description, model: inherit, color: cyan"
+    },
+    {
+      "text": "tools field (if present) is restricted to Read/Grep/Glob only, with no Write/Edit/Bash",
+      "passed": true,
+      "evidence": "tools: [Read, Grep, Glob]"
+    },
+    {
+      "text": "description field is a single sentence with no verbose <example> blocks",
+      "passed": false,
+      "evidence": "Strict reading fails: description is two sentences ('Use this agent when ... Typical triggers include ...'). It has no <example> blocks, and that two-part shape is the agent-development skill's own required description form, so the assertion wording looks stale. validate-agent.sh was not re-run after the agent's two later edits."
+    },
+    {
+      "text": "Body includes a '## When to invoke' section with 2-4 prose trigger scenarios",
+      "passed": true,
+      "evidence": "## When to invoke has 4 prose bullets (three scenarios plus a Not-for bullet)"
+    },
+    {
+      "text": "name field is lowercase-hyphenated, 3-50 characters, starts/ends alphanumeric",
+      "passed": true,
+      "evidence": "name: test-coverage-checker, lowercase-hyphenated"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

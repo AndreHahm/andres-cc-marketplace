@@ -148,7 +148,7 @@ suggestion, not a potentially-noisy repeated command the way a Bash milestone pa
 this hook also fired on `PostToolUse`, claiming the skill had "finished." That claim was false almost
 every time it fired: a Skill() call's own `PostToolUse` event fires once the skill's instructions have
 loaded into the conversation as a message, not once the model has actually finished executing the
-workflow those instructions describe (see `skill-development`'s `references/design-patterns.md`, "Skill
+workflow those instructions describe (see plugin-devkit's `references/pdk-design-patterns.md`, "Skill
 content lifecycle") — there is no hook event in Claude Code that fires on real workflow completion for
 a foreground skill. Rather than keep a message that reads as factually wrong most of the time, the
 finish phase was dropped entirely (found by Codex's automated PR review, 2026-09-21, against PR #368).

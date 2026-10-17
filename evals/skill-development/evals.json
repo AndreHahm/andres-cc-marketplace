@@ -1,0 +1,45 @@
+{
+  "skill_name": "skill-development",
+  "skill_path": "plugins/plugin-devkit/skills/skill-development/SKILL.md",
+  "description": "Create, test, evaluate, improve, repair and consolidate Claude Code skills (authoring); defers refinement of a working skill to skill-refiner-interactive.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "create-a-new-skill",
+      "prompt": "I'm building a plugin called ops-kit. Create a new skill in it called log-triage that triages application log files: it should read a log file the user points at, use grep and jq to pull out error lines and JSON-structured entries, and summarize the top recurring errors. It needs one small helper script. Do not modify anything outside your outputs directory; write the plugin tree (ops-kit/skills/log-triage/...) under it.",
+      "expected_output": "A skill directory with a SKILL.md whose frontmatter has a name and a trigger-phrase description, one Bash(cmd:*) allowed-tools entry per command (grep, jq), the helper script referenced via ${CLAUDE_SKILL_DIR}/scripts/..., a data-only boundary for untrusted log content, and a body under 300 lines.",
+      "files": ["ops-kit/skills/log-triage/SKILL.md", "ops-kit/skills/log-triage/scripts/"]
+    },
+    {
+      "id": 2,
+      "name": "convert-a-slash-command",
+      "prompt": "Convert this slash command into a skill. The command file is .claude/commands/release-notes.md with this content:\n\n---\ndescription: Draft release notes from merged PRs\nallowed-tools: Bash(git:*, gh:*), Read, Write\n---\nList the PRs merged since the last tag with `gh pr list --state merged`, group them by conventional-commit type, and write RELEASE_NOTES.md.\n\nWrite the converted skill under your outputs directory (skills/release-notes/...). Do not modify anything outside your outputs directory.",
+      "expected_output": "A skills/release-notes/SKILL.md with name and a trigger-phrase description, the same behavior preserved, and allowed-tools listing git and gh as separate Bash(git:*) and Bash(gh:*) entries rather than one comma-joined entry.",
+      "files": ["skills/release-notes/SKILL.md"]
+    },
+    {
+      "id": 3,
+      "name": "consolidate-overlapping-skills",
+      "prompt": "I have two skills that look like duplicates and I want them consolidated: `fmt-json` (description: 'Format JSON files. Use when asked to pretty-print or format JSON.') and `json-pretty` (description: 'Pretty-print JSON. Use when asked to format or prettify JSON files.'). Both just run `jq .` on a file. Tell me how you would consolidate them and, if the process involves analyzing a larger skill set in parallel, how you would start that. Write your plan and the merged SKILL.md under your outputs directory. Do not modify anything outside your outputs directory.",
+      "expected_output": "A consolidation plan that merges the two into one skill with a single description covering both trigger phrasings, and that asks for or states the need for the user's approval before launching any parallel subagent fan-out rather than starting one unprompted.",
+      "files": ["plan.md", "skills/fmt-json/SKILL.md"]
+    },
+    {
+      "id": 4,
+      "name": "route-refinement-to-sibling",
+      "prompt": "I already have a working skill called deploy-notes in my plugin. I want to improve it interactively: go through it with me, propose changes one at a time, and let me approve each one before you apply it. Which skill or workflow should handle that, and how do we start? Write your answer to answer.md under your outputs directory. Do not modify anything outside your outputs directory.",
+      "expected_output": "answer.md names skill-refiner-interactive as the right skill for operator-approved refinement of an existing working skill, explains the distinction from authoring, and does not run the five-phase creation process or create a new skill.",
+      "files": ["answer.md"]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 7,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "improve a skill you are authoring / audit this skill / fix a broken skill",
+      "bulletproof a skill / verify skill under pressure / compliance test a skill",
+      "help me debug Python / review my PR / write unit tests for X (generic non-trigger)",
+      "add a hook to my project (routes to hook-development)"
+    ]
+  }
+}

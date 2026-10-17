@@ -8,15 +8,30 @@ for a set of queries. Outputs results as JSON.
 import argparse
 import json
 import os
-import select
+import queue
+import re
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from scripts.utils import parse_skill_md
+from scripts.utils import child_env, parse_skill_md
+
+
+def _pump_stdout(stream, out_queue: "queue.Queue[bytes]") -> None:
+    """Forward a child's stdout to a queue in chunks; put b"" at EOF."""
+    fd = stream.fileno()
+    while True:
+        try:
+            chunk = os.read(fd, 8192)
+        except OSError:
+            chunk = b""
+        out_queue.put(chunk)
+        if not chunk:
+            return
 
 
 def find_project_root() -> Path:
@@ -69,18 +84,27 @@ def run_single_query(
 
         cmd = [
             "claude",
-            "-p", query,
-            "--output-format", "stream-json",
+            "-p",
+            query,
+            "--output-format",
+            "stream-json",
             "--verbose",
             "--include-partial-messages",
+            # Triggering is detected from Skill/Read tool calls only; the skill under
+            # test is untrusted text, so the child gets no shell, edit or network tools.
+            "--tools",
+            "Skill,Read",
+            # --tools names built-in tools only; this also keeps MCP servers (user,
+            # project or IDE) out of the child.
+            "--strict-mcp-config",
         ]
         if model:
             cmd.extend(["--model", model])
 
-        # Remove CLAUDECODE env var to allow nesting claude -p inside a
-        # Claude Code session. The guard is for interactive terminal conflicts;
-        # programmatic subprocess usage is safe.
-        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        # child_env() drops CLAUDECODE (allowing claude -p nested inside a Claude Code
+        # session; the guard is for interactive terminal conflicts) and withholds
+        # credentials the child does not need.
+        env = child_env()
 
         process = subprocess.Popen(
             cmd,
@@ -97,19 +121,19 @@ def run_single_query(
         pending_tool_name = None
         accumulated_json = ""
 
+        # select.select() works on pipes only on POSIX, so a reader thread feeds a queue
+        # instead; an empty chunk marks EOF.
+        chunk_queue: queue.Queue[bytes] = queue.Queue()
+        threading.Thread(
+            target=_pump_stdout, args=(process.stdout, chunk_queue), daemon=True
+        ).start()
+
         try:
             while time.time() - start_time < timeout:
-                if process.poll() is not None:
-                    remaining = process.stdout.read()
-                    if remaining:
-                        buffer += remaining.decode("utf-8", errors="replace")
-                    break
-
-                ready, _, _ = select.select([process.stdout], [], [], 1.0)
-                if not ready:
+                try:
+                    chunk = chunk_queue.get(timeout=1.0)
+                except queue.Empty:
                     continue
-
-                chunk = os.read(process.stdout.fileno(), 8192)
                 if not chunk:
                     break
                 buffer += chunk.decode("utf-8", errors="replace")
@@ -163,7 +187,9 @@ def run_single_query(
                             tool_input = content_item.get("input", {})
                             if tool_name == "Skill" and clean_name in tool_input.get("skill", ""):
                                 triggered = True
-                            elif tool_name == "Read" and clean_name in tool_input.get("file_path", ""):
+                            elif tool_name == "Read" and clean_name in tool_input.get(
+                                "file_path", ""
+                            ):
                                 triggered = True
                             return triggered
 
@@ -193,6 +219,10 @@ def run_eval(
     model: str | None = None,
 ) -> dict:
     """Run the full eval set and return results."""
+    # skill_name comes from the untrusted SKILL.md and becomes part of a file path below;
+    # failing here keeps run_single_query's swallowed-exception path from hiding it.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", skill_name):
+        raise ValueError(f"unsafe skill name {skill_name!r}: use letters, digits, '-' and '_'")
     results = []
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
@@ -232,14 +262,16 @@ def run_eval(
             did_pass = trigger_rate >= trigger_threshold
         else:
             did_pass = trigger_rate < trigger_threshold
-        results.append({
-            "query": query,
-            "should_trigger": should_trigger,
-            "trigger_rate": trigger_rate,
-            "triggers": sum(triggers),
-            "runs": len(triggers),
-            "pass": did_pass,
-        })
+        results.append(
+            {
+                "query": query,
+                "should_trigger": should_trigger,
+                "trigger_rate": trigger_rate,
+                "triggers": sum(triggers),
+                "runs": len(triggers),
+                "pass": did_pass,
+            }
+        )
 
     passed = sum(1 for r in results if r["pass"])
     total = len(results)
@@ -264,8 +296,14 @@ def main():
     parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
     parser.add_argument("--timeout", type=int, default=30, help="Timeout per query in seconds")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
-    parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
-    parser.add_argument("--model", default=None, help="Model to use for claude -p (default: user's configured model)")
+    parser.add_argument(
+        "--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold"
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Model to use for claude -p (default: user's configured model)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     args = parser.parse_args()
 
@@ -301,7 +339,10 @@ def main():
         for r in output["results"]:
             status = "PASS" if r["pass"] else "FAIL"
             rate_str = f"{r['triggers']}/{r['runs']}"
-            print(f"  [{status}] rate={rate_str} expected={r['should_trigger']}: {r['query'][:70]}", file=sys.stderr)
+            print(
+                f"  [{status}] rate={rate_str} expected={r['should_trigger']}: {r['query'][:70]}",
+                file=sys.stderr,
+            )
 
     print(json.dumps(output, indent=2))
 

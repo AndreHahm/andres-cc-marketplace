@@ -97,7 +97,7 @@ FORBIDDEN (never access):
 
 ### Tool Scoping
 
-Good and poor `allowed-tools` scoping examples live in `allowed-tools.md`; the validation checks are Phase 6 in `refinement-workflow.md`.
+Good and poor `allowed-tools` scoping examples live in `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md`; the validation checks are Phase 6 in `refinement-workflow.md`.
 
 ## Example: Production-Ready Validation Report
 

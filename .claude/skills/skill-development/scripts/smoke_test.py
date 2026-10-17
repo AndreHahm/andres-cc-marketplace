@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """Persisted smoke test for skill-development: frontmatter validity, referenced-file
 existence, and Bash-scope grant usage consistency."""
-import re
-import sys
+
+import contextlib
+import importlib.util
+import io
+import os
 import pathlib
+import queue
+import re
+import subprocess
+import sys
+import tempfile
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -46,25 +54,469 @@ def check_bash_grants():
     # word-boundary command mention in the body? An unused grant is an R6 least-privilege
     # smell even when nothing in the body's own phrasing names the grant explicitly.
     text = SKILL_MD.read_text(encoding="utf-8")
-    header_end = text.find("\n---\n", 4) + 5
-    frontmatter, body = text[:header_end], text[header_end:]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not fm_line_match:
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return False, "frontmatter block is never closed"
+    frontmatter, body = text[:end], text[end + 5 :]
+    # Single-line value, or a YAML block scalar (>- / |) whose indented lines continue it.
+    fm_line_match = re.search(
+        r"^allowed-tools:[ \t]*((?:[>|][+-]?)?[ \t]*.*(?:\n[ \t]+.*)*)", frontmatter, re.MULTILINE
+    )
+    if not fm_line_match or not fm_line_match.group(1).strip():
         return True, "no allowed-tools line found (skip)"
     granted_cmds = re.findall(r"Bash\(([\w.-]+):", fm_line_match.group(1))
     unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
+            sorted(set(unused))
+        )
     return True, "every granted Bash command is invoked somewhere in the body"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
+def _load_script(name):
+    """Import a sibling script by file path (repair_skill.py imports quick_validate bare)."""
+    # scripts/ itself (bare sibling imports) and the skill dir (`from scripts.utils import`)
+    for path in (str(SKILL_DIR / "scripts"), str(SKILL_DIR)):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    spec = importlib.util.spec_from_file_location(name, SKILL_DIR / "scripts" / f"{name}.py")
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load scripts/{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_scan_skills_parses_block_scalar():
+    scan = _load_script("scan_skills")
+    text = "---\nname: demo\ndescription: >-\n  Folded text.\n  Second line.\n---\n# Body\n"
+    description = scan.parse_frontmatter(text).get("description")
+    if description != "Folded text. Second line.":
+        return False, f"block-scalar description parsed as {description!r}"
+    return True, "block-scalar description is parsed by a real YAML parser"
+
+
+def check_similarity_without_registry():
+    sim = _load_script("analyze_similarity")
+    if sim.jaccard_similarity(set(), set()) != 0.0:
+        return False, "two empty sets must not count as identical"
+    same = "Parse structured application logs for error triage and incident correlation"
+    skills = [
+        {"name": "alpha", "frontmatter": {"name": "alpha", "description": same}},
+        {"name": "beta", "frontmatter": {"name": "beta", "description": "Render sales charts"}},
+        {"name": "gamma", "frontmatter": {"name": "gamma", "description": same}},
+    ]
+    if sim.find_obsolete_skills(skills, {}):
+        return False, "registry-less skills must not all be reported obsolete (bold != old)"
+    report = sim.generate_simple_report({"skills": skills}, 0.65)
+    # Merge headings use the title-cased display name; skills are alphabetical pairs
+    if "### Alpha + Gamma" not in report:
+        return False, "identical registry-less descriptions were not flagged (positive control)"
+    if "Beta" in report.split("## Medium Priority")[0].split("## High Priority")[1]:
+        return False, "a dissimilar registry-less skill was flagged as a merge pair"
+    return True, "no registry: no KeyError; duplicates flagged, dissimilar and unused not"
+
+
+def check_obsolete_handles_naive_timestamp():
+    sim = _load_script("analyze_similarity")
+    skills = [{"name": "alpha", "frontmatter": {"description": "Parse logs"}}]
+    for stamp in ("2020-01-01T00:00:00", "2020-01-01T00:00:00Z"):
+        registry = {"skills": {"alpha": {"activation_count": 3, "last_used": stamp}}}
+        reasons = sim.find_obsolete_skills(skills, registry)[0]["reasons"]
+        if not any(r.startswith("Not used in") for r in reasons):
+            return False, f"last_used {stamp!r} was not compared: {reasons}"
+    return True, "naive and timezone-aware last_used timestamps are both compared"
+
+
+def check_obsolete_lists_high_urgency_first():
+    sim = _load_script("analyze_similarity")
+    skills = [
+        {"name": f"stale-{i}", "frontmatter": {"description": "Parse logs"}} for i in range(11)
+    ]
+    skills.append({"name": "never-used", "frontmatter": {"description": "Parse logs"}})
+    entries = {
+        f"stale-{i}": {"activation_count": 3, "last_used": "2020-01-01T00:00:00Z"}
+        for i in range(11)
+    }
+    entries["never-used"] = {"activation_count": 0}
+    names = [item["name"] for item in sim.find_obsolete_skills(skills, {"skills": entries})]
+    if "never-used" not in names[:10]:
+        return False, f"high-urgency skill would be cut by the report's first-10 limit: {names}"
+    return True, "high-urgency obsolete skills sort ahead of the report's first-10 cut"
+
+
+def check_frontmatter_close_is_line_anchored():
+    validate = _load_script("quick_validate")
+    text = (
+        "---\nname: dash-skill\n"
+        'description: "Handles jobs --- including retries. Use when jobs stall."\n'
+        "---\n# Body\n"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "dash-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(text, encoding="utf-8")
+        ok, message = validate.validate_skill_frontmatter(skill)
+    if not ok:
+        return False, f"a '---' inside a frontmatter value ended the block early: {message}"
+    return True, "a '---' inside a frontmatter value does not end the block"
+
+
+def check_repair_preserves_frontmatter():
+    repair = _load_script("repair_skill")
+    original = "---\ndescription: >-\n  Zażółć gęślą.\nz-key: 1\na-key: 2\n---\n# Body\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "demo-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(original, encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            repair.fix_frontmatter_format(skill)
+        result = (skill / "SKILL.md").read_text(encoding="utf-8")
+    expected = '---\nname: "demo-skill"\n' + original[4:]
+    if result != expected:
+        return False, f"existing frontmatter was rewritten: {result!r}"
+    return True, "repair inserts only the missing key and leaves the rest byte-identical"
+
+
+def _load_viewer():
+    path = SKILL_DIR / "eval-viewer" / "generate_review.py"
+    spec = importlib.util.spec_from_file_location("generate_review", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def check_viewer_escapes_script_close_in_data():
+    viewer = _load_viewer()
+    payload = "</script><script>alert(1)</script>"
+    html = viewer.generate_html([{"id": "r1", "prompt": payload}], "demo")
+    if payload in html or "</script><script>alert(1)" in html:
+        return False, "untrusted run text can close the inline <script> block"
+    if "\\u003c/script>" not in html:
+        return False, "the escaped payload is missing from the embedded data"
+    return True, "'<' in embedded run data is escaped, so '</script>' cannot end the script"
+
+
+def check_viewer_server_rejects_foreign_requests():
+    import functools
+    import http.client
+    import http.server
+    import threading
+
+    viewer = _load_viewer()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        feedback = root / "feedback.json"
+        handler = functools.partial(viewer.ReviewHandler, root, "demo", feedback, {}, None)
+        server = http.server.HTTPServer(("127.0.0.1", 0), handler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        body = '{"reviews": []}'
+        own = {"Host": f"localhost:{port}", "Content-Type": "application/json"}
+        cases = {
+            "GET own host": ("GET", "/api/feedback", None, own, 200),
+            "GET foreign host": ("GET", "/api/feedback", None, {"Host": "evil.example"}, 403),
+            "POST foreign origin": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Origin": "http://evil.example"},
+                403,
+            ),
+            "POST oversized": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Content-Length": "99999999"},
+                413,
+            ),
+            "POST own origin": (
+                "POST",
+                "/api/feedback",
+                body,
+                {**own, "Origin": f"http://localhost:{port}"},
+                200,
+            ),
+        }
+        failed = []
+        try:
+            for name, (method, path, payload, headers, want) in cases.items():
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
+                for key, value in headers.items():
+                    conn.putheader(key, value)
+                if payload is not None and "Content-Length" not in headers:
+                    conn.putheader("Content-Length", str(len(payload)))
+                conn.endheaders(payload.encode() if payload is not None and want != 413 else None)
+                got = conn.getresponse().status
+                conn.close()
+                if got != want:
+                    failed.append(f"{name}: got {got}, want {want}")
+        finally:
+            server.shutdown()
+            server.server_close()
+        written = feedback.exists()
+    if failed:
+        return False, "; ".join(failed)
+    if not written:
+        return False, "the allowed POST did not write feedback.json"
+    return True, "foreign Host/Origin and oversized bodies are rejected; same-origin works"
+
+
+def check_allowed_tools_reference_teaches_pinned_grants():
+    path = SKILL_DIR.parent.parent / "references" / "pdk-allowed-tools.md"
+    text = path.read_text(encoding="utf-8")
+    if "pre-approves python only" in text:
+        return False, "the reference still says Bash(python:*) pre-approves 'python only'"
+    if "Bash(python ${CLAUDE_SKILL_DIR}/scripts/" not in text:
+        return False, "the reference does not show a script-pinned interpreter grant"
+    return (
+        True,
+        "pdk-allowed-tools.md teaches script-pinned grants and no longer calls python:* narrow",
+    )
+
+
+def check_viewer_never_kills_the_port_holder():
+    path = SKILL_DIR / "eval-viewer" / "generate_review.py"
+    source = path.read_text(encoding="utf-8")
+    if "os.kill" in source or "_kill_port" in source:
+        return False, "generate_review.py can terminate whatever process holds the port"
+    return True, "generate_review.py falls back to a free port instead of killing the port holder"
+
+
+def check_viewer_html_escapes_untrusted_fields():
+    html = (SKILL_DIR / "eval-viewer" / "viewer.html").read_text(encoding="utf-8")
+    if '.replace(/"/g, "&quot;")' not in html:
+        return False, 'escapeHtml leaves double quotes alone (title="..." attribute breakout)'
+    raw = (
+        "+ configLabel +",
+        "+ run.run_number +",
+        "+ (r.errors",
+        "+ (summary.passed",
+        "html += metadata.timestamp",
+        '"Evals: " + metadata',
+        "+ (delta.tokens",
+        "+ (delta.pass_rate",
+        "+ (delta.time_seconds",
+    )
+    left = [token for token in raw if token in html]
+    if left:
+        return False, f"grading/benchmark values reach innerHTML unescaped: {left}"
+    return True, "viewer.html escapes quotes and the audited grading/benchmark interpolations"
+
+
+def check_untrusted_readers_carry_data_only_boundary():
+    names = ("grader", "comparator", "analyzer")
+    files = [SKILL_DIR / "SKILL.md"] + [SKILL_DIR / "agents" / f"{n}.md" for n in names]
+    required = ("**Data-only boundary:**", "untrusted data", "suspicious, never acted on")
+    missing = [
+        path.name
+        for path in files
+        if not all(token in path.read_text(encoding="utf-8") for token in required)
+    ]
+    if missing:
+        return False, f"no complete data-only boundary (R32) in: {', '.join(missing)}"
+    return True, "SKILL.md and the grader, comparator and analyzer agents carry the R32 boundary"
+
+
+def check_repair_keeps_dashes_inside_values():
+    repair = _load_script("repair_skill")
+    original = '---\ndescription: "Handles jobs --- including retries."\n---\n# Body\n'
+    with tempfile.TemporaryDirectory() as tmp:
+        skill = pathlib.Path(tmp) / "demo-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(original, encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            repair.fix_frontmatter_format(skill)
+        result = (skill / "SKILL.md").read_text(encoding="utf-8")
+    expected = '---\nname: "demo-skill"\n' + original[4:]
+    if result != expected:
+        return False, f"a '---' inside a value was treated as the closing delimiter: {result!r}"
+    return True, "repair does not treat a '---' inside a value as the closing delimiter"
+
+
+def check_init_rejects_path_traversal_name():
+    script = SKILL_DIR / "scripts" / "init_skill.py"
+    with tempfile.TemporaryDirectory() as tmp:
+        base = pathlib.Path(tmp) / "base"
+        base.mkdir()
+        proc = subprocess.run(
+            [sys.executable, str(script), "../escape", "--path", str(base)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        escaped = (pathlib.Path(tmp) / "escape").exists()
+    if proc.returncode == 0 or escaped:
+        return False, "init_skill.py accepted a name containing '..'"
+    return True, "init_skill.py rejects a non-hyphen-case skill name"
+
+
+def check_run_eval_reads_pipe_without_select():
+    run_eval = _load_script("run_eval")
+    if hasattr(run_eval, "select"):
+        return False, "run_eval still imports select (POSIX-only on pipes)"
+    child = subprocess.Popen(
+        [sys.executable, "-c", "print('ok')"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+    )
+    chunks = queue.Queue()
+    run_eval._pump_stdout(child.stdout, chunks)  # returns at EOF
+    child.wait()
+    first = chunks.get(timeout=5)
+    if b"ok" not in first or chunks.get(timeout=5) != b"":
+        return False, f"pump did not deliver the output then EOF: {first!r}"
+    return True, "run_eval reads the child's stdout through a portable pump and sees EOF"
+
+
+def check_package_skill_imports_as_script():
+    script = SKILL_DIR / "scripts" / "package_skill.py"
+    with tempfile.TemporaryDirectory() as tmp:
+        proc = subprocess.run(
+            [sys.executable, str(script)], capture_output=True, text=True, cwd=tmp, check=False
+        )
+    if "ModuleNotFoundError" in proc.stderr or "ImportError" in proc.stderr:
+        return False, "package_skill.py cannot import quick_validate when run as a script"
+    return True, "package_skill.py imports its validator when run as `python .../package_skill.py`"
+
+
+def check_report_icons_differ():
+    text = (SKILL_DIR / "scripts" / "generate_report.py").read_text(encoding="utf-8")
+    pairs = re.findall(r'icon = "([^"]*)" if did_pass else "([^"]*)"', text)
+    if not pairs or any(ok == bad for ok, bad in pairs):
+        return False, f"pass and fail icons must differ: {pairs}"
+    return True, "report pass and fail icons are distinct"
+
+
+def check_improve_description_call_is_contained():
+    if os.name == "nt":
+        return True, "POSIX-only fake `claude` shim (skip)"
+    improve = _load_script("improve_description")
+    with tempfile.TemporaryDirectory() as tmp:
+        shim = pathlib.Path(tmp) / "claude"
+        # A marker file, not an env var: the child's environment is filtered.
+        shim.write_text(
+            '#!/bin/sh\nif [ -e "$(dirname "$0")/slow" ]; then sleep 5; fi\npwd\n', encoding="utf-8"
+        )
+        shim.chmod(0o755)
+        old_path, old_cwd = os.environ["PATH"], os.getcwd()
+        os.environ["PATH"] = f"{tmp}{os.pathsep}{old_path}"
+        try:
+            reply = improve._call_claude("prompt", None, timeout=5).strip()
+            (pathlib.Path(tmp) / "slow").touch()
+            try:
+                improve._call_claude("prompt", None, timeout=1)
+            except RuntimeError as exc:
+                timed_out = "timed out" in str(exc)
+            else:
+                timed_out = False
+        finally:
+            os.environ["PATH"] = old_path
+    if os.path.realpath(reply) == os.path.realpath(old_cwd):
+        return False, "claude -p ran in the caller's cwd instead of a neutral one"
+    if not timed_out:
+        return False, "a claude -p timeout did not surface as RuntimeError"
+    return True, "claude -p runs in a neutral cwd and a timeout becomes a RuntimeError"
+
+
+def check_nested_claude_gets_no_secrets_and_few_tools():
+    if os.name == "nt":
+        return True, "POSIX-only fake `claude` shim (skip)"
+    _load_script("utils")  # puts the skill dir on sys.path for `from scripts.utils import`
+    from scripts.utils import child_env
+
+    planted = {
+        "CLAUDECODE": "1",
+        "ANTHROPIC_API_KEY": "keep-me",
+        "AWS_SECRET_ACCESS_KEY": "leak-me",
+        "GITHUB_TOKEN": "leak-me",
+    }
+    saved = {k: os.environ.get(k) for k in planted}
+    os.environ.update(planted)
+    try:
+        env = child_env()
+        improve = _load_script("improve_description")
+        with tempfile.TemporaryDirectory() as tmp:
+            shim = pathlib.Path(tmp) / "claude"
+            shim.write_text(
+                '#!/bin/sh\nprintf "%s|" "$@"\n'
+                'printf "%s|%s" "$GITHUB_TOKEN" "$ANTHROPIC_API_KEY"\n',
+                encoding="utf-8",
+            )
+            shim.chmod(0o755)
+            old_path = os.environ["PATH"]
+            os.environ["PATH"] = f"{tmp}{os.pathsep}{old_path}"
+            try:
+                seen = improve._call_claude("prompt", None, timeout=5)
+            finally:
+                os.environ["PATH"] = old_path
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+    if "CLAUDECODE" in env or "AWS_SECRET_ACCESS_KEY" in env or "GITHUB_TOKEN" in env:
+        return False, "child_env passes the nesting guard or an unrelated credential through"
+    if env.get("ANTHROPIC_API_KEY") != "keep-me":
+        return False, "child_env drops the variable the child needs to authenticate"
+    if "--tools||" not in seen:
+        return False, f"improve_description does not pass an empty --tools list: {seen!r}"
+    if "--strict-mcp-config|" not in seen:
+        return False, f"improve_description lets MCP servers into the child: {seen!r}"
+    run_eval = _load_script("run_eval")
+    for bad in ("../../x", "a/b", "..", ""):
+        try:
+            run_eval.run_eval([], bad, "d", 1, 1, pathlib.Path("."))
+        except ValueError:
+            continue
+        return False, f"run_eval accepted the unsafe skill name {bad!r}"
+    if not seen.endswith("|keep-me") or "leak-me" in seen:
+        return False, f"the shim saw an unfiltered environment: {seen!r}"
+    run_eval_source = (SKILL_DIR / "scripts" / "run_eval.py").read_text(encoding="utf-8")
+    restricted = '"--tools",\n            "Skill,Read"' in run_eval_source
+    if not restricted or "child_env()" not in run_eval_source:
+        return False, "run_eval.py does not restrict tools to Skill,Read or use child_env()"
+    if '"--strict-mcp-config"' not in run_eval_source:
+        return False, "run_eval.py lets MCP servers into the child"
+    return True, "nested claude -p gets no unrelated credentials and only the tools it needs"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_scan_skills_parses_block_scalar,
+    check_similarity_without_registry,
+    check_obsolete_handles_naive_timestamp,
+    check_obsolete_lists_high_urgency_first,
+    check_frontmatter_close_is_line_anchored,
+    check_repair_preserves_frontmatter,
+    check_repair_keeps_dashes_inside_values,
+    check_viewer_escapes_script_close_in_data,
+    check_viewer_server_rejects_foreign_requests,
+    check_allowed_tools_reference_teaches_pinned_grants,
+    check_viewer_never_kills_the_port_holder,
+    check_viewer_html_escapes_untrusted_fields,
+    check_untrusted_readers_carry_data_only_boundary,
+    check_init_rejects_path_traversal_name,
+    check_run_eval_reads_pipe_without_select,
+    check_package_skill_imports_as_script,
+    check_report_icons_differ,
+    check_improve_description_call_is_contained,
+    check_nested_claude_gets_no_secrets_and_few_tools,
+]
 
 
 def main():
     failed = False
     for check in CHECKS:
-        ok, message = check()
+        try:
+            ok, message = check()
+        except Exception as exc:  # a crashing check is a FAIL, not an aborted run
+            ok, message = False, f"raised {type(exc).__name__}: {exc}"
         print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
         failed = failed or not ok
     sys.exit(1 if failed else 0)

@@ -13,7 +13,7 @@ Full field-by-field reference for `SKILL.md` YAML frontmatter. For a shorter usa
 | Field | Type | Values / Notes |
 |---|---|---|
 | `name` | string | kebab-case, max 64 chars. If omitted, uses the directory name. |
-| `description` | string | Trigger condition for activation. 80–1024 characters; combined with `when_to_use`, capped at 1536 characters (see `references/size-limits.md`). |
+| `description` | string | Trigger condition for activation. 80–1024 characters; combined with `when_to_use`, capped at 1536 characters (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`). |
 | `when_to_use` | string | Additional trigger context appended to `description`; up to 512 characters, and counts toward the combined 1536-char cap. |
 | `argument-hint` | string | Optional. Hint shown during autocomplete (e.g., `[issue-number]`). Allowed field — not forbidden in skills. Must stay consistent with what the body actually consumes (see `references/argument-consistency.md` in plugin-rulebook, R22). |
 | `arguments` | space-separated string or YAML list | Named positional arguments; each name maps to a `$name` substitution in the skill content, 0-based in declared order (`$0` = first name). |

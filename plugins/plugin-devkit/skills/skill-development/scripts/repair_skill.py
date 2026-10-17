@@ -13,10 +13,14 @@ Examples:
     repair_skill.py --list-issues
 """
 
+import io
+import json
+import re
 import sys
-import yaml
 from pathlib import Path
-from quick_validate import diagnose_skill_issues
+
+import yaml
+from quick_validate import diagnose_skill_issues  # ty: ignore[unresolved-import]
 
 
 def fix_frontmatter_format(skill_path):
@@ -34,22 +38,25 @@ def fix_frontmatter_format(skill_path):
         return False
 
     try:
-        content = skill_md.read_text(encoding='utf-8')
+        content = skill_md.read_text(encoding="utf-8")
         original_content = content
 
         # Fix common frontmatter issues
-        if not content.startswith('---'):
-            content = '---\n' + content
+        if not content.startswith("---"):
+            content = "---\n" + content
             print("  Added missing frontmatter delimiter")
 
         # Extract and fix frontmatter
-        frontmatter_end = content.find('---', 3)
+        # The closing delimiter is a line that is exactly `---`, not any `---` inside a value.
+        closing = re.search(r"^---[ \t]*$", content[3:], re.MULTILINE)
+        frontmatter_end = closing.start() + 3 if closing else -1
         if frontmatter_end == -1:
             # Add closing delimiter
-            first_line_end = content.find('\n')
+            first_line_end = content.find("\n")
             if first_line_end != -1:
-                content = content[:first_line_end] + '\n---\n' + content[first_line_end:]
-                frontmatter_end = content.find('---', 3)
+                content = content[:first_line_end] + "\n---\n" + content[first_line_end:]
+                closing = re.search(r"^---[ \t]*$", content[3:], re.MULTILINE)
+                frontmatter_end = closing.start() + 3 if closing else -1
                 print("  Added missing frontmatter closing delimiter")
 
         if frontmatter_end != -1:
@@ -64,21 +71,26 @@ def fix_frontmatter_format(skill_path):
 
                 skill_name = skill_path.name
 
-                if 'name' not in frontmatter:
-                    frontmatter['name'] = skill_name
+                # Insert only the missing keys as new lines under the opening delimiter.
+                # Re-dumping the whole mapping would sort keys, collapse block scalars
+                # (`>-`), and escape non-ASCII text in fields that were already fine.
+                # json.dumps yields a valid double-quoted YAML scalar.
+                added_lines = ""
+                if "name" not in frontmatter:
+                    added_lines += f"name: {json.dumps(skill_name, ensure_ascii=False)}\n"
                     print("  Added missing 'name' field")
 
-                if 'description' not in frontmatter:
-                    frontmatter['description'] = f"Skill for {skill_name.replace('-', ' ')}"
+                if "description" not in frontmatter:
+                    description = f"Skill for {skill_name.replace('-', ' ')}"
+                    added_lines += f"description: {json.dumps(description, ensure_ascii=False)}\n"
                     print("  Added missing 'description' field")
 
-                # Rebuild content with fixed frontmatter
-                new_frontmatter = yaml.dump(frontmatter, default_flow_style=False)
-                new_content = '---\n' + new_frontmatter + '---' + content[frontmatter_end + 3:]
+                first_line_end = content.find("\n") + 1
+                new_content = content[:first_line_end] + added_lines + content[first_line_end:]
 
                 # Write back if changed
                 if new_content != original_content:
-                    skill_md.write_text(new_content, encoding='utf-8')
+                    skill_md.write_text(new_content, encoding="utf-8")
                     print("  ✅ Fixed frontmatter format")
                     return True
 
@@ -218,6 +230,18 @@ def main():
 
     command = sys.argv[1]
 
+    # The skill name is joined onto the skills directory, so reject path separators and
+    # "..". The hyphen-case rule is deliberately not enforced here: a repair tool must
+    # still be able to target an existing, badly named skill directory.
+    name_arg = sys.argv[2] if command == "--diagnose" and len(sys.argv) > 2 else command
+    if (
+        command != "--list-issues"
+        and not name_arg.startswith("-")
+        and (re.search(r"[\\/]", name_arg) or name_arg in {".", ".."})
+    ):
+        print(f"Error: invalid skill name {name_arg!r}")
+        sys.exit(1)
+
     if command == "--list-issues":
         list_all_skill_issues(skills_base_path)
 
@@ -266,4 +290,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     main()
