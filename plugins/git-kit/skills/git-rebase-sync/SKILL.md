@@ -5,7 +5,7 @@ description: >-
   conflicts encountered mid-rebase, with safety rails and safe force-with-lease pushing. Use to start a
   rebase from a clean tree (including a PR branch that conflicts with its base only on GitHub) or when
   a rebase is already in progress (`git status` or `.git/rebase-merge`/`.git/rebase-apply` shows one).
-  Never creates a merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
+  Never adds a new merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
 allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*)
@@ -96,7 +96,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
 ### 4) Choose rebase mode (normal vs preserve merges)
 - Check whether the branch contains merge commits:
   - `git rev-list --count --merges origin/{base_branch}..HEAD`
-- If merge commits exist, ask whether to preserve them (`--rebase-merges`) or flatten them (plain rebase).
+- If merge commits exist, ask whether to preserve them (`--rebase-merges`) or flatten them (plain rebase). Say that GitHub's rebase-and-merge rejects a branch containing merge commits, so preserving them suits only a PR that merges another way.
 
 ### 5) Run the rebase (requires confirmation)
 - Use `AskUserQuestion` to show the exact command you intend to run and confirm before running it:
@@ -145,7 +145,7 @@ Helpful commands during conflicts:
   - `git push --force-with-lease origin HEAD:{branch_name}`
 
 ## Recovery
-- If something goes wrong, use `{backup_ref}` to restore the pre-rebase state.
+- If something goes wrong, use `{backup_ref}` to restore the pre-rebase state. When Step 2 resumed a rebase this skill did not start, no backup ref exists: offer `git rebase --abort` (after confirming) to return to the pre-rebase state.
 - Do not run destructive commands (e.g., `git reset --hard`) unless the user explicitly confirms via `AskUserQuestion` after seeing the exact command.
 
 ## Testing & Validation

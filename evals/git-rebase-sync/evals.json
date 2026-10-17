@@ -12,13 +12,14 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 5,
+    "declared_scenarios_total": 6,
     "declared_scenarios_covered": 1,
     "uncovered": [
       "\"sync my branch onto main via rebase\"",
       "\"rebase this feature branch onto origin/dev\"",
       "\"resolve the rebase conflicts on this branch\"",
-      "\"force-with-lease push after rebasing\""
+      "\"force-with-lease push after rebasing\"",
+      "\"I hit conflicts during my rebase, continue\" with a rebase of this branch already in progress"
     ]
   }
 }
