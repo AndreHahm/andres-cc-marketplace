@@ -172,11 +172,62 @@ def check_shared_protocol_writes_marker():
     )
 
 
+EXPECTED_FILE_WRITE_GRANTS = ["Edit(//tmp/claude-*/*/*/scratchpad/**)"]
+EXPECTED_GIT_DIFF_GRANT = "Bash(git diff --cached)"
+
+
+def _grant_tokens(path=None):
+    text = (path or SKILL_MD).read_text(encoding="utf-8")
+    end = text.find("\n---\n", 4)
+    if not text.startswith("---\n") or end == -1:
+        return None
+    value = _allowed_tools_value(text[: end + 5])
+    if value is None:
+        return None
+    # Split on commas outside parentheses so a grant such as Bash(git diff --cached) stays whole.
+    return [t.strip() for t in re.split(r",(?![^()]*\))", value) if t.strip()]
+
+
+def check_file_write_grants_scoped(path=None):
+    """Issue #588: a bare Write or Edit lets the skill overwrite any file without a prompt, and
+    Write(<glob>) is accepted but never matches. Only the pinned, path-scoped Edit(...) set is
+    allowed."""
+    tokens = _grant_tokens(path)
+    if tokens is None:
+        return False, "frontmatter or allowed-tools line missing"
+    grants = [t for t in tokens if re.match(r"(Write|Edit|MultiEdit|NotebookEdit)(\(|$)", t)]
+    if sorted(grants) != sorted(EXPECTED_FILE_WRITE_GRANTS):
+        return False, (
+            f"file-write grants {grants or 'none'} differ from the pinned set "
+            f"{EXPECTED_FILE_WRITE_GRANTS}"
+        )
+    return True, "file-write grants are exactly the pinned, path-scoped Edit(...) set"
+
+
+def check_no_wildcard_git_output_grants(path=None):
+    """Issue #588: git diff/log/show accept --output=<path>, a write to any file, and sed -E accepts
+    -i and the w command. The only git diff grant allowed is the exact, wildcard-free one."""
+    tokens = _grant_tokens(path)
+    if tokens is None:
+        return False, "frontmatter or allowed-tools line missing"
+    risky = [
+        t
+        for t in tokens
+        if re.match(r"Bash\(git (diff|log|show)\b", t) and t != EXPECTED_GIT_DIFF_GRANT
+    ]
+    risky += [t for t in tokens if re.match(r"Bash\(sed\b", t)]
+    if risky:
+        return False, "write-capable read/edit prefix grant(s): " + ", ".join(risky)
+    return True, "no wildcard git diff/log/show or sed grant"
+
+
 CHECKS = [
     check_frontmatter,
     check_bash_grants,
     check_step_sequence,
     check_shared_protocol_writes_marker,
+    check_file_write_grants_scoped,
+    check_no_wildcard_git_output_grants,
 ]
 
 
