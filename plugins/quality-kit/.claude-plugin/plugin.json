@@ -1,0 +1,8 @@
+{
+  "name": "quality-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "Resolve static-analysis findings with one default strategy instead of re-deciding on every PR: collect a PR's or repository's findings from a provider into one provider-neutral record (Codacy is the only verified provider), then decide per finding whether to fix, suppress inline, ignore, exclude a path or change a pattern, with decision rights, required reasons, a baseline-versus-new rule, a verify-after-push loop, a local pre-PR scan and an author checklist for new scripts. Collecting is read-only; every remote Codacy write goes through an explicit approval.",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}
