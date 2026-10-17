@@ -186,11 +186,13 @@ def check_file_write_grants_scoped(path=None):
     following = next((ln for ln in lines[starts[0] + 1 :] if ln.strip()), None)
     if following is not None and not re.match(r"^[A-Za-z_][\w-]*[ \t]*:", following):
         return False, "allowed-tools must be a single line followed by another top-level key"
-    if "\\" in raw or re.search(r"(?:^|[\s\[,])(?:[&!]|\*[A-Za-z_])|(?:^|[\[,])\s*[&!*]", raw):
-        # A backslash escape (a backslash, u and four hex digits), a YAML anchor, alias or tag
-        # can each change what the value means once parsed, so fail closed. An alias name may
-        # start with a digit or hyphen, so any marker opening the value or a flow item counts.
-        return False, "allowed-tools has an escape, anchor, alias or tag this check cannot decode"
+    markers = r"(?:^|[\s\[,])(?:[&!]|\*[A-Za-z_])|(?:^|[\[,])\s*[&!*]"
+    if "\\" in raw or re.search(r"\s#", raw) or re.search(markers, raw):
+        # A backslash escape (a backslash, u and four hex digits), a YAML anchor, alias, tag or
+        # comment can each change what the value means once parsed, so fail closed. An alias
+        # name may start with a digit or hyphen, so any marker opening the value or a flow item
+        # counts, and a comment (a hash after whitespace) would hide or fake a grant.
+        return False, "allowed-tools has an escape, anchor, alias, tag or comment it cannot decode"
     value = re.sub(r"[\[\]\"']", " ", raw)
     grants = [
         m.group(1) + (m.group(2) or "")
