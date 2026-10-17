@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "pr": 567,
+  "head_sha": "9cecd7d75c08d8f901528a8f8d5204cb042dd553",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": ".claude/skills/cross-model-review/references/scoped-review.md",
+      "line": 121,
+      "rule": "workflow execution/resource bounds",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: unbounded batches already existed",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": ".claude/skills/cross-model-review/SKILL.md",
+      "line": 115,
+      "rule": "size gatekeeper",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": []
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "pr": 566,
+  "head_sha": "df643c6ce8d03cc64cf8e74b4adab80b1ccc7556",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": ".claude/skills/prompt-library/SKILL.md",
+      "line": 101,
+      "rule": "tool-scoping",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: new triage gate needs a tool the skill does not grant",
+      "known_issue": "k1"
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": ".claude/skills/prompt-library/SKILL.md",
+      "description": "triage gate requires AskUserQuestion, absent from allowed-tools"
+    }
+  ]
+}
