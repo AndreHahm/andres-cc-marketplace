@@ -61,6 +61,38 @@ _OUTPUT_COMMANDS = frozenset(
         "whatchanged",
     }
 )
+# Every command name `git --list-cmds=builtins,main,nohelpers` printed on git 2.43.0. Git resolves
+# any other first word through the `alias.*` configuration (a user's own, or one set by a granted
+# `git config`), and an alias can name `diff`, so `git innocuous --output=<path>` writes a file; a
+# built-in name cannot be shadowed by an alias (checked: `alias.status` is ignored). A wildcard
+# grant naming a word outside this set is therefore flagged. A command added by a newer git, or a
+# `git-*` program on PATH, is flagged until it is added here.
+_KNOWN_COMMANDS = (
+    frozenset(
+        """
+        add am annotate apply archive bisect blame branch bugreport bundle cat-file check-attr
+        check-ignore check-mailmap checkout checkout-index check-ref-format cherry cherry-pick clean
+        clone column commit commit-graph commit-tree config count-objects credential
+        credential-cache credential-store daemon describe diagnose diff diff-files diff-index
+        difftool diff-tree
+        fast-export fast-import fetch fetch-pack filter-branch fmt-merge-msg for-each-ref
+        for-each-repo format-patch fsck fsck-objects gc get-tar-commit-id grep hash-object help hook
+        http-backend http-fetch http-push imap-send index-pack init init-db instaweb
+        interpret-trailers log ls-files ls-remote ls-tree mailinfo mailsplit maintenance merge
+        merge-base merge-file merge-index merge-octopus merge-one-file merge-ours merge-recursive
+        merge-recursive-ours merge-recursive-theirs merge-resolve merge-subtree mergetool merge-tree
+        mktag mktree multi-pack-index mv name-rev notes pack-objects pack-redundant pack-refs
+        patch-id pickaxe prune prune-packed pull push quiltimport range-diff read-tree rebase
+        receive-pack reflog remote remote-ext remote-fd remote-ftp remote-ftps remote-http
+        remote-https repack replace request-pull rerere reset restore revert rev-list rev-parse rm
+        send-pack shell shortlog show show-branch show-index show-ref sparse-checkout stage stash
+        status stripspace submodule subtree switch symbolic-ref tag unpack-file unpack-objects
+        update-index update-ref update-server-info upload-archive upload-pack var verify-commit
+        verify-pack verify-tag version whatchanged worktree write-tree
+        """.split()
+    )
+    | _OUTPUT_COMMANDS
+)
 # `git bisect` writes the file only through these subcommands; its others (start, good, bad, log,
 # reset) are not flagged.
 _BISECT_OUTPUT = frozenset({"view", "visualize"})
@@ -255,7 +287,11 @@ def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
     subcommand = subcommand.rstrip(":")
     if star:  # `git *`, `git diff:*`, `git diff*`, `git d*`, `git bisect:*`
         prefix_of_output = any(name.startswith(subcommand) for name in _PREFIX_COMMANDS)
-        flagged = aliased or not subcommand or prefix_of_output
+        if tokens[index].partition("*")[0].endswith(":"):  # `name:*` names the word exactly
+            could_be_alias = subcommand not in _KNOWN_COMMANDS
+        else:  # `na*` is a prefix: an alias is possible when no git command starts with it
+            could_be_alias = not any(name.startswith(subcommand) for name in _KNOWN_COMMANDS)
+        flagged = aliased or not subcommand or prefix_of_output or could_be_alias
         return (" ".join(tokens[start : index + 1]) if flagged else None), index + 1
     scan_from = index + 1
     if subcommand == "bisect":  # only its view and visualize subcommands write the file
@@ -269,8 +305,8 @@ def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
         if word not in _BISECT_OUTPUT:
             return None, scan_from + 1
         scan_from += 1
-    elif subcommand not in _OUTPUT_COMMANDS and not aliased:
-        return None, index + 1
+    elif subcommand in _KNOWN_COMMANDS and subcommand not in _OUTPUT_COMMANDS and not aliased:
+        return None, index + 1  # a command that cannot be an alias and does not write `--output`
     end = scan_from
     while end < len(tokens) and "*" not in tokens[end]:
         end += 1
