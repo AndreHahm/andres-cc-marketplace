@@ -25,6 +25,12 @@ reporting a file list or routing on. The list then describes the local branch, n
 it, and a rebase of a stale branch followed by `--force-with-lease` after a fresh fetch can overwrite
 commits that exist only on the PR.
 
+- Fork PRs are not supported here. `git-rebase-sync` ends by pushing `origin HEAD:<branch>`, and for a fork
+  PR checked out from the base repository's clone, `origin` is the base repository, so the push could
+  create or overwrite a same-named branch there while the fork PR stays unchanged. Stop, with an
+  unsupported-case message, when `isCrossRepository` is true, or when `git remote get-url origin` (with
+  the `https://github.com/` or `git@github.com:` prefix and the `.git` suffix removed) is not the
+  `owner/repo` in the PR's `url`.
 - `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` confirms the remote conflict. `UNKNOWN` means
   GitHub has not computed it yet -- rely on the `git merge-tree` result and say so.
 - `git merge-tree` neither touches the worktree or index nor creates a commit. Exit status 1 means
