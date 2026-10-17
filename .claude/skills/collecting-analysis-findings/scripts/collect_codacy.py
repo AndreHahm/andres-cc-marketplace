@@ -6,8 +6,8 @@ wrote to a file (or stdin) and prints the record. It runs no command, opens no n
 connection and never opens a path named inside the findings: every value in the input is data to
 copy into the record, not something to act on.
 
-Exit codes: 0 record written, 2 input unreadable or not a shape this adapter knows. On exit 2
-nothing is written to stdout, so a caller never sees a partial record.
+Exit codes: 0 record written, 2 input unreadable, not a shape this adapter knows, or an invalid
+command line. On exit 2 nothing is written to stdout, so a caller never sees a partial record.
 """
 
 from __future__ import annotations
@@ -197,10 +197,25 @@ def build_record(kind: str, data: Any, *, category: str | None, group_by: str) -
     }
 
 
+LINE_BREAKING = re.compile(r"[\x00-\x1f\x7f\x85  ]")
+
+
+def _printable(value: Any) -> str:
+    """Escape control and line-breaking characters so a file name cannot forge a table row."""
+    return LINE_BREAKING.sub(
+        lambda match: (
+            f"\\x{ord(match.group()):02x}"
+            if ord(match.group()) <= 0xFF
+            else f"\\u{ord(match.group()):04x}"
+        ),
+        str(value),
+    )
+
+
 def render_table(record: dict[str, Any]) -> str:
     lines = [f"{record['counts']['total']} finding(s) from {record['provider']}"]
     for row in record["groups"]:
-        label = "  ".join(str(value) for key, value in row.items() if key != "count")
+        label = "  ".join(_printable(value) for key, value in row.items() if key != "count")
         lines.append(f"{row['count']:>5}  {label}")
     return "\n".join(lines)
 
@@ -208,7 +223,11 @@ def render_table(record: dict[str, Any]) -> str:
 def _read_json(source: str) -> Any:
     try:
         if source == "-":
-            text = sys.stdin.read(MAX_INPUT_BYTES + 1)
+            raw = getattr(sys.stdin, "buffer", None)  # bytes, so the decode never uses the locale
+            if raw is not None:
+                text = raw.read(MAX_INPUT_BYTES + 1).decode("utf-8")
+            else:
+                text = sys.stdin.read(MAX_INPUT_BYTES + 1)
         else:
             path = Path(source)
             if not path.is_file():

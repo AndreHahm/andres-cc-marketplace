@@ -20,8 +20,9 @@ An adapter is acceptable only when all of these hold:
 5. **Documents its read commands and its write commands.** Every flag that changes remote state is listed as
    forbidden to this skill, as `codacy-adapter.md` does for Codacy.
 6. **Carries a smoke test** in `scripts/` that runs in-process on the fixtures (no subprocess) and checks the
-   fail-closed paths. This plugin's own smoke test also reads both SKILL.md files, so renaming a skill
-   means updating it; an adapter added later should keep its adapter checks separate from those.
+   fail-closed paths. Each skill owns its smoke test. `resolving-analysis-findings`' test looks this skill up
+   by directory name, so renaming this skill means updating that test; an adapter added later should keep
+   its adapter checks in this skill's test, separate from the SKILL.md checks.
 
 Not in an adapter's job: deciding what a finding means, mapping severities across providers, or writing to
 the provider.

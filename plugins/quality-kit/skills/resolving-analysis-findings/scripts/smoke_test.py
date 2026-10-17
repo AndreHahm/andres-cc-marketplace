@@ -42,11 +42,11 @@ def frontmatter(text: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     key = None
     for line in (match.group(1) if match else "").splitlines():
-        top = re.match(r"^([a-z][a-z-]*):\s*(.*)$", line)
+        top = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)  # any key-shaped line at column 0
         if top:
             key = top.group(1)
             fields[key] = top.group(2).strip()
-        elif key:
+        elif key and line[:1].isspace():
             fields[key] += " " + line.strip()
     return fields
 
@@ -70,7 +70,10 @@ def check_structure(text: str, fm: dict[str, str], body: str) -> None:
         "## Testing & Validation",
         "## Reference Guide",
     ):
-        check(f"section present: {heading}", heading in text)
+        check(
+            f"section present: {heading}",
+            re.search(rf"^{re.escape(heading)}$", text, re.MULTILINE) is not None,
+        )
 
     refs = set(re.findall(r"`(references/[A-Za-z0-9_.-]+)`", body))
     missing = sorted(r for r in refs if not (SKILL_DIR / r).is_file())
@@ -82,15 +85,15 @@ def check_structure(text: str, fm: dict[str, str], body: str) -> None:
 def check_grants(fm: dict[str, str], body: str) -> None:
     grants = fm.get("allowed-tools", "")
     check("grants the collecting skill", "Skill(collecting-analysis-findings)" in grants)
+    check("grants are declared", bool(grants.strip()))
     check(
-        "pre-approves no codacy command (write flags the grant cannot narrow)",
-        not re.search(r"Bash\(codacy(?!-analysis)", grants),
+        "does not grant AskUserQuestion or Write",
+        not re.search(r"\b(AskUserQuestion|Write)\b", grants),
     )
     check(
-        "does not grant AskUserQuestion, Write or a bare Bash",
-        not re.search(r"\b(AskUserQuestion|Write)\b|Bash(?!\()", grants),
+        "grants no Bash at all (no codacy command is pre-approved; every one raises a prompt)",
+        "Bash" not in grants,
     )
-    check("grants no Bash at all (every command raises a prompt)", "Bash" not in grants)
     check(
         "boundaries tell the user never to choose don't ask again",
         'never choose "don\'t ask again"' in body.replace("\n", " "),
@@ -103,19 +106,33 @@ def check_rules(body: str) -> None:
     check(
         "ladder has rungs 1 to 5", sorted(set(rungs)) == ["1", "2", "3", "4", "5"], ",".join(rungs)
     )
-    rights = body.split("## Decision rights", 1)[1].split("\n## ", 1)[0]
-    check(
-        "decision rights cover rungs 3 and 4 and rung 5",
-        all(k in rights for k in ("Rung 3", "Rung 4", "Rung 5")),
-    )
+    _, found, after = body.partition("## Decision rights")
+    check("a Decision rights section exists", bool(found))
+    rights = after.split("\n## ", 1)[0]
+    rows = [line for line in rights.splitlines() if line.startswith("| ")]
+
+    def row(prefix: str) -> str:
+        return next((line for line in rows if line.startswith(f"| {prefix}")), "")
+
+    rung3, rung4, rung5 = row("Rung 3"), row("Rung 4"), row("Rung 5")
+    quiet = row("Rung 2 on `Minor`")
+    asks = row("Rung 2 on any severity other than")
+    check("decision rights have rows for rungs 3, 4 and 5", all((rung3, rung4, rung5)))
     check(
         "decision rights name the other remote writes",
-        all(k in rights for k in ("--unignore-issue", "--reanalyze", "-F")),
+        all(k in row("`--unignore-issue`") for k in ("--reanalyze", "--reanalyze-and-wait"))
+        and "`-F`" in row("Bulk flags"),
     )
-    check("rung 3 is a per-command approval", "per command" in rights and "remote write" in rights)
-    check("rung 5 is handed over, never run", "Not run here" in rights)
-    check("severity rows cover Medium", "Medium" in rights)
-    check("bulk flags are handed over, not run", "Not run here, like rung 5" in rights)
+    check(
+        "rung 3 is a per-command approval for a remote write",
+        "per command" in rung3 and "remote write" in rung3,
+    )
+    check("rung 5 is handed over, never run", "Not run here" in rung5)
+    check(
+        "Medium asks first and is not decided without asking",
+        bool(quiet) and "Medium" in asks and "AskUserQuestion" in asks and "Medium" not in quiet,
+    )
+    check("bulk flags are handed over, not run", "Not run here, like rung 5" in row("Bulk flags"))
     check(
         "an edit target must be a relative path inside the repository",
         "no leading `/`, no `..` segment" in body.replace("\n", " "),
@@ -126,7 +143,7 @@ def check_rules(body: str) -> None:
     )
     check(
         "edits and remote writes re-collect for the current head first",
-        "after the fresh re-collect" in rights,
+        "after the fresh re-collect" in rung3,
     )
     stale = [
         p.name
@@ -152,7 +169,8 @@ def check_dependency() -> None:
 
 
 def check_syntax_consistency() -> None:
-    formats = read(SKILL_DIR / "references" / "suppression-formats.md")
+    formats_path = SKILL_DIR / "references" / "suppression-formats.md"
+    formats = read(formats_path) if formats_path.is_file() else ""
     check(
         "suppression-formats recommends the trailing-comment form",
         "# nosec B603 B607  # " in formats,
