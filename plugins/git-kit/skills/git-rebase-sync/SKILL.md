@@ -8,7 +8,7 @@ description: >-
   Never adds a new merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
-allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*)
+allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Read, Edit
 ---
 
 # git-rebase-sync
