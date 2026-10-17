@@ -300,8 +300,8 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
   not by a direct `Write` call. The `issues/**` rule is relative to the working directory, so it matches
   `issues/` under whatever directory the session runs in, which is the intended target only at the repo
   root. These rules bound direct `Write`/`Edit` calls only: the `Bash(python */analysis-kit/scripts/...:*)`
-  grants are a separate write route (a probe showed `python -c "<code>" <matching script path>` runs under
-  such a grant), tracked in the issue #587 follow-up.
+  grants are a separate write route (a probe showed that an inline code string passed to the interpreter
+  ahead of a matching script path runs under such a grant), tracked in the issue #587 follow-up.
 - **`anls_persist_report.py`'s own `--final` argument IS mechanically bounded**, not merely a documented
   convention — the script's own containment check rejects any `--final` that doesn't resolve under
   `<cwd>/.claude/output/`. Only the choice of `.claude/output/managing-review-learnings/` as this skill's

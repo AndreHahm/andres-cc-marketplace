@@ -107,12 +107,13 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
 - **This skill doesn't resolve the contradiction.** Surfacing "these two reports disagree" is the deliverable — deciding which one is right, or reconciling them, returns to the user or the producing skill; this skill itself has no write exception (unlike `analyzing-plugin-components`' confirmed SHA correction or `running-a-full-retrospective`'s Phase 5 direct-fix path).
 - **A structural diff isn't a semantic verdict** (same caution `comparing-sessions` already documents) — `anls_comparator.py`'s output only shows which sections exist where; Phase 3's actual judgment must be grounded in what the sections say, not just their presence.
 - **The write grant is path-scoped with an `Edit(...)` rule, not a bare `Write`** (issue #587). An
-  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches. The
+  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule was accepted but never matched in a probe (Claude Code 2.1.302, Linux, default permission mode). The
   grant is `Edit(//tmp/claude-*/*/*/scratchpad/**)` and is used in exactly one place — the Phase 4 scratch
   draft, written to the session scratchpad directory — never a repo-tracked path; this skill's own
   "read-only discipline" claim above is a behavioral commitment. The scope bounds direct `Write`/`Edit`
   calls only: the `Bash(python */analysis-kit/scripts/...:*)` grants are a separate write route (a probe
-  showed `python -c "<code>" <matching script path>` runs under such a grant), and
+  showed that an inline code string passed to the interpreter ahead of a matching script path runs under
+  such a grant), and
   `anls_persist_report.py --final` can overwrite any file under `<cwd>/.claude/output/`. Both are tracked
   in the issue #587 follow-up. The rule form was checked live in `git-kit`'s `handling-review-findings`
   and `github-issue-lifecycle` (issue #582, PR #589; Claude Code 2.1.302, Linux, headless run in default
