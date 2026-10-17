@@ -123,7 +123,42 @@ def check_bash_grants():
     return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
+# File writes stay path-scoped (#582): a bare `Write` or `Edit` lets an agent overwrite a plugin
+# script without a prompt, and a `Write(<glob>)` rule is accepted but never matched, so it grants
+# nothing (only `Edit(...)` rules are consulted, and they also cover the `Write` tool).
+SCRATCHPAD_EDIT_GRANT = "Edit(//tmp/claude-*/**)"
+BARE_WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+
+
+def check_file_write_grants_scoped(path=None):
+    # This skill only writes comment bodies to the scratchpad, so that is the only write grant.
+    path = path or SKILL_MD
+    text = path.read_text(encoding="utf-8")
+    header_end = text.find("\n---\n", 4) + 5
+    line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
+    if not line:
+        return False, "no allowed-tools line found"
+    entries = [e.strip() for e in line.group(1).split(", ")]
+    bad = [
+        e
+        for e in entries
+        if e in BARE_WRITE_TOOLS
+        or e.startswith("Write(")
+        or (e.startswith("Edit(") and e != SCRATCHPAD_EDIT_GRANT)
+    ]
+    if bad:
+        return False, "unscoped or unmatched file-write grant: " + ", ".join(bad)
+    if SCRATCHPAD_EDIT_GRANT not in entries:
+        return False, f"allowed-tools has no scratchpad write grant `{SCRATCHPAD_EDIT_GRANT}`"
+    return True, "file writes are limited to the scratchpad"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_file_write_grants_scoped,
+]
 
 
 def main():

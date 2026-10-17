@@ -3,9 +3,10 @@
 referenced-file existence, Bash-scope grant usage (searching SKILL.md's own
 body plus every references/*.md file, since some grants are only used inside
 an extracted reference), step-header sequencing (the "## Workflow" section),
-evals.json presence, no raw GitHub grant left in allowed-tools, and the
+evals.json presence, no raw GitHub grant left in allowed-tools, file writes
+limited to scoped Edit(...) grants, and the
 git-review-api.py wrapper's typed -F values plus its documented subcommands
-(7 checks total) -- structural checks
+(8 checks total) -- structural checks
 only, since this is a conversational, gh-CLI-orchestration skill with no
 executable logic of its own to simulate. Adapted from codex-review-recovery's
 own smoke_test.py (same shape and check set)."""
@@ -206,6 +207,35 @@ def check_no_raw_github_grants(path=None):
     return True, "allowed-tools reaches GitHub only through git-review-api.py"
 
 
+# File writes stay path-scoped (#582): a bare `Write` or `Edit` lets an agent overwrite the pinned
+# scripts without a prompt, and a `Write(<glob>)` rule is accepted but never matched, so it grants
+# nothing (only `Edit(...)` rules are consulted, and they also cover the `Write` tool).
+SCRATCHPAD_EDIT_GRANT = "Edit(//tmp/claude-*/**)"
+ALLOWED_EDIT_GRANTS = {SCRATCHPAD_EDIT_GRANT, "Edit(issues/**)"}
+BARE_WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+
+
+def check_file_write_grants_scoped(path=None):
+    """allowed-tools must grant file writes only as the scoped `Edit(...)` entries above."""
+    path = path or SKILL_MD
+    text = path.read_text(encoding="utf-8")
+    header_end = text.find("\n---\n", 4) + 5
+    line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
+    if not line:
+        return False, "no allowed-tools line found"
+    entries = [e.strip() for e in line.group(1).split(", ")]
+    bare = [e for e in entries if e in BARE_WRITE_TOOLS]
+    dead = [e for e in entries if e.startswith("Write(")]
+    unexpected = [e for e in entries if e.startswith("Edit(") and e not in ALLOWED_EDIT_GRANTS]
+    if bare or dead or unexpected:
+        return False, "unscoped or unmatched file-write grant: " + ", ".join(
+            bare + dead + unexpected
+        )
+    if SCRATCHPAD_EDIT_GRANT not in entries:
+        return False, f"allowed-tools has no scratchpad write grant `{SCRATCHPAD_EDIT_GRANT}`"
+    return True, "file writes are limited to the scratchpad and issues/"
+
+
 def check_wrapper_documented_and_typed(path=None):
     """The wrapper must exist, send a typed null cursor and body file (issue #312), and every
     subcommand must be documented in references/github-api-mechanics.md."""
@@ -236,6 +266,7 @@ CHECKS = [
     check_step_sequence,
     check_evals_json_exists,
     check_no_raw_github_grants,
+    check_file_write_grants_scoped,
     check_wrapper_documented_and_typed,
 ]
 

@@ -10,7 +10,7 @@ description: >-
   `collaborating-on-a-pr`, `github-issue-creator`, `gh-operations`, `handling-review-findings`, or
   `managing-review-learnings`'s own jobs — see When NOT to Use below for the exact distinctions; never
   PR-review findings, only freestanding issues.
-allowed-tools: Read, Write, Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
+allowed-tools: Read, Edit(//tmp/claude-*/**), Skill(collaborating-on-a-pr), Skill(github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
 # GitHub Issue Lifecycle
@@ -89,14 +89,17 @@ actually make, since `gh issue edit` also accepts `--title`, `--body`, `--add-as
 skill only ever calls `gh issue edit` to add/remove a `p:` label, never to change an issue's title,
 body, assignee, or milestone.
 
-`allowed-tools` also grants `Write` directly (added 2026-08-28, external PR review round 2) — needed
+`allowed-tools` also grants `Edit(//tmp/claude-*/**)` (a `Write` grant until issue #582) — needed
 because Workflows 2 and 3 require writing comment text to a session-scratchpad file before every
-`gh issue comment --body-file` call (see the shell-interpolation note above). This is an unscoped
-`Write` grant, not narrowed to the scratchpad path — Claude Code's tool-scoping syntax has no
-path-restriction form for `Write` the way `Bash(cmd:*)` has for commands (the same limitation
-`github-issue-creator`'s own bare `Write, Read` grant already carries for its `issues/` output). The
-actual bound is the documented workflow steps: every `Write` call this skill makes is to a scratchpad
-file immediately before a `--body-file` read, never to a repo-tracked path.
+`gh issue comment --body-file` call (see the shell-interpolation note above). An `Edit(...)` rule is
+the path-scoped form that also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never
+matches, so it would grant nothing. Checked live (Claude Code 2.1.302, Linux, a headless run in default
+permission mode): the scoped grant allowed a scratchpad write and denied a write outside it, while the
+former bare `Write` could overwrite any file, including a plugin script, with no prompt. Every `Write`
+call this skill makes is to a scratchpad file immediately before a `--body-file` read, never to a
+repo-tracked path, so the grant has no `issues/` entry. Where Claude Code's scratch directory is not under
+`/tmp/claude-<uid>` the write falls back to a prompt rather than succeeding silently. `Skill(github-issue-creator)`
+keeps that skill's own bare `Write, Read` grant, which this change does not narrow.
 
 ## Quick Start
 
