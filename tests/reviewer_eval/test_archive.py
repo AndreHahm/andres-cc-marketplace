@@ -242,7 +242,69 @@ def test_archive_pr_reports_a_bad_artifact_and_keeps_going(tmp_path):
     assert report.written == 1
     assert len(report.failed) == 1
     assert "10" in report.failed[0]
-    assert not (tmp_path / "pr-579" / f"{HEAD_A[:8]}-10-1.json").exists()
+
+
+def test_a_result_that_cannot_be_serialized_leaves_no_file_to_skip_later(tmp_path):
+    """`1e999` parses as infinity, so dumping it fails; a file made before that would be skipped
+    as already archived on every later run."""
+    unserializable = _zip({"codex-review-result.json": b'{"findings": [], "x": 1e999}'})
+    fake = _Fake([_artifact(1, HEAD_A, 10)], [HEAD_A], {1: unserializable})
+    report = archive.archive_pr(579, tmp_path, fake)
+    assert report.written == 0
+    assert len(report.failed) == 1
+    assert list(tmp_path.rglob("*.json")) == []
+    archive.archive_pr(579, tmp_path, fake)
+    assert fake.downloaded == [1, 1]
+
+
+def test_a_failed_write_removes_the_file_it_created(tmp_path, monkeypatch):
+    real_open = open
+
+    class _FailingHandle:
+        def __init__(self, handle):
+            self._handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            self._handle.close()
+            return False
+
+        def write(self, data):
+            raise OSError("disk full")
+
+    monkeypatch.setattr(
+        archive,
+        "open",
+        lambda path, mode, **kw: _FailingHandle(real_open(path, mode, **kw)),
+        raising=False,
+    )
+    fake = _Fake([_artifact(1, HEAD_A, 10)], [HEAD_A], {1: _result_zip()})
+    report = archive.archive_pr(579, tmp_path, fake)
+    assert report.written == 0
+    assert len(report.failed) == 1
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_the_pr_heads_are_rechecked_before_each_write(tmp_path):
+    """A head force-pushed away while an earlier artifact was downloading is not archived."""
+
+    class _ShrinkingPr(_Fake):
+        def pr_heads(self, pr):
+            self.calls = getattr(self, "calls", 0) + 1
+            return [HEAD_A, HEAD_B] if self.calls == 1 else [HEAD_A]
+
+    fake = _ShrinkingPr(
+        [_artifact(1, HEAD_A, 10), _artifact(2, HEAD_B, 11)],
+        [],
+        {1: _result_zip(), 2: _result_zip({"status": "clean"})},
+    )
+    report = archive.archive_pr(579, tmp_path, fake)
+    assert report.written == 1
+    assert len(report.failed) == 1
+    assert "11" in report.failed[0]
+    assert not (tmp_path / "pr-579" / f"{HEAD_B[:8]}-11-2.json").exists()
 
 
 def test_a_hostile_artifact_does_not_stop_the_rest(tmp_path):

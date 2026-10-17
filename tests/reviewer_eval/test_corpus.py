@@ -71,6 +71,7 @@ def test_clean_case_with_false_positive_only_is_valid():
     ("mutate", "fragment"),
     [
         (lambda c: c.update(schema_version=2), "schema_version"),
+        (lambda c: c.update(schema_version=True), "schema_version"),
         (lambda c: c.update(pr=0), "pr"),
         (lambda c: c.update(pr=True), "pr"),
         (lambda c: c.update(head_sha="ABC"), "head_sha"),
@@ -80,6 +81,7 @@ def test_clean_case_with_false_positive_only_is_valid():
         (lambda c: c["findings"][0].update(label="maybe"), "label"),
         (lambda c: c["findings"][0].update(source="guess"), "source"),
         (lambda c: c["findings"][0].update(reviewer=""), "reviewer"),
+        (lambda c: c["findings"][0].update(reviewer="overall"), "reserved"),
         (lambda c: c["findings"][0].update(path=""), "path"),
         (lambda c: c["findings"][0].update(line=0), "line"),
         (lambda c: c["findings"][0].update(line=True), "line"),
