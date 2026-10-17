@@ -549,8 +549,47 @@
           "valid_to": null
         }
       ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domain_prefix": "quality",
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_08eb2488",
+      "name": "quality-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "quality-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ],
+      "prefix": "qlty",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/quality-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ]
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-10-07"
+  "updated_on": "2026-10-17"
 }

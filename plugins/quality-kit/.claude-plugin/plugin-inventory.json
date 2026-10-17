@@ -1,0 +1,93 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_40e86467",
+      "name": "collecting-analysis-findings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/collecting-analysis-findings"
+          ],
+          "name": "collecting-analysis-findings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/collecting-analysis-findings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/collecting-analysis-findings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6d76deb7",
+      "name": "resolving-analysis-findings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/resolving-analysis-findings"
+          ],
+          "name": "resolving-analysis-findings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/resolving-analysis-findings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/resolving-analysis-findings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-10-17",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "domain_prefix": "quality",
+  "extensions": {},
+  "plugin_id": "plugin_08eb2488",
+  "plugin_name": "quality-kit",
+  "prefix": "qlty",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-10-17"
+}
