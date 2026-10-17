@@ -50,9 +50,12 @@ TIER1_FILES = frozenset(
         # The documented-exceptions registry: it suppresses script findings and is briefed to the
         # reviewers, so a PR editing it could silence a finding about itself.
         "scripts/marketplace_ci/review_exceptions.yaml",
-        # The baseline of wildcard git tool grants that `check-git-output-grants` tolerates: it
-        # sits in the PR's own checkout, so a PR could append its own new grant to it and pass.
-        # Editing it needs a maintainer's attested review, like the registry above.
+        # `check-git-output-grants` and the baseline of wildcard git tool grants it tolerates. Both
+        # sit in the PR's own checkout, which `marketplace-parity` runs `check-all` from, so a PR
+        # could append its own new grant to the baseline, or weaken the checker, and pass. Editing
+        # either needs a maintainer's attested review, like the registry above. The checker is
+        # gated like pr_policy.py: it is not in run-codex-review's own import closure.
+        "scripts/marketplace_ci/git_output_grants.py",
         "scripts/marketplace_ci/git_output_grants_baseline.json",
         "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     }
