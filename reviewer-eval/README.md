@@ -10,7 +10,6 @@ never changes a reviewer prompt, pin or weight.
 | Path | Holds |
 |---|---|
 | `corpus/pr-<pr>-<head8>.json` | One labelled case per (PR, head commit). Validated by `scripts/reviewer_eval/corpus.py`. |
-
 | `archive/pr-<pr>/<head8>-<run id>-<artifact id>.json` | The CI `codex-review-result` of one run, copied unchanged. |
 
 Run `uv run python -m scripts.reviewer_eval.corpus validate` to check every case.
