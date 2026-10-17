@@ -1,0 +1,65 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/skills/cross-model-review/SKILL.md",
+    ".claude/skills/cross-model-review/references/diff-mechanics-rationale.md",
+    ".claude/skills/cross-model-review/references/scoped-review.md",
+    ".claude/skills/cross-model-review/references/testing-scenarios.md",
+    "plugins/git-kit/skills/cross-model-review/SKILL.md",
+    "plugins/git-kit/skills/cross-model-review/references/diff-mechanics-rationale.md",
+    "plugins/git-kit/skills/cross-model-review/references/scoped-review.md",
+    "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+    "tests/marketplace_ci/test_git_review_scope_script.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "structural_findings": [],
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "workflow execution/resource bounds",
+      "path": ".claude/skills/cross-model-review/references/scoped-review.md",
+      "line": 121,
+      "evidence": "The workflow explicitly states that nothing caps batches or dispatches and that protected slices can add batches without limit; each batch then receives separate Phase 1 and Phase 2 Codex dispatches.",
+      "remediation": "Add a hard maximum batch/dispatch count or cumulative protected-slice limit, and define a deterministic fallback that leaves excess slices disclosed and unreviewed or requires an explicit escalation before proceeding.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/references/scoped-review.md:121"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "size gatekeeper",
+      "path": ".claude/skills/cross-model-review/SKILL.md",
+      "line": 115,
+      "evidence": "The SKILL.md contains a fenced Bash block spanning 14 instruction lines, exceeding the plugin-rulebook weak-warning threshold of 10 but remaining below the warning threshold of 20.",
+      "remediation": "Move the multi-line preflight shell implementation into a referenced script or split it into smaller, focused examples. Threshold source: plugins/plugin-devkit/skills/plugin-rulebook/assets/settings.json.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/SKILL.md:115"
+      ],
+      "in_diff": true,
+      "blocking": false
+    }
+  ],
+  "blocking": true
+}

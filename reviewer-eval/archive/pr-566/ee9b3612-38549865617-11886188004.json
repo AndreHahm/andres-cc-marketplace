@@ -1,0 +1,212 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/git-kit.settings.json",
+    ".claude/scripts/git-review-copy-index.sh",
+    ".claude/scripts/git-review-intent-add.sh",
+    ".claude/scripts/git-review-scope-run.sh",
+    ".claude/scripts/git-review-scope.py",
+    ".claude/scripts/git-review-write-run-file.sh",
+    ".claude/skills/cross-model-review/SKILL.md",
+    ".claude/skills/cross-model-review/references/codex-pass-assembly.md",
+    ".claude/skills/cross-model-review/references/dispatcher-trust-pattern.md",
+    ".claude/skills/cross-model-review/references/index-seeding-rationale.md",
+    ".claude/skills/cross-model-review/references/resolver-failure-handling.md",
+    ".claude/skills/cross-model-review/references/scoped-review.md",
+    ".claude/skills/cross-model-review/references/testing-scenarios.md",
+    ".claude/skills/cross-model-review/scripts/preflight_fixtures_test.py",
+    ".claude/skills/prompt-library/SKILL.md",
+    ".claude/skills/prompt-library/scripts/smoke_test.py",
+    "evals/cross-model-review/evals.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-7/eval_metadata.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-7/with_skill/grading.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-7/with_skill/outputs/answer.md",
+    "evals/cross-model-review/workspace/iteration-10/eval-8/eval_metadata.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-8/with_skill/grading.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-8/with_skill/outputs/answer.md",
+    "evals/cross-model-review/workspace/iteration-10/eval-9/eval_metadata.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-9/with_skill/grading.json",
+    "evals/cross-model-review/workspace/iteration-10/eval-9/with_skill/outputs/answer.md",
+    "plugins/git-kit/README.md",
+    "plugins/git-kit/git-kit.settings.json",
+    "plugins/git-kit/scripts/git-review-copy-index.sh",
+    "plugins/git-kit/scripts/git-review-intent-add.sh",
+    "plugins/git-kit/scripts/git-review-scope-run.sh",
+    "plugins/git-kit/scripts/git-review-scope.py",
+    "plugins/git-kit/scripts/git-review-write-run-file.sh",
+    "plugins/git-kit/skills/cross-model-review/SKILL.md",
+    "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md",
+    "plugins/git-kit/skills/cross-model-review/references/dispatcher-trust-pattern.md",
+    "plugins/git-kit/skills/cross-model-review/references/index-seeding-rationale.md",
+    "plugins/git-kit/skills/cross-model-review/references/resolver-failure-handling.md",
+    "plugins/git-kit/skills/cross-model-review/references/scoped-review.md",
+    "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md",
+    "plugins/git-kit/skills/cross-model-review/scripts/preflight_fixtures_test.py",
+    "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+    "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py",
+    "tests/marketplace_ci/test_git_review_scope_script.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "structural_findings": [],
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "plugin-rulebook/R21",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 4,
+      "evidence": "The frontmatter description is approximately 1,660 characters, exceeding the configured R21 critical maximum of 1,024.",
+      "remediation": "Move detailed distinctions and implementation notes into the body or references, keeping the frontmatter description at or below 1,024 characters.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/SKILL.md",
+        ".claude/skills/cross-model-review/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "plugin-rulebook/R6",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 442,
+      "evidence": "The skill explicitly instructs execution of git diff, git show, environment exports, and the guarded-dispatch fallback while also stating those tools are absent from allowed-tools.",
+      "remediation": "Declare the required operations with the narrowest supported scopes, or restructure the workflow so the skill does not invoke undeclared tools.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/SKILL.md",
+        ".claude/skills/cross-model-review/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "plugin-rulebook/R6",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 177,
+      "evidence": "The skill instructs use of Write for scratch files and WebFetch for page fetching, while its allowed-tools deliberately omits Write, Read, and WebFetch.",
+      "remediation": "Declare the tools used by the workflow with appropriate scoping, or route those operations through declared helper commands.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+        ".claude/skills/prompt-library/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook/R13",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 490,
+      "evidence": "The SKILL.md is 490 lines, above the configured 300-line soft-warning threshold and at the 490-line warning boundary.",
+      "remediation": "Continue extracting operational detail into references; keep the main skill focused on activation and workflow.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/SKILL.md",
+        ".claude/skills/cross-model-review/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook/R18",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 109,
+      "evidence": "The fenced Bash block beginning at line 105 contains 14 lines, exceeding the 10-line weak-warning threshold.",
+      "remediation": "Extract the longer command sequence into a referenced script or reference file.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/SKILL.md",
+        ".claude/skills/cross-model-review/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false
+    },
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook/R13",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 196,
+      "evidence": "The SKILL.md is 216 lines, above the configured 100-line weak-warning threshold.",
+      "remediation": "Consider moving detailed lifecycle and quality-gate material into references.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+        ".claude/skills/prompt-library/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "tool-scoping",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "line": 442,
+      "evidence": "The workflow explicitly instructs the caller to execute `git diff`, `git show`, `export`, and the `guarded-dispatch.mjs` fallback, while the frontmatter `allowed-tools` grant omits `Bash(git diff:*)`, `Bash(git show:*)`, `Bash(export:*)`, and the fallback command. The body even acknowledges these commands are outside the grants.",
+      "remediation": "Either provide approved fixed-shape wrappers for every required operation and invoke only those, or add the required narrowly scoped grants after verifying the permission model. Keep the danger-full-access fallback explicitly user-confirmed rather than relying on an undeclared-command failure.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        ".claude/skills/cross-model-review/SKILL.md:442"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "documentation-structure",
+      "path": "plugins/git-kit/skills/cross-model-review/references/scoped-review.md",
+      "line": 1,
+      "evidence": "These referenced files are longer than 100 lines (`scoped-review.md` 196, `codex-pass-assembly.md` 113, `testing-scenarios.md` 258) but begin directly with content and provide no table of contents.",
+      "remediation": "Add a concise table of contents to each reference file over 100 lines, or split the largest testing/reference material into smaller task-focused files.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/cross-model-review/references/codex-pass-assembly.md:1",
+        "plugins/git-kit/skills/cross-model-review/references/testing-scenarios.md:1",
+        ".claude/skills/cross-model-review/references/scoped-review.md:1",
+        ".claude/skills/cross-model-review/references/codex-pass-assembly.md:1",
+        ".claude/skills/cross-model-review/references/testing-scenarios.md:1"
+      ],
+      "in_diff": true,
+      "blocking": false
+    }
+  ],
+  "blocking": true
+}

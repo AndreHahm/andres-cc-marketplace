@@ -1,0 +1,77 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/skills/prompt-library/SKILL.md",
+    ".claude/skills/prompt-library/scripts/smoke_test.py",
+    "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+    "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "structural_findings": [],
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "workflow correctness",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 104,
+      "evidence": "The triage instruction says to append '(Recommended)' to one option's label, but the three listed option labels are 'Prompt', 'Skill: `skill-development`', and 'Workflow skill: `workflow-skill-development`'; none is actually marked recommended.",
+      "remediation": "Mark exactly one option in the list, for example `Prompt (Recommended)`, and keep the other labels unmarked.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        ".claude/skills/prompt-library/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "test coverage",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py",
+      "line": 106,
+      "evidence": "The new smoke check only searches for the literal '(Recommended)' anywhere in the triage prose. It therefore passes because the prose describes the convention, even though no option label contains the marker.",
+      "remediation": "Assert that one concrete option label contains '(Recommended)' and that the other option labels do not, rather than only checking that the instruction mentions the marker.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        ".claude/skills/prompt-library/scripts/smoke_test.py"
+      ],
+      "in_diff": true,
+      "blocking": false
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "maintainability",
+      "path": "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+      "line": 108,
+      "evidence": "Each mirrored SKILL.md is now 215 lines. The active plugin-rulebook threshold is 100 lines for the weak-warning tier, from `plugins/plugin-devkit/skills/plugin-rulebook/assets/settings.json` and `references/size-rules.md`.",
+      "remediation": "Record the informational warning; extract detailed lifecycle or testing prose into focused reference files if the skill continues to grow.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        ".claude/skills/prompt-library/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false
+    }
+  ],
+  "blocking": true
+}
