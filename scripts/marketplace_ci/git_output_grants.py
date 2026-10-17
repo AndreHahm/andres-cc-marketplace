@@ -97,8 +97,8 @@ def _scan(repo: Path) -> tuple[set[str], set[str]]:
                 continue
             for entry in entries:
                 for match in _WILDCARD_GRANT.finditer(entry):
-                    if (match["args"] or "").rstrip().endswith("--"):
-                        continue
+                    if "--" in (match["args"] or "").split():
+                        continue  # what the wildcard adds comes after `--`: a pathspec
                     grant = match.group(0).replace("\\", "")
                     found.add(f"{relative}::{grant}")
                 for match in _GLOB_PREFIX.finditer(entry):

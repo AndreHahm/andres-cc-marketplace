@@ -63,6 +63,8 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
     [
         "allowed-tools: Bash(git diff --cached), Read",
         "allowed-tools: Bash(git log -n 5 --oneline --:*)",
+        "allowed-tools: Bash(git log -- docs/ci.md:*)",
+        "allowed-tools: Bash(git log -- --output=/tmp:*)",
         "allowed-tools: Bash(git status:*) Bash(git difftool:*)",
         "allowed-tools: Bash(git add diff.txt:*)",
         "allowed-tools: Bash(git -C /tmp status:*)",
