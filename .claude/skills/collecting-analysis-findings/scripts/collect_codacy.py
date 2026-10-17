@@ -2,7 +2,8 @@
 """Normalize Codacy Cloud CLI JSON into one provider-neutral findings record.
 
 Reads the JSON that `codacy pull-request ... --output json` or `codacy issues ... --output json`
-wrote to a file (or stdin) and prints the record. It runs no command, opens no network
+wrote to a file (or stdin) and prints the record, or writes it with --output to a file inside a
+scratchpad directory. It runs no command, opens no network
 connection and never opens a path named inside the findings: every value in the input is data to
 copy into the record, not something to act on.
 
@@ -17,8 +18,19 @@ import json
 import re
 import sys
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+# POSIX only: used to check who owns the scratchpad directory. Windows has no uid, so the ownership
+# check is skipped there.
+getuid: Callable[[], int] | None = None
+try:
+    from os import getuid as _os_getuid
+except ImportError:
+    pass
+else:
+    getuid = _os_getuid
 
 SCHEMA_VERSION = "1.0.0"
 PROVIDER = "codacy"
@@ -253,6 +265,68 @@ def _read_json(source: str) -> Any:
         raise ShapeError(f"cannot read input: {type(exc).__name__}: {exc}") from exc
 
 
+def _private_dir(directory: Path) -> bool:
+    """True when the directory is owned by this user and not writable by group or others."""
+    if getuid is None:  # no POSIX owner to compare on this platform
+        return False
+    try:
+        info = directory.stat()
+    except OSError:
+        return False
+    return info.st_uid == getuid() and not info.st_mode & 0o022
+
+
+def _scratch_output(raw: str) -> Path:
+    """Resolve --output. It must be a file inside a directory named `scratchpad` that you own.
+
+    Symlinks are followed first, so a link at the name or in a parent cannot point the write
+    elsewhere.
+    On POSIX the scratchpad directory must be owned by the current user and not writable by group or
+    others. A path under any folder that contains `.git` is refused. A work tree whose git directory
+    lives elsewhere is not detected.
+    """
+    try:
+        path = Path(raw).resolve()
+        scratch_dirs = [parent for parent in path.parents if parent.name == "scratchpad"]
+        if not scratch_dirs:
+            raise ShapeError("--output must be a file inside a scratchpad directory")
+        if getuid is not None and not any(_private_dir(parent) for parent in scratch_dirs):
+            raise ShapeError(
+                "--output's scratchpad directory must be owned by you and not writable by others"
+            )
+        if any((parent / ".git").exists() for parent in path.parents):
+            raise ShapeError("--output must be outside any git work tree")
+        if path.is_dir():
+            raise ShapeError("--output must be a file, not a directory")
+        if not path.parent.is_dir():
+            raise ShapeError("--output's directory does not exist")
+    except (OSError, RuntimeError) as exc:
+        raise ShapeError(f"cannot use --output: {type(exc).__name__}") from exc
+    return path
+
+
+def _write_private(path: Path, text: str) -> None:
+    """Write via a new 0600 temporary file in the same directory, then replace the target.
+
+    The replace swaps a symlink or hard link at the target name for the new file instead of writing
+    through it, and a failed run leaves any existing target untouched.
+    """
+    temporary = path.with_name(f".{path.name}.tmp")
+    created = False
+    try:
+        temporary.touch(mode=0o600, exist_ok=False)
+        created = True
+        temporary.write_text(text + "\n", encoding="utf-8")
+        temporary.replace(path)
+    except FileExistsError as exc:
+        raise ShapeError(f"cannot write --output: remove the stale file {temporary.name}") from exc
+    except OSError as exc:
+        raise ShapeError(f"cannot write --output: {type(exc).__name__}") from exc
+    finally:
+        if created:
+            temporary.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--kind", choices=sorted(PARSERS), required=True)
@@ -260,18 +334,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--group-by", choices=sorted(GROUP_KEYS), default="rule,file")
     parser.add_argument("--category", help="keep only findings whose category equals this value")
     parser.add_argument("--format", choices=("json", "table"), default="json")
+    parser.add_argument(
+        "--output",
+        help="write the record to this file (inside a scratchpad directory) instead of stdout",
+    )
     args = parser.parse_args(argv)
     try:
+        out_path = _scratch_output(args.output) if args.output else None
         record = build_record(
             args.kind, _read_json(args.input), category=args.category, group_by=args.group_by
         )
     except ShapeError as exc:
         print(f"collect_codacy: {exc}", file=sys.stderr)
         return EXIT_BAD_INPUT
+    text = render_table(record) if args.format == "table" else json.dumps(record, indent=2)
+    if out_path is not None:
+        try:
+            if _scratch_output(args.output) != out_path:  # re-check just before writing
+                raise ShapeError("--output changed while the input was being read")
+            _write_private(out_path, text)
+        except ShapeError as exc:
+            print(f"collect_codacy: {exc}", file=sys.stderr)
+            return EXIT_BAD_INPUT
+        print(f"{record['counts']['total']} finding(s) written to {out_path.name}")
+        return 0
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):
         reconfigure(errors="backslashreplace")  # provider text may not fit the terminal encoding
-    print(render_table(record) if args.format == "table" else json.dumps(record, indent=2))
+    print(text)
     return 0
 
 
