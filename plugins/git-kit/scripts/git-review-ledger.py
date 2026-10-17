@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess  # nosec B404 -- runs git with list arguments, never a shell
+import subprocess  # nosec B404  # runs git with list arguments, never a shell
 import sys
 import tempfile
 from datetime import UTC, datetime

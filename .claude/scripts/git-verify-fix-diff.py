@@ -54,7 +54,7 @@ import io
 import json
 import re
 import shutil
-import subprocess  # nosec B404 -- runs git with list arguments, never a shell
+import subprocess  # nosec B404  # runs git with list arguments, never a shell
 import tarfile
 import tempfile
 from collections.abc import Iterator
