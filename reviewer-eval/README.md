@@ -25,8 +25,10 @@ uv run python -m scripts.reviewer_eval.archive --pr 579
 ```
 
 It archives the artifacts of every commit currently in the PR, skips a file that already exists and
-never overwrites one. A head that was force-pushed away is no longer listed by GitHub and is not
-archived. A re-run of a job gives one run several artifacts; each is kept, because each is a separate
+never overwrites one. It only takes runs of this repository on the PR's own head branch, so a fork's
+runs (its workflow file is its author's own) and the runs of a stacked PR's base are left out. A
+result whose `provenance.head_sha` differs from its run's head is rejected, as is any artifact over
+4 MB. A head that was force-pushed away is no longer listed by GitHub and is not archived. A re-run of a job gives one run several artifacts; each is kept, because each is a separate
 sample of the same head.
 
 ## Scoring
