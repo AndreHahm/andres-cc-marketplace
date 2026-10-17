@@ -131,7 +131,9 @@ validate `could_not_run`. The workflow's pre-dispatch guard refusal, which runs 
 `status`, `blocking` and `error`. `blocking` is unchanged. A run with
 any failed reviewer is `could_not_run` as a whole, never a clean review of the rest. `provenance` records
 `head_sha` (the PR head, the merge commit's second parent), `merge_ref_sha`, `base_sha` (the base the delta
-used), and the `model` and `cli_version` the reviewers reported. The job exposes the status as the
+used), the `model` and `cli_version` the reviewers reported, and the pins the run was configured
+with: `configured_model` (the `CODEX_KIT_REVIEW_MODEL` variable, `null` when unset) and
+`pinned_cli_version` (the version CI installs). A reviewer's self-report can contradict them. The job exposes the status as the
 `review_status` output, and `publish` words its message by it (a blocking finding, could not run, or passed
 clean); the job result alone still decides pass or fail.
 
