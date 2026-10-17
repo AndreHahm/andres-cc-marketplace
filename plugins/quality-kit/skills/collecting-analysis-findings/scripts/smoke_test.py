@@ -466,6 +466,7 @@ def check_output_guard(adapter) -> None:
         check("--output naming a directory is refused", code == 2 and "not a directory" in err)
         previous = scratch / "previous.json"
         previous.write_text("older record", encoding="utf-8")
+        before = sorted(p.name for p in scratch.iterdir())
         code, _, _ = run_main(
             adapter,
             "--kind",
@@ -479,7 +480,7 @@ def check_output_guard(adapter) -> None:
             "a failing run leaves an existing output file untouched and creates none",
             code == 2
             and previous.read_text(encoding="utf-8") == "older record"
-            and not (scratch / "bad.json").exists(),
+            and sorted(p.name for p in scratch.iterdir()) == before,
         )
 
 
@@ -535,9 +536,16 @@ def check_skills() -> None:
         ", ".join(sorted(required - flat)),
     )
     check(
-        "allowlist regexes require a letter or digit first (no flag injection)",
-        "^[A-Za-z0-9][A-Za-z0-9._-]*$" in collecting_body
+        "allowlist regexes never allow a leading dash; owner and repo allow .github",
+        "^[A-Za-z0-9._][A-Za-z0-9._-]*$" in collecting_body
+        and "must not be `.` or `..`" in " ".join(collecting_body.split())
         and "^[A-Za-z0-9][A-Za-z0-9._/-]*$" in collecting_body,
+    )
+    owner_repo = re.compile(r"^[A-Za-z0-9._][A-Za-z0-9._-]*$")
+    check(
+        "the owner and repo pattern accepts .github and rejects flags and path segments",
+        owner_repo.fullmatch(".github") is not None
+        and all(owner_repo.fullmatch(v) is None for v in ("-I", "--output", "a/b", "a b", "")),
     )
     check(
         "collecting pre-approves no codacy command (write flags the grant cannot narrow)",
