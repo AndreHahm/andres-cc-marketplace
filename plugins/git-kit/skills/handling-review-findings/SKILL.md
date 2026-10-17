@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Write, Skill(commit), Grep
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/**), Edit(issues/**), Skill(commit), Grep
 ---
 
 # Handling Review Findings
@@ -383,7 +383,15 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
   refused, content passed on stdin) and enforces the `gh-pr-review-wrapper` marker itself. It does not
   validate a comment's or issue's *content* — that is still Workflow step 8's allowlist and
   reviewer-name check plus the confirmation `AskUserQuestion` showing the exact body before posting.
-  `Write` remains unscoped, so the script's own file is not protected from an agent edit (issue #582).
+  File writes are scoped to `Edit(//tmp/claude-*/**)` (scratchpad body files) and `Edit(issues/**)` (the
+  local issue draft), so the pinned scripts cannot be overwritten without a prompt (issue #582). An
+  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches, so it
+  would grant nothing. Checked live (Claude Code 2.1.302, Linux, a headless run in default permission mode): the
+  scoped grants allowed a scratchpad write and an `issues/` write and denied a write outside both, while the
+  former bare `Write` overwrote a script file with no prompt. Not checked: a macOS temp root, the `.claude/`
+  protected-path case, and a real `${CLAUDE_PLUGIN_ROOT}` install directory. Where Claude Code's scratch
+  directory is not under `/tmp/claude-<uid>`, the scratchpad write falls back to a prompt rather than
+  succeeding silently.
 - Never substitutes a settings-derived trigger string directly into a command line — always via a
   validated, file-based `--body-file` (Workflow step 8), never inline shell interpolation.
 - The marker handshake is a guardrail against forgetting the step, not a security boundary: anything
