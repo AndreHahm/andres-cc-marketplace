@@ -41,7 +41,7 @@ in progress? If yes, stay here; if no, defer to that skill.
 skill's job, not `resolving-merge-conflicts`': the rebase in Step 5 is what puts the conflicts on disk.
 `resolving-merge-conflicts` Step 1a can preview which files will conflict, but the preview is optional;
 if you arrived from it, don't dispatch back to it. Start the rebase from the clean tree and resolve in
-Step 6. Never use a trial merge or a plain `git merge` of the
+Step 6; Step 2's behind-remote check guards the rebase either way. Never use a trial merge or a plain `git merge` of the
 base into the branch — it adds a merge commit, which a rebase-merge PR cannot take.
 
 **Arguments:** $ARGUMENTS — optionally, an explicit base branch to rebase onto (e.g. passed through from `/git-sync-branch <target>`). When given, use it directly as `{base_branch}` in Step 1 instead of querying GitHub's default branch.
@@ -87,6 +87,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
 - Ensure the working tree is clean and there is no operation in progress:
   - `git status`
 - If `git status` shows a rebase of this branch already in progress, skip Steps 2-5 and go to Step 6. For an in-progress merge or cherry-pick, stop and ask what to do (abort vs continue) and point at `resolving-merge-conflicts`.
+- Once Step 1's fetch has run, if the branch exists on origin, count the commits the remote branch has that this one lacks: `git rev-list --count HEAD..origin/{branch_name}` (skip if the ref does not exist). A non-zero count means a rebase plus Step 8's force-with-lease push would overwrite them, since the lease checks against the freshly fetched ref: stop and ask the user to update the local branch first.
 
 ### 3) Create a local backup ref (do not push)
 - Create an annotated tag at current `HEAD`:
@@ -159,6 +160,8 @@ Helpful commands during conflicts:
   from the clean tree (no trial merge, no merge commit), resolves in Step 6 with a per-file plan first
 - "I hit conflicts during my rebase, continue" with a rebase of this branch already in progress → skips
   Steps 2-5 (no abort/continue question, no second backup tag, no second rebase) and goes to Step 6
+- "sync my branch onto main" with a local branch that lacks commits already on `origin/<branch>` → Step 2
+  stops and asks the user to update the local branch first, before any backup tag or rebase
 
 **Verify it does NOT activate on:**
 - "start a new branch for this feature" → `starting-work`
@@ -169,8 +172,8 @@ Helpful commands during conflicts:
 
 **Last dated run record:** 2026-10-17, `evals/git-rebase-sync/` (`skill-tester` Quick Workflow,
 `with_skill` only, simulated command output): eval 1, the remote-only PR conflict from a clean tree,
-5/5 assertions, run before the Step 2 resume edit. It covers 1 of the 6 scenarios above and has no
-baseline arm; the resume scenario is documented but not run. `scripts/smoke_test.py` checks the structure.
+5/5 assertions, run before the Step 2 resume edit. It covers 1 of the 7 scenarios above and has no
+baseline arm; the resume and behind-remote scenarios are documented but not run. `scripts/smoke_test.py` checks the structure.
 
 **Quality gates:**
 - [ ] Never creates or switches to a different feature branch than the current one, unless explicitly asked
@@ -187,6 +190,8 @@ baseline arm; the resume scenario is documented but not run. `scripts/smoke_test
 - [ ] If preflight (`git status`) shows an in-progress merge or cherry-pick, always stops and asks
       abort vs. continue (pointing at `resolving-merge-conflicts`) rather than proceeding; a rebase of
       this branch already in progress skips Steps 2-5 and resumes at Step 6
+- [ ] Step 2 stops and asks before any rebase when `origin/{branch_name}` has commits the local branch
+      lacks, because Step 8's force-with-lease would otherwise overwrite them
 - [ ] Never runs a destructive command like `git reset --hard` without explicit `AskUserQuestion`
       confirmation showing the exact command
 - [ ] The `git rebase` grant stays as 4 explicit per-form entries (`--continue`/`--abort`/
