@@ -167,9 +167,8 @@ def archive_pr(pr: int, root: Path, source: Source) -> Report:
     """Copy every downloadable result of `pr` that is not archived yet. An existing file is never
     overwritten, and one bad artifact is reported without stopping the rest."""
     report = Report()
-    selected, expired = select_artifacts(
-        source.list_artifacts(), set(source.pr_heads(pr)), source.pr_branch(pr)
-    )
+    branch = source.pr_branch(pr)
+    selected, expired = select_artifacts(source.list_artifacts(), set(source.pr_heads(pr)), branch)
     report.expired = len(expired)
     for artifact in selected:
         label = f"run {artifact['run_id']} (artifact {artifact['id']})"
@@ -190,14 +189,25 @@ def archive_pr(pr: int, root: Path, source: Source) -> Report:
                     or provenance.get("head_sha") != artifact["head_sha"]
                 ):
                     raise ArchiveError("provenance names a different head than the run's")
+            # Serialize before creating the file: `1e999` parses as infinity and fails here, and a
+            # file made first would be skipped as already archived on every later run.
+            text = json.dumps(result, indent=2, allow_nan=False) + "\n"
+            # The download took time: a head force-pushed away meanwhile is no longer in the PR.
+            if artifact["head_sha"] not in source.pr_heads(pr) or source.pr_branch(pr) != branch:
+                raise ArchiveError("head is no longer in the PR")
             target.parent.mkdir(parents=True, exist_ok=True)
             try:
                 # "x" fails on any existing path, a dangling symlink included, and cannot race.
-                with open(target, "x", encoding="utf-8") as handle:
-                    handle.write(json.dumps(result, indent=2, allow_nan=False) + "\n")
+                handle = open(target, "x", encoding="utf-8")
             except FileExistsError:
                 report.skipped_existing += 1
                 continue
+            try:
+                with handle:
+                    handle.write(text)
+            except BaseException:
+                target.unlink(missing_ok=True)  # only ever the file "x" just created
+                raise
             report.written += 1
         except (ArchiveError, OSError, ValueError) as exc:
             report.failed.append(f"{label}: {exc}")

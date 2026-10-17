@@ -110,6 +110,11 @@ def _result(*findings: tuple[str, str, int, bool]) -> dict:
     }
 
 
+def test_blocking_set_accepts_an_explicit_null_line():
+    result = {"findings": [{"reviewer": "r", "path": "a.py", "line": None, "blocking": True}]}
+    assert score.blocking_set(result, "r") == frozenset({("a.py", None)})
+
+
 def test_blocking_set_is_the_reviewers_blocking_findings_only():
     result = _result(
         ("security", "a.py", 1, True),
@@ -131,6 +136,7 @@ def test_blocking_set_is_the_reviewers_blocking_findings_only():
         {"findings": [{"reviewer": "security", "path": ["a.py"], "line": 1, "blocking": True}]},
         {"findings": [{"reviewer": "security", "path": "a.py", "line": 1}]},
         {"findings": [{"reviewer": "security", "path": "a.py", "line": True, "blocking": True}]},
+        {"findings": [{"reviewer": "security", "path": "a.py", "blocking": True}]},
     ],
 )
 def test_blocking_set_rejects_a_result_that_is_not_shaped_like_one(result):

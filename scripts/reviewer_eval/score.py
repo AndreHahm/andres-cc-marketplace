@@ -12,9 +12,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from scripts.reviewer_eval.corpus import CorpusError, load_corpus
+from scripts.reviewer_eval.corpus import RESERVED_REVIEWER, CorpusError, load_corpus
 
-OVERALL = "overall"
+OVERALL = RESERVED_REVIEWER
 STABILITY_REPEATS = 5
 STABILITY_MIN_AGREE = 4
 
@@ -79,7 +79,8 @@ def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None
             and isinstance(finding.get("reviewer"), str)
             and isinstance(finding.get("path"), str)
             and isinstance(finding.get("blocking"), bool)
-            and (finding.get("line") is None or _is_int(finding["line"]))
+            and "line" in finding
+            and (finding["line"] is None or _is_int(finding["line"]))
         ):
             raise ValueError("archived result: a finding has a missing or mistyped field")
         if finding["reviewer"] == reviewer and finding["blocking"]:

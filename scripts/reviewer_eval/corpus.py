@@ -17,6 +17,8 @@ SCHEMA_VERSION = 1
 KINDS = ("findings", "clean")
 LABELS = ("true", "false_positive", "pre_existing", "out_of_scope")
 SOURCES = ("ledger", "thread", "owner")
+# The aggregate row in the scores; a reviewer of this name would be counted into it twice.
+RESERVED_REVIEWER = "overall"
 
 _CASE_KEYS = {"schema_version", "pr", "head_sha", "kind", "findings", "known_issues"}
 _FINDING_KEYS = {
@@ -66,6 +68,8 @@ def _validate_findings(case: dict, known_ids: set[str]) -> list[str]:
         errors += _check_keys(finding, _FINDING_KEYS, where)
         errors += _non_empty_str(finding, "id", where)
         errors += _non_empty_str(finding, "reviewer", where)
+        if finding.get("reviewer") == RESERVED_REVIEWER:
+            errors.append(f"{where}: reviewer {RESERVED_REVIEWER!r} is reserved for the aggregate")
         errors += _non_empty_str(finding, "path", where)
         finding_id = finding.get("id")
         if isinstance(finding_id, str):
@@ -121,7 +125,8 @@ def validate_case(case: object) -> list[str]:
     if not isinstance(case, dict):
         return ["case must be a JSON object"]
     errors = [f"case: unknown key {key!r}" for key in sorted(set(case) - _CASE_KEYS)]
-    if case.get("schema_version") != SCHEMA_VERSION:
+    version = case.get("schema_version")
+    if isinstance(version, bool) or version != SCHEMA_VERSION:  # True == 1
         errors.append(f"case: schema_version must be {SCHEMA_VERSION}")
     pr = case.get("pr")
     if not _is_positive_int(pr):
