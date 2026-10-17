@@ -215,6 +215,13 @@ def check_syntax_consistency() -> None:
             bad.append(f"{name}: import line")
         if re.search(r"# nosec B\d+ -- ", text):
             bad.append(f"{name}: old -- form")
+        bare = [
+            str(number)
+            for number, line in enumerate(text.splitlines(), 1)
+            if "subprocess.run(" in line and not re.search(r"# nosec B603 B607  # \S", line)
+        ]
+        if bare:
+            bad.append(f"{name}: subprocess.run without a reason on line(s) {', '.join(bare)}")
     check("git-kit scripts use the trailing-comment form", not bad, ", ".join(bad))
 
 
