@@ -5,8 +5,8 @@ repository's real output. Re-check the shapes below before trusting them after a
 
 ## Read commands (the only forms this skill runs)
 
-Redirect each output into a scratchpad file (`> <scratchpad>/<name>.json`), then pass that file to
-`scripts/collect_codacy.py`.
+Pipe each command's output into `scripts/collect_codacy.py --input -`; the raw response (it holds committer names
+and emails) is never written to a file.
 
 | Source | Command | `--kind` |
 |---|---|---|
@@ -61,6 +61,6 @@ it like a `newIssues` entry with `state: potential` and fails closed if it does 
 
 With `--output` the script writes a private temporary file and replaces the target only after the whole record is
 built, so a failed run does not create or modify the output file; an older file at the same path survives.
-The raw Cloud CLI capture (`codacy ... > pr.json`) is still a shell redirect, but `codacy` commands are not
-pre-approved, so that command raises its own permission prompt showing the target. On any non-zero exit discard
-an output file made another way; a partial record is never a result.
+The Cloud CLI command is piped into the adapter, and `codacy` commands are not pre-approved, so the command raises
+its own permission prompt showing the whole pipeline. If the CLI fails, the adapter gets empty or invalid input and
+exits 2. On any non-zero exit discard an output file made another way; a partial record is never a result.
