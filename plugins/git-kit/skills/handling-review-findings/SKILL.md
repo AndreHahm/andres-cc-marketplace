@@ -80,7 +80,10 @@ own round/dedup budgeting, severity-gate discipline, or marker-handshake step wa
   that's quality-kit's `resolving-analysis-findings`' job, even when the check's findings arrive as
   inline PR annotations. The line between them: findings produced by an analysis tool are decided
   there; threads a reviewer (Codex, Devin, CodeRabbit, `security-reviewer`, or a human) wrote stay
-  here. A request naming both: triage the reviewer threads here and hand the Codacy check over.
+  here. A reviewer bot's comment that quotes a tool's output is still a reviewer thread. A request
+  naming both: triage the reviewer threads here, then tell the user the Codacy check remains for
+  `resolving-analysis-findings`. If reached from that skill's handover, do the reviewer half only and
+  do not hand back.
 - **Reviewing the local working diff** (before a PR exists, or before a draft PR is flipped to
   ready-to-merge) — that's `cross-model-review`'s job. This skill only ever acts on findings already
   *posted* to an open PR, regardless of the PR's draft/ready state.
