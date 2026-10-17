@@ -1,0 +1,169 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    "evals/handling-review-findings/evals.json",
+    "plugins/git-kit/scripts/git-review-api.py",
+    "plugins/git-kit/scripts/git-write-marker.sh",
+    "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+    "plugins/git-kit/skills/handling-review-findings/references/development-history.md",
+    "plugins/git-kit/skills/handling-review-findings/references/github-api-mechanics.md",
+    "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+    "plugins/git-kit/skills/handling-review-findings/references/round-and-dedup-rules.md",
+    "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md",
+    "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
+    "tests/marketplace_ci/test_git_review_api_script.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "8f68878e3b80af377c147f120ae99d41ede41b24",
+    "merge_ref_sha": "dcfd84436af1a1828f43765541b85eaf2b65397f",
+    "base_sha": "e55955417ab819047eca069371b4ee0fc2037537",
+    "model": "gpt-5",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 6
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 27
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook/R28-skill-testing-mandate",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 443,
+      "evidence": "The modified Testing & Validation record states that evals 19 and 21 were rewritten on 2026-10-16 and have not been re-run. The eval registry exists and contains both scenarios, so this is the R28 advisory case for existing evals that are present but unrun.",
+      "remediation": "Run evals 19 and 21 against the modified skill, preserve the required run artifacts, and update the dated run record with the results.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "correctness",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+      "line": 16,
+      "evidence": "The cycle-count procedure requires matching `author.login`, but `list-comments` emits JSONL with the login under the projected `user` key (`user: .user.login`).",
+      "remediation": "Align the procedure with the wrapper output by requiring `user`/`user.login`, or change the projection to emit an `author` field and update its tests and documentation consistently.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [],
+      "in_diff": false,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "size",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 472,
+      "evidence": "SKILL.md contains 472 lines. The active plugin-rulebook R13 thresholds classify lines over 300 and at most 490 as a soft warning requiring extraction planning.",
+      "remediation": "Plan further extraction of procedural detail into references/ while retaining only the execution-critical workflow in SKILL.md.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [],
+      "in_diff": false,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": false
+}

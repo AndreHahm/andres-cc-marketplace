@@ -1,0 +1,252 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/review-outcomes.json",
+    "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+    "plugins/analysis-kit/skills/managing-review-learnings/scripts/smoke_test.py",
+    "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+    "plugins/analysis-kit/skills/mining-review-learnings/scripts/smoke_test.py",
+    "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+    "plugins/analysis-kit/skills/reviewing-analysis-findings/scripts/smoke_test.py",
+    "plugins/git-kit/skills/github-issue-creator/SKILL.md",
+    "plugins/git-kit/skills/github-issue-creator/scripts/smoke_test.py",
+    "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+    "plugins/git-kit/skills/github-issue-lifecycle/workflows/create-an-issue.md",
+    "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
+    "plugins/workledger-kit/references/wlgr-kit-dependencies.md",
+    "tests/marketplace_ci/test_write_grant_smoke_checks.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "f0982a7e821a0304f722039b2981599faa59809e",
+    "merge_ref_sha": "5c7cf919ad1975ad8979d8426e154bfa8652afec",
+    "base_sha": "ab10a9f63ff65ed12e5d28942c8737dd1eab77c3",
+    "model": "gpt-5",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 5
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 5
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 6
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 52
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 5
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Major",
+      "rule": "rulebook",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "line": 104,
+      "evidence": "The changed text at line 104 correctly says github-issue-creator now has `Edit(issues/**), Read`, but the same component still says at lines 82-83 that invoking it reaches the creator's own bare `Write` access to `issues/`. The old grant description was not updated consistently.",
+      "remediation": "Update lines 82-83 to describe the scoped `Edit(issues/**), Read` grant, or remove the obsolete sentence; keep the grant description consistent throughout the component and its mirrored copy.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+        "plugins/git-kit/skills/github-issue-creator/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "dependency-reviewer",
+      "severity": "Major",
+      "rule": "dependency-graph",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/workflows/create-an-issue.md",
+      "line": 102,
+      "evidence": "Workflow 1 can invoke collaborating-on-a-pr when the closing PR has not been created. collaborating-on-a-pr's Path A invokes create-pr, while create-pr's open-issues check can invoke github-issue-lifecycle again. The documents contain explicit stop/skip gates, so this is a gated-only cycle rather than an asserted execution-time recursion.",
+      "remediation": "Break the cycle by having github-issue-lifecycle stop delegating PR linking to collaborating-on-a-pr, or make the hand-off mutually exclusive with create-pr's github-issue-lifecycle open-issues dispatch and require a separate user-gated invocation that cannot nest.",
+      "reporters": [
+        "dependency-reviewer"
+      ],
+      "components": [],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "permission-risk",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+      "line": 14,
+      "evidence": "The changed allowed-tools entries use Bash(python */analysis-kit/scripts/<script>.py:*). The components' own documentation records that an inline Python code string placed before a matching script path executes under this grant, and that this is a separate write route; mining-review-learnings also grants a fetcher whose --fixture-file accepts an arbitrary local path while its process only uses --pr/--repo.",
+      "remediation": "Narrow each allowed-tools grant to a mechanically pinned interpreter/script invocation or wrapper that rejects extra code/options and validates paths; remove the unused arbitrary --fixture-file route or expose only a fixed fixture directory.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+        "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+        "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "credential-pii-leakage",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+      "line": 264,
+      "evidence": "The persistence instructions explicitly state that the final report and THIRD_PARTY_REVIEW_LEARNINGS.md diff may contain names, emails, and user paths, while the described redaction only removes secret-shaped patterns.",
+      "remediation": "Add an explicit pre-sharing/pre-commit redaction warning and require review or removal of names, emails, and local paths before distribution.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md"
+      ],
+      "in_diff": false,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "credential-pii-leakage",
+      "path": "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+      "line": 228,
+      "evidence": "The persistence instructions state that the report may retain names, emails, or user paths from PR review history and transcripts; only secret-shaped patterns are stripped.",
+      "remediation": "Add a clear redaction-before-sharing/pre-commit instruction covering names, emails, and local paths.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md"
+      ],
+      "in_diff": false,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "credential-pii-leakage",
+      "path": "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+      "line": 101,
+      "evidence": "The report persistence text says secret redaction does not remove personal data and that persisted reports may carry names, emails, or user paths.",
+      "remediation": "Add an explicit instruction to inspect and redact names, emails, and user paths before sharing or committing the report.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md"
+      ],
+      "in_diff": false,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": true
+}

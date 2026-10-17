@@ -1,0 +1,174 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    "evals/handling-review-findings/evals.json",
+    "plugins/git-kit/scripts/git-review-api.py",
+    "plugins/git-kit/scripts/git-write-marker.sh",
+    "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+    "plugins/git-kit/skills/handling-review-findings/references/development-history.md",
+    "plugins/git-kit/skills/handling-review-findings/references/github-api-mechanics.md",
+    "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+    "plugins/git-kit/skills/handling-review-findings/references/round-and-dedup-rules.md",
+    "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md",
+    "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
+    "tests/marketplace_ci/test_git_review_api_script.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "83b1502fca0a4a7d74ad1a318302693e934db01d",
+    "merge_ref_sha": "e3cf4a48e0a2278c0ec0975fc0010e69a3a300ba",
+    "base_sha": "e55955417ab819047eca069371b4ee0fc2037537",
+    "model": "gpt-5",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 6
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 27
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "plugin-rulebook-checker",
+      "severity": "Minor",
+      "rule": "plugin-rulebook",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 432,
+      "evidence": "The modified SKILL.md contains 467 lines. The active R13 settings classify line counts above 300 as a soft warning/advisory; the changed testing documentation contributes to this oversized file.",
+      "remediation": "Move additional testing/run-history detail into the existing reference files while keeping the executable workflow and required validation material in SKILL.md.",
+      "reporters": [
+        "plugin-rulebook-checker"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "credential-pii-leakage",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "line": 323,
+      "evidence": "_print_push_destinations() strips only the GitHub URL prefix and a trailing .git, then prints the entire remainder. A remote such as https://github.com/owner/repo?token=secret would therefore emit the token to stdout.",
+      "remediation": "Parse and strictly validate the URL remainder as exactly a GitHub owner/repository path with no query, fragment, extra path data, or embedded credentials; reject any non-conforming URL before printing.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/scripts/git-review-api.py",
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Minor",
+      "rule": "credential-pii-leakage",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 307,
+      "evidence": "The workflow instructs the agent to write a free-form issue draft and then keep and stage that draft, but does not instruct it to redact PII or secrets from review text before persisting or filing it.",
+      "remediation": "Add an explicit pre-persistence check to remove unnecessary PII and credentials from the draft, and state that the draft must be reviewed for redaction before staging or filing.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": true
+}
