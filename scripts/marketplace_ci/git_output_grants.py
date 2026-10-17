@@ -20,6 +20,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 BASELINE = "scripts/marketplace_ci/git_output_grants_baseline.json"
 
 _COMPONENT_GLOBS = (
@@ -31,9 +33,10 @@ _COMPONENT_GLOBS = (
 # Every command below accepts `--output=<path>`, a write to any file (each wrote its file when run).
 _SUBCOMMANDS = "diff|diff-tree|diff-index|diff-files|log|show|whatchanged"
 # A git global option before the subcommand: `--no-pager`, `--git-dir=x`, or `-C`/`-c`/`--git-dir`
-# followed by its value.
+# followed by its value. A value never starts with `-`, so two adjacent options can only parse one
+# way; with both readings possible the repeated group backtracks exponentially on a long run.
 _GLOBAL_OPTION = (
-    r"\s+(?:-C|-c|--git-dir|--work-tree|--namespace)\s+[^\s:*)\"']+"
+    r"\s+(?:-C|-c|--git-dir|--work-tree|--namespace)\s+[^\s:*)\"'-][^\s:*)\"']*"
     r"|\s+--?[\w-]+(?:=[^\s:*)\"']*)?"
 )
 # `git [global options] <subcommand>`, any literal arguments, then a wildcard (`:*` or ` *`). The
@@ -51,37 +54,54 @@ class GrantViolation:
     reason: str
 
 
-def _allowed_tools_text(source: str) -> str:
-    """Return the raw text of the frontmatter `allowed-tools` key, including continuation lines."""
+def _allowed_tools(source: str) -> list[str]:
+    """The decoded `allowed-tools` entries of a frontmatter block, as the loader sees them.
+
+    The value is decoded with a YAML parser, not matched as raw text: an escaped line break in a
+    double-quoted scalar, for one, joins `Bash(git diff` and `:*)` into a single grant. Raises
+    ValueError when the frontmatter is not valid YAML, so that case fails closed.
+    """
     parts = source.split("\n---", 2)
     if not source.startswith("---") or len(parts) < 2:
-        return ""
-    lines = parts[0].splitlines()
-    collected: list[str] = []
-    inside = False
-    for line in lines:
-        if re.match(r"allowed-tools\s*:", line):
-            inside = True
-            collected.append(line)
-        elif inside and (line.startswith((" ", "\t", "-")) or not line.strip()):
-            collected.append(line)
-        elif inside:
-            break
-    return "\n".join(collected)
+        return []
+    try:
+        frontmatter = yaml.safe_load(parts[0][3:])
+    except (yaml.YAMLError, RecursionError) as exc:
+        raise ValueError(str(exc)) from exc
+    if not isinstance(frontmatter, dict):
+        return []
+    value = frontmatter.get("allowed-tools")
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str)]
+    return []
+
+
+def _scan(repo: Path) -> tuple[set[str], set[str]]:
+    """Return the wildcard grant keys and the paths whose frontmatter could not be parsed."""
+    found: set[str] = set()
+    unparsable: set[str] = set()
+    for pattern in _COMPONENT_GLOBS:
+        for path in sorted(repo.glob(pattern)):
+            relative = path.relative_to(repo).as_posix()
+            try:
+                entries = _allowed_tools(path.read_text(encoding="utf-8"))
+            except ValueError:
+                unparsable.add(relative)
+                continue
+            for entry in entries:
+                for match in _WILDCARD_GRANT.finditer(entry):
+                    if match["args"].rstrip().endswith("--"):
+                        continue
+                    grant = match.group(0).replace("\\", "")
+                    found.add(f"{relative}::{grant}")
+    return found, unparsable
 
 
 def find_wildcard_git_grants(repo: Path) -> set[str]:
     """Return `<repo-relative path>::<grant>` for each wildcard git read grant in frontmatter."""
-    found: set[str] = set()
-    for pattern in _COMPONENT_GLOBS:
-        for path in sorted(repo.glob(pattern)):
-            text = _allowed_tools_text(path.read_text(encoding="utf-8"))
-            for match in _WILDCARD_GRANT.finditer(text):
-                if match["args"].rstrip().endswith("--"):
-                    continue
-                grant = match.group(0).replace("\\", "")
-                found.add(f"{path.relative_to(repo).as_posix()}::{grant}")
-    return found
+    return _scan(repo)[0]
 
 
 def find_violations(repo: Path) -> list[GrantViolation]:
@@ -91,8 +111,12 @@ def find_violations(repo: Path) -> list[GrantViolation]:
         if baseline_path.exists()
         else set()
     )
-    found = find_wildcard_git_grants(repo)
+    found, unparsable = _scan(repo)
     violations = [
+        GrantViolation(path, "frontmatter is not valid YAML, so its grants cannot be checked")
+        for path in sorted(unparsable)
+    ]
+    violations += [
         GrantViolation(
             key,
             "wildcard git diff/log/show grant allows --output; "

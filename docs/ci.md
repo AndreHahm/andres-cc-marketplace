@@ -847,7 +847,8 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `check-all` also runs `check-git-output-grants`, which fails on a wildcard `git diff|log|show` grant
   (also `diff-tree`, `diff-index`, `diff-files`, `whatchanged`, and any of them after git global options;
   each permits `--output=<path>`, a write to any file) in a plugin component's frontmatter that is
-  not in `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a stale baseline entry.
+  not in `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a stale baseline entry. The
+  frontmatter is decoded as YAML before matching, and one that does not parse fails the check.
   These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
   review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,
