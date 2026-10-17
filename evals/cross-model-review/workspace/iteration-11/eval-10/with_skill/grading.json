@@ -1,0 +1,11 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response computes the batch limit as 2 * floor(250000 / 80000) + 1 = 7 from the manifest's budget_bytes and max_slice_bytes", "passed": true, "evidence": "'floor(250000 / 80000) = 3, so the batch limit is 2 * 3 + 1 = 7 batches, or up to 14 Codex dispatches'; values taken from the manifest."},
+    {"text": "Response says that with 9 batches (over the limit) nothing is dispatched yet and the user is asked via AskUserQuestion before the First-Send Confirmation, naming the batch count, the dispatch count and the limit", "passed": true, "evidence": "'Packing gives 9 batches, above 7, so the skill does not dispatch. It asks via AskUserQuestion before the First-Send Confirmation... names the batch count (9), the dispatch count (two per batch, 18) and the limit (7).'"},
+    {"text": "Response offers review all batches, review only the first 7 in planner order, or stop, and says the skill never goes past the limit without that answer", "passed": true, "evidence": "Offers 'review all batches', 'review only the first batches up to the limit in planner order', or 'stop'; 'review all batches... is the only answer that goes past the limit'."},
+    {"text": "Response says slices in batches not reviewed are noted from the manifest's slices (not dropped_slices), listed in the Phase 3 report as must be read directly, and are never passed as --completed-slice in a later round", "passed": true, "evidence": "'Their names and files come from the manifest's slices. They are not in dropped_slices... listed in the report as \"must be read directly,\" and never passed as --completed-slice'; section 6 lists 'every slice left out by a limited run at the batch limit'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
