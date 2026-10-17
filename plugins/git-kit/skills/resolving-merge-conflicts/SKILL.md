@@ -10,7 +10,7 @@ description: >-
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
   that skill instead. Also previews a PR conflict that exists only on GitHub (clean local tree)
   with no worktree change, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
-allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin:*), Bash(git rev-parse HEAD), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit), Skill(git-rebase-sync)
+allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin), Bash(git rev-parse HEAD), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit), Skill(git-rebase-sync)
 ---
 
 # Git Conflict Resolution
@@ -454,17 +454,6 @@ git merge -Xignore-space-change --no-commit <branch>
 that bypasses this repo's raw-`git commit` guard hook entirely (the guard only recognizes a literal
 `commit` subcommand, not `merge`). Leaving it staged means the result still goes through Step 7's
 review and the `commit` hand-off like every other resolution.
-
-## Remember
-
-Each per-type strategy and its one-line-explanation template are already given in Step 4's Resolution
-Patterns above (imports/tests/generated/config/code-logic/structs) and Special Scenarios/Troubleshooting
-(binary, both-deleted) -- not repeated here a third time.
-
-- Always provide a one-line explanation for each conflict resolution
-- When unclear, present numbered options to the user
-- Track user decisions and apply consistently to similar conflicts
-- The goal is to preserve the intent and functionality of both branches while creating a cohesive merged result
 
 ## Testing & Validation
 

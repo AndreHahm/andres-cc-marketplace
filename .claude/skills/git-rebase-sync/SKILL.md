@@ -75,7 +75,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
 
 ### 1) Identify base + branch
 - Determine the current branch:
-  - `git branch --show-current`
+  - `git branch --show-current` (empty while a rebase is paused, since HEAD is detached: if `git status` shows a rebase of this branch in progress, skip the `{branch_name}` check below and Steps 2-5, resume at Step 6, and determine and check `{branch_name}` before Step 8)
 - Determine the base branch you will rebase onto:
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
