@@ -98,7 +98,12 @@ HEAD` did not run fsmonitor.
    global options such as `--no-pager` or `-C <path>`, and on a baseline entry whose grant is gone. A
    grant is exempt only when everything the wildcard adds follows a `--` (a pathspec) reached through
    options the module knows; an unknown option before the `--` could take it as its value, so that
-   grant stays flagged. Rules are split as a shell would, so a quoted ` -- ` is not a separator. The
+   grant stays flagged. Rules are split as a shell would, so a quoted ` -- ` is not a separator. A
+   wildcard inside the program word (`*/git`, `g*`) and an alias defined with `git -c alias.x=diff x:*`
+   are flagged too. Still not caught, and out of this check's scope: shell-expansion spellings such as
+   `$'git'` or `g?t`, `git` glued to punctuation, wrappers like `env git`, `xargs git` or
+   `command git`, and components whose paths come from a `plugin.json` rather than the default
+   directories. The
    baseline, `scripts/marketplace_ci/git_output_grants_baseline.json`, lists every component still
    open, in every plugin (not only git-kit); scoping a component means deleting its entries there in
    the same commit. The follow-up for the blanket grants in plugin-devkit and `git-cleanup` is #599. The

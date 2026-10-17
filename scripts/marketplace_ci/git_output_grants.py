@@ -15,6 +15,7 @@ skill's prose is not a grant.
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import shlex
@@ -176,8 +177,25 @@ def _tokens(rule: str) -> list[str]:
         return rule.replace("\\", "").replace('"', "").replace("'", "").split()
 
 
-def _is_git(token: str) -> bool:
-    return os.path.basename(token.partition("*")[0].rstrip(":")).lower() in {"git", "git.exe"}
+_GIT_NAMES = ("git", "git.exe")
+
+
+def _names_git(text: str) -> bool:
+    return os.path.basename(text).lower() in _GIT_NAMES
+
+
+def _is_git(token: str, *, first: bool = False) -> bool:
+    """Whether `token` is the git program. A wildcard inside the program word (`*/git`,
+    `/usr/*/git`, `g*`) counts only for the rule's first word, where it names the program."""
+    if _names_git(token.partition("*")[0].rstrip(":")):
+        return True
+    component = token.rsplit("/", 1)[-1].lower().removesuffix(":*")
+    return (
+        first
+        and "*" in token
+        and component.strip("*") != ""
+        and any(fnmatch.fnmatchcase(name, component) for name in _GIT_NAMES)
+    )
 
 
 def _after_pathspec_separator(args: list[str], wildcard: str) -> bool:
@@ -212,24 +230,32 @@ def _after_pathspec_separator(args: list[str], wildcard: str) -> bool:
 def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
     """Read the git grant at `tokens[start]`: the grant text if it is a flagged wildcard, and
     the index to resume at."""
-    if "*" in tokens[start]:  # `git:*`, `git*`
-        return tokens[start], start + 1
+    program = tokens[start]
+    if "*" in program and (
+        program.endswith(":*") or _names_git(program.partition("*")[0].rstrip(":"))
+    ):
+        return program, start + 1  # `git:*`, `git*`, `*/git:*`, `g*:*`
     index = start + 1
+    aliased = False  # `-c alias.x=diff` makes `x` run an output-capable command
     while index < len(tokens) and tokens[index].startswith("-"):  # global options
-        if "*" in tokens[index]:  # `git -C:*`
+        option = tokens[index]
+        if "*" in option:  # `git -C:*`
             return " ".join(tokens[start : index + 1]), index + 1
-        if tokens[index] in _VALUE_GLOBAL_OPTIONS and index + 1 < len(tokens):
+        if option in _VALUE_GLOBAL_OPTIONS and index + 1 < len(tokens):
             if "*" in tokens[index + 1]:  # `git -C /repo:*`
                 return " ".join(tokens[start : index + 2]), index + 2
+            aliased = aliased or "alias." in tokens[index + 1].lower()
             index += 2
         else:
+            aliased = aliased or option.startswith("--config-env") and "alias." in option.lower()
             index += 1
     if index >= len(tokens):
         return None, len(tokens)
     subcommand, star, _ = tokens[index].partition("*")
     subcommand = subcommand.rstrip(":")
     if star:  # `git *`, `git diff:*`, `git diff*`, `git d*`, `git bisect:*`
-        flagged = not subcommand or any(c.startswith(subcommand) for c in _PREFIX_COMMANDS)
+        prefix_of_output = any(name.startswith(subcommand) for name in _PREFIX_COMMANDS)
+        flagged = aliased or not subcommand or prefix_of_output
         return (" ".join(tokens[start : index + 1]) if flagged else None), index + 1
     scan_from = index + 1
     if subcommand == "bisect":  # only its view and visualize subcommands write the file
@@ -243,7 +269,7 @@ def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
         if word not in _BISECT_OUTPUT:
             return None, scan_from + 1
         scan_from += 1
-    elif subcommand not in _OUTPUT_COMMANDS:
+    elif subcommand not in _OUTPUT_COMMANDS and not aliased:
         return None, index + 1
     end = scan_from
     while end < len(tokens) and "*" not in tokens[end]:
@@ -261,7 +287,7 @@ def _wildcard_grants(rule: str) -> list[str]:
     grants: list[str] = []
     index = 0
     while index < len(tokens):
-        if not _is_git(tokens[index]):
+        if not _is_git(tokens[index], first=index == 0):
             index += 1
             continue
         grant, index = _read_grant(tokens, index)
