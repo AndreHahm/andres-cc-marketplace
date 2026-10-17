@@ -34,6 +34,14 @@ def _baseline(repo: Path, entries: list[str]) -> None:
         'allowed-tools: ["Bash(git show:*)"]',
         "allowed-tools:\n  - Bash(git log -1:*)",
         "allowed-tools: Bash(git log:* git show:* date:*)",
+        "allowed-tools: Bash(git --no-pager diff:*)",
+        "allowed-tools: Bash(git -C /tmp show:*)",
+        "allowed-tools: Bash(git --git-dir=x -c core.pager=cat log:*)",
+        "allowed-tools: Bash(git diff --src-prefix=a:b:*)",
+        "allowed-tools: Bash(git diff-tree:*)",
+        "allowed-tools: Bash(git diff-index:*)",
+        "allowed-tools: Bash(git diff-files:*)",
+        "allowed-tools: Bash(git whatchanged:*)",
     ],
 )
 def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
@@ -46,7 +54,10 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
     [
         "allowed-tools: Bash(git diff --cached), Read",
         "allowed-tools: Bash(git log -n 5 --oneline --:*)",
-        "allowed-tools: Bash(git status:*) Bash(git diff-tree:*)",
+        "allowed-tools: Bash(git status:*) Bash(git difftool:*)",
+        "allowed-tools: Bash(git add diff.txt:*)",
+        "allowed-tools: Bash(git -C /tmp status:*)",
+        "allowed-tools: Bash(git diff-tree --no-commit-id --)",
         "allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
     ],
 )
