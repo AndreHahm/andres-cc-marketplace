@@ -107,10 +107,10 @@ HEAD` did not run fsmonitor.
    baseline, `scripts/marketplace_ci/git_output_grants_baseline.json`, lists every component still
    open, in every plugin (not only git-kit); scoping a component means deleting its entries there in
    the same commit. The follow-up for the blanket grants in plugin-devkit and `git-cleanup` is #599. The
-   check reads the baseline from the PR's own checkout, so the baseline is on the Tier-1 list
-   (`docs/ci.md`): editing it needs the manual bypass attestation, including a PR that only shrinks it.
-   The checker module is not on that list and runs from the PR's own checkout; running the check from a
-   base-restored copy, as the `prefix-permanence` job does for its own checks, would close that.
+   check and its baseline run from the PR's own checkout, so both are on the Tier-1 list (`docs/ci.md`):
+   editing either needs the manual bypass attestation, including a PR that only shrinks the baseline or
+   fixes the checker. Running the check from a base-restored copy, as the `prefix-permanence` job does for
+   its own checks, would make that unnecessary.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
    memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real

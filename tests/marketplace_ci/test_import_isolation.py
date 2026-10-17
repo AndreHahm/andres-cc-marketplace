@@ -257,10 +257,13 @@ def test_the_review_contract_and_its_registry_are_tier1():
     assert "scripts/marketplace_ci/review_exceptions.yaml" in TIER1_FILES
 
 
-def test_the_git_grant_baseline_is_tier1():
-    """check-git-output-grants reads its baseline from the PR's own checkout, so a PR could append
-    its own new grant to it and pass: editing it is refused automated review (issue #588)."""
+def test_the_git_grant_check_and_its_baseline_are_tier1():
+    """check-git-output-grants and its baseline run from the PR's own checkout, so a PR could append
+    its own new grant to the baseline or weaken the checker and pass: editing either is refused
+    automated review (issue #588). The checker is gated like pr_policy.py, outside TIER1_MODULES."""
+    assert "scripts/marketplace_ci/git_output_grants.py" in TIER1_FILES
     assert "scripts/marketplace_ci/git_output_grants_baseline.json" in TIER1_FILES
+    assert "scripts.marketplace_ci.git_output_grants" not in TIER1_MODULES
 
 
 def test_the_script_verifiers_are_tier1():
