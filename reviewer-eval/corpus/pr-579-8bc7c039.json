@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "pr": 579,
+  "head_sha": "8bc7c039442913932d15ef084c004a2cbbac7516",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 448,
+      "rule": "plugin-rulebook:R13",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 1,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 3,
+      "rule": "activation",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f4",
+      "reviewer": "skill-reviewer",
+      "path": "evals/handling-review-findings/workspace/iteration-9/eval-27/with_skill/outputs/decision.md",
+      "line": 32,
+      "rule": "evaluation-integrity",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: wrong marker in saved eval output is a real defect",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f5",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 473,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "evals/handling-review-findings/workspace/iteration-9/eval-27/with_skill/outputs/decision.md",
+      "description": "saved eval output names marker gh-pr-review, not gh-pr-review-wrapper"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "pr": 579,
+  "head_sha": "4d2053108deb1d2be3b5d3109ff6279b2ec37ee3",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "rule": "tool-scoping",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: unscoped Write grant was a real defect",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 94,
+      "rule": "trust-boundary",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD was a real defect",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 97,
+      "rule": "security",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: trust of origin/HEAD was a real defect",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f4",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 473,
+      "rule": "maintainability",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "description": "allowed-tools grants an unscoped Write, so the skill can modify the scripts it runs"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "description": "verifier code is imported from a commit reached via an unvalidated origin/HEAD or --base"
+    }
+  ]
+}

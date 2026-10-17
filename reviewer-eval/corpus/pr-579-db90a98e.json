@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "pr": 579,
+  "head_sha": "db90a98ec015db8b0cd44131798e36b022a118c1",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 216,
+      "rule": "verifier-trust-boundary",
+      "label": "true",
+      "source": "owner",
+      "note": "same defect class as the origin/HEAD trust finding; applied by inference, owner to confirm",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 72,
+      "rule": "permission-risk-command-execution",
+      "label": "true",
+      "source": "ledger",
+      "note": "related ledger entry 4292190594 fixed the git location variables only; GIT_EXTERNAL_DIFF/GIT_CONFIG_* not confirmed, owner to verify",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 473,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "description": "verifier code is imported from a commit reached via an unvalidated origin/HEAD or --base"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "description": "git subprocess environment keeps GIT_EXTERNAL_DIFF and GIT_CONFIG_* controls"
+    }
+  ]
+}
