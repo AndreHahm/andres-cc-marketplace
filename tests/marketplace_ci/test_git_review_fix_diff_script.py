@@ -9,6 +9,7 @@ diff is still correct. The controls at the end show the same setups do fire unde
 """
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -47,7 +48,8 @@ def _commit(repo, rel, text, message):
 
 
 def _hook(path, marker, body=""):
-    path.write_text(f"#!/bin/sh\ntouch {marker}\n{body}", encoding="utf-8")
+    # `: >` is a shell builtin: the marker is written even when the script runs with an empty PATH.
+    path.write_text(f"#!/bin/sh\n: > {marker}\n{body}", encoding="utf-8")
     path.chmod(0o755)
 
 
@@ -399,3 +401,86 @@ def test_control_plain_git_diff_writes_a_trace_file(fixed, tmp_path):
     trace = tmp_path / "trace.txt"
     _plain_git_diff(repo, base, {"GIT_TRACE": str(trace)})
     _control_fired_or_skip(trace)
+
+
+# A `git` planted anywhere inside the repository must never be run, wherever in the repository the
+# script is started. PR #589 review: only the starting directory used to be checked.
+
+
+@pytest.mark.parametrize("planted", ["git", "bin/git", "sub/git", "sub/deeper/git"])
+def test_a_git_planted_anywhere_in_the_repository_is_never_used_from_a_subdirectory(
+    fixed, tmp_path, planted
+):
+    repo, base = fixed
+    marker = tmp_path / "ran"
+    plant = repo / planted
+    plant.parent.mkdir(parents=True, exist_ok=True)
+    _hook(plant, marker)
+    start = repo / "sub" / "deeper"
+    start.mkdir(parents=True, exist_ok=True)
+    result = _run(start, "--base", base, env={"PATH": f"{plant.parent}:{SYSTEM_PATH}"})
+    assert not marker.exists()
+    assert result.returncode == 2
+    assert result.stdout == ""
+
+
+def test_a_git_planted_in_a_linked_worktree_is_never_used(fixed, tmp_path):
+    repo, base = fixed
+    linked = tmp_path / "linked"
+    _git(repo, "worktree", "add", "-q", "--detach", str(linked), "HEAD")
+    marker = tmp_path / "ran"
+    _hook(linked / "git", marker)
+    start = linked / "sub"
+    start.mkdir()
+    result = _run(start, "--base", base, env={"PATH": f"{linked}:{SYSTEM_PATH}"})
+    assert not marker.exists()
+    assert result.returncode == 2
+
+
+def test_a_symlink_into_the_repository_is_never_used(fixed, tmp_path):
+    repo, base = fixed
+    link = repo / "bin" / "git"
+    link.parent.mkdir()
+    link.symlink_to(shutil.which("git"))
+    start = repo / "sub"
+    start.mkdir()
+    result = _run(start, "--base", base, env={"PATH": f"{link.parent}:{SYSTEM_PATH}"})
+    assert result.returncode == 2
+
+
+# The 60-second limit must not depend on SIGALRM (absent on Windows), and must also end a git whose
+# child process keeps the output pipe open.
+
+
+def _load_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("git_review_fix_diff", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_time_limit_does_not_use_sigalrm():
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "signal.alarm" not in source
+    assert "signal.signal" not in source
+    assert "threading.Timer" in source
+
+
+def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
+    import time
+
+    module = _load_module()
+    stalled = tmp_path / "git"
+    # The sleep is a child process that keeps the output pipe open; its path is absolute because
+    # the script gives git a PATH of one directory.
+    stalled.write_text(f"#!/bin/sh\n{shutil.which('sleep')} 30\n", encoding="utf-8")
+    stalled.chmod(0o755)
+    monkeypatch.setattr(module, "_TIMEOUT_SECONDS", 1)
+    monkeypatch.chdir(tmp_path)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        module._show(str(stalled), "a" * 40)
+    assert time.monotonic() - started < 15

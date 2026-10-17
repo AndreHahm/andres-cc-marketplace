@@ -37,9 +37,12 @@ HEAD` did not run fsmonitor.
   `--ignore-submodules=none` (a `.gitmodules` `ignore = all` cannot hide a changed submodule pointer; the
   test fails without the flag, confirmed by removing it), `--submodule=short`, `--no-relative`.
 - The environment passed to git is an allowlist (locale and time zone), with no global or system
-  configuration, `GIT_NO_LAZY_FETCH`, an absolute `git` from `PATH` that is not inside the starting
-  directory, output read under a 1,000,000-byte cap, a 60-second limit on POSIX, and no echo of git's own
-  error text. A tree or blob id is refused as `--base`, and an empty diff exits 2.
+  configuration, `GIT_NO_LAZY_FETCH`, an absolute `git` from `PATH` that is not anywhere inside the
+  repository (the nearest ancestor of the starting directory holding a `.git` entry, found without running
+  git; a git under that root, a home-directory dotfiles repository included, is refused with exit 2), output
+  read under a 1,000,000-byte cap, a 60-second limit enforced by a timer thread that stops git's whole
+  process group (so it holds without `SIGALRM` and a child that keeps the pipe open cannot outlast it),
+  and no echo of git's own error text. A tree or blob id is refused as `--base`, and an empty diff exits 2.
 - **It cannot show an uncommitted fix**, so the self-review of an uncommitted fix (the usual case) reads the
   agent's own edits and the changed files (`fix-self-review.md` 4c). That review is weaker than a diff: it
   misses file deletions, mode or symlink changes and anything changed by a route other than `Edit`.
@@ -78,8 +81,9 @@ HEAD` did not run fsmonitor.
    in `git-bisect`, `git-notes`, `git-cleanup`, `git-worktrees`, `git-rebase-sync` and
    `resolving-merge-conflicts`. `resolving-merge-conflicts` grants only the exact `git diff --cached`.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
-   a partial clone could still fetch; the 60-second limit needs `SIGALRM` (not on Windows); `--text` on a
-   very large blob is bounded by that limit, not by memory; and in this repository's own sessions the
+   a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
+   memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real
+   Windows host); and in this repository's own sessions the
    pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
    `allowed-tools` is pinned by the smoke check: other frontmatter keys are not.
 
