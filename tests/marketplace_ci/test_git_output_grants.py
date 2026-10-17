@@ -2,6 +2,7 @@
 wildcard `git diff` / `git log` / `git show` grant (which also permits `--output=<path>`) lands."""
 
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -64,6 +65,27 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
 def test_scoped_grant_is_not_found(tmp_path: Path, tools: str) -> None:
     _skill(tmp_path, "s", tools)
     assert find_wildcard_git_grants(tmp_path) == set()
+
+
+def test_grant_split_by_a_yaml_escaped_line_break_is_found(tmp_path: Path) -> None:
+    # YAML joins `Bash(git diff` and `:*)` into one grant; the raw text has no `git diff:*`.
+    path = _skill(tmp_path, "s", 'allowed-tools: ["Bash(git diff\\\n    :*)"]')
+    assert find_wildcard_git_grants(tmp_path) == {f"{path}::git diff:*"}
+
+
+def test_unparsable_frontmatter_fails_closed(tmp_path: Path) -> None:
+    path = _skill(tmp_path, "s", "allowed-tools: [Bash(git diff:*)")
+    violations = find_violations(tmp_path)
+    assert [v.key for v in violations] == [path]
+    assert "not valid YAML" in violations[0].reason
+
+
+def test_long_run_of_global_options_is_not_slow(tmp_path: Path) -> None:
+    # Two readings of `-C -C` made the pattern backtrack exponentially (0.2 s at 28 tokens).
+    _skill(tmp_path, "s", "allowed-tools: Bash(git " + "-C " * 300 + "status)")
+    started = time.perf_counter()
+    assert find_wildcard_git_grants(tmp_path) == set()
+    assert time.perf_counter() - started < 2
 
 
 def test_log_grant_splits_into_one_entry_per_command(tmp_path: Path) -> None:
