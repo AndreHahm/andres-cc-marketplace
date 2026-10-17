@@ -11,7 +11,7 @@ description: >-
   not mining-review-learnings' job of producing candidates in the first place, and not
   github-issue-lifecycle's own dedup/draft/file/verify mechanics, which this skill delegates to rather
   than re-implementing.
-allowed-tools: Read Grep Glob Write Edit AskUserQuestion Skill(git-kit:github-issue-lifecycle) Bash(date:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(python */analysis-kit/scripts/anls_redact_secrets.py:*)
+allowed-tools: Read Grep Glob Edit(//tmp/claude-*/*/*/scratchpad/**) Edit(issues/**) AskUserQuestion Skill(git-kit:github-issue-lifecycle) Bash(date:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(python */analysis-kit/scripts/anls_redact_secrets.py:*)
 argument-hint: [mining-review-learnings report path | a finding to propose directly]
 ---
 
@@ -283,25 +283,36 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
   letting it read as if nothing happened; a future run could otherwise mistake it for a stray, unrelated
   file.
 
-- **`Edit`/`Write` grants have no path-scoping syntax in this repo's tool-scoping convention** — the same
-  limitation `github-issue-lifecycle`'s own Boundaries section already documents for its unscoped
-  `Write`. The actual bound is the documented Phase 2 and Phase 4 steps: an `Edit` call this skill makes
-  targets either `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` (Phase 2) or a drafted
+- **The write grants are path-scoped with `Edit(...)` rules, not a bare `Write` and a bare `Edit`**
+  (issue #587). An `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but
+  never matches (Claude Code 2.1.302, Linux, headless run in default permission mode; the probes behind
+  this note ran in that mode only). The grants are `Edit(//tmp/claude-*/*/*/scratchpad/**)` for the Phase 2
+  redaction input and the Phase 5 scratch draft (the session scratchpad directory, never a repo-tracked
+  path) and `Edit(issues/**)` for a drafted
   `issues/<date>-<desc>.md` file `github-issue-lifecycle`'s own Step 2 just wrote, when "Edit before
-  filing" is chosen at Phase 4's approval gate — never any other path. `Write` is used in exactly one
-  place — the Phase 5 scratch draft, to the session scratchpad directory — never a repo-tracked path; the
-  `.claude/output/managing-review-learnings/` final report path is written by `anls_persist_report.py`, not
-  by a direct `Write` call. `Write`'s own scope isn't mechanically enforced (no path-scoping syntax
-  exists) — the relevant approval ask (Phase 2's, or Phase 4's) naming the resolved absolute path is the
-  actual, human-verified enforcement for `Edit`, whichever phase is doing the editing.
+  filing" is chosen at Phase 4's approval gate. The Phase 2 target,
+  `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`, has no grant on purpose: a live probe (Claude Code
+  2.1.302, Linux, headless run in default permission mode) refused every write under `.claude/` as a
+  sensitive-file write, even with an exact `Edit(.claude/NOTES.md)` rule, so an Edit rule for it would
+  grant nothing. That edit therefore keeps prompting, in addition to the Phase 2 approval ask naming the
+  resolved absolute path, which stays the human-verified gate on its content. The
+  `.claude/output/managing-review-learnings/` final report path is written by `anls_persist_report.py`,
+  not by a direct `Write` call. The `issues/**` rule is relative to the working directory, so it matches
+  `issues/` under whatever directory the session runs in, which is the intended target only at the repo
+  root. These rules bound direct `Write`/`Edit` calls only: the `Bash(python */analysis-kit/scripts/...:*)`
+  grants are a separate write route (a probe showed `python -c "<code>" <matching script path>` runs under
+  such a grant), tracked in the issue #587 follow-up.
 - **`anls_persist_report.py`'s own `--final` argument IS mechanically bounded**, not merely a documented
   convention — the script's own containment check rejects any `--final` that doesn't resolve under
   `<cwd>/.claude/output/`. Only the choice of `.claude/output/managing-review-learnings/` as this skill's
   specific subdirectory beneath that is a behavioral, unenforced commitment (Phase 5 only ever supplies
   that one destination), shared by every `analysis-kit` skill, not something unique to this one.
-- **This skill never gains `Bash(gh issue create:*)` or a `Write` grant to `issues/`.** Both stay
-  exclusively `github-issue-lifecycle`'s — see the plan's own redesign note for why (that skill already
-  owns dedup/draft/file/verify; duplicating it here would be rebuilding a just-shipped capability).
+- **This skill never gains `Bash(gh issue create:*)`, and never creates a file under `issues/`.** Both
+  stay exclusively `github-issue-lifecycle`'s — see the plan's own redesign note for why (that skill
+  already owns dedup/draft/file/verify; duplicating it here would be rebuilding a just-shipped
+  capability). Its `Edit(issues/**)` grant exists only to edit, in place, a draft `github-issue-lifecycle`
+  already wrote (Phase 4's "Edit before filing"); the grant does not mechanically stop a new file there,
+  because an `Edit(...)` rule also covers the `Write` tool, so this stays a documented commitment.
 - **The rule-coverage check (Phase 3) and `github-issue-lifecycle`'s own dedup-check are different
   checks against different things** — a rule file and a filed GitHub issue are not the same kind of
   "already covered." Don't skip Phase 3 on the assumption `github-issue-lifecycle`'s own Step 1 makes it
@@ -371,7 +382,8 @@ After Phase 5, verify before presenting output as final:
 - [ ] Every dispatch's real reported outcome (filed/found-as-duplicate/filing-failed) was captured and
       reported accurately in Phase 5 — never defaulted to "filed", and never reported as "not filed" for
       a post-filing verification concern (report that as "filed, but flagged as unverified" instead)
-- [ ] This skill never called `gh issue create` or wrote to `issues/` itself
+- [ ] This skill never called `gh issue create` or created a file under `issues/` itself (an in-place
+      edit of the drafted file at Phase 4's "Edit before filing" gate is the one allowed write there)
 - [ ] The report was persisted to `.claude/output/managing-review-learnings/` and its path confirmed
       with the standard `📄 ... written:` line
 - [ ] Every value read from the input report, a user-named finding, the live doc, or any rule file was

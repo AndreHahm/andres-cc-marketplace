@@ -101,7 +101,9 @@ call this skill makes is to a scratchpad file immediately before a `--body-file`
 repo-tracked path, so the grant has no `issues/` entry. Where Claude Code's scratch directory is not laid
 out as `/tmp/claude-<uid>/<project>/<session>/scratchpad` the write falls back to a prompt rather than
 succeeding silently. `Skill(github-issue-creator)`
-keeps that skill's own bare `Write, Read` grant, which this change does not narrow.
+holds its own `Edit(issues/**), Read` grant (scoped in issue #587; it was a bare `Write, Read`), so
+invoking it reaches only the `issues/` drafts. Whether a nested skill's grants apply without a prompt is
+unverified (tracked in #588).
 
 ## Quick Start
 

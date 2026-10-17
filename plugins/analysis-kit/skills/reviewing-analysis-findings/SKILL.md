@@ -11,7 +11,7 @@ description: >-
   retrospective just produced several analysis-kit reports and a sanity
   check across them is wanted, or when asking whether two analysis-kit
   reports actually agree with each other.
-allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/anls_comparator.py:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Edit(//tmp/claude-*/*/*/scratchpad/**) AskUserQuestion Bash(python */analysis-kit/scripts/anls_comparator.py:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
 argument-hint: [2+ paths to persisted analysis-kit reports, "latest N", or "scope <scope-slug>"]
 ---
 
@@ -106,10 +106,19 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
 - **Contradiction requires the same subject.** Two findings using similarly strong language about different components are not a contradiction — verify both reports are actually talking about the same file, component, or decision before classifying.
 - **This skill doesn't resolve the contradiction.** Surfacing "these two reports disagree" is the deliverable — deciding which one is right, or reconciling them, returns to the user or the producing skill; this skill itself has no write exception (unlike `analyzing-plugin-components`' confirmed SHA correction or `running-a-full-retrospective`'s Phase 5 direct-fix path).
 - **A structural diff isn't a semantic verdict** (same caution `comparing-sessions` already documents) — `anls_comparator.py`'s output only shows which sections exist where; Phase 3's actual judgment must be grounded in what the sections say, not just their presence.
-- **`Write` has no path-scoping syntax in this repo's tool-scoping convention.** The grant is used in
-  exactly one place — the Phase 4 scratch draft, written to the session scratchpad directory — never a
-  repo-tracked path; this skill's own "read-only discipline" claim above refers to never writing to a
-  producing skill's report or any other tracked file, not to holding zero `Write` grant at all.
+- **The write grant is path-scoped with an `Edit(...)` rule, not a bare `Write`** (issue #587). An
+  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches. The
+  grant is `Edit(//tmp/claude-*/*/*/scratchpad/**)` and is used in exactly one place — the Phase 4 scratch
+  draft, written to the session scratchpad directory — never a repo-tracked path; this skill's own
+  "read-only discipline" claim above is a behavioral commitment. The scope bounds direct `Write`/`Edit`
+  calls only: the `Bash(python */analysis-kit/scripts/...:*)` grants are a separate write route (a probe
+  showed `python -c "<code>" <matching script path>` runs under such a grant), and
+  `anls_persist_report.py --final` can overwrite any file under `<cwd>/.claude/output/`. Both are tracked
+  in the issue #587 follow-up. The rule form was checked live in `git-kit`'s `handling-review-findings`
+  and `github-issue-lifecycle` (issue #582, PR #589; Claude Code 2.1.302, Linux, headless run in default
+  permission mode only): it allowed a scratchpad write and denied a write outside it. Where Claude Code's
+  scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`, the write
+  falls back to a prompt rather than succeeding silently.
 
 ## Testing & Validation
 

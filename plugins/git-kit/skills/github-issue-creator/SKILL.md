@@ -8,7 +8,7 @@ description: >-
   needed (`gh-operations`), or the full create/dedup/verify/file lifecycle (`github-issue-lifecycle`,
   which delegates drafting back here) — this skill only drafts a local markdown file, never files a
   live issue.
-allowed-tools: Write, Read
+allowed-tools: Edit(issues/**), Read
 ---
 
 # GitHub Issue Creator
@@ -139,8 +139,15 @@ running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 
 **Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (3/3 checks passing: frontmatter,
 referenced-file existence, plus `check_bash_grants`, which is vacuously satisfied since this skill's
-`allowed-tools` — `Write, Read` — grants no `Bash` command at all; no step-sequencing check applies,
-since this skill has no top-level numbered-step section of its own).
+`allowed-tools` — `Edit(issues/**), Read` — grants no `Bash` command at all; no step-sequencing check
+applies, since this skill has no top-level numbered-step section of its own). The write grant is an
+`Edit(issues/**)` rule, not a bare `Write` (issue #587): an `Edit(...)` rule is the path-scoped form that
+also covers the `Write` tool, while a `Write(<glob>)` rule is accepted but never matches. Checked live
+(Claude Code 2.1.302, Linux, headless run in default permission mode): `Edit(issues/**)` allowed a write
+to `issues/a.md` and denied a write to a repo-root file, a write through a symlinked `issues` directory
+that points outside it, and `issues/../root.md`; the probes ran in default permission mode only. The path
+is relative to the working directory, so the rule matches `issues/` under whatever directory the session
+runs in, which is the intended target only at the repo root, where this skill writes (see above).
 
 No dedicated eval suite exists for this skill — not warranted for this skill's recent edits, which were
 narrow activation-boundary text additions (sibling exclusion clauses, a data-only boundary statement) to

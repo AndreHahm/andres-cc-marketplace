@@ -87,8 +87,41 @@ HEAD` did not run fsmonitor.
    pinned scripts resolve to the `.claude/scripts/` mirror inside the checkout, which a PR can change. Only
    `allowed-tools` is pinned by the smoke check: other frontmatter keys are not.
 
+## Follow-up: the same fix in other skills (Issue #587)
+
+Issue #587 applied this change's write-grant scoping to `github-issue-creator` (`Edit(issues/**)`) and to
+the analysis-kit skills `reviewing-analysis-findings` and `mining-review-learnings` (scratchpad only) and
+`managing-review-learnings` (scratchpad and `Edit(issues/**)`). Two more results, from the same kind of
+headless run (Claude Code 2.1.302, Linux, default permission mode, a throwaway skill in a throwaway
+project):
+
+- **Writes under the project's `.claude/` directory are refused as sensitive files, whatever the grant.**
+  `Edit(.claude/NOTES.md)` did not allow a write to `.claude/NOTES.md`, and neither a bare `Write` nor
+  that exact rule allowed `.claude/other.md` or `.claude/workledger-kit.local.json`. So an `Edit` rule for a
+  path under `.claude/` grants nothing, and `managing-review-learnings` has none for
+  `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`: that edit keeps prompting.
+- **A cwd-relative `Edit(issues/**)` allowed `issues/a.md` and denied a write to a repo-root file.** The
+  bare `Write` allowed a repo-root file with no prompt. The same rule denied a write through an `issues`
+  symlink that pointed at a directory outside it, and denied `issues/../root.md`.
+- **A `Bash(python */analysis-kit/scripts/anls_x.py:*)` grant allowed `python -c "open('c.txt','w')..."
+  analysis-kit/scripts/anls_x.py` and the same command with a `/x/` path prefix; both created the file.**
+  The leading `*` matches any text, so a scoped `Edit` does not stop writes in a skill that also holds such
+  a grant. The three analysis-kit skills changed here hold one (19 skills, all in `analysis-kit`, have a
+  `Bash(python */...)` grant, counted by pattern match on their `allowed-tools` lines), so their write scope bounds direct `Write`/`Edit` calls only. Pinning those grants to the
+  plugin root is left to a follow-up.
+- Every probe ran in default permission mode. In `acceptEdits` or bypass mode edits inside the working
+  directory are generally allowed whatever the rule says, so the scoping matters in default mode.
+- The scratchpad glob's `claude-*/*/*` matches every project and session of the same user, so an
+  injected run could overwrite another live session's scratch file.
+
+Each of the four skills' smoke tests pins its exact file-write grant set (`check_file_write_grants_scoped`),
+and `tests/marketplace_ci/test_write_grant_smoke_checks.py` checks that a bare or inert grant fails it.
+66 other skills still list a bare `Write` (counted by a pattern match on each `plugins/*/skills/*/SKILL.md`
+`allowed-tools` line, on the date of this change); each needs its own decision on write targets and is
+tracked in a separate triage issue.
+
 ## Not checked
 
-A macOS temp root, the `.claude/` protected-path case, and a real `${CLAUDE_PLUGIN_ROOT}` install directory.
-Where Claude Code's scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`,
+A macOS temp root, and a real `${CLAUDE_PLUGIN_ROOT}` install directory. The `.claude/` protected-path case
+is covered in the follow-up section above for the project `.claude/` directory only. Where Claude Code's scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`,
 a scratchpad write falls back to a prompt rather than succeeding silently.
