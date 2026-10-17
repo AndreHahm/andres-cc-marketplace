@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pr": 583,
+  "head_sha": "83b1502fca0a4a7d74ad1a318302693e934db01d",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "line": 323,
+      "rule": "credential-pii-leakage",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: a push URL with a query token was printed",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 307,
+      "rule": "credential-pii-leakage",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: issue-draft redaction is outside this change",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 432,
+      "rule": "plugin-rulebook",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "description": "push-destinations prints the whole URL remainder, so a query token is emitted"
+    }
+  ]
+}

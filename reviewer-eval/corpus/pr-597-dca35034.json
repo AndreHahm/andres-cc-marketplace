@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "pr": 597,
+  "head_sha": "dca350347d73ae86625122b0e4d7078a6c264104",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+      "line": 286,
+      "rule": "maintainability",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "tests/marketplace_ci/test_write_grant_smoke_checks.py",
+      "line": 134,
+      "rule": "test-correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: test rejects valid YAML-list allowed-tools",
+      "known_issue": "k1"
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "tests/marketplace_ci/test_write_grant_smoke_checks.py",
+      "description": "the write-grant test treats a valid YAML-list allowed-tools as a failure"
+    }
+  ]
+}

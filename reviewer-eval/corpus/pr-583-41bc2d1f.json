@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pr": 583,
+  "head_sha": "41bc2d1f66551ee1d8cedf05c7fbf3712df45cd2",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": "evals/handling-review-findings/evals.json",
+      "line": 190,
+      "rule": "test-correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: eval 21 used a body path the wrapper rejects",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 16,
+      "rule": "rulebook-compliance",
+      "label": "false_positive",
+      "source": "owner",
+      "note": "owner: AskUserQuestion in allowed-tools is intended",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 437,
+      "rule": "maintainability",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "evals/handling-review-findings/evals.json",
+      "description": "eval 21 expects a body file path outside the scratchpad, which the wrapper rejects"
+    }
+  ]
+}
