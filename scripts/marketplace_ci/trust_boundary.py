@@ -50,6 +50,10 @@ TIER1_FILES = frozenset(
         # The documented-exceptions registry: it suppresses script findings and is briefed to the
         # reviewers, so a PR editing it could silence a finding about itself.
         "scripts/marketplace_ci/review_exceptions.yaml",
+        # The baseline of wildcard git tool grants that `check-git-output-grants` tolerates: it
+        # sits in the PR's own checkout, so a PR could append its own new grant to it and pass.
+        # Editing it needs a maintainer's attested review, like the registry above.
+        "scripts/marketplace_ci/git_output_grants_baseline.json",
         "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     }
 )
