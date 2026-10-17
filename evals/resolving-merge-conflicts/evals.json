@@ -1,0 +1,23 @@
+{
+  "skill_name": "resolving-merge-conflicts",
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "description": "Resolve Git merge conflicts via a plan-first, per-file strategy; previews a remote-only PR conflict read-only and routes to git-rebase-sync",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Remote-only PR conflict from a clean tree",
+      "prompt": "PR #579 on this repo reports mergeable: CONFLICTING and mergeStateStatus: DIRTY on GitHub, because PR #583 merged into main. My local worktree is clean: git status shows nothing, and no merge, rebase or cherry-pick is in progress. Resolve the merge conflicts using resolving-merge-conflicts, then sync onto main using git-rebase-sync.\n\nSIMULATED ENVIRONMENT (do not run real git or gh commands; write down each command you would run, in order, and use this as its output):\n- gh pr view 579 --json mergeable,mergeStateStatus -> {\"mergeStateStatus\":\"DIRTY\",\"mergeable\":\"CONFLICTING\"}\n- git status -> nothing to commit, working tree clean\n- git fetch origin -> succeeds\n- git merge-tree --write-tree --name-only origin/main HEAD -> exit status 1; output: a tree OID line, then the file names plugins/git-kit/skills/handling-review-findings/SKILL.md and .claude/skills/handling-review-findings/SKILL.md, then CONFLICT messages\n- gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed -> {\"mergeCommitAllowed\":false,\"rebaseMergeAllowed\":true,\"squashMergeAllowed\":true}\nStop once you have handed off to the next skill; do not simulate the rebase itself. Save a transcript of your commands, any AskUserQuestion calls you would make, and your messages to the user.",
+      "expected_output": "Explains the conflicts exist only on the remote and will appear on disk only once the rebase starts; previews the two conflicted files with git merge-tree without touching the worktree; makes no trial or plain merge and no merge commit; routes straight to git-rebase-sync without re-asking what the user already answered.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"resolve these merge conflicts\"",
+      "\"fix this merge conflict in src/main.rs\"",
+      "`git status` reported showing unmerged paths, outside an active rebase"
+    ]
+  }
+}

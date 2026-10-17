@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "States that the conflicts exist only on the remote and will appear on disk only once the rebase starts",
+      "type": "quality",
+      "target": "transcript messages to the user"
+    },
+    {
+      "text": "Previews the conflicts with git merge-tree --write-tree --name-only origin/main HEAD (read-only) and names both conflicted files",
+      "type": "functionality",
+      "target": "transcript commands and messages"
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and creates no merge commit",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Routes to git-rebase-sync without asking the user a question the user already answered (which skills to use, or whether to proceed with a rebase)",
+      "type": "functionality",
+      "target": "transcript AskUserQuestion calls"
+    },
+    {
+      "text": "Says the merge-tree preview is advisory because the rebase can stop on different files or hunks",
+      "type": "quality",
+      "target": "transcript messages to the user"
+    }
+  ]
+}

@@ -124,8 +124,8 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 | `git-notes` | Attaching metadata to commits without changing history |
 | `git-bisect` | Guiding an automated or manual git bisect session to find a regression commit |
 | `git-cleanup` | Safely analyzing and cleaning up local git branches and worktrees |
-| `git-rebase-sync` | Syncing a feature branch onto the latest base branch via rebase, with backup tags and safe force-with-lease pushing |
-| `resolving-merge-conflicts` | Resolving a merge/cherry-pick conflict (or an already-conflicted working tree) via a plan-first, per-file strategy — not for conflicts hit mid-rebase, which stay `git-rebase-sync`'s job |
+| `git-rebase-sync` | Syncing a feature branch onto the latest base branch via rebase, with backup tags and safe force-with-lease pushing; also resolves a PR's remote-only conflicts by rebasing from a clean tree |
+| `resolving-merge-conflicts` | Resolving a merge/cherry-pick conflict (or an already-conflicted working tree) via a plan-first, per-file strategy, and previewing a PR's remote-only conflicts read-only — not for conflicts hit mid-rebase, which stay `git-rebase-sync`'s job |
 | `standalone-commits` | Deciding whether a commit is reviewable on its own, ordering multi-file changes into dependency-ordered waves, and prioritizing/filtering which pending change to stage first when several are relevant to a PR |
 | `explain-pr-changes` | Summarizing a PR's diff into a reviewer-focused changeset breakdown with a NEEDS_REVIEW/APPROVED triage, and (on an open PR) resolving every existing review comment before considering the summary complete |
 | `github-issue-creator` | Turning raw notes, error logs, or screenshots into a structured GitHub issue markdown file |
