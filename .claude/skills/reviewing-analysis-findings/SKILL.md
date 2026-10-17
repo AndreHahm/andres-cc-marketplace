@@ -115,7 +115,7 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
   showed that an inline code string passed to the interpreter ahead of a matching script path runs under
   such a grant), and
   `anls_persist_report.py --final` can overwrite any file under `<cwd>/.claude/output/`. Both are tracked
-  in the issue #587 follow-up. The rule form was checked live in `git-kit`'s `handling-review-findings`
+  in #106. The rule form was checked live in `git-kit`'s `handling-review-findings`
   and `github-issue-lifecycle` (issue #582, PR #589; Claude Code 2.1.302, Linux, headless run in default
   permission mode only): it allowed a scratchpad write and denied a write outside it. Where Claude Code's
   scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`, the write
