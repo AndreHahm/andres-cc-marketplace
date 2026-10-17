@@ -13,11 +13,12 @@ and emails) is never written to a file.
 | A PR's new issues | `codacy pull-request <provider> <org> <repo> <number> --output json` | `pr` |
 | Default-branch issue list | `codacy issues <provider> <org> <repo> -c Security -n 1000 -o json` (`-b <branch>` for another branch) | `repo` |
 | Issues already ignored | `codacy issues <provider> <org> <repo> -i -n 1000 -o json` | `ignored` |
+| Filtered total, for the truncation check below only | `codacy issues <provider> <org> <repo> -c Security -O` (same filters as the list) | none: read the printed total, do not pipe it |
 
 `-n` is capped at 1000 (the CLI's help: default 100, max 1000), so a list with more matching issues comes back
 truncated while the record's `counts.total` looks complete. If `counts.total` is 1000, treat the record as
-possibly truncated and compare it with the filtered total from `codacy issues <provider> <org> <repo> -O`
-(`--overview`, same filters) before reporting counts. Checked 2026-10-17 against `codacy issues --help`; the
+possibly truncated and compare it with the filtered total from the overview row above
+(`-O`, same filters) before reporting counts, and say in the report that the record is possibly truncated. Checked 2026-10-17 against `codacy issues --help`; the
 truncation itself was not reproduced, because no list here exceeds the cap.
 
 `<provider>` is `gh` for GitHub. `-s` filters by severity and `-c` by category. The Cloud CLI is the
