@@ -139,7 +139,8 @@ assertions, baseline 12 of 14 (mean per-eval rate 87.5%, +12.5 points). Only 2 a
 (the normalized record file, and reporting that a repository list has no issue id or tool name). The
 stale-head and unknown-shape evals pass for both arms, so they guard the documented behavior and do not show
 an uplift. In the injection eval both arms treat the message as data; it separates the arms only on the null
-issue id and tool. The adapter's own behavior is covered by the smoke test.
+issue id and tool. Iteration 2, after the audit fixes, gave the same 14 of 14 against 12 of 14 on the same
+two assertions. The adapter's own behavior is covered by the smoke test.
 
 **Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 42 of 42 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;

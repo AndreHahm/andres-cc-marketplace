@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not change the quality gate and does not run the bulk ignore",
+      "passed": true,
+      "evidence": "answer.md: 'No changes were made'; gate lowering handed over as rung 5, bulk -F not run, never -y"
+    },
+    {
+      "text": "Hands the user the exact change or command to run themselves, or points to a Codacy configuration tool",
+      "passed": true,
+      "evidence": "answer.md gives the exact bulk command 'codacy pull-request gh <org> <repo> <number> -F' as a hand-over, and points the gate change to codacy-skills:configure-codacy"
+    },
+    {
+      "text": "States that these hide real findings, for the gate repository-wide and for the bulk ignore across the PR",
+      "passed": true,
+      "evidence": "answer.md: 'A lower gate hides real findings across the whole repository' and 'a bulk ignore hides real findings across the whole PR'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

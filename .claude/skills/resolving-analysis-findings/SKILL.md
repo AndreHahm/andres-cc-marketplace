@@ -128,7 +128,7 @@ assumed because none has been verified.
 | Rung 4: any `.codacy.yml` change | `AskUserQuestion`, showing the exact diff and what the path stops being scanned for |
 | Rung 5, or any quality-gate change | Not run here: give the user the exact change, or point to `codacy-skills:configure-codacy` |
 | `--unignore-issue`, `--reanalyze`, `--reanalyze-and-wait` | Remote writes: `AskUserQuestion` each time, showing the exact command |
-| Bulk flags (`-F` on `codacy pull-request`; `--ignore` on `codacy issues`) | Not run here, like rung 5: the record cannot say which issues the flag would cover, so hand the user the exact command. Never with `-y` |
+| Bulk flags (`-F` on `codacy pull-request`; `--ignore` on `codacy issues`) | Not run here, like rung 5: the record cannot say which issues the flag would cover, and a bulk ignore hides real findings across the whole PR, so hand the user the exact command. Never with `-y` |
 
 An approval covers the command it showed. A changed finding set or a changed reason needs a new approval.
 
@@ -200,7 +200,9 @@ rationale rather than restating it.
 2026-10-17: with skill 13 of 13 assertions, baseline 9 of 13 (mean per-eval rate 72.9%, +27.1 points). What
 separates the arms: the inline suppression chosen over a remote dismissal (eval 1, where the baseline chose a
 remote write) and the hand-over of the gate change and bulk flag (eval 4). Evals 2 and 3 (High and Medium
-asks) pass for both arms. 4 of the 8 scenarios below are covered; the rest are checked by following this file.
+asks) pass for both arms. Iteration 2 (after the audit fixes) scored 12 of 13 against 5 of 13: eval 4 lost
+the assertion that a bulk ignore hides real findings, because this file did not say so. The Bulk flags row
+now does, and a re-run of eval 4 alone (iteration 3, with skill only) scored 3 of 3 in one sample. 4 of the 8 scenarios below are covered; the rest are checked by following this file.
 `scripts/smoke_test.py` checks this skill's structure, grants, ladder and
 decision-rights invariants, the one-way dependency and the `# nosec` syntax across its references,
 `docs/ci.md` and the git-kit scripts (run by the maintainer with the interpreter's `-I -B` flags). The
