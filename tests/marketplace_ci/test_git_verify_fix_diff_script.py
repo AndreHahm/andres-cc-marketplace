@@ -557,3 +557,115 @@ def test_base_that_is_not_an_ancestor_is_refused(repo):
 def test_malformed_base_inside_a_repository_is_not_nothing_to_check(repo):
     _commit(repo, SKILL, GOOD, "add skill")
     assert _run(repo, "--base", "").returncode == 2
+
+
+# --- commands planted in git's own configuration (#588) ------------------------------------------
+# `git diff`/`git add` on a dirty tree can run a configured fsmonitor command and the
+# post-index-change hook, append to a GIT_TRACE file and honor GIT_CONFIG_* variables; a clone's
+# template hooks and the global configuration reach `git checkout`. Each route writes its own marker
+# file so a failure names the route; the control tests prove each planted command really fires.
+
+
+def _marker_script(path, marker):
+    path.write_text(f'#!/bin/sh\necho ran >> "{marker}"\n', encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def _plant_hostile_git(repo, tmp_path):
+    """Plant one command per route outside the repository; return (markers, extra_env)."""
+    plant = tmp_path / "plant"
+    plant.mkdir()
+    names = ("local_fsmonitor", "post_index_change", "config_env", "template")
+    markers = {name: plant / f"{name}.marker" for name in names}
+    markers["trace"] = plant / "trace.out"  # git appends here when GIT_TRACE names it
+
+    _git(
+        repo,
+        "config",
+        "core.fsmonitor",
+        str(_marker_script(plant / "a.sh", markers["local_fsmonitor"])),
+    )
+    hook = repo / ".git" / "hooks" / "post-index-change"
+    _marker_script(hook, markers["post_index_change"])
+
+    home = plant / "home"
+    template = plant / "template"
+    (template / "hooks").mkdir(parents=True)
+    _marker_script(template / "hooks" / "post-checkout", markers["template"])
+    home.mkdir()
+    # The global configuration reaches the clone's `git checkout` through its template hooks.
+    (home / ".gitconfig").write_text(f"[init]\n\ttemplateDir = {template}\n", encoding="utf-8")
+    injected = _marker_script(plant / "c.sh", markers["config_env"])
+    env = {
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "GIT_TRACE": str(markers["trace"]),
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "core.fsmonitor",
+        "GIT_CONFIG_VALUE_0": str(injected),
+    }
+    return markers, env
+
+
+def _fix_in_repo(repo, *, committed):
+    """A base commit and a fix on top of it; the fix is left uncommitted unless `committed`."""
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    if committed:
+        _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    else:
+        _write(repo, SKILL, GOOD + "\nMore text.\n")
+    return base
+
+
+def _ran(markers):
+    return sorted(name for name, path in markers.items() if path.exists())
+
+
+def test_control_plain_git_runs_every_planted_command(repo, tmp_path):
+    """Without the script's hardening each route fires, so the tests below are not vacuous."""
+    _fix_in_repo(repo, committed=False)
+    markers, extra = _plant_hostile_git(
+        repo, tmp_path
+    )  # after the setup: its git calls must not fire them
+    assert _ran(markers) == []
+    # GIT_CONFIG_* outranks the repository's own core.fsmonitor, so each is exercised on its own.
+    # An in-process main() call elsewhere in this file pins GIT_* in os.environ; start without them.
+    inherited = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    without_injection = {k: v for k, v in extra.items() if not k.startswith("GIT_CONFIG_")}
+    for planted in (without_injection, extra):
+        env = {**inherited, **planted}
+        subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repo, env=env, capture_output=True, check=True
+        )
+    env = {**inherited, **extra}
+    clone = tmp_path / "control-clone"
+    for args, cwd in (
+        (["clone", "--shared", "--no-checkout", "-q", str(repo), str(clone)], repo),
+        (["checkout", "-q", "--detach", "HEAD"], clone),
+    ):
+        subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, check=True)
+    assert _ran(markers) == sorted(markers)
+
+
+@pytest.mark.parametrize("worktree", [True, False])
+def test_planted_commands_never_run(repo, tmp_path, worktree):
+    base = _fix_in_repo(repo, committed=not worktree)
+    markers, extra = _plant_hostile_git(repo, tmp_path)
+    assert _ran(markers) == []
+    result = _run(repo, "--base", base, *(["--worktree"] if worktree else []), extra_env=extra)
+    assert result.returncode in (0, 1), result.stdout + result.stderr
+    assert _ran(markers) == []
+
+
+def test_a_git_earlier_on_path_inside_the_repository_is_never_run(repo, tmp_path):
+    marker = tmp_path / "fake-git.marker"
+    fake = repo / "fakebin" / "git"
+    fake.parent.mkdir()
+    _marker_script(fake, marker)
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    result = _run(
+        repo, "--base", base, extra_env={"PATH": f"{fake.parent}{os.pathsep}{os.environ['PATH']}"}
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert not marker.exists()
