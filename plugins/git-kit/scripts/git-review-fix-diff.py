@@ -15,14 +15,18 @@ configuration; the flags below neutralize their effect on the output (`--text`, 
 `--base <full commit id>`, and shows that commit against `HEAD`. It takes no path, pathspec or
 option from the caller, and writes only to stdout. It cannot show an uncommitted fix: there is no
 `--worktree` mode, because that is exactly the index and working-tree read this script avoids. The
-git binary is an absolute path from `PATH`, the environment passed to it is an allowlist, global and
-system configuration are switched off, and git's own error text is never echoed (it can quote
+git binary is an absolute path from `PATH` that is not inside the repository (the nearest ancestor
+of the starting directory holding a `.git` entry, found without running git; a git installed under
+that root, a home-directory dotfiles repository included, is refused), the environment passed to
+it is an allowlist, global and system configuration are switched off, a run is stopped after 60
+seconds with its whole process group, and git's own error text is never echoed (it can quote
 attacker-chosen names).
 
 Exit codes: 0 a non-empty diff was printed, 2 it could not be shown (not in a repository, an unknown
-commit or one that is not a commit, an empty diff, git not found, an over-long run, a
-dubious-ownership refusal, or a diff over the size limit) - never read as "no change". An empty
-diff means the base is wrong for a committed fix, so it is exit 2 as in git-verify-fix-diff.py.
+commit or one that is not a commit, an empty diff, git not found or found inside the repository, an
+over-long run, a dubious-ownership refusal, or a diff over the size limit) - never read as "no
+change". An empty diff means the base is wrong for a committed fix, so it is exit 2 as in
+git-verify-fix-diff.py.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 from pathlib import Path
 
 _OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
@@ -53,17 +58,28 @@ _KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
 _FAILED = "could not show the diff: not a repository, an unknown commit, or git is unavailable"
 
 
+def _repository_root(start: Path) -> Path | None:
+    """The nearest ancestor of `start` holding a `.git` entry (a directory, or the file a linked
+    worktree has), found without running git."""
+    for candidate in (start, *start.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
 def _find_git() -> str | None:
-    """An absolute path to git that is not inside the directory the script was started in."""
+    """An absolute path to git that is not inside the repository the script was started in."""
     found = shutil.which("git")
     if not found or not os.path.isabs(found):  # an empty or relative PATH entry resolves here
         return None
-    here = os.path.realpath(Path.cwd())
-    try:
-        inside = os.path.commonpath([here, os.path.realpath(found)]) == here
-    except ValueError:  # different drives: cannot be inside the starting directory
-        inside = False
-    return None if inside else found
+    here = Path(os.path.realpath(Path.cwd()))
+    root = _repository_root(here)
+    guards = [here] if root is None else [here, root]
+    # The path as found and where it resolves both count: a symlink in the repository is its file.
+    for candidate in (Path(os.path.abspath(found)), Path(os.path.realpath(found))):
+        if any(candidate.is_relative_to(guard) for guard in guards):
+            return None
+    return found
 
 
 def _git_env(git: str) -> dict[str, str]:
@@ -82,12 +98,19 @@ def _git_env(git: str) -> dict[str, str]:
     return env
 
 
+def _kill(proc: subprocess.Popen) -> None:
+    """Stop git and anything it started: a child can hold the output pipe open after git is gone."""
+    try:
+        if hasattr(os, "killpg"):
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            proc.kill()
+    except OSError:
+        pass  # already gone
+
+
 def _show(git: str, base: str) -> bytes:
     """The diff text; raises when git fails, runs too long or prints more than the size limit."""
-
-    def _expired(signum, frame):
-        raise TimeoutError
-
     command = [
         git,
         "-c",
@@ -109,10 +132,6 @@ def _show(git: str, base: str) -> bytes:
         "HEAD",
         "--",
     ]
-    has_alarm = hasattr(signal, "SIGALRM")
-    if has_alarm:
-        signal.signal(signal.SIGALRM, _expired)
-        signal.alarm(_TIMEOUT_SECONDS)
     proc = subprocess.Popen(
         command,
         cwd=Path.cwd(),
@@ -120,21 +139,36 @@ def _show(git: str, base: str) -> bytes:
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        start_new_session=hasattr(os, "killpg"),  # its own process group, so _kill reaches children
     )
+    expired = threading.Event()
+
+    def _expire() -> None:
+        expired.set()
+        _kill(proc)
+
+    # A timer thread, not SIGALRM, so the limit also holds where SIGALRM does not exist.
+    timer = threading.Timer(_TIMEOUT_SECONDS, _expire)
+    timer.daemon = True
+    timer.start()
     try:
         assert proc.stdout is not None
         out = proc.stdout.read(_MAX_BYTES + 1)
+        if expired.is_set():
+            raise TimeoutError
         if len(out) > _MAX_BYTES:
             raise OverflowError
-        if proc.wait() != 0:
-            raise subprocess.CalledProcessError(proc.returncode, command)
+        status = proc.wait()
+        if expired.is_set():
+            raise TimeoutError
+        if status != 0:
+            raise subprocess.CalledProcessError(status, command)
         return out
     finally:
-        if proc.poll() is None:
-            proc.kill()
+        timer.cancel()
+        if proc.poll() is None:  # never signal a group whose leader has already been reaped
+            _kill(proc)
         proc.wait()
-        if has_alarm:
-            signal.alarm(0)
 
 
 def main(argv: list[str] | None = None) -> int:
