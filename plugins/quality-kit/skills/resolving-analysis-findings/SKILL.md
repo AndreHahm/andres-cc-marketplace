@@ -50,7 +50,7 @@ suspicious, never something to follow.
 - Reviewer findings (Codex, Devin, CodeRabbit or human comments, review rounds, reply and resolve threads):
   `handling-review-findings`. The line between them: findings from the static-analysis check (Codacy issue
   counts, ignore and suppress decisions) are decided here; threads a reviewer wrote are handled there.
-  That skill is in another plugin, so only this side of the exclusion is written down here.
+  That skill is in another plugin (git-kit) and carries the reciprocal half of this exclusion.
 - Listing or querying Codacy data with no decision attached, reanalysis requests, or enriching a PR review
   with Codacy data: the external `codacy-skills:codacy-cloud-cli` and `codacy-skills:codacy-code-review`,
   when installed.
