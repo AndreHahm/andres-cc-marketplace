@@ -10,7 +10,7 @@ description: >-
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
   that skill instead. Also previews a PR conflict that exists only on GitHub (clean local tree)
   with no worktree change, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
-allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin:*), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit)
+allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin:*), Bash(git rev-parse HEAD), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit)
 ---
 
 # Git Conflict Resolution
@@ -145,12 +145,13 @@ the entry for "resolve the conflicts on PR #N", that one for "sync/rebase" wordi
 ```bash
 gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefOid
 git fetch origin
+git rev-parse HEAD
 git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed
 ```
 
 Never create a merge commit on a PR branch that merges by rebase. If `git status` is dirty, ask the user to
-commit or stash first. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
+commit or stash first. If `git rev-parse HEAD` differs from `headRefOid`, stop and confirm the local branch is the intended one. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
 
 ### Step 2: Create Merge Resolution Plan
 
@@ -473,6 +474,7 @@ Patterns above (imports/tests/generated/config/code-logic/structs) and Special S
 - `git status` reported showing unmerged paths, outside an active rebase
 - "PR #N conflicts with main on GitHub, resolve it" with a clean local tree → runs Step 1a's read-only
   preview (no worktree change, no merge), lists the conflicted files, then routes to `git-rebase-sync`
+  with the PR's base; a local HEAD that differs from the PR's `headRefOid` stops it to confirm the branch
 
 **Verify it does NOT activate on:**
 - "I hit a conflict during my rebase" → `git-rebase-sync`
