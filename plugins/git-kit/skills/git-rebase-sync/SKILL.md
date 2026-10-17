@@ -80,7 +80,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
     - `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
-  - Whichever source supplied it, `{base_branch}` is data and a git ref name can contain shell metacharacters (a semicolon, for one): use it in a command only if it matches `^[A-Za-z0-9._/-]+$`, otherwise stop and ask the user.
+  - `{base_branch}` (whichever source supplied it) and the current `{branch_name}` are data, and a git ref name can contain shell metacharacters (a semicolon, for one), as with a branch checked out from a contributor's PR: use either in a command only if it matches `^[A-Za-z0-9._/-]+$`, otherwise stop and ask the user.
 - Fetch latest:
   - `git fetch origin`
 
@@ -191,6 +191,8 @@ baseline arm; the resume and behind-remote scenarios are documented but not run.
 - [ ] If preflight (`git status`) shows an in-progress merge or cherry-pick, always stops and asks
       abort vs. continue (pointing at `resolving-merge-conflicts`) rather than proceeding; a rebase of
       this branch already in progress skips Steps 2-5 and resumes at Step 6
+- [ ] Step 1 stops and asks when `{base_branch}` or `{branch_name}` fails `^[A-Za-z0-9._/-]+$`, before
+      either reaches a command
 - [ ] Step 2 stops and asks before any rebase when `origin/{branch_name}` has commits the local branch
       lacks, because Step 8's force-with-lease would otherwise overwrite them
 - [ ] Never runs a destructive command like `git reset --hard` without explicit `AskUserQuestion`
