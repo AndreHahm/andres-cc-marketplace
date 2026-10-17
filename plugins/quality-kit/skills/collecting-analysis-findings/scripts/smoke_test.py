@@ -14,6 +14,7 @@ import io
 import json
 import re
 import sys
+import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -146,9 +147,26 @@ def check_adapter() -> None:
     }
     allowed = {"__future__", "argparse", "json", "sys", "collections", "pathlib", "re", "typing"}
     check(
-        "adapter imports only the allowed standard-library modules",
-        imported <= allowed,
-        ", ".join(sorted(imported - allowed)),
+        "adapter imports only the allowed standard-library modules (os only for getuid)",
+        imported <= allowed | {"os"},
+        ", ".join(sorted(imported - allowed - {"os"})),
+    )
+    os_names = {
+        alias.name
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.ImportFrom) and node.module == "os"
+        for alias in node.names
+    }
+    check(
+        "the only thing imported from os is getuid, and os is never imported whole",
+        os_names <= {"getuid"}
+        and "os"
+        not in {
+            a.name
+            for n in ast.walk(ast.parse(source))
+            if isinstance(n, ast.Import)
+            for a in n.names
+        },
     )
     calls = re.findall(r"\b(?:eval|exec|__import__|popen|system)\(|(?<!re\.)\bcompile\(", source)
     check(
@@ -290,6 +308,139 @@ def check_adapter_variants(adapter) -> None:
         and second["ignore_reason"] is None
         and second["ignore_comment"] is None,
     )
+
+    check_output_guard(adapter)
+
+
+def check_output_guard(adapter) -> None:
+    """--output writes only inside an owned scratchpad directory, outside any git work tree."""
+    pr_path = str(FIXTURES / "pr.json")
+    posix = getattr(adapter, "getuid", None) is not None
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        scratch = root / "scratchpad"
+        elsewhere = root / "elsewhere"
+        scratch.mkdir()
+        scratch.chmod(0o700)
+        elsewhere.mkdir()
+        target = scratch / "record.json"
+        code, out, _ = run_main(
+            adapter, "--kind", "pr", "--input", pr_path, "--output", str(target)
+        )
+        written = json.loads(target.read_text(encoding="utf-8")) if target.is_file() else {}
+        check(
+            "--output inside a scratchpad directory writes the record there, not to stdout",
+            code == 0
+            and "finding(s) written to record.json" in out
+            and written.get("counts", {}).get("total") == 3,
+        )
+        check(
+            "the temporary file is gone and the record is private to the owner",
+            not (scratch / ".record.json.tmp").exists()
+            and (not posix or target.stat().st_mode & 0o077 == 0),
+        )
+        refused = elsewhere / "record.json"
+        code, out, err = run_main(
+            adapter, "--kind", "pr", "--input", pr_path, "--output", str(refused)
+        )
+        check(
+            "--output outside a scratchpad directory is refused and writes nothing",
+            code == 2
+            and out == ""
+            and "inside a scratchpad directory" in err
+            and not refused.exists(),
+        )
+        sneaky = scratch / ".." / "elsewhere" / "record.json"
+        code, _, _ = run_main(adapter, "--kind", "pr", "--input", pr_path, "--output", str(sneaky))
+        check("a .. segment cannot lead out of the scratchpad", code == 2 and not refused.exists())
+        if posix:
+            open_scratch = root / "open" / "scratchpad"
+            open_scratch.mkdir(parents=True)
+            open_scratch.chmod(0o777)
+            code, _, err = run_main(
+                adapter,
+                "--kind",
+                "pr",
+                "--input",
+                pr_path,
+                "--output",
+                str(open_scratch / "r.json"),
+            )
+            check(
+                "a scratchpad that others can write to is refused",
+                code == 2
+                and "not writable by others" in err
+                and not (open_scratch / "r.json").exists(),
+            )
+        victim = elsewhere / "victim.json"
+        link = scratch / "link.json"
+        try:
+            link.symlink_to(victim)
+        except (OSError, NotImplementedError):
+            link = None  # symlinks unavailable on this platform: the check below is skipped
+        if link is not None:
+            code, _, err = run_main(
+                adapter, "--kind", "pr", "--input", pr_path, "--output", str(link)
+            )
+            check(
+                "--output through a symlink that leaves the scratchpad is refused",
+                code == 2 and not victim.exists(),
+            )
+        repo_scratch = root / "repo" / "scratchpad"
+        repo_scratch.mkdir(parents=True)
+        repo_scratch.chmod(0o700)
+        (root / "repo" / ".git").mkdir()
+        code, _, err = run_main(
+            adapter, "--kind", "pr", "--input", pr_path, "--output", str(repo_scratch / "r.json")
+        )
+        check(
+            "--output inside a git work tree is refused",
+            code == 2 and "git work tree" in err and not (repo_scratch / "r.json").exists(),
+        )
+        # The path is resolved again just before writing; a result that differs aborts the write.
+        calls = []
+        real_resolve = adapter._scratch_output
+
+        def shifting(raw: str) -> Path:
+            calls.append(raw)
+            return (
+                real_resolve(raw) if len(calls) == 1 else real_resolve(str(scratch / "other.json"))
+            )
+
+        adapter._scratch_output = shifting
+        try:
+            code, _, err = run_main(
+                adapter, "--kind", "pr", "--input", pr_path, "--output", str(scratch / "race.json")
+            )
+        finally:
+            adapter._scratch_output = real_resolve
+        check(
+            "a changed output path is caught by the re-check just before writing",
+            code == 2 and "changed while" in err and not (scratch / "race.json").exists(),
+        )
+        subdir = scratch / "sub"
+        subdir.mkdir()
+        code, _, err = run_main(
+            adapter, "--kind", "pr", "--input", pr_path, "--output", str(subdir)
+        )
+        check("--output naming a directory is refused", code == 2 and "not a directory" in err)
+        previous = scratch / "previous.json"
+        previous.write_text("older record", encoding="utf-8")
+        code, _, _ = run_main(
+            adapter,
+            "--kind",
+            "pr",
+            "--input",
+            str(FIXTURES / "unknown.json"),
+            "--output",
+            str(previous),
+        )
+        check(
+            "a failing run leaves an existing output file untouched and creates none",
+            code == 2
+            and previous.read_text(encoding="utf-8") == "older record"
+            and not (scratch / "bad.json").exists(),
+        )
 
 
 def check_skills() -> None:

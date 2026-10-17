@@ -1,7 +1,7 @@
 # Suppression Formats
 
 An inline suppression silences one rule on one line and keeps its reason next to the code. Every one carries
-a stated reason, and rung 2 on anything other than `Minor`/`Info` or an accepted shape needs the approval in
+a stated reason, and rung 2 on anything other than a non-`Security` `Minor`/`Info` or an accepted shape needs the approval in
 `SKILL.md`'s Decision rights. Verified on 2026-10-17 means: checked with the local tool, in this repository.
 
 | Engine | Syntax | Status |

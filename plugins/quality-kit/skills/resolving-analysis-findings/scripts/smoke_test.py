@@ -137,6 +137,8 @@ def check_rules(body: str) -> None:
         "Warning/Medium is decided only on an accepted shape; elsewhere it asks first",
         bool(quiet)
         and "docs/ci.md" in quiet
+        and "outside the `Security` category" in quiet
+        and "`Security` finding" in asks
         and "Critical" not in quiet
         and "outside an accepted shape" in asks
         and "AskUserQuestion" in asks,

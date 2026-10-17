@@ -78,10 +78,14 @@ normalize into scratchpad files (3-4), check the analysis is current (5), report
    committer names and emails; keep it in the scratchpad, and never share or commit it.
 4. **Normalize.** `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py
    --kind pr|repo|ignored --input "<scratchpad>/pr.json" [--category Security] [--group-by rule|file|rule,file]
-   [--format json|table] > "<scratchpad>/findings-record.<json|txt>"`. `--input` and the `>` target are always
-   under the session scratchpad, never a repository or home path. Exit 2 means the input is not a shape this
-   adapter was verified against, or the command line was invalid: report that plainly and stop, because a
-   guessed mapping would feed wrong numbers to a decision. On any non-zero exit, discard the output file. The record's fields are in
+   [--format json|table] --output "<scratchpad>/findings-record.<json|txt>"`. `--input` is always under the
+   session scratchpad, never a repository or home path. The script itself refuses an `--output` path that is
+   not inside a directory named `scratchpad` (on POSIX one you own that others cannot write to), that is
+   inside a folder containing `.git`, or that a symlink points elsewhere. It writes a private temporary file
+   and replaces the target only after the whole record is built, so no shell redirect is used and a failed
+   run does not create or modify the output file; an older record at the same path survives, so discard it. Exit 2 means the input is not a shape this adapter was verified
+   against, the output path was refused, or the command line was invalid: report that plainly and stop,
+   because a guessed mapping would feed wrong numbers to a decision. The record's fields are in
    `references/findings-record.md`.
 5. **Check currency (PR only).** Confirm the record's `source.pull_request` equals the requested number
    (stop on a mismatch). Re-read `headRefOid` with `gh pr view` now, then compare it with the record's
@@ -113,6 +117,13 @@ allow rule**: a persistent rule is a prefix rule that would pre-approve every wr
 documented read forms are in `references/codacy-adapter.md`; a remote write belongs to
 `resolving-analysis-findings` behind its approval gate.
 
+The record is written by the script's own `--output`, which refuses any path that is not in a scratchpad
+directory you own (step 4), not by a shell redirect. Claude Code's documentation says a redirect target is
+checked separately from a prefix grant, but does not say whether that holds for a grant from a skill's
+`allowed-tools`, so this skill does not depend on it (checked against the documentation 2026-10-17; not
+tested live). The guard is the only control on where the record goes, because a script's own file writes are
+not permission-checked.
+
 Works without the external `codacy-skills` plugin and does not call it.
 
 ## Gotchas
@@ -143,7 +154,7 @@ an uplift. In the injection eval both arms treat the message as data; it separat
 issue id and tool. Iteration 2, after the audit fixes, gave the same 14 of 14 against 12 of 14 on the same
 two assertions. The adapter's own behavior is covered by the smoke test.
 
-**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 44 of 44 checks passed. The adapter was also
+**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 55 of 55 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;
 that run was not saved as a file, because real output holds committer emails.
 
@@ -174,6 +185,6 @@ report says the analysis is stale and gives no counts as current.
 | `references/adapter-contract.md` | What a provider adapter must provide, for adding a second provider |
 | `references/codacy-adapter.md` | The verified read commands, input shapes, exit codes and forbidden write flags |
 | `scripts/collect_codacy.py` | The Codacy adapter: Cloud CLI JSON in, record out |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (44 checks) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (55 checks) |
 | `scripts/fixtures/pr.json`, `repo.json`, `ignored.json` | Synthetic input in the real Cloud CLI shapes, used by the smoke test |
 | `scripts/fixtures/unknown.json` | An unrecognized shape, used to prove the adapter fails closed |

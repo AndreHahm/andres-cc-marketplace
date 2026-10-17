@@ -56,8 +56,11 @@ it like a `newIssues` entry with `state: potential` and fails closed if it does 
 
 | Code | Meaning | Output |
 |---|---|---|
-| 0 | Record written | The record on stdout |
-| 2 | The input is unreadable, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`) | Message on stderr, nothing on stdout |
+| 0 | Record written | The record on stdout, or with `--output` a one-line summary on stdout and the record in the file |
+| 2 | The input is unreadable, is not a regular file, is larger than 32 MiB, is not valid JSON, is nested too deeply, has an `issueId` that is not a plain identifier (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`), or is not a shape above; or the command line is invalid (a bad `--kind`, `--group-by` or `--format`); or `--output` is refused (not inside a directory named `scratchpad`, on POSIX one that you do not own or that others can write to, inside a folder containing `.git`, a symlink that leaves the scratchpad, a directory, or in a directory that does not exist) | Message on stderr, nothing on stdout, no output file created or changed |
 
-The shell redirect creates or truncates the output file before the script runs, so on any non-zero exit discard
-the output file; a partial record is never a result.
+With `--output` the script writes a private temporary file and replaces the target only after the whole record is
+built, so a failed run does not create or modify the output file; an older file at the same path survives.
+The raw Cloud CLI capture (`codacy ... > pr.json`) is still a shell redirect, but `codacy` commands are not
+pre-approved, so that command raises its own permission prompt showing the target. On any non-zero exit discard
+an output file made another way; a partial record is never a result.
