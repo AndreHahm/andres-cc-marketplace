@@ -80,6 +80,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
     - `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+  - Whichever source supplied it, `{base_branch}` is data and a git ref name can contain shell metacharacters (a semicolon, for one): use it in a command only if it matches `^[A-Za-z0-9._/-]+$`, otherwise stop and ask the user.
 - Fetch latest:
   - `git fetch origin`
 
