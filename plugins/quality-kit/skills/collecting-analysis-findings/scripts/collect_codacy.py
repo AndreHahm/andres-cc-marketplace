@@ -281,16 +281,16 @@ def _scratch_output(raw: str) -> Path:
 
     Symlinks are followed first, so a link at the name or in a parent cannot point the write
     elsewhere.
-    On POSIX the scratchpad directory must be owned by the current user and not writable by group or
-    others. A path under any folder that contains `.git` is refused. A work tree whose git directory
-    lives elsewhere is not detected.
+    On POSIX the nearest enclosing scratchpad directory must be owned by the current user and not
+    writable by group or others. A path under any folder that contains `.git` is refused. A work
+    tree whose git directory lives elsewhere is not detected.
     """
     try:
         path = Path(raw).resolve()
         scratch_dirs = [parent for parent in path.parents if parent.name == "scratchpad"]
         if not scratch_dirs:
             raise ShapeError("--output must be a file inside a scratchpad directory")
-        if getuid is not None and not any(_private_dir(parent) for parent in scratch_dirs):
+        if getuid is not None and not _private_dir(scratch_dirs[0]):  # nearest one, not any
             raise ShapeError(
                 "--output's scratchpad directory must be owned by you and not writable by others"
             )

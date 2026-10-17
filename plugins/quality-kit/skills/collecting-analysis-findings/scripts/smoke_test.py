@@ -372,6 +372,23 @@ def check_output_guard(adapter) -> None:
                 and "not writable by others" in err
                 and not (open_scratch / "r.json").exists(),
             )
+            nested = root / "private" / "scratchpad" / "public" / "scratchpad"
+            nested.mkdir(parents=True)
+            (root / "private" / "scratchpad").chmod(0o700)
+            nested.chmod(0o777)
+            code, _, err = run_main(
+                adapter,
+                "--kind",
+                "pr",
+                "--input",
+                pr_path,
+                "--output",
+                str(nested / "r.json"),
+            )
+            check(
+                "a world-writable scratchpad inside a private one is refused (nearest decides)",
+                code == 2 and "not writable by others" in err and not (nested / "r.json").exists(),
+            )
         victim = elsewhere / "victim.json"
         link = scratch / "link.json"
         try:
