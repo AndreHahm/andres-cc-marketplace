@@ -28,6 +28,8 @@ reports/events/
 
 #Repo-specific files and directories
 .codex-review-instructions/
+# Local Codacy CLI config (codacy-analysis init); each person creates their own
+/.codacy/
 *.local
 *.local.*
 **/*.local.*

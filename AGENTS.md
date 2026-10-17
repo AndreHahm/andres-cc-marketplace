@@ -93,6 +93,16 @@ longer exists on disk still trips the scan, since the rename's staged diff still
 `cdx-secret-filenames.mjs`) — replacing the old `.secretlintignore` entry with the new one left the scan
 flagging the rename as a sensitive file, even though the new path was correctly exempted.
 
+## Marketplace-Specific: Codacy Security Issue Triage
+
+This is the short form of `CLAUDE.md`'s section of the same name, for agents that read only this file. The bullet on Codacy write commands comes from the `quality-kit` skills' approval rules, not from `CLAUDE.md`.
+
+- Read a PR's Codacy findings from the Codacy Cloud CLI (`codacy pull-request <provider> <org> <repo> <prNumber>`), not from GitHub's check annotations, which show only a capped subset.
+- Before changing code to satisfy a finding, verify the change lowers Codacy's count: a fix aimed at one rule can trip a stricter one on the same line (replacing a bare `git` with an absolute path trades Bandit B607 for a Semgrep Error). The worked example and the accepted `git`-through-`subprocess` decision are in `docs/ci.md`, section "Codacy: `git` through `subprocess` in plugin scripts".
+- An accepted shape gets an inline suppression with a stated reason, in the form `docs/ci.md` gives. A genuine false positive, or test or external code, gets a per-issue Codacy ignore with `--ignore-reason` and a comment. A `.codacy.yml` `exclude_paths` entry drops a whole file from a whole engine, so use it only for test harnesses and fixtures, never for one finding on production code.
+- Never run a Codacy write command (`--ignore-issue`, `--unignore-issue`, `--reanalyze`, the bulk `-F` or `--ignore` flags) without the user's explicit approval of that exact command.
+- In this repo's Claude Code sessions, the default procedure for the decision step is the `quality-kit` plugin's `collecting-analysis-findings` and `resolving-analysis-findings` skills.
+
 ## Code Review Rules
 
 Read by the external `chatgpt-codex-connector[bot]` GitHub App reviewer (triggered by `@codex review` /
