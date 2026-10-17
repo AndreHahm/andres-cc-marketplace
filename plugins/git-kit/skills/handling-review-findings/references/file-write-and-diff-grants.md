@@ -95,11 +95,13 @@ HEAD` did not run fsmonitor.
    `check-git-output-grants` (`scripts/marketplace_ci/git_output_grants.py`): it fails on any wildcard
    `git diff|log|show` grant (also `diff-tree`, `diff-index`, `diff-files` and `whatchanged`, which each
    wrote a file when run with `--output`, and any of them after git global options such as
-   `--no-pager` or `-C <path>`) in a plugin component's frontmatter, decoded as YAML so an escaped line
-   break cannot hide one, that is not listed in
+   `--no-pager` or `-C <path>`), and any blanket `git:*`, `git *` or `git -C:*` grant, in a plugin
+   component's frontmatter, decoded as YAML so an escaped line break cannot hide one, that is not listed in
    `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a baseline entry whose grant is gone.
    The baseline lists every component still open, in every plugin (not only git-kit); scoping a
-   component means deleting its entries there in the same commit.
+   component means deleting its entries there in the same commit. The blanket grants are `git -C:*` in
+   `git-cleanup` and `git:*` in plugin-devkit's `marketplace-development`, `rules-extract` and
+   `rules-review`.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
    memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real

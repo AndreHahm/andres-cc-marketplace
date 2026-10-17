@@ -15,6 +15,7 @@
   "plugins/git-kit/skills/dependency-updater/SKILL.md::git diff:*",
   "plugins/git-kit/skills/explain-pr-changes/SKILL.md::git diff:*",
   "plugins/git-kit/skills/git-bisect/SKILL.md::git show:*",
+  "plugins/git-kit/skills/git-cleanup/SKILL.md::git -C:*",
   "plugins/git-kit/skills/git-cleanup/SKILL.md::git log:*",
   "plugins/git-kit/skills/git-notes/SKILL.md::git log:*",
   "plugins/git-kit/skills/git-notes/SKILL.md::git show:*",
@@ -27,6 +28,7 @@
   "plugins/plugin-devkit/commands/pdk-review-rules.md::git diff *",
   "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md::git log:*",
   "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md::git show:*",
+  "plugins/plugin-devkit/skills/marketplace-development/SKILL.md::git:*",
   "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md::git diff:*",
   "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md::git log -1:*",
   "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md::git show --stat:*",
@@ -35,5 +37,7 @@
   "plugins/plugin-devkit/skills/plugin-lifecycle-upstream/SKILL.md::git log:*",
   "plugins/plugin-devkit/skills/plugin-lifecycle-upstream/SKILL.md::git show:*",
   "plugins/plugin-devkit/skills/reviewing-evals/SKILL.md::git diff:*",
+  "plugins/plugin-devkit/skills/rules-extract/SKILL.md::git:*",
+  "plugins/plugin-devkit/skills/rules-review/SKILL.md::git:*",
   "plugins/session-kit/skills/session-wrap-up/SKILL.md::git diff:*"
 ]

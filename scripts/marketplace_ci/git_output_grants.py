@@ -36,16 +36,21 @@ _SUBCOMMANDS = "diff|diff-tree|diff-index|diff-files|log|show|whatchanged"
 # followed by its value. A value never starts with `-`, so two adjacent options can only parse one
 # way; with both readings possible the repeated group backtracks exponentially on a long run.
 _GLOBAL_OPTION = (
-    r"\s+(?:-C|-c|--git-dir|--work-tree|--namespace)\s+[^\s:*)\"'-][^\s:*)\"']*"
-    r"|\s+--?[\w-]+(?:=[^\s:*)\"']*)?"
+    r"\s+(?:-C|-c|--git-dir|--work-tree|--namespace)\s+[^\s:*)-][^\s:*)]*"
+    r"|\s+--?[\w-]+(?:=[^\s:*)]*)?"
 )
-# `git [global options] <subcommand>`, any literal arguments, then a wildcard (`:*` or ` *`). The
-# arguments may contain a `:` that does not start `:*`, but not `*` or `)`, so one match never
-# spans two grants inside a single `Bash(...)`.
+# `git [global options]`, then either a wildcard right away (a blanket `git:*`, `git *` or
+# `git -C:*`) or a subcommand, any literal arguments and a wildcard (`:*` or ` *`). The arguments
+# may contain a `:` that does not start `:*`, but not `*` or `)`, so one match never spans two
+# grants inside a single `Bash(...)`.
 _WILDCARD_GRANT = re.compile(
-    rf"git(?:{_GLOBAL_OPTION})*\s+(?:{_SUBCOMMANDS})(?![\w-])"
-    r"(?P<args>(?:[^:*)\n\"']|:(?!\*))*?)(?::\*|\s\*)"
+    rf"(?<![\w-])git(?:{_GLOBAL_OPTION})*"
+    rf"(?:\s+(?:{_SUBCOMMANDS})(?![\w-])(?P<args>(?:[^:*)\n]|:(?!\*))*?))?(?::\*|\s\*)"
 )
+# A glob with no separator after a subcommand or a prefix of one: `git diff*`, `git d*`. Not
+# verified live that Claude Code matches this as a glob; flagged anyway, since a false positive only
+# costs a baseline entry.
+_GLOB_PREFIX = re.compile(rf"(?<![\w-])git(?:{_GLOBAL_OPTION})*\s+(?P<word>[\w-]+)\*")
 
 
 @dataclass(frozen=True)
@@ -92,10 +97,13 @@ def _scan(repo: Path) -> tuple[set[str], set[str]]:
                 continue
             for entry in entries:
                 for match in _WILDCARD_GRANT.finditer(entry):
-                    if match["args"].rstrip().endswith("--"):
+                    if (match["args"] or "").rstrip().endswith("--"):
                         continue
                     grant = match.group(0).replace("\\", "")
                     found.add(f"{relative}::{grant}")
+                for match in _GLOB_PREFIX.finditer(entry):
+                    if any(name.startswith(match["word"]) for name in _SUBCOMMANDS.split("|")):
+                        found.add(f"{relative}::{match.group(0)}")
     return found, unparsable
 
 
