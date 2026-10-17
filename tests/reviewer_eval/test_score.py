@@ -182,3 +182,43 @@ def test_cli_reports_an_invalid_corpus(tmp_path: Path, capsys: pytest.CaptureFix
     (tmp_path / "pr-1-00000001.json").write_text("{}", encoding="utf-8")
     assert score.main([str(tmp_path)]) == 1
     assert "pr-1-00000001.json" in capsys.readouterr().err
+
+
+def _run_file(tmp_path: Path, name: str, blocking_paths: list[str]) -> str:
+    findings = [
+        {"reviewer": "security", "path": path, "line": 1, "blocking": True}
+        for path in blocking_paths
+    ]
+    path = tmp_path / name
+    path.write_text(json.dumps({"findings": findings}), encoding="utf-8")
+    return str(path)
+
+
+def test_cli_stability_prints_the_agreement_of_repeated_runs(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [_run_file(tmp_path, f"run{n}.json", ["a.py"]) for n in range(4)]
+    runs.append(_run_file(tmp_path, "run4.json", ["b.py"]))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    assert printed == {"reviewer": "security", "repeats": 5, "agree": 4, "stable": True}
+
+
+def test_cli_stability_needs_a_reviewer(tmp_path: Path, capsys: pytest.CaptureFixture):
+    run = _run_file(tmp_path, "run0.json", [])
+    with pytest.raises(SystemExit) as excinfo:
+        score.main(["--stability", run])
+    assert excinfo.value.code == 2
+    assert "--reviewer" in capsys.readouterr().err
+
+
+def test_cli_stability_reports_an_unreadable_or_malformed_run(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{}", encoding="utf-8")
+    assert score.main(["--stability", str(bad), "--reviewer", "security"]) == 1
+    assert "bad.json" in capsys.readouterr().err
+    missing = str(tmp_path / "missing.json")
+    assert score.main(["--stability", missing, "--reviewer", "security"]) == 1
+    assert "missing.json" in capsys.readouterr().err

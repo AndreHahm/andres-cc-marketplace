@@ -38,8 +38,16 @@ uv run python -m scripts.reviewer_eval.score
 
 Prints precision and recall per reviewer as JSON. Recall is measured against the corpus's
 `known_issues`, so it reaches 1.0 overall when every known issue was derived from a finding; it only
-means something once known issues are established independently of the findings. Stability
-(`score.stability`) needs five repeated runs of one head and is not part of the CLI yet.
+means something once known issues are established independently of the findings.
+
+Stability needs five repeated runs of one head, as archived result files:
+
+```bash
+uv run python -m scripts.reviewer_eval.score --stability run1.json run2.json run3.json run4.json run5.json --reviewer security-reviewer
+```
+
+It prints how many runs gave the same blocking set (`agree`) and whether that is stable (at least
+4 of 5; `null` until five runs are given). No repeated runs exist yet, so there is no baseline.
 
 ## Case format
 

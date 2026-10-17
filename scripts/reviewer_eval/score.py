@@ -101,10 +101,34 @@ def stability(blocking_sets: list[frozenset]) -> dict:
     return {"repeats": len(blocking_sets), "agree": agree, "stable": stable}
 
 
+def _print_stability(paths: list[str], reviewer: str) -> int:
+    sets = []
+    for name in paths:
+        try:
+            result = json.loads(Path(name).read_text(encoding="utf-8"))
+            sets.append(blocking_set(result, reviewer))
+        except (OSError, ValueError) as exc:
+            print(f"{name}: {exc}", file=sys.stderr)
+            return 1
+    print(json.dumps({"reviewer": reviewer, **stability(sets)}, indent=2))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="reviewer_eval.score", description=__doc__)
     parser.add_argument("directory", nargs="?", default="reviewer-eval/corpus")
+    parser.add_argument(
+        "--stability",
+        nargs="+",
+        metavar="RESULT",
+        help="archived results of repeated runs of one head; scores their agreement instead",
+    )
+    parser.add_argument("--reviewer", help="the reviewer whose blocking set --stability compares")
     args = parser.parse_args(argv)
+    if args.stability:
+        if not args.reviewer:
+            parser.error("--stability needs --reviewer")
+        return _print_stability(args.stability, args.reviewer)
     try:
         cases = load_corpus(Path(args.directory))
     except CorpusError as exc:
