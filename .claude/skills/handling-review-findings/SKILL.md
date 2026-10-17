@@ -10,8 +10,8 @@ description: >-
   asks for it to be filed instead. A Critical/Major finding is never silently deferred-and-merged.
   Use when triaging review feedback, deciding which reviewer to trigger next, or replying
   to/resolving/filing a specific finding. Not `collaborating-on-a-pr`'s reviewer actions,
-  `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
-  recovery — see When NOT to Use.
+  `github-issue-creator`'s general issue drafting, `codex-review-recovery`'s stuck-check
+  recovery, or quality-kit's `resolving-analysis-findings` (Codacy) — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
 allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Edit(issues/**), Skill(commit), Grep
 ---
@@ -76,6 +76,11 @@ own round/dedup budgeting, severity-gate discipline, or marker-handshake step wa
   as part of this skill's own round budget, never recovering an already-finished-but-stuck check. If
   the *current* round's check looks stuck rather than genuinely not-yet-triggered, that's still
   `codex-review-recovery`'s job.
+- **A failing static-analysis check such as Codacy** (issue counts, ignore and suppress decisions) —
+  that's quality-kit's `resolving-analysis-findings`' job, even when the check's findings arrive as
+  inline PR annotations. The line between them: findings produced by an analysis tool are decided
+  there; threads a reviewer (Codex, Devin, CodeRabbit, `security-reviewer`, or a human) wrote stay
+  here. A request naming both: triage the reviewer threads here and hand the Codacy check over.
 - **Reviewing the local working diff** (before a PR exists, or before a draft PR is flipped to
   ready-to-merge) — that's `cross-model-review`'s job. This skill only ever acts on findings already
   *posted* to an open PR, regardless of the PR's draft/ready state.
@@ -409,6 +414,8 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
 - "the Codex check is stuck, it finished on the dashboard" → `codex-review-recovery`
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
+- "the Codacy check failed on my PR, should I ignore these findings" → quality-kit's
+  `resolving-analysis-findings`
 - "work issue #45 through triage, find related issues, resolve it" → `github-issue-lifecycle`; a
   freestanding issue, not a PR-review finding
 
