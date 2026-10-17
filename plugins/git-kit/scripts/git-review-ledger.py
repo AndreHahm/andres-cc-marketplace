@@ -94,7 +94,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
     rel = os.path.relpath(path, root.resolve())
 
     def ignored() -> bool:
-        probe = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
+        probe = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
             ["git", "check-ignore", "-q", "--no-index", "--", rel],
             cwd=root,
             capture_output=True,

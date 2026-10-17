@@ -292,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         if not here:
             raise RuntimeError("the verifiers exist at the target branch but not in this tree")
-        ancestor = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
+        ancestor = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
             ["git", "merge-base", "--is-ancestor", args.base, head_sha],
             cwd=repo_root,
             env=_clean_env(),
