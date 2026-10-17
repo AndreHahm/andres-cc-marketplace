@@ -123,34 +123,54 @@ def check_bash_grants():
     return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
-# File writes stay path-scoped (#582): a bare `Write` or `Edit` lets an agent overwrite a plugin
-# script without a prompt, and a `Write(<glob>)` rule is accepted but never matched, so it grants
-# nothing (only `Edit(...)` rules are consulted, and they also cover the `Write` tool).
-SCRATCHPAD_EDIT_GRANT = "Edit(//tmp/claude-*/**)"
-BARE_WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+# The whole allowed-tools line is pinned (#582). A denylist of bad grants is easy to get past (a
+# bare `Write`, `Write(<glob>)` which is accepted but never matches, `Bash(git log:*)`, ...), so
+# the check compares the entries with this exact list. Changing a grant means changing this list
+# in the same edit, which is the review point. This skill only writes comment bodies to the
+# scratchpad, so `Edit(//tmp/claude-*/*/*/scratchpad/**)` is its only write grant.
+EXPECTED_ALLOWED_TOOLS = (
+    "Read",
+    "Edit(//tmp/claude-*/*/*/scratchpad/**)",
+    "Skill(collaborating-on-a-pr)",
+    "Skill(github-issue-creator)",
+    "Bash(gh issue list:*)",
+    "Bash(gh issue view:*)",
+    "Bash(gh issue create:*)",
+    "Bash(gh issue comment:*)",
+    "Bash(gh issue close:*)",
+    "Bash(gh issue reopen:*)",
+    "Bash(gh issue edit:*)",
+    "Bash(gh api repos/*/issues/*:*)",
+    "Bash(gh api search/issues:*)",
+)
 
 
 def check_file_write_grants_scoped(path=None):
-    # This skill only writes comment bodies to the scratchpad, so that is the only write grant.
     path = path or SKILL_MD
     text = path.read_text(encoding="utf-8")
-    header_end = text.find("\n---\n", 4) + 5
-    line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
+    header = text[: text.find("\n---\n", 4) + 5]
+    if len(re.findall(r"^['\"]?allowed-tools['\"]?[ \t]*:", header, re.MULTILINE)) != 1:
+        return False, "the frontmatter must hold exactly one allowed-tools key"
+    line = re.search(r"^allowed-tools:[ \t]*(.+)$", header, re.MULTILINE)
     if not line:
-        return False, "no allowed-tools line found"
-    entries = [e.strip() for e in line.group(1).split(", ")]
-    bad = [
-        e
-        for e in entries
-        if e in BARE_WRITE_TOOLS
-        or e.startswith("Write(")
-        or (e.startswith("Edit(") and e != SCRATCHPAD_EDIT_GRANT)
-    ]
-    if bad:
-        return False, "unscoped or unmatched file-write grant: " + ", ".join(bad)
-    if SCRATCHPAD_EDIT_GRANT not in entries:
-        return False, f"allowed-tools has no scratchpad write grant `{SCRATCHPAD_EDIT_GRANT}`"
-    return True, "file writes are limited to the scratchpad"
+        return False, "no single-line allowed-tools value found"
+    # A YAML plain scalar continues on any more-indented next line, which a one-line read misses.
+    following = header[line.end() + 1 :].split("\n", 1)[0]
+    if not re.match(r"[A-Za-z_][\w-]*:|---$", following):
+        return (
+            False,
+            "the line after allowed-tools must be another top-level key or the closing ---",
+        )
+    entries = line.group(1).strip().split(", ")
+    unexpected = [e for e in entries if e not in EXPECTED_ALLOWED_TOOLS]
+    missing = [e for e in EXPECTED_ALLOWED_TOOLS if e not in entries]
+    if unexpected or missing or len(entries) != len(set(entries)):
+        return False, (
+            "allowed-tools differs from the pinned list: unexpected "
+            f"{unexpected or 'none'}, missing {missing or 'none'}, duplicates "
+            f"{len(entries) != len(set(entries))}"
+        )
+    return True, "allowed-tools is exactly the pinned list (scratchpad-only Edit write grant)"
 
 
 CHECKS = [

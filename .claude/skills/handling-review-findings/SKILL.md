@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/**), Edit(issues/**), Skill(commit), Grep
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Edit(issues/**), Skill(commit), Grep
 ---
 
 # Handling Review Findings
@@ -383,15 +383,12 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
   refused, content passed on stdin) and enforces the `gh-pr-review-wrapper` marker itself. It does not
   validate a comment's or issue's *content* — that is still Workflow step 8's allowlist and
   reviewer-name check plus the confirmation `AskUserQuestion` showing the exact body before posting.
-  File writes are scoped to `Edit(//tmp/claude-*/**)` (scratchpad body files) and `Edit(issues/**)` (the
-  local issue draft), so the pinned scripts cannot be overwritten without a prompt (issue #582). An
-  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches, so it
-  would grant nothing. Checked live (Claude Code 2.1.302, Linux, a headless run in default permission mode): the
-  scoped grants allowed a scratchpad write and an `issues/` write and denied a write outside both, while the
-  former bare `Write` overwrote a script file with no prompt. Not checked: a macOS temp root, the `.claude/`
-  protected-path case, and a real `${CLAUDE_PLUGIN_ROOT}` install directory. Where Claude Code's scratch
-  directory is not under `/tmp/claude-<uid>`, the scratchpad write falls back to a prompt rather than
-  succeeding silently.
+  File writes are scoped to `Edit(//tmp/claude-*/*/*/scratchpad/**)` and `Edit(issues/**)`, and the former
+  `Bash(git diff:*)` grant is replaced by the pinned `git-review-fix-diff.py` (compares two commits only),
+  which closes this skill's own two direct routes for overwriting a pinned script without a prompt: the
+  `Write` tool and the output-file option of `git diff` (issue #582). Not closed: the grants of `Skill(commit)`, step
+  4a's `--worktree` verifier run and the inherited environment of the other granted commands. What was
+  verified live and what stays open: `references/file-write-and-diff-grants.md`.
 - Never substitutes a settings-derived trigger string directly into a command line — always via a
   validated, file-based `--body-file` (Workflow step 8), never inline shell interpolation.
 - The marker handshake is a guardrail against forgetting the step, not a security boundary: anything
@@ -476,6 +473,7 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
+| `references/file-write-and-diff-grants.md` | Why the file-write and diff grants are scoped (issue #582): the two routes closed, the live-verified results, the git diff index/worktree hazards, what was not checked |
 | `references/development-history.md` | Build-time audit trail: eval run records, security-review passes, and dated fix narratives for issues found in live GitHub review (PR #101, #407) |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
 | `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 28 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate; iteration 5 (eval 22, Quick Workflow): 100% with_skill pass rate; iteration 7 (evals 23-24, Quick Workflow): 100% with_skill pass rate; iteration 8 (evals 25-28): 11/12 with_skill vs. 8/12 baseline; iteration 9 (eval 27 rerun): 3/3 with_skill-only |
