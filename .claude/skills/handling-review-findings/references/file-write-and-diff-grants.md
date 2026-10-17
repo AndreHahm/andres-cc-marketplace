@@ -63,19 +63,23 @@ HEAD` did not run fsmonitor.
 
 ## Still open: not closed by this change
 
-1. **`Skill(commit)` is pre-approved here, and `commit` carries its own grants**: a bare `Write`,
-   `Bash(git diff:*)` and `Bash(sed -E:*)`. Whether a nested skill's `allowed-tools` apply without a
-   prompt is unverified; if they do, an injected agent can reach both closed routes through `commit`. Fixing
-   it means scoping `commit`'s own grants, which is out of scope here.
+1. **`Skill(commit)` is pre-approved here, and a nested skill's `allowed-tools` do apply without a
+   prompt** (verified live, issue #588, Claude Code 2.1.302: a skill that held only `Skill(inner)` ran
+   `inner`'s granted command with no prompt). `commit` used to carry a bare `Write`, `Bash(git diff:*)` and
+   `Bash(sed -E:*)`; issue #588 scoped them to `Edit(//tmp/claude-*/*/*/scratchpad/**)`, the exact
+   `Bash(git diff --cached)` and nothing, so the nested route no longer reaches either closed route
+   through `commit`. Any other skill this one pre-approves is still reachable the same way.
 2. **Step 4a runs `git-verify-fix-diff.py --worktree`**, which runs `git add -A` on the real working tree
    with a denylist environment, `git` by bare name, and a temporary clone that uses global configuration
    and template hooks. The filter, hook and `GIT_TRACE`/`GIT_CONFIG_*` routes can apply there. It is not
    hardened here.
 3. **Environment hardening is per script.** The `git rev-parse` and `git ls-files` grants, and the
    `git-verify-fix-diff.py` and `git-review-ledger.py` grants (which have no `-I`), run with the inherited
-   environment. Whether a prefix grant also matches a command with a leading `VAR=value` is unverified.
+   environment. A prefix grant does not match a command with a leading `VAR=value` (verified live, issue
+   #588: `FOO=bar python3 -c ...` and `FOO=bar git diff ...` both prompted), so the command line cannot
+   carry `GIT_TRACE`/`GIT_CONFIG_*`; the inherited session environment still can.
 4. **Other components still carry the same `--output=<path>` route.** `Bash(git diff:*)` (or a longer prefix
-   such as `git diff --name-only -z:*`) is granted in `commit`, `standalone-commits`, `explain-pr-changes`,
+   such as `git diff --name-only -z:*`) is granted in `standalone-commits`, `explain-pr-changes`,
    `git-worktrees`, `git-rebase-sync`, `create-pr`, `dependency-updater` and the `git-status` and
    `git-update-branch-name` commands. `git log:*` or `git show:*`, which also accept `--output`, is granted
    in `git-bisect`, `git-notes`, `git-cleanup`, `git-worktrees`, `git-rebase-sync` and

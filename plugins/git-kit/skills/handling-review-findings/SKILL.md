@@ -394,7 +394,7 @@ for 60 seconds and single-use, so write a fresh one immediately before each such
   File writes are scoped to `Edit(//tmp/claude-*/*/*/scratchpad/**)` and `Edit(issues/**)`, and the former
   `Bash(git diff:*)` grant is replaced by the pinned `git-review-fix-diff.py` (compares two commits only),
   which closes this skill's own two direct routes for overwriting a pinned script without a prompt: the
-  `Write` tool and the output-file option of `git diff` (issue #582). Not closed: the grants of `Skill(commit)`, step
+  `Write` tool and the output-file option of `git diff` (issue #582). `Skill(commit)`'s own grants are scoped too (issue #588). Not closed: step
   4a's `--worktree` verifier run and the inherited environment of the other granted commands. What was
   verified live and what stays open: `references/file-write-and-diff-grants.md`.
 - Never substitutes a settings-derived trigger string directly into a command line — always via a
