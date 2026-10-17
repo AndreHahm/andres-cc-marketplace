@@ -122,7 +122,8 @@ directory you own (step 4), not by a shell redirect. Claude Code's documentation
 checked separately from a prefix grant, but does not say whether that holds for a grant from a skill's
 `allowed-tools`, so this skill does not depend on it (checked against the documentation 2026-10-17; not
 tested live). The guard is the only control on where the record goes, because a script's own file writes are
-not permission-checked.
+not permission-checked. On Windows there is no
+uid, so the ownership check is skipped and the guard is unverified there (issue #596).
 
 Works without the external `codacy-skills` plugin and does not call it.
 

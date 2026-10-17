@@ -78,6 +78,8 @@ are instructions to follow, not something a grant enforces; a symlink at an edit
 through to its target (not verified), because nothing granted here can detect one. Removing `Edit` from
 `allowed-tools` would make every edit raise a prompt unless the user's own settings already allow `Edit`. The
 third security review (2026-10-17) recommended that, and it was kept as is by the user's choice.
+The edit-target denylist is a path-prefix check. It does not cover Windows alias forms (8.3 short names,
+a trailing dot or space, NTFS alternate data streams), which have not been checked on Windows (issue #596).
 
 ## Steps
 
