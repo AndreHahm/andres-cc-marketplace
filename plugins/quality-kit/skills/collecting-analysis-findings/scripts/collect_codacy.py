@@ -197,7 +197,11 @@ def build_record(kind: str, data: Any, *, category: str | None, group_by: str) -
     }
 
 
-LINE_BREAKING = re.compile(r"[\x00-\x1f\x7f\x85  ]")
+# C0 and C1 controls, DEL, zero-width and directional marks, line and paragraph separators,
+# bidi controls, and the backslash itself
+LINE_BREAKING = re.compile(
+    r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u061c\ufeff\u2028\u2029\u202a-\u202e\u2066-\u2069\\]"
+)
 
 
 def _printable(value: Any) -> str:
@@ -223,20 +227,21 @@ def render_table(record: dict[str, Any]) -> str:
 def _read_json(source: str) -> Any:
     try:
         if source == "-":
-            raw = getattr(sys.stdin, "buffer", None)  # bytes, so the decode never uses the locale
-            if raw is not None:
-                text = raw.read(MAX_INPUT_BYTES + 1).decode("utf-8")
-            else:
-                text = sys.stdin.read(MAX_INPUT_BYTES + 1)
+            # Read bytes, so the decode never depends on the console's locale encoding.
+            stream = getattr(sys.stdin, "buffer", None)
+            if stream is not None:
+                raw = stream.read(MAX_INPUT_BYTES + 1)
+            else:  # a text-only stdin, as in the smoke test
+                raw = sys.stdin.read(MAX_INPUT_BYTES + 1).encode("utf-8")
         else:
             path = Path(source)
             if not path.is_file():
                 raise ShapeError("cannot read input: not a regular file")
-            with path.open(encoding="utf-8") as handle:
-                text = handle.read(MAX_INPUT_BYTES + 1)
-        if len(text) > MAX_INPUT_BYTES:
-            raise ShapeError(f"cannot read input: larger than {MAX_INPUT_BYTES} characters")
-        return json.loads(text)
+            with path.open("rb") as handle:
+                raw = handle.read(MAX_INPUT_BYTES + 1)
+        if len(raw) > MAX_INPUT_BYTES:
+            raise ShapeError(f"cannot read input: larger than {MAX_INPUT_BYTES} bytes")
+        return json.loads(raw.decode("utf-8"))
     except (
         OSError,
         ValueError,

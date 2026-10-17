@@ -31,7 +31,7 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 | `source.pr_status` | The PR's state (`Open`, `Closed`...) | Key absent for `repo` and `ignored`; null for a `pr` source that omits it |
 | `findings[].tool` | The engine that raised it (`Bandit`, `Semgrep`, `Lizard`...) | Null for `repo` and `ignored`, which carry no tool |
 | `findings[].rule` | Provider rule id as given (`Bandit_B603`) | never |
-| `findings[].severity` | The provider's own severity string, verbatim. Codacy uses `Critical`/`High`/`Medium`/`Minor` or `Error`/`Warning`/`Info`; this record does not map them to a common tier because that mapping has not been verified | never |
+| `findings[].severity` | The provider's own severity string, verbatim. Codacy has two names for three tiers (`Critical` = `Error`, `Medium` = `Warning`, `Minor` = `Info`; `High` has no alias, verified 2026-10-17 by filtered overview counts); the record keeps the name the provider returned and does not normalize it | never |
 | `findings[].category`, `subcategory` | Provider category (`Security`, `Complexity`...) | `subcategory` is often null |
 | `findings[].file`, `message` | Path and text, verbatim | never |
 | `findings[].line` | Line number | Null when the provider gives none |

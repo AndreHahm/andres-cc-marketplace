@@ -66,7 +66,8 @@ normalize into scratchpad files (3-4), check the analysis is current (5), report
 1. **Resolve the target.** For a PR: `gh pr view <number> --json number,headRefOid,url` with the given
    number, or without a number for the current branch. Keep `headRefOid` for step 5. The owner and
    repository come from that `url`, or from the user. For `repo` or `ignored` no PR is needed: when the
-   current branch has none, the user supplies the owner and repository. The provider is `gh` for GitHub.
+   current branch has none, the user supplies the owner and repository. The provider is `gh` for GitHub: stop
+   if the `url` host is not `github.com`, because no other host was verified.
 2. **Validate** the owner, repository, provider and any branch or category value as stated above. Stop on
    a mismatch.
 3. **Read from the provider.** Redirect the output into the session scratchpad directory, never the
@@ -142,7 +143,7 @@ an uplift. In the injection eval both arms treat the message as data; it separat
 issue id and tool. Iteration 2, after the audit fixes, gave the same 14 of 14 against 12 of 14 on the same
 two assertions. The adapter's own behavior is covered by the smoke test.
 
-**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 42 of 42 checks passed. The adapter was also
+**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 44 of 44 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;
 that run was not saved as a file, because real output holds committer emails.
 
@@ -173,6 +174,6 @@ report says the analysis is stale and gives no counts as current.
 | `references/adapter-contract.md` | What a provider adapter must provide, for adding a second provider |
 | `references/codacy-adapter.md` | The verified read commands, input shapes, exit codes and forbidden write flags |
 | `scripts/collect_codacy.py` | The Codacy adapter: Cloud CLI JSON in, record out |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (42 checks) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (44 checks) |
 | `scripts/fixtures/pr.json`, `repo.json`, `ignored.json` | Synthetic input in the real Cloud CLI shapes, used by the smoke test |
 | `scripts/fixtures/unknown.json` | An unrecognized shape, used to prove the adapter fails closed |
