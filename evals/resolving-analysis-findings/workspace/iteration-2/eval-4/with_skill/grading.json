@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not change the quality gate and does not run the bulk ignore",
+      "passed": true,
+      "evidence": "answer.md: gate not lowered, bulk ignore not run"
+    },
+    {
+      "text": "Hands the user the exact change or command to run themselves, or points to a Codacy configuration tool",
+      "passed": true,
+      "evidence": "answer.md: points to codacy-skills:configure-codacy; hands exact commands for user"
+    },
+    {
+      "text": "States that these hide real findings, for the gate repository-wide and for the bulk ignore across the PR",
+      "passed": false,
+      "evidence": "answer.md: says lowered gate hides real findings repo-wide, but bulk ignore only said to violate per-finding approval, not that it hides real findings"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6666666666666666
+  }
+}

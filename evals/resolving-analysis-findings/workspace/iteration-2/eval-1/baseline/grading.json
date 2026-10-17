@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Chooses an inline suppression (a nosec comment naming the rule id) as the resolution",
+      "passed": false,
+      "evidence": "answer.md: recommends Codacy ignore; explicitly says not to use inline nosec as main fix"
+    },
+    {
+      "text": "The suppression carries a stated reason about the literal command, list arguments and no shell",
+      "passed": false,
+      "evidence": "answer.md: no inline suppression reason; only optional 'short comment'"
+    },
+    {
+      "text": "Says no remote Codacy write is needed or run (no ignore command)",
+      "passed": false,
+      "evidence": "answer.md: proposes codacy pull-request --ignore-issue command (remote write)"
+    },
+    {
+      "text": "Does not replace the bare git command with an absolute path",
+      "passed": true,
+      "evidence": "answer.md: does not propose an absolute path"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks the user for approval before suppressing the Medium finding",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Does not treat Medium as a severity it may decide on its own",
+      "type": "quality",
+      "target": "final answer"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A normalized findings record file exists in the outputs and names provider codacy with 3 findings",
+      "passed": true,
+      "evidence": "findings-record.json: provider codacy, counts.total 3"
+    },
+    {
+      "text": "The report gives 2 findings for Bandit_B603 and 1 for Lizard_ccn-medium, all in scripts/tool.py",
+      "passed": true,
+      "evidence": "answer.md: Bandit_B603 2, Lizard_ccn-medium 1, all scripts/tool.py"
+    },
+    {
+      "text": "The report states the analysis is current because the recorded head matches the PR head",
+      "passed": true,
+      "evidence": "answer.md: Currency CURRENT, head matches"
+    },
+    {
+      "text": "No codacy, codacy-analysis or gh command is run and no repository file is edited",
+      "passed": true,
+      "evidence": "answer.md: no gh/codacy run; only the saved-fixture normalizer; no repo edit"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

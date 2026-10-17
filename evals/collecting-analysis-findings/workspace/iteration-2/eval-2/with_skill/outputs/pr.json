@@ -1,0 +1,115 @@
+{
+  "pullRequest": {
+    "pullRequest": {
+      "repository": "example-repo",
+      "number": 7,
+      "title": "example",
+      "status": "Open",
+      "owner": {
+        "name": "example-org"
+      },
+      "originBranch": "feature/x",
+      "targetBranch": "main",
+      "updated": "2026-01-01T00:00:00Z",
+      "headCommitSha": "2222222222222222222222222222222222222222"
+    },
+    "isAnalysing": false,
+    "isUpToStandards": false,
+    "fixedIssues": 0,
+    "newIssues": 3
+  },
+  "newIssues": [
+    {
+      "commitIssue": {
+        "issueId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "resultDataId": 1,
+        "filePath": "scripts/tool.py",
+        "fileId": 2,
+        "patternInfo": {
+          "id": "Bandit_B603",
+          "category": "Security",
+          "level": "Warning",
+          "severityLevel": "Warning"
+        },
+        "toolInfo": {
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "name": "Bandit"
+        },
+        "lineNumber": 10,
+        "message": "subprocess call (B603)",
+        "language": "Python",
+        "lineText": "x = 1",
+        "falsePositiveThreshold": 80,
+        "commitInfo": {
+          "sha": "1111111111111111111111111111111111111111",
+          "commiter": "dev@example.invalid",
+          "commiterName": "Dev",
+          "timestamp": "2026-01-01T00:00:00Z"
+        }
+      },
+      "deltaType": "Added"
+    },
+    {
+      "commitIssue": {
+        "issueId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "resultDataId": 1,
+        "filePath": "scripts/tool.py",
+        "fileId": 2,
+        "patternInfo": {
+          "id": "Bandit_B603",
+          "category": "Security",
+          "level": "Warning",
+          "severityLevel": "Warning"
+        },
+        "toolInfo": {
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "name": "Bandit"
+        },
+        "lineNumber": 20,
+        "message": "subprocess call (B603)",
+        "language": "Python",
+        "lineText": "x = 1",
+        "falsePositiveThreshold": 80,
+        "commitInfo": {
+          "sha": "1111111111111111111111111111111111111111",
+          "commiter": "dev@example.invalid",
+          "commiterName": "Dev",
+          "timestamp": "2026-01-01T00:00:00Z"
+        }
+      },
+      "deltaType": "Added"
+    },
+    {
+      "commitIssue": {
+        "issueId": "cccccccccccccccccccccccccccccccc",
+        "resultDataId": 1,
+        "filePath": "scripts/tool.py",
+        "fileId": 2,
+        "patternInfo": {
+          "id": "Lizard_ccn-medium",
+          "category": "Complexity",
+          "level": "Warning",
+          "severityLevel": "Warning"
+        },
+        "toolInfo": {
+          "uuid": "00000000-0000-4000-8000-000000000001",
+          "name": "Lizard"
+        },
+        "lineNumber": 30,
+        "message": "main has 20 cyclomatic complexity",
+        "language": "Python",
+        "lineText": "x = 1",
+        "falsePositiveThreshold": 80,
+        "commitInfo": {
+          "sha": "1111111111111111111111111111111111111111",
+          "commiter": "dev@example.invalid",
+          "commiterName": "Dev",
+          "timestamp": "2026-01-01T00:00:00Z"
+        }
+      },
+      "deltaType": "Added"
+    }
+  ],
+  "potentialIssues": [],
+  "files": []
+}
