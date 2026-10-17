@@ -207,33 +207,60 @@ def check_no_raw_github_grants(path=None):
     return True, "allowed-tools reaches GitHub only through git-review-api.py"
 
 
-# File writes stay path-scoped (#582): a bare `Write` or `Edit` lets an agent overwrite the pinned
-# scripts without a prompt, and a `Write(<glob>)` rule is accepted but never matched, so it grants
-# nothing (only `Edit(...)` rules are consulted, and they also cover the `Write` tool).
-SCRATCHPAD_EDIT_GRANT = "Edit(//tmp/claude-*/**)"
-ALLOWED_EDIT_GRANTS = {SCRATCHPAD_EDIT_GRANT, "Edit(issues/**)"}
-BARE_WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+# The whole allowed-tools line is pinned (#582). A denylist of bad grants is easy to get past (a
+# bare `Write`, `Write(<glob>)` which is accepted but never matches, `Bash(git log:*)`,
+# `Bash(git format-patch:*)`, a double-spaced or absolute-path `git diff`, all of which can write
+# a file such as a pinned script), so the check compares the entries with this exact list.
+# Changing a grant means changing this list in the same edit, which is the review point.
+EXPECTED_ALLOWED_TOOLS = (
+    "Bash(gh pr checks:*)",
+    "Bash(gh pr view:*)",
+    "Bash(gh repo view:*)",
+    "Bash(git rev-parse:*)",
+    "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*)",
+    "Bash(git ls-files:*)",
+    "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*)",
+    "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*)",
+    "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*)",
+    "Bash(gh issue list:*)",
+    "Bash(date:*)",
+    "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*)",
+    "Read",
+    "Edit(//tmp/claude-*/*/*/scratchpad/**)",
+    "Edit(issues/**)",
+    "Skill(commit)",
+    "Grep",
+)
 
 
 def check_file_write_grants_scoped(path=None):
-    """allowed-tools must grant file writes only as the scoped `Edit(...)` entries above."""
+    """allowed-tools must be exactly EXPECTED_ALLOWED_TOOLS: file writes only as the scoped `Edit`
+    entries, diffs only through the pinned git-review-fix-diff.py."""
     path = path or SKILL_MD
     text = path.read_text(encoding="utf-8")
-    header_end = text.find("\n---\n", 4) + 5
-    line = re.search(r"^allowed-tools:\s*(.+)$", text[:header_end], re.MULTILINE)
+    header = text[: text.find("\n---\n", 4) + 5]
+    if len(re.findall(r"^['\"]?allowed-tools['\"]?[ \t]*:", header, re.MULTILINE)) != 1:
+        return False, "the frontmatter must hold exactly one allowed-tools key"
+    line = re.search(r"^allowed-tools:[ \t]*(.+)$", header, re.MULTILINE)
     if not line:
-        return False, "no allowed-tools line found"
-    entries = [e.strip() for e in line.group(1).split(", ")]
-    bare = [e for e in entries if e in BARE_WRITE_TOOLS]
-    dead = [e for e in entries if e.startswith("Write(")]
-    unexpected = [e for e in entries if e.startswith("Edit(") and e not in ALLOWED_EDIT_GRANTS]
-    if bare or dead or unexpected:
-        return False, "unscoped or unmatched file-write grant: " + ", ".join(
-            bare + dead + unexpected
+        return False, "no single-line allowed-tools value found"
+    # A YAML plain scalar continues on any more-indented next line, which a one-line read misses.
+    following = header[line.end() + 1 :].split("\n", 1)[0]
+    if not re.match(r"[A-Za-z_][\w-]*:|---$", following):
+        return (
+            False,
+            "the line after allowed-tools must be another top-level key or the closing ---",
         )
-    if SCRATCHPAD_EDIT_GRANT not in entries:
-        return False, f"allowed-tools has no scratchpad write grant `{SCRATCHPAD_EDIT_GRANT}`"
-    return True, "file writes are limited to the scratchpad and issues/"
+    entries = line.group(1).strip().split(", ")
+    unexpected = [e for e in entries if e not in EXPECTED_ALLOWED_TOOLS]
+    missing = [e for e in EXPECTED_ALLOWED_TOOLS if e not in entries]
+    if unexpected or missing or len(entries) != len(set(entries)):
+        return False, (
+            "allowed-tools differs from the pinned list: unexpected "
+            f"{unexpected or 'none'}, missing {missing or 'none'}, duplicates "
+            f"{len(entries) != len(set(entries))}"
+        )
+    return True, "allowed-tools is exactly the pinned list (scoped Edit writes, pinned diff script)"
 
 
 def check_wrapper_documented_and_typed(path=None):
