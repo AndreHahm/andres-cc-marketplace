@@ -5,8 +5,9 @@ description: >-
   only verified one) into one normalized, provider-neutral record, grouped by rule and file, with a
   currency check against the PR head. Use for "list the Codacy findings for this PR", "group the
   security findings by rule and file", "what does the analysis say about my branch", or "collect
-  analysis findings" when the answer must be that record and carry the currency verdict. Read-only:
-  it never ignores, unignores or reanalyzes anything. Not for deciding what to do with a finding
+  analysis findings" when the answer must be that record and carry the currency verdict. Writes nothing
+  to the repository or the provider: it never ignores, unignores or reanalyzes anything, and puts its
+  record only in a scratchpad file. Not for deciding what to do with a finding
   (resolving-analysis-findings), not for ad hoc Codacy queries (codacy-skills:codacy-cloud-cli, when
   installed), and not for configuring Codacy (codacy-skills:configure-codacy, when installed).
 argument-hint: (optional) PR number, "repo" for the default branch's security list, or "ignored" for the ignore audit list
@@ -78,13 +79,14 @@ normalize into scratchpad files (3-4), check the analysis is current (5), report
    committer names and emails; keep it in the scratchpad, and never share or commit it.
 4. **Normalize.** `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py
    --kind pr|repo|ignored --input "<scratchpad>/pr.json" [--category Security] [--group-by rule|file|rule,file]
-   [--format json|table] --output "<scratchpad>/findings-record.<json|txt>"`. `--input` is always under the
-   session scratchpad, never a repository or home path. The script itself refuses an `--output` path that is
+   [--format json|table] --output "<scratchpad>/findings-record.<json|txt>"`. The script itself refuses
+   an `--input` path outside such a scratchpad directory (use `-` for stdin), so the pre-approved command cannot read
+   a repository or home file; it likewise refuses an `--output` path that is
    not inside a directory named `scratchpad` (on POSIX one you own that others cannot write to), that is
    inside a folder containing `.git`, or that a symlink points elsewhere. It writes a private temporary file
    and replaces the target only after the whole record is built, so no shell redirect is used and a failed
    run does not create or modify the output file; an older record at the same path survives, so discard it. Exit 2 means the input is not a shape this adapter was verified
-   against, the output path was refused, or the command line was invalid: report that plainly and stop,
+   against, the input or output path was refused, or the command line was invalid: report that plainly and stop,
    because a guessed mapping would feed wrong numbers to a decision. The record's fields are in
    `references/findings-record.md`.
 5. **Check currency (PR only).** Confirm the record's `source.pull_request` equals the requested number
@@ -107,7 +109,8 @@ Codecov is coverage, not static analysis, and is out of scope.
 
 ## Boundaries
 
-This skill is read-only, and its grants make that true as long as the user's own settings do not already allow
+This skill writes nothing to the repository or the provider (its one local write is the record, confined to a
+scratchpad directory by the script), and its grants make that true as long as the user's own settings do not already allow
 `codacy` commands: the Codacy CLI commands are deliberately not pre-approved in `allowed-tools`.
 `codacy pull-request` accepts ignore, unignore, reanalyze and bulk-ignore flags, and `codacy issues` accepts a
 bulk `--ignore` that can skip its own confirmation prompt (`-y`); the grant syntax cannot narrow by flag, so a
@@ -155,7 +158,7 @@ an uplift. In the injection eval both arms treat the message as data; it separat
 issue id and tool. Iteration 2, after the audit fixes, gave the same 14 of 14 against 12 of 14 on the same
 two assertions. The adapter's own behavior is covered by the smoke test.
 
-**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 56 of 56 checks passed. The adapter was also
+**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 58 of 58 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;
 that run was not saved as a file, because real output holds committer emails.
 
@@ -186,6 +189,6 @@ report says the analysis is stale and gives no counts as current.
 | `references/adapter-contract.md` | What a provider adapter must provide, for adding a second provider |
 | `references/codacy-adapter.md` | The verified read commands, input shapes, exit codes and forbidden write flags |
 | `scripts/collect_codacy.py` | The Codacy adapter: Cloud CLI JSON in, record out |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (56 checks) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (58 checks) |
 | `scripts/fixtures/pr.json`, `repo.json`, `ignored.json` | Synthetic input in the real Cloud CLI shapes, used by the smoke test |
 | `scripts/fixtures/unknown.json` | An unrecognized shape, used to prove the adapter fails closed |

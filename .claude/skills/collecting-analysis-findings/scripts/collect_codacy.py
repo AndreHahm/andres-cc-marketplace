@@ -276,26 +276,31 @@ def _private_dir(directory: Path) -> bool:
     return info.st_uid == getuid() and not info.st_mode & 0o022
 
 
-def _scratch_output(raw: str) -> Path:
-    """Resolve --output. It must be a file inside a directory named `scratchpad` that you own.
+def _scratch_path(raw: str, option: str) -> Path:
+    """Resolve a path that must sit in a scratchpad directory you own, outside any git work tree.
 
-    Symlinks are followed first, so a link at the name or in a parent cannot point the write
-    elsewhere.
+    Symlinks are followed first, so a link at the name or in a parent cannot point elsewhere.
     On POSIX the nearest enclosing scratchpad directory must be owned by the current user and not
     writable by group or others. A path under any folder that contains `.git` is refused. A work
     tree whose git directory lives elsewhere is not detected.
     """
+    path = Path(raw).resolve()
+    scratch_dirs = [parent for parent in path.parents if parent.name == "scratchpad"]
+    if not scratch_dirs:
+        raise ShapeError(f"{option} must be a file inside a scratchpad directory")
+    if getuid is not None and not _private_dir(scratch_dirs[0]):  # nearest one, not any
+        raise ShapeError(
+            f"{option}'s scratchpad directory must be owned by you and not writable by others"
+        )
+    if any((parent / ".git").exists() for parent in path.parents):
+        raise ShapeError(f"{option} must be outside any git work tree")
+    return path
+
+
+def _scratch_output(raw: str) -> Path:
+    """Resolve --output: a new or existing file in a scratchpad directory that already exists."""
     try:
-        path = Path(raw).resolve()
-        scratch_dirs = [parent for parent in path.parents if parent.name == "scratchpad"]
-        if not scratch_dirs:
-            raise ShapeError("--output must be a file inside a scratchpad directory")
-        if getuid is not None and not _private_dir(scratch_dirs[0]):  # nearest one, not any
-            raise ShapeError(
-                "--output's scratchpad directory must be owned by you and not writable by others"
-            )
-        if any((parent / ".git").exists() for parent in path.parents):
-            raise ShapeError("--output must be outside any git work tree")
+        path = _scratch_path(raw, "--output")
         if path.is_dir():
             raise ShapeError("--output must be a file, not a directory")
         if not path.parent.is_dir():
@@ -303,6 +308,14 @@ def _scratch_output(raw: str) -> Path:
     except (OSError, RuntimeError) as exc:
         raise ShapeError(f"cannot use --output: {type(exc).__name__}") from exc
     return path
+
+
+def _scratch_input(raw: str) -> Path:
+    """Resolve --input (anything but `-`) under the same rules: the read stays in a scratchpad."""
+    try:
+        return _scratch_path(raw, "--input")
+    except (OSError, RuntimeError) as exc:
+        raise ShapeError(f"cannot use --input: {type(exc).__name__}") from exc
 
 
 def _write_private(path: Path, text: str) -> None:
@@ -330,7 +343,11 @@ def _write_private(path: Path, text: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--kind", choices=sorted(PARSERS), required=True)
-    parser.add_argument("--input", default="-", help="JSON file written by the Cloud CLI, or -")
+    parser.add_argument(
+        "--input",
+        default="-",
+        help="JSON file written by the Cloud CLI (inside a scratchpad directory), or - for stdin",
+    )
     parser.add_argument("--group-by", choices=sorted(GROUP_KEYS), default="rule,file")
     parser.add_argument("--category", help="keep only findings whose category equals this value")
     parser.add_argument("--format", choices=("json", "table"), default="json")
@@ -341,8 +358,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         out_path = _scratch_output(args.output) if args.output else None
+        source = "-" if args.input == "-" else str(_scratch_input(args.input))
         record = build_record(
-            args.kind, _read_json(args.input), category=args.category, group_by=args.group_by
+            args.kind, _read_json(source), category=args.category, group_by=args.group_by
         )
     except ShapeError as exc:
         print(f"collect_codacy: {exc}", file=sys.stderr)
