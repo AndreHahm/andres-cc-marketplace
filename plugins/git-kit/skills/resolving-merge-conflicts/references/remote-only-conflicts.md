@@ -2,7 +2,8 @@
 
 Applies when `git status` shows no unmerged paths and no rebase, merge or cherry-pick in progress, but the
 user reports a PR that conflicts with its base. Nothing is on disk yet, so do not start a trial merge or a
-plain merge to put it there. Preview read-only instead:
+plain merge to put it there. Preview instead, with no change to the worktree or index (`git fetch`
+updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 
 ```bash
 gh pr view <number> --json mergeable,mergeStateStatus
