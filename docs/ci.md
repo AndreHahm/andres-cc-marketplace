@@ -1000,25 +1000,30 @@ rules, so no code shape of `subprocess.run(["git", ...])` avoids them:
 
 | Rule | Fires on | Decision |
 |---|---|---|
-| B404 | `import subprocess` | Accept with `# nosec B404 -- <reason>` on the import line |
-| B603 | any `subprocess.run`/`Popen` call without `shell=True` | Accept with `# nosec B603` on the call line |
-| B607 | a list-form call whose first element is a bare name such as `"git"` | Accept with `# nosec B607` on the call line |
+| B404 | `import subprocess` | Accept with `# nosec B404  # <reason>` on the import line |
+| B603 | any `subprocess.run`/`Popen` call without `shell=True` | Accept with `# nosec B603 B607  # <reason>` on the line that opens the call |
+| B607 | a list-form call whose first element is a bare name such as `"git"` | Covered by the same `# nosec B603 B607` comment |
 
 Accept only a call that is list-form, has no `shell=True`, and takes its subcommand as a literal. A
-call that puts untrusted text into the command is a real B603 finding: fix it in code. Local `bandit`
+call that puts untrusted text into the command is a real B603 finding: fix it in code. Put the reason
+after a second `#`, not after `--`: Bandit reads every word after `nosec` as a test id, so the `--` form
+prints a warning per reason word. Local `bandit`
 honors the comments (0 issues, 24 skipped on the two #581 scripts); whether Prospector_bandit does too
 is confirmed only by the Cloud CLI re-check below.
 
 - **Do not replace the bare `git` with an absolute path** to satisfy B607. The command then becomes a
   variable, which Semgrep's `dangerous-subprocess-use` flags at severity Error, trading a Warning for
-  an Error. A call that must take a variable command goes through the script's existing `_git` helper.
+  an Error. A call that must take a variable command goes through a helper such as `_git` in `git-verify-fix-diff.py`
+  (`git-review-ledger.py` has none).
 - **Why inline comments:** a per-issue Codacy ignore keys on an issue id that changes when the code
   moves, so it needs re-applying after edits; a `# nosec` comment travels with the line and carries its
   reason. `.codacy.yml` `exclude_paths` is not a substitute for production scripts, because it drops a
   whole file from a whole engine (see the comments there for the test-harness exclusions).
 - **Test-only code** keeps using the `.codacy.yml` test-harness exclusions, or Codacy's per-issue
   ignore (`codacy pull-request ... --ignore-issue <id> --ignore-reason TestCode`).
-- **Precedent:** `plugins/workledger-kit/scripts/` (commit `4c2a6d49`) and, from #581,
+- **Precedent:** `plugins/workledger-kit/scripts/` (commit `4c2a6d49`), which predates the trailing-comment form
+  (it uses `-- reason` and pairs calls with `# nosemgrep`; whether `nosemgrep` is also needed is not verified
+  here, and the git-kit scripts carry none) and, from #581,
   `plugins/git-kit/scripts/git-verify-fix-diff.py` and `git-review-ledger.py`. Other git-kit scripts
   still carry the same unsuppressed findings; apply this convention when next touching them.
 - **Re-check** with the Codacy Cloud CLI (`codacy pull-request <provider> <org> <repo> <n> --output
