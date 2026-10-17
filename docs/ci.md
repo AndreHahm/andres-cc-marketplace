@@ -991,3 +991,36 @@ defensive backstop only if a future escalation trigger is ever added without a m
 defined for it; that path is not reachable through either of today's two triggers. See
 `plugin-marketplace-review/SKILL.md`'s "Full review escalation" section for the exact per-trigger
 reviewer sets.
+
+## Codacy: `git` through `subprocess` in plugin scripts
+
+Codacy's Bandit and Prospector_bandit engines flag three rules on any script that runs `git`, whatever
+the arguments are (decided in #581, first seen on PR #579). They are pattern rules, not data-flow
+rules, so no code shape of `subprocess.run(["git", ...])` avoids them:
+
+| Rule | Fires on | Decision |
+|---|---|---|
+| B404 | `import subprocess` | Accept with `# nosec B404 -- <reason>` on the import line |
+| B603 | any `subprocess.run`/`Popen` call without `shell=True` | Accept with `# nosec B603` on the call line |
+| B607 | a list-form call whose first element is a bare name such as `"git"` | Accept with `# nosec B607` on the call line |
+
+Accept only a call that is list-form, has no `shell=True`, and takes its subcommand as a literal. A
+call that puts untrusted text into the command is a real B603 finding: fix it in code. Local `bandit`
+honors the comments (0 issues, 24 skipped on the two #581 scripts); whether Prospector_bandit does too
+is confirmed only by the Cloud CLI re-check below.
+
+- **Do not replace the bare `git` with an absolute path** to satisfy B607. The command then becomes a
+  variable, which Semgrep's `dangerous-subprocess-use` flags at severity Error, trading a Warning for
+  an Error. A call that must take a variable command goes through the script's existing `_git` helper.
+- **Why inline comments:** a per-issue Codacy ignore keys on an issue id that changes when the code
+  moves, so it needs re-applying after edits; a `# nosec` comment travels with the line and carries its
+  reason. `.codacy.yml` `exclude_paths` is not a substitute for production scripts, because it drops a
+  whole file from a whole engine (see the comments there for the test-harness exclusions).
+- **Test-only code** keeps using the `.codacy.yml` test-harness exclusions, or Codacy's per-issue
+  ignore (`codacy pull-request ... --ignore-issue <id> --ignore-reason TestCode`).
+- **Precedent:** `plugins/workledger-kit/scripts/` (commit `4c2a6d49`) and, from #581,
+  `plugins/git-kit/scripts/git-verify-fix-diff.py` and `git-review-ledger.py`. Other git-kit scripts
+  still carry the same unsuppressed findings; apply this convention when next touching them.
+- **Re-check** with the Codacy Cloud CLI (`codacy pull-request <provider> <org> <repo> <n> --output
+  json`, then keep the `Security` category) after the PR's analysis finishes, since the GitHub check
+  annotations show only a capped subset.

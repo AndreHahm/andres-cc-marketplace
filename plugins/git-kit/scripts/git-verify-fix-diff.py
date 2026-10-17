@@ -54,7 +54,7 @@ import io
 import json
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 -- runs git with list arguments, never a shell
 import tarfile
 import tempfile
 from collections.abc import Iterator
@@ -92,14 +92,14 @@ def _clean_env(**extra: str) -> dict[str, str]:
 
 
 def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> bytes:
-    return subprocess.run(
+    return subprocess.run(  # nosec B603 B607
         ["git", *args], cwd=cwd, env=env or _clean_env(), capture_output=True, check=True
     ).stdout
 
 
 def _origin_repo(repo_root: Path) -> str | None:
     """`owner/repo` named by origin's fetch URL when it is a GitHub URL, else None."""
-    out = subprocess.run(
+    out = subprocess.run(  # nosec B603 B607
         ["git", "remote", "get-url", "origin"],
         cwd=repo_root,
         env=_clean_env(),
@@ -114,7 +114,7 @@ def _target_ref(repo_root: Path) -> str | None:
     """The target branch: whatever `refs/remotes/origin/HEAD` points at, or None.
 
     This is local state; main() only trusts it after `origin` is confirmed to be --upstream."""
-    out = subprocess.run(
+    out = subprocess.run(  # nosec B603 B607
         ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
         cwd=repo_root,
         env=_clean_env(),
@@ -126,7 +126,7 @@ def _target_ref(repo_root: Path) -> str | None:
 
 def _has_verifiers(repo_root: Path, rev: str) -> bool:
     return (
-        subprocess.run(
+        subprocess.run(  # nosec B603 B607
             ["git", "cat-file", "-e", f"{rev}^{{commit}}:{_VERIFIERS}"],
             cwd=repo_root,
             env=_clean_env(),
@@ -142,7 +142,7 @@ def _trusted_commit(repo_root: Path, target: str, head_sha: str) -> str:
     Nothing on the PR's own branch (including --base, which a PR author's earlier commit can
     precede) is trusted to supply code that this script then imports. The branch still picks
     which version of the target's verifiers judges it: the one at that merge-base."""
-    merged = subprocess.run(
+    merged = subprocess.run(  # nosec B603 B607
         ["git", "merge-base", head_sha, target],
         cwd=repo_root,
         env=_clean_env(),
@@ -247,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if exc.code == 0 else 2
 
     try:
-        top = subprocess.run(
+        top = subprocess.run(  # nosec B603 B607
             ["git", "rev-parse", "--show-toplevel"],
             cwd=Path.cwd(),
             env=_clean_env(LC_ALL="C"),
@@ -292,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         if not here:
             raise RuntimeError("the verifiers exist at the target branch but not in this tree")
-        ancestor = subprocess.run(
+        ancestor = subprocess.run(  # nosec B603 B607
             ["git", "merge-base", "--is-ancestor", args.base, head_sha],
             cwd=repo_root,
             env=_clean_env(),

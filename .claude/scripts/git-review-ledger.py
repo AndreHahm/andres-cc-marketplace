@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
+import subprocess  # nosec B404 -- runs git with list arguments, never a shell
 import sys
 import tempfile
 from datetime import UTC, datetime
@@ -46,7 +46,9 @@ class LedgerError(Exception):
 
 
 def repo_root() -> Path:
-    out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    out = subprocess.run(  # nosec B603 B607
+        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+    )
     return Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else Path.cwd()
 
 
@@ -71,7 +73,7 @@ def confine(raw: str, root: Path) -> Path:
 def refuse_if_tracked(path: Path, root: Path) -> None:
     """The working ledger must stay untracked (a force-added copy could carry planted entries)."""
     rel = os.path.relpath(path, root.resolve())
-    tracked = subprocess.run(
+    tracked = subprocess.run(  # nosec B603 B607
         ["git", "ls-files", "--error-unmatch", "--", f":(top,literal){rel}"],
         cwd=root,
         capture_output=True,
@@ -92,7 +94,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
     rel = os.path.relpath(path, root.resolve())
 
     def ignored() -> bool:
-        probe = subprocess.run(
+        probe = subprocess.run(  # nosec B603 B607
             ["git", "check-ignore", "-q", "--no-index", "--", rel],
             cwd=root,
             capture_output=True,
@@ -105,7 +107,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
 
     if ignored():
         return
-    located = subprocess.run(
+    located = subprocess.run(  # nosec B603 B607
         ["git", "rev-parse", "--git-path", "info/exclude"],
         cwd=root,
         capture_output=True,
