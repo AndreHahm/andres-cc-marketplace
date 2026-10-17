@@ -110,6 +110,69 @@
       "pr": 602,
       "recorded_at": "2026-10-17T15:07:25+00:00",
       "rule": "unknown-subcommand-alias"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303350105",
+      "line": 197,
+      "note": "fixed in 4e8e2741: serialize before create, remove file on failed write",
+      "path": "scripts/reviewer_eval/archive.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:10+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303356972",
+      "line": 193,
+      "note": "fixed in 4e8e2741: heads and branch re-fetched before each write",
+      "path": "scripts/reviewer_eval/archive.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:10+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303356974",
+      "line": 197,
+      "note": "fixed in 4e8e2741: same defect as the Codex finding, reproduced with 1e999",
+      "path": "scripts/reviewer_eval/archive.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:10+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4303356978",
+      "line": 245,
+      "note": "filed as issue 609, out of this PR's scope; thread left open",
+      "path": "scripts/reviewer_eval/archive.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303356983",
+      "line": 125,
+      "note": "fixed in 4e8e2741: boolean schema_version rejected",
+      "path": "scripts/reviewer_eval/corpus.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303356988",
+      "line": 46,
+      "note": "fixed in 4e8e2741: reviewer named overall rejected as reserved",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303356992",
+      "line": 82,
+      "note": "fixed in 4e8e2741: line key required in blocking_set",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 595,
+      "recorded_at": "2026-10-17T16:07:12+00:00"
     }
   ]
 }
