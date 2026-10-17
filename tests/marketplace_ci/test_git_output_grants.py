@@ -91,6 +91,13 @@ def _baseline(repo: Path, entries: list[str]) -> None:
         "allowed-tools: Bash(git -c alias.zz=diff zz:*)",
         "allowed-tools: Bash(git -c alias.zz=log zz --oneline *)",
         "allowed-tools: Bash(git --config-env=alias.zz=VAR zz:*)",
+        # a word git does not know may be an alias for diff (`git config alias.innocuous diff`)
+        "allowed-tools: Bash(git innocuous:*)",
+        "allowed-tools: Bash(git lg *)",
+        "allowed-tools: Bash(git -C /repo co:*)",
+        "allowed-tools: Bash(git difftoolx:*)",
+        "allowed-tools: Bash(git innocu*)",
+        "allowed-tools: Bash(git innocuous --stat *)",
     ],
 )
 def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
@@ -106,7 +113,10 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
         "allowed-tools: Bash(git log -n 5 --oneline --:*)",
         "allowed-tools: Bash(git log -- docs/ci.md:*)",
         "allowed-tools: Bash(git log -- --output=/tmp:*)",
-        "allowed-tools: Bash(git status:*) Bash(git difftoolx:*)",
+        "allowed-tools: Bash(git status:*) Bash(git switch:*)",
+        "allowed-tools: Bash(git help:*) Bash(git config notes.:*)",
+        "allowed-tools: Bash(git stat*)",
+        "allowed-tools: Bash(git innocuous --oneline -- :*)",
         "allowed-tools: Bash(git bisect start:*) Bash(git bisect good:*) Bash(git bisect log:*)",
         "allowed-tools: Bash(git bisect reset:*) Bash(git bisect bad:*)",
         "allowed-tools: Bash(git log -1 -- :*)",

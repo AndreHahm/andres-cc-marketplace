@@ -100,7 +100,10 @@ HEAD` did not run fsmonitor.
    options the module knows; an unknown option before the `--` could take it as its value, so that
    grant stays flagged. Rules are split as a shell would, so a quoted ` -- ` is not a separator. A
    wildcard inside the program word (`*/git`, `g*`) and an alias defined with `git -c alias.x=diff x:*`
-   are flagged too. Still not caught, and out of this check's scope: shell-expansion spellings such as
+   are flagged too, as is a wildcard grant naming a word git does not know (`git innocuous:*`): git
+   resolves such a word through the `alias.*` configuration, where it can name `diff`, while a built-in
+   name cannot be shadowed. The known names are checked in (`_KNOWN_COMMANDS`, from git 2.43.0); a
+   command added by a newer git is flagged until it is added. Still not caught, and out of this check's scope: shell-expansion spellings such as
    `$'git'` or `g?t`, `git` glued to punctuation, wrappers like `env git`, `xargs git` or
    `command git`, and components whose paths come from a `plugin.json` rather than the default
    directories. The
