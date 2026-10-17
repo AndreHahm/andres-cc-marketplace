@@ -1,0 +1,207 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/review-outcomes.json",
+    "docs/ci.md",
+    "evals/handling-review-findings/evals.json",
+    "evals/handling-review-findings/workspace/iteration-8/benchmark.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/baseline/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/baseline/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/baseline/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/eval_metadata.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/with_skill/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/with_skill/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-25/with_skill/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/baseline/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/baseline/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/baseline/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/eval_metadata.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/with_skill/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/with_skill/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-26/with_skill/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/baseline/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/baseline/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/baseline/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/eval_metadata.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/with_skill/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/with_skill/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-27/with_skill/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/baseline/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/baseline/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/baseline/timing.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/eval_metadata.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/with_skill/grading.json",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/with_skill/outputs/decision.md",
+    "evals/handling-review-findings/workspace/iteration-8/eval-28/with_skill/timing.json",
+    "evals/handling-review-findings/workspace/iteration-9/eval-27/eval_metadata.json",
+    "evals/handling-review-findings/workspace/iteration-9/eval-27/with_skill/grading.json",
+    "evals/handling-review-findings/workspace/iteration-9/eval-27/with_skill/outputs/decision.md",
+    "plugins/git-kit/scripts/git-review-ledger.py",
+    "plugins/git-kit/scripts/git-verify-fix-diff.py",
+    "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+    "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+    "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+    "plugins/git-kit/skills/handling-review-findings/references/testing-scenarios.md",
+    "tests/marketplace_ci/test_git_review_ledger_script.py",
+    "tests/marketplace_ci/test_git_verify_fix_diff_script.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "status": "findings",
+  "reviewer_results": {
+    "plugin-rulebook-checker": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "dependency-reviewer": {
+      "status": "clean",
+      "attempts": 1
+    },
+    "security-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    },
+    "skill-reviewer": {
+      "status": "findings",
+      "attempts": 1
+    }
+  },
+  "provenance": {
+    "head_sha": "db90a98ec015db8b0cd44131798e36b022a118c1",
+    "merge_ref_sha": "a2be7670efc5c4b1d42212ca5d07461e684cdb80",
+    "base_sha": "0d0c1a82304253c90129451c9943d3c85163a671",
+    "model": "gpt-5",
+    "cli_version": "unknown"
+  },
+  "structural_findings": [],
+  "verifiers": [
+    {
+      "name": "grant-to-body",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "measurement",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "path-and-mirror",
+      "status": "clean",
+      "findings": 0,
+      "checked": 4
+    },
+    {
+      "name": "structure",
+      "status": "clean",
+      "findings": 0,
+      "checked": 27
+    },
+    {
+      "name": "call-graph",
+      "status": "clean",
+      "findings": 0,
+      "checked": 1
+    },
+    {
+      "name": "removed-identifier",
+      "status": "clean",
+      "findings": 0,
+      "checked": 0
+    }
+  ],
+  "diff_scoped": true,
+  "exceptions_loaded": 3,
+  "findings": [
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "verifier-trust-boundary",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 216,
+      "evidence": "The driver extracts and imports review_verifiers.py from the caller-supplied --base commit, after only checking that --base is an ancestor of HEAD. It rejects changes to the verifier in the current fix diff, but does not establish that the verifier at --base predates the PR or comes from a trusted target branch. A PR can therefore modify the verifier in an earlier commit, then run this self-review with that weakened verifier as its grading authority.",
+      "remediation": "Load verifiers from a trusted target/base SHA outside the PR, or fail closed unless the verifier path is proven unchanged from that trusted SHA across the whole PR range; do not treat the immediately preceding fix commit as trusted merely because it is an ancestor.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        "docs/ci.md:552"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "security-reviewer",
+      "severity": "Major",
+      "rule": "permission-risk-command-execution",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "line": 72,
+      "evidence": "_clean_env removes only Git repository-location variables, while the subprocess git calls retain other Git execution controls such as GIT_EXTERNAL_DIFF and GIT_CONFIG_*; the driver then runs git diff/archive/clone/checkout operations on repository-controlled content. The ledger script similarly scrubs only location variables before its git subprocesses. \u26a0\ufe0f Unverified at runtime because this review is static-only.",
+      "remediation": "Construct a deny-by-default Git subprocess environment: remove Git variables that can select external programs or configuration (including GIT_EXTERNAL_DIFF, GIT_SSH_COMMAND, GIT_CONFIG_* and related hook/config controls), and pass explicit no-external-diff/no-pager/configuration options where applicable.",
+      "reporters": [
+        "security-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        "plugins/git-kit/scripts/git-review-ledger.py:48"
+      ],
+      "in_diff": true,
+      "blocking": true,
+      "confidence": "medium",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "block",
+      "suppressed": false,
+      "exception": null
+    },
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Minor",
+      "rule": "size",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 473,
+      "evidence": "SKILL.md contains 473 lines. The active plugin-rulebook R13 thresholds classify files over 300 lines as a soft warning requiring extraction planning; the warning threshold is 490 and the critical threshold is 500.",
+      "remediation": "Continue extracting detailed procedure, history, and edge-case material into references/ before the file exceeds 490 lines.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+      ],
+      "in_diff": true,
+      "blocking": false,
+      "confidence": "high",
+      "evidence_type": null,
+      "rule_class": "judgment",
+      "risk": null,
+      "source": "model",
+      "gate": "notice",
+      "suppressed": false,
+      "exception": null
+    }
+  ],
+  "blocking": true
+}

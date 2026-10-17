@@ -1,0 +1,45 @@
+{
+  "mode": "delta",
+  "reviewed_paths": [
+    ".claude/skills/prompt-library/SKILL.md",
+    ".claude/skills/prompt-library/scripts/smoke_test.py",
+    "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md",
+    "plugins/promptlibrary-kit/skills/prompt-library/scripts/smoke_test.py"
+  ],
+  "reviewers": [
+    "plugin-rulebook-checker",
+    "dependency-reviewer",
+    "security-reviewer",
+    "skill-reviewer"
+  ],
+  "reviewer_attempts": {
+    "plugin-rulebook-checker": 1,
+    "dependency-reviewer": 1,
+    "security-reviewer": 1,
+    "skill-reviewer": 1
+  },
+  "structural_findings": [],
+  "diff_scoped": true,
+  "findings": [
+    {
+      "reviewer": "skill-reviewer",
+      "severity": "Major",
+      "rule": "tool-scoping",
+      "path": ".claude/skills/prompt-library/SKILL.md",
+      "line": 101,
+      "evidence": "The newly mandatory triage gate explicitly requires AskUserQuestion, but allowed-tools declares only validator Bash grants, Agent(prompt-reviewer), and Skill(session-detail); AskUserQuestion is absent in both mirrored SKILL.md files.",
+      "remediation": "Add AskUserQuestion to allowed-tools in both mirrored SKILL.md files, then rerun the smoke test and validate the tool grant against the project\u2019s current tool-scoping rules.",
+      "reporters": [
+        "skill-reviewer"
+      ],
+      "components": [
+        ".claude/skills/prompt-library/SKILL.md:11",
+        "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md:11",
+        "plugins/promptlibrary-kit/skills/prompt-library/SKILL.md:101"
+      ],
+      "in_diff": true,
+      "blocking": true
+    }
+  ],
+  "blocking": true
+}
