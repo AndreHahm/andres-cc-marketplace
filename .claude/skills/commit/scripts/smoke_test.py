@@ -106,6 +106,16 @@ def check_bash_grants():
     return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
+def check_no_sed_pipeline():
+    """Issue #588: `sed -E` accepts -i and the w command, so the skill holds no sed grant and no
+    step may pipe through sed (the CI-parity review caught a leftover one in step 16.5)."""
+    text = SKILL_MD.read_text(encoding="utf-8")
+    body = text[text.find("\n---\n", 4) + 5 :]  # the instructions, not the history in references
+    if re.search(r"\|\s*sed\b", body):
+        return False, "a step pipes through sed, but the skill holds no sed grant"
+    return True, "no step pipes through sed"
+
+
 def check_step_sequence():
     # Scoped to the "## Instructions" section only -- "## Branch Naming Convention" and
     # other later sections legitimately restart their own numbered lists for unrelated
@@ -224,6 +234,7 @@ def check_no_wildcard_git_output_grants(path=None):
 CHECKS = [
     check_frontmatter,
     check_bash_grants,
+    check_no_sed_pipeline,
     check_step_sequence,
     check_shared_protocol_writes_marker,
     check_file_write_grants_scoped,
