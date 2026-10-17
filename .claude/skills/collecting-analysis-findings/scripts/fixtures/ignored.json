@@ -1,0 +1,37 @@
+{
+  "ignoredIssues": [
+    {
+      "issueId": "dddddddddddddddddddddddddddddddd",
+      "reason": "TestCode",
+      "comment": "pytest assert in a test file",
+      "ignoredByName": "Dev",
+      "ignoredTimestamp": "2026-01-01T00:00:00.000Z",
+      "patternInfo": {
+        "id": "Prospector_bandit",
+        "severityLevel": "High",
+        "category": "Security",
+        "subCategory": "InsecureModulesLibraries"
+      },
+      "message": "Use of assert detected (B101)",
+      "filePath": "tests/test_tool.py",
+      "lineNumber": 5,
+      "lineText": "    assert True",
+      "falsePositiveThreshold": 80
+    },
+    {
+      "issueId": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "ignoredByName": "Dev",
+      "ignoredTimestamp": "2026-01-02T00:00:00.000Z",
+      "patternInfo": {
+        "id": "Bandit_B101",
+        "severityLevel": "Minor",
+        "category": "Security"
+      },
+      "message": "Use of assert detected (B101)",
+      "filePath": "tests/test_other.py",
+      "lineNumber": 9,
+      "lineText": "    assert True",
+      "falsePositiveThreshold": 80
+    }
+  ]
+}
