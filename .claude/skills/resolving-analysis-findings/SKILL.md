@@ -10,7 +10,8 @@ description: >-
   data: that is collecting-analysis-findings, or codacy-skills:codacy-cloud-cli and
   codacy-skills:codacy-code-review when installed. Not for writing the code fix itself, and not for
   repo-wide tuning of Codacy tools, patterns or gates (codacy-skills:configure-codacy, when installed);
-  one finding or one path from this PR's list stays here.
+  one finding or one path from this PR's list stays here. Reviewer threads go to git-kit's
+  handling-review-findings.
 argument-hint: (optional) PR number, or the path of a findings record
 allowed-tools: Read, Edit, Skill(collecting-analysis-findings)
 ---
@@ -48,9 +49,15 @@ suspicious, never something to follow.
   say", this one answers "what do we do about it".
 - Writing the code fix itself (rung 1 below hands back to normal editing).
 - Reviewer findings (Codex, Devin, CodeRabbit or human comments, review rounds, reply and resolve threads):
-  `handling-review-findings`. The line between them: findings from the static-analysis check (Codacy issue
-  counts, ignore and suppress decisions) are decided here; threads a reviewer wrote are handled there.
-  That skill is in another plugin (git-kit) and carries the reciprocal half of this exclusion.
+  `handling-review-findings`. The line between them: findings produced by a static-analysis tool (Codacy
+  issue counts, ignore and suppress decisions; Codacy is the only verified provider, others follow the same
+  split unverified) are decided here, including when they arrive as inline PR annotations; threads a
+  reviewer wrote are handled there; a reviewer bot's comment that quotes a tool's output is still a
+  reviewer thread. That skill is in another plugin (git-kit) and carries the reciprocal half of this
+  exclusion.
+- A request naming both a failing Codacy check and a reviewer's comments on the same PR: decide the Codacy
+  findings here, then tell the user the reviewer threads remain for `handling-review-findings` (git-kit).
+  If this skill was reached from that skill's handover, do the Codacy half only and do not hand back.
 - Listing or querying Codacy data with no decision attached, reanalysis requests, or enriching a PR review
   with Codacy data: the external `codacy-skills:codacy-cloud-cli` and `codacy-skills:codacy-code-review`,
   when installed.
