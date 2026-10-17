@@ -12,7 +12,9 @@ import ast
 import importlib.util
 import io
 import json
+import os
 import re
+import shutil
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
@@ -20,7 +22,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SKILL_DIR = HERE.parent
-FIXTURES = HERE / "fixtures"
+FIXTURE_SOURCE = HERE / "fixtures"
+# --input must sit in a private scratchpad directory, so the checks read a copy of the fixtures
+# from one.
+_SCRATCH = tempfile.TemporaryDirectory()
+FIXTURES = Path(_SCRATCH.name) / "scratchpad" / "fixtures"
+shutil.copytree(FIXTURE_SOURCE, FIXTURES)
+FIXTURES.parent.chmod(0o700)
 
 failures: list[str] = []
 
@@ -131,6 +139,21 @@ def check_adapter() -> None:
     check("missing file fails closed with exit 2", code == 2 and out == "")
     code, out, _ = run_main(adapter, "--kind", "repo", "--input", str(FIXTURES / "pr.json"))
     check("wrong --kind for the input fails closed", code == 2 and out == "")
+    code, out, err = run_main(adapter, "--kind", "pr", "--input", str(FIXTURE_SOURCE / "pr.json"))
+    check(
+        "--input outside a scratchpad directory is refused, so it reads nothing there",
+        code == 2 and out == "" and "--input must be a file inside a scratchpad" in err,
+    )
+    if hasattr(os, "getuid"):
+        open_input = Path(_SCRATCH.name) / "open" / "scratchpad"
+        open_input.mkdir(parents=True)
+        shutil.copy(FIXTURE_SOURCE / "pr.json", open_input / "pr.json")
+        open_input.chmod(0o777)
+        code, out, err = run_main(adapter, "--kind", "pr", "--input", str(open_input / "pr.json"))
+        check(
+            "--input in a scratchpad that others can write to is refused",
+            code == 2 and out == "" and "not writable by others" in err,
+        )
 
     check_adapter_variants(adapter)
 

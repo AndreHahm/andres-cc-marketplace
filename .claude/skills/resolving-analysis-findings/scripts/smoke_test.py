@@ -171,6 +171,11 @@ def check_rules(body: str) -> None:
         )
     ]
     check("references do not restate a shorter approval severity list", not stale, ", ".join(stale))
+    check(
+        "the re-collect and the local scan are each asked about first",
+        "ask via `AskUserQuestion` whether to re-collect now" in flat
+        and "after asking via `AskUserQuestion` whether to run it now" in flat,
+    )
     check("init is never run unprompted", "never run `codacy-analysis init`" in body)
     check(
         "init is handed to the user, never run here",

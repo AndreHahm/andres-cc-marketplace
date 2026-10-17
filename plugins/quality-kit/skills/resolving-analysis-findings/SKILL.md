@@ -172,7 +172,8 @@ A suppression with no stated reason is not a decision. Do not write one.
 ## Verify
 
 A fix aimed at one rule can trip a stricter one (an example is in `docs/ci.md`, section "Codacy: `git` through
-`subprocess` in plugin scripts"), so after the PR's analysis finishes:
+`subprocess` in plugin scripts"), so after the PR's analysis finishes, ask via `AskUserQuestion` whether to re-collect now (it reruns the
+collector's Codacy commands, each of which prompts) or later, then:
 
 1. `Skill(collecting-analysis-findings)` again for the PR. Confirm the head matches and analysis is not
    running.
@@ -185,7 +186,8 @@ The Cloud CLI is the authority, not GitHub's check annotations, which show a cap
 
 ## Local pre-PR scan
 
-Run before `create-pr` when the PR touches scripts or configuration. `references/local-scan.md` has the
+Run before `create-pr` when the PR touches scripts or configuration, and only after asking via
+`AskUserQuestion` whether to run it now or skip it (it runs a local analysis tool over the branch). `references/local-scan.md` has the
 verified flags. In short: `codacy-analysis analyze --pr --output-format json --output <scratchpad file>`. The
 `--output` path must be under the session scratchpad, and `--install-dependencies` is never passed; stop
 otherwise. A `codacy-analysis` allow rule in the user's own settings removes the permission prompt for this
@@ -232,7 +234,7 @@ decision-rights invariants, the one-way dependency and the `# nosec` syntax acro
 scenarios were followed in read-only sandbox runs, not end to end against Codacy. This skill makes decisions that depend on
 whether Codacy honors an inline suppression, which only a push and a Cloud re-check can confirm.
 
-**Last dated run record:** 2026-10-17: `scripts/smoke_test.py` 37 of 37 checks passed inside the marketplace
+**Last dated run record:** 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace
 repository (the checks that read `docs/ci.md` and the git-kit scripts are skipped elsewhere), and 8
 deliberate breakages of a scratch copy were each caught. A `skill-tester` fast pass/fail dry run passed
 scenarios 1, 2 and 7 below (3 of 3 assertions); scenarios 3, 3b, 4, 5 and 6 were not run in that dry run (eval 3 does cover scenario 3). These runs were
@@ -278,5 +280,5 @@ not saved as files.
 | `references/ignore-reasons.md` | Codacy's five ignore reasons, the commands, and example comments |
 | `references/local-scan.md` | The local `codacy-analysis` flags and the missing-config handling |
 | `references/author-checklist.md` | Checklist for new scripts that run `git` or another command |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (37 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (38 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
 | `collecting-analysis-findings` skill | Source of the findings record this skill reads |
