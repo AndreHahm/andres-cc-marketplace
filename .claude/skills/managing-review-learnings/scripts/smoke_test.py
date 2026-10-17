@@ -66,6 +66,7 @@ def _extract_allowed_tools_value(frontmatter: str) -> str | None:
         return " ".join(block_lines).strip() or None
     return None
 
+
 # The canonical location of THIS skill, regardless of whether this script is
 # actually running from plugins/analysis-kit/ or the .claude/ mirror -- a
 # Reference Guide path is always authored relative to the skill's own
@@ -191,8 +192,10 @@ def check_phase_sequence():
 
 def check_edit_target_named_in_phase_2():
     """This skill's sole Edit target is THIRD_PARTY_REVIEW_LEARNINGS.md -- assert its own
-    Phase 2 body actually names that file, since the grant itself carries no path-scoping
-    to enforce the documented bound mechanically (security-reviewer finding, 2026-08-28)."""
+    Phase 2 body actually names that file, since no Edit rule can cover a path under .claude/
+    (Claude Code refuses those writes as sensitive files whatever the rule says), so the
+    documented bound is not enforced by a grant (security-reviewer finding, 2026-08-28; issue
+    #587)."""
     text = SKILL_MD.read_text(encoding="utf-8")
     phase2_start = text.find("\n## Phase 2:")
     if phase2_start == -1:
@@ -204,6 +207,49 @@ def check_edit_target_named_in_phase_2():
     return True, "Phase 2 body names THIRD_PARTY_REVIEW_LEARNINGS.md as the Edit target"
 
 
+EXPECTED_FILE_WRITE_GRANTS = [
+    "Edit(//tmp/claude-*/*/*/scratchpad/**)",
+    "Edit(issues/**)",
+]
+
+
+def check_file_write_grants_scoped(path=None):
+    """Issue #587: every file-write grant must be a path-scoped Edit(...) rule, exactly the pinned
+    set. A bare Write or Edit lets the skill overwrite any file without a prompt, and Write(<glob>)
+    is accepted by Claude Code but never matches, so it grants nothing. The Phase 2 target under
+    .claude/ is deliberately absent: Claude Code refuses writes there as sensitive files whatever
+    the rule says."""
+    text = (path or SKILL_MD).read_text(encoding="utf-8")
+    end = text.find("\n---\n", 4)
+    if not text.startswith("---\n") or end == -1:
+        return False, "frontmatter block missing or never closed"
+    lines = text[4:end].splitlines()
+    key = r"^['\"]?allowed-tools['\"]?[ \t]*:"
+    starts = [i for i, ln in enumerate(lines) if re.match(key, ln)]
+    if len(starts) != 1:
+        return False, "the frontmatter must hold exactly one allowed-tools key"
+    # A YAML value also continues over more-indented lines and block-list items, which a
+    # one-line read misses; flow-list brackets and quotes would hide a tool name from the match.
+    parts = [re.sub(key, "", lines[starts[0]])]
+    for ln in lines[starts[0] + 1 :]:
+        if not (ln[:1] in (" ", "\t") or ln.startswith("- ")):
+            break
+        parts.append(re.sub(r"^\s*-\s+", "", ln))
+    value = re.sub(r"[\[\]\"']", " ", " ".join(parts))
+    grants = [
+        m.group(1) + (m.group(2) or "")
+        for m in re.finditer(
+            r"(?:^|[\s,])(Write|Edit|MultiEdit|NotebookEdit)(\([^)]*\))?(?=[\s,]|$)", value
+        )
+    ]
+    if sorted(grants) != sorted(EXPECTED_FILE_WRITE_GRANTS):
+        return False, (
+            f"file-write grants {grants or 'none'} differ from the pinned set "
+            f"{EXPECTED_FILE_WRITE_GRANTS}"
+        )
+    return True, "file-write grants are exactly the pinned, path-scoped Edit(...) set"
+
+
 CHECKS = [
     check_frontmatter,
     check_bash_grants,
@@ -211,6 +257,7 @@ CHECKS = [
     check_reference_guide_files_exist,
     check_phase_sequence,
     check_edit_target_named_in_phase_2,
+    check_file_write_grants_scoped,
 ]
 
 

@@ -113,7 +113,7 @@ def check_bash_grants():
         # match zero commands and this check would silently report PASS with nothing
         # actually validated.
         block_lines = []
-        for line in frontmatter[fm_line_match.end():].splitlines():
+        for line in frontmatter[fm_line_match.end() :].splitlines():
             if line.strip() == "":
                 continue
             if line[:1] in (" ", "\t"):
@@ -162,7 +162,50 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
+EXPECTED_FILE_WRITE_GRANTS = ["Edit(issues/**)"]
+
+
+def check_file_write_grants_scoped(path=None):
+    """Issue #587: every file-write grant must be a path-scoped Edit(...) rule, exactly the pinned
+    set. A bare Write or Edit lets the skill overwrite any file without a prompt, and Write(<glob>)
+    is accepted by Claude Code but never matches, so it grants nothing."""
+    text = (path or SKILL_MD).read_text(encoding="utf-8")
+    end = text.find("\n---\n", 4)
+    if not text.startswith("---\n") or end == -1:
+        return False, "frontmatter block missing or never closed"
+    lines = text[4:end].splitlines()
+    key = r"^['\"]?allowed-tools['\"]?[ \t]*:"
+    starts = [i for i, ln in enumerate(lines) if re.match(key, ln)]
+    if len(starts) != 1:
+        return False, "the frontmatter must hold exactly one allowed-tools key"
+    # A YAML value also continues over more-indented lines and block-list items, which a
+    # one-line read misses; flow-list brackets and quotes would hide a tool name from the match.
+    parts = [re.sub(key, "", lines[starts[0]])]
+    for ln in lines[starts[0] + 1 :]:
+        if not (ln[:1] in (" ", "\t") or ln.startswith("- ")):
+            break
+        parts.append(re.sub(r"^\s*-\s+", "", ln))
+    value = re.sub(r"[\[\]\"']", " ", " ".join(parts))
+    grants = [
+        m.group(1) + (m.group(2) or "")
+        for m in re.finditer(
+            r"(?:^|[\s,])(Write|Edit|MultiEdit|NotebookEdit)(\([^)]*\))?(?=[\s,]|$)", value
+        )
+    ]
+    if sorted(grants) != sorted(EXPECTED_FILE_WRITE_GRANTS):
+        return False, (
+            f"file-write grants {grants or 'none'} differ from the pinned set "
+            f"{EXPECTED_FILE_WRITE_GRANTS}"
+        )
+    return True, "file-write grants are exactly the pinned, path-scoped Edit(...) set"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_file_write_grants_scoped,
+]
 
 
 def main():

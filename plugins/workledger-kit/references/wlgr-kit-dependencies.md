@@ -86,9 +86,18 @@ turn-scoped denial might also block intake's own calls. That is a recorded follo
 
 `syncing-open-items`, `reporting-roadmap` and `onboarding-repositories` list `Write` in `allowed-tools`
 (plugin-rulebook R6 requires a tool a skill's steps use to be listed; the plugin owner chose compliance over
-keeping those writes prompting). The grant has no path scope. A prompt-injected run could therefore write
-any file, including `.claude/workledger-kit.local.json`, without a prompt, and that file is the one the
-loader trusts for `repos`, `digest` and `intake_capabilities`. The mitigations in place are limited:
+keeping those writes prompting). The grant is a bare `Write` with no path scope. It could be scoped: an
+`Edit(<glob>)` rule is the path-scoped form that also covers the `Write` tool, while a `Write(<glob>)` rule
+is accepted but never matches (issue #587; checked live, Claude Code 2.1.302, Linux, headless run in default
+permission mode). These skills are left unscoped because their write targets (a working directory chosen at
+run time, a report path the person names) are not a fixed set; scoping them is a per-skill decision still
+open under #587. In default permission mode (the only mode probed), a prompt-injected run could therefore
+write a file outside `.claude/` without a prompt.
+The same probe refused every write under the project's `.claude/` directory as a sensitive-file write, even
+with the bare `Write` grant, so `.claude/workledger-kit.local.json` was not writable without a decision
+from the person in that run. That file is the one the loader trusts for `repos`, `digest` and
+`intake_capabilities`, and the refusal depends on Claude Code's sensitive-file protection, not on this
+plugin. The mitigations in place are limited:
 `onboarding-repositories` is the only skill that is told to write it (after approval), every submitting skill
 re-runs `wlgr_config.py` just before submitting and stops if `repos` or `intake_capabilities` changed since it
 started, and intake's own live approval remains the gate on every write to Linear or Notion.

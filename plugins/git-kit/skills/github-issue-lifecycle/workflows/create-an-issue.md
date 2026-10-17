@@ -99,7 +99,7 @@ issue whose PR is already open would dispatch `create-pr` and open a second, dup
 
 - If the PR that will close this issue **hasn't been created yet**, invoke
   `Skill(collaborating-on-a-pr)` when that PR is created — never re-implement that linking here.
-- If a PR **already exists and is already open**, this skill has no `gh pr`/`Write`/`Edit` grant to
+- If a PR **already exists and is already open**, this skill has no `gh pr` grant, and its only `Edit` grant covers the session scratchpad, to
   perform that edit itself (see SKILL.md's own Boundaries section) and does not orchestrate it. Ask the
   user how they want it linked — never invoke `collaborating-on-a-pr` for this case, and never attempt
   the edit directly.

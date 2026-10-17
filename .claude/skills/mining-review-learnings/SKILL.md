@@ -12,7 +12,7 @@ description: >-
   recurring findings", or "what should go in the learnings doc next" — not
   mining-recurring-patterns' single-session sequence mining, and not
   reviewing-analysis-findings' cross-check of analysis-kit's own reports.
-allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(echo $HOME) Bash(python */analysis-kit/scripts/anls_pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/anls_session_parser.py:*) Bash(python */analysis-kit/scripts/anls_codex_session_parser.py:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Edit(//tmp/claude-*/*/*/scratchpad/**) AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(echo $HOME) Bash(python */analysis-kit/scripts/anls_pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/anls_session_parser.py:*) Bash(python */analysis-kit/scripts/anls_codex_session_parser.py:*) Bash(python */analysis-kit/scripts/anls_persist_report.py:*) Bash(date:*)
 argument-hint: [PR numbers | merge-date range | "since last cited"]
 ---
 
@@ -266,16 +266,21 @@ legitimate, common outcome, not a failure.
 - **`session-transcript: unavailable` is a normal outcome, not a failure.** Most already-merged PRs,
   especially older ones, will have no locatable transcript. Report the GitHub-history-only finding
   honestly rather than treating the absence as a reason to skip the PR entirely.
-- **`Write` has no path-scoping syntax in this repo's tool-scoping convention** — the same limitation
-  `managing-review-learnings`'s own Gotchas section documents for its unscoped grant. The actual bound is
-  the documented Phase 4 step: `Write` is used in exactly one place — the scratch draft, written to the
-  session scratchpad directory, never a repo-tracked path. This skill never edits
-  `THIRD_PARTY_REVIEW_LEARNINGS.md` or any other tracked file directly — the `.claude/output/mining-review-learnings/`
-  final report path is written by `anls_persist_report.py`, not by a direct `Write` call. `Write`'s own scope
-  isn't mechanically enforced (no path-scoping syntax exists), but `anls_persist_report.py --final` IS
-  mechanically bounded: the script's own containment check rejects any `--final` that doesn't resolve
-  under `<cwd>/.claude/output/` — only the choice of subdirectory beneath that is a behavioral, unenforced
-  commitment.
+- **The write grant is path-scoped with an `Edit(...)` rule, not a bare `Write`** (issue #587). An
+  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches. The
+  grant is `Edit(//tmp/claude-*/*/*/scratchpad/**)`, and the documented Phase 4 step uses it in exactly one
+  place — the scratch draft, written to the session scratchpad directory, never a repo-tracked path. This
+  skill never edits `THIRD_PARTY_REVIEW_LEARNINGS.md` or any other tracked file directly — the
+  `.claude/output/mining-review-learnings/` final report path is written by `anls_persist_report.py`, not by
+  a direct `Write` call. The scope bounds direct `Write`/`Edit` calls only (the same rule form was checked
+  live in issue #582 / PR #589: Claude Code 2.1.302, Linux, headless run in default permission mode only —
+  a scratchpad write allowed, a write outside it denied; where the scratch directory is not laid out as
+  `/tmp/claude-<uid>/<project>/<session>/scratchpad` the write falls back to a prompt). It does not bound
+  the `Bash(python */analysis-kit/scripts/...:*)` grants: a probe showed `python -c "<code>" <matching
+  script path>` runs under such a grant, so those grants are a separate write route, tracked in the issue
+  #587 follow-up. `anls_persist_report.py --final` is separately bounded: the script's own containment
+  check rejects any `--final` that doesn't resolve under `<cwd>/.claude/output/` — only the choice of
+  subdirectory beneath that is a behavioral, unenforced commitment.
 - **`anls_pr_review_fetcher.py --fixture-file` accepts an arbitrary local path**, not just the fixture files
   under `tests/fixtures/pr_reviews/` this plugin ships. The `Bash(python */analysis-kit/scripts/anls_pr_review_fetcher.py:*)`
   grant is, mechanically, a broader local-file-read primitive than "reads PR review fixtures" describes.
