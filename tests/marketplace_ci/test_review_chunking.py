@@ -122,12 +122,15 @@ def _chunked_scope() -> ReviewScope:
     )
 
 
-def test_chunk_findings_merge_into_one_report_per_reviewer(repo, completed, monkeypatch):
-    calls = []
+def _bridge_by_chunk(completed, monkeypatch, *, fail_first_path: str | None = None):
+    """Fake the bridge so each call's answer depends on its chunk (the first path in its
+    --target-paths), never on arrival order: two workers make that order nondeterministic."""
 
     def fake_bridge(argv, **kw):
-        calls.append(argv)
-        envelope = {"verdict": "pass", "findings": [{"axis": f"call{len(calls)}"}]}
+        first = argv[argv.index("--target-paths") + 1].split(",")[0]
+        if first == fail_first_path:
+            return completed(1, stderr=b"bridge exploded")
+        envelope = {"verdict": "pass", "findings": [{"axis": f"found:{first}"}]}
         return completed(0, stdout=json.dumps(envelope).encode())
 
     monkeypatch.setattr(
@@ -135,35 +138,36 @@ def test_chunk_findings_merge_into_one_report_per_reviewer(repo, completed, monk
     )
     monkeypatch.setattr(review, "_run_bridge", fake_bridge)
 
+
+def test_chunk_findings_merge_into_one_report_per_reviewer(repo, completed, monkeypatch):
+    chunks = chunk_paths(_chunked_scope().paths)
+    _bridge_by_chunk(completed, monkeypatch)
+
     reports = dispatch_reviewers(_chunked_scope(), base_sha="deadbeef", repo=repo)
 
     assert [r.reviewer for r in reports] == ["dependency-reviewer"]
     assert reports[0].status == "completed"
-    assert reports[0].attempts == len(calls) > 1
+    assert reports[0].attempts == reports[0].chunks == len(chunks) > 1
     assert reports[0].output is not None
     assert sorted(f["axis"] for f in reports[0].output["findings"]) == sorted(
-        f"call{n}" for n in range(1, len(calls) + 1)
+        f"found:{chunk[0]}" for chunk in chunks
     )
 
 
 def test_a_failed_chunk_fails_the_reviewer_and_is_named(repo, completed, monkeypatch):
-    calls = []
-
-    def fake_bridge(argv, **kw):
-        calls.append(argv)
-        if len(calls) == 2:
-            return completed(1, stderr=b"bridge exploded")
-        return completed(0, stdout=json.dumps({"verdict": "pass", "findings": []}).encode())
-
-    monkeypatch.setattr(
-        subprocess, "run", lambda argv, **kw: completed(0, stdout=_FAKE_TOML_CONTENT)
-    )
-    monkeypatch.setattr(review, "_run_bridge", fake_bridge)
+    chunks = chunk_paths(_chunked_scope().paths)
+    _bridge_by_chunk(completed, monkeypatch, fail_first_path=chunks[1][0])
 
     (report,) = dispatch_reviewers(_chunked_scope(), base_sha="deadbeef", repo=repo)
 
     assert report.status == "failed"
     assert report.output is None
     assert report.error is not None
-    assert "chunk 2/" in report.error
+    assert f"chunk 2/{len(chunks)}" in report.error
+    assert chunks[1][0] in report.error
     assert "bridge exploded" in report.error
+    # The chunks that did finish keep their findings; the failed one contributes none.
+    assert report.partial_output is not None
+    assert report.chunks == len(chunks) > 2
+    kept = sorted(f["axis"] for f in report.partial_output["findings"])
+    assert kept == sorted(f"found:{c[0]}" for i, c in enumerate(chunks) if i != 1)
