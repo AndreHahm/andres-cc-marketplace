@@ -2102,3 +2102,33 @@ def test_resolve_attested_actor_list_candidates_and_permissions_are_mutually_exc
             ]
         )
     assert excinfo.value.code == 2
+
+
+def test_run_provenance_records_the_configured_pins_apart_from_what_reviewers_report(
+    git_repo, monkeypatch
+):
+    from scripts.marketplace_ci import review_contract
+    from scripts.marketplace_ci.__main__ import _run_provenance
+
+    class Report:
+        output = {"provenance": {"model": "gpt-5", "cli_version": "unknown"}}
+
+    monkeypatch.setenv(review_contract.MODEL_VARIABLE, "gpt-5.6-luna")
+    provenance = _run_provenance(git_repo.root, None, [Report()])
+
+    assert provenance["configured_model"] == "gpt-5.6-luna"
+    assert provenance["pinned_cli_version"] == review_contract.CODEX_CLI_VERSION
+    assert provenance["model"] == "gpt-5"
+    assert provenance["cli_version"] == "unknown"
+
+
+def test_run_provenance_configured_model_is_none_when_the_variable_is_unset_or_blank(
+    git_repo, monkeypatch
+):
+    from scripts.marketplace_ci import review_contract
+    from scripts.marketplace_ci.__main__ import _run_provenance
+
+    monkeypatch.delenv(review_contract.MODEL_VARIABLE, raising=False)
+    assert _run_provenance(git_repo.root, None, [])["configured_model"] is None
+    monkeypatch.setenv(review_contract.MODEL_VARIABLE, "  ")
+    assert _run_provenance(git_repo.root, None, [])["configured_model"] is None

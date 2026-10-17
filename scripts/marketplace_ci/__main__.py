@@ -1036,7 +1036,11 @@ def _git_out(repo: Path, *argv: str) -> str | None:
 def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict:
     """What a review ran on, recorded in every result shape so an artifact can be read
     without the log: the PR head (second parent on the merge ref), the checked-out merge
-    ref, the base the delta used, and the model and CLI version the reviewers reported."""
+    ref, the base the delta used, the model and CLI version the reviewers reported, and the pins
+    the run was configured with (the model variable and the CLI version CI installs), which a
+    reviewer's self-report can contradict."""
+    from scripts.marketplace_ci import review_contract
+
     merge_ref_sha = _git_out(repo, "rev-parse", "HEAD")
     second_parent = _git_out(repo, "rev-parse", "--verify", "-q", "HEAD^2")
     reported: dict[str, str | None] = {"model": None, "cli_version": None}
@@ -1052,6 +1056,8 @@ def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict
         "head_sha": second_parent or merge_ref_sha,
         "merge_ref_sha": merge_ref_sha,
         "base_sha": base_sha,
+        "configured_model": os.environ.get(review_contract.MODEL_VARIABLE, "").strip() or None,
+        "pinned_cli_version": review_contract.CODEX_CLI_VERSION,
         **reported,
     }
 
