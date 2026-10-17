@@ -309,6 +309,18 @@ def _handle_check_prefixes(args: argparse.Namespace) -> int:
     return 1
 
 
+def _handle_check_git_output_grants(args: argparse.Namespace) -> int:
+    from scripts.marketplace_ci.git_output_grants import find_violations
+
+    violations = find_violations(Path.cwd())
+    if not violations:
+        print("check-git-output-grants: OK")
+        return 0
+    for violation in violations:
+        print(f"[git-output-grants] {violation.key} - {violation.reason}")
+    return 1
+
+
 def _handle_check_prefix_permanence(args: argparse.Namespace) -> int:
     """PR-review-time enforcement that a plugin's registered component-file
     prefix (plugin-rulebook R33) is actually permanent -- compares
@@ -442,11 +454,9 @@ def _handle_check_all(args: argparse.Namespace) -> int:
     exports_rc = _handle_check_codex_exports(args)
     prefixes_rc = _handle_check_prefixes(args)
     token_shapes_rc = _handle_check_token_shapes(args)
-    rc = (
-        2
-        if (mirrors_rc == 2 or exports_rc == 2 or prefixes_rc == 2 or token_shapes_rc == 2)
-        else (1 if (mirrors_rc or exports_rc or prefixes_rc or token_shapes_rc) else 0)
-    )
+    git_grants_rc = _handle_check_git_output_grants(args)
+    rcs = (mirrors_rc, exports_rc, prefixes_rc, token_shapes_rc, git_grants_rc)
+    rc = 2 if 2 in rcs else (1 if any(rcs) else 0)
 
     if getattr(args, "json_output", None):
         payload = {
@@ -454,6 +464,7 @@ def _handle_check_all(args: argparse.Namespace) -> int:
             "check_codex_exports": exports_rc,
             "check_prefixes": prefixes_rc,
             "check_token_shapes": token_shapes_rc,
+            "check_git_output_grants": git_grants_rc,
             "exit_code": rc,
         }
         Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -1373,6 +1384,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "sync-token-shapes", help="copy the canonical secret token shapes into each plugin"
     ).set_defaults(handler=_handle_sync_token_shapes)
+
+    subparsers.add_parser(
+        "check-git-output-grants",
+        help="fail on a wildcard git diff/log/show grant that is not in the baseline",
+    ).set_defaults(handler=_handle_check_git_output_grants)
 
     subparsers.add_parser(
         "check-prefixes", help="verify plugin-root files carry their registered prefix"

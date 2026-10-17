@@ -91,7 +91,12 @@ HEAD` did not run fsmonitor.
    `git-worktrees`, `git-rebase-sync`, `create-pr`, `dependency-updater` and the `git-status` and
    `git-update-branch-name` commands. `git log:*` or `git show:*`, which also accept `--output`, is granted
    in `git-bisect`, `git-notes`, `git-cleanup`, `git-worktrees`, `git-rebase-sync` and
-   `resolving-merge-conflicts`. `resolving-merge-conflicts` grants only the exact `git diff --cached`.
+   `resolving-merge-conflicts`. `resolving-merge-conflicts` grants only the exact `git diff --cached`. `check-all` now runs
+   `check-git-output-grants` (`scripts/marketplace_ci/git_output_grants.py`): it fails on any wildcard
+   `git diff|log|show` grant in a plugin component's frontmatter that is not listed in
+   `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a baseline entry whose grant is gone.
+   The baseline lists every component still open, in every plugin (not only git-kit); scoping a
+   component means deleting its entries there in the same commit.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
    memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real
