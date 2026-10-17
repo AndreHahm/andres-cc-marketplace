@@ -198,6 +198,9 @@ def check_file_write_grants_scoped(path=None):
         if not (ln[:1] in (" ", "\t") or ln.startswith("- ")):
             break
         parts.append(re.sub(r"^\s*-\s+", "", ln))
+    if any("\\" in part for part in parts):
+        # A YAML escape such as W decodes to a letter this regex never sees, so fail closed.
+        return False, "allowed-tools contains a backslash escape this check cannot decode"
     value = re.sub(r"[\[\]\"']", " ", " ".join(parts))
     grants = [
         m.group(1) + (m.group(2) or "")

@@ -93,8 +93,8 @@ permission mode). These skills are left unscoped because their write targets (a 
 run time, a report path the person names) are not a fixed set; scoping them is a per-skill decision still
 open under #587. In default permission mode (the only mode probed), a prompt-injected run could therefore
 write a file outside `.claude/` without a prompt.
-The same probe refused every write under the project's `.claude/` directory as a sensitive-file write, even
-with the bare `Write` grant, so `.claude/workledger-kit.local.json` was not writable without a decision
+The same probe refused both `.claude/` paths it tried with the bare `Write` grant (`.claude/NOTES.md` and
+`.claude/workledger-kit.local.json`) as sensitive-file writes, so `.claude/workledger-kit.local.json` was not writable without a decision
 from the person in that run. That file is the one the loader trusts for `repos`, `digest` and
 `intake_capabilities`, and the refusal depends on Claude Code's sensitive-file protection, not on this
 plugin. The mitigations in place are limited:

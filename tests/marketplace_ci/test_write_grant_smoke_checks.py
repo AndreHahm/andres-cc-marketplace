@@ -1,9 +1,10 @@
 """Four skills' smoke tests reject unscoped or inert file-write grants (#587).
 
-A bare `Write` or `Edit` lets a skill overwrite any file without a prompt, and `Write(<glob>)` is
-accepted by Claude Code but never matches. Each smoke test's `check_file_write_grants_scoped` must
-accept only its exact pinned `Edit(...)` set, so these tests feed it frontmatter variants and check
-that each unsafe or drifted variant fails.
+A bare `Write` or `Edit` lets a skill overwrite any file without a prompt, and `Write(<glob>)` was
+accepted but never matched in a probe (Claude Code 2.1.302, Linux, default permission mode). Each
+smoke test's `check_file_write_grants_scoped` must accept only its exact pinned `Edit(...)` set, so
+these tests feed it frontmatter variants, including YAML spellings and escapes that hide a tool name
+from a plain text match, and check that each unsafe or drifted variant fails.
 """
 
 import importlib.util
@@ -134,6 +135,11 @@ def _pinned(name):
         "allowed-tools:\n- Read\n- Write",
         "allowed-tools: >-\n  Read {pinned}\n  Write",
         "allowed-tools: Read {pinned}\nallowed-tools: Read",
+        'allowed-tools: "Read {pinned} Wri\\u0074e"',
+        'allowed-tools: "Read {pinned} \\u0057rite"',
+        'allowed-tools: "Read {pinned} Ed\\u0069t(**)"',
+        'allowed-tools: "Read {pinned} \\x57rite"',
+        'allowed-tools: Read {pinned}\n  "Wri\\u0074e"',
     ],
 )
 def test_a_hidden_extra_grant_in_another_yaml_spelling_fails(tmp_path, name, spelling):
