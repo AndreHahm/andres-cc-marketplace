@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "pr": 597,
+  "head_sha": "f0982a7e821a0304f722039b2981599faa59809e",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+      "line": 14,
+      "rule": "permission-risk",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: wildcard interpreter grant is a documented accepted trade-off",
+      "known_issue": null
+    },
+    {
+      "id": "f2",
+      "reviewer": "security-reviewer",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+      "line": 264,
+      "rule": "credential-pii-leakage",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: reports state they may keep personal data",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/scripts/smoke_test.py",
+      "line": 228,
+      "rule": "rulebook compliance",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: smoke check rejects valid YAML-list allowed-tools",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f4",
+      "reviewer": "security-reviewer",
+      "path": "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+      "line": 228,
+      "rule": "credential-pii-leakage",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: reports state they may keep personal data",
+      "known_issue": null
+    },
+    {
+      "id": "f5",
+      "reviewer": "security-reviewer",
+      "path": "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+      "line": 101,
+      "rule": "credential-pii-leakage",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: reports state they may keep personal data",
+      "known_issue": null
+    },
+    {
+      "id": "f6",
+      "reviewer": "security-reviewer",
+      "path": "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+      "line": 117,
+      "rule": "permission-risk",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: wildcard interpreter grant is a documented accepted trade-off",
+      "known_issue": null
+    },
+    {
+      "id": "f7",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "line": 104,
+      "rule": "rulebook",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: stale bare-Write text left in github-issue-lifecycle",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f8",
+      "reviewer": "dependency-reviewer",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/workflows/create-an-issue.md",
+      "line": 102,
+      "rule": "dependency-graph",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: the cycle is gated, nothing runs recursively",
+      "known_issue": null
+    },
+    {
+      "id": "f9",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
+      "line": 108,
+      "rule": "permission-risk",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: wildcard interpreter grant is a documented accepted trade-off",
+      "known_issue": null
+    },
+    {
+      "id": "f10",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
+      "line": 116,
+      "rule": "permission-risk",
+      "label": "pre_existing",
+      "source": "owner",
+      "note": "owner: shared scratchpad Edit grant is a documented accepted trade-off",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/analysis-kit/skills/managing-review-learnings/scripts/smoke_test.py",
+      "description": "the smoke check rejects a valid YAML-list allowed-tools"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "description": "github-issue-lifecycle still describes the creator's bare Write grant"
+    }
+  ]
+}

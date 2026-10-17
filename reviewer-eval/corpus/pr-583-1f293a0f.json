@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "pr": 583,
+  "head_sha": "1f293a0fcade0bf89f45058905b3301fa9fdac78",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "line": 257,
+      "rule": "credential-pii-leakage",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: list-comments printed full REST comment objects",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 309,
+      "rule": "workflow-clarity",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: issue path wrote the body outside the scratchpad the wrapper requires",
+      "known_issue": "k2"
+    },
+    {
+      "id": "f3",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 413,
+      "rule": "plugin-rulebook-compliance",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "description": "list-comments prints full REST comment objects instead of the fields triage needs"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "description": "the Issue path drafts the body under issues/, which the wrapper rejects as a body file"
+    }
+  ]
+}

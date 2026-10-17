@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "pr": 583,
+  "head_sha": "8f68878e3b80af377c147f120ae99d41ede41b24",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "plugin-rulebook-checker",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 443,
+      "rule": "plugin-rulebook/R28-skill-testing-mandate",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: rewritten evals 19 and 21 were not re-run",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 472,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    },
+    {
+      "id": "f3",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+      "line": 16,
+      "rule": "correctness",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: cycle count matched author.login but the key is user",
+      "known_issue": "k2"
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "description": "evals 19 and 21 were rewritten and not re-run"
+    },
+    {
+      "id": "k2",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/next-round-trigger.md",
+      "description": "the cycle-count procedure matches author.login but list-comments emits the key user"
+    }
+  ]
+}

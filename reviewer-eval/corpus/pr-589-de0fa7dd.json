@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "pr": 589,
+  "head_sha": "de0fa7dded1a0189ca3064c148e5645bc5dbc68c",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "security-reviewer",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "line": 13,
+      "rule": "tool-scoping",
+      "label": "true",
+      "source": "owner",
+      "note": "owner: gh api issues grant reaches DELETE/PATCH",
+      "known_issue": "k1"
+    },
+    {
+      "id": "f2",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 476,
+      "rule": "maintainability",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: size/structure soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "k1",
+      "path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+      "description": "Bash(gh api repos/*/issues/*:*) also reaches DELETE and PATCH on issues"
+    }
+  ]
+}
