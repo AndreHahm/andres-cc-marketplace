@@ -58,12 +58,26 @@ def score_corpus(cases: list[dict]) -> dict[str, dict]:
 
 
 def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None]]:
-    """The (path, line) of every finding `reviewer` reported as blocking in one archived result."""
-    return frozenset(
-        (finding["path"], finding["line"])
-        for finding in result["findings"]
-        if finding["reviewer"] == reviewer and finding["blocking"]
-    )
+    """The (path, line) of every finding `reviewer` reported as blocking in one archived result.
+
+    The result is untrusted CI output, so a missing or mistyped field is a clear `ValueError`.
+    """
+    findings = result.get("findings")
+    if not isinstance(findings, list):
+        raise ValueError("archived result: findings must be a list")
+    blocking = set()
+    for finding in findings:
+        if not (
+            isinstance(finding, dict)
+            and isinstance(finding.get("reviewer"), str)
+            and isinstance(finding.get("path"), str)
+            and isinstance(finding.get("blocking"), bool)
+            and (finding.get("line") is None or isinstance(finding["line"], int))
+        ):
+            raise ValueError("archived result: a finding has a missing or mistyped field")
+        if finding["reviewer"] == reviewer and finding["blocking"]:
+            blocking.add((finding["path"], finding["line"]))
+    return frozenset(blocking)
 
 
 def stability(blocking_sets: list[frozenset]) -> dict:

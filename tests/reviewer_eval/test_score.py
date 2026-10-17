@@ -119,6 +119,22 @@ def test_blocking_set_is_the_reviewers_blocking_findings_only():
     assert score.blocking_set(result, "security") == frozenset({("a.py", 1)})
 
 
+@pytest.mark.parametrize(
+    "result",
+    [
+        {},
+        {"findings": "none"},
+        {"findings": [["a.py", 1]]},
+        {"findings": [{"reviewer": "security", "path": ["a.py"], "line": 1, "blocking": True}]},
+        {"findings": [{"reviewer": "security", "path": "a.py", "line": 1}]},
+    ],
+)
+def test_blocking_set_rejects_a_result_that_is_not_shaped_like_one(result):
+    """An archived result is untrusted: report a clear error, not a KeyError or TypeError."""
+    with pytest.raises(ValueError, match="archived result"):
+        score.blocking_set(result, "security")
+
+
 def test_stability_needs_the_full_number_of_repeats():
     sets = [frozenset({("a.py", 1)})] * 4
     assert score.stability(sets) == {"repeats": 4, "agree": 4, "stable": None}

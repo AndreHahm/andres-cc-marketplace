@@ -9,6 +9,10 @@ The artifact is untrusted data. It is only unzipped by exact member name, bounde
 parsed as JSON; nothing in it is executed or used to build a path. Only artifacts of a run in this
 repository (never a fork's, whose workflow file is the fork author's own) on the PR's own head
 branch are taken, so a stacked PR's shared commit does not pull in another PR's runs.
+
+Run it from a checkout you trust: on Windows `gh` can resolve from the current directory before
+`PATH`, and a symlink already committed under the output directory is a path this script writes
+through.
 """
 
 from __future__ import annotations
