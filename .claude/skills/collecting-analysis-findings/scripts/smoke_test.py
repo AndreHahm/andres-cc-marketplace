@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Smoke test for the quality-kit skills: adapter behavior on fixtures, frontmatter, links, grants.
+"""Smoke test for collecting-analysis-findings: adapter on fixtures, frontmatter, links, grants.
 
 Runs the adapter in-process (no subprocess) against synthetic fixtures shaped like the real
-Cloud CLI output, then checks the two SKILL.md files against each other. Exit 0 when every check
+Cloud CLI output, then checks this skill's SKILL.md and references. Exit 0 when every check
 passes, 1 otherwise.
 """
 
@@ -40,10 +40,17 @@ def load_adapter():
     return module
 
 
-def run_main(adapter, *argv: str, stdin: str = "") -> tuple[int, str, str]:
+def run_main(
+    adapter, *argv: str, stdin: str = "", stdin_bytes: bytes | None = None
+) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     real_stdin = sys.stdin
-    sys.stdin = io.StringIO(stdin)
+    # A bytes stdin goes through a wrapper with an ASCII locale encoding, like a non-UTF-8 console.
+    sys.stdin = (
+        io.TextIOWrapper(io.BytesIO(stdin_bytes), encoding="ascii")
+        if stdin_bytes is not None
+        else io.StringIO(stdin)
+    )
     try:
         with redirect_stdout(out), redirect_stderr(err):
             try:
@@ -183,12 +190,41 @@ def check_adapter_variants(adapter) -> None:
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(broken))
     check("an unfamiliar potentialIssues entry fails closed", code == 2 and out == "")
 
-    code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="[" * 100000)
-    check("deeply nested JSON fails closed with exit 2", code == 2 and out == "")
-    code, out, _ = run_main(
-        adapter, "--kind", "pr", "--input", "-", stdin='{"a": ' + "1" * 5000 + "}"
+    code, out, err = run_main(adapter, "--kind", "pr", "--input", "-", stdin="[" * 100000)
+    check(
+        "deeply nested JSON fails closed with exit 2",
+        code == 2 and out == "" and "cannot read input" in err,
     )
-    check("an oversized integer literal fails closed with exit 2", code == 2 and out == "")
+    digit_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
+    huge = json.dumps(pr).replace('"number": 7', '"number": ' + "1" * 5000)
+    code, out, err = run_main(adapter, "--kind", "pr", "--input", "-", stdin=huge)
+    check(
+        "an oversized integer literal fails closed with exit 2",
+        digit_limit == 0 or (code == 2 and out == "" and "ValueError" in err),
+    )
+    unicode_pr = json.loads(json.dumps(pr))
+    unicode_pr["newIssues"][0]["commitIssue"]["message"] = "dash — and accent é"
+    code, out, _ = run_main(
+        adapter,
+        "--kind",
+        "pr",
+        "--input",
+        "-",
+        stdin_bytes=json.dumps(unicode_pr, ensure_ascii=False).encode("utf-8"),
+    )
+    check(
+        "stdin is decoded as UTF-8 whatever the console encoding",
+        code == 0 and json.loads(out)["findings"][0]["message"] == "dash — and accent é",
+    )
+    forged = json.loads(json.dumps(pr))
+    forged["newIssues"][0]["commitIssue"]["filePath"] = "a.py\n    9  Bandit_B999  x.py"
+    code, out, _ = run_main(
+        adapter, "--kind", "pr", "--input", "-", "--format", "table", stdin=json.dumps(forged)
+    )
+    check(
+        "table output escapes a line break in a file name",
+        code == 0 and "\\x0a" in out and len(out.splitlines()) == 1 + 3,
+    )
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="{not json")
     check("malformed JSON fails closed with exit 2", code == 2 and out == "")
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="")
@@ -211,15 +247,21 @@ def check_adapter_variants(adapter) -> None:
     bad_id["newIssues"][0]["commitIssue"]["issueId"] = "-F"
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(bad_id))
     check("an issueId starting with a dash fails closed", code == 2 and out == "")
-    code, out, _ = run_main(adapter, "--kind", "pr", "--input", str(FIXTURES))
-    check("a directory as --input fails closed", code == 2 and out == "")
+    code, out, err = run_main(adapter, "--kind", "pr", "--input", str(FIXTURES))
+    check(
+        "a directory as --input fails closed",
+        code == 2 and out == "" and "not a regular file" in err,
+    )
     original = adapter.MAX_INPUT_BYTES
     adapter.MAX_INPUT_BYTES = 10
     try:
-        code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="x" * 50)
+        code, out, err = run_main(adapter, "--kind", "pr", "--input", "-", stdin=json.dumps(pr))
     finally:
         adapter.MAX_INPUT_BYTES = original
-    check("input over the size cap fails closed", code == 2 and out == "")
+    check(
+        "valid JSON over the size cap fails closed",
+        code == 2 and out == "" and "larger than" in err,
+    )
 
     code, out, _ = run_main(adapter, "--kind", "ignored", "--input", str(FIXTURES / "ignored.json"))
     second = json.loads(out)["findings"][1]

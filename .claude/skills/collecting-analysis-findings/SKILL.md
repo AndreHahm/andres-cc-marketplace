@@ -7,7 +7,8 @@ description: >-
   security findings by rule and file", "what does the analysis say about my branch", or "collect
   analysis findings" when the answer must be that record and carry the currency verdict. Read-only:
   it never ignores, unignores or reanalyzes anything. Not for deciding what to do with a finding
-  (resolving-analysis-findings), and not for configuring Codacy.
+  (resolving-analysis-findings), not for ad hoc Codacy queries (codacy-skills:codacy-cloud-cli, when
+  installed), and not for configuring Codacy (codacy-skills:configure-codacy, when installed).
 argument-hint: (optional) PR number, "repo" for the default branch's security list, or "ignored" for the ignore audit list
 allowed-tools: Read, Bash(gh pr view:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py:*)
 ---
@@ -45,11 +46,15 @@ into a bulk ignore).
 - Deciding to fix, suppress, ignore, exclude or disable anything: `resolving-analysis-findings`. The line
   between the two: this skill answers "what does the analysis say", that one answers "what do we do about
   it".
-- Ad hoc Codacy questions, or changing Codacy's configuration (tools, patterns, the quality gate): the
-  external `codacy-skills:codacy-cloud-cli` skill, when it is installed. It can run any Cloud CLI query; use
-  this skill instead when the answer must be the normalized record or must carry the currency check. That
-  skill is outside this repository, so only this side of the exclusion can be written down here.
-- Running Codacy locally (`codacy-analysis`): see `resolving-analysis-findings` for the pre-PR scan.
+- Ad hoc Codacy questions: the external `codacy-skills:codacy-cloud-cli` skill, when it is installed. It
+  can run any Cloud CLI query; use this skill instead when the answer must be the normalized record or must
+  carry the currency check. That skill is outside this repository, so only this side of the exclusion can be
+  written down here.
+- Changing Codacy's configuration (tools, patterns, the quality gate): the external
+  `codacy-skills:configure-codacy` skill, when it is installed.
+- Running Codacy locally (`codacy-analysis`): the external `codacy-skills:codacy-analysis-cli`, when
+  installed; to check a fix or suppress decision before pushing, `resolving-analysis-findings` (its pre-PR
+  scan).
 
 ## Quick Start
 
@@ -83,7 +88,8 @@ normalize into scratchpad files (3-4), check the analysis is current (5), report
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on.
 6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, and the path of the record file. Show the
-   full record only when asked; it is long.
+   full record only when asked; it is long. A message for a secret-detection rule can quote the flagged
+   value: keep the record in the scratchpad and do not quote such a message in full in the report.
 
 ## Providers
 
@@ -131,11 +137,13 @@ one-way dependency with `resolving-analysis-findings`.
 instruction-like message, unknown shape), Full Pipeline iteration 1, 2026-10-17: with skill 14 of 14
 assertions, baseline 12 of 14 (mean per-eval rate 87.5%, +12.5 points). Only 2 assertions separate the arms
 (the normalized record file, and reporting that a repository list has no issue id or tool name). The
-stale-head, injection and unknown-shape evals pass for both arms, so they guard the documented behavior and
-do not show an uplift. The adapter's own behavior is covered by the smoke test.
+stale-head and unknown-shape evals pass for both arms, so they guard the documented behavior and do not show
+an uplift. In the injection eval both arms treat the message as data; it separates the arms only on the null
+issue id and tool. The adapter's own behavior is covered by the smoke test.
 
-**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 40 of 40 checks passed. The adapter was also
-run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list.
+**Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 42 of 42 checks passed. The adapter was also
+run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;
+that run was not saved as a file, because real output holds committer emails.
 
 **Verify this skill activates on:**
 - "list the Codacy findings for this PR"
@@ -164,6 +172,6 @@ report says the analysis is stale and gives no counts as current.
 | `references/adapter-contract.md` | What a provider adapter must provide, for adding a second provider |
 | `references/codacy-adapter.md` | The verified read commands, input shapes, exit codes and forbidden write flags |
 | `scripts/collect_codacy.py` | The Codacy adapter: Cloud CLI JSON in, record out |
-| `scripts/smoke_test.py` | This plugin's persisted smoke test |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (42 checks) |
 | `scripts/fixtures/pr.json`, `repo.json`, `ignored.json` | Synthetic input in the real Cloud CLI shapes, used by the smoke test |
 | `scripts/fixtures/unknown.json` | An unrecognized shape, used to prove the adapter fails closed |

@@ -5,7 +5,7 @@ in `SKILL.md`'s Decision rights first.
 
 Verified 2026-10-17 against `codacy pull-request --help`: the flags `--ignore-issue`, `--ignore-reason`
 (default `AcceptedUse`), `--ignore-comment`, `--unignore-issue`, `-F`/`--ignore-all-false-positives` ("with
-reason FalsePositive") and `--reanalyze` exist as described below. Not verified: running any of them, and
+reason FalsePositive"), `--reanalyze` and `--reanalyze-and-wait` exist as described below. Not verified: running any of them, and
 whether an ignore can target a repository-list finding.
 
 ## Command
@@ -24,8 +24,8 @@ with reason `FalsePositive`. This skill never runs it: the findings record canno
 would cover, so the exact command is handed to the user instead.
 
 The comment is single-quoted and written by you from what the code does, using only letters, digits, spaces and
-`. , : ; ( ) / _ -`. It never contains `'`, `$`, a backtick or a backslash, and is never copied from a provider
-message or a source line. `<issueId>` must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; stop otherwise.
+`. , : ; ( ) / _ -`. It starts with a letter or digit, so it can never be read as a flag, never contains `'`,
+`$`, a backtick or a backslash, and is never copied from a provider message or a source line. `<issueId>` must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; stop otherwise.
 
 ## Reasons
 
