@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,8 +33,8 @@ _COMPONENT_GLOBS = (
 _GRANT_KEYS = ("allowed-tools", "tools")  # skills and commands use the first, agents the second
 
 # Each of these created the file named by `--output=<path>` when run on git 2.43.0 in a scratch
-# repository (119 commands tried; interactive and network commands were skipped), a write or a
-# truncate of any path. Sweep again when git changes.
+# repository (119 commands tried, then `difftool` and `bisect` by hand; other interactive and
+# network commands were skipped), a write or a truncate of any path. Sweep again when git changes.
 _OUTPUT_COMMANDS = frozenset(
     {
         "annotate",
@@ -41,6 +42,7 @@ _OUTPUT_COMMANDS = frozenset(
         "blame",
         "cherry-pick",
         "diff",
+        "difftool",
         "diff-files",
         "diff-index",
         "diff-tree",
@@ -58,13 +60,31 @@ _OUTPUT_COMMANDS = frozenset(
         "whatchanged",
     }
 )
+# `git bisect` writes the file only through these subcommands; its others (start, good, bad, log,
+# reset) are not flagged.
+_BISECT_OUTPUT = frozenset({"view", "visualize"})
+# Where a wildcard right after the subcommand word is flagged: a prefix of one of these.
+_PREFIX_COMMANDS = _OUTPUT_COMMANDS | {"bisect"}
 # Git global options that take the next word as their value.
-_VALUE_GLOBAL_OPTIONS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
+_VALUE_GLOBAL_OPTIONS = frozenset(
+    {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--attr-source", "--super-prefix"}
+    | {"--config-env"}
+)
 # Options that take the next word as their value, so a `--` right after one is its value and not a
-# pathspec separator. Not exhaustive: an option missing here still lets its `--` exempt a grant.
+# pathspec separator.
 _VALUE_OPTIONS = frozenset(
     {"-S", "-G", "-O", "-L", "-n", "--author", "--committer", "--grep", "--since", "--until"}
     | {"--max-count", "--skip"}
+)
+# Options known to take no value. A `--` counts as a pathspec separator only when every option
+# before it is one of these, takes its value after `=`, or is in `_VALUE_OPTIONS`; an option this
+# list does not know could take the `--` as its value, so such a grant stays flagged.
+_FLAGS_WITHOUT_VALUE = frozenset(
+    {"--oneline", "--stat", "--name-only", "--name-status", "--cached", "--staged", "-z", "-p"}
+    | {"--numstat", "--shortstat", "--summary", "--patch", "--graph", "--all", "--no-merges"}
+    | {"--merges", "--first-parent", "--follow", "--decorate", "--abbrev-commit", "--text"}
+    | {"--no-color", "--no-ext-diff", "-q", "--quiet", "--no-patch", "-s", "--raw", "--reverse"}
+    | {"--topo-order", "--date-order"}
 )
 _ESCAPED_STAR = "\0"  # stands for a literal `\*` while the rule is read
 
@@ -82,15 +102,15 @@ def _grant_entries(source: str) -> list[str]:
     fails closed.
     """
     lines = source.splitlines()
-    if not lines or lines[0].strip() != "---":
+    if not lines or lines[0].rstrip() != "---":
         return []
     end = 0
     for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
+        if line.rstrip() == "---":
             end = index
             break
-        if line.startswith("---"):
-            raise ValueError("a line inside the frontmatter starts with ---")
+        if line.strip() == "---" or line.startswith("---"):  # an indented fence, or ---x
+            raise ValueError("a line inside the frontmatter looks like a fence")
     if not end:
         raise ValueError("the frontmatter is not closed")
     text = "\n".join(lines[1:end])
@@ -113,23 +133,47 @@ def _grant_entries(source: str) -> list[str]:
 
 
 def _bash_rules(entry: str) -> list[str]:
-    """The text inside each `Bash(...)`, with parentheses balanced so `%(trailers)` stays inside."""
+    """The text inside each `Bash(...)`.
+
+    Parentheses are balanced and a quoted one is skipped, so `%(trailers)` and `--grep=')'` stay
+    inside. The search resumes just after each `Bash(`, so a rule nested in, or swallowed by, an
+    unbalanced one is read too.
+    """
     rules: list[str] = []
-    start = entry.find("Bash(")
-    while start != -1:
-        depth, index = 1, start + len("Bash(")
+    search = 0
+    while (start := entry.find("Bash(", search)) != -1:
+        body = start + len("Bash(")
+        depth, quote, index = 1, "", body
         while index < len(entry) and depth:
-            depth += {"(": 1, ")": -1}.get(entry[index], 0)
+            char = entry[index]
+            if quote:
+                if char == quote:
+                    quote = ""
+                elif char == "\\" and quote == '"':
+                    index += 1
+            elif char in "'\"":
+                quote = char
+            elif char == "\\":
+                index += 1
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
             index += 1
-        rules.append(entry[start + len("Bash(") : index - (1 if depth == 0 else 0)])
-        start = entry.find("Bash(", index)
+        rules.append(entry[body : index - (1 if depth == 0 else 0)])
+        search = body
     return rules
 
 
-def _normalize(rule: str) -> str:
-    """Drop quotes and backslashes (`g\\it`, `g''it`); an escaped `\\*` stays a literal."""
-    rule = rule.replace("\\*", _ESCAPED_STAR).replace("\\", "")
-    return rule.replace('"', "").replace("'", "")
+def _tokens(rule: str) -> list[str]:
+    """The words of a rule as a shell would split them: quotes and backslashes are resolved
+    (`g\\it`, `g''it`), and a quoted ` -- ` stays inside its word. An escaped `\\*` stays a
+    literal."""
+    rule = rule.replace("\\*", _ESCAPED_STAR)
+    try:
+        return shlex.split(rule)
+    except ValueError:  # an unbalanced quote: keep every word rather than drop the rule
+        return rule.replace("\\", "").replace('"', "").replace("'", "").split()
 
 
 def _is_git(token: str) -> bool:
@@ -137,12 +181,32 @@ def _is_git(token: str) -> bool:
 
 
 def _after_pathspec_separator(args: list[str], wildcard: str) -> bool:
-    """Whether the wildcard follows a `--`, so what it adds is a pathspec and not an option."""
-    words = [*args, wildcard.partition("*")[0].rstrip(":")]  # `--:*` ends with the separator
-    return any(
-        word == "--" and (position == 0 or words[position - 1] not in _VALUE_OPTIONS)
-        for position, word in enumerate(words)
-    )
+    """Whether the wildcard follows a real `--`, so what it adds is a pathspec and not an option.
+
+    Fails closed: every option before the `--` must be one this module knows takes no value, takes
+    its value after `=` or as the next word; any other could take the `--` as its own value.
+    """
+    words = list(args)
+    head = wildcard.partition("*")[0]
+    if head == "--:":  # `--:*`: the prefix ends with the separator; a glued `--*` is a glob
+        words.append("--")
+    index = 0
+    while index < len(words):
+        word = words[index]
+        if word == "--":
+            return True
+        if word in _VALUE_OPTIONS:
+            index += 2  # the next word is its value, even when that word is `--`
+        elif (
+            word.startswith("-")
+            and "=" not in word
+            and word not in _FLAGS_WITHOUT_VALUE
+            and not word.lstrip("-").isdigit()
+        ):
+            return False
+        else:
+            index += 1
+    return False
 
 
 def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
@@ -154,29 +218,46 @@ def _read_grant(tokens: list[str], start: int) -> tuple[str | None, int]:
     while index < len(tokens) and tokens[index].startswith("-"):  # global options
         if "*" in tokens[index]:  # `git -C:*`
             return " ".join(tokens[start : index + 1]), index + 1
-        index += 2 if tokens[index] in _VALUE_GLOBAL_OPTIONS else 1
+        if tokens[index] in _VALUE_GLOBAL_OPTIONS and index + 1 < len(tokens):
+            if "*" in tokens[index + 1]:  # `git -C /repo:*`
+                return " ".join(tokens[start : index + 2]), index + 2
+            index += 2
+        else:
+            index += 1
     if index >= len(tokens):
         return None, len(tokens)
     subcommand, star, _ = tokens[index].partition("*")
     subcommand = subcommand.rstrip(":")
-    if star:  # `git *`, `git diff:*`, `git diff*`, `git d*`
-        flagged = not subcommand or any(c.startswith(subcommand) for c in _OUTPUT_COMMANDS)
+    if star:  # `git *`, `git diff:*`, `git diff*`, `git d*`, `git bisect:*`
+        flagged = not subcommand or any(c.startswith(subcommand) for c in _PREFIX_COMMANDS)
         return (" ".join(tokens[start : index + 1]) if flagged else None), index + 1
-    if subcommand not in _OUTPUT_COMMANDS:
+    scan_from = index + 1
+    if subcommand == "bisect":  # only its view and visualize subcommands write the file
+        if scan_from >= len(tokens):
+            return None, len(tokens)
+        word, star, _ = tokens[scan_from].partition("*")
+        word = word.rstrip(":")
+        if star:  # `git bisect *`, `git bisect view:*`, `git bisect vis*`
+            flagged = not word or any(name.startswith(word) for name in _BISECT_OUTPUT)
+            return (" ".join(tokens[start : scan_from + 1]) if flagged else None), scan_from + 1
+        if word not in _BISECT_OUTPUT:
+            return None, scan_from + 1
+        scan_from += 1
+    elif subcommand not in _OUTPUT_COMMANDS:
         return None, index + 1
-    end = index + 1
-    while end < len(tokens) and "*" not in tokens[end] and not _is_git(tokens[end]):
+    end = scan_from
+    while end < len(tokens) and "*" not in tokens[end]:
         end += 1
-    if end >= len(tokens) or "*" not in tokens[end]:  # an exact grant, or the next git grant
-        return None, end
-    if _after_pathspec_separator(tokens[index + 1 : end], tokens[end]):
+    if end >= len(tokens):  # an exact grant
+        return None, len(tokens)
+    if _after_pathspec_separator(tokens[scan_from:end], tokens[end]):
         return None, end + 1
     return " ".join(tokens[start : end + 1]), end + 1
 
 
 def _wildcard_grants(rule: str) -> list[str]:
     """The flagged git grants in one `Bash(...)` rule; the legacy form lists several in one."""
-    tokens = _normalize(rule).split()
+    tokens = _tokens(rule)
     grants: list[str] = []
     index = 0
     while index < len(tokens):
@@ -196,6 +277,9 @@ def _scan(repo: Path) -> tuple[set[str], set[str]]:
     for pattern in _COMPONENT_GLOBS:
         for path in sorted(repo.glob(pattern)):
             relative = path.relative_to(repo).as_posix()
+            if path.is_symlink():  # a link could point at an endless file or outside the repository
+                unreadable.add(relative)
+                continue
             try:
                 entries = _grant_entries(path.read_text(encoding="utf-8-sig"))
             except (OSError, ValueError, yaml.YAMLError, RecursionError):

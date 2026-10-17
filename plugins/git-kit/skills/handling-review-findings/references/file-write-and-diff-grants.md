@@ -91,11 +91,14 @@ HEAD` did not run fsmonitor.
    grant in a plugin component's `allowed-tools` (or an agent's `tools`), decoded as YAML so an escaped line
    break cannot hide one, whose command writes the file named by `--output=<path>`. The command list comes
    from running every git command with that option on git 2.43.0 in a scratch repository (119 tried,
-   interactive and network ones skipped): `diff`, `log`, `show`, `stash`, `rev-list`, `cherry-pick`,
-   `revert`, `shortlog`, `blame`, `reflog`, `range-diff` and the others in the module, not only the
-   three first named in #588. It also fails on a blanket `git:*`, `git *` or `git -C:*`, on any of these
-   after git global options such as `--no-pager` or `-C <path>`, and on a baseline entry whose grant is
-   gone. A grant is exempt only when everything the wildcard adds follows a `--` (a pathspec). The
+   interactive and network ones skipped, then `difftool` and `bisect` by hand): `diff`, `log`, `show`,
+   `stash`, `rev-list`, `cherry-pick`, `revert`, `shortlog`, `blame`, `reflog`, `range-diff`,
+   `difftool`, `bisect view` and the others in the module, not only the three first named in #588. It
+   also fails on a blanket `git:*`, `git *`, `git -C:*` or `git -C <path>:*`, on any of these after git
+   global options such as `--no-pager` or `-C <path>`, and on a baseline entry whose grant is gone. A
+   grant is exempt only when everything the wildcard adds follows a `--` (a pathspec) reached through
+   options the module knows; an unknown option before the `--` could take it as its value, so that
+   grant stays flagged. Rules are split as a shell would, so a quoted ` -- ` is not a separator. The
    baseline, `scripts/marketplace_ci/git_output_grants_baseline.json`, lists every component still
    open, in every plugin (not only git-kit); scoping a component means deleting its entries there in
    the same commit. The follow-up for the blanket grants in plugin-devkit and `git-cleanup` is #599. The
