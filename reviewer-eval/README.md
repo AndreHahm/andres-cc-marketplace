@@ -29,6 +29,17 @@ never overwrites one. A head that was force-pushed away is no longer listed by G
 archived. A re-run of a job gives one run several artifacts; each is kept, because each is a separate
 sample of the same head.
 
+## Scoring
+
+```bash
+uv run python -m scripts.reviewer_eval.score
+```
+
+Prints precision and recall per reviewer as JSON. Recall is measured against the corpus's
+`known_issues`, so it reaches 1.0 overall when every known issue was derived from a finding; it only
+means something once known issues are established independently of the findings. Stability
+(`score.stability`) needs five repeated runs of one head and is not part of the CLI yet.
+
 ## Case format
 
 ```json
