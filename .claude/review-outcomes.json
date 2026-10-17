@@ -84,6 +84,22 @@
       "pr": 597,
       "recorded_at": "2026-10-17T10:26:34+00:00",
       "rule": "yaml-comment-grant-check"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4302475427",
+      "note": "owner/repo allowlist now accepts a leading dot; fixed in 9827c2d6",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 598,
+      "recorded_at": "2026-10-17T11:32:05+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4302494064",
+      "note": "valid; tracked as issue 590, outside this PR",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 598,
+      "recorded_at": "2026-10-17T11:32:05+00:00"
     }
   ]
 }
