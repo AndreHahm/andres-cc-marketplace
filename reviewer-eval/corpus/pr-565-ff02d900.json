@@ -23,7 +23,7 @@
       "rule": "skills",
       "label": "true",
       "source": "owner",
-      "note": "inferred: minor docs/mode mismatch; owner to confirm",
+      "note": "owner: confirmed true, non-executable test file named as a runnable maintainer check",
       "known_issue": "k1"
     },
     {
