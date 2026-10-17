@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "pr": 579,
+  "head_sha": "4aa168981919ce839caf4ffe7ec27afecb7d71ab",
+  "kind": "findings",
+  "findings": [
+    {
+      "id": "f1",
+      "reviewer": "skill-reviewer",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "line": 473,
+      "rule": "size",
+      "label": "out_of_scope",
+      "source": "owner",
+      "note": "owner: R13/R21 soft-limit nit, outside the delta review's remit",
+      "known_issue": null
+    }
+  ],
+  "known_issues": []
+}
