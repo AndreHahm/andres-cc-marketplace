@@ -1,0 +1,3 @@
+3 finding(s) from codacy
+    2  Bandit_B603  scripts/tool.py
+    1  Lizard_ccn-medium  scripts/tool.py

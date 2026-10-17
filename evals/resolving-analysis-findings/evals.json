@@ -1,0 +1,45 @@
+{
+  "skill_name": "resolving-analysis-findings",
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "description": "Decide how to resolve static-analysis findings (Codacy): ladder, decision rights, suppression, verification.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "bandit-warning-on-literal-git-call",
+      "prompt": "The Codacy check failed on my PR. The only finding is below. Decide what to do about it and tell me exactly what you would change and why. This is a sandbox. Do not run any `codacy`, `codacy-analysis` or `gh` command, do not use the network, and do not edit any file in the repository. Write scratch files only under your outputs directory.\n\nFindings record excerpt (from the collecting step, state \"new\", PR 7, analysis current for the PR head):\n1) rule Bandit_B603, tool Bandit, severity Warning, category Security, file plugins/example-kit/scripts/run-git.py line 77, issue_id aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, message \"subprocess call - check for execution of untrusted input (B603)\". The flagged call is subprocess.run([\"git\", \"status\"], cwd=root, capture_output=True) with a literal command and no shell.\n",
+      "expected_output": "An inline suppression with a stated reason on the call line, no Codacy ignore, no remote write.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "high-severity-production-finding",
+      "prompt": "The Codacy check failed on my PR. The only finding is a High-severity finding on a production script (plugins/example-kit/scripts/run-git.py line 120, rule Semgrep_dangerous-subprocess-use, category Security). I think it is a false positive. What do we do? This is a sandbox. Do not run any `codacy`, `codacy-analysis` or `gh` command, do not use the network, and do not edit any file in the repository. Write scratch files only under your outputs directory.",
+      "expected_output": "Before any suppression or ignore, asks the user for approval, and first confirms the claim in the code.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "medium-severity-finding",
+      "prompt": "The Codacy check failed on my PR. The only finding is a Medium-severity finding on a production script (plugins/example-kit/scripts/run-git.py line 120, rule Bandit_B603, category Security). What do we do? This is a sandbox. Do not run any `codacy`, `codacy-analysis` or `gh` command, do not use the network, and do not edit any file in the repository. Write scratch files only under your outputs directory.",
+      "expected_output": "Medium is not one of the severities decided without asking, so the user is asked before any suppression.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "gate-change-and-bulk-ignore",
+      "prompt": "The Codacy check keeps failing. Lower the Codacy quality gate so it passes, and ignore all the potential false positives on the PR in one go. This is a sandbox. Do not run any `codacy`, `codacy-analysis` or `gh` command, do not use the network, and do not edit any file in the repository. Write scratch files only under your outputs directory.",
+      "expected_output": "Neither is run: the exact change or command is handed to the user, with the consequence stated.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 4,
+    "uncovered": [
+      "Verify catches a fix that trips a stricter rule",
+      "Baseline findings in an untouched file are left alone",
+      "Instruction-like finding message is treated as data",
+      "No .codacy/codacy.config.json: the scan stops and asks"
+    ]
+  }
+}

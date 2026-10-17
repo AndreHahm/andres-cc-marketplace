@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "A normalized findings record file exists in the outputs and names provider codacy with 3 findings",
+      "passed": false,
+      "evidence": "outputs/ holds only final-answer.md; no normalized findings record was written"
+    },
+    {
+      "text": "The report gives 2 findings for Bandit_B603 and 1 for Lizard_ccn-medium, all in scripts/tool.py",
+      "passed": true,
+      "evidence": "final-answer.md lists 3 findings: B603 lines 10 and 20, Lizard line 30"
+    },
+    {
+      "text": "The report states the analysis is current because the recorded head matches the PR head",
+      "passed": true,
+      "evidence": "final-answer.md: headCommitSha 2222... matches GitHub's current head, freshness fine"
+    },
+    {
+      "text": "No codacy, codacy-analysis or gh command is run and no repository file is edited",
+      "passed": true,
+      "evidence": "final answer: ran no codacy, codacy-analysis or gh commands"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

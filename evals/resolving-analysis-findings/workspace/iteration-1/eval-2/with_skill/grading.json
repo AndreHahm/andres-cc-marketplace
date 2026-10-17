@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "passed": true,
+      "evidence": "final answer: even the inline suppression needs an AskUserQuestion (High is not Minor/Info/Warning); question with 3 options written, none applied"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "passed": true,
+      "evidence": "final answer: 'read line 120 and what feeds it before choosing'"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "final answer: no edit, no codacy/gh command"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
