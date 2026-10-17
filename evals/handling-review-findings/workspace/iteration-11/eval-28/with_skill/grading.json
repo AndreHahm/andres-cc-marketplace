@@ -1,0 +1,26 @@
+{
+  "eval_id": 28,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs ledger promote for PR 613 before the last push, moving entries into the tracked .claude/review-outcomes.json",
+      "passed": true,
+      "evidence": "'Run git-review-ledger.py promote --pr 613' before the last push; moves entries into .claude/review-outcomes.json."
+    },
+    {
+      "text": "Stages the tracked file with the pending final fix commit; with no pending fix commit, commits it alone via Skill(commit) --push and says it is a records-only commit that changes the head SHA",
+      "passed": true,
+      "evidence": "Staged together with the final fix commit via Skill(commit) --push; alone if none pending, 'a records-only commit... It still changes the head SHA'."
+    },
+    {
+      "text": "Explains that promoting after merge would leave an uncommitted change because main cannot take a direct commit",
+      "passed": true,
+      "evidence": "'A merged PR leaves main unable to take a direct commit, so... nowhere to land the tracked file'. 'Uncommitted change' paraphrased."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

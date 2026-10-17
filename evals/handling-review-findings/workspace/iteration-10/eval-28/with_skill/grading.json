@@ -1,0 +1,26 @@
+{
+  "eval_id": 28,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs ledger promote for PR 613 before the last push, moving entries into the tracked .claude/review-outcomes.json",
+      "passed": true,
+      "evidence": "decision.md 'How': \"Run the ledger script ... promote --pr 613 ... before Skill(commit) --push\"; 'Where': tracked file is .claude/review-outcomes.json."
+    },
+    {
+      "text": "Stages the tracked file with the pending final fix commit; with no pending fix commit, commits it alone via Skill(commit) --push and says it is a records-only commit that changes the head SHA",
+      "passed": true,
+      "evidence": "decision.md 'Where': stage it with the final fix commit, one commit and one push; 'If there were no pending fix commit': \"Commit .claude/review-outcomes.json alone via Skill(commit) --push ... records-only commit ... It still changes the head SHA\"."
+    },
+    {
+      "text": "Explains that promoting after merge would leave an uncommitted change because main cannot take a direct commit",
+      "passed": true,
+      "evidence": "decision.md 'Why not promote after merging': \"A merged PR leaves main unable to take a direct commit, so a post-merge promotion has nowhere to land.\" The cause matches; 'uncommitted change' is paraphrased as 'nowhere to land' (semantic equivalence)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

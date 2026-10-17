@@ -1,0 +1,26 @@
+{
+  "eval_id": 26,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops after iteration 2: no third iteration",
+      "passed": true,
+      "evidence": "decision.md, 'Third iteration': \"No. The budget is at most 2 self-review iterations per finding... the budget is spent. I do not loop further.\""
+    },
+    {
+      "text": "Does not push, reply or resolve, and does not claim the fix is verified",
+      "passed": true,
+      "evidence": "decision.md, 'Push, reply, resolve': \"None of the three\"; no reply because \"verification did not fully pass\"; ledger section says the fix is \"unpushed and unverified clean\"."
+    },
+    {
+      "text": "Reports the remaining blocking finding to the user and leaves the finding open (accepted only if the user directs)",
+      "passed": true,
+      "evidence": "decision.md, 'What I tell the user': lists iteration 2's blocking finding B with evidence, then asks via AskUserQuestion; 'Ledger disposition': no entry, or accepted only 'as the user directs'; 'Thread status': open and unresolved."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

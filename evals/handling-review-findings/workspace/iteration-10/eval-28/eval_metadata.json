@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-28",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs ledger promote for PR 613 before the last push, moving entries into the tracked .claude/review-outcomes.json",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Stages the tracked file with the pending final fix commit; with no pending fix commit, commits it alone via Skill(commit) --push and says it is a records-only commit that changes the head SHA",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Explains that promoting after merge would leave an uncommitted change because main cannot take a direct commit",
+      "type": "functionality",
+      "target": "response"
+    }
+  ]
+}
