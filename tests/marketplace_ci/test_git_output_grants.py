@@ -64,6 +64,24 @@ def _baseline(repo: Path, entries: list[str]) -> None:
         "allowed-tools: Bash(g''it diff:*)",
         "allowed-tools: Bash(GIT diff:*)",
         "allowed-tools: Bash(/usr/bin/git diff:*)",
+        "allowed-tools: Bash(git difftool:*)",
+        "allowed-tools: Bash(git bisect:*)",
+        "allowed-tools: Bash(git bisect view:*)",
+        "allowed-tools: Bash(git bisect visualize *)",
+        "allowed-tools: Bash(git bisect *)",
+        "allowed-tools: Bash(git bisect vis*)",
+        "allowed-tools: Bash(git -C /path/to/repo:*)",
+        "allowed-tools: Bash(git -c core.pager=cat:*)",
+        "allowed-tools: Bash(git --git-dir .git:*)",
+        "allowed-tools: Bash(git --attr-source HEAD diff:*)",
+        "allowed-tools: Bash(git diff --*)",
+        "allowed-tools: Bash(git log --grep 'a -- b' *)",
+        "allowed-tools: Bash(git log --grep a\\ --\\ b *)",
+        "allowed-tools: Bash(git diff --output --:*)",
+        "allowed-tools: Bash(git log --author git HEAD *)",
+        "allowed-tools: Bash(git log --grep=')' :*)",
+        "allowed-tools: Bash(git log --someflag -- :*)",
+        "allowed-tools: Bash(echo %(x), Bash(git diff:*)",
     ],
 )
 def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
@@ -79,7 +97,10 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
         "allowed-tools: Bash(git log -n 5 --oneline --:*)",
         "allowed-tools: Bash(git log -- docs/ci.md:*)",
         "allowed-tools: Bash(git log -- --output=/tmp:*)",
-        "allowed-tools: Bash(git status:*) Bash(git difftool:*)",
+        "allowed-tools: Bash(git status:*) Bash(git difftoolx:*)",
+        "allowed-tools: Bash(git bisect start:*) Bash(git bisect good:*) Bash(git bisect log:*)",
+        "allowed-tools: Bash(git bisect reset:*) Bash(git bisect bad:*)",
+        "allowed-tools: Bash(git log -1 -- :*)",
         "allowed-tools: Bash(git add diff.txt:*)",
         "allowed-tools: Bash(git -C /tmp status:*)",
         "allowed-tools: Bash(git diff-tree --no-commit-id --)",
@@ -141,11 +162,20 @@ def test_byte_order_mark_does_not_hide_the_frontmatter(tmp_path: Path) -> None:
     assert find_wildcard_git_grants(tmp_path) == {f"{path}::git diff:*"}
 
 
+def test_symlinked_component_fails_closed(tmp_path: Path) -> None:
+    path = _skill(tmp_path, "real", "allowed-tools: Read")
+    link = tmp_path / "plugins" / "p" / "skills" / "linked" / "SKILL.md"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(tmp_path / path)
+    assert [v.key for v in find_violations(tmp_path)] == ["plugins/p/skills/linked/SKILL.md"]
+
+
 @pytest.mark.parametrize(
     "frontmatter",
     [
         "allowed-tools: Read\nallowed-tools: Bash(git diff:*)",
         "---x: 1\nallowed-tools: Bash(git diff:*)",
+        "description: |\n  text\n  ---\nallowed-tools: Bash(git diff:*)",
     ],
 )
 def test_ambiguous_frontmatter_fails_closed(tmp_path: Path, frontmatter: str) -> None:

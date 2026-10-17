@@ -773,8 +773,13 @@ The script verifiers (`review_verifiers.py`) are on it too: they feed the blocki
 able to weaken its own verifier (see [Script verifiers](#script-verifiers)).
 The baseline of wildcard git tool grants (`git_output_grants_baseline.json`) is on it as well: `marketplace-parity`'s
 `check-git-output-grants` reads it from the PR's own checkout, so without this a PR could add a grant that
-permits `--output=<path>` (a write to any file) together with its own baseline entry and pass. The checker
-module itself (`git_output_grants.py`) is not on the list and stays editable by the PR.
+permits `--output=<path>` (a write to any file) together with its own baseline entry and pass. A PR that
+scopes a baselined grant must delete its baseline entry, so it needs the manual attestation too. The checker
+module itself (`git_output_grants.py`) is not on the list and stays editable by the PR: weakening it is a
+deliberate, visible code change that gets the normal automated review (it sits under `scripts/`, which never
+qualifies for the automatic bypass), unlike appending one allowlist line, and listing it would force an
+attestation for every fix to the checker. Running it from a base-SHA-restored copy, as `prefix-permanence`
+does for its own checks, would close that gap and has not been done.
 
 Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
 including the Node files and the uv/Python-version config, and the shadow checks above), because
@@ -845,7 +850,7 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   `scripts/marketplace_ci/token_shapes.json` and the byte-identical `codex-kit` copy
   `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`, and the documented-exceptions registry
   `scripts/marketplace_ci/review_exceptions.yaml`, and the baseline of tolerated wildcard git tool grants
-  `scripts/marketplace_ci/git_output_grants_baseline.json`. The canonical file is copied into
+  `scripts/marketplace_ci/git_output_grants_baseline.json`. The canonical `token_shapes.json` is copied into
   `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
   drifted copy, and `sync-token-shapes` rewrites the copies (run `sync-plugin-mirrors` after it so
   the `.claude/` mirrors follow). Edit the canonical file only.
