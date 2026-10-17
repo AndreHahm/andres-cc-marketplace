@@ -39,8 +39,9 @@ in progress? If yes, stay here; if no, defer to that skill.
 **Exception — conflicts that exist only on GitHub:** a PR branch can report `mergeable: CONFLICTING` /
 `mergeStateStatus: DIRTY` while the local tree is clean, with nothing unmerged on disk. That is this
 skill's job, not `resolving-merge-conflicts`': the rebase in Step 5 is what puts the conflicts on disk.
-`resolving-merge-conflicts` Step 1a gives the read-only preview of which files will conflict; start the
-rebase from the clean tree and resolve in Step 6. Never use a trial merge or a plain `git merge` of the
+`resolving-merge-conflicts` Step 1a can preview which files will conflict, but the preview is optional;
+if you arrived from it, don't dispatch back to it. Start the rebase from the clean tree and resolve in
+Step 6. Never use a trial merge or a plain `git merge` of the
 base into the branch — it adds a merge commit, which a rebase-merge PR cannot take.
 
 **Arguments:** $ARGUMENTS — optionally, an explicit base branch to rebase onto (e.g. passed through from `/git-sync-branch <target>`). When given, use it directly as `{base_branch}` in Step 1 instead of querying GitHub's default branch.
@@ -85,7 +86,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
 ### 2) Preflight safety checks
 - Ensure the working tree is clean and there is no operation in progress:
   - `git status`
-- If `git status` indicates an in-progress merge/rebase/cherry-pick, stop and ask what to do (abort vs continue).
+- If `git status` shows a rebase of this branch already in progress, skip Steps 2-5 and go to Step 6. For an in-progress merge or cherry-pick, stop and ask what to do (abort vs continue) and point at `resolving-merge-conflicts`.
 
 ### 3) Create a local backup ref (do not push)
 - Create an annotated tag at current `HEAD`:

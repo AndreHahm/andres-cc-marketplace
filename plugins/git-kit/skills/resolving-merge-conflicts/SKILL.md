@@ -9,7 +9,7 @@ description: >-
   outside an active rebase. Not for conflicts hit mid-`git rebase` -- those have their own safety
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
   that skill instead. Also previews a PR conflict that exists only on GitHub (clean local tree)
-  read-only, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
+  with no worktree change, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
 allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin:*), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit)
 ---
 
@@ -137,7 +137,9 @@ middle of a long function, for example), inspect each side's full version direct
 
 When `git status` is clean but a PR conflicts with its base on GitHub, don't start a trial merge or a plain
 merge to put the conflict on disk. The conflicts exist only on the remote and appear on disk only once
-the rebase starts. Preview them read-only, report the conflicted files, then route to `git-rebase-sync`:
+the rebase starts. Preview them (no worktree or index change; `git fetch` updates remote-tracking refs and
+`git merge-tree` writes objects), report the conflicted files, then route to `git-rebase-sync`, the entry
+point for "sync/rebase" wording; this skill is the entry for "resolve the conflicts on PR #N":
 
 ```bash
 gh pr view <number> --json mergeable,mergeStateStatus
