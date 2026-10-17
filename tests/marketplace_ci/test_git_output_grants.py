@@ -43,11 +43,19 @@ def _baseline(repo: Path, entries: list[str]) -> None:
         "allowed-tools: Bash(git diff-index:*)",
         "allowed-tools: Bash(git diff-files:*)",
         "allowed-tools: Bash(git whatchanged:*)",
+        "allowed-tools: Bash(git:*)",
+        "allowed-tools: Bash(git *)",
+        "allowed-tools: Bash(git -C:*)",
+        "allowed-tools: Bash(git --no-pager *)",
+        "allowed-tools: Bash(git diff*)",
+        "allowed-tools: Bash(git d*)",
+        "allowed-tools: Bash(git diff --src-prefix='safe':*)",
+        'allowed-tools: Bash(git log --format="%H":*)',
     ],
 )
 def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
     path = _skill(tmp_path, "s", tools)
-    assert any(key.startswith(f"{path}::git ") for key in find_wildcard_git_grants(tmp_path))
+    assert any(key.startswith(f"{path}::git") for key in find_wildcard_git_grants(tmp_path))
 
 
 @pytest.mark.parametrize(
@@ -59,6 +67,10 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
         "allowed-tools: Bash(git add diff.txt:*)",
         "allowed-tools: Bash(git -C /tmp status:*)",
         "allowed-tools: Bash(git diff-tree --no-commit-id --)",
+        "allowed-tools: Bash(git status *) Bash(git commit -m *)",
+        "allowed-tools: Bash(git add*)",
+        "allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-stage-selected-files.sh:*)",
+        "allowed-tools: Bash(digit *)",
         "allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
     ],
 )
