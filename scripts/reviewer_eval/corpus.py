@@ -86,7 +86,9 @@ def _validate_findings(case: dict, known_ids: set[str]) -> list[str]:
             errors.append(f"{where}: note must be a string")
         link = finding.get("known_issue")
         if link is not None:
-            if link not in known_ids:
+            if not isinstance(link, str):
+                errors.append(f"{where}: known_issue must be a string or null")
+            elif link not in known_ids:
                 errors.append(f"{where}: known_issue {link!r} is not a known issue of this case")
             elif finding.get("label") != "true":
                 errors.append(f"{where}: a finding linked to a known_issue must be labelled true")

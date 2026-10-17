@@ -275,6 +275,15 @@ def test_a_result_whose_provenance_names_another_head_is_rejected(tmp_path):
     assert "provenance" in report.failed[0]
 
 
+@pytest.mark.parametrize("provenance", ["forged", ["x"], 7, None])
+def test_a_result_whose_provenance_is_not_an_object_is_rejected(tmp_path, provenance):
+    forged = _result_zip({"status": "clean", "provenance": provenance})
+    fake = _Fake([_artifact(1, HEAD_A, 10)], [HEAD_A], {1: forged})
+    report = archive.archive_pr(579, tmp_path, fake)
+    assert report.written == 0
+    assert "provenance" in report.failed[0]
+
+
 def test_a_result_without_provenance_is_kept(tmp_path):
     """Results before the provenance field existed carry none."""
     fake = _Fake([_artifact(1, HEAD_A, 10)], [HEAD_A], {1: _result_zip({"status": "clean"})})
@@ -344,6 +353,36 @@ def test_parse_artifact_lines_reads_gh_jq_output():
 def test_parse_artifact_lines_rejects_a_malformed_line():
     with pytest.raises(archive.ArchiveError):
         archive.parse_artifact_lines('{"id":1}\nnot json\n')
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("size_in_bytes", None),
+        ("size_in_bytes", "big"),
+        ("id", True),
+        ("run_id", "10"),
+        ("expired", "no"),
+        ("head_sha", 5),
+        ("head_branch", None),
+        ("repository_id", "1"),
+        ("head_repository_id", "1"),
+    ],
+)
+def test_parse_artifact_lines_rejects_a_mistyped_field(field, value):
+    row = _artifact(1, HEAD_A, 10)
+    row[field] = value
+    with pytest.raises(archive.ArchiveError, match=field):
+        archive.parse_artifact_lines(json.dumps(row) + "\n")
+
+
+def test_a_deleted_fork_has_no_head_repository_and_is_not_selected():
+    """GitHub reports a null head_repository_id once the fork is deleted; that must not abort the
+    listing, and such a run is not this repository's."""
+    row = _artifact(1, HEAD_A, 10)
+    row["head_repository_id"] = None
+    parsed = archive.parse_artifact_lines(json.dumps(row) + "\n")
+    assert archive.select_artifacts(parsed, {HEAD_A}, "feat") == ([], [])
 
 
 def test_parse_artifact_lines_rejects_a_row_missing_a_field():
