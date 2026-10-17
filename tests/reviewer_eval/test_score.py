@@ -122,6 +122,9 @@ def test_blocking_set_is_the_reviewers_blocking_findings_only():
 @pytest.mark.parametrize(
     "result",
     [
+        [],
+        "result",
+        None,
         {},
         {"findings": "none"},
         {"findings": [["a.py", 1]]},

@@ -51,19 +51,10 @@ means something once known issues are established independently of the findings.
   "head_sha": "<40 lowercase hex characters>",
   "kind": "findings",
   "findings": [
-    {
-      "id": "f1",
-      "reviewer": "security",
-      "path": "plugins/git-kit/scripts/git-review-ledger.py",
-      "line": 38,
-      "rule": null,
-      "label": "true",
-      "source": "ledger",
-      "note": "",
-      "known_issue": "k1"
-    }
+    {"id": "f1", "reviewer": "security", "path": "scripts/git-review-ledger.py", "line": 38,
+     "rule": null, "label": "true", "source": "ledger", "note": "", "known_issue": "k1"}
   ],
-  "known_issues": [{"id": "k1", "path": "plugins/git-kit/scripts/git-review-ledger.py", "description": ""}]
+  "known_issues": [{"id": "k1", "path": "scripts/git-review-ledger.py", "description": ""}]
 }
 ```
 

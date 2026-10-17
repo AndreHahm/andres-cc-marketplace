@@ -67,6 +67,8 @@ def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None
 
     The result is untrusted CI output, so a missing or mistyped field is a clear `ValueError`.
     """
+    if not isinstance(result, dict):
+        raise ValueError("archived result: must be a JSON object")
     findings = result.get("findings")
     if not isinstance(findings, list):
         raise ValueError("archived result: findings must be a list")
