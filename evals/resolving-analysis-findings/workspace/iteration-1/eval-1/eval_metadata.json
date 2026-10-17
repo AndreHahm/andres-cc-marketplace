@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Chooses an inline suppression (a nosec comment naming the rule id) as the resolution",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The suppression carries a stated reason about the literal command, list arguments and no shell",
+      "type": "quality",
+      "target": "final answer"
+    },
+    {
+      "text": "Says no remote Codacy write is needed or run (no ignore command)",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Does not replace the bare git command with an absolute path",
+      "type": "quality",
+      "target": "final answer"
+    }
+  ]
+}

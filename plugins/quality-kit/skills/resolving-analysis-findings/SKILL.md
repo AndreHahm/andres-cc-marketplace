@@ -173,10 +173,15 @@ rationale rather than restating it.
 
 ## Testing & Validation
 
-No `evals/` suite exists yet. `scripts/smoke_test.py` checks this skill's structure, grants, ladder and
+**Eval evidence:** `evals/resolving-analysis-findings/evals.json`, 4 scenarios, Full Pipeline iteration 1,
+2026-10-17: with skill 13 of 13 assertions, baseline 9 of 13 (mean per-eval rate 72.9%, +27.1 points). What
+separates the arms: the inline suppression chosen over a remote dismissal (eval 1, where the baseline chose a
+remote write) and the hand-over of the gate change and bulk flag (eval 4). Evals 2 and 3 (High and Medium
+asks) pass for both arms. 4 of the 8 scenarios below are covered; the rest are checked by following this file.
+`scripts/smoke_test.py` checks this skill's structure, grants, ladder and
 decision-rights invariants, the one-way dependency and the `# nosec` syntax across its references,
 `docs/ci.md` and the git-kit scripts (run by the maintainer with the interpreter's `-I -B` flags). The
-scenarios below were followed once by a test agent in a read-only dry run, not end to end against Codacy. This skill makes decisions that depend on
+scenarios were followed in read-only sandbox runs, not end to end against Codacy. This skill makes decisions that depend on
 whether Codacy honors an inline suppression, which only a push and a Cloud re-check can confirm.
 
 **Last dated run record:** 2026-10-17: `scripts/smoke_test.py` 34 of 34 checks passed, and 8 deliberate

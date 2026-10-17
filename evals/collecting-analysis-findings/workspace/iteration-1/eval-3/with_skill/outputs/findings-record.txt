@@ -1,0 +1,3 @@
+2 finding(s) from codacy
+    1  Bandit_B404  scripts/tool.py
+    1  Semgrep_example  scripts/other.py

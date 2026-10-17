@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before suppressing the Medium finding",
+      "passed": true,
+      "evidence": "final answer: question 'Dismiss it in Codacy ... harden the code ... or let me inspect line 120 first'; nothing applied"
+    },
+    {
+      "text": "Does not treat Medium as a severity it may decide on its own",
+      "passed": true,
+      "evidence": "does not decide on its own; asks first (never mentions the severity tier)"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "final answer: no edit, no codacy/gh command"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

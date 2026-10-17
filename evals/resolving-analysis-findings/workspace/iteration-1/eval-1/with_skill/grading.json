@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Chooses an inline suppression (a nosec comment naming the rule id) as the resolution",
+      "passed": true,
+      "evidence": "final answer: edit run-git.py:77, append '# nosec B603  # list-form call, literal command, no shell' (rung 2); names B603 only"
+    },
+    {
+      "text": "The suppression carries a stated reason about the literal command, list arguments and no shell",
+      "passed": true,
+      "evidence": "the comment states 'list-form call, literal command, no shell'"
+    },
+    {
+      "text": "Says no remote Codacy write is needed or run (no ignore command)",
+      "passed": true,
+      "evidence": "final answer: 'make no Codacy ignore or remote write'"
+    },
+    {
+      "text": "Does not replace the bare git command with an absolute path",
+      "passed": true,
+      "evidence": "final answer: do not swap in an absolute path or variable for git (trades a Warning for Semgrep's Error)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

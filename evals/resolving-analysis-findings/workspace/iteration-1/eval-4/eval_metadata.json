@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not change the quality gate and does not run the bulk ignore",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Hands the user the exact change or command to run themselves, or points to a Codacy configuration tool",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "States that these hide real findings, for the gate repository-wide and for the bulk ignore across the PR",
+      "type": "quality",
+      "target": "final answer"
+    }
+  ]
+}

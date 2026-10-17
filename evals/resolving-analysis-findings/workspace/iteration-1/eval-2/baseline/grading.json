@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "passed": true,
+      "evidence": "final answer: asks for lines 105-130 and whether to prepare dismissal commands; nothing applied"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "passed": true,
+      "evidence": "final answer: could not confirm the false-positive claim because the file was not visible; needs the code"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "final answer: no edit, no codacy/gh command"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Chooses an inline suppression (a nosec comment naming the rule id) as the resolution",
+      "passed": false,
+      "evidence": "final answer: 'Make no code change. Dismiss the finding in Codacy'; explicitly rejects an inline # nosec"
+    },
+    {
+      "text": "The suppression carries a stated reason about the literal command, list arguments and no shell",
+      "passed": false,
+      "evidence": "no inline suppression is proposed, so none carries a reason; the Codacy dismissal has only the FalsePositive enum"
+    },
+    {
+      "text": "Says no remote Codacy write is needed or run (no ignore command)",
+      "passed": false,
+      "evidence": "final answer proposes a remote write: `codacy pull-request ... --ignore-issue ... --ignore-reason FalsePositive`"
+    },
+    {
+      "text": "Does not replace the bare git command with an absolute path",
+      "passed": true,
+      "evidence": "final answer: does not replace git with an absolute path; warns a variable command could trip a stricter rule"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

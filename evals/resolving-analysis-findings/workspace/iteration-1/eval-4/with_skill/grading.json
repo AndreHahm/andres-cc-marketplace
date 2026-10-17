@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not change the quality gate and does not run the bulk ignore",
+      "passed": true,
+      "evidence": "final answer: changed nothing, ran no commands; '-F' not run"
+    },
+    {
+      "text": "Hands the user the exact change or command to run themselves, or points to a Codacy configuration tool",
+      "passed": true,
+      "evidence": "final answer: points to codacy-skills:configure-codacy or the Codacy UI for the gate, and gives the exact -F command for the user to run, never with -y"
+    },
+    {
+      "text": "States that these hide real findings, for the gate repository-wide and for the bulk ignore across the PR",
+      "passed": true,
+      "evidence": "final answer: the gate 'hides real findings everywhere'; the bulk flag covers issues 'none of which would have been checked against the code'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -127,8 +127,12 @@ it needs no grant here. It checks the adapter against synthetic fixtures shaped 
 fail-closed paths, that the adapter imports nothing that can run a process or open a connection, and the
 one-way dependency with `resolving-analysis-findings`.
 
-No `evals/` suite exists: the skill is a thin wrapper around a deterministic script, so the smoke test
-(adapter on fixtures, fail-closed paths) is the test, and the currency path below is a documented scenario.
+**Eval evidence:** `evals/collecting-analysis-findings/evals.json`, 4 scenarios (current PR, stale head,
+instruction-like message, unknown shape), Full Pipeline iteration 1, 2026-10-17: with skill 14 of 14
+assertions, baseline 12 of 14 (mean per-eval rate 87.5%, +12.5 points). Only 2 assertions separate the arms
+(the normalized record file, and reporting that a repository list has no issue id or tool name). The
+stale-head, injection and unknown-shape evals pass for both arms, so they guard the documented behavior and
+do not show an uplift. The adapter's own behavior is covered by the smoke test.
 
 **Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 40 of 40 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list.
