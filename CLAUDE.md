@@ -103,6 +103,8 @@ plugin the user may have installed from another marketplace — not one shipped 
 
 **For a genuine false positive or test-only code, use Codacy's own issue-management instead of chasing it with code changes**: `codacy pull-request ... --ignore-issue <id> --ignore-reason <FalsePositive|NotExploitable|TestCode|AcceptedUse|ExternalCode>`. `.codacy.yml`'s `exclude_paths` can only exclude a whole file from a whole engine (never a single rule on an otherwise-scanned file), so it's only appropriate for structurally false-positive-prone code (test harnesses, fixtures) — never as a workaround for one specific finding on production code.
 
+**Default procedure:** the `quality-kit` plugin's `collecting-analysis-findings` (gather a PR's findings into one record) and `resolving-analysis-findings` (decide fix, inline suppression, per-issue ignore, path exclusion, or hand-over) are this repo's default for the steps above. Their ladder prefers an inline suppression with a reason (rung 2) for an accepted shape such as `git` through `subprocess` (decided in `docs/ci.md`), and uses the per-issue ignore above (rung 3) for test or external code and for a suppression Codacy did not honor. The paragraph above is an explicit instruction that takes precedence where the two differ, and the skill discloses the difference when it follows it.
+
 ## Marketplace-Specific: Prefer Skills, Never Fork
 
 See `.claude/rules/prefer-skills-over-ad-hoc-work.md` (prefer a listed skill over ad hoc work) and
