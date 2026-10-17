@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {
+      "text": "Plans to ask the user (Apply or Skip) before invoking Skill(context-mode)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Plans to invoke Skill(context-mode) with exactly the value ship only after the user chooses Apply, not before",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never plans to use the replace word",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

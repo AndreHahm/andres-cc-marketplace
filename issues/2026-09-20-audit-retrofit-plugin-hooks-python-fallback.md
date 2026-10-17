@@ -32,3 +32,5 @@ resilience/consistency, not a currently-observed failure.
   other plugins to match it.
 - Known starting point: `plugins/context-kit/hooks/hooks.json`'s `SessionStart` hook
   (`python3 || python`, no `uv` tier, no graceful degradation).
+
+> Note (2026-10-16): the `detect_mode.py` hook cited above was removed by the `context-mode` refactor; it remains valid as the example found at the time.

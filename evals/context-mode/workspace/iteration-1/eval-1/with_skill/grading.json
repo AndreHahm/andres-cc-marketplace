@@ -2,9 +2,25 @@
   "eval_id": 1,
   "configuration": "with_skill",
   "assertions_evaluated": [
-    {"text": "Response explicitly states a mode switch to 'ship' (e.g. contains 'ship' and 'activated')", "passed": true, "evidence": "Line 1: '[Context-Mode] ship activated — supersedes any previously active mode.'"},
-    {"text": "Response never switches silently -- the switch is stated plainly, not just implied", "passed": true, "evidence": "The activation statement is the very first line of the response, before any other content."},
-    {"text": "Response reflects ship mode's higher confirmation-bar posture (mentions confirming before a risky/visible action)", "passed": true, "evidence": "'Very low risk tolerance at the actual publish step... I'll confirm explicitly before it happens, even if a similar action was already approved earlier in the session.'"}
+    {
+      "text": "Plans exactly one script invocation whose only argument is the word ship (no extra words or characters)",
+      "passed": true,
+      "evidence": "Single command with only the word ship: `set_mode.py\" ship`."
+    },
+    {
+      "text": "States plainly, after running it, that the ship mode is active",
+      "passed": true,
+      "evidence": "\"Context mode `ship` is now active for this session.\""
+    },
+    {
+      "text": "Does not plan to read references/ship.md or any profile file directly instead of running the script",
+      "passed": true,
+      "evidence": "Runs the script; never plans to read references/ship.md."
+    }
   ],
-  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
 }

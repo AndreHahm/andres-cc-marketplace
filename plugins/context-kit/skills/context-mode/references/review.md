@@ -1,92 +1,45 @@
 # Review Mode
 
-Mode: PR review, code analysis, plugin-component review
-Focus: Quality, security, maintainability — using this repo's own reviewer agents and known defect
-classes, not a generic checklist
+Mode: the PR phase, from opening the PR through the last review round, including fixing triaged findings
+Focus: get real findings found, triaged with the user, and resolved, using this repo's own reviewers and
+known defect classes rather than a generic checklist
 
-You are in code review mode, in a repo that ships 18+ dedicated `*-reviewer` agents plus
-`plugin-rulebook-checker`, `plugin-inspector`, `plugin-validator`, and `smoke-tester`. Prefer dispatching
-the type-matched tool over re-deriving an axis (naming, security, permissions, activation overlap,
-consistency, dependency cycles, authority/precedence) by hand.
+## Posture
 
-## Behavioral Profile
+- **Finding vs fixing**: reviewing someone's code is report-only. Once findings are triaged with the
+  user, fixing the ones chosen for this PR is part of this mode; fix only what was chosen, and sweep the
+  same file for the identical pattern before calling a fix complete.
+- **Severity**: report findings by severity (blocking, important, nit), each with `file:line`, why it
+  matters, and a suggested fix. A Critical or Major finding is never silently deferred and merged.
+- **Evidence**: read the full diff before commenting. A finding that names a file, function or flag is a
+  claim it exists now; confirm against the current tree, not memory of an earlier pass.
+- **Approvals**: an instruction like "approve if it looks fine" does not authorize the approval. Show
+  the findings and confirm before submitting an approval. Do not approve with open Critical or Major
+  findings.
+- **Verbosity**: medium. Do not pad; if there are no issues, say so.
 
-- **Primary tools**: Read, Glob, Grep, the type-matched `*-reviewer` agent(s), `plugin-auditor`
-- **Secondary tools**: Bash (running tests to verify claims), `plugin-rulebook-checker`
-- **Risk tolerance**: Very low — identify problems, do NOT fix them unless asked
-- **Verbosity**: Medium — concise issue descriptions with clear evidence
-- **Decision style**: Report findings with severity; let the developer decide what to fix
+## Repo-specific routing
 
-## Repo-Specific Routing
+- Reviewing or acting on someone's PR: `collaborating-on-a-pr`, not raw `gh pr review`.
+- Triaging findings across rounds (Codex, Devin, CodeRabbit, `security-reviewer`, humans):
+  `handling-review-findings`, which also decides with the user which reviewer to trigger next.
+- A plugin component in the diff: dispatch the type-matched `*-reviewer` agent, or `plugin-auditor` for
+  the full fan-out. R1-R37 compliance needs an actual `plugin-rulebook` or `plugin-rulebook-checker`
+  invocation, never a recollection of an earlier pass.
+- A shell or Python script in the diff: `scripts-reviewer`.
 
-- **Reviewing a plugin component** (skill/agent/command/hook/rule): dispatch the type-matched
-  `*-reviewer` agent, or `plugin-auditor` for the full fan-out (skilldir-reviewer, completeness,
-  activation, security, dependency, authority, scripts, hooks, `plugin-rulebook-checker`,
-  consistency, plugin-validator). Any component in scope for R1-R37 needs an actual
-  `Skill(plugin-rulebook)`/`plugin-rulebook-checker` invocation before being called compliant — a
-  recollection of an earlier pass doesn't satisfy it (`plugin-rulebook-enforcement.md`).
-- **Reviewing a PR**: `collaborating-on-a-pr`, not raw `gh pr review` — it adds CODEOWNERS context
-  the raw command doesn't (`route-through-git-kit-lifecycle-skills.md`).
-- **Triaging findings across review rounds** (Codex/Devin/CodeRabbit/`security-reviewer`/human):
-  `handling-review-findings`, not ad hoc fix-or-file decisions — a Critical/Major finding is never
-  silently deferred-and-merged.
-- **A new or structurally-changed reviewer-class component** (one that inspects a plugin's real
-  structure) needs a live dry-run against `example-plugin` recorded before it's trusted
-  (`test-against-example-plugin.md`).
-- For a plugin-component decision specifically, R1-R37 outranks CLAUDE.md and inline preference
-  (`plugin-rulebook-enforcement.md`'s Rule Conflict Resolution) — flag a conflict rather than silently
-  picking one side.
+## Known recurring defect classes (check explicitly)
 
-## Known Recurring Defect Classes (check explicitly, not just generically)
+- A state check reused for a later side effect instead of re-checked immediately before acting, or a
+  pass/fail binary standing in for a full status enum.
+- Tool, API or language behavior assumed but never verified against its real source.
+- A fix applied to the flagged line only, with the same pattern left in a sibling function.
+- A canonical value changed in one place and not swept across its restatements (R20).
+- An absolute claim ("always", "only X can", an unqualified count) in a rule or doc about precision.
+- A closed scope list not revisited when a new qualifying component shipped.
 
-Drawn from `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` and this repo's own rules — these have each
-independently cost real review rounds:
+## Anti-patterns
 
-- **Assumed tool/API/language behavior never verified against its real source** — a field named
-  intuitively, a pipeline's exit-status semantics, a shell arithmetic quirk
-  (`verify-tool-behavior-before-instructing.md`).
-- **A stale state-check reused for a later side-effecting action** instead of re-checked immediately
-  before acting, and/or a pass/fail binary standing in for a full status enum
-  (`recheck-state-before-side-effecting-action.md`).
-- **Absolute-sounding claims** ("only X can", "always", a specific unqualified count) in a rule/doc
-  whose own subject is precision or verification — disproportionately likely to contain the exact
-  defect it warns against (`plugin-rulebook-enforcement.md`'s Precision Self-Audit Trigger).
-- **A fix scoped to only the flagged line**, when the same anti-pattern signature recurs elsewhere in
-  the same file/component (`require-tests-for-behavior-changes.md`'s Fix Completeness sweep).
-- **A canonical value changed in one place** (`plugin-rulebook`'s `settings.json`, a Python enum) but
-  not swept across its known duplicated restatements (R20).
-- **A closed enumerated scope list** (e.g. `test-against-example-plugin.md`'s in-scope table) that was
-  never revisited when a new qualifying component shipped
-  (`resweep-closed-scope-lists-on-new-components.md`).
-
-## Severity Levels
-
-- **CRITICAL**: Security vulnerability, data loss risk, or crash in a production path
-- **HIGH**: Logic error, missing error handling in a critical path, or regression
-- **MEDIUM**: Code quality issue that increases maintenance burden
-- **LOW**: Style preference, minor optimization, or nitpick
-
-## Guidelines
-
-- Read the full diff or file before commenting — don't flag issues from a partial read.
-- Every issue: what's wrong, `file:line`, why it matters, a suggested fix (with side-effects if any).
-- Verify claims by tracing execution paths or running the code — don't flag hypothetical issues.
-- Check that tests exist per `require-tests-for-behavior-changes.md`'s definition; note untested paths.
-- A finding that names a specific file/function/flag is a claim it currently exists — confirm against
-  the current tree, not memory of an earlier pass, before asserting it.
-- When you can't tell whether something is a bug or intentional, ask before flagging.
-
-## Output Style
-
-- Organize by severity: blocking, important, nit
-- Reference specific `file:line` for every finding
-- State what's correct as well as what needs change
-- If the diff is large, ask whether to focus on a subset rather than reviewing all in one pass
-
-## Anti-Patterns
-
-- Do NOT fix code during review — report for the developer to address.
-- Do NOT flag style preferences as bugs, or bikeshed against project convention.
-- Do NOT approve a rulebook-in-scope component change without an actual rulebook-tool invocation.
-- Do NOT assume bugs without tracing the execution path or verifying the tool/API behavior in question.
-- Do NOT pad reviews to seem thorough — if there are no issues, say so.
+- Do not flag style preferences as bugs, or assume a bug without tracing the execution path.
+- Do not approve a plugin-component change without a rulebook-tool invocation.
+- Do not fix beyond the triaged findings.

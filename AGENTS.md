@@ -151,6 +151,13 @@ compliance are already enforced in CI.
 - A `SKILL.md` or agent file is instructions another agent will follow — flag guidance written against
   assumed tool/API behavior instead of checked behavior, and a `Bash(...)`/`Skill(...)` call with no
   matching `allowed-tools` grant.
+- Don't flag a missing `AskUserQuestion` grant in `allowed-tools`. It is always callable, so omitting it
+  is correct and listing it is a redundant no-op (an ADVISORY at most). Claude Code's skills docs
+  (code.claude.com/docs/en/skills, "Pre-approve tools for a skill") say `allowed-tools` "does not restrict
+  which tools are available: every tool remains callable", and `plugin-rulebook` records this in
+  `references/frontmatter-corrections.md` (R5) and the R6 completeness exemption. The rule above covers
+  `Bash(...)`/`Skill(...)` calls, not this tool. A finding that claims the frontmatter "denies" or "blocks"
+  `AskUserQuestion` misreads the field.
 - No scratch, test, or temporary files at the repository root (see this file's own "No Scratch Files at
   Repo Root" section above).
 

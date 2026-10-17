@@ -176,6 +176,19 @@ def check_testing_validation_section():
     return True, "Testing & Validation section has all required subsections"
 
 
+def check_context_mode_line():
+    # The scaffold and template carry a "Context mode:" line, and SKILL.md both grants and uses
+    # Skill(context-mode) in the load step (added 2026-10-16 with the manual context-mode design).
+    skill_dir = pathlib.Path(__file__).resolve().parent.parent
+    for rel in ("scripts/create_handoff.py", "references/handoff-template.md"):
+        if "Context mode:" not in (skill_dir / rel).read_text(encoding="utf-8"):
+            return False, f"{rel} has no 'Context mode:' line"
+    text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+    if text.count("Skill(context-mode)") < 2:
+        return False, "SKILL.md must both grant and use Skill(context-mode)"
+    return True, "Context mode line in scaffold and template; Skill(context-mode) granted and used"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -183,6 +196,7 @@ CHECKS = [
     check_bash_grants,
     check_step_sequence,
     check_testing_validation_section,
+    check_context_mode_line,
 ]
 
 

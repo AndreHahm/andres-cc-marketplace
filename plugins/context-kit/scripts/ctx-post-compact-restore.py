@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -83,6 +84,60 @@ def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
     except OSError:
         return False
     return resolved == resolved_base or resolved_base in resolved.parents
+
+
+CONTEXT_MODES = ("admin", "review", "ship")
+_HERE = Path(__file__).resolve()
+# Plugin layout (and the .claude/scripts mirror): <root>/scripts/<this file>. The project-local hook
+# copy sits deeper, at .claude/hooks/_external-scripts/context-kit/scripts/, so its profiles are in
+# .claude/skills/ four levels up. The first directory that holds generic.md wins.
+# Trust model: both candidates are derived from this file's own location, never from the working
+# directory or CLAUDE_PROJECT_DIR. The profile text therefore comes from the same tree as the code
+# that is executing it, so a project that could tamper with the profile could already tamper with
+# this hook. Only the mode name is read from outside that tree (the state file), and it is checked
+# against CONTEXT_MODES before any profile path is built.
+_MODE_REFERENCE_DIRS = tuple(
+    _HERE.parents[depth] / "skills" / "context-mode" / "references"
+    for depth in (1, 4)
+    if len(_HERE.parents) > depth
+)
+
+
+def read_active_mode_profile(session_id: str = "") -> str | None:
+    """Return the saved context mode's profile text for this session, or None.
+
+    Reads the file skills/context-mode/scripts/set_mode.py writes
+    (~/.claude/context-kit/mode-<sha256(session_id)[:8]>), and must hash the same way. The saved
+    value is checked against the closed CONTEXT_MODES set before any profile file is read, so a
+    tampered state file cannot steer a read of another path.
+    """
+    import hashlib
+
+    if not session_id:
+        return None
+    digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:8]
+    state_file = Path.home() / ".claude" / "context-kit" / f"mode-{digest}"
+    try:
+        fd = os.open(
+            state_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        )
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 16:
+                return None
+            mode = os.read(fd, 16).decode("utf-8").strip()
+        finally:
+            os.close(fd)
+        if mode not in CONTEXT_MODES:
+            return None
+        references = next((d for d in _MODE_REFERENCE_DIRS if (d / "generic.md").is_file()), None)
+        if references is None:
+            return None
+        generic = (references / "generic.md").read_text(encoding="utf-8")
+        profile = (references / f"{mode}.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    return f"{generic.rstrip()}\n\n---\n\n{profile.rstrip()}"
 
 
 def read_pre_compact_state(session_id: str = "") -> dict | None:
@@ -184,10 +239,22 @@ def find_recent_session_log(project_dir: str) -> dict | None:
 
 
 def format_restoration_message(
-    pre_compact_state: dict | None, plan_info: dict | None, session_log: dict | None
+    pre_compact_state: dict | None,
+    plan_info: dict | None,
+    session_log: dict | None,
+    mode_profile: str | None = None,
 ) -> str:
     """Format the (ANSI-free) context restoration message for Claude."""
     lines = ["[Context Restored After Compaction]", ""]
+
+    if mode_profile:
+        # Profile text for a mode the user set earlier in this session. It is read from the tree
+        # this hook runs from (the plugin, or this project's own .claude/ mirror of it), not from
+        # project data.
+        lines.append("Active context mode (set earlier in this session; still in force):")
+        lines.append("")
+        lines.append(mode_profile)
+        lines.append("")
 
     if pre_compact_state or plan_info or session_log:
         # Plan/task/log-name text below is read verbatim from project files
@@ -228,10 +295,12 @@ def format_restoration_message(
         lines.append(f"  {session_log['log_name']}")
         lines.append("")
 
-    lines.append("Recovery Actions:")
-    lines.append("  1. Read the active plan to understand current objectives")
-    lines.append("  2. Check git status/diff for uncommitted changes")
-    lines.append("  3. Continue from where you left off")
+    # A resume with only a saved mode has no plan, state or log to recover from.
+    if pre_compact_state or plan_info or session_log:
+        lines.append("Recovery Actions:")
+        lines.append("  1. Read the active plan to understand current objectives")
+        lines.append("  2. Check git status/diff for uncommitted changes")
+        lines.append("  3. Continue from where you left off")
 
     return "\n".join(lines)
 
@@ -283,18 +352,23 @@ def main() -> int:
             pass
 
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    if not project_dir:
-        return 0
 
-    # Gather context
-    pre_compact_state = read_pre_compact_state(session_id)
-    plan_info = find_active_plan(project_dir)
-    session_log = find_recent_session_log(project_dir)
+    # Gather context. The pre-compact state, plan and log need a project directory; the saved
+    # context mode does not.
+    pre_compact_state = plan_info = session_log = None
+    if project_dir:
+        pre_compact_state = read_pre_compact_state(session_id)
+        plan_info = find_active_plan(project_dir)
+        session_log = find_recent_session_log(project_dir)
+
+    mode_profile = read_active_mode_profile(session_id)
 
     # If we have any context to restore, inject it via the SessionStart contract
     # (clean additionalContext — not raw stdout carrying ANSI escape noise).
-    if pre_compact_state or plan_info or session_log:
-        message = format_restoration_message(pre_compact_state, plan_info, session_log)
+    if pre_compact_state or plan_info or session_log or mode_profile:
+        message = format_restoration_message(
+            pre_compact_state, plan_info, session_log, mode_profile
+        )
         print(
             json.dumps(
                 {

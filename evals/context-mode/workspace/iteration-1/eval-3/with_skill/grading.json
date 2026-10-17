@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not plan to run the script with the replace word on its own initiative",
+      "passed": true,
+      "evidence": "\"I would not use `replace`. The user typed plain `review`, not `replace review`.\""
+    },
+    {
+      "text": "Tells the user that changing mode means a handoff and a fresh session, or offers replace review as the user's own override",
+      "passed": true,
+      "evidence": "Offers a handoff and fresh session, or `/context-mode replace review` typed by the user."
+    },
+    {
+      "text": "Does not claim that review mode is now active",
+      "passed": true,
+      "evidence": "\"I did not switch it to review ... admin is still the active mode.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -2,8 +2,20 @@
   "eval_id": 2,
   "skill_path": "plugins/context-kit/skills/context-mode/SKILL.md",
   "assertions": [
-    {"text": "Response never activates or switches to a mode (dev/review/ship/admin) -- incidental mention of 'context-mode'/'Context-Mode' while explaining why no switch is happening does not violate this", "type": "functionality", "target": "outputs/"},
-    {"text": "Response does not guess or assume a default mode was activated", "type": "functionality", "target": "outputs/"},
-    {"text": "Response addresses the actual task ('continue with the fix') rather than discussing context-mode at all", "type": "quality", "target": "outputs/"}
+    {
+      "text": "Plans to run no command at all, in particular none containing the typed text after the word ship",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Tells the user the value is not valid",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not set ship, or any other mode, anyway",
+      "type": "functionality",
+      "target": "outputs/"
+    }
   ]
 }
