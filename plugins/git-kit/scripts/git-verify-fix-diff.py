@@ -50,6 +50,7 @@ sys.path[:] = [p for p in sys.path if os.path.realpath(p or os.curdir) != _HERE]
 import argparse
 import atexit
 import contextlib
+import functools
 import io
 import json
 import re
@@ -73,34 +74,86 @@ _UNJUDGEABLE = (
     "plugins/git-kit/scripts/git-verify-fix-diff.py",
     ".claude/scripts/git-verify-fix-diff.py",
 )
-_GIT_LOCATION_VARS = (
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_COMMON_DIR",
-    "GIT_NAMESPACE",
-    "GIT_PREFIX",
-)
+# The only inherited variables git is given: locale and time zone. Everything else (GIT_DIR,
+# GIT_CONFIG_*, GIT_TRACE*, GIT_EXEC_PATH, HOME, XDG_CONFIG_HOME, PAGER, ...) is dropped (#588).
+_KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
+# Repository configuration can name an fsmonitor command, and hooks run on index writes and
+# checkouts; both are switched off on every call. `git add -A` still runs a clean filter that the
+# repository's own configuration defines.
+_HARDENING = ("-c", "core.fsmonitor=false", "-c", f"core.hooksPath={os.devnull}")
+
+
+def _repository_root(start: Path) -> Path | None:
+    """The nearest ancestor of `start` holding a `.git` entry (a directory, or the file a linked
+    worktree has), found without running git."""
+    for candidate in (start, *start.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _find_git() -> str | None:
+    """An absolute path to git that is not inside the repository the script was started in."""
+    found = shutil.which("git")
+    if not found or not os.path.isabs(found):  # an empty or relative PATH entry resolves here
+        return None
+    here = Path(os.path.realpath(Path.cwd()))
+    root = _repository_root(here)
+    guards = [here] if root is None else [here, root]
+    # The path as found and where it resolves both count: a symlink in the repository is its file.
+    for candidate in (Path(os.path.abspath(found)), Path(os.path.realpath(found))):
+        if any(candidate.is_relative_to(guard) for guard in guards):
+            return None
+    return found
+
+
+@functools.cache
+def _git_path() -> str:
+    found = _find_git()
+    if found is None:
+        raise RuntimeError("no usable git: it is missing, or found inside the repository")
+    return found
+
+
+def _git_cmd(*args: str) -> list[str]:
+    return [_git_path(), *_HARDENING, *args]
+
+
+def _clone_args(tmp: str) -> list[str]:
+    """A local shared clone with an empty template directory, so no template hook is copied in."""
+    template = os.path.join(tmp, "no-template")
+    os.makedirs(template, exist_ok=True)
+    return ["--shared", "--no-checkout", "-q", f"--template={template}"]
+
+
+_PINNED_ENV = {
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_NO_LAZY_FETCH": "1",
+    "GIT_NO_REPLACE_OBJECTS": "1",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_TERMINAL_PROMPT": "0",
+}
 
 
 def _clean_env(**extra: str) -> dict[str, str]:
-    env = {k: v for k, v in os.environ.items() if k not in _GIT_LOCATION_VARS}
+    env = {k: v for k, v in os.environ.items() if k in _KEEP_ENV}
+    env["PATH"] = os.path.dirname(_git_path())
+    env.update(_PINNED_ENV)
     env.update(extra)
     return env
 
 
 def _git(cwd: Path, *args: str, env: dict[str, str] | None = None) -> bytes:
     return subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", *args], cwd=cwd, env=env or _clean_env(), capture_output=True, check=True
+        _git_cmd(*args), cwd=cwd, env=env or _clean_env(), capture_output=True, check=True
     ).stdout
 
 
 def _origin_repo(repo_root: Path) -> str | None:
     """`owner/repo` named by origin's fetch URL when it is a GitHub URL, else None."""
     out = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "remote", "get-url", "origin"],
+        _git_cmd("remote", "get-url", "origin"),
         cwd=repo_root,
         env=_clean_env(),
         capture_output=True,
@@ -115,7 +168,7 @@ def _target_ref(repo_root: Path) -> str | None:
 
     This is local state; main() only trusts it after `origin` is confirmed to be --upstream."""
     out = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"],
+        _git_cmd("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"),
         cwd=repo_root,
         env=_clean_env(),
         capture_output=True,
@@ -127,7 +180,7 @@ def _target_ref(repo_root: Path) -> str | None:
 def _has_verifiers(repo_root: Path, rev: str) -> bool:
     return (
         subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-            ["git", "cat-file", "-e", f"{rev}^{{commit}}:{_VERIFIERS}"],
+            _git_cmd("cat-file", "-e", f"{rev}^{{commit}}:{_VERIFIERS}"),
             cwd=repo_root,
             env=_clean_env(),
             capture_output=True,
@@ -143,7 +196,7 @@ def _trusted_commit(repo_root: Path, target: str, head_sha: str) -> str:
     precede) is trusted to supply code that this script then imports. The branch still picks
     which version of the target's verifiers judges it: the one at that merge-base."""
     merged = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "merge-base", head_sha, target],
+        _git_cmd("merge-base", head_sha, target),
         cwd=repo_root,
         env=_clean_env(),
         capture_output=True,
@@ -210,7 +263,7 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
         )
         clone = Path(tmp) / "clone"
         plain = _clean_env(**ident)
-        run("clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone), env=plain)
+        run("clone", *_clone_args(tmp), str(repo_root), str(clone), env=plain)
         alternates = clone / ".git" / "objects" / "info" / "alternates"
         with alternates.open("a", encoding="utf-8") as handle:
             handle.write(objects + "\n")  # lets the clone read the snapshot commit
@@ -223,14 +276,17 @@ def _commit_clone(repo_root: Path, sha: str) -> Iterator[tuple[Path, str]]:
     """A temporary shared clone checked out at `sha`: the files on disk are exactly that commit."""
     with tempfile.TemporaryDirectory(prefix="verify-fix-") as tmp:
         clone = Path(tmp) / "clone"
-        _git(repo_root, "clone", "--shared", "--no-checkout", "-q", str(repo_root), str(clone))
+        _git(repo_root, "clone", *_clone_args(tmp), str(repo_root), str(clone))
         _git(clone, "checkout", "-q", "--detach", sha)
         yield clone, sha
 
 
 def main(argv: list[str] | None = None) -> int:
-    for var in _GIT_LOCATION_VARS:  # the verifiers' own git calls inherit os.environ
-        os.environ.pop(var, None)
+    # The verifiers' own git calls inherit os.environ: drop every GIT_* variable (GIT_DIR,
+    # GIT_TRACE, GIT_CONFIG_*, ...), pin the configuration, and put the vetted git first on PATH.
+    for var in [k for k in os.environ if k.startswith("GIT_")]:
+        del os.environ[var]
+    os.environ.update(_PINNED_ENV)
     parser = argparse.ArgumentParser(prog="git-verify-fix-diff.py")
     parser.add_argument("--base", required=True, help="full object id of the commit before the fix")
     parser.add_argument(
@@ -247,8 +303,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if exc.code == 0 else 2
 
     try:
+        os.environ["PATH"] = os.pathsep.join(
+            [os.path.dirname(_git_path()), os.environ.get("PATH", "")]
+        )
         top = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-            ["git", "rev-parse", "--show-toplevel"],
+            _git_cmd("rev-parse", "--show-toplevel"),
             cwd=Path.cwd(),
             env=_clean_env(LC_ALL="C"),
             capture_output=True,
@@ -293,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
         if not here:
             raise RuntimeError("the verifiers exist at the target branch but not in this tree")
         ancestor = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
-            ["git", "merge-base", "--is-ancestor", args.base, head_sha],
+            _git_cmd("merge-base", "--is-ancestor", args.base, head_sha),
             cwd=repo_root,
             env=_clean_env(),
             capture_output=True,

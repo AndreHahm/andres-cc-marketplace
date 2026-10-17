@@ -69,13 +69,21 @@ HEAD` did not run fsmonitor.
    `Bash(sed -E:*)`; issue #588 scoped them to `Edit(//tmp/claude-*/*/*/scratchpad/**)`, the exact
    `Bash(git diff --cached)` and nothing, so the nested route no longer reaches either closed route
    through `commit`. Any other skill this one pre-approves is still reachable the same way.
-2. **Step 4a runs `git-verify-fix-diff.py --worktree`**, which runs `git add -A` on the real working tree
-   with a denylist environment, `git` by bare name, and a temporary clone that uses global configuration
-   and template hooks. The filter, hook and `GIT_TRACE`/`GIT_CONFIG_*` routes can apply there. It is not
-   hardened here.
+2. **Step 4a runs `git-verify-fix-diff.py --worktree`**, which runs `git add -A` on the real working tree.
+   Issue #588 hardened it: an absolute `git` that is not inside the repository, an environment limited to
+   locale and time zone with no global or system configuration, `-c core.fsmonitor=false -c
+   core.hooksPath=/dev/null` on every git call, an empty template directory for its two clones, and every
+   inherited `GIT_*` variable removed from the process the imported verifiers run in.
+   `tests/marketplace_ci/test_git_verify_fix_diff_script.py` plants a marker-writing command on each route
+   (repository `core.fsmonitor`, a `post-index-change` hook, `GIT_TRACE`, `GIT_CONFIG_*`, a global
+   `init.templateDir` hook, a `git` earlier on `PATH` inside the repository) and runs plain git as a
+   control. Still open: `git add -A` runs a clean filter that the repository's own `.git/config` defines
+   (a `-c` flag cannot switch off a filter whose name is unknown; an in-tree `.gitattributes` can only
+   select a driver already configured locally).
 3. **Environment hardening is per script.** The `git rev-parse` and `git ls-files` grants, and the
-   `git-verify-fix-diff.py` and `git-review-ledger.py` grants (which have no `-I`), run with the inherited
-   environment. A prefix grant does not match a command with a leading `VAR=value` (verified live, issue
+   `git-review-ledger.py` grant, run with the inherited environment, and the `git-verify-fix-diff.py` and
+   `git-review-ledger.py` grants have no `-I`, so Python's own `PYTHON*` variables are inherited too (the
+   verify script sanitizes only git's environment). A prefix grant does not match a command with a leading `VAR=value` (verified live, issue
    #588: `FOO=bar python3 -c ...` and `FOO=bar git diff ...` both prompted), so the command line cannot
    carry `GIT_TRACE`/`GIT_CONFIG_*`; the inherited session environment still can.
 4. **Other components still carry the same `--output=<path>` route.** `Bash(git diff:*)` (or a longer prefix
