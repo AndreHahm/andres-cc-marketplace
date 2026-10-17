@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "A normalized findings record file exists in the outputs and names provider codacy with 3 findings",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "The report gives 2 findings for Bandit_B603 and 1 for Lizard_ccn-medium, all in scripts/tool.py",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report states the analysis is current because the recorded head matches the PR head",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No codacy, codacy-analysis or gh command is run and no repository file is edited",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}

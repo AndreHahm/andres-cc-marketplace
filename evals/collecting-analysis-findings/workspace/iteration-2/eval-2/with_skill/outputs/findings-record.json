@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0.0",
+  "provider": "codacy",
+  "source": {
+    "kind": "pr",
+    "repository": "example-org/example-repo",
+    "pull_request": 7,
+    "pr_status": "Open",
+    "head_commit_sha": "2222222222222222222222222222222222222222",
+    "is_analysing": false
+  },
+  "findings": [
+    {
+      "provider": "codacy",
+      "tool": "Bandit",
+      "rule": "Bandit_B603",
+      "severity": "Warning",
+      "category": "Security",
+      "subcategory": null,
+      "file": "scripts/tool.py",
+      "line": 10,
+      "issue_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "message": "subprocess call (B603)",
+      "state": "new",
+      "delta_type": "Added",
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    },
+    {
+      "provider": "codacy",
+      "tool": "Bandit",
+      "rule": "Bandit_B603",
+      "severity": "Warning",
+      "category": "Security",
+      "subcategory": null,
+      "file": "scripts/tool.py",
+      "line": 20,
+      "issue_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "message": "subprocess call (B603)",
+      "state": "new",
+      "delta_type": "Added",
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    },
+    {
+      "provider": "codacy",
+      "tool": "Lizard",
+      "rule": "Lizard_ccn-medium",
+      "severity": "Warning",
+      "category": "Complexity",
+      "subcategory": null,
+      "file": "scripts/tool.py",
+      "line": 30,
+      "issue_id": "cccccccccccccccccccccccccccccccc",
+      "message": "main has 20 cyclomatic complexity",
+      "state": "new",
+      "delta_type": "Added",
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    }
+  ],
+  "groups": [
+    {
+      "rule": "Bandit_B603",
+      "file": "scripts/tool.py",
+      "count": 2
+    },
+    {
+      "rule": "Lizard_ccn-medium",
+      "file": "scripts/tool.py",
+      "count": 1
+    }
+  ],
+  "counts": {
+    "total": 3,
+    "by_category": {
+      "Complexity": 1,
+      "Security": 2
+    }
+  }
+}

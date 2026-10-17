@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "passed": false,
+      "evidence": "answer.md: lists ignore with FalsePositive as option; no user approval requirement stated"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "passed": true,
+      "evidence": "answer.md: do not change/ignore until file is located and read; judge by the call's arguments"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "answer.md: no repository files edited, no commands beyond read-only git"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6666666666666666
+  }
+}

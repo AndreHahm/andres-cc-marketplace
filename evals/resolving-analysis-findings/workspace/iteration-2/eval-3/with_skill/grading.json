@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before suppressing the Medium finding",
+      "passed": true,
+      "evidence": "answer.md: rung 2 on Medium requires AskUserQuestion approval before writing"
+    },
+    {
+      "text": "Does not treat Medium as a severity it may decide on its own",
+      "passed": true,
+      "evidence": "answer.md: severity other than Minor/Info/Warning needs the user's approval"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "answer.md: no command run, no file edited"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

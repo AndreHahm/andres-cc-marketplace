@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The report says the analysis is stale or not current for the PR head",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report names the mismatch between Codacy's recorded head (2222...) and the PR head (3333...)",
+      "type": "quality",
+      "target": "final answer"
+    },
+    {
+      "text": "The counts are not presented as the current state of the PR",
+      "type": "quality",
+      "target": "final answer"
+    }
+  ]
+}

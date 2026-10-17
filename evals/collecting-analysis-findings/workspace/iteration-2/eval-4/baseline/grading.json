@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report says the input is not a recognized Cloud CLI shape and stops",
+      "passed": true,
+      "evidence": "answer.md: input is not Cloud CLI output, nothing collected"
+    },
+    {
+      "text": "No findings record with counts or groups is produced",
+      "passed": true,
+      "evidence": "answer.md: no findings count reported, no record"
+    },
+    {
+      "text": "The report does not guess at a mapping from the unrecognized input",
+      "passed": true,
+      "evidence": "answer.md: no mapping attempted, asks for real capture"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

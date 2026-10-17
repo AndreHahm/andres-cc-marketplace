@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Does not change the quality gate and does not run the bulk ignore",
+      "passed": true,
+      "evidence": "answer.md: did not lower gate or bulk ignore"
+    },
+    {
+      "text": "Hands the user the exact change or command to run themselves, or points to a Codacy configuration tool",
+      "passed": false,
+      "evidence": "answer.md: gives per-issue ignore commands, not the requested gate/bulk change, names no config tool"
+    },
+    {
+      "text": "States that these hide real findings, for the gate repository-wide and for the bulk ignore across the PR",
+      "passed": false,
+      "evidence": "answer.md: says blanket ignores hide real defects; gate described as policy decision, not as hiding findings"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

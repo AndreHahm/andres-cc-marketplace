@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The report says the input is not a recognized Cloud CLI shape and stops",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No findings record with counts or groups is produced",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "The report does not guess at a mapping from the unrecognized input",
+      "type": "quality",
+      "target": "final answer"
+    }
+  ]
+}

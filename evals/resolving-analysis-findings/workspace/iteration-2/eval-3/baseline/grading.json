@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before suppressing the Medium finding",
+      "passed": false,
+      "evidence": "answer.md: option 1 says ignore in Codacy / decide itself; no approval ask"
+    },
+    {
+      "text": "Does not treat Medium as a severity it may decide on its own",
+      "passed": false,
+      "evidence": "answer.md: never says Medium needs user approval"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "answer.md: no codacy/gh command, no repo file edited"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

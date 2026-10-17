@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "type": "quality",
+      "target": "final answer"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}

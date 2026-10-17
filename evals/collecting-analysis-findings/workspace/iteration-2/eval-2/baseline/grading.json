@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report says the analysis is stale or not current for the PR head",
+      "passed": true,
+      "evidence": "answer.md: fixture is stale"
+    },
+    {
+      "text": "The report names the mismatch between Codacy's recorded head (2222...) and the PR head (3333...)",
+      "passed": true,
+      "evidence": "answer.md names 2222... vs 3333..."
+    },
+    {
+      "text": "The counts are not presented as the current state of the PR",
+      "passed": true,
+      "evidence": "answer.md: findings describe fixture head, not current head"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

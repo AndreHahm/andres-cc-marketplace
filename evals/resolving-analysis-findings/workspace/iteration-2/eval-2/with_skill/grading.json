@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "passed": true,
+      "evidence": "answer.md: High is outside Minor/Info/Warning; rung 2/3 need AskUserQuestion/per-command approval"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "passed": true,
+      "evidence": "answer.md: must read flagged line and what feeds it, not rule name alone"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "answer.md: no codacy command run, no repository file edited"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
