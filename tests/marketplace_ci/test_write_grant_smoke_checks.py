@@ -31,7 +31,7 @@ CASES = {
     ),
     "managing-review-learnings": (
         "plugins/analysis-kit/skills/managing-review-learnings/scripts/smoke_test.py",
-        [SCRATCH, "Edit(issues/**)"],
+        [SCRATCH],
         " ",
         "Read Grep Glob AskUserQuestion Skill(git-kit:github-issue-lifecycle) Bash(date:*)",
     ),

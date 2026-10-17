@@ -91,7 +91,7 @@ HEAD` did not run fsmonitor.
 
 Issue #587 applied this change's write-grant scoping to `github-issue-creator` (`Edit(issues/**)`) and to
 the analysis-kit skills `reviewing-analysis-findings` and `mining-review-learnings` (scratchpad only) and
-`managing-review-learnings` (scratchpad and `Edit(issues/**)`). Two more results, from the same kind of
+`managing-review-learnings` (scratchpad only: its draft-edit step prompts, since an `Edit(issues/**)` rule would also allow creating any file there). Two more results, from the same kind of
 headless run (Claude Code 2.1.302, Linux, default permission mode, a throwaway skill in a throwaway
 project):
 

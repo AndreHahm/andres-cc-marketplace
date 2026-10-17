@@ -207,10 +207,7 @@ def check_edit_target_named_in_phase_2():
     return True, "Phase 2 body names THIRD_PARTY_REVIEW_LEARNINGS.md as the Edit target"
 
 
-EXPECTED_FILE_WRITE_GRANTS = [
-    "Edit(//tmp/claude-*/*/*/scratchpad/**)",
-    "Edit(issues/**)",
-]
+EXPECTED_FILE_WRITE_GRANTS = ["Edit(//tmp/claude-*/*/*/scratchpad/**)"]
 
 
 def check_file_write_grants_scoped(path=None):
