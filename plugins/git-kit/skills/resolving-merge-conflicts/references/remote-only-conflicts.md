@@ -16,8 +16,11 @@ git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 
 `<baseRefName>` is the PR's own base branch, which need not be the repository default: use it for the
 preview and pass it to `git-rebase-sync` as its explicit base argument. The preview merges your local
-`HEAD`; if it differs from the PR's `headRefOid` (unpushed or behind), say so, since the file list then
-describes your local branch and not the PR as GitHub sees it.
+`HEAD`. Compare `git rev-parse HEAD` with the PR's `headRefOid`: if they differ (unpushed commits, a stale
+or unrelated branch), stop and ask the user to confirm that this local branch is the one intended, before
+reporting a file list or routing on. The list then describes the local branch, not the PR as GitHub sees
+it, and a rebase of a stale branch followed by `--force-with-lease` after a fresh fetch can overwrite
+commits that exist only on the PR.
 
 - `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` confirms the remote conflict. `UNKNOWN` means
   GitHub has not computed it yet -- rely on the `git merge-tree` result and say so.
