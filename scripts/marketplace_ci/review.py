@@ -1579,6 +1579,10 @@ class ReviewerReport:
     output: dict | None = None
     error: str | None = None
     attempts: int = 1
+    # How many bridge calls the reviewer's paths were split into (1 = unchunked), and, for a
+    # reviewer that failed on one chunk, the merged envelope of the chunks that did finish.
+    chunks: int = 1
+    partial_output: dict | None = None
 
 
 # At most this many reviewers run at once. Two keeps the burst on the Codex
@@ -2137,7 +2141,10 @@ def dispatch_reviewers(
                 )
         # One unit per (reviewer, chunk). A review that fits one chunk is dispatched exactly as
         # before; a larger one is split so no call's --target-paths exceeds the OS limit.
-        plan = {name: chunk_paths(_reviewer_paths(name, scope)) for name in names}
+        plan = {
+            name: chunk_paths(_reviewer_paths(name, scope), max_arg_bytes=CHUNK_MAX_ARG_BYTES)
+            for name in names
+        }
         units = [
             (name, index, chunk, f"-chunk{index + 1}" if len(plan[name]) > 1 else "")
             for name in names
@@ -2207,21 +2214,27 @@ def _merge_chunk_reports(
         for i, r in enumerate(reports, start=1)
         if r.status == "failed"
     ]
+    finished = [r.output or {} for r in reports if r.status == "completed"]
+    merged = None
+    if finished:
+        verdicts = [o.get("verdict") for o in finished]
+        merged = {
+            **finished[0],
+            "findings": [f for o in finished for f in o.get("findings", [])],
+            "verdict": next((v for v in verdicts if v != "pass"), verdicts[0]),
+        }
     if failed:
         return ReviewerReport(
             reviewer=name,
             status="failed",
             error=_report_error("; ".join(failed)),
             attempts=attempts,
+            chunks=len(reports),
+            partial_output=merged,
         )
-    outputs = [r.output or {} for r in reports]
-    verdicts = [o.get("verdict") for o in outputs]
-    merged = {
-        **outputs[0],
-        "findings": [f for o in outputs for f in o.get("findings", [])],
-        "verdict": next((v for v in verdicts if v != "pass"), verdicts[0]),
-    }
-    return ReviewerReport(reviewer=name, status="completed", output=merged, attempts=attempts)
+    return ReviewerReport(
+        reviewer=name, status="completed", output=merged, attempts=attempts, chunks=len(reports)
+    )
 
 
 # --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---

@@ -96,6 +96,20 @@ output) writes `{"status": "could_not_run", "blocking": true, "error": ..., "pro
 which also overwrites a stale `codex-review-result.json` a PR might have committed, so the artifact always
 reflects this run.
 
+A reviewer's `--target-paths` is one comma-joined argument, and one over the operating system's limit
+cannot be started: on Linux a single argument over about 128 KiB failed all three reviewers in about a second,
+before any model call (issue #611, reproduced at 4,500 paths; the Windows command-line cap is lower and was not
+measured). The dispatch therefore splits a reviewer's paths into chunks of at most `CHUNK_MAX_ARG_BYTES`
+(24,000) joined bytes, keeping a top-level folder together when it fits, with every path in exactly one chunk.
+A review under that size is one chunk and is dispatched as before. Each chunk is its own bridge call, so the
+call count is reviewers times chunks and the 40-minute budget above bounds it: a chunk that cannot start is
+reported as failed, never skipped. A reviewer's chunks merge back into one report whose findings are
+the chunks' findings joined, and the gate runs once over the whole diff. If any chunk fails, that reviewer
+fails and its error names the chunk. The result file gains `chunking`
+(`{max_arg_bytes, chunks: {<reviewer>: <count>}}`), and a run that could not complete also carries
+`partial_findings`: the unvalidated findings of the reviewers or chunks that did finish. They never reach the gate; the
+run stays `could_not_run`. The local parity wrapper prints the chunk counts when any reviewer was split.
+
 ## The reviewed delta and the result status
 
 `codex-review` checks out `refs/pull/<n>/merge`, so the PR's own delta is the merge commit's first parent

@@ -558,6 +558,29 @@ def test_a_retry_after_a_failed_run_uses_a_fresh_output_path(repo, tmp_path):
     assert (tmp_path / "out.json").exists()  # the earlier file was never touched
 
 
+def test_a_chunked_review_is_stated_in_the_output(repo, tmp_path):
+    chunking = {
+        "max_arg_bytes": 24000,
+        "chunks": {"security-reviewer": 3, "dependency-reviewer": 1},
+    }
+    result, _, _ = _run(repo, tmp_path, result_json=_result(chunking=chunking))
+    assert result.returncode == 0
+    assert "PARITY: reviewed in chunks (security-reviewer: 3)" in result.stdout
+
+
+def test_an_unchunked_review_adds_no_chunking_note(repo, tmp_path):
+    chunking = {"max_arg_bytes": 24000, "chunks": {"security-reviewer": 1}}
+    result, _, _ = _run(repo, tmp_path, result_json=_result(chunking=chunking))
+    assert "reviewed in chunks" not in result.stdout
+
+
+@pytest.mark.parametrize("chunking", [None, "x", {"chunks": "x"}, {"chunks": {"a": "many"}}])
+def test_a_malformed_chunking_field_is_ignored_not_trusted(repo, tmp_path, chunking):
+    result, _, _ = _run(repo, tmp_path, result_json=_result(chunking=chunking))
+    assert result.returncode == 0
+    assert "reviewed in chunks" not in result.stdout
+
+
 def test_a_completed_run_that_only_wrote_an_error_payload_is_could_not_run(repo, tmp_path):
     result, _, _ = _run(repo, tmp_path, result_json='{"blocking": false, "error": "x"}')
     assert result.returncode == 2
