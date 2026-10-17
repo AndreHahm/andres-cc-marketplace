@@ -79,8 +79,8 @@ GET/POST operations the workflows perform — that prefix also reaches DELETE/PA
 label, or sub-issue link under `repos/*/issues/*`, since `gh api`'s scoping syntax can't narrow further
 by HTTP method. The actual bound is the documented workflow steps, not the grant itself: only the
 GET/POST calls named in `references/sub-issues-api.md` are sanctioned. Invoking
-`Skill(github-issue-creator)` also transitively reaches that skill's own `Write` access to `issues/` at
-the repo root.
+`Skill(github-issue-creator)` also transitively reaches that skill's own `Edit(issues/**)` write access
+(which covers the `Write` tool) to `issues/` at the repo root.
 
 `allowed-tools` also grants `Bash(gh issue edit:*)` (added 2026-09-14, priority-label capability) —
 broader than the `--add-label`/`--remove-label` calls Workflow 1's Step 5.5 and Workflow 2's Step 7
