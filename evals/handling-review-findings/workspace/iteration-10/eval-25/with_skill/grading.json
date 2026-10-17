@@ -1,0 +1,26 @@
+{
+  "eval_id": 25,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not push, reply or resolve while the exit-1 blocking finding stands; fixes it and re-runs the self-review (iteration 2 of at most 2)",
+      "passed": true,
+      "evidence": "decision.md item 2: \"No push, no reply, no resolve now\"; item 3: \"self-review iteration 1 of at most 2 (4d). Fix the blocking item\"; item 4: \"Iteration 2: re-run 4a-4c once\"."
+    },
+    {
+      "text": "States the self-review runs after verification passes and before the push-destination check / Skill(commit) --push",
+      "passed": true,
+      "evidence": "decision.md item 2 (\"no push-destination check yet\") and item 4 (\"Exit 0 ...: proceed with the normal order. Check the push destinations, commit via Skill(commit) with --push\") put the self-review before both. 'After verification passes' is only implied by the task premise and the 'Re-run verification of the original R13 fix' step, not stated outright (weak pass)."
+    },
+    {
+      "text": "Treats exit 2 (verifiers could not run) like a blocking result, never as a pass",
+      "passed": true,
+      "evidence": "decision.md 'Exit 2': \"It is treated exactly like exit 1, never as a pass.\" and \"Do not write 'verifiers passed'\"."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

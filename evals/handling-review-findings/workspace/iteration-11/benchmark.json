@@ -1,0 +1,84 @@
+{
+  "skill_name": "handling-review-findings",
+  "iteration": 11,
+  "timestamp": "2026-10-17T19:13:52+02:00",
+  "evals": [
+    {
+      "eval_id": 25,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 121723,
+        "avg_duration_ms": 24851
+      },
+      "baseline": {
+        "pass_rate": 0.3333,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 92059,
+        "avg_duration_ms": 15946
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 29664,
+        "duration_ms": 8905
+      }
+    },
+    {
+      "eval_id": 26,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 120867,
+        "avg_duration_ms": 20207
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 91802,
+        "avg_duration_ms": 14438
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 29065,
+        "duration_ms": 5769
+      }
+    },
+    {
+      "eval_id": 28,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 120651,
+        "avg_duration_ms": 21167
+      },
+      "baseline": {
+        "pass_rate": 0.3333,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 91926,
+        "avg_duration_ms": 17217
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 28725,
+        "duration_ms": 3950
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.5555,
+    "improvement": 0.4445,
+    "avg_tokens_with_skill": 121080,
+    "avg_tokens_baseline": 91929,
+    "token_cost": 29151,
+    "avg_duration_ms_with_skill": 22075,
+    "avg_duration_ms_baseline": 15867,
+    "duration_cost_ms": 6208
+  }
+}

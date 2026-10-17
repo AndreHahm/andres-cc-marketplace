@@ -1,0 +1,26 @@
+{
+  "eval_id": 25,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not push, reply or resolve while the exit-1 blocking finding stands; fixes it and re-runs the self-review (iteration 2 of at most 2)",
+      "passed": true,
+      "evidence": "Items 2 and 6: no push/reply/resolve while 4a exits non-zero; fix it, re-run 4a as iteration 2; after iteration 2 still blocking: stop, no third loop."
+    },
+    {
+      "text": "States the self-review runs after verification passes and before the push-destination check / Skill(commit) --push",
+      "passed": true,
+      "evidence": "Item 6 exit 0: 'Check the push destinations, commit via Skill(commit) with --push' only after the 4a-4c self-review re-run; item 2 holds all three until 4a passes."
+    },
+    {
+      "text": "Treats exit 2 (verifiers could not run) like a blocking result, never as a pass",
+      "passed": true,
+      "evidence": "'Treat it exactly like exit 1: never as a pass'; 'Do not write verifiers passed'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

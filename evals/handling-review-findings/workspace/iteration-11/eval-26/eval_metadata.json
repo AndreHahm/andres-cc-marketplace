@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-26",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops after iteration 2: no third iteration",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Does not push, reply or resolve, and does not claim the fix is verified",
+      "type": "functionality",
+      "target": "response"
+    },
+    {
+      "text": "Reports the remaining blocking finding to the user and leaves the finding open (accepted only if the user directs it)",
+      "type": "functionality",
+      "target": "response"
+    }
+  ]
+}

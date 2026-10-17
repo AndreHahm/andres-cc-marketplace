@@ -1,0 +1,26 @@
+{
+  "eval_id": 26,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Stops after iteration 2: no third iteration",
+      "passed": true,
+      "evidence": "'No third iteration... A two-iteration cap is a sensible default'."
+    },
+    {
+      "text": "Does not push, reply or resolve, and does not claim the fix is verified",
+      "passed": true,
+      "evidence": "'Do not run a third iteration, do not push, do not reply, do not resolve'; 'I have no verified fix to point to'."
+    },
+    {
+      "text": "Reports the remaining blocking finding to the user and leaves the finding open (accepted only if the user directs)",
+      "passed": true,
+      "evidence": "Reports blocker B to the user with options; ledger 'open and blocked... awaiting user decision'; thread open and unresolved."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 25,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Does not push, reply or resolve while the exit-1 blocking finding stands; fixes it and re-runs the self-review (iteration 2 of at most 2)",
+      "passed": false,
+      "evidence": "No push/reply/resolve now (met), but the fix path is 'Re-run the verifier. Loop until it exits 0': unbounded, no 2-iteration budget, no self-review iteration concept."
+    },
+    {
+      "text": "States the self-review runs after verification passes and before the push-destination check / Skill(commit) --push",
+      "passed": false,
+      "evidence": "No mention of a self-review step, its position before the push-destination check, or Skill(commit) --push; only 'commit (via the commit skill)' after exit 0."
+    },
+    {
+      "text": "Treats exit 2 (verifiers could not run) like a blocking result, never as a pass",
+      "passed": true,
+      "evidence": "'Exit 2 is not a pass and not a finding... do not proceed to push, reply or resolve on it'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 26,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops after iteration 2: no third iteration",
+      "passed": true,
+      "evidence": "'No. The budget is at most 2 self-review iterations... I stop and do not loop further.'"
+    },
+    {
+      "text": "Does not push, reply or resolve, and does not claim the fix is verified",
+      "passed": true,
+      "evidence": "Push/reply/resolve all 'no'; ledger section: 'Not fixed: the fix was never pushed or verified clean'."
+    },
+    {
+      "text": "Reports the remaining blocking finding to the user and leaves the finding open (accepted only if the user directs)",
+      "passed": true,
+      "evidence": "Tells the user both blockers via AskUserQuestion; no ledger entry; 'accept' only 'after the user directs'; thread unresolved."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
