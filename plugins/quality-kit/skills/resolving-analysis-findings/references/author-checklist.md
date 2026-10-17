@@ -1,8 +1,8 @@
 # Author Checklist for New Scripts
 
 For a script that runs `git` or another command. Written from the findings in #581 and PR #579. The
-rationale for the `git`-through-`subprocess` items is in `docs/ci.md`, section "Codacy: git through
-subprocess in plugin scripts"; it is not repeated here.
+rationale for the `git`-through-`subprocess` items is in `docs/ci.md`, section "Codacy: `git` through
+`subprocess` in plugin scripts"; it is not repeated here.
 
 - [ ] **Reuse the script's existing helper** (`_git` in `git-verify-fix-diff.py`; `git-review-ledger.py`
       has none) instead of a new `subprocess.run` with a command held in a variable. Why a variable
@@ -11,8 +11,8 @@ subprocess in plugin scripts"; it is not repeated here.
       element, after `--` where the command supports it.
 - [ ] **Keep a bare `git`** rather than an absolute path (see `docs/ci.md` for why).
 - [ ] **Accepted shapes get an inline suppression with a reason**, on the line that opens the call and on
-      the import for B404, in the exact form `docs/ci.md` gives. On any severity other than
-      `Minor`, `Info` or `Warning`, get approval first (`SKILL.md`, Decision rights).
+      the import for B404, in the exact form `docs/ci.md` gives. For any finding that is not
+      `Minor`/`Info` or an accepted shape, get approval first (`SKILL.md`, Decision rights).
 - [ ] **Tests live in an already-excluded path** (`plugins/**/tests/**`, `tests/**`). A new `.codacy.yml`
       exclusion is a proposal that needs the rung 4 approval (`SKILL.md`), not part of the same unreviewed
       change.

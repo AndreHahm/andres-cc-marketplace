@@ -18,22 +18,32 @@ The output file goes in the session scratchpad directory, never the repository; 
 else. Never pass `--install-dependencies`. The command raises a permission prompt: read it, because `--output`
 can overwrite any file and `--install-dependencies` installs tools. A `codacy-analysis` allow rule in the
 user's own settings (for example one added for the external `codacy-skills` plugin) removes that prompt, so
-check the command's text yourself before running it. Alternatives for a narrower
+check the command's text yourself before running it. Run the scan only on your own branch: some linters load
+code from the repository's config files, so scanning someone else's checked-out PR branch would run their
+code. Alternatives for a narrower
 scope: `--staged` (only the git staging area), `--diff [base]` (changes against a base branch), `--files
 <paths...>`. `--inspect` reports which tools are available without analysing; `--fail-if-missing` stops if a
 configured tool is unavailable; `--tool <id>` restricts to one tool.
 
 ## Config must exist first
 
-The scan reads `.codacy/codacy.config.json`. This repository has none: `codacy-analysis analyze . --inspect`
-reports "No .codacy/codacy.config.json found. Run `codacy-analysis init`" and finds 0 tools. So:
+The scan reads `.codacy/codacy.config.json`. Without it, `codacy-analysis analyze . --inspect` reports "No
+.codacy/codacy.config.json found. Run `codacy-analysis init`" and finds 0 tools. The storage was decided
+2026-10-17: the file is local and ignored (`.codacy/` is in `.gitignore`), so it follows each person's own
+tooling and no shared copy can drift. So:
 
 1. Run `--inspect` first. If the config is missing, stop and tell the user.
-2. Ask where the config should live: tracked in git so everyone scans the same way, or local and ignored so
-   it follows each person's tooling. The file's name and JSON format are fixed by the tool; only the storage
-   is the user's choice.
-3. After that answer, hand the user the exact `codacy-analysis init` command to run; this skill does not run
-   it. It creates files in the repository.
+2. Hand the user the exact command to run themselves; this skill does not run it, because it creates files in
+   the repository:
+
+```text
+codacy-analysis init --default
+```
+
+   `--default` fills the config with Codacy's API-sourced default patterns (public API, no token). `--remote
+   <provider> <org> <repo>` would copy this repository's own Cloud configuration instead, but needs a
+   repository token. `--default` was checked against `codacy-analysis init --help` only; running it, and the
+   shape of what the local scan then reports, are not verified here.
 
 ## Reading the result
 

@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Chooses an inline suppression (a nosec comment naming the rule id) as the resolution",
+      "passed": true,
+      "evidence": "answer.md: rung 2, append '# nosec B603 B607  # list-form call, literal git command, no shell'; 'It names the rule ids, not a bare # nosec'"
+    },
+    {
+      "text": "The suppression carries a stated reason about the literal command, list arguments and no shell",
+      "passed": true,
+      "evidence": "same comment: reason 'list-form call, literal git command, no shell'"
+    },
+    {
+      "text": "Says no remote Codacy write is needed or run (no ignore command)",
+      "passed": true,
+      "evidence": "answer.md: 'No Codacy ignore, no .codacy.yml change, no remote write'; rung 3 only as a fallback needing its own approval"
+    },
+    {
+      "text": "Does not replace the bare git command with an absolute path",
+      "passed": true,
+      "evidence": "answer.md line 28: 'against replacing the bare git with an absolute path, because the command becomes a variable'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

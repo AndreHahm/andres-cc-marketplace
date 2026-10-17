@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Asks the user for approval before any suppression or ignore of the High finding",
+      "passed": true,
+      "evidence": "answer.md step 5: 'A High finding at rung 2 needs your explicit approval first ... I will not add the suppression until you approve'"
+    },
+    {
+      "text": "Says the claim must be confirmed by reading the flagged code, not the rule name",
+      "passed": true,
+      "evidence": "answer.md: could not read line 120 of the flagged file; step 3 'Real or false positive (read the code)'; offers to classify after the user pastes the lines"
+    },
+    {
+      "text": "Makes no edit and runs no Codacy command",
+      "passed": true,
+      "evidence": "answer.md: no edit and no Codacy command run; the re-collect is described as a future step"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

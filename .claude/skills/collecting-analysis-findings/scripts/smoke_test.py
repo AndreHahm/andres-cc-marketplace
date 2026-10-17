@@ -69,11 +69,11 @@ def frontmatter(path: Path) -> dict[str, str]:
     fields: dict[str, str] = {}
     key = None
     for line in match.group(1).splitlines():
-        top = re.match(r"^([a-z][a-z-]*):\s*(.*)$", line)
+        top = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)  # any key-shaped line at column 0
         if top:
             key = top.group(1)
             fields[key] = top.group(2).strip()
-        elif key:
+        elif key and line[:1].isspace():
             fields[key] += " " + line.strip()
     return fields
 
@@ -104,7 +104,7 @@ def check_adapter() -> None:
     findings = json.loads(out)["findings"]
     check(
         "repo fixture: issue_id and tool are null",
-        all(f["issue_id"] is None and f["tool"] is None for f in findings),
+        bool(findings) and all(f["issue_id"] is None and f["tool"] is None for f in findings),
     )
     check("repo fixture: missing line stays null", findings[1]["line"] is None)
     check(
@@ -225,6 +225,25 @@ def check_adapter_variants(adapter) -> None:
         "table output escapes a line break in a file name",
         code == 0 and "\\x0a" in out and len(out.splitlines()) == 1 + 3,
     )
+    # Built with chr() so the source holds no invisible characters.
+    c1, bidi, zero_width, bom = chr(0x9B), chr(0x202E), chr(0x200B), chr(0xFEFF)
+    tricky = json.loads(json.dumps(pr))
+    tricky["newIssues"][0]["commitIssue"]["filePath"] = (
+        f"a{c1}.py{bidi}b" + chr(92) + f"x0a{zero_width}{bom}.py"
+    )
+    code, out, _ = run_main(
+        adapter, "--kind", "pr", "--input", "-", "--format", "table", stdin=json.dumps(tricky)
+    )
+    check(
+        "table output escapes C1, bidi and zero-width marks and a literal backslash",
+        code == 0
+        and "\\x9b" in out
+        and "\\u202e" in out
+        and "\\u200b" in out
+        and "\\ufeff" in out
+        and "\\x5cx0a" in out
+        and not any(ch in out for ch in (c1, bidi, zero_width, bom)),
+    )
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="{not json")
     check("malformed JSON fails closed with exit 2", code == 2 and out == "")
     code, out, _ = run_main(adapter, "--kind", "pr", "--input", "-", stdin="")
@@ -289,6 +308,7 @@ def check_skills() -> None:
 
     collecting = frontmatter(SKILL_DIR / "SKILL.md").get("allowed-tools", "")
     collecting_body = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    check("allowed-tools is declared", bool(collecting.strip()))
     check("one-way dependency: collecting grants no Skill()", "Skill(" not in collecting)
     check(
         "one-way dependency: collecting never calls resolving",
@@ -333,9 +353,17 @@ def check_skills() -> None:
     )
 
 
+def guarded(name: str, run) -> None:
+    """Run a group of checks; a crash inside it reads as a FAIL line, not a bare traceback."""
+    try:
+        run()
+    except Exception as exc:  # noqa: BLE001 - any crash must surface as a failed check
+        check(f"{name} ran to completion", False, f"{type(exc).__name__}: {exc}")
+
+
 def main() -> int:
-    check_adapter()
-    check_skills()
+    guarded("adapter checks", check_adapter)
+    guarded("skill checks", check_skills)
     print(f"\n{len(failures)} failure(s)" if failures else "\nall checks passed")
     return 1 if failures else 0
 

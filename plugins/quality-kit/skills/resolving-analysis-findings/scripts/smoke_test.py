@@ -53,7 +53,12 @@ def frontmatter(text: str) -> dict[str, str]:
 
 def find_repo_root() -> Path | None:
     for parent in HERE.parents:
-        if (parent / "docs" / "ci.md").is_file() and (parent / "plugins" / "git-kit").is_dir():
+        if (
+            (parent / "docs" / "ci.md").is_file()
+            and (parent / "plugins" / "git-kit").is_dir()
+            and (parent / "plugins" / "quality-kit").is_dir()
+            and (parent / ".claude-plugin" / "marketplace.json").is_file()
+        ):
             return parent
     return None
 
@@ -116,7 +121,7 @@ def check_rules(body: str) -> None:
 
     rung3, rung4, rung5 = row("Rung 3"), row("Rung 4"), row("Rung 5")
     quiet = row("Rung 2 on `Minor`")
-    asks = row("Rung 2 on any severity other than")
+    asks = row("Rung 2 on any other finding")
     check("decision rights have rows for rungs 3, 4 and 5", all((rung3, rung4, rung5)))
     check(
         "decision rights name the other remote writes",
@@ -129,13 +134,23 @@ def check_rules(body: str) -> None:
     )
     check("rung 5 is handed over, never run", "Not run here" in rung5)
     check(
-        "Medium asks first and is not decided without asking",
-        bool(quiet) and "Medium" in asks and "AskUserQuestion" in asks and "Medium" not in quiet,
+        "Warning/Medium is decided only on an accepted shape; elsewhere it asks first",
+        bool(quiet)
+        and "docs/ci.md" in quiet
+        and "Critical" not in quiet
+        and "outside an accepted shape" in asks
+        and "AskUserQuestion" in asks,
     )
     check("bulk flags are handed over, not run", "Not run here, like rung 5" in row("Bulk flags"))
+    flat = " ".join(body.split())
     check(
         "an edit target must be a relative path inside the repository",
-        "no leading `/`, no `..` segment" in body.replace("\n", " "),
+        "no `..` segment" in flat and "no leading `/`" in flat and "`.git/`" in flat,
+    )
+    check(
+        "an edit outside the finding's file is asked about first, and the symlink gap is disclosed",
+        "`AskUserQuestion` naming that file" in flat
+        and "nothing granted here can detect one" in flat,
     )
     check(
         "issue_id is validated before a command is built",
@@ -148,7 +163,10 @@ def check_rules(body: str) -> None:
     stale = [
         p.name
         for p in (SKILL_DIR / "references").glob("*.md")
-        if "`Critical`, `High` or `Error`" in p.read_text(encoding="utf-8")
+        if any(
+            old in p.read_text(encoding="utf-8")
+            for old in ("`Critical`, `High` or `Error`", "`Minor`, `Info` or `Warning`")
+        )
     ]
     check("references do not restate a shorter approval severity list", not stale, ", ".join(stale))
     check("init is never run unprompted", "never run `codacy-analysis init`" in body)
@@ -193,15 +211,28 @@ def check_syntax_consistency() -> None:
     check("git-kit scripts use the trailing-comment form", not bad, ", ".join(bad))
 
 
-def main() -> int:
+def check_skill_file() -> None:
     text = read(SKILL_DIR / "SKILL.md")
     fm = frontmatter(text)
-    body = text.split("\n---\n", 1)[1]
+    _, separator, body = text.partition("\n---\n")
+    check("SKILL.md has a frontmatter block", bool(separator))
     check_structure(text, fm, body)
     check_grants(fm, body)
     check_rules(body)
-    check_dependency()
-    check_syntax_consistency()
+
+
+def guarded(name: str, run) -> None:
+    """Run a group of checks; a crash inside it reads as a FAIL line, not a bare traceback."""
+    try:
+        run()
+    except Exception as exc:  # noqa: BLE001 - any crash must surface as a failed check
+        check(f"{name} ran to completion", False, f"{type(exc).__name__}: {exc}")
+
+
+def main() -> int:
+    guarded("SKILL.md checks", check_skill_file)
+    guarded("dependency checks", check_dependency)
+    guarded("syntax consistency checks", check_syntax_consistency)
     print(f"\n{len(failures)} failure(s)" if failures else "\nall checks passed")
     return 1 if failures else 0
 
