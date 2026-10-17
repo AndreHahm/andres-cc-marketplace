@@ -86,22 +86,23 @@ HEAD` did not run fsmonitor.
    verify script sanitizes only git's environment). A prefix grant does not match a command with a leading `VAR=value` (verified live, issue
    #588: `FOO=bar python3 -c ...` and `FOO=bar git diff ...` both prompted), so the command line cannot
    carry `GIT_TRACE`/`GIT_CONFIG_*`; the inherited session environment still can.
-4. **Other components still carry the same `--output=<path>` route.** `Bash(git diff:*)` (or a longer prefix
-   such as `git diff --name-only -z:*`) is granted in `standalone-commits`, `explain-pr-changes`,
-   `git-worktrees`, `git-rebase-sync`, `create-pr`, `dependency-updater` and the `git-status` and
-   `git-update-branch-name` commands. `git log:*` or `git show:*`, which also accept `--output`, is granted
-   in `git-bisect`, `git-notes`, `git-cleanup`, `git-worktrees`, `git-rebase-sync` and
-   `resolving-merge-conflicts`. `resolving-merge-conflicts` grants only the exact `git diff --cached`. `check-all` now runs
-   `check-git-output-grants` (`scripts/marketplace_ci/git_output_grants.py`): it fails on any wildcard
-   `git diff|log|show` grant (also `diff-tree`, `diff-index`, `diff-files` and `whatchanged`, which each
-   wrote a file when run with `--output`, and any of them after git global options such as
-   `--no-pager` or `-C <path>`), and any blanket `git:*`, `git *` or `git -C:*` grant, in a plugin
-   component's frontmatter, decoded as YAML so an escaped line break cannot hide one, that is not listed in
-   `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a baseline entry whose grant is gone.
-   The baseline lists every component still open, in every plugin (not only git-kit); scoping a
-   component means deleting its entries there in the same commit. The blanket grants are `git -C:*` in
-   `git-cleanup` and `git:*` in plugin-devkit's `marketplace-development`, `rules-extract` and
-   `rules-review`.
+4. **Other components still carry the same `--output=<path>` route.** `check-all` runs
+   `check-git-output-grants` (`scripts/marketplace_ci/git_output_grants.py`). It fails on a wildcard git
+   grant in a plugin component's `allowed-tools` (or an agent's `tools`), decoded as YAML so an escaped line
+   break cannot hide one, whose command writes the file named by `--output=<path>`. The command list comes
+   from running every git command with that option on git 2.43.0 in a scratch repository (119 tried,
+   interactive and network ones skipped): `diff`, `log`, `show`, `stash`, `rev-list`, `cherry-pick`,
+   `revert`, `shortlog`, `blame`, `reflog`, `range-diff` and the others in the module, not only the
+   three first named in #588. It also fails on a blanket `git:*`, `git *` or `git -C:*`, on any of these
+   after git global options such as `--no-pager` or `-C <path>`, and on a baseline entry whose grant is
+   gone. A grant is exempt only when everything the wildcard adds follows a `--` (a pathspec). The
+   baseline, `scripts/marketplace_ci/git_output_grants_baseline.json`, lists every component still
+   open, in every plugin (not only git-kit); scoping a component means deleting its entries there in
+   the same commit. The follow-up for the blanket grants in plugin-devkit and `git-cleanup` is #599. The
+   check reads the baseline from the PR's own checkout, so the baseline is on the Tier-1 list
+   (`docs/ci.md`): editing it needs the manual bypass attestation, including a PR that only shrinks it.
+   The checker module is not on that list and runs from the PR's own checkout; running the check from a
+   base-restored copy, as the `prefix-permanence` job does for its own checks, would close that.
 5. **Smaller gaps.** `GIT_NO_LAZY_FETCH` needs a newer git than 2.43.0 (the exact version is unverified), so
    a partial clone could still fetch; `--text` on a very large blob is bounded by the time limit, not by
    memory; the process-group kill is POSIX-only (on Windows only git itself is killed; not run on a real

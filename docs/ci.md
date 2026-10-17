@@ -16,7 +16,7 @@ not hand-typed):
 |---|---|---|
 | `Hygiene (PR contract)` | `hygiene` | PR title/template conformance, author-privilege policy (`check-pr`), run from a base-SHA-restored copy of `scripts/` and of the CODEOWNERS/template inputs |
 | `Python quality (ruff, ty, pytest)` | `python-quality` | `ruff format --check`, `ruff check`, `ty check`, `pytest -q` against `scripts/`+`tests/`; plus `pre-commit`'s `end-of-file-fixer` over the files the PR changes (the job name predates this step and is kept because it is a required-check name) |
-| `Marketplace mirror/export parity` | `marketplace-parity` | `check-all` — every plugin's generated `.claude`/`.agents`/`.codex` mirror/export is in sync with its canonical source |
+| `Marketplace mirror/export parity` | `marketplace-parity` | `check-all` — every plugin's generated `.claude`/`.agents`/`.codex` mirror/export is in sync with its canonical source; plus `check-git-output-grants`, which fails on a wildcard git grant that also permits `--output=<path>` (a write to any file: `diff`, `log`, `show`, `stash`, `rev-list`, `cherry-pick` and the other commands in `git_output_grants.py`, a blanket `git:*`/`git *`/`git -C:*`, any of them after git global options) in a plugin component's `allowed-tools` or `tools` that is not in `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a stale baseline entry. The frontmatter is decoded as YAML before matching and one that does not parse fails the check. The baseline is on the Tier-1 list (see below), so editing it needs the manual bypass attestation; the checker module itself runs from the PR's own checkout like the rest of this job's `check-all` |
 | `Plugin component-file prefix permanence (R33)` | `prefix-permanence` | Runs `check-prefixes` then `check-prefix-permanence --base-sha`, both from a base-SHA-restored, trusted copy of `scripts/` (same principle `compute-scope`/`codex-review`/`publish` already apply to their own decision code — this is the one trusted evaluation point for both checks; `marketplace-parity`'s own `check-all` also runs `check-prefixes`, but from the untrusted PR checkout, same as its pre-existing mirror/export constituents). `check-prefixes` verifies every file under a registered, prefixed plugin's in-scope directories carries that plugin's own `<prefix>-` basename, validates every registered prefix's own format and marketplace-wide uniqueness, cross-checks `marketplace-inventory.json`'s `source` field against the authoritative `marketplace.json` entry, treats a manifest-listed plugin as checked regardless of its curated `status` (a plugin genuinely absent from the manifest is the only kind exempted), and refuses to trust any single source for a name `marketplace.json` lists more than once. `check-prefix-permanence` compares `marketplace-inventory.json`'s `plugins[].id`-keyed records between the PR's base and head; fails if any record that had a registered prefix at base now has a different or missing prefix, its `name` changed (a rename un-joins a still-live plugin from `marketplace.json`'s authoritative entry, since `check-prefixes` looks it up by name), or the record itself disappeared — the layer that catches a hand-edited inventory file or a delete-and-rebootstrap, not just the `marketplace-inventory` CLI's own `update` path (`reconcile.apply_update`'s write-once guard covers only that path). |
 | `Fork PR (unsupported — explicit terminal result)` | `fork-unsupported` | Only runs (`if:`) when the PR head is a fork; fails explicitly rather than leaving Codex review silently pending. **Reports `skipped` on a same-repo PR** — a `skipped` conclusion satisfies a required check in GitHub's branch protection, so this doesn't block ordinary same-repo PRs. |
 | `Compute Codex review scope` | `compute-scope` | Cheap, Node/Codex-CLI-free job that computes whether the diff is eligible for the automatic reviewer-scope bypass (see below) and, on a `synchronize` event, whether this push rebased onto a newer base. Checks out the PR's own head SHA directly (never the async `refs/pull/<n>/merge` ref `codex-review` uses) so its scope decision can't disagree with what `codex-review` actually reviews — then restores `scripts/marketplace_ci/` itself from the **trusted base SHA** before scoring, so the decision logic isn't evaluated by a version of itself the PR could have edited (same principle `prepare_reviewer_instruction` already applies to reviewer instructions). Not a required check itself, but `publish` now depends on it having actually **succeeded** — a failure, cancellation, or timeout (5 min) here fails `publish` closed, it does not silently read as "not eligible, run `codex-review` normally." |
@@ -771,6 +771,10 @@ The review contract (`review_contract.py`) and the exceptions registry it loads
 could suppress a finding about itself (see [The review contract](#the-review-contract)).
 The script verifiers (`review_verifiers.py`) are on it too: they feed the blocking gate, so a PR must not be
 able to weaken its own verifier (see [Script verifiers](#script-verifiers)).
+The baseline of wildcard git tool grants (`git_output_grants_baseline.json`) is on it as well: `marketplace-parity`'s
+`check-git-output-grants` reads it from the PR's own checkout, so without this a PR could add a grant that
+permits `--output=<path>` (a write to any file) together with its own baseline entry and pass. The checker
+module itself (`git_output_grants.py`) is not on the list and stays editable by the PR.
 
 Which refusals the SHA-bound Codex bypass clears: all of `codex-review`'s (its Tier-1 hard-refuse,
 including the Node files and the uv/Python-version config, and the shadow checks above), because
@@ -840,16 +844,11 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
   and the data those two load at import: the canonical secret token shapes
   `scripts/marketplace_ci/token_shapes.json` and the byte-identical `codex-kit` copy
   `plugins/codex-kit/scripts/lib/cdx-token-shapes.json`, and the documented-exceptions registry
-  `scripts/marketplace_ci/review_exceptions.yaml`. The canonical file is copied into
+  `scripts/marketplace_ci/review_exceptions.yaml`, and the baseline of tolerated wildcard git tool grants
+  `scripts/marketplace_ci/git_output_grants_baseline.json`. The canonical file is copied into
   `analysis-kit`, `promptlibrary-kit` and `codex-kit`; `check-all` runs `check-token-shapes` to fail on a
   drifted copy, and `sync-token-shapes` rewrites the copies (run `sync-plugin-mirrors` after it so
   the `.claude/` mirrors follow). Edit the canonical file only.
-  `check-all` also runs `check-git-output-grants`, which fails on a wildcard `git diff|log|show` grant
-  (also `diff-tree`, `diff-index`, `diff-files`, `whatchanged`, and any of them after git global options;
-  each permits `--output=<path>`, a write to any file; and a blanket `git:*`, `git *` or `git -C:*`)
-  in a plugin component's frontmatter that is
-  not in `scripts/marketplace_ci/git_output_grants_baseline.json`, and on a stale baseline entry. The
-  frontmatter is decoded as YAML before matching, and one that does not parse fails the check.
   These are the modules `run-codex-review` (and
   `check-scope-bypass`/`check-bypass`/`resolve-attested-actor`) actually load to decide and report this
   review's own outcome (`tests/marketplace_ci/test_import_isolation.py` verifies this both at runtime,

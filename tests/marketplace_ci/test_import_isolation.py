@@ -257,6 +257,12 @@ def test_the_review_contract_and_its_registry_are_tier1():
     assert "scripts/marketplace_ci/review_exceptions.yaml" in TIER1_FILES
 
 
+def test_the_git_grant_baseline_is_tier1():
+    """check-git-output-grants reads its baseline from the PR's own checkout, so a PR could append
+    its own new grant to it and pass: editing it is refused automated review (issue #588)."""
+    assert "scripts/marketplace_ci/git_output_grants_baseline.json" in TIER1_FILES
+
+
 def test_the_script_verifiers_are_tier1():
     """The verifiers feed the blocking gate, so a PR must not be able to weaken its own verifier
     (issue #576): editing them is refused automated review like the gate itself."""

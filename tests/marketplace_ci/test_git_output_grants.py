@@ -1,5 +1,5 @@
 """Tests for scripts.marketplace_ci.git_output_grants -- the issue #588 check that no new
-wildcard `git diff` / `git log` / `git show` grant (which also permits `--output=<path>`) lands."""
+wildcard git grant that also permits `--output=<path>` (a write to any file) lands."""
 
 import json
 import time
@@ -51,11 +51,25 @@ def _baseline(repo: Path, entries: list[str]) -> None:
         "allowed-tools: Bash(git d*)",
         "allowed-tools: Bash(git diff --src-prefix='safe':*)",
         'allowed-tools: Bash(git log --format="%H":*)',
+        "allowed-tools: Bash(git stash:*)",
+        "allowed-tools: Bash(git rev-list:*)",
+        "allowed-tools: Bash(git cherry-pick:*)",
+        "allowed-tools: Bash(git revert:*)",
+        "allowed-tools: Bash(git shortlog:*)",
+        "allowed-tools: Bash(git log --author --:*)",
+        "allowed-tools: Bash(git log --format=%(trailers):*)",
+        "allowed-tools: Bash(git diff --stat*)",
+        "allowed-tools: Bash(git log -1*)",
+        "allowed-tools: Bash(g\\it diff:*)",
+        "allowed-tools: Bash(g''it diff:*)",
+        "allowed-tools: Bash(GIT diff:*)",
+        "allowed-tools: Bash(/usr/bin/git diff:*)",
     ],
 )
 def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
     path = _skill(tmp_path, "s", tools)
-    assert any(key.startswith(f"{path}::git") for key in find_wildcard_git_grants(tmp_path))
+    found = find_wildcard_git_grants(tmp_path)
+    assert found and all(key.startswith(f"{path}::") for key in found)
 
 
 @pytest.mark.parametrize(
@@ -74,6 +88,9 @@ def test_wildcard_grant_is_found(tmp_path: Path, tools: str) -> None:
         "allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-stage-selected-files.sh:*)",
         "allowed-tools: Bash(digit *)",
         "allowed-tools: Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
+        "allowed-tools: Bash(git diff:\\*)",
+        "allowed-tools: Bash(git log --oneline -- docs:*)",
+        "allowed-tools: Bash(git branch:*) Bash(git push origin:*)",
     ],
 )
 def test_scoped_grant_is_not_found(tmp_path: Path, tools: str) -> None:
@@ -91,15 +108,75 @@ def test_unparsable_frontmatter_fails_closed(tmp_path: Path) -> None:
     path = _skill(tmp_path, "s", "allowed-tools: [Bash(git diff:*)")
     violations = find_violations(tmp_path)
     assert [v.key for v in violations] == [path]
-    assert "not valid YAML" in violations[0].reason
+    assert "could not be read or parsed" in violations[0].reason
 
 
-def test_long_run_of_global_options_is_not_slow(tmp_path: Path) -> None:
-    # Two readings of `-C -C` made the pattern backtrack exponentially (0.2 s at 28 tokens).
-    _skill(tmp_path, "s", "allowed-tools: Bash(git " + "-C " * 300 + "status)")
+@pytest.mark.parametrize("option", ["-C", "--a", "-c", "--git-dir", "x"])
+def test_long_run_of_global_options_is_not_slow(tmp_path: Path, option: str) -> None:
+    # A backtracking pattern took 0.2 s at 28 `-C` tokens and 80 s at 28 `--a` tokens.
+    _skill(tmp_path, "s", "allowed-tools: Bash(git " + f"{option} " * 300 + "status)")
     started = time.perf_counter()
     assert find_wildcard_git_grants(tmp_path) == set()
     assert time.perf_counter() - started < 2
+
+
+def test_agent_tools_key_is_read(tmp_path: Path) -> None:
+    path = tmp_path / "plugins" / "p" / "agents" / "a.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("---\nname: a\ntools: Read, Bash(git diff:*)\n---\n", encoding="utf-8")
+    assert find_wildcard_git_grants(tmp_path) == {"plugins/p/agents/a.md::git diff:*"}
+
+
+def test_nested_command_directory_is_scanned(tmp_path: Path) -> None:
+    path = tmp_path / "plugins" / "p" / "commands" / "group" / "c.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("---\nallowed-tools: Bash(git log:*)\n---\n", encoding="utf-8")
+    assert find_wildcard_git_grants(tmp_path) == {"plugins/p/commands/group/c.md::git log:*"}
+
+
+def test_byte_order_mark_does_not_hide_the_frontmatter(tmp_path: Path) -> None:
+    path = _skill(tmp_path, "s", "allowed-tools: Bash(git diff:*)")
+    full = tmp_path / path
+    full.write_bytes(b"\xef\xbb\xbf" + full.read_bytes())
+    assert find_wildcard_git_grants(tmp_path) == {f"{path}::git diff:*"}
+
+
+@pytest.mark.parametrize(
+    "frontmatter",
+    [
+        "allowed-tools: Read\nallowed-tools: Bash(git diff:*)",
+        "---x: 1\nallowed-tools: Bash(git diff:*)",
+    ],
+)
+def test_ambiguous_frontmatter_fails_closed(tmp_path: Path, frontmatter: str) -> None:
+    path = _skill(tmp_path, "s", frontmatter)
+    assert [v.key for v in find_violations(tmp_path)] == [path]
+
+
+def test_unclosed_frontmatter_fails_closed(tmp_path: Path) -> None:
+    path = tmp_path / "plugins" / "p" / "skills" / "s" / "SKILL.md"
+    path.parent.mkdir(parents=True)
+    path.write_text("---\nname: s\nallowed-tools: Bash(git diff:*)\n", encoding="utf-8")
+    assert [v.key for v in find_violations(tmp_path)] == ["plugins/p/skills/s/SKILL.md"]
+
+
+def test_undecodable_component_fails_closed(tmp_path: Path) -> None:
+    path = _skill(tmp_path, "s", "allowed-tools: Read")
+    (tmp_path / path).write_bytes(b"---\nname: \xff\xfe\n---\n")
+    assert [v.key for v in find_violations(tmp_path)] == [path]
+
+
+@pytest.mark.parametrize("content", ["not json", '["a", ["b"]]', '{"a": 1}', '"text"'])
+def test_malformed_baseline_is_a_violation_not_a_crash(tmp_path: Path, content: str) -> None:
+    (tmp_path / BASELINE).parent.mkdir(parents=True)
+    (tmp_path / BASELINE).write_text(content, encoding="utf-8")
+    violations = find_violations(tmp_path)
+    assert [v.key for v in violations] == [BASELINE]
+
+
+def test_baseline_that_is_a_directory_is_a_violation_not_a_crash(tmp_path: Path) -> None:
+    (tmp_path / BASELINE).mkdir(parents=True)
+    assert [v.key for v in find_violations(tmp_path)] == [BASELINE]
 
 
 def test_log_grant_splits_into_one_entry_per_command(tmp_path: Path) -> None:
