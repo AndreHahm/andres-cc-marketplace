@@ -96,8 +96,9 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on.
 6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, the path of the record file and, for a PR, its `url` from step 1 (`resolving-analysis-findings` takes the owner and repository from it). Show the
-   full record only when asked; it is long. A message for a secret-detection rule can quote the flagged
-   value: keep the record in the scratchpad and do not quote such a message in full in the report.
+   full record only when asked; it is long. A message for a secret-detection rule can contain the flagged
+   value: keep the record in the scratchpad, and never reproduce such a message or value in the report. Give
+   only the rule, file and line, and say the value is withheld.
 
 ## Providers
 
