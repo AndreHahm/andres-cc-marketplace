@@ -157,6 +157,8 @@ Helpful commands during conflicts:
 - "force-with-lease push after rebasing"
 - "PR #N conflicts with main on GitHub, resolve it then sync" with a clean local tree → starts the rebase
   from the clean tree (no trial merge, no merge commit), resolves in Step 6 with a per-file plan first
+- "I hit conflicts during my rebase, continue" with a rebase of this branch already in progress → skips
+  Steps 2-5 (no abort/continue question, no second backup tag, no second rebase) and goes to Step 6
 
 **Verify it does NOT activate on:**
 - "start a new branch for this feature" → `starting-work`
@@ -167,8 +169,8 @@ Helpful commands during conflicts:
 
 **Last dated run record:** 2026-10-17, `evals/git-rebase-sync/` (`skill-tester` Quick Workflow,
 `with_skill` only, simulated command output): eval 1, the remote-only PR conflict from a clean tree,
-5/5 assertions. It covers 1 of the 5 scenarios above and has no baseline arm. `scripts/smoke_test.py`
-checks the structure.
+5/5 assertions, run before the Step 2 resume edit. It covers 1 of the 6 scenarios above and has no
+baseline arm; the resume scenario is documented but not run. `scripts/smoke_test.py` checks the structure.
 
 **Quality gates:**
 - [ ] Never creates or switches to a different feature branch than the current one, unless explicitly asked
@@ -182,8 +184,9 @@ checks the structure.
 - [ ] Always uses `--force-with-lease`, never plain `--force`
 - [ ] Stops and asks a single targeted question when conflict-resolution intent is ambiguous — never
       invents behavior
-- [ ] If preflight (`git status`) shows an in-progress merge/rebase/cherry-pick, always stops and asks
-      abort vs. continue rather than proceeding
+- [ ] If preflight (`git status`) shows an in-progress merge or cherry-pick, always stops and asks
+      abort vs. continue (pointing at `resolving-merge-conflicts`) rather than proceeding; a rebase of
+      this branch already in progress skips Steps 2-5 and resumes at Step 6
 - [ ] Never runs a destructive command like `git reset --hard` without explicit `AskUserQuestion`
       confirmation showing the exact command
 - [ ] The `git rebase` grant stays as 4 explicit per-form entries (`--continue`/`--abort`/
