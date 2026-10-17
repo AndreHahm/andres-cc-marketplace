@@ -1077,30 +1077,6 @@ def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
     return results
 
 
-def _chunking(reports: Sequence) -> dict:
-    """How each reviewer's paths were split into bridge calls (1 = not split), and the argument
-    budget that decided it. Diagnostic: the gate never reads it."""
-    from scripts.marketplace_ci.review import CHUNK_MAX_ARG_BYTES
-
-    return {
-        "max_arg_bytes": CHUNK_MAX_ARG_BYTES,
-        "chunks": {report.reviewer: report.chunks for report in reports},
-    }
-
-
-def _partial_findings(reports: Sequence) -> dict:
-    """The raw envelope findings of whatever finished in a run that could not complete: a whole
-    reviewer, or the finished chunks of one that failed on a chunk. Not validated and never fed to
-    the gate (the run is `could_not_run`); kept so a failed chunk does not discard the rest."""
-    kept = {}
-    for report in reports:
-        source = report.output or report.partial_output
-        findings = source.get("findings") if isinstance(source, dict) else None
-        if findings:
-            kept[report.reviewer] = findings
-    return kept
-
-
 def _fail_run_codex_review(
     args: argparse.Namespace,
     message: str,
@@ -1294,8 +1270,6 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                     for r in failed_reports
                 ],
                 "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
-                "chunking": _chunking(reports),
-                "partial_findings": _partial_findings(reports),
                 "status": "could_not_run",
                 "reviewer_results": _reviewer_results(reports),
                 "provenance": _run_provenance(repo, base_sha, reports),
@@ -1350,7 +1324,6 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "reviewed_paths": list(scope.paths),
         "reviewers": [r.reviewer for r in reports],
         "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
-        "chunking": _chunking(reports),
         "status": "findings" if findings else "clean",
         "reviewer_results": _reviewer_results(reports),
         "provenance": _run_provenance(repo, base_sha, reports),

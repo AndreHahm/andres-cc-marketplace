@@ -416,9 +416,6 @@ def main() -> int:
         return 2
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
-    note = chunking_note(output)
-    if note:
-        print(note)
     if result.returncode not in (0, 1):
         return 2
     # Fail closed: an exit status alone is not evidence that a review ran and what it concluded.
@@ -456,29 +453,6 @@ def _read_blocking(output: Path) -> bool | None:
     if not all(isinstance(data.get(key), list) for key in _RESULT_LIST_KEYS):
         return None
     return blocking
-
-
-def chunking_note(output: Path) -> str | None:
-    """A line naming the reviewers whose paths the run split into several bridge calls, from the
-    result's `chunking.chunks`; None when nothing was split or the field is absent or malformed.
-    Informational only: it never changes the exit status, and a malformed field is ignored, not
-    trusted."""
-    try:
-        data = json.loads(output.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    chunking = data.get("chunking") if isinstance(data, dict) else None
-    chunks = chunking.get("chunks") if isinstance(chunking, dict) else None
-    if not isinstance(chunks, dict):
-        return None
-    split = {
-        name: count
-        for name, count in chunks.items()
-        if isinstance(name, str) and isinstance(count, int) and count > 1
-    }
-    if not split:
-        return None
-    return "PARITY: reviewed in chunks (" + ", ".join(f"{n}: {c}" for n, c in split.items()) + ")."
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:

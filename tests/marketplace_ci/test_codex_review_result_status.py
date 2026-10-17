@@ -153,55 +153,6 @@ def test_one_failed_reviewer_makes_the_whole_run_could_not_run(monkeypatch, revi
     assert statuses == {"could_not_run", "clean"}
 
 
-def _chunked_review(monkeypatch, review_repo):
-    """Add a second changed file and shrink the chunk budget so every path is its own chunk."""
-    root, _ = review_repo
-    (root / "plugins/demo-kit/hooks/other.json").write_text("{}", encoding="utf-8")
-    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "second change"], cwd=root, check=True)
-    monkeypatch.setattr("scripts.marketplace_ci.review.CHUNK_MAX_ARG_BYTES", 1)
-
-
-def test_an_unchunked_review_records_one_chunk_per_reviewer(monkeypatch, review_repo, tmp_path):
-    _, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
-    assert payload["chunking"]["chunks"] == dict.fromkeys(payload["reviewers"], 1)
-
-
-def test_a_chunked_review_records_its_chunks_and_stays_one_report_per_reviewer(
-    monkeypatch, review_repo, tmp_path
-):
-    _chunked_review(monkeypatch, review_repo)
-    rc, payload = _run(monkeypatch, review_repo, tmp_path, _answers(CLEAN))
-    assert rc == 0
-    assert payload["status"] == "clean"
-    assert payload["reviewers"] == list(payload["reviewer_results"])
-    assert set(payload["chunking"]["chunks"]) == set(payload["reviewers"])
-    assert all(n > 1 for n in payload["chunking"]["chunks"].values())
-    assert payload["chunking"]["max_arg_bytes"] == 1
-
-
-def test_a_failed_chunk_keeps_the_findings_of_the_chunks_that_finished(
-    monkeypatch, review_repo, tmp_path
-):
-    _chunked_review(monkeypatch, review_repo)
-
-    def other_json_chunk_fails(argv):
-        # Keyed on the chunk, not on arrival order: the reviewers run on a pool of workers.
-        if "other.json" in argv[argv.index("--target-paths") + 1]:
-            return _bridge_fails(argv)
-        return subprocess.CompletedProcess(argv, returncode=0, stdout=BLOCKING, stderr=b"")
-
-    rc, payload = _run(monkeypatch, review_repo, tmp_path, other_json_chunk_fails)
-    assert rc == 2
-    assert payload["status"] == "could_not_run"
-    assert payload["blocking"] is True
-    assert any("chunk" in item["error"] for item in payload["dispatch_failed"])
-    kept = payload["partial_findings"]
-    assert kept  # reviewers (or chunks) that did finish are not discarded
-    assert all(f["severity"] == "critical" for findings in kept.values() for f in findings)
-    assert set(payload["chunking"]["chunks"]) == set(payload["reviewer_attempts"])
-
-
 def test_an_infrastructure_failure_reports_could_not_run(monkeypatch, git_repo, tmp_path):
     monkeypatch.chdir(git_repo.root)
     out = tmp_path / "result.json"

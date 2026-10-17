@@ -1579,10 +1579,6 @@ class ReviewerReport:
     output: dict | None = None
     error: str | None = None
     attempts: int = 1
-    # How many bridge calls the reviewer's paths were split into (1 = unchunked), and, for a
-    # reviewer that failed on one chunk, the merged envelope of the chunks that did finish.
-    chunks: int = 1
-    partial_output: dict | None = None
 
 
 # At most this many reviewers run at once. Two keeps the burst on the Codex
@@ -1620,69 +1616,6 @@ _MAX_ERROR_CHARS = 2000
 # that ends with the real cause (Codex's own stderr tail, which starts
 # mid-way through the echoed reviewer prompt). A head-only cut loses the cause.
 _ERROR_HEAD_CHARS = 200
-
-
-# A reviewer's --target-paths is one comma-joined argument. Linux refuses a single argument over
-# about 128 KiB (E2BIG) and Windows caps the whole command line near 32 K characters, so a diff of
-# a few thousand paths failed every reviewer before any model call (issue #611). Chunks stay under
-# this, which leaves room below the Windows cap for the rest of the command line.
-CHUNK_MAX_ARG_BYTES = 24_000
-
-
-def chunk_paths(
-    paths: Iterable[str],
-    *,
-    max_arg_bytes: int = CHUNK_MAX_ARG_BYTES,
-    sizes: Mapping[str, int] | None = None,
-    max_bytes: int | None = None,
-) -> tuple[tuple[str, ...], ...]:
-    """Split `paths` into chunks whose comma-joined length is at most `max_arg_bytes` and, when
-    `sizes` and `max_bytes` are given, whose summed size is at most `max_bytes`.
-
-    Every path lands in exactly one chunk. A set that fits is one chunk in its given order, so a
-    small review is unchanged. Otherwise the paths are sorted (the result does not depend on the
-    input order) and a top-level folder is kept together when it fits. A single path over a
-    budget still gets a chunk of its own: it cannot be split, and dropping it would lose coverage.
-    """
-    ordered = tuple(dict.fromkeys(paths))
-
-    def cost(path: str) -> int:
-        return len(path.encode()) + 1  # the comma that joins it
-
-    def size_of(path: str) -> int:
-        return sizes.get(path, 0) if sizes is not None and max_bytes is not None else 0
-
-    def fits(arg: int, size: int) -> bool:
-        return arg - 1 <= max_arg_bytes and (max_bytes is None or size <= max_bytes)
-
-    if fits(sum(cost(p) for p in ordered), sum(size_of(p) for p in ordered)):
-        return (ordered,) if ordered else ()
-
-    folders: dict[str, list[str]] = {}
-    for path in sorted(ordered):
-        folders.setdefault(path.split("/", 1)[0], []).append(path)
-
-    chunks: list[list[str]] = []
-    arg = size = 0
-
-    def place(group: list[str]) -> None:
-        nonlocal arg, size
-        group_arg = sum(cost(p) for p in group)
-        group_size = sum(size_of(p) for p in group)
-        if chunks and fits(arg + group_arg, size + group_size):
-            chunks[-1].extend(group)
-            arg, size = arg + group_arg, size + group_size
-        else:
-            chunks.append(list(group))
-            arg, size = group_arg, group_size
-
-    for group in folders.values():
-        if fits(sum(cost(p) for p in group), sum(size_of(p) for p in group)):
-            place(group)
-        else:
-            for path in group:  # a folder too big for one chunk is split path by path
-                place([path])
-    return tuple(tuple(chunk) for chunk in chunks)
 
 
 def _clip_error(text: str) -> str:
@@ -1899,22 +1832,6 @@ def _inspected_nothing(output: object) -> str | None:
     return _report_error(first) or "no inspection limit given"
 
 
-def _reviewer_paths(name: str, scope: ReviewScope) -> tuple[str, ...]:
-    """The paths one reviewer is given: the whole scope, except that the rulebook checker is
-    narrowed to what R1-R27 actually reviews."""
-    if name == "plugin-rulebook-checker":
-        # Narrow to only what R1-R27 actually reviews -- see
-        # _is_rulebook_scoped_path's own comment for why. Fall back to
-        # the full scope if filtering would leave nothing: a caller
-        # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
-        # baseline regardless of whether any in-scope file happens to
-        # remain, and an empty --target-paths is worse than a widened
-        # (but real) one.
-        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
-        return scoped or scope.paths
-    return scope.paths
-
-
 def _dispatch_one(
     name: str,
     scope: ReviewScope,
@@ -1931,13 +1848,21 @@ def _dispatch_one(
     changed_paths: Iterable[str] = (),
     whole_file: Iterable[str] = (),
     exceptions_briefing: str = "",
-    chunk: tuple[str, ...] | None = None,
-    chunk_label: str = "",
 ) -> ReviewerReport:
-    reviewer_scope = chunk if chunk is not None else _reviewer_paths(name, scope)
+    reviewer_scope = scope.paths
+    if name == "plugin-rulebook-checker":
+        # Narrow to only what R1-R27 actually reviews -- see
+        # _is_rulebook_scoped_path's own comment for why. Fall back to
+        # the full scope if filtering would leave nothing: a caller
+        # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
+        # baseline regardless of whether any in-scope file happens to
+        # remain, and an empty --target-paths is worse than a widened
+        # (but real) one.
+        scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
+        reviewer_scope = scoped or scope.paths
     target_paths = ",".join(reviewer_scope)
 
-    instruction_path = instructions_dir / f"{name}{chunk_label}.txt"
+    instruction_path = instructions_dir / f"{name}.txt"
     briefing = ""
     if changed_ranges is not None:
         # Narrows what the model judges; the gate (`_classify`) still decides
@@ -2139,17 +2064,6 @@ def dispatch_reviewers(
                     f"default instruction directory {instructions_dir} is inside the checkout; "
                     "point TMPDIR elsewhere or pass --instructions-dir"
                 )
-        # One unit per (reviewer, chunk). A review that fits one chunk is dispatched exactly as
-        # before; a larger one is split so no call's --target-paths exceeds the OS limit.
-        plan = {
-            name: chunk_paths(_reviewer_paths(name, scope), max_arg_bytes=CHUNK_MAX_ARG_BYTES)
-            for name in names
-        }
-        units = [
-            (name, index, chunk, f"-chunk{index + 1}" if len(plan[name]) > 1 else "")
-            for name in names
-            for index, chunk in enumerate(plan[name] or ((),))
-        ]
         futures = [
             pool.submit(
                 _dispatch_one,
@@ -2167,15 +2081,13 @@ def dispatch_reviewers(
                 changed_paths=changed_paths,
                 whole_file=whole_file,
                 exceptions_briefing=exceptions_briefing,
-                chunk=chunk if len(plan[name]) > 1 else None,
-                chunk_label=label,
             )
-            for name, _index, chunk, label in units
+            for name in names
         ]
-        unit_reports: dict[str, list[ReviewerReport]] = {name: [] for name in names}
-        for (name, _index, _chunk, _label), future in zip(units, futures, strict=True):
+        reports: list[ReviewerReport] = []
+        for name, future in zip(names, futures, strict=True):
             try:
-                unit_reports[name].append(future.result())
+                reports.append(future.result())
             except OSError as exc:
                 # An infrastructure fault (the `node` binary missing, an
                 # unwritable instruction file) must not drop the other
@@ -2183,7 +2095,7 @@ def dispatch_reviewers(
                 # and propagates with its traceback -- a broad except here
                 # would hide it (AGENTS.md: a broad except in
                 # scripts/marketplace_ci is a regression).
-                unit_reports[name].append(
+                reports.append(
                     ReviewerReport(
                         reviewer=name,
                         status="failed",
@@ -2197,44 +2109,7 @@ def dispatch_reviewers(
                 # traceback surfaces.
                 pool.shutdown(wait=False, cancel_futures=True)
                 raise
-        return tuple(_merge_chunk_reports(name, unit_reports[name], plan[name]) for name in names)
-
-
-def _merge_chunk_reports(
-    name: str, reports: Sequence[ReviewerReport], chunks: Sequence[tuple[str, ...]]
-) -> ReviewerReport:
-    """One report per reviewer from its per-chunk reports. A single chunk passes through. A failed
-    chunk fails the reviewer and is named with its first path, so a chunk that was not reviewed can
-    never read as clean; otherwise the chunks' findings are joined in chunk order."""
-    if len(reports) == 1:
-        return reports[0]
-    attempts = sum(r.attempts for r in reports)
-    failed = [
-        f"chunk {i}/{len(reports)} ({len(chunks[i - 1])} paths from {chunks[i - 1][0]}): {r.error}"
-        for i, r in enumerate(reports, start=1)
-        if r.status == "failed"
-    ]
-    finished = [r.output or {} for r in reports if r.status == "completed"]
-    merged = None
-    if finished:
-        verdicts = [o.get("verdict") for o in finished]
-        merged = {
-            **finished[0],
-            "findings": [f for o in finished for f in o.get("findings", [])],
-            "verdict": next((v for v in verdicts if v != "pass"), verdicts[0]),
-        }
-    if failed:
-        return ReviewerReport(
-            reviewer=name,
-            status="failed",
-            error=_report_error("; ".join(failed)),
-            attempts=attempts,
-            chunks=len(reports),
-            partial_output=merged,
-        )
-    return ReviewerReport(
-        reviewer=name, status="completed", output=merged, attempts=attempts, chunks=len(reports)
-    )
+        return tuple(reports)
 
 
 # --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---
