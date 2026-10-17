@@ -11,7 +11,23 @@ never changes a reviewer prompt, pin or weight.
 |---|---|
 | `corpus/pr-<pr>-<head8>.json` | One labelled case per (PR, head commit). Validated by `scripts/reviewer_eval/corpus.py`. |
 
+| `archive/pr-<pr>/<head8>-<run id>-<artifact id>.json` | The CI `codex-review-result` of one run, copied unchanged. |
+
 Run `uv run python -m scripts.reviewer_eval.corpus validate` to check every case.
+
+## Archiving CI results
+
+GitHub keeps the `codex-review-result` artifacts for 90 days and that limit cannot be raised, so copy
+them before they expire:
+
+```bash
+uv run python -m scripts.reviewer_eval.archive --pr 579
+```
+
+It archives the artifacts of every commit currently in the PR, skips a file that already exists and
+never overwrites one. A head that was force-pushed away is no longer listed by GitHub and is not
+archived. A re-run of a job gives one run several artifacts; each is kept, because each is a separate
+sample of the same head.
 
 ## Case format
 
