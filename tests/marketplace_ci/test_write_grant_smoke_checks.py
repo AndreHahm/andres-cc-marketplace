@@ -144,6 +144,13 @@ def _pinned(name):
         "allowed-tools: >-\n  Read {pinned}\n\n  Write",
         "allowed-tools: Read {pinned}\n\n\n  Edit(**)",
         "allowed-tools: [Read, {pinned}, *x]",
+        "allowed-tools: [Read, {pinned}, *1]",
+        "allowed-tools: [Read, *1, {pinned}]",
+        "allowed-tools: [Read, {pinned}, *foo-bar]",
+        "allowed-tools: [*9, {pinned}]",
+        "allowed-tools: *1",
+        "allowed-tools: [Read, {pinned}, &1 Write]",
+        "allowed-tools: [Read, {pinned}, !!str Write]",
         "allowed-tools: Read {pinned} &x Write",
         "allowed-tools: Read {pinned} !!str Write",
         # A multi-line value is unsupported even when the pinned set alone would pass.
