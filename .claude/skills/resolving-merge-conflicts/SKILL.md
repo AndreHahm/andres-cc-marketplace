@@ -148,8 +148,8 @@ git merge-tree --write-tree --name-only origin/<base> HEAD
 gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed
 ```
 
-Never create a merge commit on a PR branch that merges by rebase. Read
-`references/remote-only-conflicts.md` for exit-status handling and the full procedure.
+Never create a merge commit on a PR branch that merges by rebase. If `git status` is dirty, ask the user to
+commit or stash first. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
 
 ### Step 2: Create Merge Resolution Plan
 
