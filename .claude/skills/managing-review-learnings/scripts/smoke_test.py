@@ -191,11 +191,11 @@ def check_phase_sequence():
 
 
 def check_edit_target_named_in_phase_2():
-    """This skill's sole Edit target is THIRD_PARTY_REVIEW_LEARNINGS.md -- assert its own
-    Phase 2 body actually names that file, since no Edit rule can cover a path under .claude/
-    (Claude Code refuses those writes as sensitive files whatever the rule says), so the
-    documented bound is not enforced by a grant (security-reviewer finding, 2026-08-28; issue
-    #587)."""
+    """This skill's Phase 2 Edit target is THIRD_PARTY_REVIEW_LEARNINGS.md -- assert its own
+    Phase 2 body actually names that file. No Edit rule is granted for a path under .claude/:
+    a probe (Claude Code 2.1.302, Linux, default permission mode) found those writes refused as
+    sensitive files even with an exact rule, so the documented bound is not enforced by a grant
+    (security-reviewer finding, 2026-08-28; issue #587)."""
     text = SKILL_MD.read_text(encoding="utf-8")
     phase2_start = text.find("\n## Phase 2:")
     if phase2_start == -1:
@@ -216,9 +216,9 @@ EXPECTED_FILE_WRITE_GRANTS = [
 def check_file_write_grants_scoped(path=None):
     """Issue #587: every file-write grant must be a path-scoped Edit(...) rule, exactly the pinned
     set. A bare Write or Edit lets the skill overwrite any file without a prompt, and Write(<glob>)
-    is accepted by Claude Code but never matches, so it grants nothing. The Phase 2 target under
-    .claude/ is deliberately absent: Claude Code refuses writes there as sensitive files whatever
-    the rule says."""
+    was accepted but never matched in a probe (Claude Code 2.1.302, Linux, default permission
+    mode), so it grants nothing. The Phase 2 target under .claude/ is deliberately absent: the
+    same probe found writes there refused as sensitive files even with an exact rule."""
     text = (path or SKILL_MD).read_text(encoding="utf-8")
     end = text.find("\n---\n", 4)
     if not text.startswith("---\n") or end == -1:

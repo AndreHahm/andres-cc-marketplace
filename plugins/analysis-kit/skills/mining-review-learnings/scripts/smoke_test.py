@@ -196,7 +196,8 @@ EXPECTED_FILE_WRITE_GRANTS = ["Edit(//tmp/claude-*/*/*/scratchpad/**)"]
 def check_file_write_grants_scoped(path=None):
     """Issue #587: every file-write grant must be a path-scoped Edit(...) rule, exactly the pinned
     set. A bare Write or Edit lets the skill overwrite any file without a prompt, and Write(<glob>)
-    is accepted by Claude Code but never matches, so it grants nothing."""
+    was accepted but never matched in a probe (Claude Code 2.1.302, Linux, default permission
+    mode), so it grants nothing."""
     text = (path or SKILL_MD).read_text(encoding="utf-8")
     end = text.find("\n---\n", 4)
     if not text.startswith("---\n") or end == -1:

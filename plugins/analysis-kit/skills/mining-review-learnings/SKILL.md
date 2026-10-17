@@ -267,7 +267,7 @@ legitimate, common outcome, not a failure.
   especially older ones, will have no locatable transcript. Report the GitHub-history-only finding
   honestly rather than treating the absence as a reason to skip the PR entirely.
 - **The write grant is path-scoped with an `Edit(...)` rule, not a bare `Write`** (issue #587). An
-  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule is accepted but never matches. The
+  `Edit(...)` rule also covers the `Write` tool; a `Write(<glob>)` rule was accepted but never matched in a probe (Claude Code 2.1.302, Linux, default permission mode). The
   grant is `Edit(//tmp/claude-*/*/*/scratchpad/**)`, and the documented Phase 4 step uses it in exactly one
   place — the scratch draft, written to the session scratchpad directory, never a repo-tracked path. This
   skill never edits `THIRD_PARTY_REVIEW_LEARNINGS.md` or any other tracked file directly — the
@@ -276,8 +276,9 @@ legitimate, common outcome, not a failure.
   live in issue #582 / PR #589: Claude Code 2.1.302, Linux, headless run in default permission mode only —
   a scratchpad write allowed, a write outside it denied; where the scratch directory is not laid out as
   `/tmp/claude-<uid>/<project>/<session>/scratchpad` the write falls back to a prompt). It does not bound
-  the `Bash(python */analysis-kit/scripts/...:*)` grants: a probe showed `python -c "<code>" <matching
-  script path>` runs under such a grant, so those grants are a separate write route, tracked in the issue
+  the `Bash(python */analysis-kit/scripts/...:*)` grants: a probe showed that an inline code string
+  passed to the interpreter ahead of a matching script path runs under such a grant, so those grants are
+  a separate write route, tracked in the issue
   #587 follow-up. `anls_persist_report.py --final` is separately bounded: the script's own containment
   check rejects any `--final` that doesn't resolve under `<cwd>/.claude/output/` — only the choice of
   subdirectory beneath that is a behavioral, unenforced commitment.
