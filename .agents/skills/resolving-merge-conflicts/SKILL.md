@@ -10,7 +10,7 @@ description: >-
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
   that skill instead. Also previews a PR conflict that exists only on GitHub (clean local tree)
   with no worktree change, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
-allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin), Bash(git rev-parse HEAD), Bash(git remote get-url origin), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit), Skill(git-rebase-sync)
+allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git fetch origin), Bash(git rev-parse HEAD), Bash(git branch --show-current), Bash(git remote get-url origin), Bash(git merge-tree --write-tree --name-only:*), Bash(gh pr view:*), Bash(gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit), Skill(git-rebase-sync)
 ---
 
 # Git Conflict Resolution
@@ -143,16 +143,17 @@ the rebase starts. Preview them (no worktree or index change; `git fetch` update
 the entry for "resolve the conflicts on PR #N", that one for "sync/rebase" wording:
 
 ```bash
-gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefOid,isCrossRepository,url
+gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefName,headRefOid,isCrossRepository,url
 git fetch origin
 git rev-parse HEAD
+git branch --show-current
 git remote get-url origin
 git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed
 ```
 
 Never create a merge commit on a PR branch that merges by rebase. If `git status` is dirty, ask the user to
-commit or stash first. If `git rev-parse HEAD` differs from `headRefOid`, stop and confirm the local branch is the intended one. If `isCrossRepository` is true, or `origin` is not the PR's own repository (`url`), stop: a fork PR is not supported on this route. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
+commit or stash first. If `git rev-parse HEAD` differs from `headRefOid`, or `git branch --show-current` is not `headRefName`, stop and confirm the local branch is the intended one. If `isCrossRepository` is true, or `origin` is not the PR's own repository (`url`), stop: a fork PR is not supported on this route. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
 
 ### Step 2: Create Merge Resolution Plan
 
@@ -414,8 +415,6 @@ subsequent conflicts within the same session:
 | `references/remote-only-conflicts.md` | Step 1a: read-only preview and routing for a PR that conflicts only on GitHub |
 | `references/special-scenarios.md` | Binary-file and mass rename/refactoring conflicts |
 | `references/troubleshooting.md` | "Both Added" conflicts, persistent conflict markers, tests failing after resolution |
-
-See the Quick Reference Card below for a one-line-per-type strategy lookup.
 
 ## Special Scenarios
 
