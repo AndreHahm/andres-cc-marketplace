@@ -65,6 +65,11 @@ RULE_ESCAPING_PATH = "r34-escaping-path"
 PATH_AND_MIRROR = "path-and-mirror"
 STRUCTURE = "structure"
 RULE_EXECUTABLE_BIT = "r37-executable-bit"
+# The files `find_prefix_violations` takes its configuration from; R33 coverage needs both tracked.
+_PREFIX_CHECK_METADATA = (
+    ".claude-plugin/marketplace-inventory.json",
+    ".claude-plugin/marketplace.json",
+)
 RULE_MIRROR_DRIFT = "r19-mirror-drift"
 CALL_GRAPH = "call-graph"
 RULE_CALL_GRAPH = "skill-agent-dependency-cycle"
@@ -1703,10 +1708,11 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
     violation is never counted as compliant. A hook `command` is not a
     grant document, so a model R37 finding on one stays blocking: no script checks that form (a
     frontmatter `hooks:` key puts its document in `partial` for the same reason).
-    R33: clean everywhere when the inventory exists, no tracked file differs from HEAD (the prefix
-    check reads the working tree) and `find_prefix_violations` returns nothing; any violation, a
-    dirty tree, or a failure to run either covers nothing (the pipeline's `check-prefixes` gate
-    reports the violation itself)."""
+    R33: clean everywhere when the inventory exists, no tracked file differs from HEAD, the
+    inventory and `marketplace.json` exist at HEAD (the prefix check reads the working tree) and
+    `find_prefix_violations` returns nothing; any violation, a dirty tree, a metadata file that is
+    not committed, or a failure to run any of these covers nothing (the pipeline's
+    `check-prefixes` gate reports the violation itself)."""
     clean: set[tuple[str, str]] = set()
     for outcome in outcomes:
         if outcome.name != STRUCTURE:
@@ -1734,8 +1740,15 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
 
         # The prefix check reads the working tree, the verifiers read committed objects. They agree
         # only while no tracked file differs from HEAD (`--quiet` exits 1 otherwise, and a failing
-        # git call raises into the except below); an untracked file can only add a violation.
+        # git call raises into the except below) and the two metadata files it takes its
+        # configuration from exist at HEAD: an untracked or intent-to-add one is invisible to the
+        # diff, yet an empty one would make the check report nothing. Other untracked files are
+        # scanned like tracked ones, so they can only add a violation. A skip-worktree or
+        # assume-unchanged flag hides a disk change from git itself and is not detected; a PR
+        # cannot set one, it is local index state.
         _run_git(repo, "diff", "--quiet", "HEAD")
+        for metadata in _PREFIX_CHECK_METADATA:
+            _run_git(repo, "cat-file", "-e", f"HEAD:{metadata}")
         inventory = Path(repo) / ".claude-plugin" / "marketplace-inventory.json"
         if inventory.is_file() and not find_prefix_violations(Path(repo)):
             everywhere.add("R33")

@@ -230,8 +230,9 @@ read in full with nothing unresolved or held back, and no R37 finding: a multi-l
 because the base already held it, to a script not committed as 100755, is a violation it chose not to blame
 this PR for, so that document is left out of coverage as well. A hook
 `command` in `hooks/hooks.json` is no grant document, so an R37 claim about one still blocks. R33 coverage is
-`find_prefix_violations` returning nothing for an inventoried repo whose tracked files all match HEAD (the
-prefix check reads the working tree; the verifiers read committed objects, and they agree only then; the
+`find_prefix_violations` returning nothing for an inventoried repo whose tracked files all match HEAD and whose
+inventory and `marketplace.json` both exist at HEAD (the prefix check reads the working tree; the verifiers
+read committed objects, and they agree only then; an uncommitted inventory could be empty and hide a violation; the
 check is git's own, so a local sparse-checkout, skip-worktree or assume-unchanged state is not detected,
 which cannot occur in CI's fresh full checkout).
 Without coverage nothing is downgraded, and
