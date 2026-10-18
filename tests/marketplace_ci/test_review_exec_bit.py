@@ -475,6 +475,58 @@ def test_a_multi_line_grant_the_pr_did_not_touch_is_not_blamed_on_an_unrelated_e
     assert _outcome(git_repo, (ChangedPath("M", SKILL, SKILL),), base).findings == ()
 
 
+def _multi_line_edit_outcomes(git_repo, *, executable):
+    """Outcomes for a PR that edits a document whose multi-line grant the base already held."""
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=executable)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
+    _commit(git_repo.root, "edit")
+    return rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)
+
+
+def test_a_dropped_pre_existing_violation_leaves_the_document_without_coverage(git_repo):
+    # The verifier does not blame the PR for the old 100644 script, but that is not "compliant":
+    # a model R37 claim about this document must not be downgraded on the strength of its silence.
+    outcomes = _multi_line_edit_outcomes(git_repo, executable=False)
+    structure = next(o for o in outcomes if o.name == "structure")
+    assert structure.findings == () and structure.partial == (SKILL,)
+    assert not rv.script_coverage(git_repo.root, outcomes).covers("R37", SKILL)
+
+
+def test_a_dropped_grant_of_a_script_missing_at_base_and_head_is_held_back(git_repo):
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    base = _commit(git_repo.root, "base")
+    git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
+    _commit(git_repo.root, "edit")
+    outcomes = rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)
+    structure = next(o for o in outcomes if o.name == "structure")
+    assert structure.partial == (SKILL,)
+    assert not rv.script_coverage(git_repo.root, outcomes).covers("R37", SKILL)
+
+
+def test_the_mirror_of_a_held_back_document_earns_no_coverage(git_repo):
+    _write_script(git_repo, PLUGIN_SCRIPT, executable=False)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
+    git_repo.write(".claude/skills/demo/SKILL.md", _MULTILINE_GRANT + "body\n")
+    base = _commit_with_mirrors(git_repo.root)
+    git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
+    git_repo.write(".claude/skills/demo/SKILL.md", _MULTILINE_GRANT + "changed body\n")
+    _commit_with_mirrors(git_repo.root)
+    outcomes = rv.run_verifiers(git_repo.root, (ChangedPath("M", SKILL, SKILL),), base)
+    coverage = rv.script_coverage(git_repo.root, outcomes)
+    assert not coverage.covers("R37", SKILL) and not coverage.covers(
+        "R37", ".claude/skills/demo/SKILL.md"
+    )
+
+
+def test_a_dropped_grant_of_an_executable_script_keeps_the_document_covered(git_repo):
+    outcomes = _multi_line_edit_outcomes(git_repo, executable=True)
+    structure = next(o for o in outcomes if o.name == "structure")
+    assert structure.findings == () and structure.partial == ()
+    assert rv.script_coverage(git_repo.root, outcomes).covers("R37", SKILL)
+
+
 def test_a_multi_line_grant_is_reported_when_the_pr_drops_the_scripts_bit(git_repo):
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
