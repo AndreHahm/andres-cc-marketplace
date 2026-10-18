@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs the merge-tree preview and reads exit status 0 together with mergeable MERGEABLE as 'no conflict'",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Tells the user there is nothing to resolve and stops",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Does not invoke Skill(git-rebase-sync) and runs no merge or rebase",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}

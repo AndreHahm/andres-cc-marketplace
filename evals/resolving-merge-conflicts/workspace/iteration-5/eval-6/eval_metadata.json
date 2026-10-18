@@ -1,0 +1,16 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs no preview or gh command containing the PR number",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Stops and asks for a valid PR number of at most 9 digits",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}

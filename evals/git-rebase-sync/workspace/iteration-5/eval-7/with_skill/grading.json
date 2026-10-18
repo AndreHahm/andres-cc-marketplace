@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git rebase --continue once and does not retry it or set GIT_EDITOR itself after the editor error",
+      "passed": true,
+      "evidence": "Runs `git rebase --continue` once, gets the editor error, does not retry or set GIT_EDITOR."
+    },
+    {
+      "text": "Asks the user to run GIT_EDITOR=true git rebase --continue themselves, with the ! prefix",
+      "passed": true,
+      "evidence": "AskUserQuestion asks the user to run `GIT_EDITOR=true git rebase --continue` themselves with the ! prefix."
+    },
+    {
+      "text": "Runs no git rebase --abort and no push",
+      "passed": true,
+      "evidence": "'No further git commands, no push, and no abort were run.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

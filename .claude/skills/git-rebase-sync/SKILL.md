@@ -192,7 +192,7 @@ backup tag, the rebase confirmation and the plan confirmation; evals 2, 4 and 5 
 The prompts supply raw `git` and `gh` output, so the script modes were treated as equivalent and not run: their
 own behavior is covered by `tests/marketplace_ci/test_git_rebase_sync_run_script.py` and
 `test_git_pr_conflict_preview_script.py`. Seven baseline arms were re-run with a reworded prompt after API
-safeguard errors. No token or timing data. This is 2 of the 7 scenarios above; the resume itself, `lease_oid`
+safeguard errors. No token or timing data. Iteration 5 (same day) added two scenarios for the branches added later, a branch with no remote counterpart at the push step and the commit-message editor stalling `git rebase --continue`: `with_skill` 6/6 against a baseline of 3/6; its agents self-report a different model than iteration 4, so the iterations are not directly comparable. This is 2 of the 7 scenarios above; the resume itself, `lease_oid`
 push and the plain sync wordings are documented but not run. `scripts/smoke_test.py` checks the structure.
 
 **Quality gates:**
