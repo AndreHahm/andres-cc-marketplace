@@ -1,0 +1,26 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report says Skill A has a REQUIRED R37 FAIL because a shell given a command string (bash -c) runs the path itself, so it is a direct run at mode 100644",
+      "type": "presence",
+      "target": "R37 shell command-string grant"
+    },
+    {
+      "text": "Report gives the fix for Skill A: git update-index --chmod=+x in every mirrored copy",
+      "type": "quality",
+      "target": "R37 fix"
+    },
+    {
+      "text": "Report says Skill B has NO REQUIRED R37 finding because bash with known-safe options and one plain script path reads the script as a file",
+      "type": "presence",
+      "target": "R37 interpreter grant"
+    },
+    {
+      "text": "Report treats Skill B at most as an informational note and recommends no chmod",
+      "type": "quality",
+      "target": "R37 informational"
+    }
+  ]
+}

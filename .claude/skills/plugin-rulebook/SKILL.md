@@ -407,7 +407,7 @@ When skill or agent A's `## When NOT to Use` (or a "use B instead" sentence in i
 
 ### R37 — Executable Bit: Directly-Invoked Scripts [REQUIRED, default: on]
 
-A script run directly by path — one a skill or command `allowed-tools` grant names (`Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`) and its own text invokes by that path, or a hook `command` that is a bare path — must be committed with git mode `100755`, read from `git ls-files -s`, not from the disk. A hook's `"shell": "bash"` does not exempt it: a shell running a non-executable path directly fails with `Permission denied`. An interpreter-led grant (`Bash(python3 "…/y.py":*)`) is not a direct invocation, a missing file is also a FAIL, and a reviewer without Bash reports `unverified`, never PASS.
+A script run directly by path — one a skill or command `allowed-tools` grant names (`Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`) and its own text invokes by that path, or a hook `command` that is a bare path — must be committed with git mode `100755`, read from `git ls-files -s`, not from the disk. A hook's `"shell": "bash"` does not exempt it: a shell running a non-executable path directly fails with `Permission denied`. An interpreter-led grant that reads one plain script path (`Bash(python3 "…/y.py":*)`) is not a direct invocation (`bash -c <path>` or an unknown option is), a missing file is also a FAIL, and a reviewer without Bash reports `unverified`, never PASS.
 
 **Scope:** Newly-created or structurally-modified skills, commands and hooks (forward-looking). See `${CLAUDE_SKILL_DIR}/references/executable-bit.md` for the two invocation forms, the live-verified `shell` finding, and the fix.
 
@@ -465,7 +465,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
 **Last dated run record:** 2026-10-18, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
-evals 16-17 (R33 `domain_prefix` and R37 interpreter-grant wording) 4/4 each (iteration 9, no baseline arm); 2026-10-01:
+evals 16-18 (R33 `domain_prefix` and R37 interpreter-grant wording) 4/4 each (iteration 9, no baseline arm); 2026-10-01:
 evals 8-15 (R34-R37 and the R9/R14/R21/R31 extensions) 4/4 assertions each (iterations 6-8); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
 evals 1-2 passed 4/4 and 2/2 on 2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
 `${CLAUDE_SKILL_DIR}/references/testing-run-history.md`; scenario definitions are in `evals/plugin-rulebook/evals.json`.
