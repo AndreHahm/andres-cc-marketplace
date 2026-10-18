@@ -1697,9 +1697,10 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
 
     R37: every grant document the `structure` verifier read in full and left without an
     `r37-executable-bit` finding (a document with a Bash grant the scan could not resolve is not
-    covered), plus its `.claude/` mirror path when the mirror is the same git object. The verifier
-    reports on the diff, so "no finding" can also mean a pre-existing grant it chose not to blame
-    this PR for; coverage means "not reported", not "proved compliant". A hook `command` is not a
+    covered), plus its `.claude/` mirror path when the mirror is the same git object. A multi-line
+    grant the verifier drops as the base already held it, to a script not committed as 100755, is a
+    pre-existing violation it chose not to blame this PR for: that document is `partial` too, so a
+    violation is never counted as compliant. A hook `command` is not a
     grant document, so a model R37 finding on one stays blocking: no script checks that form (a
     frontmatter `hooks:` key puts its document in `partial` for the same reason).
     R33: clean everywhere when the inventory exists and `find_prefix_violations` returns nothing;
@@ -1740,15 +1741,20 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
 
 def _drop_unchanged_multiline_grants(
     repo, base_sha: str, found: dict[str, list[ScriptGrant]], modes: dict[str, bytes]
-) -> None:
+) -> set[str]:
     """Remove from `found` a grant that has no file line (it sits in a multi-line scalar) when the
     base document holds the same grant and the script has the same mode there: the PR did not
     cause it, and with no line the gate would blame every edit to the document for it. A grant the
-    base did not hold, or a script whose mode the PR changed, stays."""
+    base did not hold, or a script whose mode the PR changed, stays.
+
+    Returns the documents where a dropped grant would have been an R37 finding (its script is not
+    committed as 100755). Such a document was not found compliant, only not blamed on this PR, so
+    the caller must not let it earn coverage."""
+    held_back: set[str] = set()
     pending = {doc: [g for g in grants if g.line is None] for doc, grants in found.items()}
     pending = {doc: grants for doc, grants in pending.items() if grants}
     if not pending:
-        return
+        return held_back
     base_texts, _ = _read_blobs(repo, sorted(pending), base_sha, missing_ok=True)
     base_modes = _modes(repo, sorted({g.script for gs in pending.values() for g in gs}), base_sha)
     for doc, unlined in pending.items():
@@ -1765,6 +1771,9 @@ def _drop_unchanged_multiline_grants(
             ):
                 old_count[grant.script] -= 1
                 found[doc].remove(grant)
+                if modes.get(grant.script) != b"100755":
+                    held_back.add(doc)
+    return held_back
 
 
 def _modes(repo, paths: Sequence[str], ref: str = "HEAD") -> dict[str, bytes]:
@@ -2284,7 +2293,7 @@ class VerifierOutcome:
     name: str
     findings: tuple[Finding, ...]
     checked: tuple[str, ...]  # the files read and judged; every other candidate has a finding
-    partial: tuple[str, ...] = ()  # files in `checked` where some check could not resolve an item
+    partial: tuple[str, ...] = ()  # in `checked`, but an item was unresolved or held back
 
 
 def _read_blobs(
@@ -2519,7 +2528,7 @@ def run_verifiers(
             )
     structure_findings: list[Finding] = []
     structure_checked: list[str] = []
-    structure_partial: list[str] = []  # read, but with a Bash grant no scan could resolve
+    structure_partial: list[str] = []  # read, but a Bash grant is unresolved or was held back
     touched = sorted(
         {
             name.split("/")[1]
@@ -2591,7 +2600,9 @@ def run_verifiers(
             structure_checked.append(doc)
         modes = _modes(repo, sorted({g.script for grants in found.values() for g in grants}))
         if base_sha is not None:
-            _drop_unchanged_multiline_grants(repo, base_sha, found, modes)
+            for doc in sorted(_drop_unchanged_multiline_grants(repo, base_sha, found, modes)):
+                if doc not in structure_partial:
+                    structure_partial.append(doc)
         for doc, grants in found.items():
             structure_findings.extend(check_executable_bits(doc, grants, modes))
     call_findings: list[Finding] = []

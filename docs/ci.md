@@ -226,8 +226,9 @@ and it needs no executable bit. The script path must be plain: an option with co
 substitution, a command list, a glob, a brace or a variable other than the plugin and skill roots (its value
 is unknown) is not one path. Any other option spelling counts as
 running the path, because a list of the flags that run a command string cannot be complete. "Covered" means
-"not reported by the diff-scoped verifier", not "proved compliant": a pre-existing grant the verifier chose
-not to blame this PR for also counts. A hook
+read in full with nothing unresolved or held back, and no R37 finding: a multi-line grant the verifier drops
+because the base already held it, to a script not committed as 100755, is a violation it chose not to blame
+this PR for, so that document is left out of coverage as well. A hook
 `command` in `hooks/hooks.json` is no grant document, so an R37 claim about one still blocks. R33 coverage is
 `find_prefix_violations` returning nothing for an inventoried repo. Without coverage nothing is downgraded, and
 when findings merge the copy that still blocks (judged with the merged reporters and the coverage) is kept.
