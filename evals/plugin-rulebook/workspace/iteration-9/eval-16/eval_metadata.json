@@ -1,0 +1,26 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report says file (a), codex-review-bridge-target-paths-file.mjs, has NO R33 finding because 'codex-' is the registered domain_prefix",
+      "type": "presence",
+      "target": "R33 domain_prefix accepted"
+    },
+    {
+      "text": "Report does not recommend renaming file (a) to a cdx- name",
+      "type": "quality",
+      "target": "no false rename"
+    },
+    {
+      "text": "Report flags file (b), review-bridge-notes.mjs, as a REQUIRED R33 finding because it starts with neither 'cdx-' nor 'codex-'",
+      "type": "presence",
+      "target": "R33 real violation"
+    },
+    {
+      "text": "Report gives the fix for (b): rename to '<prefix>-<rest>' or '<domain>-<rest>' and update every reference",
+      "type": "quality",
+      "target": "R33 fix"
+    }
+  ]
+}

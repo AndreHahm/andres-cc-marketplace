@@ -1,0 +1,26 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "Report says Skill A has NO REQUIRED R37 finding because the grant begins with the interpreter python3, so the script needs no executable bit",
+      "type": "presence",
+      "target": "R37 interpreter grant"
+    },
+    {
+      "text": "Report treats Skill A at most as an informational note left to R6, not a FAIL",
+      "type": "quality",
+      "target": "R37 informational"
+    },
+    {
+      "text": "Report says Skill B has a REQUIRED R37 FAIL because run.sh is run directly by path at mode 100644",
+      "type": "presence",
+      "target": "R37 direct grant"
+    },
+    {
+      "text": "Report gives the fix for Skill B: git update-index --chmod=+x in every mirrored copy",
+      "type": "quality",
+      "target": "R37 fix"
+    }
+  ]
+}

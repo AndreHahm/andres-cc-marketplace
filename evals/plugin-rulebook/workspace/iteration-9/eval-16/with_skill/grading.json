@@ -1,0 +1,31 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report says file (a), codex-review-bridge-target-paths-file.mjs, has NO R33 finding because 'codex-' is the registered domain_prefix",
+      "passed": true,
+      "evidence": "Report: (a) has no R33 finding; it starts with the registered domain_prefix 'codex-'"
+    },
+    {
+      "text": "Report does not recommend renaming file (a) to a cdx- name",
+      "passed": true,
+      "evidence": "Report: 'no rename is needed' for (a); a cdx- name is offered only for (b)"
+    },
+    {
+      "text": "Report flags file (b), review-bridge-notes.mjs, as a REQUIRED R33 finding because it starts with neither 'cdx-' nor 'codex-'",
+      "passed": true,
+      "evidence": "Report: (b) is a REQUIRED R33 violation; it starts with neither 'cdx-' nor 'codex-'"
+    },
+    {
+      "text": "Report gives the fix for (b): rename to '<prefix>-<rest>' or '<domain>-<rest>' and update every reference",
+      "passed": true,
+      "evidence": "Report: fix for (b) is to rename to codex-/cdx- form and update every reference"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
