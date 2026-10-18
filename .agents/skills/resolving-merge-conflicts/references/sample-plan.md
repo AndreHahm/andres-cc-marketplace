@@ -22,7 +22,7 @@ This file provides a complete example of a merge resolution plan for a typical c
 **Action Items**:
 
 - [ ] Choose either version temporarily
-- [ ] Run `cargo update` to regenerate
+- [ ] Ask the user to run `cargo update` to regenerate
 - [ ] Stage the regenerated file
 
 #### 2. `src/utils/helpers.rs` (deleted in incoming, modified in current)
@@ -91,6 +91,6 @@ This file provides a complete example of a merge resolution plan for a typical c
 ### Validation Steps
 
 - [ ] Run conflict validation script
-- [ ] Compile with `cargo check`
-- [ ] Run full test suite with `cargo test`
+- [ ] Ask the user to compile with `cargo check` and report the result
+- [ ] Ask the user to run the full test suite with `cargo test` and report the result
 - [ ] Manual verification of config.rs changes

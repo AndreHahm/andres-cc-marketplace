@@ -63,6 +63,7 @@ def clone(tmp_path):
     _git(tmp_path, "clone", str(origin), str(work))
     _commit(work, "base.txt", "base\n")
     _git(work, "push", "origin", "main")
+    _git(work, "remote", "set-head", "origin", "main")
     _git(work, "checkout", "-b", "feature")
     _commit(work, "feature.txt", "feature\n")
     _git(work, "push", "origin", "feature")
@@ -141,6 +142,33 @@ def test_rebase_ignores_a_tag_named_like_the_remote_tracking_ref(clone):
     )
 
 
+def test_push_refuses_when_the_default_branch_is_unknown(clone):
+    lease = _git(clone, "rev-parse", "origin/feature")
+    _git(clone, "remote", "set-head", "origin", "--delete")
+    result = _run(clone, "push", "feature", lease)
+    assert result.returncode == 2
+    assert "origin/HEAD" in result.stderr
+    assert _run(clone, "push-plain", "feature").returncode == 2
+
+
+def test_push_refuses_the_remote_default_branch_even_if_it_is_not_main_or_master(clone):
+    _git(clone, "branch", "-m", "feature", "develop")
+    _git(clone, "push", "origin", "develop")
+    _git(clone, "remote", "set-head", "origin", "develop")
+    lease = _git(clone, "rev-parse", "origin/develop")
+    assert _run(clone, "push", "develop", lease).returncode == 2
+
+
+def test_backup_tag_creates_one_annotated_local_tag_and_prints_its_name(clone):
+    result = _run(clone, "backup-tag", "feature")
+    assert result.returncode == 0, result.stderr
+    name = result.stdout.strip()
+    assert name.startswith("feature-rebase-backup-")
+    assert _git(clone, "cat-file", "-t", f"refs/tags/{name}") == "tag"
+    assert _git(clone, "rev-parse", f"{name}^{{commit}}") == _git(clone, "rev-parse", "HEAD")
+    assert name not in _git(clone, "ls-remote", "--tags", "origin")
+
+
 def test_push_plain_mode_runs(clone):
     assert _run(clone, "rebase", "main").returncode == 0
     assert _run(clone, "push-plain", "feature").returncode == 0
@@ -171,6 +199,10 @@ def test_push_plain_mode_runs(clone):
         ("push-plain", "feature", "extra"),
         ("push-plain", "-f"),
         ("amend", "main"),
+        ("backup-tag",),
+        ("backup-tag", "-f"),
+        ("backup-tag", "feature", "extra"),
+        ("backup-tag", "a..b"),
     ],
 )
 def test_every_other_argument_list_is_refused_without_running_git(clone, args):
