@@ -1,0 +1,31 @@
+{
+  "eval_id": 17,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report says Skill A has NO REQUIRED R37 finding because the grant begins with the interpreter python3, so the script needs no executable bit",
+      "passed": true,
+      "evidence": "Report: Skill A has no R37 finding; the grant begins with python3 so no executable bit is needed"
+    },
+    {
+      "text": "Report treats Skill A at most as an informational note left to R6, not a FAIL",
+      "passed": true,
+      "evidence": "Report: Skill A is at most an informational note ('Severity: none. At most an informational note'); no FAIL"
+    },
+    {
+      "text": "Report says Skill B has a REQUIRED R37 FAIL because run.sh is run directly by path at mode 100644",
+      "passed": true,
+      "evidence": "Report: Skill B is a REQUIRED FAIL, run directly by path at committed mode 100644"
+    },
+    {
+      "text": "Report gives the fix for Skill B: git update-index --chmod=+x in every mirrored copy",
+      "passed": true,
+      "evidence": "Report: fix is git update-index --chmod=+x on the canonical script and any .claude/ mirror copy"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

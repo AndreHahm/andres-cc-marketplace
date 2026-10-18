@@ -14,7 +14,10 @@ Two ways a script is run directly:
 
 1. **A skill or command grant that names the script path** — `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`
    or `Bash(${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)`. A grant naming an interpreter (`Bash(python:*)`,
-   `Bash(bash:*)`) is not a direct invocation and is not checked. A grant is a permission, not proof of use:
+   `Bash(bash:*)`) is not a direct invocation and is not checked. This holds when the interpreter is followed
+   by the script path: `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/x/scripts/y.py":*)` starts with `python3`, so
+   `y.py` is run through an interpreter and needs no executable bit, whatever its committed mode. Only a grant
+   whose first word is the path itself (after any `env`/`exec`-style wrapper) names a direct invocation. A grant is a permission, not proof of use:
    check it only when the skill's body or `references/*.md` invoke the script by that path. If that text runs it
    only through an interpreter (`python x.py`, `bash x.sh`), or never mentions it, report an informational
    note and leave the mismatched or unused grant to R6, not a REQUIRED FAIL.

@@ -107,6 +107,20 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md and plugins/plugin-devkit/skills/plugin-rulebook/references/testing-mandate-rules.md (read these files directly; do not rely on any other copy of the skill). Two skills have eval registries. Skill 'foo': evals/foo/evals.json has entries with integer id 1, 2 and 3; its workspace has iteration-1/eval-1, iteration-1/eval-2, iteration-2/eval-3 and iteration-2/eval-4. Skill 'bar': evals/bar/evals.json has entries whose identifiers are written as eval_id 1 and 2 (no id key), and its workspace has iteration-1/eval-1 and iteration-1/eval-2. Using the plugin-rulebook skill's R31 registry-completeness clause as documented in those files, report for foo and bar: finding or not, severity, who checks it, and the fix.",
       "expected_output": "foo has a REQUIRED finding: workspace eval-4 has no matching evals.json entry; fix: add the missing registry entry. bar has NO finding: eval_id is an accepted form of the identifier, so eval-1 and eval-2 match. The clause is not yet implemented in check_evals.py; the reviewing agent applies it with Glob and Read.",
       "files": []
+    },
+    {
+      "id": 16,
+      "name": "R33 accepts a file named with the plugin's domain_prefix",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/component-file-prefix.md (read these files directly; do not rely on any other copy of the skill). The plugin 'codex-kit' has a marketplace-inventory.json record with \"prefix\": \"cdx\" and \"domain_prefix\": \"codex\", status active. Apply the R33 check to two files under the plugin-root scripts directory: (a) plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-target-paths-file.mjs and (b) plugins/codex-kit/scripts/smoke-tests/review-bridge-notes.mjs. For each, report finding or not, severity, and the fix.",
+      "expected_output": "(a) has NO finding: its basename starts with the registered domain_prefix 'codex-', and R33 accepts either '<prefix>-' (cdx-) or '<domain>-' (codex-); renaming it to cdx- must not be recommended. (b) has a REQUIRED finding: its basename starts with neither 'cdx-' nor 'codex-'; fix: rename to '<prefix>-<rest>' or '<domain>-<rest>' and update every reference.",
+      "files": []
+    },
+    {
+      "id": 17,
+      "name": "R37 treats an interpreter-plus-path grant as informational, a direct path grant as a FAIL",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). Both skills below are newly created and both scripts are committed at git mode 100644. Skill A: allowed-tools is Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/set_mode.py\":*) and its body only ever runs python3 \"${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/set_mode.py\". Skill B: allowed-tools is Bash(${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh:*) and its body runs ${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh directly. Apply R37 to each: finding or not, severity, and the fix.",
+      "expected_output": "Skill A has NO REQUIRED finding: the grant begins with the interpreter python3, so set_mode.py is run through an interpreter and needs no executable bit (at most an informational note, left to R6). Skill B has a REQUIRED FAIL: run.sh is run directly by path at mode 100644; fix: git update-index --chmod=+x on it in every mirrored copy.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
