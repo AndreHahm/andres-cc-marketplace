@@ -48,6 +48,7 @@ TIER1_MODULES = frozenset(
         "scripts.marketplace_ci.registry",
         "scripts.marketplace_ci.sync_plan",
         "scripts.marketplace_ci.conversion",
+        "scripts.marketplace_ci.prefix_check",
     }
 )
 
@@ -64,6 +65,7 @@ TIER1_SOURCE_FILES = (
     "scripts/marketplace_ci/registry.py",
     "scripts/marketplace_ci/sync_plan.py",
     "scripts/marketplace_ci/conversion.py",
+    "scripts/marketplace_ci/prefix_check.py",
 )
 
 # The four __main__.py handler functions backing the review-dispatch-critical
@@ -264,6 +266,59 @@ def test_the_git_grant_check_and_its_baseline_are_tier1():
     assert "scripts/marketplace_ci/git_output_grants.py" in TIER1_FILES
     assert "scripts/marketplace_ci/git_output_grants_baseline.json" in TIER1_FILES
     assert "scripts.marketplace_ci.git_output_grants" not in TIER1_MODULES
+
+
+def _imported_marketplace_ci_modules(source_file: str, only_functions=None) -> set[str]:
+    """Every `scripts.marketplace_ci.<module>` a file imports, module-level or inside a function.
+    With `only_functions`, only the bodies of those functions are scanned."""
+    tree = ast.parse((REPO_ROOT / source_file).read_text(encoding="utf-8"))
+    if only_functions is not None:
+        tree = ast.Module(
+            body=[
+                n
+                for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name in only_functions
+            ],
+            type_ignores=[],
+        )
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            if node.module == "scripts.marketplace_ci":
+                found.update(f"scripts.marketplace_ci.{alias.name}" for alias in node.names)
+            elif node.module.startswith("scripts.marketplace_ci."):
+                found.add(node.module)
+        elif isinstance(node, ast.Import):
+            found.update(a.name for a in node.names if a.name.startswith("scripts.marketplace_ci."))
+    return found
+
+
+def test_every_module_a_tier1_file_imports_is_itself_tier1():
+    """A module the review-dispatch code imports, even lazily inside a function, runs in the
+    codex-review job from the PR's own checkout. If it is not gated, a PR can edit it and change
+    the review's outcome without the hard refusal (the lazy `prefix_check` import behind
+    `script_coverage` was exactly that gap)."""
+    ungated: dict[str, set[str]] = {}
+    for source_file in TIER1_SOURCE_FILES:
+        missing = _imported_marketplace_ci_modules(source_file) - TIER1_MODULES
+        if missing:
+            ungated[source_file] = missing
+    handler_modules = _imported_marketplace_ci_modules(
+        "scripts/marketplace_ci/__main__.py", only_functions=CRITICAL_HANDLERS
+    )
+    if handler_modules - TIER1_MODULES:
+        ungated["__main__.py critical handlers"] = handler_modules - TIER1_MODULES
+    assert not ungated, f"Tier-1 files import modules that are not Tier-1: {ungated}"
+    for module in TIER1_MODULES - {"scripts", "scripts.marketplace_ci"}:
+        path = module.replace(".", "/") + ".py"
+        assert path in TIER1_FILES, f"{module} is in TIER1_MODULES but {path} is not gated"
+
+
+def test_the_prefix_check_behind_r33_coverage_is_tier1():
+    """`script_coverage` imports `find_prefix_violations` inside the codex-review job, so editing
+    `prefix_check.py` could make R33 coverage report clean: it is refused automated review."""
+    assert "scripts/marketplace_ci/prefix_check.py" in TIER1_FILES
+    assert "scripts.marketplace_ci.prefix_check" in TIER1_MODULES
 
 
 def test_the_script_verifiers_are_tier1():

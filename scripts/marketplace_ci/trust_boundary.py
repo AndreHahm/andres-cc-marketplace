@@ -31,6 +31,9 @@ TIER1_FILES = frozenset(
         "scripts/marketplace_ci/registry.py",
         "scripts/marketplace_ci/sync_plan.py",
         "scripts/marketplace_ci/conversion.py",
+        # `script_coverage` (review_verifiers.py) imports `find_prefix_violations` from here inside
+        # the codex-review job, so a PR editing it could make R33 coverage report "clean".
+        "scripts/marketplace_ci/prefix_check.py",
         "scripts/marketplace_ci/pr_policy.py",
         "pyproject.toml",
         "uv.lock",

@@ -1613,7 +1613,12 @@ def scan_script_grants(
         else:
             unresolved += _path_shaped(word) or _runs_its_path_argument(words)
             continue
-        if any(char in rest for char in "*?["):
+        # A script's own arguments are data, but a shell operator or a second path after it can be
+        # another program (`a.sh && b.sh`) that no grant recorded here covers: the document is
+        # partial.
+        if any(_path_shaped(w) or any(char in w for char in ";&|<>`") for w in words[1:]):
+            unresolved += 1
+        if any(char in rest for char in "*?[;&|<>`$("):  # a glob, a glued operator or a variable
             unresolved += 1
             continue
         script = posixpath.normpath(f"{folder}/{rest}")

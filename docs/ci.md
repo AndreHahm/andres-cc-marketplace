@@ -219,7 +219,8 @@ canonical file. A document is left out when the scan could not resolve something
 form it skips (a glob, `${CLAUDE_PROJECT_DIR}/...`, a relative path, a path leaving the plugin), an unknown
 wrapper or an interpreter given anything but a script path (`timeout`, `sudo`, `uv run`, `bash -c`,
 `bash -ce`, `perl -le`, a quoted option, `powershell <path>`) that runs a path, a path carried by a
-`NAME=VALUE` or a wrapper option's value before the program (`env -P <path>`), or a frontmatter `hooks:` key. Only a plain interpreter grant stays covered:
+`NAME=VALUE` or a wrapper option's value before the program (`env -P <path>`), a script followed by a shell
+operator or a second path (`a.sh && b.sh`, `a.sh | b.sh`), or a frontmatter `hooks:` key. Only a plain interpreter grant stays covered:
 the interpreter, known-safe options (`bash -eu -o pipefail`, `python3 -u -B`, `deno run`), one plain script
 path and no other path after it (`python3 "<path>"`), since the interpreter reads that path as a script file
 and it needs no executable bit. The script path must be plain: an option with code glued to it, a
@@ -874,7 +875,8 @@ protocol below, depends on which part of `scripts/marketplace_ci/` changed (issu
 
 - **Tier 1 (review-dispatch-critical)** — `scripts/__init__.py`, and `scripts/marketplace_ci/`'s
   `__init__.py`, `__main__.py`, `review.py`, `review_contract.py`, `review_verifiers.py`, `git_state.py`, `registry.py`,
-  `sync_plan.py`, `conversion.py` — plus `pyproject.toml`/`uv.lock` and the uv/Python-version config files
+  `sync_plan.py`, `conversion.py`, `prefix_check.py` (imported by `script_coverage` for R33 coverage) — plus
+`pyproject.toml`/`uv.lock` and the uv/Python-version config files
   `uv.toml`, `.python-version` and `.python-versions`, and the three Node files `codex-review` runs
   with the API key (`plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs`,
   `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `plugins/codex-kit/scripts/lib/cdx-process.mjs`)
