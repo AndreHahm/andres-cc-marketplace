@@ -9,7 +9,7 @@ description: >-
   Never merges the base into the branch. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) base branch to rebase onto, then `--pr <number>` for a PR-triggered call — the base defaults to the GitHub default branch if omitted
-allowed-tools: Bash(git branch --show-current), Bash(git fetch origin), Bash(git status), Bash(git rebase --continue), Bash(git rebase --abort), Bash(git add --:*), Bash(git diff), Bash(git show), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh:*), Bash(git remote get-url origin), Bash(git rev-parse HEAD), Bash(git rev-parse refs/remotes/origin/:*), Read, Edit, AskUserQuestion
+allowed-tools: Bash(git branch --show-current), Bash(git fetch origin), Bash(git status), Bash(git rebase --continue), Bash(git rebase --abort), Bash(git add --:*), Bash(git diff), Bash(git show REBASE_HEAD), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh:*), Bash(git remote get-url origin), Bash(git rev-parse HEAD), Bash(git rev-parse refs/remotes/origin/:*), Read, Edit, AskUserQuestion
 ---
 
 # git-rebase-sync
@@ -60,8 +60,8 @@ commit, `--onto`, another remote, a `+` refspec), and `git tag -a:*` admits `-f`
 for the same reason (`Bash(gh pr view:*)` admits `--repo` and `--web`). The `gh repo:*` grant was narrowed to
 the default-branch lookup runs through `git-pr-conflict-preview.sh default-branch` too (the old `gh repo:*` grant included `gh repo delete`, and a `gh repo view` prefix grant admits `--repo` and `--web`). The `git log:*` and `git rev-list:*`
 grants admit `--output=<path>` (a write to any file), so the four read commands run through the script's
-`count-behind`, `count-merges`, `log-range` and `log-remote` modes, and `git diff` and `git show` are exact
-grants with no arguments. None of these is in `git_output_grants_baseline.json` any more.
+`count-behind`, `count-merges`, `log-range` and `log-remote` modes, and `git diff` and `git show REBASE_HEAD`
+are exact grants. None of these is in `git_output_grants_baseline.json` any more.
 
 ## Goals
 - Rebase the current branch onto a specified base branch (often the repo default branch like `dev` or `main`).
@@ -140,7 +140,7 @@ When conflicts happen:
 
 Helpful commands during conflicts:
 - Inspect current conflict hunks: `git diff`
-- See the commit being replayed: `git show`
+- See the commit being replayed: `git show REBASE_HEAD` (a bare `git show` shows the last commit already applied, not the one that conflicts)
 - If you need to back out: `git rebase --abort` (this is safe and should be preferred over destructive resets)
 
 ### 7) Post-rebase verification
@@ -180,12 +180,17 @@ Helpful commands during conflicts:
 - "clean up my old branches and worktrees" → `git-cleanup`
 - "I have a merge conflict after a cherry-pick, no rebase running" → `resolving-merge-conflicts`
 
-**Last dated run record:** 2026-10-18, `evals/git-rebase-sync/` (`skill-tester` Quick Workflow,
-`with_skill` only, simulated command output, graded by the operator's session): 5 evals, 17/17 assertions
-(iteration 2 for evals 2-5; eval 1 re-run in iteration 3 with a complete environment, 5/5). They cover the
-clean-tree PR conflict, a rebase paused for another branch, a fork PR, a branch behind the remote and a
-non-digit PR number. They ran before the backup tag, the PR lookup and the previews moved into plugin scripts (see the grant note above), whose own behavior is covered by `tests/marketplace_ci/test_git_rebase_sync_run_script.py` and `test_git_pr_conflict_preview_script.py`; the evals were not re-run after that change. That is 2 of the 7 scenarios above; the resume itself, `lease_oid` push and the plain
-sync wordings are documented but not run. No baseline arm. `scripts/smoke_test.py` checks the structure.
+**Last dated run record:** 2026-10-18, `evals/git-rebase-sync/workspace/iteration-4/` (`skill-tester` Full
+Pipeline, simulated command output, graded by the operator's session, after the commands moved into plugin
+scripts): 5 evals, `with_skill` 17/17 assertions against a baseline of 11/17 (mean per-eval pass rate 100% vs 68%).
+They cover the clean-tree PR conflict, a rebase paused for another branch, a fork PR, a branch behind the
+remote and a non-digit PR number. The baseline proceeded with a local rebase of the fork PR and skipped the
+backup tag, the rebase confirmation and the plan confirmation; evals 2, 4 and 5 did not separate the arms.
+The prompts supply raw `git` and `gh` output, so the script modes were treated as equivalent and not run: their
+own behavior is covered by `tests/marketplace_ci/test_git_rebase_sync_run_script.py` and
+`test_git_pr_conflict_preview_script.py`. Seven baseline arms were re-run with a reworded prompt after API
+safeguard errors. No token or timing data. This is 2 of the 7 scenarios above; the resume itself, `lease_oid`
+push and the plain sync wordings are documented but not run. `scripts/smoke_test.py` checks the structure.
 
 **Quality gates:**
 - [ ] Never creates or switches to a different feature branch than the current one, unless explicitly asked
@@ -216,8 +221,9 @@ sync wordings are documented but not run. No baseline arm. `scripts/smoke_test.p
 - [ ] The rebase and push run through `git-rebase-sync-run.sh`, and the only `git rebase` grants are the
       exact `--continue` and `--abort` — never a prefix grant such as `Bash(git rebase origin/:*)` or a
       blanket `Bash(git rebase:*)`, which would also permit `--exec`/`-x`
-- [ ] The `gh repo` grant stays scoped to `gh repo view:*` only — never widened to bare `gh repo:*`,
-      which would also permit `gh repo delete`
+- [ ] No `gh` grant exists in this skill's `allowed-tools`; the PR and default-branch lookups run only through
+      `git-pr-conflict-preview.sh`, because `gh repo view:*` admits `--repo` and `--web` and `gh repo:*`
+      admits `gh repo delete`
 - [ ] When invoked with an explicit base-branch argument (e.g. from `/git-sync-branch <target>`), uses it
       directly as `{base_branch}` instead of querying GitHub's default branch
 - [ ] No `git push` grant exists in this skill's `allowed-tools`; the script is the only route, and it
