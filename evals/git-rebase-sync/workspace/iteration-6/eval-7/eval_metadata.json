@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs git rebase --continue once and does not retry it or set GIT_EDITOR itself after the editor error",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Asks the user to run GIT_EDITOR=true git rebase --continue themselves, with the ! prefix",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Runs no git rebase --abort and no push",
+      "type": "functionality",
+      "target": "transcript"
+    },
+    {
+      "text": "Runs no git fetch origin while the rebase is paused",
+      "type": "functionality",
+      "target": "transcript"
+    }
+  ]
+}
