@@ -173,6 +173,60 @@
       "path": "scripts/reviewer_eval/score.py",
       "pr": 595,
       "recorded_at": "2026-10-17T16:07:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4305979025",
+      "line": 51,
+      "note": "Verified real; smoke test now stubs codex on PATH (46f46317)",
+      "path": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-target-paths-file.mjs",
+      "pr": 614,
+      "recorded_at": "2026-10-18T06:48:58+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4305979027",
+      "line": 548,
+      "note": "Verified real; path flags reject value-less, repeated, = form, case variant and flag-shaped values (46f46317)",
+      "path": "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+      "pr": 614,
+      "recorded_at": "2026-10-18T06:48:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4305998372",
+      "line": 110,
+      "note": "Verified real in the logic, no multi-reporter finding in the current archive; blocking_set counts reporters (22994821)",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 614,
+      "recorded_at": "2026-10-18T06:48:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4305998374",
+      "line": 143,
+      "note": "Verified real by live run; reviewer must be in each run's roster (22994821)",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 614,
+      "recorded_at": "2026-10-18T06:48:59+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4306085270",
+      "line": 137,
+      "note": "Verified real, no effect on current archive; stability compares base, reviewed paths and model/CLI across runs (65fc607e)",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 614,
+      "recorded_at": "2026-10-18T07:08:11+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4306085272",
+      "line": 116,
+      "note": "Verified real by live run; the same run file twice is refused by resolved path (65fc607e)",
+      "path": "scripts/reviewer_eval/score.py",
+      "pr": 614,
+      "recorded_at": "2026-10-18T07:08:12+00:00"
     }
   ]
 }
