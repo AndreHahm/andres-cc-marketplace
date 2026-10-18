@@ -227,13 +227,13 @@ def check_agent_enums(fm, settings, findings):
 
 # Fenced blocks and inline code spans hold illustrative examples (as in R34). A fence closes on a
 # line of the same character and an equal-or-longer run, so a four-backtick fence can hold a
-# three-backtick example; a code span closes on a run of exactly the opening length. An unclosed
-# fence is not code.
+# three-backtick example; a code span closes on a run of exactly the opening length and may cross a
+# line break but not a blank line. An unclosed fence is not code.
 _BACKTICK_FENCE = re.compile(
     r"^[ \t]*(`{3,})[^`\n]*\n.*?^[ \t]*\1`*[ \t]*$", re.MULTILINE | re.DOTALL
 )
 _TILDE_FENCE = re.compile(r"^[ \t]*(~{3,})[^\n]*\n.*?^[ \t]*\1~*[ \t]*$", re.MULTILINE | re.DOTALL)
-_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)")
+_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)")
 
 
 def code_regions(text):
