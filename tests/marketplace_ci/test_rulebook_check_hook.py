@@ -61,6 +61,24 @@ def test_a_double_backtick_span_can_hold_a_single_backtick_and_a_link(tmp_path):
     assert _link_findings(tmp_path, body) == []
 
 
+def test_a_code_span_may_cross_a_line_break(tmp_path):
+    body = "references/real.md ``[x](missing.md)\ncontinued`` and `[y](gone.md)\nmore` end"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_blank_line_ends_the_search_for_a_closing_backtick(tmp_path):
+    # Two single backticks in different paragraphs are not one span: the link between stays live.
+    body = "references/real.md a lone `tick\n\n[x](missing.md)\n\nanother ` tick\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_url_inside_a_multi_line_code_span_is_not_a_bare_url():
+    hook = _load_hook()
+    findings = []
+    hook.check_bare_urls("prefix ``see\nhttps://example.com/x`` suffix\n", findings)
+    assert findings == []
+
+
 def test_an_indented_fence_inside_a_list_item_is_code(tmp_path):
     body = "references/real.md\n- item\n    ```\n    [x](missing.md)\n    ```\n"
     assert _link_findings(tmp_path, body) == []
