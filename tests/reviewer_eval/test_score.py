@@ -188,15 +188,25 @@ _HEAD = "a" * 40
 
 
 def _run_file(
-    tmp_path: Path, name: str, blocking_paths: list[str], head: str | None = _HEAD
+    tmp_path: Path,
+    name: str,
+    blocking_paths: list[str],
+    head: str | None = _HEAD,
+    roster: tuple[str, ...] | None = ("security",),
+    reviewer: str = "security",
+    reporters: list[str] | None = None,
 ) -> str:
-    findings = [
-        {"reviewer": "security", "path": path, "line": 1, "blocking": True}
-        for path in blocking_paths
-    ]
+    findings = []
+    for path in blocking_paths:
+        finding: dict = {"reviewer": reviewer, "path": path, "line": 1, "blocking": True}
+        if reporters is not None:
+            finding["reporters"] = reporters
+        findings.append(finding)
     result: dict = {"findings": findings}
     if head is not None:
         result["provenance"] = {"head_sha": head}
+    if roster is not None:
+        result["reviewers"] = list(roster)
     path = tmp_path / name
     path.write_text(json.dumps(result), encoding="utf-8")
     return str(path)
@@ -261,6 +271,104 @@ def test_cli_stability_rejects_a_mistyped_head(
 ):
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"findings": [], "provenance": provenance}), encoding="utf-8")
+    assert score.main(["--stability", str(bad), "--reviewer", "security"]) == 1
+    assert "bad.json" in capsys.readouterr().err
+
+
+_MERGED = {
+    "reviewer": "dependency-reviewer",
+    "reporters": ["dependency-reviewer", "security"],
+    "path": "a.py",
+    "line": 1,
+    "blocking": True,
+}
+
+
+def test_blocking_set_counts_every_reporter_of_a_merged_finding():
+    # aggregate_findings keeps one representative `reviewer` and lists all contributors in
+    # `reporters`; a co-reporter reported the finding too.
+    result = {"findings": [_MERGED]}
+    assert score.blocking_set(result, "security") == frozenset({("a.py", 1)})
+    assert score.blocking_set(result, "dependency-reviewer") == frozenset({("a.py", 1)})
+    assert score.blocking_set(result, "skill-reviewer") == frozenset()
+
+
+def test_blocking_set_uses_the_reviewer_when_a_result_has_no_reporters():
+    # Results from before the field existed carry no `reporters`.
+    finding = {key: value for key, value in _MERGED.items() if key != "reporters"}
+    result = {"findings": [finding]}
+    assert score.blocking_set(result, "dependency-reviewer") == frozenset({("a.py", 1)})
+    assert score.blocking_set(result, "security") == frozenset()
+
+
+@pytest.mark.parametrize("reporters", ["security", [1], {"a": 1}, None])
+def test_blocking_set_rejects_mistyped_reporters(reporters):
+    result = {"findings": [{**_MERGED, "reporters": reporters}]}
+    with pytest.raises(ValueError, match="reporters"):
+        score.blocking_set(result, "security")
+
+
+def test_cli_stability_counts_a_co_reporter_across_runs(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    roster = ("dependency-reviewer", "security")
+    both = ["dependency-reviewer", "security"]
+    runs = [
+        _run_file(
+            tmp_path, f"run{n}.json", ["a.py"], roster=roster, reviewer=roster[0], reporters=both
+        )
+        for n in range(4)
+    ]
+    runs.append(
+        _run_file(
+            tmp_path,
+            "run4.json",
+            ["a.py"],
+            roster=roster,
+            reviewer=roster[0],
+            reporters=[roster[0]],
+        )
+    )
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 0
+    printed = json.loads(capsys.readouterr().out)
+    # security reported the finding in four runs and not in the fifth.
+    assert printed["agree"] == 4
+    assert printed["stable"] is True
+
+
+def test_cli_stability_rejects_a_reviewer_missing_from_the_roster(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    # A typo would otherwise give an empty blocking set in every run, so five runs "agree".
+    runs = [_run_file(tmp_path, f"run{n}.json", []) for n in range(5)]
+    assert score.main(["--stability", *runs, "--reviewer", "securty"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert "securty" in captured.err
+
+
+def test_cli_stability_rejects_a_run_without_a_roster(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [_run_file(tmp_path, f"run{n}.json", []) for n in range(4)]
+    runs.append(_run_file(tmp_path, "old.json", [], roster=None))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "old.json" in captured.err
+    assert "reviewers" in captured.err
+
+
+@pytest.mark.parametrize("roster", ["security", [1], {"security": True}])
+def test_cli_stability_rejects_a_mistyped_roster(
+    tmp_path: Path, capsys: pytest.CaptureFixture, roster
+):
+    bad = tmp_path / "bad.json"
+    bad.write_text(
+        json.dumps({"findings": [], "provenance": {"head_sha": _HEAD}, "reviewers": roster}),
+        encoding="utf-8",
+    )
     assert score.main(["--stability", str(bad), "--reviewer", "security"]) == 1
     assert "bad.json" in capsys.readouterr().err
 
