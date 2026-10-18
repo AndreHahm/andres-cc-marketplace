@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Creates a local annotated backup tag before the rebase and does not push it",
+      "passed": true,
+      "evidence": "Backup tag Step 3, not pushed, before the rebase"
+    },
+    {
+      "text": "Asks via AskUserQuestion, showing the exact git rebase origin/main command, before running the rebase",
+      "passed": true,
+      "evidence": "AskUserQuestion shows `git rebase origin/main` (Step 5) before running it"
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and creates no merge commit",
+      "passed": true,
+      "evidence": "No git merge anywhere; 'no merge commit'"
+    },
+    {
+      "text": "Presents a per-file resolution plan and confirms it via AskUserQuestion before editing either conflicted file",
+      "passed": true,
+      "evidence": "Per-file plan confirmed by AskUserQuestion before any edit (two files, plan text, Proceed/Adjust/Abort)"
+    },
+    {
+      "text": "Does not re-ask whether the user wants conflicts resolved or which skill to use, beyond the history-rewrite confirmations and the resolution plan",
+      "passed": true,
+      "evidence": "Only the Step 5 and plan questions; 'user had already asked for this sync'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

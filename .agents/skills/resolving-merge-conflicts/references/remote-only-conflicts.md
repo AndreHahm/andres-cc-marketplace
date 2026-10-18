@@ -18,8 +18,9 @@ git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 ```
 
 `<baseRefName>` is the PR's own base branch, which need not be the repository default: use it for the
-preview and pass it to `git-rebase-sync` as its explicit base argument (without one, that skill rebases
-onto the repository default branch). It is data from GitHub, and git accepts ref names containing shell
+preview and pass it to `git-rebase-sync` as its explicit base argument together with the PR number,
+`<baseRefName> --pr <number>` (without a base, that skill rebases onto the repository default branch;
+without `--pr`, it cannot run its PR preflight). It is data from GitHub, and git accepts ref names containing shell
 metacharacters such as a semicolon, so use it in a command only after checking it matches
 `^[A-Za-z0-9._/-]+$`; on any other name, stop and ask the user. The preview merges your local
 `HEAD`. Compare `git branch --show-current` with the PR's `headRefName` too: an alias branch at the PR's
@@ -45,8 +46,9 @@ commits that exist only on the PR.
 - The preview is advisory. A rebase replays the branch's commits one at a time, while `merge-tree` merges
   only the two tips, so the rebase can stop on different files or hunks.
 - Tell the user plainly that the conflicts exist only on the remote and appear on disk only once the
-  rebase starts. Report which files will conflict, then route to `git-rebase-sync`, which starts the
-  rebase from this clean tree and surfaces the conflicts as it goes.
+  rebase starts. Report which files will conflict, then invoke `Skill(git-rebase-sync)` with
+  `<baseRefName> --pr <number>`; it starts the rebase from this clean tree and surfaces the conflicts as it
+  goes. Steps 2-7 of this skill do not apply afterwards.
 - Never create a merge commit on a PR branch that merges by rebase. Check
   `gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed` if the merge method is
   unclear, and ask the user only if it still is.

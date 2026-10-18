@@ -1,0 +1,16 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not run gh pr view or any other command containing the PR reference text",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Stops and asks for a valid numeric PR number",
+      "type": "functionality",
+      "target": "transcript messages"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "Compares git branch --show-current with the PR's headRefName",
+      "type": "functionality",
+      "target": "transcript commands and messages"
+    },
+    {
+      "text": "Stops and asks the user to confirm the local branch is the intended one because its name differs from the PR's headRefName",
+      "type": "functionality",
+      "target": "transcript messages and AskUserQuestion calls"
+    },
+    {
+      "text": "Does not hand off to git-rebase-sync before that confirmation",
+      "type": "functionality",
+      "target": "transcript commands"
+    }
+  ]
+}
