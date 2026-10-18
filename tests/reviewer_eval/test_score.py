@@ -184,13 +184,21 @@ def test_cli_reports_an_invalid_corpus(tmp_path: Path, capsys: pytest.CaptureFix
     assert "pr-1-00000001.json" in capsys.readouterr().err
 
 
-def _run_file(tmp_path: Path, name: str, blocking_paths: list[str]) -> str:
+_HEAD = "a" * 40
+
+
+def _run_file(
+    tmp_path: Path, name: str, blocking_paths: list[str], head: str | None = _HEAD
+) -> str:
     findings = [
         {"reviewer": "security", "path": path, "line": 1, "blocking": True}
         for path in blocking_paths
     ]
+    result: dict = {"findings": findings}
+    if head is not None:
+        result["provenance"] = {"head_sha": head}
     path = tmp_path / name
-    path.write_text(json.dumps({"findings": findings}), encoding="utf-8")
+    path.write_text(json.dumps(result), encoding="utf-8")
     return str(path)
 
 
@@ -201,7 +209,47 @@ def test_cli_stability_prints_the_agreement_of_repeated_runs(
     runs.append(_run_file(tmp_path, "run4.json", ["b.py"]))
     assert score.main(["--stability", *runs, "--reviewer", "security"]) == 0
     printed = json.loads(capsys.readouterr().out)
-    assert printed == {"reviewer": "security", "repeats": 5, "agree": 4, "stable": True}
+    assert printed == {
+        "reviewer": "security",
+        "head_sha": _HEAD,
+        "repeats": 5,
+        "agree": 4,
+        "stable": True,
+    }
+
+
+def test_cli_stability_rejects_runs_of_different_heads(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    # Five unrelated heads with no blocking findings would otherwise agree on the empty set.
+    runs = [_run_file(tmp_path, f"run{n}.json", [], head=f"{n}" * 40) for n in range(5)]
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run1.json" in captured.err
+    assert "head" in captured.err
+
+
+def test_cli_stability_rejects_a_run_without_a_recorded_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [_run_file(tmp_path, f"run{n}.json", []) for n in range(4)]
+    runs.append(_run_file(tmp_path, "old.json", [], head=None))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "old.json" in captured.err
+    assert "provenance.head_sha" in captured.err
+
+
+@pytest.mark.parametrize("provenance", [{"head_sha": 7}, "abc", ["head_sha"], None])
+def test_cli_stability_rejects_a_mistyped_head(
+    tmp_path: Path, capsys: pytest.CaptureFixture, provenance
+):
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"findings": [], "provenance": provenance}), encoding="utf-8")
+    assert score.main(["--stability", str(bad), "--reviewer", "security"]) == 1
+    assert "bad.json" in capsys.readouterr().err
 
 
 def test_cli_stability_needs_a_reviewer(tmp_path: Path, capsys: pytest.CaptureFixture):

@@ -103,14 +103,24 @@ def stability(blocking_sets: list[frozenset]) -> dict:
 
 def _print_stability(paths: list[str], reviewer: str) -> int:
     sets = []
+    head = None
     for name in paths:
         try:
             result = json.loads(Path(name).read_text(encoding="utf-8"))
             sets.append(blocking_set(result, reviewer))
+            provenance = result.get("provenance")
+            run_head = provenance.get("head_sha") if isinstance(provenance, dict) else None
+            if not isinstance(run_head, str):
+                raise ValueError(
+                    "no provenance.head_sha, so it cannot be shown to be a repeat of one head"
+                )
+            if head is not None and run_head != head:
+                raise ValueError(f"head {run_head} differs from {head}, the head of the first run")
+            head = run_head
         except (OSError, ValueError) as exc:
             print(f"{name}: {exc}", file=sys.stderr)
             return 1
-    print(json.dumps({"reviewer": reviewer, **stability(sets)}, indent=2))
+    print(json.dumps({"reviewer": reviewer, "head_sha": head, **stability(sets)}, indent=2))
     return 0
 
 

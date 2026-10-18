@@ -46,8 +46,10 @@ Stability needs five repeated runs of one head, as archived result files:
 uv run python -m scripts.reviewer_eval.score --stability run1.json run2.json run3.json run4.json run5.json --reviewer security-reviewer
 ```
 
-It prints how many runs gave the same blocking set (`agree`) and whether that is stable (at least
-4 of 5; `null` until five runs are given). No repeated runs exist yet, so there is no baseline.
+Every file must carry `provenance.head_sha` and all must name the same head; otherwise the command
+exits 1 and names the file. It prints that head (`head_sha`), how many runs gave the same blocking
+set (`agree`) and whether that is stable (at least 4 of 5; `null` until five runs are given). No
+repeated runs exist yet, so there is no baseline.
 
 ## Case format
 
