@@ -1856,11 +1856,25 @@ def _dispatch_one(
         # the full scope if filtering would leave nothing: a caller
         # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
         # baseline regardless of whether any in-scope file happens to
-        # remain, and an empty --target-paths is worse than a widened
+        # remain, and an empty paths list is worse than a widened
         # (but real) one.
         scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
         reviewer_scope = scoped or scope.paths
-    target_paths = ",".join(reviewer_scope)
+
+    # Checked whether or not line ranges exist: the paths reach the bridge one per line in a file,
+    # so a newline inside a name would split into two valid-looking entries and the real file would
+    # never be a target. Any other character the bridge refuses is better failed here, before a
+    # single call is spent.
+    unsafe = [p for p in reviewer_scope if not _BRIEFING_SAFE_PATH.fullmatch(p)]
+    if unsafe:
+        return ReviewerReport(
+            reviewer=name,
+            status="failed",
+            error=_report_error(
+                f"changed path with characters the reviewer bridge does not accept: {unsafe[0]!r}"
+            ),
+            attempts=0,
+        )
 
     instruction_path = instructions_dir / f"{name}.txt"
     briefing = ""
@@ -1868,17 +1882,6 @@ def _dispatch_one(
         # Narrows what the model judges; the gate (`_classify`) still decides
         # what blocks. None means the ranges could not be computed, and then
         # every Critical/Major blocks, so the reviewer is not narrowed either.
-        unsafe = [p for p in reviewer_scope if not _BRIEFING_SAFE_PATH.fullmatch(p)]
-        if unsafe:
-            return ReviewerReport(
-                reviewer=name,
-                status="failed",
-                error=_report_error(
-                    "changed path with characters the reviewer bridge does not accept: "
-                    f"{unsafe[0]!r}"
-                ),
-                attempts=0,
-            )
         briefing = render_diff_scope(reviewer_scope, changed_ranges, changed_paths, whole_file)
     if exceptions_briefing:
         briefing = f"{briefing}\n\n{exceptions_briefing}" if briefing else exceptions_briefing
@@ -1891,6 +1894,14 @@ def _dispatch_one(
             reviewer=name, status="failed", error="instruction preparation failed", attempts=0
         )
 
+    # One path per line in a file beside the instruction file, outside the checkout (written after
+    # the instruction file, which creates the directory when the caller named one that is missing).
+    # A single --target-paths argument cannot carry a very large list: Linux refuses one over about
+    # 128 KiB, which failed every reviewer on a 4,500-path diff (issue #611). With a file the whole
+    # list also stays in scope for the bridge's validation of what the reviewer cites.
+    paths_path = instructions_dir / f"{name}.paths"
+    paths_path.write_text("".join(f"{p}\n" for p in reviewer_scope), encoding="utf-8")
+
     argv = [
         "node",
         str(bridge_script),
@@ -1898,8 +1909,8 @@ def _dispatch_one(
         name,
         "--instruction-file",
         str(instruction_path),
-        "--target-paths",
-        target_paths,
+        "--target-paths-file",
+        str(paths_path),
         "--execution-profile",
         "read-only",
         "--dispatch-id",
@@ -2036,6 +2047,18 @@ def dispatch_reviewers(
     # Deduplicated, order kept: two workers must never write the same
     # per-reviewer instruction file at once.
     names = tuple(dict.fromkeys((*scope.validate, *scope.audit)))
+    # Checked once on the whole scope, before any reviewer starts: a reviewer narrowed to a subset
+    # (the rulebook checker) would otherwise pass its own check and spend a call on a run the
+    # others have already failed. `_dispatch_one` repeats the check as its own defense.
+    unsafe = [p for p in scope.paths if not _BRIEFING_SAFE_PATH.fullmatch(p)]
+    if unsafe:
+        error = _report_error(
+            f"changed path with characters the reviewer bridge does not accept: {unsafe[0]!r}"
+        )
+        return tuple(
+            ReviewerReport(reviewer=name, status="failed", error=error, attempts=0)
+            for name in names
+        )
     changed_paths = tuple(changed_paths)
     exceptions_briefing = render_exceptions_briefing(exceptions)
     whole_file: frozenset[str] = frozenset()
