@@ -226,8 +226,13 @@ def check_agent_enums(fm, settings, findings):
 
 
 def extract_markdown_links(text):
+    # Fenced blocks and inline code spans hold illustrative examples, not links (as in R34).
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = re.sub(r"`[^`\n]*`", "", text)
     links = re.findall(r"\[(?:[^\]]*)\]\(([^)]+)\)", text)
-    return [href for href in links if not href.startswith(("http://", "https://"))]
+    # A same-document anchor ("#foo") has no file; "path#foo" is checked as "path".
+    targets = (href.split("#", 1)[0] for href in links)
+    return [t for t in targets if t and not t.startswith(("http://", "https://"))]
 
 
 def check_skill_links_and_orphans(text, file_path, findings):

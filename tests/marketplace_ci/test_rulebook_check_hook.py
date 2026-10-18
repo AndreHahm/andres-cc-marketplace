@@ -1,0 +1,50 @@
+"""The PostToolUse rulebook hook's link check must not flag non-links (issues #594, #390)."""
+
+import importlib.util
+from pathlib import Path
+
+HOOK = Path(__file__).resolve().parents[2] / "plugins/plugin-devkit/hooks/pdk-rulebook-check.py"
+
+
+def _load_hook():
+    spec = importlib.util.spec_from_file_location("pdk_rulebook_check", HOOK)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _link_findings(tmp_path, body):
+    skill = tmp_path / "SKILL.md"
+    (tmp_path / "references").mkdir()
+    (tmp_path / "references" / "real.md").write_text("x", encoding="utf-8")
+    skill.write_text(body, encoding="utf-8")
+    findings = []
+    _load_hook().check_skill_links_and_orphans(body, skill, findings)
+    return [message for severity, tag, message in findings if tag == "LINKS"]
+
+
+def test_same_document_anchor_is_not_a_broken_link(tmp_path):
+    assert (
+        _link_findings(tmp_path, "See [Flow](#implementation-workflow) and references/real.md")
+        == []
+    )
+
+
+def test_inline_code_example_is_not_a_link(tmp_path):
+    body = "Format: `![Description](attachment-name.png)` references/real.md"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_fenced_example_is_not_a_link(tmp_path):
+    body = "references/real.md\n```\n[x](missing-in-fence.md)\n```\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_anchor_on_a_real_file_resolves(tmp_path):
+    assert _link_findings(tmp_path, "[r](references/real.md#top)") == []
+
+
+def test_real_broken_link_is_still_flagged(tmp_path):
+    findings = _link_findings(tmp_path, "[gone](references/missing.md) and `[ok](x.md)`")
+    assert findings == ["broken link: references/missing.md"]
