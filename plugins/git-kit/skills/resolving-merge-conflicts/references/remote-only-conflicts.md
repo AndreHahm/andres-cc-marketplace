@@ -4,7 +4,7 @@ If `git status` shows uncommitted changes, ask the user to commit or stash first
 a clean tree before it can start the rebase.
 
 Applies when `git status` shows no unmerged paths and no rebase, merge or cherry-pick in progress, but the
-user reports a PR that conflicts with its base. The PR number is data: it must match `^[0-9]+$` before `<number>` goes into any command below, otherwise stop and ask. Nothing is on disk yet, so do not start a trial merge or a
+user reports a PR that conflicts with its base. The PR number is data: it must match `^[0-9]{1,9}$` (the script's own limit) before `<number>` goes into any command below, otherwise stop and ask. Nothing is on disk yet, so do not start a trial merge or a
 plain merge to put it there. Preview instead, with no change to the worktree or index (`git fetch`
 updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 
@@ -42,7 +42,9 @@ commits that exist only on the PR.
   GitHub has not computed it yet -- rely on the `git merge-tree` result and say so.
 - `git merge-tree` neither touches the worktree or index nor creates a commit. Exit status 1 means
   conflicts: the conflicted file names follow the tree OID on the output. Exit status 0 means a clean
-  merge. Any other status is an error with unspecified output -- report it, don't guess.
+  merge. Any other status is an error with unspecified output -- report it, don't guess. A clean merge
+  together with `mergeable` other than `CONFLICTING` means there is no conflict to resolve: tell the user
+  and stop, without routing to `git-rebase-sync`.
 - The preview is advisory. A rebase replays the branch's commits one at a time, while `merge-tree` merges
   only the two tips, so the rebase can stop on different files or hunks.
 - Tell the user plainly that the conflicts exist only on the remote and appear on disk only once the

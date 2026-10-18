@@ -8,8 +8,9 @@ description: >-
   "resolve these merge conflicts", "fix this merge conflict", or `git status` shows unmerged paths
   outside an active rebase. Not for conflicts hit mid-`git rebase` -- those have their own safety
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
-  that skill instead. Also previews a PR conflict that exists only on GitHub (clean local tree)
-  with no worktree change, then routes to git-rebase-sync. Hands off to `commit` to finalize -- never runs `git commit`.
+  that skill instead. Handles "resolve the conflicts on PR #N" for a GitHub-only conflict (clean
+  local tree): read-only preview, then routes to git-rebase-sync. Hands off to `commit` to finalize --
+  never runs `git commit`.
 allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours --:*), Bash(git checkout --theirs --:*), Bash(git submodule status:*), Bash(git fetch origin), Bash(git rev-parse HEAD), Bash(git branch --show-current), Bash(git remote get-url origin), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh:*), Bash(gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(commit), Skill(git-rebase-sync)
 ---
 
@@ -21,7 +22,7 @@ Resolve Git merge conflicts by intelligently combining changes from both branche
 
 ## Quick Start
 
-1. Assess the conflict (`git status`, categorize each file) -- Step 1.
+1. Assess the conflict (`git status`, categorize each file) -- Step 1. A PR conflict that exists only on GitHub (clean `git status`) takes Step 1a instead and skips Steps 2-7.
 2. Draft a per-file resolution plan and get user approval -- Step 2.
 3. Resolve delete-related conflicts via the bundled script -- Step 3.
 4. Execute the plan, one resolution pattern per conflict type -- Step 4.
@@ -100,7 +101,7 @@ When the conflict markers alone don't give enough surrounding context to judge i
 
 ### Step 1a: Conflicts That Exist Only on the Remote (Clean Tree)
 
-When `git status` is clean but a PR conflicts with its base on GitHub, the conflicts exist only on the remote and appear on disk only once the rebase starts: never put them on disk with a trial or plain merge. This step previews and routes (it is the entry for "resolve the conflicts on PR #N"; `git-rebase-sync`, the entry for sync/rebase wording, does the rebase and the resolving). Steps 2-7 do not apply to this case. The PR number must match `^[0-9]+$` before any command below runs, and `baseRefName` must match `^[A-Za-z0-9_][A-Za-z0-9._/-]*$` before it is used in a command or passed on (else stop and ask).
+When `git status` is clean but a PR conflicts with its base on GitHub, the conflicts exist only on the remote and appear on disk only once the rebase starts: never put them on disk with a trial or plain merge. This step previews and routes (it is the entry for "resolve the conflicts on PR #N"; `git-rebase-sync`, the entry for sync/rebase wording, does the rebase and the resolving). Steps 2-7 do not apply to this case. The PR number must match `^[0-9]{1,9}$` (the script's own limit) before any command below runs, and `baseRefName` must match `^[A-Za-z0-9_][A-Za-z0-9._/-]*$` before it is used in a command or passed on (else stop and ask).
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" view <number>
@@ -112,7 +113,7 @@ git remote get-url origin
 gh repo view --json mergeCommitAllowed,rebaseMergeAllowed,squashMergeAllowed
 ```
 
-Never create a merge commit on a PR branch that merges by rebase. If `git status` is dirty, ask the user to commit or stash first. If `git rev-parse HEAD` differs from `headRefOid`, or `git branch --show-current` is not `headRefName`, stop and confirm the local branch is the intended one. If `isCrossRepository` is true, or `origin` is not the PR's own repository (`url`), stop: a fork PR is not supported on this route. Report the conflicted files, then invoke `Skill(git-rebase-sync)` with the argument `<baseRefName> --pr <number>`. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
+Never create a merge commit on a PR branch that merges by rebase. If `git status` is dirty, ask the user to commit or stash first. If `git rev-parse HEAD` differs from `headRefOid`, or `git branch --show-current` is not `headRefName`, stop and confirm the local branch is the intended one. If `isCrossRepository` is true, or `origin` is not the PR's own repository (`url`), stop: a fork PR is not supported on this route. If `merge-tree` exits 0 and `mergeable` is not `CONFLICTING`, there is no conflict to resolve: say so and stop, without routing on. Otherwise report the conflicted files, then invoke `Skill(git-rebase-sync)` with the argument `<baseRefName> --pr <number>`. Run the `gh repo view` line only when the merge method is unclear. Read `references/remote-only-conflicts.md` for exit-status handling and the procedure.
 
 ### Step 2: Create Merge Resolution Plan
 
@@ -389,6 +390,8 @@ git merge --no-ff --no-commit -Xignore-space-change <branch>
 
 **Verify it does NOT activate on:**
 - "I hit a conflict during my rebase" → `git-rebase-sync`
+- "sync / rebase my PR branch onto main" with no request to resolve conflicts → `git-rebase-sync` (this skill's Step 1a is the entry for "resolve the conflicts on PR #N" wording only)
+- A remote-only PR conflict where the PR number is not digits, the PR is from a fork, or the local branch name differs from the PR's `headRefName` → Step 1a stops and asks or reports; it never previews or routes on
 - "commit my resolved conflicts" alone, once no unmerged paths remain → `commit`
 
 **Quality gates:**
