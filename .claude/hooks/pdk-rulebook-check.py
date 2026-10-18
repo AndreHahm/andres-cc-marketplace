@@ -225,10 +225,10 @@ def check_agent_enums(fm, settings, findings):
                 findings.append(("FAIL", "AGENT", "tools field must be valid JSON array"))
 
 
-# Fenced blocks and inline code spans hold illustrative examples (as in R34). A code span closes
-# on a run of exactly the opening length and may cross a line break but not a blank line.
+# Fenced blocks and inline code spans hold illustrative examples (as in R34).
 _FENCE_OPEN = re.compile(r"[ \t]*(`{3,}|~{3,})(.*)")
-_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)")
+_SPAN_TOKEN = re.compile(r"\\[\s\S]|(`+)")  # a backslash escape pair, or a run of backticks
+_BLANK_LINE = re.compile(r"\n[ \t]*\n")
 
 
 def fence_regions(text):
@@ -253,6 +253,27 @@ def fence_regions(text):
     return regions
 
 
+def span_regions(text):
+    """Spans of inline code, found left to right. A backslash escapes the next character outside a
+    span (so an escaped backtick opens nothing), a span closes on a run of exactly the opening
+    length, and the search stops at a blank line, so it may cross a line break but not a paragraph.
+    Inside a span a backslash is literal. An unmatched run is just text."""
+    regions, pos, limit = [], 0, -1
+    while (token := _SPAN_TOKEN.search(text, pos)) is not None:
+        run = token.group(1)
+        pos = token.end()
+        if run is None:
+            continue
+        if pos > limit:  # the next blank line stays the same until the scan passes it
+            blank = _BLANK_LINE.search(text, pos)
+            limit = blank.start() if blank else len(text)
+        closer = re.compile(rf"(?<!`)`{{{len(run)}}}(?!`)").search(text, pos, limit)
+        if closer is not None:
+            regions.append((token.start(), closer.end()))
+            pos = closer.end()
+    return regions
+
+
 def code_regions(text):
     fences = fence_regions(text)
     # Blank each fence out (keeping its line breaks) before looking for spans: the blank lines end
@@ -264,7 +285,7 @@ def code_regions(text):
             masked.append(re.sub(r"[^\n]", " ", text[max(start, pos) : end]))
             pos = end
     masked.append(text[pos:])
-    return fences + [m.span() for m in _CODE_SPAN.finditer("".join(masked))]
+    return fences + span_regions("".join(masked))
 
 
 def strip_code(text):
