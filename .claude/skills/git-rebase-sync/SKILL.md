@@ -57,8 +57,9 @@ the plugin script `git-rebase-sync-run.sh`, whose nine modes each run one fixed 
 also admit anything appended after it (`--exec`/`-x`, which runs an arbitrary command against every replayed
 commit, `--onto`, another remote, a `+` refspec), and `git tag -a:*` admits `-f`; only `--continue` and
 `--abort` stay as exact `git rebase` grants. The PR lookup runs through `git-pr-conflict-preview.sh view`
-for the same reason (`Bash(gh pr view:*)` admits `--repo` and `--web`). The `gh repo:*` grant was narrowed to
-the default-branch lookup runs through `git-pr-conflict-preview.sh default-branch` too (the old `gh repo:*` grant included `gh repo delete`, and a `gh repo view` prefix grant admits `--repo` and `--web`). The `git log:*` and `git rev-list:*`
+for the same reason (`Bash(gh pr view:*)` admits `--repo` and `--web`), and so does the default-branch lookup,
+`git-pr-conflict-preview.sh default-branch` (a `gh repo view` prefix grant admits `--repo` and `--web`, and
+`gh repo:*` includes `gh repo delete`). The `git log:*` and `git rev-list:*`
 grants admit `--output=<path>` (a write to any file), so the four read commands run through the script's
 `count-behind`, `count-merges`, `log-range` and `log-remote` modes, and `git diff` and `git show REBASE_HEAD`
 are exact grants. None of these is in `git_output_grants_baseline.json` any more.
@@ -86,7 +87,7 @@ are exact grants. None of these is in `git_output_grants_baseline.json` any more
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
     - `"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" default-branch` (a fixed read-only `gh repo view` that prints the default branch name)
-  - **PR-triggered call** (the user names a PR, or `resolving-merge-conflicts` routed here): the PR number (from `--pr <number>` in `$ARGUMENTS`, or named by the user) must match `^[0-9]+$`, otherwise stop and ask; then run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" view <number>` (a fixed read-only `gh pr view` that returns `baseRefName`, `headRefName`, `headRefOid`, `isCrossRepository` and `url`, among other fields). Stop and report, without rebasing, when `isCrossRepository` is true, when `git remote get-url origin` (minus the GitHub host prefix, in HTTPS or SSH form, and the `.git` suffix) is not the `owner/repo` in `url`, when `git branch --show-current` is not `headRefName`, or when `git rev-parse HEAD` differs from `headRefOid` (unpushed or stale: ask via `AskUserQuestion` and continue only if the user confirms that this local branch is the intended one). While a rebase is paused (`HEAD` is detached), skip the `HEAD` comparison and read the branch being rebased from `git status`; stop unless it equals `headRefName`, so a rebase paused for a different branch is never resumed or pushed for this PR. Otherwise use `baseRefName` as `{base_branch}`, unless an explicit base argument was given. This preflight is not optional, whether or not the `resolving-merge-conflicts` preview ran.
+  - **PR-triggered call** (the user names a PR, or `resolving-merge-conflicts` routed here): the PR number (from `--pr <number>` in `$ARGUMENTS`, or named by the user) must match `^[0-9]{1,9}$` (the script's own limit), otherwise stop and ask; then run `"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" view <number>` (a fixed read-only `gh pr view` that returns `baseRefName`, `headRefName`, `headRefOid`, `isCrossRepository` and `url`, among other fields). Stop and report, without rebasing, when `isCrossRepository` is true, when `git remote get-url origin` (minus the GitHub host prefix, in HTTPS or SSH form, and the `.git` suffix) is not the `owner/repo` in `url`, when `git branch --show-current` is not `headRefName`, or when `git rev-parse HEAD` differs from `headRefOid` (unpushed or stale: ask via `AskUserQuestion` and continue only if the user confirms that this local branch is the intended one). While a rebase is paused (`HEAD` is detached), skip the `HEAD` comparison and read the branch being rebased from `git status`; stop unless it equals `headRefName`, so a rebase paused for a different branch is never resumed or pushed for this PR. Otherwise use `baseRefName` as `{base_branch}`, unless an explicit base argument was given. This preflight is not optional, whether or not the `resolving-merge-conflicts` preview ran.
   - `{base_branch}` (whichever source supplied it) and the current `{branch_name}` are data, and a git ref name can contain shell metacharacters (a semicolon, for one), as with a branch checked out from a contributor's PR: use either in a command only if it matches `^[A-Za-z0-9_][A-Za-z0-9._/-]*$`, otherwise stop and ask the user. Also stop if `{branch_name}` equals `{base_branch}`.
 - Fetch latest:
   - `git fetch origin`
@@ -95,7 +96,7 @@ are exact grants. None of these is in `git_output_grants_baseline.json` any more
 - Ensure the working tree is clean and there is no operation in progress:
   - `git status`
 - If `git status` shows a rebase of this branch already in progress, skip Steps 2-5 and go to Step 6. For an in-progress merge or cherry-pick, stop and ask what to do (abort vs continue) and point at `resolving-merge-conflicts`.
-- Once Step 1's fetch has run, if the branch exists on origin, count the commits the remote branch has that this one lacks: `"${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh" count-behind {branch_name}` (runs `git rev-list --count HEAD..refs/remotes/origin/{branch_name}`; skip if the ref does not exist). A non-zero count means a rebase plus Step 8's force-with-lease push would overwrite them, since the lease checks against the freshly fetched ref: stop and ask the user to update the local branch first. Otherwise record `{lease_oid}`: the remote tip this rebase starts from, `git rev-parse refs/remotes/origin/{branch_name}` (none if the ref does not exist). Step 8 pushes against that exact value, so a commit that lands on the remote branch while the rebase runs, or while it is paused on a conflict, is never overwritten.
+- Once Step 1's fetch has run, if the branch exists on origin, count the commits the remote branch has that this one lacks: `"${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh" count-behind {branch_name}` (runs `git rev-list --count HEAD..refs/remotes/origin/{branch_name}`; exit 128 means that ref does not exist, so skip the count, while exit 2 is the script refusing the name: stop and ask). A non-zero count means a rebase plus Step 8's force-with-lease push would overwrite them, since the lease checks against the freshly fetched ref: stop and ask the user to update the local branch first. Otherwise record `{lease_oid}`: the remote tip this rebase starts from, `git rev-parse refs/remotes/origin/{branch_name}` (none if the ref does not exist). Step 8 pushes against that exact value, so a commit that lands on the remote branch while the rebase runs, or while it is paused on a conflict, is never overwritten.
 
 ### 3) Create a local backup ref (do not push)
 - Create an annotated tag at current `HEAD` through the script, which names it and prints the name:
@@ -108,7 +109,7 @@ are exact grants. None of these is in `git_output_grants_baseline.json` any more
 - If merge commits exist, ask whether to preserve them (`--rebase-merges`) or flatten them (plain rebase). Say that GitHub's rebase-and-merge rejects a branch containing merge commits, so preserving them suits only a PR that merges another way.
 
 ### 5) Run the rebase (requires confirmation)
-- Use `AskUserQuestion` to show the exact command you intend to run and confirm before running it:
+- Use `AskUserQuestion` to show the exact command you intend to run (the script invocation, plus the git command it runs, which the script writes with the fully qualified ref `refs/remotes/origin/{base_branch}`) and confirm before running it:
   - Typical: `git rebase origin/{base_branch}`, run as `"${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh" rebase {base_branch}`
   - With merge preservation: `git rebase --rebase-merges origin/{base_branch}`, run as the same script with `rebase-merges`
 - Run the rebase only through that script, never as a bare `git rebase` with other options (no `-x`, `--exec`, `--onto`).
@@ -134,7 +135,8 @@ When conflicts happen:
    and stop and ask if a path has characters outside `[A-Za-z0-9._/ -]`):
    - `git add -- <file...>`
 5. Continue:
-   - `git rebase --continue`
+   - `git rebase --continue` (it may open the commit-message editor, which stalls in this session: if it stalls or reports an editor error, stop and ask the user to run `GIT_EDITOR=true git rebase --continue` with the `!` prefix, which keeps each message)
+   - If the next commit conflicts too, go back to item 1; when the rebase finishes, go to Step 7.
 6. If you reach a point where resolution is too risky/unclear:
    - Stop and ask; optionally propose aborting the rebase.
 
@@ -150,7 +152,8 @@ Helpful commands during conflicts:
 
 ### 8) Push updated branch (requires confirmation)
 - If the branch already exists on origin, rebasing rewrites history, so pushing requires force-with-lease.
-- Use `AskUserQuestion` to show the exact command and confirm before running it:
+- If Step 2 found no `refs/remotes/origin/{branch_name}`, there is no remote history to rewrite and the script has no mode for a first push: ask the user to run `git push -u origin HEAD` themselves (this skill holds no plain-push grant).
+- Use `AskUserQuestion` to show the exact command (the script invocation, plus the git command it runs, which the script writes with fully qualified refs and `--no-follow-tags`) and confirm before running it:
   - `git push --force-with-lease={branch_name}:{lease_oid} origin HEAD:{branch_name}`, with the value recorded in Step 2, run as `"${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh" push {branch_name} {lease_oid}` (the script fixes the shape: remote `origin`, no `+`, no other flags, and it refuses unless `HEAD` is that branch with no rebase in progress, or when the branch is `main`, `master` or the remote's default branch, or when `origin/HEAD` is not set so that default is unknown: then ask the user to run `git remote set-head origin --auto`).
   - If this run resumed a rebase it did not start, no `{lease_oid}` exists, and the plain lease checks against whatever the latest fetch brought in. Show the output of `"${CLAUDE_PLUGIN_ROOT}/scripts/git-rebase-sync-run.sh" log-remote {branch_name}` (runs `git log --oneline -5 refs/remotes/origin/{branch_name}`) in the confirmation, say that it cannot prove nothing landed while the rebase was paused, and run it as the script's `push-plain {branch_name}` mode (`git push --force-with-lease origin HEAD:{branch_name}`) only if the user confirms that tip is expected.
 
