@@ -66,6 +66,37 @@ def test_a_code_span_may_cross_a_line_break(tmp_path):
     assert _link_findings(tmp_path, body) == []
 
 
+def test_escaped_backticks_are_not_code_delimiters(tmp_path):
+    # `\`` is a literal backtick (CommonMark 2.4), so the link between two of them is live text.
+    body = "references/real.md see \\`[x](missing.md)\\` here\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_an_even_run_of_backslashes_does_not_escape_the_backtick(tmp_path):
+    # `\\` is an escaped backslash, so the backtick after it opens a real span.
+    body = "references/real.md see \\\\`[x](missing.md)` here\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_three_backslashes_escape_the_backtick(tmp_path):
+    body = "references/real.md see \\\\\\`[x](missing.md)\\` here\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_backslash_inside_a_code_span_is_literal_and_does_not_escape_the_closer(tmp_path):
+    # `a\` is a complete span (CommonMark: backslashes are literal in code), so the link after it
+    # is not inside any span.
+    body = "references/real.md `a\\` then [x](missing.md) and `b` end\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_url_between_escaped_backticks_is_still_a_bare_url():
+    hook = _load_hook()
+    findings = []
+    hook.check_bare_urls("see \\`https://example.com/x\\` here\n", findings)
+    assert [rule for _, rule, _ in findings] == ["R17"]
+
+
 def test_a_blank_line_ends_the_search_for_a_closing_backtick(tmp_path):
     # Two single backticks in different paragraphs are not one span: the link between stays live.
     body = "references/real.md a lone `tick\n\n[x](missing.md)\n\nanother ` tick\n"
