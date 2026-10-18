@@ -45,7 +45,16 @@ def _run(cwd, *args, extra_env=None):
 def _commit(repo, name, text):
     (repo / name).write_text(text, encoding="utf-8")
     _git(repo, "add", "--", name)
-    _git(repo, "commit", "-m", f"add {name}")
+    _git(
+        repo,
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.invalid",
+        "commit",
+        "-m",
+        f"add {name}",
+    )
 
 
 @pytest.fixture
