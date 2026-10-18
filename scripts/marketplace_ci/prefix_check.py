@@ -607,11 +607,13 @@ def _load_authoritative_sources(
 
 
 def _is_bytecode_cache(path: Path) -> bool:
-    """A regular file under `__pycache__` or named `*.pyc`: a gitignored byproduct of any local
-    test or script run (issue #452), never plugin content. Symlinks are decided before this is
-    asked, so a symlink named like a cache is still flagged. Same rule as
-    `sync_plan._is_bytecode_cache`."""
-    return "__pycache__" in path.parts or path.suffix == ".pyc"
+    """A regular Python bytecode file (`*.pyc`, `*.pyo`): a gitignored byproduct of any local test
+    or script run (issue #452), never plugin content. Only bytecode is skipped, wherever it sits:
+    any other file, including one under a `__pycache__` directory, is scanned like the rest, so a
+    plugin cannot ship an unprefixed script by tucking it into one. Symlinks are decided before
+    this is asked, so a symlink named like a cache is still flagged. Unlike
+    `sync_plan._is_bytecode_cache`, which skips everything under `__pycache__` when mirroring."""
+    return path.suffix in (".pyc", ".pyo")
 
 
 def _iter_files(root: Path, repo_resolved: Path):

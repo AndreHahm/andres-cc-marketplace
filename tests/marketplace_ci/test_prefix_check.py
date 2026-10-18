@@ -496,6 +496,19 @@ def test_unprefixed_file_next_to_a_cache_is_still_flagged(tmp_path):
     assert [v.path.name for v in violations] == ["other.py"]
 
 
+def test_a_non_bytecode_file_inside_a_pycache_directory_is_still_scanned(tmp_path):
+    # Only bytecode is a byproduct: an unprefixed script in __pycache__ must not hide there.
+    plugin_dir = tmp_path / "git-kit"
+    cache = plugin_dir / "scripts" / "__pycache__"
+    cache.mkdir(parents=True)
+    (cache / "unprefixed.sh").write_text("", encoding="utf-8")
+    (cache / "git_check.cpython-313.pyc").write_bytes(b"")
+    (cache / "git_check.cpython-313.opt-1.pyo").write_bytes(b"")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert [v.path.name for v in violations] == ["unprefixed.sh"]
+
+
 def test_source_inside_repo_via_traversal_still_scanned_normally(tmp_path):
     # A source that resolves back inside the repo despite using '../'
     # segments (e.g. './a/../b') must not be falsely rejected -- only a
