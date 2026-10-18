@@ -7,7 +7,11 @@
 // argument limit and every call keeps its full scope. Confirms: the file's entries get exactly the
 // same validation as --target-paths entries; exactly one of the two flags is required; the file
 // must be a readable regular file under a size cap; and a list far over the argument limit is
-// accepted and reaches the prompt whole.
+// accepted and reaches the prompt whole; a path flag given without a value is rejected, never
+// ignored in favor of the other one.
+//
+// Needs no installed Codex CLI: a --dry-run still resolves the `codex` executable, so each bridge
+// call gets a throwaway stub first on PATH (dry run resolves it and never runs it).
 //
 // Runnable from any cwd: node plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-target-paths-file.mjs
 
@@ -34,7 +38,9 @@ function check(label, condition, detail = "") {
   }
 }
 
-function runBridge(tmpDir, instructionFile, pathArgs) {
+// `trailingArgs` go after every other flag: parseArgs gives a flag the next argv element as its
+// value, so a flag with no value must be the last one to be missing it.
+function runBridge(tmpDir, instructionFile, pathArgs, trailingArgs = []) {
   try {
     const stdout = execFileSync(
       "node",
@@ -46,15 +52,25 @@ function runBridge(tmpDir, instructionFile, pathArgs) {
         "--execution-profile", "read-only",
         "--dispatch-id", "smoke-test",
         "--cwd", tmpDir,
-        "--dry-run", "true"
+        "--dry-run", "true",
+        ...trailingArgs
       ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 }
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024, env: bridgeEnv }
     );
     return { ok: true, stdout, stderr: "" };
   } catch (e) {
     return { ok: false, stdout: e.stdout?.toString() ?? "", stderr: e.stderr?.toString() ?? "" };
   }
 }
+
+const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-review-bridge-paths-file-stub-"));
+if (process.platform === "win32") {
+  fs.writeFileSync(path.join(stubDir, "codex.cmd"), "@echo off\r\n");
+} else {
+  fs.writeFileSync(path.join(stubDir, "codex"), "#!/bin/sh\n");
+  fs.chmodSync(path.join(stubDir, "codex"), 0o755);
+}
+const bridgeEnv = { ...process.env, PATH: stubDir + path.delimiter + (process.env.PATH || "") };
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-review-bridge-paths-file-smoke-"));
 const instructionFile = path.join(tmpDir, "reviewer.md");
@@ -140,6 +156,47 @@ try {
   result = runBridge(tmpDir, instructionFile, []);
   check("neither flag is rejected, naming both", !result.ok && result.stderr.includes("--target-paths-file"), result.stderr.slice(0, 300));
 
+  // A flag given with no value is present, not absent: it must not be ignored in favor of the other.
+  result = runBridge(tmpDir, instructionFile, ["--target-paths", "alpha"], ["--target-paths-file"]);
+  check("--target-paths-file last with no value, next to --target-paths, is rejected", !result.ok && result.stderr.includes("--target-paths-file was given without a value"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths-file", pathsFile("valueless.txt", "alpha/one.py\n")], ["--target-paths"]);
+  check("--target-paths last with no value, next to a paths file, is rejected", !result.ok && result.stderr.includes("--target-paths was given without a value"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, [], ["--target-paths-file"]);
+  check("--target-paths-file last with no value and no other path flag is rejected", !result.ok && result.stderr.includes("--target-paths-file"), result.stderr.slice(0, 300));
+
+  console.log("\n=== Rejected: malformed path flags that parseArgs would otherwise resolve silently ===");
+  const listFile = pathsFile("flags.txt", "alpha/one.py\n");
+
+  // parseArgs gives a flag the next token as its value, so a flag followed directly by another
+  // flag swallows it, and the real list is silently dropped.
+  result = runBridge(tmpDir, instructionFile, ["--target-paths", "--target-paths-file", listFile]);
+  check("--target-paths followed directly by --target-paths-file is rejected", !result.ok && result.stderr.includes("--target-paths value must not start with --"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths-file", "--target-paths", "alpha"]);
+  check("--target-paths-file followed directly by --target-paths is rejected", !result.ok, result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths-file", "--execution-profile"]);
+  check("a path flag whose value is any other flag is rejected", !result.ok && result.stderr.includes("--target-paths-file value must not start with --"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths", "alpha", "--target-paths", "beta"]);
+  check("--target-paths given twice is rejected, not resolved last-wins", !result.ok && result.stderr.includes("--target-paths must not be given more than once"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths-file", listFile, "--target-paths-file", listFile]);
+  check("--target-paths-file given twice is rejected", !result.ok && result.stderr.includes("--target-paths-file must not be given more than once"), result.stderr.slice(0, 300));
+
+  // The = form and a case variant never reach options["target-paths-file"], so next to
+  // --target-paths they were silently dropped and "alpha" was used.
+  result = runBridge(tmpDir, instructionFile, ["--target-paths", "alpha", `--target-paths-file=${listFile}`]);
+  check("--target-paths-file=<file> next to --target-paths is rejected", !result.ok && result.stderr.includes("space-separated"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--target-paths", "alpha", "--TARGET-PATHS-FILE", listFile]);
+  check("an upper-case --TARGET-PATHS-FILE next to --target-paths is rejected", !result.ok && result.stderr.includes("space-separated"), result.stderr.slice(0, 300));
+
+  result = runBridge(tmpDir, instructionFile, ["--TARGET-PATHS", "alpha", "--target-paths-file", listFile]);
+  check("an upper-case --TARGET-PATHS next to a paths file is rejected", !result.ok && result.stderr.includes("space-separated"), result.stderr.slice(0, 300));
+
   result = runBridge(tmpDir, instructionFile, ["--target-paths-file", path.join(tmpDir, "does-not-exist.txt")]);
   check("a missing file is rejected", !result.ok && result.stderr.includes("target-paths-file is not a readable regular file"), result.stderr.slice(0, 300));
 
@@ -159,6 +216,7 @@ try {
   check("the instruction file listed as a target is rejected", !result.ok && result.stderr.includes("instruction-file resolves inside one of target-paths"), result.stderr.slice(0, 300));
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  fs.rmSync(stubDir, { recursive: true, force: true });
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
