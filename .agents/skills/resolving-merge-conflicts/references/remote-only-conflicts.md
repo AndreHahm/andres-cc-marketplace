@@ -36,7 +36,7 @@ commits that exist only on the PR.
   PR checked out from the base repository's clone, `origin` is the base repository, so the push could
   create or overwrite a same-named branch there while the fork PR stays unchanged. Stop, with an
   unsupported-case message, when `isCrossRepository` is true, or when `git remote get-url origin` (with
-  the `https://github.com/` or `git@github.com:` prefix and the `.git` suffix removed) is not the
+  the GitHub host prefix, HTTPS or SSH form, and the `.git` suffix removed) is not the
   `owner/repo` in the PR's `url`.
 - `mergeable: CONFLICTING` / `mergeStateStatus: DIRTY` confirms the remote conflict. `UNKNOWN` means
   GitHub has not computed it yet -- rely on the `git merge-tree` result and say so.

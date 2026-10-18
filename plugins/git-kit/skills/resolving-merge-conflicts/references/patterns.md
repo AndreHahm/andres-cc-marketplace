@@ -201,7 +201,7 @@ Lock files (Cargo.lock, package-lock.json, yarn.lock, etc.) should be regenerate
 2. **Choose either version** temporarily (doesn't matter which):
 
    ```bash
-   git checkout --ours <generated-file>    # or --theirs
+   git checkout --ours -- <generated-file>    # or --theirs
    ```
 
 3. **Regenerate from source**: Run the project's own generation command (e.g. its lockfile
@@ -239,23 +239,23 @@ cargo build                        # for Rust build artifacts
 
 ```bash
 # For Cargo.lock
-git checkout --theirs Cargo.lock  # or --ours, either works
+git checkout --theirs -- Cargo.lock  # or --ours, either works
 cargo update  # or cargo build
 
 # For package-lock.json
-git checkout --theirs package-lock.json
+git checkout --theirs -- package-lock.json
 npm install
 
 # For yarn.lock
-git checkout --theirs yarn.lock
+git checkout --theirs -- yarn.lock
 yarn install
 
 # For Gemfile.lock
-git checkout --theirs Gemfile.lock
+git checkout --theirs -- Gemfile.lock
 bundle install
 
 # For poetry.lock
-git checkout --theirs poetry.lock
+git checkout --theirs -- poetry.lock
 poetry lock --no-update
 ```
 
