@@ -41,6 +41,27 @@ def test_fenced_example_is_not_a_link(tmp_path):
     assert _link_findings(tmp_path, body) == []
 
 
+def test_tilde_fenced_example_is_not_a_link(tmp_path):
+    body = "references/real.md\n~~~\n[x](missing-in-fence.md)\n~~~\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_fence_of_one_kind_inside_the_other_does_not_end_it(tmp_path):
+    body = "references/real.md\n```\n~~~\n[x](missing-in-fence.md)\n```\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_url_inside_a_tilde_fence_is_not_a_bare_url():
+    hook = _load_hook()
+    for fence in ("```", "~~~"):
+        findings = []
+        hook.check_bare_urls(f"{fence}\nsee https://example.com/x\n{fence}\n", findings)
+        assert findings == [], fence
+    findings = []
+    hook.check_bare_urls("see https://example.com/x here\n", findings)
+    assert [rule for _, rule, _ in findings] == ["R17"]
+
+
 def test_anchor_on_a_real_file_resolves(tmp_path):
     assert _link_findings(tmp_path, "[r](references/real.md#top)") == []
 
