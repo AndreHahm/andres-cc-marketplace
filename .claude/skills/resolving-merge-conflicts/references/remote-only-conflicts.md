@@ -4,7 +4,7 @@ If `git status` shows uncommitted changes, ask the user to commit or stash first
 a clean tree before it can start the rebase.
 
 Applies when `git status` shows no unmerged paths and no rebase, merge or cherry-pick in progress, but the
-user reports a PR that conflicts with its base. Nothing is on disk yet, so do not start a trial merge or a
+user reports a PR that conflicts with its base. The PR number is data: it must match `^[0-9]+$` before `<number>` goes into any command below, otherwise stop and ask. Nothing is on disk yet, so do not start a trial merge or a
 plain merge to put it there. Preview instead, with no change to the worktree or index (`git fetch`
 updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 

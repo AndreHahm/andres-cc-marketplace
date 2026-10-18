@@ -137,7 +137,7 @@ middle of a long function, for example), inspect each side's full version direct
 
 When `git status` is clean but a PR conflicts with its base on GitHub, don't start a trial merge or a plain
 merge to put the conflict on disk. The conflicts exist only on the remote and appear on disk only once
-the rebase starts. Preview them (no worktree or index change; `git fetch` updates remote-tracking refs and
+the rebase starts. The PR number must match `^[0-9]+$` before any command below runs (else stop and ask). Preview them (no worktree or index change; `git fetch` updates remote-tracking refs and
 `git merge-tree` writes objects), report the conflicted files, then route to `git-rebase-sync` with the PR's
 `baseRefName` as its base argument, only if it matches `^[A-Za-z0-9._/-]+$` (a ref name can hold shell metacharacters); this skill is
 the entry for "resolve the conflicts on PR #N", that one for "sync/rebase" wording:
