@@ -901,12 +901,15 @@ _INVENTORY = ".claude-plugin/marketplace-inventory.json"
 _INVENTORY_TEXT = json.dumps(
     {"schema_version": "1.0.0", "marketplace_name": "f", "updated_on": "2026-01-01", "plugins": []}
 )
+_MANIFEST = ".claude-plugin/marketplace.json"
+_MANIFEST_TEXT = json.dumps({"name": "f", "plugins": []})
 _R33_PATH = "plugins/demo-kit/scripts/x.py"
 
 
 def test_script_coverage_for_r33_when_the_prefix_check_finds_nothing(git_repo):
     git_repo.write(_INVENTORY, _INVENTORY_TEXT)
-    _commit(git_repo.root, "add the inventory")
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)
+    _commit(git_repo.root, "add the metadata")
     assert rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
 
 
@@ -914,9 +917,38 @@ def test_script_coverage_for_r33_needs_a_tree_that_matches_head(git_repo):
     # The prefix check reads the working tree, the verifiers read committed objects: an uncommitted
     # edit to a tracked file means the two may disagree, so nothing is covered.
     git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)
     git_repo.write("README.md", "committed\n")
-    _commit(git_repo.root, "add the inventory")
+    _commit(git_repo.root, "add the metadata")
     git_repo.write("README.md", "edited, not committed\n")
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_needs_an_inventory_that_is_tracked(git_repo):
+    # `git diff HEAD` ignores untracked files, but an untracked inventory with no plugins makes the
+    # prefix check report nothing: it must not earn coverage.
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)
+    git_repo.write("README.md", "x\n")
+    _commit(git_repo.root, "add a manifest and a readme")
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)  # not committed
+    assert find_prefix_violations(git_repo.root) == []  # the checker alone is satisfied
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_needs_an_inventory_that_is_committed_not_just_staged(git_repo):
+    # An intent-to-add entry is in the index but not in HEAD, and `git diff HEAD` may not report it.
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)
+    git_repo.write("README.md", "x\n")
+    _commit(git_repo.root, "add a manifest and a readme")
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    subprocess.run(["git", "add", "-N", _INVENTORY], cwd=git_repo.root, check=True)
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_needs_a_manifest_that_is_tracked(git_repo):
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    _commit(git_repo.root, "add the inventory")
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)  # not committed
     assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
 
 
@@ -945,8 +977,10 @@ def test_script_coverage_for_r33_needs_a_git_repository(tmp_path):
 
 
 def test_script_coverage_for_r33_ignores_an_untracked_file(git_repo):
-    # An untracked file can only add a prefix violation, never hide one: coverage is unaffected.
+    # An untracked file outside the metadata is scanned like a tracked one, so it can only add a
+    # prefix violation, never hide one: coverage is unaffected.
     git_repo.write(_INVENTORY, _INVENTORY_TEXT)
-    _commit(git_repo.root, "add the inventory")
+    git_repo.write(_MANIFEST, _MANIFEST_TEXT)
+    _commit(git_repo.root, "add the metadata")
     git_repo.write("scratch.txt", "untracked\n")
     assert rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
