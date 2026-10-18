@@ -85,7 +85,6 @@ def run_single_query(
         cmd = [
             "claude",
             "-p",
-            query,
             "--output-format",
             "stream-json",
             "--verbose",
@@ -108,11 +107,19 @@ def run_single_query(
 
         process = subprocess.Popen(
             cmd,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             cwd=project_root,
             env=env,
         )
+        # The query goes over stdin, never as an argv element: a query starting with `-` would
+        # be parsed by the claude CLI as an option (`claude -p "--version"` prints the version).
+        try:
+            process.stdin.write(query.encode("utf-8"))
+            process.stdin.close()
+        except BrokenPipeError:
+            pass  # the child exited before reading; the stdout pump below sees EOF
 
         triggered = False
         start_time = time.time()

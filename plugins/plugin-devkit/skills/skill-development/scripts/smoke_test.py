@@ -401,6 +401,57 @@ def check_pinned_scripts_run_by_path():
     return True, "run_loop.py and aggregate_benchmark.py run as `python <path>` from another cwd"
 
 
+def check_package_excludes_secrets_and_symlinks():
+    if os.name == "nt":
+        return True, "POSIX symlink fixture (skip)"
+    import zipfile
+
+    package = _load_script("package_skill")
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        outside = root / "outside-secret.txt"
+        outside.write_text("TOP-SECRET", encoding="utf-8")
+        skill = root / "demo-skill"
+        (skill / ".git").mkdir(parents=True)
+        (skill / ".git" / "config").write_text("[core]", encoding="utf-8")
+        (skill / "SKILL.md").write_text(
+            "---\nname: demo-skill\ndescription: Demonstrates packaging of a small skill. "
+            "Use when testing the packager.\n---\n# Demo\n",
+            encoding="utf-8",
+        )
+        (skill / ".env").write_text("API_KEY=x", encoding="utf-8")
+        (skill / ".env.local").write_text("API_KEY=y", encoding="utf-8")
+        (skill / "notes.md").write_text("kept", encoding="utf-8")
+        (skill / "link.txt").symlink_to(outside)
+        out = root / "out"
+        out.mkdir()
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = package.package_skill(skill, out)
+        if not result:
+            return False, "package_skill refused the fixture skill"
+        with zipfile.ZipFile(result) as zf:
+            names = zf.namelist()
+            leaked = any(b"TOP-SECRET" in zf.read(n) for n in names)
+    bad = [n for n in names if n.endswith((".env", ".env.local", "link.txt")) or ".git/" in n]
+    if bad or leaked:
+        return False, f"package contains secret-shaped or symlinked content: {bad}"
+    if not any(n.endswith("notes.md") for n in names):
+        return False, "package dropped an ordinary file"
+    return True, "package skips .env*, .git and symlinks, and keeps ordinary files"
+
+
+def check_eval_query_goes_over_stdin():
+    # `claude -p "--version"` prints the version: a dash-prefixed query as an argv element is
+    # parsed as an option. Both nested claude calls must send the query over stdin instead.
+    text = (SKILL_DIR / "scripts" / "run_eval.py").read_text(encoding="utf-8")
+    cmd_block = text.split("cmd = [", 1)[1].split("]", 1)[0]
+    if re.search(r"\bquery\b", cmd_block):
+        return False, "run_eval.py puts the query in the claude argv"
+    if "process.stdin.write(query" not in text:
+        return False, "run_eval.py never writes the query to the child's stdin"
+    return True, "run_eval.py sends the query over stdin, not as an argv element"
+
+
 def check_no_interpreter_wide_grant():
     text = SKILL_MD.read_text(encoding="utf-8")
     match = re.search(r"^allowed-tools:[ \t]*(.*)$", text, re.MULTILINE)
@@ -539,6 +590,8 @@ CHECKS = [
     check_nested_claude_gets_no_secrets_and_few_tools,
     check_pinned_scripts_run_by_path,
     check_no_interpreter_wide_grant,
+    check_package_excludes_secrets_and_symlinks,
+    check_eval_query_goes_over_stdin,
 ]
 
 
