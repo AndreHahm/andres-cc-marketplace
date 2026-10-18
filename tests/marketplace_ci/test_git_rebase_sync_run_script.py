@@ -210,3 +210,37 @@ def test_every_other_argument_list_is_refused_without_running_git(clone, args):
     assert result.returncode == 2, result.stderr
     assert not (clone / "PWNED").exists()
     assert _git(clone, "rev-parse", "HEAD") == _git(clone, "rev-parse", "feature")
+
+
+def test_count_behind_counts_remote_commits_the_branch_lacks(clone):
+    assert _run(clone, "count-behind", "feature").stdout.strip() == "0"
+    assert _run(clone, "count-behind", "main").stdout.strip() == "1"
+
+
+def test_count_merges_counts_merge_commits_in_the_range(clone):
+    result = _run(clone, "count-merges", "main")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "0"
+
+
+def test_log_range_and_log_remote_print_the_commits(clone):
+    assert "add feature.txt" in _run(clone, "log-range", "main").stdout
+    assert "add feature.txt" in _run(clone, "log-remote", "feature").stdout
+
+
+@pytest.mark.parametrize("mode", ["count-behind", "count-merges", "log-range", "log-remote"])
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--output=PWNED"],
+        ["-x"],
+        ["main", "--output=PWNED"],
+        ["a..b"],
+        ["HEAD"],
+        [],
+    ],
+)
+def test_read_modes_refuse_options_extra_arguments_and_odd_refs(clone, mode, extra):
+    result = _run(clone, mode, *extra)
+    assert result.returncode == 2, result.stderr
+    assert not (clone / "PWNED").exists()

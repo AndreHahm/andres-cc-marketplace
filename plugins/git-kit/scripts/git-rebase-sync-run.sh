@@ -6,10 +6,12 @@
 #        git-rebase-sync-run.sh rebase-merges <base>
 #        git-rebase-sync-run.sh push <branch> <lease_oid>
 #        git-rebase-sync-run.sh push-plain <branch>
+#        git-rebase-sync-run.sh count-behind <branch> | count-merges <base> | log-range <base> | log-remote <branch>
 #
 # `git rebase origin/:*` and `git push --force-with-lease=:*` as tool grants also admit anything appended
 # after the documented text: `--exec`/`-x` (an arbitrary command per replayed commit), `--onto`, another
-# remote, a `+` refspec. A grant that names this script instead permits only the five shapes below. Each
+# remote, a `+` refspec; `git log:*` and `git rev-list:*` admit `--output=<path>`, a write to any file. A
+# grant that names this script instead permits only the nine shapes below. Each
 # runs one fixed git command with plain-ref arguments that were checked first; nothing else is accepted,
 # and every refusal exits 2 without running git. Refs are fully qualified (refs/remotes/origin/<base>,
 # refs/heads/<branch>) so a tag or local branch that happens to be named like them cannot shadow the
@@ -49,7 +51,7 @@ check_push_target() {
     fail "refusing to force-push a base branch"
 }
 
-[ "$#" -ge 2 ] || fail "usage: backup-tag <branch> | rebase|rebase-merges <base> | push <branch> <lease_oid> | push-plain <branch>"
+[ "$#" -ge 2 ] || fail "usage: backup-tag <branch> | rebase|rebase-merges <base> | push <branch> <lease_oid> | push-plain <branch> | count-behind <branch> | count-merges <base> | log-range <base> | log-remote <branch>"
 mode=$1
 
 case "$mode" in
@@ -80,6 +82,26 @@ case "$mode" in
     check_ref "$2"
     check_push_target "$2"
     exec git push --no-follow-tags --force-with-lease origin "HEAD:refs/heads/$2"
+    ;;
+  count-behind)
+    [ "$#" -eq 2 ] || fail "usage: count-behind <branch>"
+    check_ref "$2"
+    exec git rev-list --count "HEAD..refs/remotes/origin/$2"
+    ;;
+  count-merges)
+    [ "$#" -eq 2 ] || fail "usage: count-merges <base>"
+    check_ref "$2"
+    exec git rev-list --count --merges "refs/remotes/origin/$2..HEAD"
+    ;;
+  log-range)
+    [ "$#" -eq 2 ] || fail "usage: log-range <base>"
+    check_ref "$2"
+    exec git --no-pager log --oneline --decorate "refs/remotes/origin/$2..HEAD"
+    ;;
+  log-remote)
+    [ "$#" -eq 2 ] || fail "usage: log-remote <branch>"
+    check_ref "$2"
+    exec git --no-pager log --oneline -5 "refs/remotes/origin/$2"
     ;;
   *)
     fail "unknown mode"
