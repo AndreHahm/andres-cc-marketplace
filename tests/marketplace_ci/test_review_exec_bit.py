@@ -792,6 +792,62 @@ def test_a_wrapper_with_no_path_in_its_words_adds_nothing_unresolved(grant):
     assert _unresolved(grant) == 0
 
 
+@pytest.mark.parametrize(
+    "grant",
+    [
+        f"Bash({_P}/a.sh && {_P}/b.sh:*)",  # a second program chained behind the first
+        f"Bash({_P}/a.sh ; {_P}/b.sh:*)",
+        f"Bash({_P}/a.sh || {_P}/b.sh:*)",
+        f"Bash({_P}/a.sh | {_P}/b.sh:*)",
+        f"Bash({_P}/a.sh & {_P}/b.sh:*)",
+        f"Bash({_P}/a.sh > {_P}/out.txt:*)",  # a redirection names a path too
+        f"Bash({_P}/a.sh {_P}/b.sh:*)",  # a second path the first script may run
+        f"Bash({_P}/a.sh `{_P}/b.sh`:*)",  # command substitution
+    ],
+)
+def test_a_direct_grant_with_a_chained_command_or_second_path_is_unresolved(grant):
+    # The first script is still recorded and bit-checked; the document just cannot be covered.
+    root, block = rv._frontmatter(_doc(grant))
+    scripts, unresolved = rv.scan_script_grants(SKILL, root, block)
+    assert [g.script for g in scripts] == ["plugins/demo-kit/scripts/a.sh"]
+    assert unresolved == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        f"Bash({_P}/a.sh;{_P}/b.sh:*)",  # an operator glued into the path word
+        f"Bash({_P}/a.sh&&{_P}/b.sh:*)",
+        f"Bash({_P}/$(whoami).sh:*)",
+    ],
+)
+def test_a_direct_grant_with_shell_syntax_in_the_path_word_is_unresolved_and_unrecorded(grant):
+    root, block = rv._frontmatter(_doc(grant))
+    scripts, unresolved = rv.scan_script_grants(SKILL, root, block)
+    assert scripts == [] and unresolved == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        f"Bash({_P}/a.sh:*)",
+        f"Bash({_P}/a.sh --dry-run:*)",
+        f"Bash({_P}/a.sh --mode=fast -v:*)",
+        f'Bash("{_P}/a.sh" --dry-run:*)',
+    ],
+)
+def test_a_direct_grant_with_plain_arguments_stays_resolved(grant):
+    assert _unresolved(grant) == 0
+
+
+def test_a_chained_direct_grant_leaves_no_coverage(git_repo):
+    _write_script(git_repo, "plugins/demo-kit/scripts/a.sh", executable=True)
+    _write_script(git_repo, "plugins/demo-kit/scripts/b.sh", executable=False)
+    git_repo.write(SKILL, _doc(f"Bash({_P}/a.sh && {_P}/b.sh:*)"))
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
 def test_a_frontmatter_hooks_key_leaves_no_coverage(git_repo):
     text = _doc(GOOD_GRANT).replace("\n---\nbody", "\nhooks:\n  Stop: []\n---\nbody")
     assert "hooks:" in text
