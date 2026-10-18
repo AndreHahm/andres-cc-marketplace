@@ -606,6 +606,14 @@ def _load_authoritative_sources(
     return sources, duplicate_names
 
 
+def _is_bytecode_cache(path: Path) -> bool:
+    """A regular file under `__pycache__` or named `*.pyc`: a gitignored byproduct of any local
+    test or script run (issue #452), never plugin content. Symlinks are decided before this is
+    asked, so a symlink named like a cache is still flagged. Same rule as
+    `sync_plan._is_bytecode_cache`."""
+    return "__pycache__" in path.parts or path.suffix == ".pyc"
+
+
 def _iter_files(root: Path, repo_resolved: Path):
     """Yield every real file under `root`, plus every symlink encountered
     -- including `root` itself -- so the caller can flag it as a violation
@@ -632,7 +640,7 @@ def _iter_files(root: Path, repo_resolved: Path):
         if path.is_symlink():
             yield path
             continue
-        if path.is_file():
+        if path.is_file() and not _is_bytecode_cache(path.relative_to(root)):
             yield path
 
 

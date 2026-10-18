@@ -473,6 +473,29 @@ def test_symlinked_file_inside_scope_dir_flagged_not_silently_skipped(tmp_path):
     assert "symlink" in violations[0].reason
 
 
+def test_bytecode_cache_files_are_not_plugin_files(tmp_path):
+    # Issue #452: a local pytest run leaves gitignored __pycache__ files next to the sources; they
+    # are never plugin content, so they must not be reported as unprefixed files.
+    plugin_dir = tmp_path / "git-kit"
+    cache = plugin_dir / "scripts" / "__pycache__"
+    cache.mkdir(parents=True)
+    (cache / "git_check.cpython-313.pyc").write_bytes(b"")
+    (plugin_dir / "scripts" / "stray.pyc").write_bytes(b"")
+    (plugin_dir / "scripts" / "git_check.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    assert find_prefix_violations(tmp_path) == []
+
+
+def test_unprefixed_file_next_to_a_cache_is_still_flagged(tmp_path):
+    plugin_dir = tmp_path / "git-kit"
+    (plugin_dir / "scripts" / "__pycache__").mkdir(parents=True)
+    (plugin_dir / "scripts" / "__pycache__" / "x.cpython-313.pyc").write_bytes(b"")
+    (plugin_dir / "scripts" / "other.py").write_text("", encoding="utf-8")
+    _write_inventory(tmp_path, [_plugin("git-kit", "./git-kit", prefix="git")])
+    violations = find_prefix_violations(tmp_path)
+    assert [v.path.name for v in violations] == ["other.py"]
+
+
 def test_source_inside_repo_via_traversal_still_scanned_normally(tmp_path):
     # A source that resolves back inside the repo despite using '../'
     # segments (e.g. './a/../b') must not be falsely rejected -- only a
