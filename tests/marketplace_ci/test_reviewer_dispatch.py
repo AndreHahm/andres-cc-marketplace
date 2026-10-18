@@ -1126,7 +1126,10 @@ def _pid_is_running(pid: int) -> bool:
     try:  # a zombie is already dead; os.kill(pid, 0) still succeeds on it
         stat = Path(f"/proc/{pid}/stat").read_text()
         return stat.rsplit(")", 1)[1].split()[0] != "Z"
-    except FileNotFoundError:  # a zombie reaped between the kill probe and this read
+    except (
+        FileNotFoundError,
+        ProcessLookupError,
+    ):  # reaped, or torn down, between the probe and this read
         return False
     except OSError:
         return True
@@ -1141,6 +1144,17 @@ def test_pid_is_running_treats_a_zombie_reaped_mid_check_as_gone(monkeypatch):
         raise FileNotFoundError(2, "No such file or directory")
 
     monkeypatch.setattr(Path, "read_text", reaped)
+    assert _pid_is_running(4242) is False
+
+
+def test_pid_is_running_treats_a_process_torn_down_mid_check_as_gone(monkeypatch):
+    # /proc/<pid>/stat of a task that is exiting can fail with ESRCH rather than ENOENT.
+    monkeypatch.setattr(os, "kill", lambda pid, sig: None)
+
+    def torn_down(self, *args, **kwargs):
+        raise ProcessLookupError(3, "No such process")
+
+    monkeypatch.setattr(Path, "read_text", torn_down)
     assert _pid_is_running(4242) is False
 
 
