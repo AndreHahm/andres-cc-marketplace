@@ -316,7 +316,8 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 - Skills use `allowed-tools:` — agents use `tools:`
 - List only tools that instructions actually reference
 - Read-only components should never have Write or Bash
-- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, or `Bash(python <skill-dir>/scripts/x.py *)` to pin an interpreter to one script), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- In a skill's or command's `allowed-tools`, never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, or `Bash(python <skill-dir>/scripts/x.py *)` to pin an interpreter to one script), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- An agent's `tools` field is the reverse case: it takes bare tool names only, so an agent that needs shell access lists bare `Bash` and never a scoped `Bash(...)` entry. Give `Bash` only to an agent that must run commands, and keep read-only agents on `Read, Grep, Glob`
 
 ## Frontmatter Options
 

@@ -1,7 +1,7 @@
 ---
 name: skill-development
 description: >-
-  Create, test, evaluate, improve, repair, and consolidate Claude Code skills. Also covers skill
+  Creates, tests, evaluates, improves, repairs, and consolidates Claude Code skills. Also covers skill
   structure, progressive disclosure, skill categories, testing, compliance testing, and
   slash-command conversion for Claude Code plugins. Not for refining a working skill
   (skill-refiner-interactive, skill-improver-loop), auditing an existing evals.json
@@ -15,7 +15,7 @@ when_to_use: >-
   slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "merge two
   duplicate skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-allowed-tools: Read Write Edit Grep Agent Skill Bash(python:*) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
+allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
 ---
 
 # Skill Development for Claude Code Plugins
@@ -166,7 +166,7 @@ Output: feat(auth): implement JWT-based authentication
 2. Before spawning anything, state how many subagent runs the iteration launches and ask via `AskUserQuestion` whether to proceed — a fan-out costs tokens and time the user has not yet agreed to. Then spawn all runs in one turn — one with-skill, one baseline (no skill, or snapshot of previous version). Launching everything at once lets runs finish around the same time.
 3. **Capture timing** when each subagent task completes — save `timing.json` to the run directory immediately: `{"total_tokens": ..., "duration_ms": ..., "total_duration_seconds": ...}`. This data arrives through the task notification only and isn't persisted elsewhere; process each notification as it arrives.
 4. Draft assertions while runs are in progress. Read `${CLAUDE_SKILL_DIR}/references/eval-writing-guide.md` for how to write good assertions.
-5. Grade each run using `${CLAUDE_SKILL_DIR}/agents/grader.md`. `grading.json` expectations must use fields `text`, `passed`, and `evidence` — the viewer depends on these exact field names. Aggregate: `python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>` — this writes the iteration's `benchmark.json`/`benchmark.md` and appends a summary row to `<workspace>/benchmark-log.md`, a cumulative running history across all iterations (append-only — never edit past rows by hand). Then do an analyst pass — read `${CLAUDE_SKILL_DIR}/agents/analyzer.md` for patterns (non-discriminating assertions, high-variance evals, time/token tradeoffs).
+5. Grade each run using `${CLAUDE_SKILL_DIR}/agents/grader.md`. `grading.json` expectations must use fields `text`, `passed`, and `evidence` — the viewer depends on these exact field names. Aggregate: `python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py <workspace>/iteration-N --skill-name <name>` — this writes the iteration's `benchmark.json`/`benchmark.md` and appends a summary row to `<workspace>/benchmark-log.md`, a cumulative running history across all iterations (append-only — never edit past rows by hand). Then do an analyst pass — read `${CLAUDE_SKILL_DIR}/agents/analyzer.md` for patterns (non-discriminating assertions, high-variance evals, time/token tradeoffs).
 6. Launch eval viewer: `python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py <workspace>/iteration-N --skill-name <name>`. For iteration 2+: add `--previous-workspace`. The viewer has two tabs — **Outputs** (click through test cases, leave feedback; previous iteration output shown collapsed) and **Benchmark** (pass rates, timing, token usage per configuration). Navigation via prev/next or arrow keys; "Submit All Reviews" saves `feedback.json`.
 7. After a Claude model update, rerun evals. A pass rate drop signals needed adaptation.
 
@@ -215,12 +215,10 @@ Structure the description as **What + When**: What lists 5–8 specific capabili
 
 Generate 20 trigger eval queries (mix of should-trigger and should-not-trigger). Effective queries are specific: include file paths, personal context, backstory — not generic requests. Save as JSON `[{"query": "...", "should_trigger": true/false}]`. Then review with the user: read `${CLAUDE_SKILL_DIR}/assets/eval_review.html`, substitute `__EVAL_DATA_PLACEHOLDER__`, `__SKILL_NAME_PLACEHOLDER__`, and `__SKILL_DESCRIPTION_PLACEHOLDER__`, write to a temp file, and open it. The user edits queries and exports `eval_set.json`.
 
-The optimization loop runs up to `--max-iterations` model calls over the full eval set. Ask via `AskUserQuestion` before starting it, stating the iteration cap and the eval-set size. Run it from `${CLAUDE_SKILL_DIR}`:
-
-The `Bash(python:*)` grant in this skill's frontmatter is deliberately broad: the `-m scripts.run_loop` and `-m scripts.aggregate_benchmark` module calls cannot be pinned to one script path. Narrow it only after rewriting those calls.
+The optimization loop runs up to `--max-iterations` model calls over the full eval set. Ask via `AskUserQuestion` before starting it, stating the iteration cap and the eval-set size. Run it from the project root, since the loop writes its temporary command file under that project's `.claude/commands/`:
 
 ```bash
-python -m scripts.run_loop \
+python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py \
   --eval-set <path-to-eval.json> \
   --skill-path <path-to-skill> \
   --model <model-id-powering-this-session> \
