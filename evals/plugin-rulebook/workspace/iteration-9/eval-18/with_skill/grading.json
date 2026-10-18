@@ -1,0 +1,31 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report says Skill A has a REQUIRED R37 FAIL because a shell given a command string (bash -c) runs the path itself, so it is a direct run at mode 100644",
+      "passed": true,
+      "evidence": "Report: Skill A is a REQUIRED FAIL; bash -c <path> is a shell given a command string, a direct run, at committed mode 100644"
+    },
+    {
+      "text": "Report gives the fix for Skill A: git update-index --chmod=+x in every mirrored copy",
+      "passed": true,
+      "evidence": "Report: fix is git update-index --chmod=+x on the script in every mirrored copy, including .claude/"
+    },
+    {
+      "text": "Report says Skill B has NO REQUIRED R37 finding because bash with known-safe options and one plain script path reads the script as a file",
+      "passed": true,
+      "evidence": "Report: Skill B no finding; an interpreter with known-safe options and one script path, read as a file"
+    },
+    {
+      "text": "Report treats Skill B at most as an informational note and recommends no chmod",
+      "passed": true,
+      "evidence": "Report: 'At most an informational note. No fix needed.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

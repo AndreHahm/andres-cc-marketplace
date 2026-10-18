@@ -121,6 +121,13 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). Both skills below are newly created and both scripts are committed at git mode 100644. Skill A: allowed-tools is Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/set_mode.py\":*) and its body only ever runs python3 \"${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/set_mode.py\". Skill B: allowed-tools is Bash(${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh:*) and its body runs ${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh directly. Apply R37 to each: finding or not, severity, and the fix.",
       "expected_output": "Skill A has NO REQUIRED finding: the grant begins with the interpreter python3, so set_mode.py is run through an interpreter and needs no executable bit (at most an informational note, left to R6). Skill B has a REQUIRED FAIL: run.sh is run directly by path at mode 100644; fix: git update-index --chmod=+x on it in every mirrored copy.",
       "files": []
+    },
+    {
+      "id": 18,
+      "name": "R37 treats a shell command-string grant as a direct run",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). Both skills below are newly created and both scripts are committed at git mode 100644. Skill A: allowed-tools is Bash(bash -c ${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/run.sh:*) and its body runs the script that way. Skill B: allowed-tools is Bash(bash -eu -o pipefail ${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh:*) and its body runs the script that way. Apply R37 to each: finding or not, severity, and the fix.",
+      "expected_output": "Skill A has a REQUIRED FAIL: a shell given a command string (bash -c) runs the path itself, so it is a direct run at mode 100644; fix: git update-index --chmod=+x on it in every mirrored copy. Skill B has NO REQUIRED finding: bash with known-safe options and one plain script path reads the script as a file, so no executable bit is needed (at most an informational note).",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
