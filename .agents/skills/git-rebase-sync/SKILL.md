@@ -8,7 +8,7 @@ description: >-
   Never adds a new merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
-allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Read, Edit, AskUserQuestion
+allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Bash(gh pr view:*), Bash(git remote get-url origin), Bash(git rev-parse HEAD), Bash(git rev-parse origin/:*), Read, Edit, AskUserQuestion
 ---
 
 # git-rebase-sync
@@ -39,8 +39,8 @@ in progress? If yes, stay here; if no, defer to that skill.
 **Exception — conflicts that exist only on GitHub:** a PR branch can report `mergeable: CONFLICTING` /
 `mergeStateStatus: DIRTY` while the local tree is clean, with nothing unmerged on disk. That is this
 skill's job, not `resolving-merge-conflicts`': the rebase in Step 5 is what puts the conflicts on disk.
-`resolving-merge-conflicts` Step 1a can preview which files will conflict, but the preview is optional;
-if you arrived from it, don't dispatch back to it. Start the rebase from the clean tree and resolve in
+`resolving-merge-conflicts` Step 1a can preview which files will conflict, but the preview is optional
+(Step 1's PR preflight is not); if you arrived from it, don't dispatch back to it. Start the rebase from the clean tree and resolve in
 Step 6; Step 2's behind-remote check guards the rebase either way. Never use a trial merge or a plain `git merge` of the
 base into the branch — it adds a merge commit, which a rebase-merge PR cannot take.
 
@@ -80,6 +80,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
     - `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
+  - **PR-triggered call** (the user names a PR, or `resolving-merge-conflicts` routed here): the PR number must match `^[0-9]+$`; then read `gh pr view <number> --json baseRefName,headRefName,headRefOid,isCrossRepository,url`. Stop and report, without rebasing, when `isCrossRepository` is true, when `git remote get-url origin` (minus the GitHub host prefix, in HTTPS or SSH form, and the `.git` suffix) is not the `owner/repo` in `url`, when `git branch --show-current` is not `headRefName`, or when `git rev-parse HEAD` differs from `headRefOid` (unpushed or stale: confirm with the user that this local branch is the intended one). While a rebase of this branch is paused, skip the branch-name and `HEAD` comparisons. Otherwise use `baseRefName` as `{base_branch}`, unless an explicit base argument was given. This preflight is not optional, whether or not the `resolving-merge-conflicts` preview ran.
   - `{base_branch}` (whichever source supplied it) and the current `{branch_name}` are data, and a git ref name can contain shell metacharacters (a semicolon, for one), as with a branch checked out from a contributor's PR: use either in a command only if it matches `^[A-Za-z0-9._/-]+$`, otherwise stop and ask the user.
 - Fetch latest:
   - `git fetch origin`
@@ -159,7 +160,8 @@ Helpful commands during conflicts:
 - "resolve the rebase conflicts on this branch"
 - "force-with-lease push after rebasing"
 - "PR #N conflicts with main on GitHub, resolve it then sync" with a clean local tree → starts the rebase
-  from the clean tree (no trial merge, no merge commit), resolves in Step 6 with a per-file plan first
+  from the clean tree (no trial merge, no merge commit) after Step 1's PR preflight (base, fork, branch and
+  head identity), resolves in Step 6 with a per-file plan first
 - "I hit conflicts during my rebase, continue" with a rebase of this branch already in progress → skips
   Steps 2-5 (no abort/continue question, no second backup tag, no second rebase) and goes to Step 6
 - "sync my branch onto main" with a local branch that lacks commits already on `origin/<branch>` → Step 2
@@ -194,6 +196,8 @@ baseline arm; the resume and behind-remote scenarios are documented but not run.
       this branch already in progress skips Steps 2-5 and resumes at Step 6
 - [ ] Step 1 stops and asks when `{base_branch}` or `{branch_name}` fails `^[A-Za-z0-9._/-]+$`, before
       either reaches a command
+- [ ] A PR-triggered call always runs Step 1's PR preflight first and stops on a fork PR, an `origin` that is
+      not the PR's repository, a local branch that is not `headRefName`, or a `HEAD` that is not `headRefOid`
 - [ ] Step 2 stops and asks before any rebase when `origin/{branch_name}` has commits the local branch
       lacks, because Step 8's force-with-lease would otherwise overwrite them
 - [ ] Step 2 records `{lease_oid}` before the rebase and Step 8 pushes with an explicit

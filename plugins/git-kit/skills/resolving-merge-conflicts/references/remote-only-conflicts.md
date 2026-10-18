@@ -9,8 +9,11 @@ plain merge to put it there. Preview instead, with no change to the worktree or 
 updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 
 ```bash
-gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefOid
+gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefName,headRefOid,isCrossRepository,url
 git fetch origin
+git rev-parse HEAD
+git branch --show-current
+git remote get-url origin
 git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
 ```
 
@@ -19,7 +22,10 @@ preview and pass it to `git-rebase-sync` as its explicit base argument (without 
 onto the repository default branch). It is data from GitHub, and git accepts ref names containing shell
 metacharacters such as a semicolon, so use it in a command only after checking it matches
 `^[A-Za-z0-9._/-]+$`; on any other name, stop and ask the user. The preview merges your local
-`HEAD`. Compare `git rev-parse HEAD` with the PR's `headRefOid`: if they differ (unpushed commits, a stale
+`HEAD`. Compare `git branch --show-current` with the PR's `headRefName` too: an alias branch at the PR's
+exact commit passes the commit comparison, yet `git-rebase-sync` would then push to the alias's own name,
+creating or rewriting a different remote branch and leaving the PR unchanged. Compare `git rev-parse HEAD`
+with the PR's `headRefOid`: if they differ (unpushed commits, a stale
 or unrelated branch), stop and ask the user to confirm that this local branch is the one intended, before
 reporting a file list or routing on. The list then describes the local branch, not the PR as GitHub sees
 it, and a rebase of a stale branch followed by `--force-with-lease` after a fresh fetch can overwrite
