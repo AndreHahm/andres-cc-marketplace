@@ -18,6 +18,7 @@ from scripts.marketplace_ci import review_contract
 from scripts.marketplace_ci import review_verifiers as rv
 from scripts.marketplace_ci.__main__ import main
 from scripts.marketplace_ci.git_state import ChangedPath
+from scripts.marketplace_ci.prefix_check import find_prefix_violations
 from scripts.marketplace_ci.review import gate_decision
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -896,18 +897,56 @@ def test_script_coverage_for_r33_needs_a_run_with_no_violations(tmp_path):
     assert not rv.script_coverage(tmp_path, []).covers("R33", "plugins/demo-kit/scripts/x.py")
 
 
-def test_script_coverage_for_r33_when_the_prefix_check_finds_nothing(tmp_path):
-    inventory = tmp_path / ".claude-plugin" / "marketplace-inventory.json"
+_INVENTORY = ".claude-plugin/marketplace-inventory.json"
+_INVENTORY_TEXT = json.dumps(
+    {"schema_version": "1.0.0", "marketplace_name": "f", "updated_on": "2026-01-01", "plugins": []}
+)
+_R33_PATH = "plugins/demo-kit/scripts/x.py"
+
+
+def test_script_coverage_for_r33_when_the_prefix_check_finds_nothing(git_repo):
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    _commit(git_repo.root, "add the inventory")
+    assert rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_needs_a_tree_that_matches_head(git_repo):
+    # The prefix check reads the working tree, the verifiers read committed objects: an uncommitted
+    # edit to a tracked file means the two may disagree, so nothing is covered.
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    git_repo.write("README.md", "committed\n")
+    _commit(git_repo.root, "add the inventory")
+    git_repo.write("README.md", "edited, not committed\n")
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_sees_a_committed_violation_deleted_on_disk(git_repo):
+    # The scanner reads the disk, so deleting a committed unprefixed file without committing leaves
+    # it clean; only the clean-tree guard stops that silence from reading as "no violation".
+    plugin = {"id": "plugin_git-kit", "name": "git-kit", "source": "./git-kit"}
+    plugin.update(status="active", prefix="git")
+    inventory = {"schema_version": "1.0.0", "marketplace_name": "f", "updated_on": "2026-01-01"}
+    git_repo.write(_INVENTORY, json.dumps({**inventory, "plugins": [plugin]}))
+    manifest = {"name": "f", "plugins": [{"name": "git-kit", "source": "./git-kit"}]}
+    git_repo.write(".claude-plugin/marketplace.json", json.dumps(manifest))
+    git_repo.write("git-kit/scripts/other.py", "")
+    _commit(git_repo.root, "a committed violation")
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+    (git_repo.root / "git-kit/scripts/other.py").unlink()
+    assert find_prefix_violations(git_repo.root) == []  # the scanner alone is now blind to it
+    assert not rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_needs_a_git_repository(tmp_path):
+    inventory = tmp_path / _INVENTORY
     inventory.parent.mkdir(parents=True)
-    inventory.write_text(
-        json.dumps(
-            {
-                "schema_version": "1.0.0",
-                "marketplace_name": "f",
-                "updated_on": "2026-01-01",
-                "plugins": [],
-            }
-        ),
-        encoding="utf-8",
-    )
-    assert rv.script_coverage(tmp_path, []).covers("R33", "plugins/demo-kit/scripts/x.py")
+    inventory.write_text(_INVENTORY_TEXT, encoding="utf-8")
+    assert not rv.script_coverage(tmp_path, []).covers("R33", _R33_PATH)
+
+
+def test_script_coverage_for_r33_ignores_an_untracked_file(git_repo):
+    # An untracked file can only add a prefix violation, never hide one: coverage is unaffected.
+    git_repo.write(_INVENTORY, _INVENTORY_TEXT)
+    _commit(git_repo.root, "add the inventory")
+    git_repo.write("scratch.txt", "untracked\n")
+    assert rv.script_coverage(git_repo.root, []).covers("R33", _R33_PATH)

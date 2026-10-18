@@ -1703,8 +1703,9 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
     violation is never counted as compliant. A hook `command` is not a
     grant document, so a model R37 finding on one stays blocking: no script checks that form (a
     frontmatter `hooks:` key puts its document in `partial` for the same reason).
-    R33: clean everywhere when the inventory exists and `find_prefix_violations` returns nothing;
-    any violation, or a failure to run it, covers nothing (the pipeline's `check-prefixes` gate
+    R33: clean everywhere when the inventory exists, no tracked file differs from HEAD (the prefix
+    check reads the working tree) and `find_prefix_violations` returns nothing; any violation, a
+    dirty tree, or a failure to run either covers nothing (the pipeline's `check-prefixes` gate
     reports the violation itself)."""
     clean: set[tuple[str, str]] = set()
     for outcome in outcomes:
@@ -1731,6 +1732,10 @@ def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage
     try:
         from scripts.marketplace_ci.prefix_check import find_prefix_violations
 
+        # The prefix check reads the working tree, the verifiers read committed objects. They agree
+        # only while no tracked file differs from HEAD (`--quiet` exits 1 otherwise, and a failing
+        # git call raises into the except below); an untracked file can only add a violation.
+        _run_git(repo, "diff", "--quiet", "HEAD")
         inventory = Path(repo) / ".claude-plugin" / "marketplace-inventory.json"
         if inventory.is_file() and not find_prefix_violations(Path(repo)):
             everywhere.add("R33")
