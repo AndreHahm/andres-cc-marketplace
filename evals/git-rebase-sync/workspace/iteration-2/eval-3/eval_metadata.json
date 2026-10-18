@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+  "assertions": [
+    {
+      "text": "Validates the PR number as digits and reads isCrossRepository, headRefName and headRefOid with gh pr view before any rebase step",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Stops and reports that the PR is from a fork and unsupported here",
+      "type": "functionality",
+      "target": "transcript messages"
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase",
+      "type": "functionality",
+      "target": "transcript commands"
+    }
+  ]
+}

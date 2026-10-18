@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not run gh pr view or any other command containing the PR reference text",
+      "passed": true,
+      "evidence": "No gh pr view or other command with the PR text; only git status ran"
+    },
+    {
+      "text": "Stops and asks for a valid numeric PR number",
+      "passed": true,
+      "evidence": "Stops and asks for a valid numeric PR number"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

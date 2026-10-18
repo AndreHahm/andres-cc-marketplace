@@ -5,7 +5,7 @@ referenced-file existence, Bash-scope grant usage, and step-header sequencing
 plan-then-execute skill with no executable logic of its own to simulate beyond
 its three shell scripts (checked separately, not by this test).
 Adapted from codex-review-recovery's own smoke_test.py (same shape), minus its
-evals.json check -- no skill-tester eval has been run for this skill yet."""
+evals.json check -- its evals live under evals/resolving-merge-conflicts/ and run via skill-tester."""
 
 import pathlib
 import re

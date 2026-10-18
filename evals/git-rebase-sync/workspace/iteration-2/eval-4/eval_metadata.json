@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+  "assertions": [
+    {
+      "text": "Runs git rev-list --count HEAD..origin/<branch> after the fetch",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Stops and asks the user to update the local branch first, explaining a force-with-lease push would overwrite the 2 remote commits",
+      "type": "functionality",
+      "target": "transcript messages"
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase before that question is answered",
+      "type": "functionality",
+      "target": "transcript commands"
+    }
+  ]
+}
