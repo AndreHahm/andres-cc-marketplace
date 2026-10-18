@@ -237,9 +237,17 @@ _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)
 
 
 def code_regions(text):
-    regions = [m.span() for p in (_BACKTICK_FENCE, _TILDE_FENCE) for m in p.finditer(text)]
-    regions += [m.span() for m in _CODE_SPAN.finditer(text)]
-    return regions
+    fences = sorted(m.span() for p in (_BACKTICK_FENCE, _TILDE_FENCE) for m in p.finditer(text))
+    # Blank each fence out (keeping its line breaks) before looking for spans: the blank lines end
+    # a paragraph, so a backtick inside a fence cannot start a span that runs past the fence.
+    masked, pos = [], 0
+    for start, end in fences:
+        if end > pos:
+            masked.append(text[pos:start] if start >= pos else "")
+            masked.append(re.sub(r"[^\n]", " ", text[max(start, pos) : end]))
+            pos = end
+    masked.append(text[pos:])
+    return fences + [m.span() for m in _CODE_SPAN.finditer("".join(masked))]
 
 
 def strip_code(text):

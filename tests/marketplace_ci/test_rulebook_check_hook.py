@@ -100,6 +100,18 @@ def test_a_stray_backtick_does_not_swallow_a_later_link(tmp_path):
     assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
 
 
+def test_a_backtick_inside_a_fence_cannot_start_a_span_past_the_fence(tmp_path):
+    body = "references/real.md\n~~~\nunmatched `\n~~~\n[real](missing.md)\n` end\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_backtick_inside_a_fence_does_not_hide_a_bare_url_after_it():
+    hook = _load_hook()
+    findings = []
+    hook.check_bare_urls("~~~\nunmatched `\n~~~\nsee https://example.com/x\n` end\n", findings)
+    assert [rule for _, rule, _ in findings] == ["R17"]
+
+
 def test_a_url_in_a_four_backtick_fence_or_double_backtick_span_is_not_a_bare_url():
     hook = _load_hook()
     for text in (
