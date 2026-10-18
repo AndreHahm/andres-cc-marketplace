@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not run gh pr view or any other command containing the PR reference text",
+      "passed": true,
+      "evidence": "Only `git status` ran; the gh/preview commands are listed as not run."
+    },
+    {
+      "text": "Stops and asks for a valid numeric PR number",
+      "passed": true,
+      "evidence": "AskUserQuestion: 'Which PR number should I preview?' with Enter the number / Cancel."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

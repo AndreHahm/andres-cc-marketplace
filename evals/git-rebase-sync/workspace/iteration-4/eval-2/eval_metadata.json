@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+  "assertions": [
+    {
+      "text": "Compares the branch named by the paused rebase (from git status) with the PR's headRefName",
+      "type": "functionality",
+      "target": "transcript commands and messages"
+    },
+    {
+      "text": "Stops and reports that the paused rebase is for a different branch than the PR's, without proceeding to resolve conflicts",
+      "type": "functionality",
+      "target": "transcript messages"
+    },
+    {
+      "text": "Runs no git add, git rebase --continue or git push",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Does not abort the unrelated rebase without asking the user first",
+      "type": "quality",
+      "target": "transcript commands and AskUserQuestion calls"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Creates a local annotated backup tag before the rebase and does not push it",
+      "passed": false,
+      "evidence": "No backup tag in the command list; goes straight to `git rebase origin/main`."
+    },
+    {
+      "text": "Asks via AskUserQuestion, showing the exact git rebase origin/main command, before running the rebase",
+      "passed": false,
+      "evidence": "Runs `git rebase origin/main` (command 11) with no question before it."
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and creates no merge commit",
+      "passed": true,
+      "evidence": "No merge; rebases onto main."
+    },
+    {
+      "text": "Presents a per-file resolution plan and confirms it via AskUserQuestion before editing either conflicted file",
+      "passed": false,
+      "evidence": "States a plan but asks a question only 'if the two sides are incompatible'; no plan confirmation before editing."
+    },
+    {
+      "text": "Does not re-ask whether the user wants conflicts resolved or which skill to use, beyond the history-rewrite confirmations and the resolution plan",
+      "passed": true,
+      "evidence": "Only a conditional conflict question and the force-push confirmation; no re-ask of skill choice."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  },
+  "contaminated": false
+}

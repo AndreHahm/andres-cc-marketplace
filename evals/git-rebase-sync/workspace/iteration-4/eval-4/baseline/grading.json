@@ -1,0 +1,27 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git rev-list --count HEAD..origin/<branch> after the fetch",
+      "passed": true,
+      "evidence": "Runs `git rev-list --count HEAD..origin/feature/shared-work` after `git fetch origin` -> 2."
+    },
+    {
+      "text": "Stops and asks the user to update the local branch first, explaining a force-with-lease push would overwrite the 2 remote commits",
+      "passed": true,
+      "evidence": "Stops; question says the rebase would need a force push that could overwrite the 2 commits."
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase before that question is answered",
+      "passed": true,
+      "evidence": "No rebase, pull or push; no backup tag."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  },
+  "contaminated": false
+}

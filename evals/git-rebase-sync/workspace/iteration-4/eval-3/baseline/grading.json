@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Validates the PR number as digits and reads isCrossRepository, headRefName and headRefOid with gh pr view before any rebase step",
+      "passed": false,
+      "evidence": "Reads the PR via the preview script but never validates the PR number as digits."
+    },
+    {
+      "text": "Stops and reports that the PR is from a fork and unsupported here",
+      "passed": false,
+      "evidence": "'Proceed with the local part only'; treats the fork PR as supportable and asks only where to push."
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase",
+      "passed": false,
+      "evidence": "Runs `git fetch origin main` then `git rebase origin/main` locally."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "contaminated": false
+}
