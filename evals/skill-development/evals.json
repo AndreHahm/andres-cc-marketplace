@@ -7,7 +7,7 @@
       "id": 1,
       "name": "create-a-new-skill",
       "prompt": "I'm building a plugin called ops-kit. Create a new skill in it called log-triage that triages application log files: it should read a log file the user points at, use grep and jq to pull out error lines and JSON-structured entries, and summarize the top recurring errors. It needs one small helper script. Do not modify anything outside your outputs directory; write the plugin tree (ops-kit/skills/log-triage/...) under it.",
-      "expected_output": "A skill directory with a SKILL.md whose frontmatter has a name and a trigger-phrase description, one Bash(cmd:*) allowed-tools entry per command (grep, jq), the helper script referenced via ${CLAUDE_SKILL_DIR}/scripts/..., a data-only boundary for untrusted log content, and a body under 300 lines.",
+      "expected_output": "A skill directory with a SKILL.md whose frontmatter has a name and a trigger-phrase description, one named-command allowed-tools entry per command (Bash(grep:*) and Bash(jq:*), not a bare Bash), the helper script referenced via ${CLAUDE_SKILL_DIR}/scripts/..., a data-only boundary for untrusted log content, and a body under 300 lines.",
       "files": ["ops-kit/skills/log-triage/SKILL.md", "ops-kit/skills/log-triage/scripts/"]
     },
     {
