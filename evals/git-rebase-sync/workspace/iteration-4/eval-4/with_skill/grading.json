@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git rev-list --count HEAD..origin/<branch> after the fetch",
+      "passed": true,
+      "evidence": "Runs `git-rebase-sync-run.sh count-behind feature/shared-work` after the fetch (runs git rev-list --count HEAD..refs/remotes/origin/...). Assertion text names rev-list directly."
+    },
+    {
+      "text": "Stops and asks the user to update the local branch first, explaining a force-with-lease push would overwrite the 2 remote commits",
+      "passed": true,
+      "evidence": "Stops; AskUserQuestion 'Update local first / Stop here' explains the force-with-lease push would overwrite 2 commits."
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase before that question is answered",
+      "passed": true,
+      "evidence": "'Not run: backup-tag, count-merges, rebase, push'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Validates the PR number as digits and reads isCrossRepository, headRefName and headRefOid with gh pr view before any rebase step",
+      "passed": true,
+      "evidence": "Validates 640 as digits; reads isCrossRepository/headRefName/headRefOid through `git-pr-conflict-preview.sh view` (the script runs gh pr view) before any rebase step. Assertion text names gh pr view directly."
+    },
+    {
+      "text": "Stops and reports that the PR is from a fork and unsupported here",
+      "passed": true,
+      "evidence": "'isCrossRepository is true ... DO NOT PROCEED'; reports the fork PR is unsupported."
+    },
+    {
+      "text": "Creates no backup tag and runs no git rebase",
+      "passed": true,
+      "evidence": "'Not run: backup-tag, rebase, push'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

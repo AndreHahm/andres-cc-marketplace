@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Compares git branch --show-current with the PR's headRefName",
+      "passed": true,
+      "evidence": "Compares `git branch --show-current` (scratch-alias) with headRefName (fix/example-branch) -> MISMATCH."
+    },
+    {
+      "text": "Stops and asks the user to confirm the local branch is the intended one because its name differs from the PR's headRefName",
+      "passed": true,
+      "evidence": "AskUserQuestion: 'Switch to fix/example-branch / scratch-alias is intended / Cancel'."
+    },
+    {
+      "text": "Does not hand off to git-rebase-sync before that confirmation",
+      "passed": true,
+      "evidence": "'Do NOT preview ... and do NOT route to git-rebase-sync yet'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

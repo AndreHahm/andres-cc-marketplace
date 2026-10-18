@@ -1,0 +1,27 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Compares git branch --show-current with the PR's headRefName",
+      "passed": true,
+      "evidence": "Runs `git branch --show-current` -> scratch-alias and notes it differs from headRefName."
+    },
+    {
+      "text": "Stops and asks the user to confirm the local branch is the intended one because its name differs from the PR's headRefName",
+      "passed": false,
+      "evidence": "Dismisses the mismatch ('the commit is identical') and asks no confirmation question."
+    },
+    {
+      "text": "Does not hand off to git-rebase-sync before that confirmation",
+      "passed": true,
+      "evidence": "No hand-off to git-rebase-sync; only a local preview is planned."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667
+  },
+  "contaminated": false
+}

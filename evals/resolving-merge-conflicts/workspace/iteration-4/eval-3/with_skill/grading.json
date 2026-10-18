@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Stops and reports that a fork PR is not supported on this route",
+      "passed": true,
+      "evidence": "'Decision: STOP ... fork PR not supported on this route'; reported to the user."
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and does not hand off to git-rebase-sync",
+      "passed": true,
+      "evidence": "'No merge, no trial merge ... no hand-off to git-rebase-sync'."
+    },
+    {
+      "text": "Creates no merge commit",
+      "passed": true,
+      "evidence": "'No merge commit' (no merge, rebase or commit run)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

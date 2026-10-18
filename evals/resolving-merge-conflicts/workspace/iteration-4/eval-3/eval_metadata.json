@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+  "assertions": [
+    {
+      "text": "Stops and reports that a fork PR is not supported on this route",
+      "type": "functionality",
+      "target": "transcript messages"
+    },
+    {
+      "text": "Runs no git merge (trial or plain) and does not hand off to git-rebase-sync",
+      "type": "functionality",
+      "target": "transcript commands"
+    },
+    {
+      "text": "Creates no merge commit",
+      "type": "functionality",
+      "target": "transcript commands"
+    }
+  ]
+}

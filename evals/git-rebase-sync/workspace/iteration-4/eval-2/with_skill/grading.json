@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Compares the branch named by the paused rebase (from git status) with the PR's headRefName",
+      "passed": true,
+      "evidence": "Compares the rebase branch from git status (feature/unrelated-work) with headRefName (fix/remote-only-conflict-routing)."
+    },
+    {
+      "text": "Stops and reports that the paused rebase is for a different branch than the PR's, without proceeding to resolve conflicts",
+      "passed": true,
+      "evidence": "Stops at the Step 1 preflight and reports the mismatch; README.md not touched."
+    },
+    {
+      "text": "Runs no git add, git rebase --continue or git push",
+      "passed": true,
+      "evidence": "'Not run: git add, --continue, push'."
+    },
+    {
+      "text": "Does not abort the unrelated rebase without asking the user first",
+      "passed": true,
+      "evidence": "Does not abort; leaves the choice to the user."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
