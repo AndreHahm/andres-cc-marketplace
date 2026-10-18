@@ -51,6 +51,48 @@ def test_a_fence_of_one_kind_inside_the_other_does_not_end_it(tmp_path):
     assert _link_findings(tmp_path, body) == []
 
 
+def test_a_four_backtick_fence_can_hold_a_three_backtick_example(tmp_path):
+    body = "references/real.md\n````\n```\n[x](missing.md)\n```\n````\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_double_backtick_span_can_hold_a_single_backtick_and_a_link(tmp_path):
+    body = "references/real.md ``use ` and [x](missing.md) here`` end"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_an_indented_fence_inside_a_list_item_is_code(tmp_path):
+    body = "references/real.md\n- item\n    ```\n    [x](missing.md)\n    ```\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_fence_closes_only_on_an_equal_or_longer_run(tmp_path):
+    # The three-backtick line does not end the four-backtick fence: the link inside stays code.
+    body = "references/real.md\n````\n```\n[x](missing.md)\n````\n[after](missing-after.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing-after.md"]
+
+
+def test_an_unclosed_fence_hides_nothing(tmp_path):
+    body = "references/real.md\n```\n[x](missing.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_stray_backtick_does_not_swallow_a_later_link(tmp_path):
+    body = "references/real.md a lone ` tick\n[x](missing.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_url_in_a_four_backtick_fence_or_double_backtick_span_is_not_a_bare_url():
+    hook = _load_hook()
+    for text in (
+        "````\n```\nsee https://example.com/x\n```\n````\n",
+        "use ``a ` https://example.com/x b`` here\n",
+    ):
+        findings = []
+        hook.check_bare_urls(text, findings)
+        assert findings == [], text
+
+
 def test_a_url_inside_a_tilde_fence_is_not_a_bare_url():
     hook = _load_hook()
     for fence in ("```", "~~~"):

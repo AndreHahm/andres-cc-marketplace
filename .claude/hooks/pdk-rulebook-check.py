@@ -225,11 +225,35 @@ def check_agent_enums(fm, settings, findings):
                 findings.append(("FAIL", "AGENT", "tools field must be valid JSON array"))
 
 
+# Fenced blocks and inline code spans hold illustrative examples (as in R34). A fence closes on a
+# line of the same character and an equal-or-longer run, so a four-backtick fence can hold a
+# three-backtick example; a code span closes on a run of exactly the opening length. An unclosed
+# fence is not code.
+_BACKTICK_FENCE = re.compile(
+    r"^[ \t]*(`{3,})[^`\n]*\n.*?^[ \t]*\1`*[ \t]*$", re.MULTILINE | re.DOTALL
+)
+_TILDE_FENCE = re.compile(r"^[ \t]*(~{3,})[^\n]*\n.*?^[ \t]*\1~*[ \t]*$", re.MULTILINE | re.DOTALL)
+_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)")
+
+
+def code_regions(text):
+    regions = [m.span() for p in (_BACKTICK_FENCE, _TILDE_FENCE) for m in p.finditer(text)]
+    regions += [m.span() for m in _CODE_SPAN.finditer(text)]
+    return regions
+
+
+def strip_code(text):
+    kept, pos = [], 0
+    for start, end in sorted(code_regions(text)):
+        if start >= pos:
+            kept.append(text[pos:start])
+        pos = max(pos, end)
+    kept.append(text[pos:])
+    return "".join(kept)
+
+
 def extract_markdown_links(text):
-    # Fenced blocks and inline code spans hold illustrative examples, not links (as in R34).
-    text = re.sub(r"(```|~~~).*?\1", "", text, flags=re.DOTALL)
-    text = re.sub(r"`[^`\n]*`", "", text)
-    links = re.findall(r"\[(?:[^\]]*)\]\(([^)]+)\)", text)
+    links = re.findall(r"\[(?:[^\]]*)\]\(([^)]+)\)", strip_code(text))
     # A same-document anchor ("#foo") has no file; "path#foo" is checked as "path".
     targets = (href.split("#", 1)[0] for href in links)
     return [t for t in targets if t and not t.startswith(("http://", "https://"))]
@@ -333,7 +357,7 @@ def check_references_nesting(file_path, kind, findings):
 
 
 def check_bare_urls(text, findings):
-    code_spans = [(m.start(), m.end()) for m in re.finditer(r"(```|~~~).*?\1", text, re.DOTALL)]
+    code_spans = code_regions(text)
 
     def in_code(pos):
         return any(s <= pos < e for s, e in code_spans)
