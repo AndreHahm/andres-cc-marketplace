@@ -227,6 +227,87 @@
       "path": "scripts/reviewer_eval/score.py",
       "pr": 614,
       "recorded_at": "2026-10-18T07:08:12+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4303991553",
+      "line": 146,
+      "note": "fork PRs are unsupported on the remote-only route; the query reads the fork flag and compares origin with the PR's repository",
+      "path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:31+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4304050589",
+      "line": 45,
+      "note": "a base retarget between the preview and the push stays unguarded; the author's decision, accepted limitation",
+      "path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:31+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304050594",
+      "line": 91,
+      "note": "the resume path states the plain-lease limit and confirms the remote tip before a push",
+      "path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:31+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304050600",
+      "line": 32,
+      "note": "fork PR stop added: isCrossRepository and the origin-versus-PR-repository comparison",
+      "path": "plugins/git-kit/skills/resolving-merge-conflicts/references/remote-only-conflicts.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304050605",
+      "line": 348,
+      "note": "Reference Guide row updated for where binary, both-deleted and both-added conflicts are handled",
+      "path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304530595",
+      "line": 44,
+      "note": "git-rebase-sync runs the PR preflight when entered directly, not only via the preview",
+      "path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304530599",
+      "line": 146,
+      "note": "the local branch name is compared with headRefName, not only HEAD with headRefOid",
+      "path": "plugins/git-kit/skills/resolving-merge-conflicts/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4304530601",
+      "line": 11,
+      "note": "the lease lookup got its rev-parse grant, later narrowed to an exact ref prefix",
+      "path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4305825996",
+      "line": 83,
+      "note": "a paused rebase is checked against the PR's head branch before it is resumed",
+      "path": "plugins/git-kit/skills/git-rebase-sync/SKILL.md",
+      "pr": 612,
+      "recorded_at": "2026-10-18T09:10:32+00:00"
     }
   ]
 }
