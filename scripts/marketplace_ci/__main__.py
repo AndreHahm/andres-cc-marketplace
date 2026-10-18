@@ -975,7 +975,13 @@ def _finding_to_dict(
 
 
 def _diff_scope(
-    findings, repo: Path, base_sha: str, changed_paths, precomputed_ranges=None, exceptions=()
+    findings,
+    repo: Path,
+    base_sha: str,
+    changed_paths,
+    precomputed_ranges=None,
+    exceptions=(),
+    coverage=None,
 ):
     """(blocking, in_diff, diff_scoped) for the aggregated findings. A
     Major/Critical on a line this PR changed blocks; every other finding stays
@@ -1007,7 +1013,8 @@ def _diff_scope(
     gated = {
         f
         for f in findings
-        if gate_decision(f, in_diff=True, exceptions=exceptions).outcome == "block"
+        if gate_decision(f, in_diff=True, exceptions=exceptions, coverage=coverage).outcome
+        == "block"
     }
     if ranges is None:
         return gated, None, False
@@ -1305,7 +1312,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ReviewResult(reviewer=outcome.name, verdict="script", findings=outcome.findings)
         for outcome in verifier_outcomes
     )
-    findings = aggregate_findings(validated)
+    try:
+        coverage = review_verifiers.script_coverage(repo, verifier_outcomes)
+    except Exception as exc:  # fail closed, like the verifiers above
+        return _fail_run_codex_review(args, f"script coverage failed: {exc!r}", reports)
+    findings = aggregate_findings(validated, coverage)
     try:
         blocking_set, in_diff, diff_scoped = _diff_scope(
             findings,
@@ -1314,6 +1325,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             _changed_path_set(changed),
             (changed_ranges,),
             exceptions,
+            coverage,
         )
     except Exception as exc:  # fail closed: exit 2 and overwrite the output file
         return _fail_run_codex_review(args, f"diff-scoped classification failed: {exc!r}", reports)
@@ -1339,7 +1351,12 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 f,
                 None if in_diff is None else f in in_diff,
                 f in blocking_set,
-                gate_decision(f, in_diff=in_diff is None or f in in_diff, exceptions=exceptions),
+                gate_decision(
+                    f,
+                    in_diff=in_diff is None or f in in_diff,
+                    exceptions=exceptions,
+                    coverage=coverage,
+                ),
             )
             for f in findings
         ],

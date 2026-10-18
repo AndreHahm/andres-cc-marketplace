@@ -4,6 +4,8 @@ fields a reviewer may return, and the briefing every model reviewer receives."""
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from scripts.marketplace_ci import review_contract as rc
@@ -11,6 +13,9 @@ from scripts.marketplace_ci.__main__ import _finding_to_dict
 from scripts.marketplace_ci.review import (
     Finding,
     ReviewOutputError,
+    ReviewResult,
+    ScriptCoverage,
+    aggregate_findings,
     blocking_findings,
     gate_decision,
     validate_review_output,
@@ -331,3 +336,114 @@ def test_the_measurement_downgrade_is_only_safe_while_the_bridge_rejects_rule_cl
         "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs"
     )
     assert "rule_class" not in bridge.read_text(encoding="utf-8")
+
+
+# --- rules a script gate owns (issues #613, #615) ------------------------------------------
+
+R37_CLEAN = ScriptCoverage(clean=frozenset({("R37", SKILL)}))
+R33_CLEAN = ScriptCoverage(clean_everywhere=frozenset({"R33"}))
+
+
+def _claim(evidence, rule="plugin-rulebook-compliance", **extra):
+    return Finding(
+        reviewer=extra.pop("reviewer", "plugin-rulebook-checker"),
+        severity=extra.pop("severity", "Major"),
+        rule=rule,
+        path=extra.pop("path", SKILL),
+        evidence=evidence,
+        remediation=extra.pop("remediation", "Rename it."),
+        line=3,
+        **extra,
+    )
+
+
+def _outcome(finding, coverage):
+    return gate_decision(finding, in_diff=True, coverage=coverage).outcome
+
+
+def test_a_checker_claim_a_script_contradicts_is_a_notice():
+    assert _outcome(_claim("R37 requires mode 100755 but x.py is 100644"), R37_CLEAN) == "notice"
+    assert _outcome(_claim("R33: prefix cdx, rename the file"), R33_CLEAN) == "notice"
+
+
+def test_without_coverage_nothing_is_downgraded():
+    finding = _claim("R37 requires mode 100755")
+    assert _outcome(finding, None) == "block"
+    assert _outcome(finding, ScriptCoverage()) == "block"
+
+
+def test_coverage_is_per_rule_and_per_path():
+    finding = _claim("R37 requires mode 100755", path="plugins/demo-kit/hooks/hooks.json")
+    assert _outcome(finding, R37_CLEAN) == "block"  # a hook command is not a covered grant document
+    assert _outcome(_claim("R33 prefix"), R37_CLEAN) == "block"  # R37 coverage says nothing of R33
+    both = _claim("R33 and R37 apply")
+    assert _outcome(both, R37_CLEAN) == "block"  # every claimed rule must be covered
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        "R6 grant is too broad",
+        "R37 is mentioned, but the real defect is R6",
+        "the guard was removed",  # names no rule id
+    ],
+)
+def test_other_claims_still_block_even_with_coverage(evidence):
+    assert _outcome(_claim(evidence), R37_CLEAN) == "block"
+
+
+def test_only_the_rulebook_checker_can_be_contradicted():
+    quoted = _claim("foo(untrusted)  # see R37", reviewer="security-reviewer")
+    assert _outcome(quoted, R37_CLEAN) == "block"
+    shared = replace(
+        _claim("R37 requires 100755"), reporters=("plugin-rulebook-checker", "security-reviewer")
+    )
+    assert _outcome(shared, R37_CLEAN) == "block"
+
+
+def test_a_script_finding_about_a_script_owned_rule_still_blocks():
+    finding = _claim(
+        "R37 requires mode 100755",
+        rule="r37-executable-bit",
+        source="script",
+        rule_class="graph",
+        reviewer="script-verifiers",
+    )
+    assert _outcome(finding, R37_CLEAN) == "block"
+
+
+def test_a_merge_keeps_the_copy_that_still_blocks():
+    downgradable = _claim("R37 requires 100755", severity="Critical")
+    blocking = _claim("the real defect", rule="plugin-rulebook-compliance", severity="Major")
+    # Same axis, path and line: one copy would be downgraded, the other is not.
+    merged = aggregate_findings(
+        [
+            ReviewResult("plugin-rulebook-checker", "v", (downgradable,)),
+            ReviewResult("skill-reviewer", "v", (replace(blocking, reviewer="skill-reviewer"),)),
+        ]
+    )
+    assert len(merged) == 1
+    assert _outcome(merged[0], R37_CLEAN) == "block"
+
+
+def test_an_uncovered_checker_claim_merged_with_a_minor_still_blocks():
+    # The checker's Critical is on an uncovered location (it blocks); another reviewer's Minor
+    # shares the axis, path and line. The merge must not keep the Minor copy and lose the block.
+    critical = _claim(
+        "R37 requires 100755", severity="Critical", path="plugins/demo-kit/hooks/hooks.json"
+    )
+    minor = replace(critical, reviewer="skill-reviewer", severity="Minor", evidence="nit")
+    merged = aggregate_findings(
+        [
+            ReviewResult("plugin-rulebook-checker", "v", (critical,)),
+            ReviewResult("skill-reviewer", "v", (minor,)),
+        ],
+        R37_CLEAN,
+    )
+    assert len(merged) == 1 and merged[0].severity == "Critical"
+    assert _outcome(merged[0], R37_CLEAN) == "block"
+
+
+def test_a_lowercase_or_spaced_rule_id_still_counts_as_another_claim():
+    mixed = _claim("rule R37 is cited, but r6 is the real defect")
+    assert _outcome(mixed, R37_CLEAN) == "block"
