@@ -1486,8 +1486,27 @@ def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) ->
 
 
 _PYTHON_LIKE = re.compile(r"python[\d.]*|py")
-_OTHER_INTERPRETERS = frozenset({"node", "deno", "bun", "ruby", "perl", "uv", "uvx", "npx"})
-_COMMAND_STRING_FLAGS = frozenset({"-c", "-e", "-lc", "--eval", "-command", "/c"})
+# Not `uv`, `uvx` or `npx`: `uv run <file>` executes a non-Python file, which then needs the bit.
+_OTHER_INTERPRETERS = frozenset({"node", "deno", "bun", "ruby", "perl"})
+# What an interpreter may carry between its name and its script path and still read that path as a
+# script file. Anything else (an unknown or quoted option, `-c`/`-e`/`-p`, `-ce`, a glued flag, a
+# subcommand) is not known to leave the path unexecuted, so the grant counts as running it: a list
+# of the flags that run a command string cannot be complete (`-ce`, `perl -le`, `node -p`, `"-c"`).
+# The shell options below are errexit, nounset, xtrace, verbose, noglob and noexec.
+_SHELL_SAFE_OPTIONS = re.compile(r"[-+][euxvfn]+")
+_SHELL_NAMED_OPTIONS = frozenset({"-o", "+o", "-O", "+O"})  # the next word is an option name
+_PYTHON_SAFE_OPTIONS = frozenset({"-u", "-B", "-I", "-E", "-s", "-S", "-O", "-OO"})
+_SAFE_SUBCOMMANDS = {"deno": "run"}
+_POSIX_SHELLS = ("sh", "bash")  # not `cmd`/`powershell`: their default argument is a command
+# The one script path: optionally quoted, optionally led by the plugin or skill root variable, then
+# plain path characters only. An option with code glued to it (`-c"...path..."`), a substitution, a
+# command list (`a;b`), a glob, a brace or any other variable (its value is unknown, so it could
+# start with a dash) is not one path, even when it contains a `/`.
+_SCRIPT_PATH = re.compile(
+    r"""["']?(?![-+])"""
+    r"""(?:(?:\$\{CLAUDE_(?:PLUGIN_ROOT|SKILL_DIR)\}|\$CLAUDE_(?:PLUGIN_ROOT|SKILL_DIR))(?=/))?"""
+    r"""[A-Za-z0-9_./~-]+["']?"""
+)
 
 
 def _path_shaped(word: str) -> bool:
@@ -1495,19 +1514,48 @@ def _path_shaped(word: str) -> bool:
     return "/" in plain or plain.startswith(("$", ".", "~"))
 
 
+def _reads_one_script_path(words: list[str], name: str) -> bool:
+    """Whether the grant is `<interpreter> [known-safe options] <one path> [non-path arguments]`,
+    the only shape in which the interpreter reads the path as a script file."""
+    posix_shell = name in _POSIX_SHELLS
+    python = _PYTHON_LIKE.fullmatch(name) is not None
+    i = 1
+    while i < len(words) and not _path_shaped(words[i]):
+        word = words[i]
+        following = words[i + 1] if i + 1 < len(words) else ""
+        if any(char in word for char in "\"'\\"):
+            return False
+        if word == _SAFE_SUBCOMMANDS.get(name):
+            pass
+        elif posix_shell and _SHELL_SAFE_OPTIONS.fullmatch(word):
+            pass
+        elif posix_shell and word in _SHELL_NAMED_OPTIONS and re.fullmatch(r"[a-z]+", following):
+            i += 1
+        elif python and word in _PYTHON_SAFE_OPTIONS:
+            pass
+        else:
+            return False
+        i += 1
+    if i >= len(words) or _SCRIPT_PATH.fullmatch(words[i]) is None:
+        return False
+    # A later path-shaped word is an argument the script may run itself, which this scan cannot see.
+    return not any(_path_shaped(w) for w in words[i + 1 :])
+
+
 def _runs_its_path_argument(words: list[str]) -> bool:
     """Whether the path-shaped words after the first word are run by the grant itself (a wrapper
-    this scan does not know, or an interpreter given a command string) and so need the executable
-    bit. A plain interpreter (`python3 <path>`) runs the path as a script file, which needs none."""
+    this scan does not know, or an interpreter given anything but a script path) and so need the
+    executable bit. A plain interpreter (`python3 <path>`) runs the path as a script file, which
+    needs none."""
+    if not any(_path_shaped(w) for w in words[1:]):
+        return False
     name = _canonical(words[0].rsplit("/", 1)[-1])
     interpreter = (
-        name in SHELL_INTERPRETERS
+        name in _POSIX_SHELLS
         or name in _OTHER_INTERPRETERS
         or _PYTHON_LIKE.fullmatch(name) is not None
     )
-    if interpreter and not any(w.lower() in _COMMAND_STRING_FLAGS for w in words[1:3]):
-        return False
-    return any(_path_shaped(w) for w in words[1:])
+    return not (interpreter and _reads_one_script_path(words, name))
 
 
 def scan_script_grants(
@@ -1539,10 +1587,19 @@ def scan_script_grants(
             continue
         if match.group(1) is None:
             continue
-        words = match.group(1).strip().removesuffix(":*").split()
-        words = _command_words(words)
+        raw = match.group(1).strip().removesuffix(":*").split()
+        words = _command_words(raw)
         if not words:
             continue
+        # A path in a skipped word is unseen below: `GIT_SSH=<path>` is run by a child, and
+        # `env -P <path> x.sh` or `--chdir=<path>` changes where the program is looked up.
+        skipped = raw[: len(raw) - len(words)]
+        if any(
+            _path_shaped(w.split("=", 1)[-1])
+            for w in skipped
+            if _wrapper_name(w) not in _RUN_WRAPPERS
+        ):
+            unresolved += 1
         word = words[0].replace('"', "").replace("'", "").rstrip(":")  # as R6 reads the word
         if word.startswith(_PLUGIN_ROOT_FORMS):
             folder, rest = plugin_root, word.split("/", 1)[1]

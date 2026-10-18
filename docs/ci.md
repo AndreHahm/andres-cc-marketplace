@@ -217,16 +217,25 @@ finding's own location. R37 coverage is each grant document the `structure` veri
 `r37-executable-bit` finding, plus its `.claude/` mirror path when the mirror is the same git object as the
 canonical file. A document is left out when the scan could not resolve something in it: a Bash path grant in a
 form it skips (a glob, `${CLAUDE_PROJECT_DIR}/...`, a relative path, a path leaving the plugin), an unknown
-wrapper or an interpreter's command string (`timeout`, `sudo`, `bash -c`) that runs a path, or a frontmatter
-`hooks:` key. A plain interpreter grant (`python3 "<path>"`) stays covered, since the interpreter runs the
-path and the script needs no executable bit. "Covered" means "not reported by the diff-scoped verifier", not
-"proved compliant": a pre-existing grant the verifier chose not to blame this PR for also counts. A hook
+wrapper or an interpreter given anything but a script path (`timeout`, `sudo`, `uv run`, `bash -c`,
+`bash -ce`, `perl -le`, a quoted option, `powershell <path>`) that runs a path, a path carried by a
+`NAME=VALUE` or a wrapper option's value before the program (`env -P <path>`), or a frontmatter `hooks:` key. Only a plain interpreter grant stays covered:
+the interpreter, known-safe options (`bash -eu -o pipefail`, `python3 -u -B`, `deno run`), one plain script
+path and no other path after it (`python3 "<path>"`), since the interpreter reads that path as a script file
+and it needs no executable bit. The script path must be plain: an option with code glued to it, a
+substitution, a command list, a glob, a brace or a variable other than the plugin and skill roots (its value
+is unknown) is not one path. Any other option spelling counts as
+running the path, because a list of the flags that run a command string cannot be complete. "Covered" means
+"not reported by the diff-scoped verifier", not "proved compliant": a pre-existing grant the verifier chose
+not to blame this PR for also counts. A hook
 `command` in `hooks/hooks.json` is no grant document, so an R37 claim about one still blocks. R33 coverage is
 `find_prefix_violations` returning nothing for an inventoried repo. Without coverage nothing is downgraded, and
 when findings merge the copy that still blocks (judged with the merged reporters and the coverage) is kept.
 Accepted residuals: the rule id is read from the model's prose, so a model that names the wrong rule for a
 real defect in a covered document, as its only claim, is downgraded; and the `.claude/` mirror's own scripts
-are not mode-checked here (the mirror-parity job compares their executable bit with the source's).
+are not mode-checked here (the mirror-parity job compares their executable bit with the source's); and a
+script an interpreter reads (`bash <path>`) can itself run another plugin script directly, which no grant
+shows.
 Each finding in the result records `gate`, `rule_class`, `source`, `suppressed` and the `exception` it
 cites, and the result records `exceptions_loaded`.
 
