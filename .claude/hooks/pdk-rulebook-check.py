@@ -226,7 +226,10 @@ def check_agent_enums(fm, settings, findings):
 
 
 # Fenced blocks and inline code spans hold illustrative examples (as in R34).
-_FENCE_OPEN = re.compile(r"[ \t]*(`{3,}|~{3,})(.*)")
+# A fence may open after container markers: a list marker (`- `, `1. `) or a blockquote `>`.
+_FENCE_OPEN = re.compile(
+    r"(?P<prefix>[ \t]*(?:>[ \t]*|(?:[-+*]|\d{1,9}[.)])[ \t]+)*)(?P<fence>`{3,}|~{3,})(?P<info>.*)"
+)
 _SPAN_TOKEN = re.compile(r"\\[\s\S]|(`+)")  # a backslash escape pair, or a run of backticks
 _BLANK_LINE = re.compile(r"\n[ \t]*\n")
 
@@ -235,18 +238,20 @@ def fence_regions(text):
     """Spans of fenced blocks, found line by line in document order. A fence closes only on a line
     of the same character and an equal-or-longer run, so a four-backtick fence can hold a
     three-backtick example and a marker of the other character inside an open fence is just text.
-    An unclosed fence is not code."""
+    A fence opened inside a blockquote may close on a line that repeats the `>` (or on a bare fence
+    line; this scan does not track where the quote ends). An unclosed fence is not code."""
     regions, opened, pos = [], None, 0
     for line in text.split("\n"):
         body = line.rstrip("\r")
         if opened is None:
             m = _FENCE_OPEN.fullmatch(body)
             # A backtick fence's info string cannot contain a backtick (that is an inline span).
-            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
-                opened = (m.group(1)[0], len(m.group(1)), pos)
+            if m and not (m["fence"][0] == "`" and "`" in m["info"]):
+                opened = (m["fence"][0], len(m["fence"]), pos, ">" in m["prefix"])
         else:
-            char, run, start = opened
-            if re.fullmatch(rf"[ \t]*{re.escape(char)}{{{run},}}[ \t]*", body):
+            char, run, start, quoted = opened
+            quote = r"(?:>[ \t]*)*" if quoted else ""
+            if re.fullmatch(rf"[ \t]*{quote}{re.escape(char)}{{{run},}}[ \t]*", body):
                 regions.append((start, pos + len(body)))
                 opened = None
         pos += len(line) + 1

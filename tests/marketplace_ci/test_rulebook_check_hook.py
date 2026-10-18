@@ -3,6 +3,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 HOOK = Path(__file__).resolve().parents[2] / "plugins/plugin-devkit/hooks/pdk-rulebook-check.py"
 
 
@@ -143,6 +145,53 @@ def test_a_bare_url_after_a_mixed_fence_pair_is_still_reported():
     findings = []
     hook.check_bare_urls("```\n~~~\n```\nsee https://example.com/x\n~~~\n", findings)
     assert [rule for _, rule, _ in findings] == ["R17"]
+
+
+FENCE = "`" * 3
+
+
+def test_a_fence_opened_after_a_bullet_marker_is_code_even_with_a_blank_line(tmp_path):
+    body = f"references/real.md\n- {FENCE}\n  [x](missing.md)\n\n  more\n  {FENCE}\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_fence_opened_after_a_numbered_marker_is_code_even_with_a_blank_line(tmp_path):
+    body = f"references/real.md\n1. {FENCE}\n   [x](missing.md)\n\n   more\n   {FENCE}\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"- {FENCE}\n  see https://example.com/x\n\n  more\n  {FENCE}\n",
+        f"1. {FENCE}\n   see https://example.com/x\n\n   more\n   {FENCE}\n",
+        f"* {FENCE}python\n  see https://example.com/x\n\n  more\n  {FENCE}\n",
+        f"> {FENCE}\n> see https://example.com/x\n>\n> more\n> {FENCE}\n",
+        f"> - {FENCE}\n>   see https://example.com/x\n>\n>   more\n>   {FENCE}\n",
+    ],
+)
+def test_a_url_in_a_fence_opened_after_a_container_marker_is_not_a_bare_url(text):
+    hook = _load_hook()
+    findings = []
+    hook.check_bare_urls(text, findings)
+    assert findings == [], text
+
+
+def test_a_quote_marker_line_does_not_close_a_top_level_fence(tmp_path):
+    # The `>` line is content of the open top-level fence, so the link after it is still code.
+    body = f"references/real.md\n{FENCE}\n> {FENCE}\n[x](missing.md)\n{FENCE}\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_a_dash_glued_to_the_backticks_is_not_a_list_marker(tmp_path):
+    # `-` + three backticks with no space is ordinary text, not a fence opener.
+    body = f"references/real.md\n-{FENCE}\n[x](missing.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_an_unclosed_list_fence_hides_nothing(tmp_path):
+    body = f"references/real.md\n- {FENCE}\n  [x](missing.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
 
 
 def test_an_unclosed_fence_hides_nothing(tmp_path):
