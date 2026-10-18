@@ -227,7 +227,7 @@ def check_agent_enums(fm, settings, findings):
 
 def extract_markdown_links(text):
     # Fenced blocks and inline code spans hold illustrative examples, not links (as in R34).
-    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = re.sub(r"(```|~~~).*?\1", "", text, flags=re.DOTALL)
     text = re.sub(r"`[^`\n]*`", "", text)
     links = re.findall(r"\[(?:[^\]]*)\]\(([^)]+)\)", text)
     # A same-document anchor ("#foo") has no file; "path#foo" is checked as "path".
@@ -333,7 +333,7 @@ def check_references_nesting(file_path, kind, findings):
 
 
 def check_bare_urls(text, findings):
-    code_spans = [(m.start(), m.end()) for m in re.finditer(r"```.*?```", text, re.DOTALL)]
+    code_spans = [(m.start(), m.end()) for m in re.finditer(r"(```|~~~).*?\1", text, re.DOTALL)]
 
     def in_code(pos):
         return any(s <= pos < e for s, e in code_spans)
