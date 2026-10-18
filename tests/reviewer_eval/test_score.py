@@ -195,6 +195,8 @@ def _run_file(
     roster: tuple[str, ...] | None = ("security",),
     reviewer: str = "security",
     reporters: list[str] | None = None,
+    provenance: dict | None = None,
+    reviewed_paths: list[str] | None = None,
 ) -> str:
     findings = []
     for path in blocking_paths:
@@ -204,7 +206,9 @@ def _run_file(
         findings.append(finding)
     result: dict = {"findings": findings}
     if head is not None:
-        result["provenance"] = {"head_sha": head}
+        result["provenance"] = {"head_sha": head, **(provenance or {})}
+    if reviewed_paths is not None:
+        result["reviewed_paths"] = reviewed_paths
     if roster is not None:
         result["reviewers"] = list(roster)
     path = tmp_path / name
@@ -371,6 +375,90 @@ def test_cli_stability_rejects_a_mistyped_roster(
     )
     assert score.main(["--stability", str(bad), "--reviewer", "security"]) == 1
     assert "bad.json" in capsys.readouterr().err
+
+
+def test_cli_stability_rejects_one_run_file_given_more_than_once(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    # One sample repeated five times is not five runs.
+    run = _run_file(tmp_path, "run0.json", [])
+    assert score.main(["--stability", *[run] * 5, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert "same file" in captured.err
+
+
+def test_cli_stability_rejects_the_same_file_under_another_spelling(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    run = _run_file(tmp_path, "run0.json", [])
+    link = tmp_path / "link.json"
+    link.symlink_to(run)
+    dotted = str(tmp_path / "sub" / ".." / "run0.json")
+    (tmp_path / "sub").mkdir()
+    others = [_run_file(tmp_path, f"run{n}.json", []) for n in range(1, 3)]
+    assert (
+        score.main(["--stability", run, *others, str(link), dotted, "--reviewer", "security"]) == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "link.json" in captured.err
+    assert "same file" in captured.err
+
+
+@pytest.mark.parametrize(
+    "field", ["base_sha", "model", "cli_version", "configured_model", "pinned_cli_version"]
+)
+def test_cli_stability_rejects_runs_with_a_different_review_context(
+    tmp_path: Path, capsys: pytest.CaptureFixture, field: str
+):
+    # Same head, but the reviewer was given a different base, model or CLI: not a repeat.
+    runs = [_run_file(tmp_path, f"run{n}.json", [], provenance={field: "one"}) for n in range(4)]
+    runs.append(_run_file(tmp_path, "run4.json", [], provenance={field: "two"}))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run4.json" in captured.err
+    assert field in captured.err
+
+
+def test_cli_stability_rejects_a_field_present_in_one_run_and_absent_in_another(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [
+        _run_file(tmp_path, f"run{n}.json", [], provenance={"base_sha": "b" * 40}) for n in range(4)
+    ]
+    runs.append(_run_file(tmp_path, "old.json", []))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert "old.json" in captured.err
+    assert "base_sha" in captured.err
+
+
+def test_cli_stability_rejects_runs_that_reviewed_different_paths(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [
+        _run_file(tmp_path, f"run{n}.json", [], reviewed_paths=["a.py", "b.py"]) for n in range(4)
+    ]
+    runs.append(_run_file(tmp_path, "run4.json", [], reviewed_paths=["a.py", "c.py"]))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run4.json" in captured.err
+    assert "reviewed_paths" in captured.err
+
+
+def test_cli_stability_accepts_the_same_reviewed_paths_in_another_order(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    runs = [
+        _run_file(tmp_path, f"run{n}.json", [], reviewed_paths=["a.py", "b.py"]) for n in range(4)
+    ]
+    runs.append(_run_file(tmp_path, "run4.json", [], reviewed_paths=["b.py", "a.py"]))
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 0
+    assert json.loads(capsys.readouterr().out)["stable"] is True
 
 
 def test_cli_stability_needs_a_reviewer(tmp_path: Path, capsys: pytest.CaptureFixture):
