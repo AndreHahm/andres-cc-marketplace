@@ -43,7 +43,7 @@ Every bundled file `skill-development` ships, with its purpose and the phase in 
 | `agents/grader.md` | Evaluate assertions against outputs | Phase 3 (test) |
 | `agents/comparator.md` | Blind A/B comparison between two outputs | Phase 4 (improve) |
 | `agents/analyzer.md` | Analyze benchmark patterns and comparison results | Phase 3–4 |
-| `scripts/aggregate_benchmark.py` | Aggregate benchmark results across iterations | Phase 3 step 5 (invoked as `python -m scripts.aggregate_benchmark`) |
+| `scripts/aggregate_benchmark.py` | Aggregate benchmark results across iterations | Phase 3 step 5 (invoked as `python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py`) |
 | `scripts/run_loop.py` | Run description optimization loop | Phase 5 (polish) |
 | `scripts/quick_validate.py` | Quick skill validation check | Phase 5 (before packaging) |
 | `scripts/package_skill.py` | Package skill into distributable `.skill` file | Phase 5 (packaging) |

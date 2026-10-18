@@ -49,7 +49,8 @@ def check_referenced_files():
 def check_bash_grants():
     # This skill doesn't use the "scoped `Bash(...)`" invocation phrasing the lifecycle
     # skills use — its body cites commands as literal invocation examples instead
-    # (e.g. "python -m scripts.aggregate_benchmark", "mkdir -p ..."). So the meaningful
+    # (e.g. "python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py", "mkdir -p ..."). So the
+    # meaningful
     # check here is: does each granted Bash(<cmd>:*) scope's <cmd> actually appear as a
     # word-boundary command mention in the body? An unused grant is an R6 least-privilege
     # smell even when nothing in the body's own phrasing names the grant explicitly.
@@ -382,6 +383,35 @@ def check_package_skill_imports_as_script():
     return True, "package_skill.py imports its validator when run as `python .../package_skill.py`"
 
 
+def check_pinned_scripts_run_by_path():
+    # The frontmatter pins each interpreter grant to one script path, so run_loop.py and
+    # aggregate_benchmark.py must work as `python <path>` from any cwd, not as `-m scripts.x`.
+    for name in ("run_loop", "aggregate_benchmark"):
+        script = SKILL_DIR / "scripts" / f"{name}.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [sys.executable, str(script), "--help"],
+                capture_output=True,
+                text=True,
+                cwd=tmp,
+                check=False,
+            )
+        if proc.returncode != 0 or "usage:" not in proc.stdout:
+            return False, f"{name}.py does not run by path from another cwd: {proc.stderr[-200:]}"
+    return True, "run_loop.py and aggregate_benchmark.py run as `python <path>` from another cwd"
+
+
+def check_no_interpreter_wide_grant():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    match = re.search(r"^allowed-tools:[ \t]*(.*)$", text, re.MULTILINE)
+    if not match:
+        return True, "no allowed-tools line found (skip)"
+    wide = re.findall(r"Bash\((?:python3?|node)(?::\*|\s*\*?)\)", match.group(1))
+    if wide:
+        return False, "interpreter-wide Bash grant(s): " + ", ".join(wide)
+    return True, "no interpreter-wide Bash grant; each script is pinned"
+
+
 def check_report_icons_differ():
     text = (SKILL_DIR / "scripts" / "generate_report.py").read_text(encoding="utf-8")
     pairs = re.findall(r'icon = "([^"]*)" if did_pass else "([^"]*)"', text)
@@ -507,6 +537,8 @@ CHECKS = [
     check_report_icons_differ,
     check_improve_description_call_is_contained,
     check_nested_claude_gets_no_secrets_and_few_tools,
+    check_pinned_scripts_run_by_path,
+    check_no_interpreter_wide_grant,
 ]
 
 
