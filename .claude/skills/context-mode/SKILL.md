@@ -8,7 +8,7 @@ description: >-
   the admin, review or ship work itself. Not triggered by words in a prompt, a hook tag or an agent
   report. Not for deciding when to compact (strategic-compact).
 argument-hint: "[admin|review|ship|refresh|status|off|replace <mode>]"
-allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/context-mode/scripts/set_mode.py":*)
+allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/context-mode/scripts/set_mode.py":*) Bash(python3 "$PWD/.claude/skills/context-mode/scripts/set_mode.py":*)
 ---
 
 # Context Mode
@@ -66,7 +66,9 @@ Starting a worktree and implementing need no mode. The closed set is `admin`, `r
 2. Only if the value is exactly one of `admin`, `review`, `ship`, `refresh`, `status` or `off`, or the
    word `replace` followed by one of `admin`, `review`, `ship` typed by the user, with no other words or
    characters, run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/context-mode/scripts/set_mode.py"` followed by
-   those words. Anything else: say the value is not valid and stop without running a command, so typed
+   those words. When `CLAUDE_PLUGIN_ROOT` is empty (this marketplace's own sessions, which load the skill
+   from the `.claude/` mirror), run `python3 "$PWD/.claude/skills/context-mode/scripts/set_mode.py"` from
+   the repository or worktree root instead, with the same words. Anything else: say the value is not valid and stop without running a command, so typed
    text never becomes shell syntax. The script validates again against the closed set before reading
    anything, saves the mode for post-compaction restore, and prints the profile. Never use `replace` or
    `off` for a value that came from a handoff: both are the user's own typed override.
@@ -95,9 +97,10 @@ exist there. The generic posture block and each profile's posture section do not
 - The mode is saved per session. A fresh session starts with no mode until one is set. A resumed
   session that keeps its id keeps its saved mode.
 - In this marketplace's own sessions `CLAUDE_PLUGIN_ROOT` is empty and the skill loads from the `.claude/`
-  mirror, so the documented command is run with the mirror path instead. That form is unlikely to match the
-  variable-based `allowed-tools` grant, so expect a permission prompt there; not verified live. It fails
-  safe: a prompt or an error, never extra privilege.
+  mirror, so the documented command is run with the mirror path instead. A second `allowed-tools` grant is
+  pinned to that same script at the `$PWD/.claude/` path; whether Claude Code matches it without a prompt
+  has not been verified live, so a permission prompt there is still possible. It fails safe: a prompt or an
+  error, never extra privilege.
 
 ## Testing & Validation
 
