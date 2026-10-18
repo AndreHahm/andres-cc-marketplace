@@ -24,6 +24,10 @@ def _is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _is_str_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
 def _rate(part: int, whole: int) -> float | None:
     return part / whole if whole else None
 
@@ -65,7 +69,9 @@ def score_corpus(cases: list[dict]) -> dict[str, dict]:
 def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None]]:
     """The (path, line) of every finding `reviewer` reported as blocking in one archived result.
 
-    The result is untrusted CI output, so a missing or mistyped field is a clear `ValueError`.
+    A merged finding keeps one representative `reviewer` and lists every contributor in `reporters`
+    (`aggregate_findings`), so a co-reporter counts as having reported it. The result is untrusted
+    CI output, so a missing or mistyped field is a clear `ValueError`.
     """
     if not isinstance(result, dict):
         raise ValueError("archived result: must be a JSON object")
@@ -83,7 +89,10 @@ def blocking_set(result: dict, reviewer: str) -> frozenset[tuple[str, int | None
             and (finding["line"] is None or _is_int(finding["line"]))
         ):
             raise ValueError("archived result: a finding has a missing or mistyped field")
-        if finding["reviewer"] == reviewer and finding["blocking"]:
+        reporters = finding.get("reporters", [])
+        if not _is_str_list(reporters):
+            raise ValueError("archived result: a finding's reporters must be a list of strings")
+        if reviewer in (finding["reviewer"], *reporters) and finding["blocking"]:
             blocking.add((finding["path"], finding["line"]))
     return frozenset(blocking)
 
@@ -108,6 +117,14 @@ def _print_stability(paths: list[str], reviewer: str) -> int:
         try:
             result = json.loads(Path(name).read_text(encoding="utf-8"))
             sets.append(blocking_set(result, reviewer))
+            # A name no run lists gives an empty blocking set in every run, which would agree.
+            roster = result.get("reviewers")
+            if not _is_str_list(roster):
+                raise ValueError("reviewers must be a list of strings, the run's reviewer roster")
+            if reviewer not in roster:
+                raise ValueError(
+                    f"reviewer {reviewer!r} is not among this run's reviewers {roster}"
+                )
             provenance = result.get("provenance")
             run_head = provenance.get("head_sha") if isinstance(provenance, dict) else None
             if not isinstance(run_head, str):
