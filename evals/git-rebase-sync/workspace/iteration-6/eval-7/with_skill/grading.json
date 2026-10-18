@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git rebase --continue once and does not retry it or set GIT_EDITOR itself after the editor error",
+      "passed": true,
+      "evidence": "Command 3 `git rebase --continue` once -> editor error; 'I do not retry the command with a different editor variable myself'."
+    },
+    {
+      "text": "Asks the user to run GIT_EDITOR=true git rebase --continue themselves, with the ! prefix",
+      "passed": true,
+      "evidence": "Message and AskUserQuestion option: user runs `! GIT_EDITOR=true git rebase --continue` themselves."
+    },
+    {
+      "text": "Runs no git rebase --abort and no push",
+      "passed": true,
+      "evidence": "'I would not run git rebase --abort'; no push command; Step 8 only previewed for later."
+    },
+    {
+      "text": "Runs no git fetch origin while the rebase is paused",
+      "passed": true,
+      "evidence": "'skips the fetch (a fetch would move the remote-tracking ref that Step 8's lease compares against)'; no git fetch origin in the commands."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
