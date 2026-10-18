@@ -543,6 +543,38 @@ async function main() {
   }
   const dryRun = dryRunRaw === "true";
 
+  // The two path flags get the same raw-argv treatment as --dry-run above, because parseArgs
+  // resolves each of these malformed forms silently and a wrong path source means the reviewer
+  // is pointed at a different scope than the caller intended:
+  // - a flag given twice (the last one wins);
+  // - the "=" form or a case variant, which parseArgs files under a key nothing reads, so the flag
+  //   reads as absent and the call uses the other path source;
+  // - a flag last on the command line, which parseArgs records as present with value undefined,
+  //   so it reads as absent below;
+  // - a flag followed directly by another flag, which parseArgs hands that flag's name as its value
+  //   (isValidPathToken accepts it), dropping the real list.
+  // Only the flag name is echoed, never a value.
+  for (const flag of ["target-paths", "target-paths-file"]) {
+    const tokens = rawArgv.filter((a) => {
+      const lower = a.toLowerCase();
+      return lower === `--${flag}` || lower.startsWith(`--${flag}=`);
+    });
+    if (tokens.length > 1) {
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `--${flag} must not be given more than once` }));
+      process.exit(1);
+    }
+    if (tokens.length === 1) {
+      const value = options[flag];
+      if (value === undefined) {
+        console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `--${flag} was given without a value (only the lower-case, space-separated form "--${flag} <value>" is supported; the "=" form and case variants are not)` }));
+        process.exit(1);
+      }
+      if (value.startsWith("--")) {
+        console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `--${flag} value must not start with -- (it looks like another flag, which a flag directly followed by another flag would take as its value)` }));
+        process.exit(1);
+      }
+    }
+  }
   // Presence, not truthiness, for the exclusivity check: "--target-paths ''" next to a paths file
   // is still two sources, and must not silently fall back to one of them.
   if (targetPathsRaw !== undefined && targetPathsFileRaw !== undefined) {
