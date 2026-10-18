@@ -8,7 +8,7 @@ description: >-
   Never adds a new merge commit. Not for a conflict from `git merge`, `git cherry-pick`, or an
   already-conflicted working tree with no rebase in progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
-allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*), Bash(gh pr view:*), Bash(git remote get-url origin), Bash(git rev-parse HEAD), Bash(git rev-parse origin/:*), Read, Edit, AskUserQuestion
+allowed-tools: Bash(git branch --show-current), Bash(git fetch origin), Bash(git status), Bash(git tag -a:*), Bash(git rev-list:*), Bash(git rebase --continue), Bash(git rebase --abort), Bash(git rebase --rebase-merges origin/:*), Bash(git rebase origin/:*), Bash(git add --:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease=:*), Bash(git push --force-with-lease origin HEAD:*), Bash(git log:*), Bash(gh repo view --json defaultBranchRef:*), Bash(gh pr view:*), Bash(git remote get-url origin), Bash(git rev-parse HEAD), Bash(git rev-parse origin/:*), Read, Edit, AskUserQuestion
 ---
 
 # git-rebase-sync
@@ -80,7 +80,7 @@ defaultBranchRef`, and the broader grant included `gh repo delete`.
   - If `$ARGUMENTS` supplies an explicit base branch, use that directly as `{base_branch}`.
   - Otherwise, use GitHub default branch:
     - `gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'`
-  - **PR-triggered call** (the user names a PR, or `resolving-merge-conflicts` routed here): the PR number must match `^[0-9]+$`; then read `gh pr view <number> --json baseRefName,headRefName,headRefOid,isCrossRepository,url`. Stop and report, without rebasing, when `isCrossRepository` is true, when `git remote get-url origin` (minus the GitHub host prefix, in HTTPS or SSH form, and the `.git` suffix) is not the `owner/repo` in `url`, when `git branch --show-current` is not `headRefName`, or when `git rev-parse HEAD` differs from `headRefOid` (unpushed or stale: confirm with the user that this local branch is the intended one). While a rebase of this branch is paused, skip the branch-name and `HEAD` comparisons. Otherwise use `baseRefName` as `{base_branch}`, unless an explicit base argument was given. This preflight is not optional, whether or not the `resolving-merge-conflicts` preview ran.
+  - **PR-triggered call** (the user names a PR, or `resolving-merge-conflicts` routed here): the PR number must match `^[0-9]+$`; then read `gh pr view <number> --json baseRefName,headRefName,headRefOid,isCrossRepository,url`. Stop and report, without rebasing, when `isCrossRepository` is true, when `git remote get-url origin` (minus the GitHub host prefix, in HTTPS or SSH form, and the `.git` suffix) is not the `owner/repo` in `url`, when `git branch --show-current` is not `headRefName`, or when `git rev-parse HEAD` differs from `headRefOid` (unpushed or stale: confirm with the user that this local branch is the intended one). While a rebase is paused (`HEAD` is detached), skip the `HEAD` comparison and read the branch being rebased from `git status`; stop unless it equals `headRefName`, so a rebase paused for a different branch is never resumed or pushed for this PR. Otherwise use `baseRefName` as `{base_branch}`, unless an explicit base argument was given. This preflight is not optional, whether or not the `resolving-merge-conflicts` preview ran.
   - `{base_branch}` (whichever source supplied it) and the current `{branch_name}` are data, and a git ref name can contain shell metacharacters (a semicolon, for one), as with a branch checked out from a contributor's PR: use either in a command only if it matches `^[A-Za-z0-9._/-]+$`, otherwise stop and ask the user.
 - Fetch latest:
   - `git fetch origin`
@@ -126,7 +126,7 @@ When conflicts happen:
      - "Should we keep the new upstream behavior X, or keep the feature behavior Y?"
      - "Is this file generated and safe to regenerate, or do you want manual resolution?"
 4. Apply the resolution, then stage only resolved files:
-   - `git add <file...>`
+   - `git add -- <file...>`
 5. Continue:
    - `git rebase --continue`
 6. If you reach a point where resolution is too risky/unclear:
@@ -145,7 +145,7 @@ Helpful commands during conflicts:
 ### 8) Push updated branch (requires confirmation)
 - If the branch already exists on origin, rebasing rewrites history, so pushing requires force-with-lease.
 - Use `AskUserQuestion` to show the exact command and confirm before running it:
-  - `git push --force-with-lease={branch_name}:{lease_oid} origin HEAD:{branch_name}`, with the value recorded in Step 2. This `=` form is not named by the `--force-with-lease:*` grant, so it may prompt; that is acceptable for a history-rewriting push.
+  - `git push --force-with-lease={branch_name}:{lease_oid} origin HEAD:{branch_name}`, with the value recorded in Step 2.
   - If this run resumed a rebase it did not start, no `{lease_oid}` exists, and the plain lease checks against whatever the latest fetch brought in. Show `git log --oneline -5 origin/{branch_name}` in the confirmation, say that it cannot prove nothing landed while the rebase was paused, and run `git push --force-with-lease origin HEAD:{branch_name}` only if the user confirms that tip is expected.
 
 ## Recovery
