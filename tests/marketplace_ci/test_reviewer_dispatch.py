@@ -1621,3 +1621,110 @@ def test_no_exceptions_leaves_the_instruction_exactly_as_before(
 ):
     text = _dispatch_and_read_instruction(monkeypatch, repo, change, dependency_index, completed)
     assert "[documented exceptions]" not in text
+
+
+# --- the reviewer's paths go to the bridge in a file, not on the command line (issue #611) ---
+
+
+def _record_bridge_calls(monkeypatch, completed):
+    """Fake the bridge; record each call's argv and, read at call time because the default
+    instructions directory is removed after dispatch, the content of its paths file."""
+    calls: list[tuple[list[str], str | None]] = []
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            file_arg = (
+                argv.index("--target-paths-file") + 1 if "--target-paths-file" in argv else None
+            )
+            content = Path(argv[file_arg]).read_text(encoding="utf-8") if file_arg else None
+            calls.append((list(argv), content))
+            return completed(0, stdout=b"{}")
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    return calls
+
+
+def _scope(*paths: str) -> review.ReviewScope:
+    return review.ReviewScope(
+        mode="delta",
+        structural_check="none",
+        validate=("dependency-reviewer", "plugin-rulebook-checker"),
+        audit=(),
+        paths=paths,
+    )
+
+
+def test_the_paths_reach_the_bridge_in_a_file_one_per_line(monkeypatch, repo, completed):
+    calls = _record_bridge_calls(monkeypatch, completed)
+    paths = ("plugins/demo-kit/skills/x/SKILL.md", "scripts/tool.py", "docs/notes.md")
+
+    dispatch_reviewers(_scope(*paths), base_sha="deadbeef", repo=repo)
+
+    by_reviewer = {c[0][c[0].index("--reviewer-type") + 1]: c for c in calls}
+    argv, content = by_reviewer["dependency-reviewer"]
+    assert "--target-paths" not in argv  # the argument that has a size limit is no longer used
+    assert content == "\n".join(paths) + "\n"
+    # Outside the checkout, beside the instruction files.
+    assert not Path(argv[argv.index("--target-paths-file") + 1]).is_relative_to(repo)
+
+
+def test_the_rulebook_checker_keeps_its_narrowed_paths_in_its_file(monkeypatch, repo, completed):
+    calls = _record_bridge_calls(monkeypatch, completed)
+    skill, fixture = "plugins/demo-kit/skills/x/SKILL.md", "evals/demo/fixture.md"
+
+    dispatch_reviewers(_scope(skill, fixture), base_sha="deadbeef", repo=repo)
+
+    contents = {c[0][c[0].index("--reviewer-type") + 1]: c[1] for c in calls}
+    assert contents["dependency-reviewer"] == f"{skill}\n{fixture}\n"
+    assert contents["plugin-rulebook-checker"] == f"{skill}\n"  # evals/ is outside R1-R27's scope
+
+
+def test_a_path_list_over_the_argument_limit_is_one_file_and_no_long_argument(
+    monkeypatch, repo, completed
+):
+    calls = _record_bridge_calls(monkeypatch, completed)
+    paths = tuple(f"pkg{i % 7}/module{i // 7}/some_long_file_name_{i}.py" for i in range(5000))
+
+    reports = dispatch_reviewers(_scope(*paths), base_sha="deadbeef", repo=repo)
+
+    assert all(r.status == "completed" for r in reports)
+    for argv, _content in calls:
+        assert max(len(arg) for arg in argv) < 4096  # nowhere near the OS limit
+    contents = {c[0][c[0].index("--reviewer-type") + 1]: c[1] for c in calls}
+    assert contents["dependency-reviewer"] == "\n".join(paths) + "\n"
+
+
+@pytest.mark.parametrize("hostile", ["pkg/a.md\nb.md", "pkg/a,b.md", "pkg/a b.md", "pkg/a\r.md"])
+def test_an_unsafe_path_fails_the_reviewer_even_when_no_line_ranges_exist(
+    monkeypatch, repo, completed, hostile
+):
+    # A newline in a file name would split into two valid-looking entries in the paths file, and
+    # the real file would never be a target. Checked whether or not changed_ranges was computed.
+    calls = _record_bridge_calls(monkeypatch, completed)
+
+    reports = dispatch_reviewers(
+        _scope("scripts/ok.py", hostile), base_sha="deadbeef", repo=repo, changed_ranges=None
+    )
+
+    assert all(r.status == "failed" for r in reports)
+    assert all("characters the reviewer bridge does not accept" in (r.error or "") for r in reports)
+    assert not calls  # nothing was dispatched
+
+
+def test_an_unsafe_path_the_rulebook_checker_would_not_see_still_stops_every_reviewer(
+    monkeypatch, repo, completed
+):
+    # The rulebook checker is narrowed to R1-R27's scope, so a path under evals/ never reaches it.
+    # The run is failed anyway by the other reviewers; it must not spend a call on this one first.
+    calls = _record_bridge_calls(monkeypatch, completed)
+
+    reports = dispatch_reviewers(
+        _scope("plugins/demo-kit/skills/x/SKILL.md", "evals/demo/a b.md"),
+        base_sha="deadbeef",
+        repo=repo,
+    )
+
+    assert {r.reviewer for r in reports} == {"dependency-reviewer", "plugin-rulebook-checker"}
+    assert all(r.status == "failed" and r.attempts == 0 for r in reports)
+    assert not calls

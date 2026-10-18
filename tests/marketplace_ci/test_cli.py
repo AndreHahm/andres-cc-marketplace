@@ -1431,7 +1431,10 @@ def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git
     def fake_run(argv, **kw):
         if argv[0] == "node":
             reviewer = argv[argv.index("--reviewer-type") + 1]
-            captured_target_paths[reviewer] = argv[argv.index("--target-paths") + 1]
+            # The paths reach the bridge in a file, one per line; read it now, because the default
+            # instructions directory is removed once dispatch ends.
+            with open(argv[argv.index("--target-paths-file") + 1], encoding="utf-8") as paths_file:
+                captured_target_paths[reviewer] = paths_file.read()
             return subprocess_module.CompletedProcess(
                 argv, returncode=0, stdout=make_envelope(reviewer), stderr=b""
             )
@@ -1442,12 +1445,12 @@ def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 0
 
-    rulebook_paths = captured_target_paths["plugin-rulebook-checker"].split(",")
+    rulebook_paths = captured_target_paths["plugin-rulebook-checker"].splitlines()
     assert "plugins/demo-kit/skills/x/SKILL.md" in rulebook_paths
     assert "evals/demo-kit/evals.json" not in rulebook_paths
     assert "plugins/demo-kit/README.md" not in rulebook_paths
 
-    security_paths = captured_target_paths["security-reviewer"].split(",")
+    security_paths = captured_target_paths["security-reviewer"].splitlines()
     assert "evals/demo-kit/evals.json" in security_paths
     assert "plugins/demo-kit/README.md" in security_paths
 
