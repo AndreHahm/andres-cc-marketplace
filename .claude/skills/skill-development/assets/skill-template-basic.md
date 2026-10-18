@@ -1,5 +1,5 @@
 ---
-name: {skill-name}
+name: "{skill-name}"
 description: >-
   {What it does — start with action verbs}. Use when {primary trigger conditions}:
   {keywords}, {trigger phrases}, {file patterns}. {Optional: explicit scope or constraints}.
