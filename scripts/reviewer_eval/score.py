@@ -110,11 +110,35 @@ def stability(blocking_sets: list[frozenset]) -> dict:
     return {"repeats": len(blocking_sets), "agree": agree, "stable": stable}
 
 
+_CONTEXT_PROVENANCE = ("base_sha", "model", "cli_version", "configured_model", "pinned_cli_version")
+
+
+def _review_context(result: dict, provenance: dict) -> dict:
+    """What a run's reviewers were given besides the head; runs that differ here are not repeats.
+
+    A field a run does not record reads as None, so a run with it and a run without it differ.
+    """
+    reviewed = result.get("reviewed_paths")
+    context = {field: provenance.get(field) for field in _CONTEXT_PROVENANCE}
+    if isinstance(reviewed, list) and _is_str_list(reviewed):
+        context["reviewed_paths"] = tuple(sorted(reviewed))
+    else:
+        context["reviewed_paths"] = None
+    return context
+
+
 def _print_stability(paths: list[str], reviewer: str) -> int:
     sets = []
     head = None
+    first_context = None
+    seen: dict[Path, str] = {}
     for name in paths:
         try:
+            # One sample given twice is not two runs: the same file under any spelling or link.
+            resolved = Path(name).resolve()
+            if resolved in seen:
+                raise ValueError(f"same file as {seen[resolved]}, which is already counted")
+            seen[resolved] = name
             result = json.loads(Path(name).read_text(encoding="utf-8"))
             sets.append(blocking_set(result, reviewer))
             # A name no run lists gives an empty blocking set in every run, which would agree.
@@ -136,6 +160,12 @@ def _print_stability(paths: list[str], reviewer: str) -> int:
             if head is not None and run_head != head:
                 raise ValueError(f"head {run_head} differs from {head}, the head of the first run")
             head = run_head
+            context = _review_context(result, provenance)
+            if first_context is None:
+                first_context = context
+            for field, value in context.items():
+                if value != first_context[field]:
+                    raise ValueError(f"{field} differs from the first run's, so it is not a repeat")
         except (OSError, ValueError) as exc:
             print(f"{name}: {exc}", file=sys.stderr)
             return 1
