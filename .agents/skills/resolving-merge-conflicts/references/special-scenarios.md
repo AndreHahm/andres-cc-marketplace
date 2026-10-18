@@ -5,9 +5,9 @@
 Binary files cannot be merged. Choose one version:
 
 ```bash
-git checkout --ours path/to/binary    # keep our version
+git checkout --ours -- path/to/binary    # keep our version
 # or
-git checkout --theirs path/to/binary  # keep their version
+git checkout --theirs -- path/to/binary  # keep their version
 ```
 
 ## Mass Rename/Refactoring Conflicts
