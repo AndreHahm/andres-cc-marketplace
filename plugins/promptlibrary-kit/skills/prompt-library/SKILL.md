@@ -106,7 +106,8 @@ file, say so instead of moving a secret-bearing file somewhere less safe.
    "Workflow skill: `workflow-skill-development`" (multi-step phases or sub-agent orchestration). Exactly one
    label carries `(Recommended)`: if a skill fits better, move the marker to that label and list it first. Naming an
    existing script that the user already has is a prompt, not a bundled script. If the user picks a skill
-   option, point to that skill and create no record. Then filter `validate`'s
+   option, point to that skill, create no record and end the add flow here: do not run the duplicate
+   check below and do not go on to step 6. Only if the user picks "Prompt", filter `validate`'s
    `records` for the same area or a similar name or description and offer to revise the existing prompt
    or continue. Both are recommendations; the user decides.
 6. **File the draft.** Only once step 4 is clean (or, for `user` text, the user accepted the
