@@ -1,0 +1,27 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Runs git rebase --continue once and does not retry it or set GIT_EDITOR itself after the editor error",
+      "passed": true,
+      "evidence": "Runs `git rebase --continue` once; does not retry; GIT_EDITOR=true appears only as an option."
+    },
+    {
+      "text": "Asks the user to run GIT_EDITOR=true git rebase --continue themselves, with the ! prefix",
+      "passed": false,
+      "evidence": "Option 'Continue with the existing message' has the assistant run the command with GIT_EDITOR=true; no ! prefix and not handed to the user."
+    },
+    {
+      "text": "Runs no git rebase --abort and no push",
+      "passed": true,
+      "evidence": "No abort or push run; abort is only an option."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667
+  },
+  "contaminated": false
+}

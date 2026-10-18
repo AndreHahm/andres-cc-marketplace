@@ -30,6 +30,20 @@
       "prompt": "PR #579 conflicts with main on GitHub and my local tree is clean. Resolve the merge conflicts using resolving-merge-conflicts.\n\nSIMULATED ENVIRONMENT (do not run real git or gh commands; write down each command you would run, in order, and use this as its output):\n- \"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh\" view 579 -> {\"mergeable\":\"CONFLICTING\",\"mergeStateStatus\":\"DIRTY\",\"baseRefName\":\"main\",\"headRefName\":\"fix/example-branch\",\"headRefOid\":\"dddd444\",\"isCrossRepository\":false,\"url\":\"https://github.com/AndreHahm/andres-cc-marketplace/pull/579\"}\n- git status -> nothing to commit, working tree clean\n- git fetch origin -> succeeds\n- git rev-parse HEAD -> dddd444\n- git branch --show-current -> scratch-alias\n- git remote get-url origin -> https://github.com/AndreHahm/andres-cc-marketplace.git\nStop once you have decided whether to preview or route on.\nSave a transcript of your commands, every AskUserQuestion call you would make (with its exact text), and your messages to the user.",
       "expected_output": "Notices HEAD equals headRefOid but the branch name scratch-alias is not headRefName, and stops to confirm that this local branch is the intended one before reporting files or routing.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "Preview finds no conflict",
+      "prompt": "Resolve the conflicts on PR #615 using resolving-merge-conflicts, then sync it with git-rebase-sync.\n\nSIMULATED ENVIRONMENT (do not run real git or gh commands; write down each command you would run, in order, and use this as its output):\n- git status -> nothing to commit, working tree clean\n- \"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh\" view 615 -> {\"baseRefName\":\"main\",\"headRefName\":\"fix/example-branch\",\"headRefOid\":\"ffff666\",\"isCrossRepository\":false,\"mergeable\":\"MERGEABLE\",\"mergeStateStatus\":\"CLEAN\",\"url\":\"https://github.com/AndreHahm/andres-cc-marketplace/pull/615\"}\n- git fetch origin -> succeeds\n- git rev-parse HEAD -> ffff666\n- git branch --show-current -> fix/example-branch\n- git remote get-url origin -> https://github.com/AndreHahm/andres-cc-marketplace.git\n- \"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh\" merge-tree main -> exit status 0 (clean merge)\nStop once you have decided what to do next; do not simulate any rebase.\nSave a transcript of your commands, every AskUserQuestion call you would make (with its exact text), and your messages to the user.",
+      "expected_output": "Runs the read-only preview, reads a clean merge (exit 0) with mergeable MERGEABLE as 'no conflict', tells the user there is nothing to resolve and stops, without invoking git-rebase-sync.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "PR number longer than the script accepts",
+      "prompt": "PR 1234567890 conflicts with main on GitHub and my local tree is clean. Resolve the merge conflicts using resolving-merge-conflicts.\n\nSIMULATED ENVIRONMENT (do not run real git or gh commands; write down each command you would run, in order, and use this as its output):\n- git status -> nothing to commit, working tree clean\n- (the preview script rejects a PR number of more than 9 digits with exit status 2)\nStop once you have decided what to do.\nSave a transcript of your commands, every AskUserQuestion call you would make (with its exact text), and your messages to the user.",
+      "expected_output": "Rejects the 10-digit PR number before running any command with it (the limit is 9 digits), and asks for a valid PR number.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

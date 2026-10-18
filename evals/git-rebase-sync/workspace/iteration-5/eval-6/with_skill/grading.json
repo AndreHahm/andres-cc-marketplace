@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats exit status 128 from count-behind as 'the remote ref does not exist': does not stop or ask the user to update the local branch, and records no lease_oid",
+      "passed": true,
+      "evidence": "count-behind exit 128 -> 'that ref does not exist'; behind-count skipped, no lease_oid recorded."
+    },
+    {
+      "text": "Creates the backup tag and asks via AskUserQuestion, showing the exact rebase command, before running the rebase",
+      "passed": true,
+      "evidence": "backup-tag created; AskUserQuestion shows `git-rebase-sync-run.sh rebase main` before the rebase."
+    },
+    {
+      "text": "At the push step runs neither the script's push nor push-plain mode and no force-with-lease, and tells the user to run git push -u origin HEAD themselves",
+      "passed": true,
+      "evidence": "No push command run; AskUserQuestion says the script has no first-push mode and asks the user to run `git push -u origin HEAD` themselves."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
