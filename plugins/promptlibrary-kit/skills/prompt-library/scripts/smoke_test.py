@@ -108,6 +108,8 @@ def check_triage_is_a_dedicated_gate():
         '"Prompt (Recommended)"',
         '"Skill: `skill-development`"',
         '"Workflow skill: `workflow-skill-development`"',
+        "end the add flow here",
+        'Only if the user picks "Prompt"',
     ):
         if needed not in step:
             return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
