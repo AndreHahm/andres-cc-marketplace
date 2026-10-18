@@ -145,6 +145,57 @@ export function isValidPathToken(value) {
   return typeof value === "string" && value.length > 0 && value.length <= 4096 && /^[A-Za-z0-9._/-]+$/.test(value);
 }
 
+// A single --target-paths argument cannot carry a very large path list: the operating system
+// refuses one argument over about 128 KiB on Linux, and a 4,500-path diff failed every reviewer
+// with "Argument list too long" before any model call (issue #611). --target-paths-file reads the
+// same entries from a file instead, so the list has no argument limit.
+const MAX_TARGET_PATHS_FILE_BYTES = 8 * 1024 * 1024;
+
+// One entry per line, LF only, at most one trailing newline. Returns the entries unvalidated: the
+// caller runs the same isValidPathToken and containment checks on them as on --target-paths
+// entries, so a padded, empty or CRLF-terminated line is rejected there, never normalized here.
+// The path is resolved against --cwd like --instruction-file and, like it, is deliberately not
+// bound to the repository root: the dispatcher writes it outside the checkout. It is not echoed
+// in an error, for the same reason entries are redacted when echoed.
+function readTargetPathsFile(file, cwd) {
+  const unreadable = () => {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "target-paths-file is not a readable regular file" }));
+    process.exit(1);
+  };
+  const tooLarge = () => {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths-file is larger than ${MAX_TARGET_PATHS_FILE_BYTES} bytes` }));
+    process.exit(1);
+  };
+  const resolved = path.resolve(cwd, file);
+  // One descriptor for the type check and the read, so the file cannot be swapped for a FIFO or a
+  // growing device between the two. O_NONBLOCK keeps opening a FIFO from blocking (it is
+  // undefined on Windows, where `|` leaves plain O_RDONLY). The read stops one byte past the cap,
+  // so a pseudo-file that reports size 0 (such as one under /proc) is still bounded.
+  const chunks = [];
+  let total = 0;
+  let fd;
+  try {
+    fd = fs.openSync(resolved, fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK ?? 0));
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) unreadable();
+    if (stat.size > MAX_TARGET_PATHS_FILE_BYTES) tooLarge();
+    const chunk = Buffer.alloc(64 * 1024);
+    for (;;) {
+      const read = fs.readSync(fd, chunk, 0, chunk.length, null);
+      if (read === 0) break;
+      total += read;
+      if (total > MAX_TARGET_PATHS_FILE_BYTES) tooLarge();
+      chunks.push(Buffer.from(chunk.subarray(0, read)));
+    }
+  } catch {
+    unreadable();
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+  const text = Buffer.concat(chunks).toString("utf8");
+  return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
+}
+
 function parseArgs(argv) {
   const options = {};
   for (let i = 0; i < argv.length; i += 1) {
@@ -431,7 +482,7 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
 async function main() {
   const rawArgv = process.argv.slice(2);
   const options = parseArgs(rawArgv);
-  const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "target-paths": targetPathsRaw, "execution-profile": executionProfile, "dispatch-id": dispatchId, cwd = process.cwd() } = options;
+  const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "target-paths": targetPathsRaw, "target-paths-file": targetPathsFileRaw, "execution-profile": executionProfile, "dispatch-id": dispatchId, cwd = process.cwd() } = options;
 
   // Explicit value ("--dry-run true"), not a bare boolean flag: parseArgs
   // above always consumes the NEXT argv element as the current flag's value
@@ -492,8 +543,14 @@ async function main() {
   }
   const dryRun = dryRunRaw === "true";
 
-  if (!reviewerType || !instructionFile || !targetPathsRaw || !executionProfile || !dispatchId) {
-    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "missing required --reviewer-type/--instruction-file/--target-paths/--execution-profile/--dispatch-id" }));
+  // Presence, not truthiness, for the exclusivity check: "--target-paths ''" next to a paths file
+  // is still two sources, and must not silently fall back to one of them.
+  if (targetPathsRaw !== undefined && targetPathsFileRaw !== undefined) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "--target-paths and --target-paths-file are mutually exclusive" }));
+    process.exit(1);
+  }
+  if (!reviewerType || !instructionFile || (!targetPathsRaw && !targetPathsFileRaw) || !executionProfile || !dispatchId) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "missing required --reviewer-type/--instruction-file/--target-paths (or --target-paths-file)/--execution-profile/--dispatch-id" }));
     process.exit(1);
   }
 
@@ -556,7 +613,7 @@ async function main() {
   // No trim(): each entry is validated exactly as given, so a padded entry
   // (space, U+2028, no-break space) or an empty one is rejected instead of
   // being normalized into a valid-looking token (issue #533).
-  const targetPaths = targetPathsRaw.split(",");
+  const targetPaths = targetPathsFileRaw !== undefined ? readTargetPathsFile(targetPathsFileRaw, cwd) : targetPathsRaw.split(",");
 
   // Each entry is interpolated verbatim into the <target_paths> prompt tag
   // below and used to build filesystem paths -- same isValidToken-style
@@ -568,7 +625,7 @@ async function main() {
       // input, and its charset (letters/digits/._/-) permits a secret-shaped
       // string (e.g. an sk-/AKIA-prefixed token) to be passed and echoed
       // back verbatim into a CI-persisted detail field.
-      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry is invalid: "${redactSecrets(targetPath)}" -- must match ^[A-Za-z0-9._/-]+$ (a literal comma inside a single path is not supported -- see SKILL.md's Inputs section)` }));
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry is invalid: "${redactSecrets(targetPath).slice(0, 200)}" -- must match ^[A-Za-z0-9._/-]+$ (a literal comma inside a single path is not supported -- see SKILL.md's Inputs section)` }));
       process.exit(1);
     }
   }
