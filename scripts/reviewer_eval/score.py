@@ -12,7 +12,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from scripts.reviewer_eval.corpus import RESERVED_REVIEWER, CorpusError, load_corpus
+from scripts.reviewer_eval.corpus import _HEAD_SHA, RESERVED_REVIEWER, CorpusError, load_corpus
 
 OVERALL = RESERVED_REVIEWER
 STABILITY_REPEATS = 5
@@ -114,6 +114,8 @@ def _print_stability(paths: list[str], reviewer: str) -> int:
                 raise ValueError(
                     "no provenance.head_sha, so it cannot be shown to be a repeat of one head"
                 )
+            if not _HEAD_SHA.fullmatch(run_head):
+                raise ValueError("provenance.head_sha must be 40 lowercase hex characters")
             if head is not None and run_head != head:
                 raise ValueError(f"head {run_head} differs from {head}, the head of the first run")
             head = run_head

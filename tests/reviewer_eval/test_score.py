@@ -242,6 +242,19 @@ def test_cli_stability_rejects_a_run_without_a_recorded_head(
     assert "provenance.head_sha" in captured.err
 
 
+@pytest.mark.parametrize("head", ["", "abc", "a" * 39, "a" * 41, "A" * 40, "g" * 40])
+def test_cli_stability_rejects_a_head_that_is_not_a_full_sha(
+    tmp_path: Path, capsys: pytest.CaptureFixture, head: str
+):
+    # Five runs naming the same blank or truncated head would otherwise count as repeats.
+    runs = [_run_file(tmp_path, f"run{n}.json", [], head=head) for n in range(5)]
+    assert score.main(["--stability", *runs, "--reviewer", "security"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "run0.json" in captured.err
+    assert "40 lowercase hex" in captured.err
+
+
 @pytest.mark.parametrize("provenance", [{"head_sha": 7}, "abc", ["head_sha"], None])
 def test_cli_stability_rejects_a_mistyped_head(
     tmp_path: Path, capsys: pytest.CaptureFixture, provenance
