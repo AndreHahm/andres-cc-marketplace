@@ -24,8 +24,9 @@ except ImportError:
     from quick_validate import validate_skill  # ty: ignore[unresolved-import]
 
 # Patterns to exclude when packaging skills.
-EXCLUDE_DIRS = {"__pycache__", "node_modules"}
-EXCLUDE_GLOBS = {"*.pyc"}
+EXCLUDE_DIRS = {"__pycache__", "node_modules", ".git"}
+# `.env*` is the local, gitignored secrets file references/secrets-and-credentials.md tells authors to keep.
+EXCLUDE_GLOBS = {"*.pyc", ".env", ".env.*"}
 EXCLUDE_FILES = {".DS_Store"}
 # Directories excluded only at the skill root (not when nested deeper).
 ROOT_EXCLUDE_DIRS = {"evals"}
@@ -98,6 +99,11 @@ def package_skill(skill_path, output_dir=None):
         with zipfile.ZipFile(skill_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory, excluding build artifacts
             for file_path in skill_path.rglob("*"):
+                if file_path.is_symlink():
+                    # is_file() follows links, so a symlink would pull its target's content
+                    # (for example ~/.ssh/id_rsa) into a package meant for sharing.
+                    print(f"  Skipped symlink: {file_path.relative_to(skill_path.parent)}")
+                    continue
                 if not file_path.is_file():
                     continue
                 arcname = file_path.relative_to(skill_path.parent)

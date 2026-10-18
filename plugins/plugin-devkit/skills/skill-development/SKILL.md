@@ -15,7 +15,7 @@ when_to_use: >-
   slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "merge two
   duplicate skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
+allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
 ---
 
 # Skill Development for Claude Code Plugins
@@ -302,7 +302,7 @@ python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py --list-issues             # a
 
 ### Prevention
 
-1. Validate with `quick_validate.py` after creation or modification.
+1. Validate with `python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py <path/to/skill>` after creation or modification.
 2. Keep directory names and registry entries consistent.
 3. Test skill loading immediately after creation — don't batch validate later.
 
@@ -404,7 +404,7 @@ assertions, with_skill only, no baseline. Covers 3 of the 7 bullets above; the o
 
 ## Before Packaging
 
-Run `quick_validate.py`, then work through the full pre-release checklist at `${CLAUDE_SKILL_DIR}/references/checklist.md`. Invoke `plugin-rulebook` to verify naming, language, formatting, and tool-scoping compliance. Before finalizing, verify the current official platform specification for the component type — treat current docs as authoritative over cached or rulebook-cached assumptions.
+Run `python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py <path/to/skill>`, then work through the full pre-release checklist at `${CLAUDE_SKILL_DIR}/references/checklist.md`. Invoke `plugin-rulebook` to verify naming, language, formatting, and tool-scoping compliance. Before finalizing, verify the current official platform specification for the component type — treat current docs as authoritative over cached or rulebook-cached assumptions.
 
 ## Reference Guide
 
