@@ -617,6 +617,16 @@ def test_a_document_with_a_grant_the_scan_cannot_resolve_is_not_covered(git_repo
         "Bash(xargs ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
         "Bash(bash -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # a command string runs the path
         "Bash(sh -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(bash -o pipefail -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # -c comes late
+        "Bash(bash -ec ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # a short-option cluster ending in c
+        "Bash(uv run ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # uv run executes a non-Python file
+        "Bash(bash -ce ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # -c is not the last letter
+        'Bash(bash "-c" ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)',  # the shell strips the quotes
+        "Bash(perl -le ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # another interpreter's eval flag
+        "Bash(node -p ${CLAUDE_PLUGIN_ROOT}/scripts/x.js:*)",
+        "Bash(python3 -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/run.py ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/a.sh ${CLAUDE_PLUGIN_ROOT}/scripts/b.sh:*)",
     ],
 )
 def test_a_wrapper_or_command_string_that_runs_a_path_leaves_no_coverage(git_repo, grant):
@@ -632,6 +642,10 @@ def test_a_wrapper_or_command_string_that_runs_a_path_leaves_no_coverage(git_rep
         "Bash(python ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
         "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
         "Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/x.js:*)",
+        "Bash(bash -o pipefail ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # options, no command
+        "Bash(bash -eu -o pipefail ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh --dry-run:*)",
+        "Bash(python3 -u -B ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
+        "Bash(deno run ${CLAUDE_PLUGIN_ROOT}/scripts/x.ts:*)",
         "Bash(git status:*)",
     ],
 )
@@ -639,6 +653,91 @@ def test_a_plain_interpreter_grant_keeps_the_document_covered(git_repo, grant):
     git_repo.write(SKILL, _doc(grant))
     _commit_with_mirrors(git_repo.root)
     assert _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+_P = "${CLAUDE_PLUGIN_ROOT}/scripts"
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        ["python3", f"-c\"__import__('os').system('{_P}/x.sh')\""],  # code glued to the option
+        ["perl", f"-e\"exec'{_P}/x.sh'\""],
+        ["bash", f"$({_P}/x.sh)"],  # command and process substitution
+        ["bash", f"`{_P}/x.sh`"],
+        ["bash", f"<({_P}/x.sh)"],
+        ["bash", f"{_P}/a.sh;{_P}/b.sh"],  # a command list in one word
+        ["bash", f"{_P}/*.sh"],  # a glob or brace expands to several paths
+        ["bash", f"{_P}/{{a,b}}.sh"],
+        ["powershell", f"{_P}/x.ps1"],  # their default argument is a command, not a script file
+        ["cmd", f"{_P}/x.cmd"],
+        ["bash", '"-c./x"'],  # a quoted dash word is an option, not a path
+        ["bash", "'-x'", f"{_P}/x.sh"],  # a quoted option before the path
+        ["bash", "$FOO"],  # any variable but the plugin and skill roots has an unknown value
+        ["bash", "$A-c"],
+        ["python3", "${CLAUDE_PROJECT_DIR}/x.py"],
+        ["python3", "$CLAUDE_PLUGIN_ROOTX/x.py"],  # a different variable that starts the same
+    ],
+)
+def test_a_path_word_that_is_not_one_plain_path_counts_as_run(words):
+    assert rv._runs_its_path_argument(words) is True
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        ["bash", f"{_P}/x.sh"],
+        ["python3", f'"{_P}/x.py"'],
+        ["python3", f"{_P}/x.py", "--dry-run"],
+        ["bash", "-O", "extglob", f"{_P}/x.sh"],
+        ["python3", "-O", f"{_P}/x.py"],
+        ["bash", "./local.sh"],
+        ["bash", "$CLAUDE_PLUGIN_ROOT/scripts/x.sh"],  # the unbraced root variable
+        ["python3", "${CLAUDE_SKILL_DIR}/scripts/x.py"],
+    ],
+)
+def test_one_plain_path_after_known_safe_options_is_read_as_a_script(words):
+    assert rv._runs_its_path_argument(words) is False
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        ["bash", "-o", f"{_P}/x.sh"],  # the option name must be a name, not the script path
+        ["sh", "-s", f"{_P}/x.sh"],
+    ],
+)
+def test_an_option_that_could_swallow_or_replace_the_script_path_counts_as_run(words):
+    assert rv._runs_its_path_argument(words) is True
+
+
+def _unresolved(*grants: str) -> int:
+    root, block = rv._frontmatter(_doc(*grants))
+    return rv.scan_script_grants(SKILL, root, block)[1]
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        f"Bash(GIT_SSH={_P}/x.sh bash {_P}/a.sh:*)",  # an assignment run by a child process
+        f"Bash(env -P {_P} run.sh:*)",  # a wrapper option's value sets where the program is found
+        f"Bash(env --chdir={_P} run.sh:*)",
+    ],
+)
+def test_a_path_in_a_skipped_wrapper_word_leaves_the_document_unresolved(grant):
+    assert _unresolved(grant) == 1
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        f"Bash(FOO=1 bash {_P}/a.sh:*)",
+        f"Bash(/usr/bin/env bash {_P}/a.sh:*)",  # the wrapper named by path is not a path argument
+        f"Bash(env -i bash {_P}/a.sh:*)",
+    ],
+)
+def test_a_wrapper_with_no_path_in_its_words_adds_nothing_unresolved(grant):
+    assert _unresolved(grant) == 0
 
 
 def test_a_frontmatter_hooks_key_leaves_no_coverage(git_repo):
