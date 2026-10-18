@@ -15,7 +15,7 @@ when_to_use: >-
   slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "merge two
   duplicate skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*) Bash(cp:*) Bash(kill:*)
+allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*)
 ---
 
 # Skill Development for Claude Code Plugins
@@ -34,7 +34,7 @@ Identify the entry path and jump in:
 |---|---|---|
 | **Extract** | "turn this into a skill" | Extract tools/steps from conversation → write minimal SKILL.md → test on original task |
 | **Greenfield** | "make a skill for X" | Start with one concrete task → succeed → extract winning approach into skill |
-| **Audit** | "audit this skill" (still being authored, or failing the Quality Checklist) | `cp -r` snapshot → run Quality Checklist → fix violations |
+| **Audit** | "audit this skill" (still being authored, or failing the Quality Checklist) | snapshot the skill directory → run Quality Checklist → fix violations |
 | **Convert** | "convert slash command to skill" | Read `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` |
 | **Repair** | "fix/repair a skill" | `python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py --diagnose <skill-name>` |
 | **Consolidate** | "find duplicate/consolidate skills" | `python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py` → `python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py` |
@@ -364,11 +364,11 @@ Adapt technical vocabulary to the user's apparent familiarity:
 
 - **Don't use other testing skills during Phase 3.** `/skill-test` or similar skills will conflict with this skill's eval workflow. Run evals using the steps in Phase 3 directly.
 - **Skipping RED in compliance testing.** Writing compliance rules before watching an agent fail without the skill reveals what YOU think needs preventing, not what actually does. Always run no-skill baseline scenarios first.
-- **Snapshot before improving.** Always `cp -r` the skill before making changes in Phase 4. Without a snapshot, there's no meaningful baseline comparison — the "before" is gone.
+- **Snapshot before improving.** Always copy the skill directory before making changes in Phase 4 (the shell copy is not pre-approved by this skill, so expect an approval prompt). Without a snapshot, there's no meaningful baseline comparison — the "before" is gone.
 - **Create the workspace before spawning subagents.** `mkdir -p <skill-name>-workspace/iteration-N/eval-N` upfront. If each subagent tries to create the same parent directory, race conditions produce half-populated directories.
 - **Don't reuse iteration numbers.** When improving, always bump to `iteration-<N+1>/`. Rerunning into a previous iteration silently overwrites the baseline needed for comparison.
 - **`benchmark-log.md` is append-only.** It's the one cumulative file spanning all iterations — never rewrite or delete a past entry by hand. `scripts/aggregate_benchmark.py` appends automatically; only ever add to it, matching the same discipline as not reusing iteration numbers.
-- **Kill the eval viewer.** The viewer process stays alive after review. Launch it in the background and note its process ID, then `kill` that ID once review is done; forgetting causes port conflicts or zombie processes on subsequent launches.
+- **Kill the eval viewer.** The viewer process stays alive after review. Launch it in the background and note its process ID, then stop that process once review is done (the shell stop is not pre-approved by this skill, so expect an approval prompt, or ask the user to stop it); forgetting causes port conflicts or zombie processes on subsequent launches.
 - **Don't over-design upfront.** The biggest time sink is spending 30 minutes on a perfect SKILL.md that turns out to need rewriting after the first eval. Write the minimum, test, then improve.
 - **Description bloat.** If the capability summary in the description exceeds 100 words (quoted trigger phrases excluded), some capabilities belong in the body. Description is a trigger condition, not a manual — move excess to SKILL.md body or `references/`.
 - **Vague file triggers.** Avoid broad patterns like `src/**` or `**/*` for file-based trigger conditions — be surgical. Broad patterns cause over-triggering across unrelated files.
