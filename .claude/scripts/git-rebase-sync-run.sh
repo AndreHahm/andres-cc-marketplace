@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 # Run git-rebase-sync's two history-rewriting commands in exactly one shape each (#585).
 #
-# usage: git-rebase-sync-run.sh rebase <base>
+# usage: git-rebase-sync-run.sh backup-tag <branch>
+#        git-rebase-sync-run.sh rebase <base>
 #        git-rebase-sync-run.sh rebase-merges <base>
 #        git-rebase-sync-run.sh push <branch> <lease_oid>
 #        git-rebase-sync-run.sh push-plain <branch>
 #
 # `git rebase origin/:*` and `git push --force-with-lease=:*` as tool grants also admit anything appended
 # after the documented text: `--exec`/`-x` (an arbitrary command per replayed commit), `--onto`, another
-# remote, a `+` refspec. A grant that names this script instead permits only the four shapes below. Each
+# remote, a `+` refspec. A grant that names this script instead permits only the five shapes below. Each
 # runs one fixed git command with plain-ref arguments that were checked first; nothing else is accepted,
 # and every refusal exits 2 without running git. Refs are fully qualified (refs/remotes/origin/<base>,
 # refs/heads/<branch>) so a tag or local branch that happens to be named like them cannot shadow the
 # remote-tracking ref or the remote branch. A push also requires that HEAD is the branch being pushed,
-# that no rebase is in progress, and that the branch is not main, master or the remote's default branch.
+# that no rebase is in progress, and that the branch is not main, master or the remote's default branch;
+# when origin/HEAD is not set the default branch is unknown, so the push is refused.
 set -euo pipefail
 
-# Variables that redirect git to another repository or inject configuration are not honored.
+# The rest of the environment (PATH, HOME, git configuration, credentials, SSH settings) is inherited from the
+# user's own session and trusted; this only stops variables that would redirect git to another repository
+# or inject configuration from leaking in by accident.
 unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS \
   GIT_CEILING_DIRECTORIES
 
@@ -40,14 +44,22 @@ check_push_target() {
     fail "a rebase is still in progress"
   fi
   default=$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)
+  [ -n "$default" ] || fail "origin/HEAD is not set, so the default branch is unknown; run 'git remote set-head origin --auto'"
   [[ $branch != main && $branch != master && $branch != "${default#origin/}" ]] ||
     fail "refusing to force-push a base branch"
 }
 
-[ "$#" -ge 2 ] || fail "usage: rebase|rebase-merges <base> | push <branch> <lease_oid> | push-plain <branch>"
+[ "$#" -ge 2 ] || fail "usage: backup-tag <branch> | rebase|rebase-merges <base> | push <branch> <lease_oid> | push-plain <branch>"
 mode=$1
 
 case "$mode" in
+  backup-tag)
+    [ "$#" -eq 2 ] || fail "usage: backup-tag <branch>"
+    check_ref "$2"
+    name="$2-rebase-backup-$(date +%Y%m%d-%H%M%S)"
+    git tag -a "$name" -m "pre-rebase backup" HEAD
+    echo "$name"
+    ;;
   rebase | rebase-merges)
     [ "$#" -eq 2 ] || fail "usage: $mode <base>"
     check_ref "$2"

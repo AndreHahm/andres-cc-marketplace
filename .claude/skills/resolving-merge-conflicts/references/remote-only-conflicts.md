@@ -9,12 +9,12 @@ plain merge to put it there. Preview instead, with no change to the worktree or 
 updates remote-tracking refs and `git merge-tree` writes objects, nothing more):
 
 ```bash
-gh pr view <number> --json mergeable,mergeStateStatus,baseRefName,headRefName,headRefOid,isCrossRepository,url
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" view <number>
 git fetch origin
 git rev-parse HEAD
 git branch --show-current
 git remote get-url origin
-git merge-tree --write-tree --name-only origin/<baseRefName> HEAD
+"${CLAUDE_PLUGIN_ROOT}/scripts/git-pr-conflict-preview.sh" merge-tree <baseRefName>
 ```
 
 `<baseRefName>` is the PR's own base branch, which need not be the repository default: use it for the
@@ -22,7 +22,7 @@ preview and pass it to `git-rebase-sync` as its explicit base argument together 
 `<baseRefName> --pr <number>` (without a base, that skill rebases onto the repository default branch;
 without `--pr`, it cannot run its PR preflight). It is data from GitHub, and git accepts ref names containing shell
 metacharacters such as a semicolon, so use it in a command only after checking it matches
-`^[A-Za-z0-9._/-]+$`; on any other name, stop and ask the user. The preview merges your local
+`^[A-Za-z0-9_][A-Za-z0-9._/-]*$`; on any other name, stop and ask the user. The preview merges your local
 `HEAD`. Compare `git branch --show-current` with the PR's `headRefName` too: an alias branch at the PR's
 exact commit passes the commit comparison, yet `git-rebase-sync` would then push to the alias's own name,
 creating or rewriting a different remote branch and leaving the PR unchanged. Compare `git rev-parse HEAD`
