@@ -502,7 +502,7 @@ If any of these turn up and the right fix isn't obvious, ask the user which stat
 
 If file was deleted on one branch but modified on another, and there's a similar new file:
 
-1. Check if file was renamed: `git log --follow --diff-filter=R -- <file>`
+1. Check if file was renamed. This skill holds no grant for `git log --follow`, so show the user `git log --follow --diff-filter=R -- <file>` and ask them to run it (in this session with the `!` prefix, or in their own terminal)
 2. Apply modifications to the new location
 3. Remove the old file
 
