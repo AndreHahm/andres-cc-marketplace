@@ -90,6 +90,30 @@ def test_a_fence_closes_only_on_an_equal_or_longer_run(tmp_path):
     assert _link_findings(tmp_path, body) == ["broken link: missing-after.md"]
 
 
+def test_a_marker_of_the_other_character_in_an_open_fence_cannot_pair_across_it(tmp_path):
+    # The inner tilde line is text inside the backtick fence, so it must not pair with the later one
+    # and mask the real link between them.
+    body = "references/real.md\n```\n~~~\n```\n[real](missing.md)\n~~~\nafter\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_fences_of_both_kinds_one_after_the_other_are_both_code(tmp_path):
+    body = "references/real.md\n```\n[a](gone-a.md)\n```\n~~~\n[b](gone-b.md)\n~~~\n"
+    assert _link_findings(tmp_path, body) == []
+
+
+def test_an_inline_triple_backtick_span_at_a_line_start_is_not_a_fence(tmp_path):
+    body = "references/real.md\n```code``` then\n[x](missing.md)\n"
+    assert _link_findings(tmp_path, body) == ["broken link: missing.md"]
+
+
+def test_a_bare_url_after_a_mixed_fence_pair_is_still_reported():
+    hook = _load_hook()
+    findings = []
+    hook.check_bare_urls("```\n~~~\n```\nsee https://example.com/x\n~~~\n", findings)
+    assert [rule for _, rule, _ in findings] == ["R17"]
+
+
 def test_an_unclosed_fence_hides_nothing(tmp_path):
     body = "references/real.md\n```\n[x](missing.md)\n"
     assert _link_findings(tmp_path, body) == ["broken link: missing.md"]

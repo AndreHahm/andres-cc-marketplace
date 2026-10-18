@@ -225,19 +225,36 @@ def check_agent_enums(fm, settings, findings):
                 findings.append(("FAIL", "AGENT", "tools field must be valid JSON array"))
 
 
-# Fenced blocks and inline code spans hold illustrative examples (as in R34). A fence closes on a
-# line of the same character and an equal-or-longer run, so a four-backtick fence can hold a
-# three-backtick example; a code span closes on a run of exactly the opening length and may cross a
-# line break but not a blank line. An unclosed fence is not code.
-_BACKTICK_FENCE = re.compile(
-    r"^[ \t]*(`{3,})[^`\n]*\n.*?^[ \t]*\1`*[ \t]*$", re.MULTILINE | re.DOTALL
-)
-_TILDE_FENCE = re.compile(r"^[ \t]*(~{3,})[^\n]*\n.*?^[ \t]*\1~*[ \t]*$", re.MULTILINE | re.DOTALL)
+# Fenced blocks and inline code spans hold illustrative examples (as in R34). A code span closes
+# on a run of exactly the opening length and may cross a line break but not a blank line.
+_FENCE_OPEN = re.compile(r"[ \t]*(`{3,}|~{3,})(.*)")
 _CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)")
 
 
+def fence_regions(text):
+    """Spans of fenced blocks, found line by line in document order. A fence closes only on a line
+    of the same character and an equal-or-longer run, so a four-backtick fence can hold a
+    three-backtick example and a marker of the other character inside an open fence is just text.
+    An unclosed fence is not code."""
+    regions, opened, pos = [], None, 0
+    for line in text.split("\n"):
+        body = line.rstrip("\r")
+        if opened is None:
+            m = _FENCE_OPEN.fullmatch(body)
+            # A backtick fence's info string cannot contain a backtick (that is an inline span).
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                opened = (m.group(1)[0], len(m.group(1)), pos)
+        else:
+            char, run, start = opened
+            if re.fullmatch(rf"[ \t]*{re.escape(char)}{{{run},}}[ \t]*", body):
+                regions.append((start, pos + len(body)))
+                opened = None
+        pos += len(line) + 1
+    return regions
+
+
 def code_regions(text):
-    fences = sorted(m.span() for p in (_BACKTICK_FENCE, _TILDE_FENCE) for m in p.finditer(text))
+    fences = fence_regions(text)
     # Blank each fence out (keeping its line breaks) before looking for spans: the blank lines end
     # a paragraph, so a backtick inside a fence cannot start a span that runs past the fence.
     masked, pos = [], 0
