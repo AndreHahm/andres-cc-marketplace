@@ -79,8 +79,9 @@ def check_structure():
 
 def check_hook_removed():
     hooks = json.loads((PLUGIN_DIR / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-    raw = json.dumps(hooks)
-    if "detect_mode" in raw or "UserPromptSubmit" in hooks.get("hooks", {}):
+    # Only the detection hook matters: the project-local mirror's merged hooks.json also carries
+    # other plugins' UserPromptSubmit hooks, so an event key alone proves nothing.
+    if "detect_mode" in json.dumps(hooks):
         return False, "hooks.json still wires the detection hook"
     return True, "no detection hook in hooks.json"
 
