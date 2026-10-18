@@ -886,3 +886,28 @@ def test_known_wrapper_options_are_skipped_and_the_shell_behind_them_is_found(gr
 
 def test_a_known_wrapper_option_in_front_of_a_named_tool_passes():
     assert rv.check_bash_scope(SKILL, _skill("Bash(nice -5 git status:*)")) == ()
+
+
+# --- script_coverage: R33 half (the R37 half is in test_review_exec_bit.py) ----------------------
+
+
+def test_script_coverage_for_r33_needs_a_run_with_no_violations(tmp_path):
+    # No inventory in the fixture: nothing was checked, so nothing is covered.
+    assert not rv.script_coverage(tmp_path, []).covers("R33", "plugins/demo-kit/scripts/x.py")
+
+
+def test_script_coverage_for_r33_when_the_prefix_check_finds_nothing(tmp_path):
+    inventory = tmp_path / ".claude-plugin" / "marketplace-inventory.json"
+    inventory.parent.mkdir(parents=True)
+    inventory.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0.0",
+                "marketplace_name": "f",
+                "updated_on": "2026-01-01",
+                "plugins": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert rv.script_coverage(tmp_path, []).covers("R33", "plugins/demo-kit/scripts/x.py")

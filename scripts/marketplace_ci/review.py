@@ -751,7 +751,9 @@ def _is_downgraded_measurement(finding: Finding) -> bool:
     return finding.source == "model" and finding.rule_class == "measurement"
 
 
-def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
+def aggregate_findings(
+    reports: Sequence[ReviewResult], coverage: ScriptCoverage | None = None
+) -> tuple[Finding, ...]:
     """Deduplicate only identical (rule, path, line, source) findings, keeping every distinct
     reporting reviewer. `source` is part of the key so a script finding can never absorb a model
     finding (an exception could then suppress it). The copy kept is the one the gate can still
@@ -770,11 +772,22 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
     aggregated: list[Finding] = []
     for key in order:
         group = grouped[key]
+        reporters = tuple(sorted({f.reviewer for f in group}))
+
+        def keeps_blocking(f: Finding, reporters: tuple[str, ...] = reporters) -> bool:
+            # Judged as the merged finding will be: with every reporter of the group, so a copy the
+            # checker alone could have had downgraded is not, once another reviewer shares it.
+            merged = replace(f, reporters=reporters)
+            return gate_decision(merged, in_diff=True, coverage=coverage).outcome == GATE_BLOCK
+
         highest = max(
             group,
-            key=lambda f: (not _is_downgraded_measurement(f), _SEVERITY_RANK[f.severity]),
+            key=lambda f: (
+                keeps_blocking(f),
+                not _is_downgraded_measurement(f),
+                _SEVERITY_RANK[f.severity],
+            ),
         )
-        reporters = tuple(sorted({f.reviewer for f in group}))
         components = tuple(dict.fromkeys(c for f in group for c in f.components))
         aggregated.append(replace(highest, reporters=reporters, components=components))
     return tuple(aggregated)
@@ -1306,6 +1319,57 @@ GATE_NOTICE = "notice"
 GATE_SUPPRESSED = "suppressed"
 
 
+# Rulebook rules a script judges beside the model review (issues #613, #615). A model finding from
+# the rulebook checker that claims only such rules, at a location the script covered and found
+# compliant, contradicts the script's verdict, so it is a notice. Never decided from prose alone:
+# the coverage comes from this run's own scripts, and a finding elsewhere (a hook command, an
+# uncovered file) stays blocking.
+_SCRIPT_OWNED_RULES = frozenset({"R33", "R37"})
+_RULEBOOK_CHECKER = "plugin-rulebook-checker"
+_RULEBOOK_ID = re.compile(r"\bR\d{1,2}\b", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class ScriptCoverage:
+    """What this run's scripts checked and found compliant.
+
+    `clean` holds (rule id, repo path) pairs: R37 for each grant document the verifier read that
+    has no `r37-executable-bit` finding. `clean_everywhere` holds rule ids a script found no
+    violation of anywhere (R33, when `find_prefix_violations` returns none). Empty by default, so a
+    caller that passes no coverage downgrades nothing."""
+
+    clean: frozenset[tuple[str, str]] = frozenset()
+    clean_everywhere: frozenset[str] = frozenset()
+
+    def covers(self, rule: str, path: str) -> bool:
+        return rule in self.clean_everywhere or (rule, path) in self.clean
+
+
+def _claimed_rule_ids(finding: Finding) -> set[str]:
+    text = f"{finding.rule} {finding.evidence} {finding.remediation}"
+    return {rule.upper() for rule in _RULEBOOK_ID.findall(text)}
+
+
+def _claims_only_script_owned_rules(finding: Finding) -> bool:
+    """True for a MODEL finding that only the rulebook checker reported and whose text names
+    rulebook rules, all of them script-owned. A finding any other reviewer also reported, or one
+    that names any other rule or none, is not matched. Prose chooses the rule only; whether it is
+    downgraded is decided by `_contradicted_by_script`."""
+    if finding.source != "model":
+        return False
+    reporters = set(finding.reporters) | {finding.reviewer}
+    if reporters != {_RULEBOOK_CHECKER}:
+        return False
+    named = _claimed_rule_ids(finding)
+    return bool(named) and named <= _SCRIPT_OWNED_RULES
+
+
+def _contradicted_by_script(finding: Finding, coverage: ScriptCoverage | None) -> bool:
+    if coverage is None or not _claims_only_script_owned_rules(finding):
+        return False
+    return all(coverage.covers(rule, finding.path) for rule in _claimed_rule_ids(finding))
+
+
 @dataclass(frozen=True)
 class GateDecision:
     finding: Finding
@@ -1314,7 +1378,11 @@ class GateDecision:
 
 
 def gate_decision(
-    finding: Finding, *, in_diff: bool, exceptions: Sequence[ExceptionEntry] = ()
+    finding: Finding,
+    *,
+    in_diff: bool,
+    exceptions: Sequence[ExceptionEntry] = (),
+    coverage: ScriptCoverage | None = None,
 ) -> GateDecision:
     """The one place that decides whether a finding blocks, is shown as a notice, or is
     suppressed. Pure: severity, `rule_class`, `source`, whether the finding is on a changed
@@ -1325,6 +1393,8 @@ def gate_decision(
     - Only Critical/Major can block, and only on a changed line (severity does not widen the
       scope; accepted residual: a PR that deletes a guard on one line and leaves the exposed use
       elsewhere is not caught here).
+    - A rulebook-checker MODEL finding that claims only script-owned rules, at a location this
+      run's scripts covered and found compliant (`coverage`), is a notice.
     - A MODEL `measurement` finding is a notice until the Phase 2 verifiers can confirm the
       measurement; a script's own measurement blocks like any other script finding. This lets a
       model's own label downgrade its finding, which is safe only while the bridge's output schema
@@ -1336,7 +1406,7 @@ def gate_decision(
             return GateDecision(finding, GATE_SUPPRESSED, entry)
     if finding.severity not in ("Critical", "Major"):
         return GateDecision(finding, GATE_NOTICE)
-    if _is_downgraded_measurement(finding):
+    if _is_downgraded_measurement(finding) or _contradicted_by_script(finding, coverage):
         return GateDecision(finding, GATE_NOTICE)
     return GateDecision(finding, GATE_BLOCK if in_diff else GATE_NOTICE)
 
@@ -1348,6 +1418,7 @@ def blocking_findings(
     changed_paths: Iterable[str] = (),
     repo_root: Path | None = None,
     exceptions: Sequence[ExceptionEntry] = (),
+    coverage: ScriptCoverage | None = None,
 ) -> tuple[Finding, ...]:
     """The findings that fail the gate (see `gate_decision`). `ranges` of None means the
     changed lines could not be computed: every finding the gate would block on a changed line
@@ -1355,7 +1426,8 @@ def blocking_findings(
     candidates = [
         f
         for f in findings
-        if gate_decision(f, in_diff=True, exceptions=exceptions).outcome == GATE_BLOCK
+        if gate_decision(f, in_diff=True, exceptions=exceptions, coverage=coverage).outcome
+        == GATE_BLOCK
     ]
     if ranges is None:
         return tuple(candidates)
@@ -1374,6 +1446,7 @@ def has_blocking_findings(
     changed_paths: Iterable[str] = (),
     repo_root: Path | None = None,
     exceptions: Sequence[ExceptionEntry] = (),
+    coverage: ScriptCoverage | None = None,
 ) -> bool:
     return bool(
         blocking_findings(
@@ -1382,6 +1455,7 @@ def has_blocking_findings(
             changed_paths=changed_paths,
             repo_root=repo_root,
             exceptions=exceptions,
+            coverage=coverage,
         )
     )
 

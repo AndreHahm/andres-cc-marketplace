@@ -36,6 +36,7 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import unquote
 
 import yaml
@@ -45,6 +46,7 @@ from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
     ANY_CHANGE_SUFFIX,
     Finding,
+    ScriptCoverage,
     StructuralFinding,
     _component_key,
     _run_git,
@@ -1479,21 +1481,63 @@ def _command_words(words: list[str]) -> list[str]:
 
 
 def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) -> list[ScriptGrant]:
-    """The scripts a skill or command grants by path as the command itself
+    """The scripts a skill or command grants by path; see `scan_script_grants`."""
+    return scan_script_grants(path, root, block)[0]
+
+
+_PYTHON_LIKE = re.compile(r"python[\d.]*|py")
+_OTHER_INTERPRETERS = frozenset({"node", "deno", "bun", "ruby", "perl", "uv", "uvx", "npx"})
+_COMMAND_STRING_FLAGS = frozenset({"-c", "-e", "-lc", "--eval", "-command", "/c"})
+
+
+def _path_shaped(word: str) -> bool:
+    plain = word.replace('"', "").replace("'", "")
+    return "/" in plain or plain.startswith(("$", ".", "~"))
+
+
+def _runs_its_path_argument(words: list[str]) -> bool:
+    """Whether the path-shaped words after the first word are run by the grant itself (a wrapper
+    this scan does not know, or an interpreter given a command string) and so need the executable
+    bit. A plain interpreter (`python3 <path>`) runs the path as a script file, which needs none."""
+    name = _canonical(words[0].rsplit("/", 1)[-1])
+    interpreter = (
+        name in SHELL_INTERPRETERS
+        or name in _OTHER_INTERPRETERS
+        or _PYTHON_LIKE.fullmatch(name) is not None
+    )
+    if interpreter and not any(w.lower() in _COMMAND_STRING_FLAGS for w in words[1:3]):
+        return False
+    return any(_path_shaped(w) for w in words[1:])
+
+
+def scan_script_grants(
+    path: str, root: yaml.MappingNode | None, block: list[str]
+) -> tuple[list[ScriptGrant], int]:
+    """(the scripts a skill or command grants by path as the command itself
     (`Bash(${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`, `Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh:*)`),
     quoted or unbraced, after any run of `env`/`exec`/`command`/`time`/`nohup`/`nice` words (also
     given by absolute path), their options and `NAME=VALUE` assignments. A script an interpreter
     runs (`Bash(bash ${...}/x.sh:*)`) is not listed: it needs no executable bit. A glob names no
-    single script, and a path that climbs out of its plugin names nothing."""
+    single script, and a path that climbs out of its plugin names nothing), and how many Bash
+    grants this scan could not resolve to a script: a token that looks like a Bash grant but does
+    not parse, a path in some other form (`${CLAUDE_PROJECT_DIR}/x.sh`, `./x.sh`), a glob, or a
+    path that leaves its plugin, an unknown wrapper or an interpreter's command string that runs a
+    path, or a frontmatter `hooks:` key. A document with any is not fully checked, so no coverage
+    is claimed."""
     scope = _GRANT_DOC.match(path)
     if scope is None or root is None:
-        return []
+        return [], 0
     plugin_root = f"plugins/{scope.group(1)}"
     skill_dir = f"{plugin_root}/skills/{scope.group(2)}" if scope.group(2) else None
     grants: list[ScriptGrant] = []
+    # A hook declared in the frontmatter can run a script directly; this scan reads grants only.
+    unresolved = int(any(key.value == "hooks" for key, _ in root.value))
     for token, line in _grant_entries(root, block, "allowed-tools")[0]:
         match = _BASH_TOKEN.fullmatch(token)
-        if match is None or match.group(1) is None:
+        if match is None:
+            unresolved += token.lstrip().startswith("Bash")
+            continue
+        if match.group(1) is None:
             continue
         words = match.group(1).strip().removesuffix(":*").split()
         words = _command_words(words)
@@ -1505,13 +1549,17 @@ def script_grants(path: str, root: yaml.MappingNode | None, block: list[str]) ->
         elif skill_dir is not None and word.startswith(_SKILL_DIR_FORMS):
             folder, rest = skill_dir, word.split("/", 1)[1]
         else:
+            unresolved += _path_shaped(word) or _runs_its_path_argument(words)
             continue
         if any(char in rest for char in "*?["):
+            unresolved += 1
             continue
         script = posixpath.normpath(f"{folder}/{rest}")
         if script.startswith(plugin_root + "/"):
             grants.append(ScriptGrant(script, line))
-    return grants
+        else:
+            unresolved += 1
+    return grants, unresolved
 
 
 _MODE_WORDS = {
@@ -1573,6 +1621,64 @@ def check_executable_bits(
             )
         )
     return tuple(findings)
+
+
+def _same_blob(repo, canonical: str, mirror: str) -> bool:
+    """True when both paths exist at HEAD and name the same git object."""
+    try:
+        out = _run_git(
+            repo, "--literal-pathspecs", "rev-parse", f"HEAD:{canonical}", f"HEAD:{mirror}"
+        )
+    except Exception:  # noqa: BLE001 - a path missing at HEAD, or any git failure, is no coverage
+        return False
+    ids = out.split()
+    return len(ids) == 2 and ids[0] == ids[1]
+
+
+def script_coverage(repo, outcomes: Sequence[VerifierOutcome]) -> ScriptCoverage:
+    """What this run's scripts judged compliant, for the gate to weigh a model finding against.
+
+    R37: every grant document the `structure` verifier read in full and left without an
+    `r37-executable-bit` finding (a document with a Bash grant the scan could not resolve is not
+    covered), plus its `.claude/` mirror path when the mirror is the same git object. The verifier
+    reports on the diff, so "no finding" can also mean a pre-existing grant it chose not to blame
+    this PR for; coverage means "not reported", not "proved compliant". A hook `command` is not a
+    grant document, so a model R37 finding on one stays blocking: no script checks that form (a
+    frontmatter `hooks:` key puts its document in `partial` for the same reason).
+    R33: clean everywhere when the inventory exists and `find_prefix_violations` returns nothing;
+    any violation, or a failure to run it, covers nothing (the pipeline's `check-prefixes` gate
+    reports the violation itself)."""
+    clean: set[tuple[str, str]] = set()
+    for outcome in outcomes:
+        if outcome.name != STRUCTURE:
+            continue
+        bad = {f.path for f in outcome.findings if f.rule == RULE_EXECUTABLE_BIT}
+        for doc in outcome.checked:
+            if doc in bad or doc in outcome.partial:
+                continue
+            clean.add(("R37", doc))
+            match = _GRANT_DOC.match(doc)
+            if match is None:
+                continue
+            mirror = (
+                f".claude/skills/{match.group(2)}/SKILL.md"
+                if match.group(2)
+                else ".claude/" + doc.split("/", 2)[2]
+            )
+            # A mirror may differ from its canonical file (a declared divergence), and only an
+            # identical blob has the same grants, so cover it only when the two are the same object.
+            if _same_blob(repo, doc, mirror):
+                clean.add(("R37", mirror))
+    everywhere: set[str] = set()
+    try:
+        from scripts.marketplace_ci.prefix_check import find_prefix_violations
+
+        inventory = Path(repo) / ".claude-plugin" / "marketplace-inventory.json"
+        if inventory.is_file() and not find_prefix_violations(Path(repo)):
+            everywhere.add("R33")
+    except Exception:  # noqa: BLE001 - no coverage is the safe answer to any failure
+        pass
+    return ScriptCoverage(clean=frozenset(clean), clean_everywhere=frozenset(everywhere))
 
 
 def _drop_unchanged_multiline_grants(
@@ -2121,6 +2227,7 @@ class VerifierOutcome:
     name: str
     findings: tuple[Finding, ...]
     checked: tuple[str, ...]  # the files read and judged; every other candidate has a finding
+    partial: tuple[str, ...] = ()  # files in `checked` where some check could not resolve an item
 
 
 def _read_blobs(
@@ -2355,6 +2462,7 @@ def run_verifiers(
             )
     structure_findings: list[Finding] = []
     structure_checked: list[str] = []
+    structure_partial: list[str] = []  # read, but with a Bash grant no scan could resolve
     touched = sorted(
         {
             name.split("/")[1]
@@ -2416,7 +2524,9 @@ def run_verifiers(
                 structure_findings.append(unreadable(doc, doc_problems[doc]))
                 continue
             try:
-                found[doc] = script_grants(doc, *_frontmatter(doc_texts[doc]))
+                found[doc], unresolved = scan_script_grants(doc, *_frontmatter(doc_texts[doc]))
+                if unresolved:
+                    structure_partial.append(doc)
             except VerifierError as exc:
                 if doc not in changed_now:  # the grant verifier reports a changed file itself
                     structure_findings.append(unreadable(doc, str(exc)))
@@ -2522,7 +2632,10 @@ def run_verifiers(
             name=PATH_AND_MIRROR, findings=tuple(path_findings), checked=tuple(path_checked)
         ),
         VerifierOutcome(
-            name=STRUCTURE, findings=tuple(structure_findings), checked=tuple(structure_checked)
+            name=STRUCTURE,
+            findings=tuple(structure_findings),
+            checked=tuple(structure_checked),
+            partial=tuple(structure_partial),
         ),
         VerifierOutcome(
             name=CALL_GRAPH, findings=tuple(call_findings), checked=tuple(call_checked)

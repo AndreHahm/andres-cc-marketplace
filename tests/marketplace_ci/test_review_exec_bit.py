@@ -548,3 +548,115 @@ def test_a_wrapper_option_that_hides_the_program_makes_the_grant_unverifiable():
     text = _doc("Bash(env -S ${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)")
     with pytest.raises(rv.VerifierError):
         _grants(SKILL, text)
+
+
+# --- script_coverage: what the gate may weigh a model R37 claim against (#613, #615) -------------
+
+
+def _commit_with_mirrors(root: Path) -> str:
+    """Like `_commit`, but forces `.claude/` in: a global gitignore can exclude it."""
+    subprocess.run(["git", "add", "-A", "-f"], cwd=root, check=True)
+    return _commit(root, "add")
+
+
+CMD_MIRROR = ".claude/commands/demo-run.md"
+SKILL_MIRROR = ".claude/skills/demo/SKILL.md"
+GOOD_GRANT = "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/tool.py:*)"
+
+
+def _coverage(git_repo, *paths):
+    outcomes = rv.run_verifiers(git_repo.root, tuple(ChangedPath("A", None, p) for p in paths))
+    return rv.script_coverage(git_repo.root, outcomes)
+
+
+def test_a_fully_resolved_clean_document_and_its_identical_mirror_are_covered(git_repo):
+    text = _doc(GOOD_GRANT)
+    git_repo.write(SKILL, text)
+    git_repo.write(SKILL_MIRROR, text)
+    _commit_with_mirrors(git_repo.root)
+    coverage = _coverage(git_repo, SKILL)
+    assert coverage.covers("R37", SKILL) and coverage.covers("R37", SKILL_MIRROR)
+
+
+def test_a_mirror_that_differs_from_its_canonical_file_is_not_covered(git_repo):
+    git_repo.write(SKILL, _doc(GOOD_GRANT))
+    git_repo.write(SKILL_MIRROR, _doc("Bash(${CLAUDE_PROJECT_DIR}/.claude/scripts/x.sh:*)"))
+    _commit_with_mirrors(git_repo.root)
+    coverage = _coverage(git_repo, SKILL)
+    assert coverage.covers("R37", SKILL) and not coverage.covers("R37", SKILL_MIRROR)
+
+
+def test_a_command_mirror_is_covered_under_dot_claude_commands(git_repo):
+    text = _doc(GOOD_GRANT)
+    git_repo.write(COMMAND, text)
+    git_repo.write(CMD_MIRROR, text)
+    _commit_with_mirrors(git_repo.root)
+    assert _coverage(git_repo, COMMAND).covers("R37", CMD_MIRROR)
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(${CLAUDE_PROJECT_DIR}/.claude/scripts/x.sh:*)",  # a path form the scan skips
+        "Bash(./local.sh:*)",
+        "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/*.sh:*)",  # a glob
+        "Bash(${CLAUDE_PLUGIN_ROOT}/../other/x.sh:*)",  # leaves its plugin
+    ],
+)
+def test_a_document_with_a_grant_the_scan_cannot_resolve_is_not_covered(git_repo, grant):
+    git_repo.write(SKILL, _doc(GOOD_GRANT, grant))
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        "Bash(timeout 30 ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # a wrapper the scan does not know
+        "Bash(sudo ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(xargs ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(bash -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",  # a command string runs the path
+        "Bash(sh -c ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+    ],
+)
+def test_a_wrapper_or_command_string_that_runs_a_path_leaves_no_coverage(git_repo, grant):
+    git_repo.write(SKILL, _doc(grant))
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+@pytest.mark.parametrize(
+    "grant",
+    [
+        'Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/demo/scripts/x.py":*)',  # the #615 shape
+        "Bash(python ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)",
+        "Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)",
+        "Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/x.js:*)",
+        "Bash(git status:*)",
+    ],
+)
+def test_a_plain_interpreter_grant_keeps_the_document_covered(git_repo, grant):
+    git_repo.write(SKILL, _doc(grant))
+    _commit_with_mirrors(git_repo.root)
+    assert _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+def test_a_frontmatter_hooks_key_leaves_no_coverage(git_repo):
+    text = _doc(GOOD_GRANT).replace("\n---\nbody", "\nhooks:\n  Stop: []\n---\nbody")
+    assert "hooks:" in text
+    git_repo.write(SKILL, text)
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+def test_a_document_with_an_r37_finding_is_not_covered(git_repo):
+    git_repo.write(SKILL, _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)"))
+    _write_script(git_repo, "plugins/demo-kit/scripts/tool.sh", executable=False)
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", SKILL)
+
+
+def test_a_hook_manifest_is_never_covered(git_repo):
+    git_repo.write(SKILL, _doc(GOOD_GRANT))
+    _commit_with_mirrors(git_repo.root)
+    assert not _coverage(git_repo, SKILL).covers("R37", "plugins/demo-kit/hooks/hooks.json")
