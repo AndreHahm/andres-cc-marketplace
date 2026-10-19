@@ -612,7 +612,7 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
 - **Outcomes ledger.** `scripts/git-review-ledger.py` records one disposition per finding in a gitignored
   `.claude/review-ledger.local.json` (`record` adds it to the repository's `.git/info/exclude` when no ignore
   rule covers it, and refuses to write it if git still does not ignore it; a ledger path that is a symlink or
-  contains a control character is refused) and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
+  contains a control character is refused) and promotes a PR's entries to its own tracked `.claude/review-outcomes/pr-<N>.json`
   before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger.
   Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
 

@@ -1,7 +1,8 @@
 """git-kit's git-review-ledger.py records one disposition per review finding (#578).
 
 A local, gitignored working ledger holds entries during the fix loop; `promote` moves a merged PR's
-entries into a git-tracked file. Both are JSON. A corrupt file is refused, never overwritten.
+entries into a git-tracked directory, one pr-<N>.json per PR (#610), so concurrent PRs never edit
+the same file. All are JSON. A corrupt file is refused, never overwritten.
 """
 
 import json
@@ -23,7 +24,7 @@ def _run(tmp_path, *args, extra_env=None):
             "--local",
             str(tmp_path / ".claude" / "local.json"),
             "--tracked",
-            str(tmp_path / ".claude" / "tracked.json"),
+            str(tmp_path / ".claude" / "tracked"),
             *args,
         ],
         capture_output=True,
@@ -38,6 +39,10 @@ def _record(tmp_path, finding="c1", disposition="fixed", pr="7", **extra):
     for key, value in extra.items():
         args += [f"--{key}", value]
     return _run(tmp_path, *args)
+
+
+def _tracked(tmp_path, pr):
+    return tmp_path / ".claude" / "tracked" / f"pr-{pr}.json"
 
 
 def _entries(path):
@@ -109,8 +114,9 @@ def test_promote_moves_one_prs_entries_to_the_tracked_file(tmp_path):
     _record(tmp_path, finding="b", pr="8")
     result = _run(tmp_path, "promote", "--pr", "7")
     assert result.returncode == 0, result.stderr
-    assert [e["finding"] for e in _entries(tmp_path / ".claude" / "tracked.json")] == ["a"]
+    assert [e["finding"] for e in _entries(_tracked(tmp_path, 7))] == ["a"]
     assert [e["finding"] for e in _entries(tmp_path / ".claude" / "local.json")] == ["b"]
+    assert not _tracked(tmp_path, 8).exists()
 
 
 def test_promote_twice_does_not_duplicate(tmp_path):
@@ -118,19 +124,20 @@ def test_promote_twice_does_not_duplicate(tmp_path):
     _run(tmp_path, "promote", "--pr", "7")
     _record(tmp_path, finding="a", pr="7", disposition="declined")
     _run(tmp_path, "promote", "--pr", "7")
-    (entry,) = _entries(tmp_path / ".claude" / "tracked.json")
+    (entry,) = _entries(_tracked(tmp_path, 7))
     assert entry["disposition"] == "declined"
 
 
 def test_promote_with_nothing_to_move_succeeds(tmp_path):
     result = _run(tmp_path, "promote", "--pr", "7")
     assert result.returncode == 0
-    assert not (tmp_path / ".claude" / "tracked.json").exists()
+    assert not (tmp_path / ".claude" / "tracked").exists()
 
 
 def test_promote_refuses_a_corrupt_tracked_file_and_keeps_local_entries(tmp_path):
     _record(tmp_path, finding="a", pr="7")
-    (tmp_path / ".claude" / "tracked.json").write_text("[", encoding="utf-8")
+    _tracked(tmp_path, 7).parent.mkdir()
+    _tracked(tmp_path, 7).write_text("[", encoding="utf-8")
     result = _run(tmp_path, "promote", "--pr", "7")
     assert result.returncode == 2
     assert [e["finding"] for e in _entries(tmp_path / ".claude" / "local.json")] == ["a"]
@@ -207,10 +214,24 @@ def test_local_and_tracked_must_be_different_files(tmp_path):
     assert result.returncode == 2
 
 
-def test_ledger_files_must_be_json(tmp_path):
+def test_the_local_ledger_must_be_json(tmp_path):
     result = _run(
-        tmp_path, "--tracked", str(tmp_path / ".claude" / "rules.md"), "promote", "--pr", "7"
+        tmp_path, "--local", str(tmp_path / ".claude" / "rules.md"), "promote", "--pr", "7"
     )
+    assert result.returncode == 2
+
+
+def test_the_tracked_path_must_be_a_directory_under_claude(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    (tmp_path / ".claude" / "old.json").write_text('{"entries": []}', encoding="utf-8")
+    for tracked in (tmp_path / ".claude" / "old.json", tmp_path / "outside"):
+        result = _run(tmp_path, "--tracked", str(tracked), "promote", "--pr", "7")
+        assert result.returncode == 2
+
+
+def test_the_local_ledger_may_not_sit_inside_the_tracked_directory(tmp_path):
+    inside = str(tmp_path / ".claude" / "tracked" / "pr-7.json")
+    result = _run(tmp_path, "--local", inside, "promote", "--pr", "7")
     assert result.returncode == 2
 
 
@@ -320,3 +341,118 @@ def test_a_ledger_a_repository_rule_already_ignores_is_not_excluded_again(tmp_pa
     assert result.returncode == 0, result.stderr
     exclude = tmp_path / ".git" / "info" / "exclude"
     assert "x.local.json" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else "")
+
+
+# --- per-PR files (#610): promotions from different PRs cannot conflict ---------------------------
+
+
+def _git(tmp_path, *args):
+    return subprocess.run(["git", *args], cwd=tmp_path, capture_output=True, text=True, check=True)
+
+
+def test_promote_leaves_other_prs_files_byte_unchanged(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    _run(tmp_path, "promote", "--pr", "7")
+    before = _tracked(tmp_path, 7).read_bytes()
+    _record(tmp_path, finding="b", pr="8")
+    _run(tmp_path, "promote", "--pr", "8")
+    assert _tracked(tmp_path, 7).read_bytes() == before
+    assert [e["finding"] for e in _entries(_tracked(tmp_path, 8))] == ["b"]
+
+
+def test_promotions_from_two_prs_merge_without_conflict(tmp_path):
+    """The #610 case: two branches cut from one base, each promoting a different PR."""
+    _init_repo(tmp_path)
+    _record(tmp_path, finding="base", pr="6")
+    _run(tmp_path, "promote", "--pr", "6")
+    _git(tmp_path, "add", "-f", ".claude/tracked")
+    git = ["-c", "user.email=t@example.com", "-c", "user.name=t"]
+    _git(tmp_path, *git, "commit", "-qm", "base")
+    _git(tmp_path, "branch", "pr-a")
+    _git(tmp_path, "branch", "pr-b")
+    for branch, pr in (("pr-a", "7"), ("pr-b", "8")):
+        _git(tmp_path, "checkout", "-q", branch)
+        _record(tmp_path, finding="f" + pr, pr=pr)
+        _run(tmp_path, "promote", "--pr", pr)
+        _git(tmp_path, "add", "-f", ".claude/tracked")
+        _git(tmp_path, *git, "commit", "-qm", branch)
+    merge = subprocess.run(
+        ["git", *git, "merge", "--no-edit", "pr-a"], cwd=tmp_path, capture_output=True, text=True
+    )
+    assert merge.returncode == 0, merge.stdout + merge.stderr
+    for pr in (6, 7, 8):
+        assert _tracked(tmp_path, pr).exists()
+
+
+def test_a_second_promote_for_the_same_pr_stays_in_its_own_file_sorted_by_finding(tmp_path):
+    for finding in ("20", "3", "abc"):
+        _record(tmp_path, finding=finding, pr="7")
+    _run(tmp_path, "promote", "--pr", "7")
+    _record(tmp_path, finding="1", pr="7")
+    _run(tmp_path, "promote", "--pr", "7")
+    assert [e["finding"] for e in _entries(_tracked(tmp_path, 7))] == ["1", "3", "20", "abc"]
+
+
+def test_a_tracked_file_carrying_another_prs_entry_is_refused(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    _tracked(tmp_path, 7).parent.mkdir()
+    _tracked(tmp_path, 7).write_text(
+        '{"entries": [{"pr": 9, "finding": "x", "disposition": "fixed"}]}', encoding="utf-8"
+    )
+    assert _run(tmp_path, "promote", "--pr", "7").returncode == 2
+    assert _run(tmp_path, "refuted", "--pr", "7").returncode == 2
+
+
+def test_a_symlinked_pr_file_is_refused(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    _tracked(tmp_path, 7).parent.mkdir()
+    real = tmp_path / ".claude" / "real.json"
+    real.write_text('{"entries": []}', encoding="utf-8")
+    _tracked(tmp_path, 7).symlink_to(real)
+    assert _run(tmp_path, "promote", "--pr", "7").returncode == 2
+
+
+def test_promote_refuses_a_pr_number_below_one(tmp_path):
+    _record(tmp_path, finding="a", pr="0")
+    assert _run(tmp_path, "promote", "--pr", "0").returncode == 2
+
+
+def _load_script():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("git_review_ledger", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_load_dir_reads_every_pr_in_pr_number_order(tmp_path):
+    for pr in ("10", "7"):
+        _record(tmp_path, finding="f" + pr, pr=pr)
+        _run(tmp_path, "promote", "--pr", pr)
+    ledger = _load_script()
+    entries = ledger.load_dir(tmp_path / ".claude" / "tracked")
+    assert [e["pr"] for e in entries] == [7, 10]
+    assert ledger.load_dir(tmp_path / ".claude" / "absent") == []
+
+
+def test_load_dir_refuses_a_stray_name_and_a_corrupt_file(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    _run(tmp_path, "promote", "--pr", "7")
+    ledger = _load_script()
+    directory = tmp_path / ".claude" / "tracked"
+    (directory / "notes.txt").write_text("x", encoding="utf-8")
+    try:
+        ledger.load_dir(directory)
+    except ledger.LedgerError:
+        pass
+    else:
+        raise AssertionError("a stray file name was accepted")
+    (directory / "notes.txt").unlink()
+    _tracked(tmp_path, 7).write_text("[", encoding="utf-8")
+    try:
+        ledger.load_dir(directory)
+    except ledger.LedgerError:
+        return
+    raise AssertionError("a corrupt file was accepted")

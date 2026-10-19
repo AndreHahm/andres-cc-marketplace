@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4307624704",
+      "line": 1621,
+      "note": "fixed in bd3de7d1; self-review 4a could not judge (exit 2)",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 619,
+      "recorded_at": "2026-10-18T16:45:26+00:00",
+      "rule": "r37-chained-grant-coverage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4307624708",
+      "line": 231,
+      "note": "fixed in d5e6effd; self-review 4a could not judge (exit 2)",
+      "path": "plugins/plugin-devkit/hooks/pdk-rulebook-check.py",
+      "pr": 619,
+      "recorded_at": "2026-10-18T16:45:26+00:00",
+      "rule": "escaped-backtick-code-span"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4307634298",
+      "line": 616,
+      "note": "fixed in bf107b56; sync_plan sibling left as follow-up",
+      "path": "scripts/marketplace_ci/prefix_check.py",
+      "pr": 619,
+      "recorded_at": "2026-10-18T16:45:27+00:00",
+      "rule": "bytecode-skip-too-wide"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4307634303",
+      "line": 1756,
+      "note": "fixed in bd3de7d1; self-review 4a could not judge (exit 2)",
+      "path": "scripts/marketplace_ci/review_verifiers.py",
+      "pr": 619,
+      "recorded_at": "2026-10-18T16:45:27+00:00",
+      "rule": "prefix-check-not-tier1"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4307860002",
+      "line": 229,
+      "note": "fixed in 65215861; self-review 4a exit 0",
+      "path": "plugins/plugin-devkit/hooks/pdk-rulebook-check.py",
+      "pr": 619,
+      "recorded_at": "2026-10-18T17:07:06+00:00",
+      "rule": "list-marker-fence"
+    }
+  ]
+}

@@ -86,7 +86,7 @@ Every finding a reviewer reported on that head gets exactly one label:
 | `pre_existing` | The defect is real but was already there before the PR. |
 | `out_of_scope` | Real, but outside what the PR is for or what the reviewer is meant to judge. |
 
-Where labels come from, in order: the outcomes ledger (`.claude/review-outcomes.json`), the review
+Where labels come from, in order: the outcomes ledger (`.claude/review-outcomes/pr-<N>.json`), the review
 thread's outcome, then the owner's spot-check. `source` records which one decided. Only `true` counts
 as a correct finding for precision; the other three do not.
 

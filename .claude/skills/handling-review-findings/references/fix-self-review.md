@@ -113,8 +113,8 @@ it instead of continuing without a record.
   entry is a hint to check against the described defect, never proof that the claim was refuted.
 - **Promotion happens before the last push, not after the merge** (a merged PR leaves `main` unable to take a
   direct commit): when step 8 ends without posting a trigger (`max_rounds` reached, the user declines another round, or no reviewer survives validation; `references/next-round-trigger.md` 8a), run
-  `... git-review-ledger.py promote --pr <N>`. It moves that PR's entries into the git-tracked
-  `.claude/review-outcomes.json`, the corpus Phase 4 builds its evals from. Stage that file with the round's
+  `... git-review-ledger.py promote --pr <N>`. It moves that PR's entries into its own git-tracked
+  `.claude/review-outcomes/pr-<N>.json` (one file per PR, so two PRs promoting at once cannot conflict), the corpus Phase 4 builds its evals from. Stage that file with the round's
   final fix commit; if no fix commit is pending, commit it alone via `Skill(commit) --push` and say plainly
   it is a records-only commit (it does change the head SHA, so CI runs again). A failed promote is reported,
   never silently skipped, and does not block the merge.

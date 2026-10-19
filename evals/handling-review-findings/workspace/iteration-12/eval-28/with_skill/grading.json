@@ -1,0 +1,26 @@
+{
+  "eval_id": 28,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs ledger promote for PR 613 before the last push, moving entries into the PR's own tracked file .claude/review-outcomes/pr-613.json",
+      "passed": true,
+      "evidence": "'promote --pr 613' when step 8 ends without a trigger, before the final push; 'Where the tracked file ends up: .claude/review-outcomes/pr-613.json: one git-tracked file per PR'."
+    },
+    {
+      "text": "Stages the tracked file with the pending final fix commit; with no pending fix commit, commits it alone via Skill(commit) --push and says it is a records-only commit that changes the head SHA",
+      "passed": true,
+      "evidence": "'I stage that file together with the round's final fix commit'; with none pending 'Commit the promoted file alone via Skill(commit) --push... a records-only commit... It still changes the head SHA, so CI runs again.'"
+    },
+    {
+      "text": "Explains that promoting after merge would leave an uncommitted change because main cannot take a direct commit",
+      "passed": true,
+      "evidence": "'A merged PR leaves main unable to take a direct commit, so there would be no place to land the tracked file.' 'Uncommitted change' is paraphrased, as in iteration 11."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
