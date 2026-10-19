@@ -169,8 +169,8 @@ def _trusted_directories() -> tuple[str, ...]:
     stays out. Values come in order and empty ones are kept: for git an empty value resets the list,
     so a directory the user revoked stays revoked. `-z` keeps a value with an escaped newline in one
     piece. Entries in `include`d files are not read, so such a checkout is still refused. A
-    configuration file the checkout could have written is branch content, not the user's own, and
-    is ignored."""
+    configuration file the checkout could have written (a file under it, or the target of a link in
+    HOME) is branch content, not the user's own, and is ignored."""
     home = os.environ.get("HOME", "")
     if not os.path.isabs(home) or not os.path.isdir(home):
         return ()
@@ -179,7 +179,13 @@ def _trusted_directories() -> tuple[str, ...]:
     try:
         here = Path(os.path.realpath(Path.cwd()))
         guards = [here, *_repository_roots(here)]
-        if any(_is_inside(Path(d) / "config", guards) for d in config_dirs):
+        xdg_dir = xdg if len(config_dirs) == 2 else str(Path(home) / ".config")
+        files = [Path(d) / "config" for d in config_dirs]  # the directories themselves
+        files += [  # and where the two files git reads really are, which a link can move
+            Path(os.path.realpath(Path(home) / ".gitconfig")),
+            Path(os.path.realpath(Path(xdg_dir) / "git" / "config")),
+        ]
+        if any(_is_inside(f, guards) for f in files):
             return ()
         env = {
             "HOME": home,
