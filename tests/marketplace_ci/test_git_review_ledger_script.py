@@ -456,3 +456,20 @@ def test_load_dir_refuses_a_stray_name_and_a_corrupt_file(tmp_path):
     except ledger.LedgerError:
         return
     raise AssertionError("a corrupt file was accepted")
+
+
+def test_load_dir_ignores_an_interrupted_saves_temp_file_but_not_other_strays(tmp_path):
+    _record(tmp_path, finding="a", pr="7")
+    _run(tmp_path, "promote", "--pr", "7")
+    ledger = _load_script()
+    directory = tmp_path / ".claude" / "tracked"
+    (directory / "pr-7.json.k3x_9ab2.tmp").write_text("{", encoding="utf-8")
+    assert [e["finding"] for e in ledger.load_dir(directory)] == ["a"]
+    for stray in ("pr-7.json.tmp", "pr-x.json.abc.tmp", "other.json.abc.tmp"):
+        (directory / stray).write_text("x", encoding="utf-8")
+        try:
+            ledger.load_dir(directory)
+        except ledger.LedgerError:
+            (directory / stray).unlink()
+        else:
+            raise AssertionError(f"{stray} was ignored")

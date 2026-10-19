@@ -31,6 +31,8 @@ REFUTED = (
 DEFAULT_LOCAL = ".claude/review-ledger.local.json"
 DEFAULT_TRACKED = ".claude/review-outcomes"
 PR_FILE = re.compile(r"pr-([1-9][0-9]*)\.json")
+# save()'s temp file (mkstemp, prefix "<name>.", suffix ".tmp"): a hard kill can leave one behind.
+SAVE_TEMP = re.compile(r"pr-[1-9][0-9]*\.json\.[A-Za-z0-9_]+\.tmp")
 # The set git-verify-fix-diff.py scrubs too: a stale one points this script's git calls elsewhere.
 GIT_LOCATION_VARS = (
     "GIT_DIR",
@@ -181,6 +183,8 @@ def load_dir(directory: Path) -> list[dict]:
         raise LedgerError(f"{directory} is not a directory")
     numbered = []
     for child in directory.iterdir():
+        if SAVE_TEMP.fullmatch(child.name):
+            continue  # an interrupted save's leftover is not a ledger file and is never read
         match = PR_FILE.fullmatch(child.name)
         if not match:
             raise LedgerError(f"{child} is not named pr-<N>.json")
