@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4316494248",
+      "line": 47,
+      "note": "fixed in 31188ab3; only the user's own safe.directory values are re-passed; verified by a simulated other-owner checkout",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "pr": 625,
+      "recorded_at": "2026-10-19T18:40:03+00:00",
+      "rule": "safe-directory-dropped"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4316749516",
+      "line": 294,
+      "note": "fixed in 31188ab3; ASCII-only digit compare without int(), and record validates the id",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "pr": 625,
+      "recorded_at": "2026-10-19T18:40:03+00:00",
+      "rule": "sort-key-int"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4317580701",
+      "line": 150,
+      "note": "fixed in 3e5fae6d; a leading tilde is expanded when the entry is read, an unexpandable one is dropped",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "pr": 625,
+      "recorded_at": "2026-10-19T19:15:36+00:00",
+      "rule": "safe-directory-tilde"
+    }
+  ]
+}
