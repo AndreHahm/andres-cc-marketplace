@@ -138,14 +138,73 @@ def _clean_env() -> dict[str, str]:
     return env
 
 
-def _git(cwd: Path, *args: str, text: bool = False) -> subprocess.CompletedProcess:
+def _git(
+    cwd: Path,
+    *args: str,
+    text: bool = False,
+    env: dict[str, str] | None = None,
+    repin: bool = True,
+) -> subprocess.CompletedProcess:
+    trusted = (
+        [part for d in _trusted_directories() for part in ("-c", f"safe.directory={d}")]
+        if repin
+        else []
+    )
     return subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        [_git_path(), *_HARDENING, *args],
+        [_git_path(), *_HARDENING, *trusted, *args],
         cwd=cwd,
-        env=_clean_env(),
+        env=env or _clean_env(),
         capture_output=True,
         text=text,
     )
+
+
+@functools.cache
+def _trusted_directories() -> tuple[str, ...]:
+    """The `safe.directory` entries in the user's own global git configuration.
+
+    Git honours them only from protected configuration, which the pinned environment discards, so a
+    checkout owned by another user (a host-mounted repository in a container) would be refused. Only
+    these values are read back, as data, and passed on the command line; every other global setting
+    stays out. Values come in order and empty ones are kept: for git an empty value resets the list,
+    so a directory the user revoked stays revoked. `-z` keeps a value with an escaped newline in one
+    piece. Entries in `include`d files are not read, so such a checkout is still refused. A
+    configuration file the checkout could have written is branch content, not the user's own, and
+    is ignored."""
+    home = os.environ.get("HOME", "")
+    if not os.path.isabs(home) or not os.path.isdir(home):
+        return ()
+    xdg = os.environ.get("XDG_CONFIG_HOME", "")
+    config_dirs = [home, xdg] if os.path.isabs(xdg) else [home]
+    try:
+        here = Path(os.path.realpath(Path.cwd()))
+        guards = [here, *_repository_roots(here)]
+        if any(_is_inside(Path(d) / "config", guards) for d in config_dirs):
+            return ()
+        env = {
+            "HOME": home,
+            "PATH": os.path.dirname(_git_path()),
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+        if len(config_dirs) == 2:
+            env["XDG_CONFIG_HOME"] = xdg
+        read = _git(
+            Path(home),
+            "config",
+            "--global",
+            "-z",
+            "--get-all",
+            "safe.directory",
+            env=env,
+            repin=False,
+        )
+    except (OSError, ValueError):
+        return ()
+    if read.returncode != 0:
+        return ()
+    values = os.fsdecode(read.stdout).split("\0")
+    return tuple(values[:-1] if values[-1] == "" else values)
 
 
 def repo_root() -> Path:
@@ -239,6 +298,19 @@ def save(path: Path, entries: list[dict]) -> None:
         raise
 
 
+_FINDING_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}")
+
+
+def finding_id(raw: str) -> str:
+    """A stable finding id (a review comment id or node id): a short token of ASCII letters, digits
+    and . _ : - only."""
+    if not _FINDING_ID.fullmatch(raw):
+        raise argparse.ArgumentTypeError(
+            f"{raw[:40]!r} is not a finding id: 1 to 64 ASCII letters, digits or . _ : -"
+        )
+    return raw
+
+
 def positive_int(raw: str) -> int:
     """A PR number: the tracked layout names its files pr-<N>.json, so N is 1 or greater."""
     try:
@@ -291,7 +363,10 @@ def load_dir(directory: Path) -> list[dict]:
 
 def _sort_key(entry: dict) -> tuple:
     finding = str(entry.get("finding", ""))
-    return (not finding.isdigit(), int(finding) if finding.isdigit() else 0, finding)
+    if not (finding.isascii() and finding.isdigit()):
+        return (True, 0, finding)
+    normalized = finding.lstrip("0") or "0"  # compare by length then text: no int(), no digit limit
+    return (False, len(normalized), normalized, finding)
 
 
 def _key(entry: dict) -> tuple:
@@ -353,7 +428,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     record = sub.add_parser("record", help="record or replace one finding's disposition")
     record.add_argument("--pr", type=positive_int, required=True)
-    record.add_argument("--finding", required=True, help="stable id, e.g. the review comment id")
+    record.add_argument(
+        "--finding", type=finding_id, required=True, help="stable id, e.g. the review comment id"
+    )
     record.add_argument("--disposition", required=True, choices=DISPOSITIONS)
     record.add_argument("--path")
     record.add_argument("--line", type=int)

@@ -614,7 +614,10 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   rule covers it, and refuses to write it if git still does not ignore it; a ledger path that is a symlink or
   contains a control character is refused) and promotes a PR's entries to its own tracked `.claude/review-outcomes/pr-<N>.json`
   before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger. It runs `git` by an absolute
-  path found outside the repository, with a minimal environment and hooks and `fsmonitor` switched off.
+  path found outside the repository, with a minimal environment and hooks and `fsmonitor` switched off; only the
+  `safe.directory` entries in the user's own global git configuration are passed on, so a checkout owned by another
+  user (a host-mounted repository) still works (a global config file the checkout could have written is ignored). `record` refuses a finding id that is not 1 to 64 ASCII letters,
+  digits or `. _ : -`.
   Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
 
 ## Diff-scoped blocking

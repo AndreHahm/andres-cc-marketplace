@@ -560,10 +560,15 @@ def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_
         encoding="utf-8",
     )
     (bin_dir / "git").chmod(0o755)
+    home = tmp_path_factory.mktemp("home")
+    trusted = str(tmp_path.resolve())
+    (home / ".gitconfig").write_text(
+        f"[safe]\n\tdirectory = {trusted}\n[core]\n\tsshCommand = false\n", encoding="utf-8"
+    )
     hostile = {
         "PATH": f"{bin_dir}:/usr/bin:/bin",
-        "HOME": str(tmp_path / "home"),
-        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(tmp_path_factory.mktemp("xdg")),
         "GIT_TRACE": "1",
         "GIT_EXEC_PATH": str(tmp_path / "no-such-exec-path"),
         "GIT_CONFIG_COUNT": "1",
@@ -574,17 +579,29 @@ def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_
     }
     result = _run(tmp_path, *RECORD_ARGS, extra_env=hostile)
     assert result.returncode == 0, result.stderr
-    lines = log.read_text(encoding="utf-8").splitlines()
-    env_lines = [line for line in lines if "=" in line and not line.startswith("ARGS:")]
-    seen = {line.split("=", 1)[0] for line in env_lines}
-    assert seen, "the wrapper recorded no environment"
-    assert seen <= ALLOWED_GIT_ENV, sorted(seen - ALLOWED_GIT_ENV)
-    values = dict(line.split("=", 1) for line in env_lines)
-    assert values["GIT_CONFIG_GLOBAL"] == os.devnull
-    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
-    assert values["PATH"] == str(bin_dir)  # git's own directory and nothing else
-    args = [line for line in lines if line.startswith("ARGS:")]
-    assert args and all("-c core.fsmonitor=false -c core.hooksPath=" in line for line in args), args
+    calls, keys = [], {}
+    for line in log.read_text(encoding="utf-8").splitlines():
+        if line.startswith("ARGS:"):
+            calls.append((line, keys))
+            keys = {}
+        elif "=" in line:
+            name, value = line.split("=", 1)
+            keys[name] = value
+    assert calls, "the wrapper recorded no call"
+    reads = [c for c in calls if "config --global -z --get-all safe.directory" in c[0]]
+    others = [c for c in calls if c not in reads]
+    assert len(reads) == 1 and others
+    # the one call that reads the user's global config sees HOME, and nothing else extra
+    assert set(reads[0][1]) <= ALLOWED_GIT_ENV | {"HOME", "XDG_CONFIG_HOME"}
+    assert reads[0][1]["HOME"] == str(home)
+    for args, env in others:
+        assert set(env) <= ALLOWED_GIT_ENV, sorted(set(env) - ALLOWED_GIT_ENV)
+        assert env["GIT_CONFIG_GLOBAL"] == os.devnull
+        assert env["GIT_CONFIG_NOSYSTEM"] == "1"
+        assert env["PATH"] == str(bin_dir)  # git's own directory and nothing else
+        assert "-c core.fsmonitor=false -c core.hooksPath=" in args, args
+        assert f"-c safe.directory={trusted}" in args  # the user's entry, passed as data
+        assert "sshcommand" not in args.lower()  # no other global setting is carried over
 
 
 # --- the "git is not inside the repository" guard (security review of PR #610) ---------------
@@ -685,3 +702,145 @@ def test_a_path_spelled_with_other_letter_case_is_still_inside_the_repository(
     respelled = tmp_path / "repo" / "bin"
     assert _find_git_from(monkeypatch, repo, respelled) is None
     assert plant.exists()
+
+
+# --- safe.directory (review of PR #610: Codex P1) ------------------------------------------------
+
+
+def _other_owner_git(directory):
+    """A git that behaves as if another user owned every checkout (git's own test switch)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    stub = directory / "git"
+    stub.write_text(
+        f'#!/bin/sh\nexport GIT_TEST_ASSUME_DIFFERENT_OWNER=1\nexec {shutil.which("git")} "$@"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    return directory
+
+
+def _home_with_safe_directory(tmp_path_factory, *directories):
+    home = tmp_path_factory.mktemp("home")
+    entries = "".join(f"\tdirectory = {d}\n" for d in directories)
+    (home / ".gitconfig").write_text(f"[safe]\n{entries}", encoding="utf-8")
+    return home
+
+
+def test_a_checkout_owned_by_another_user_works_when_the_users_global_config_trusts_it(
+    tmp_path, tmp_path_factory
+):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    home = _home_with_safe_directory(tmp_path_factory, tmp_path.resolve())
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_checkout_owned_by_another_user_is_still_refused_when_nothing_trusts_it(
+    tmp_path, tmp_path_factory
+):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    unrelated = _home_with_safe_directory(tmp_path_factory, tmp_path / "some-other-checkout")
+    empty = tmp_path_factory.mktemp("emptyhome")
+    for home in (unrelated, empty):
+        env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+        result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+        assert result.returncode == 2, result.stderr
+        assert "Traceback" not in result.stderr
+    assert not (tmp_path / ".claude" / "local.json").exists()
+
+
+def test_without_a_usable_home_there_are_no_trusted_directories(monkeypatch, tmp_path):
+    ledger = _load_script()
+    for home in (None, "relative/path", str(tmp_path / "does-not-exist")):
+        ledger._trusted_directories.cache_clear()
+        if home is None:
+            monkeypatch.delenv("HOME", raising=False)
+        else:
+            monkeypatch.setenv("HOME", home)
+        assert ledger._trusted_directories() == ()
+
+
+# --- finding ids (review of PR #610: CodeRabbit) -----------------------------------------
+
+
+def test_promote_never_fails_on_an_odd_finding_id_already_in_a_file():
+    ledger = _load_script()
+    odd = ["\u00b2", "\u2460", "9" * 5000, "007", "20", "3", "abc", ""]
+    keys = [ledger._sort_key({"finding": value}) for value in odd]  # must not raise
+    assert len(keys) == len(odd)
+    ordered = [e["finding"] for e in sorted(({"finding": v} for v in odd), key=ledger._sort_key)]
+    assert ordered[:3] == ["3", "007", "20"]  # ASCII digit ids first, by numeric value
+    assert ordered[3] == "9" * 5000
+
+
+def test_record_accepts_real_finding_ids_and_refuses_anything_else(tmp_path):
+    for good in ("4316749516", "c1", "PRRC_kwDOab-1", "a.b:c_d-9", "9" * 64):
+        assert _record(tmp_path, finding=good).returncode == 0, good
+    for bad in ("\u00b2", "\u2460", "9" * 65, "a b", "-leading", "x/y", "new\nline"):
+        result = _record(tmp_path, finding=bad)
+        assert result.returncode == 2, repr(bad)
+        if not bad.startswith("-"):  # argparse itself intercepts a leading dash as an option
+            assert "not a finding id" in result.stderr
+    stored = {e["finding"] for e in _entries(tmp_path / ".claude" / "local.json")}
+    assert stored == {"4316749516", "c1", "PRRC_kwDOab-1", "a.b:c_d-9", "9" * 64}
+
+
+def _write_global_config(home, text):
+    (home / ".gitconfig").write_text(text, encoding="utf-8")
+    return home
+
+
+def _plain_git_trusts(home, repo):
+    """Whether the user's own git, with this global config, accepts the other-owner checkout."""
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}
+    done = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"], cwd=repo, env=env, capture_output=True, text=True
+    )
+    return done.returncode == 0
+
+
+def test_a_revoked_safe_directory_stays_revoked(tmp_path, tmp_path_factory):
+    """An empty value resets git's list; the script must trust exactly what the user's git does."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    repo = tmp_path.resolve()
+    home = _write_global_config(
+        tmp_path_factory.mktemp("home"), f"[safe]\n\tdirectory = {repo}\n\tdirectory =\n"
+    )
+    _run(tmp_path, "promote", "--pr", "9")  # make the repository exist
+    expected_ok = _plain_git_trusts(home, repo)
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert (result.returncode == 0) == expected_ok, (expected_ok, result.stderr)
+
+
+def test_a_value_with_an_escaped_newline_is_not_split_into_a_wildcard(tmp_path, tmp_path_factory):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    home = _write_global_config(
+        tmp_path_factory.mktemp("home"), "[safe]\n\tdirectory = /nowhere\\n*\n"
+    )
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 2, result.stderr
+
+
+def test_a_global_config_inside_the_checkout_is_not_the_users_own(tmp_path, tmp_path_factory):
+    """If HOME is the checkout (some containers), the branch decides what the file says."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    _write_global_config(tmp_path, f"[safe]\n\tdirectory = {tmp_path.resolve()}\n")
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 2, result.stderr
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can enter a directory with no permissions")
+def test_a_home_directory_that_cannot_be_entered_does_not_stop_the_script(
+    tmp_path, tmp_path_factory
+):
+    home = tmp_path_factory.mktemp("lockedhome")
+    home.chmod(0o000)
+    try:
+        result = _run(tmp_path, *RECORD_ARGS, extra_env={"HOME": str(home)})
+    finally:
+        home.chmod(0o700)
+    assert result.returncode == 0, result.stderr
