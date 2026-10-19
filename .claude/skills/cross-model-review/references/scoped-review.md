@@ -128,13 +128,14 @@ defaults (250000 and 80000), so up to 14 Codex dispatches.
 
 **If packing produces more batches than the batch limit** (only protected slices or an oversized first
 slice can cause that), do not dispatch yet. Ask via `AskUserQuestion`, before the First-Send
-Confirmation, naming the batch count, the dispatch count (two per batch) and the limit: review all
-batches, review only the first batches up to the limit in planner order, or stop. Never go past the
-limit without that answer. Choosing the limited run leaves the later batches' slices unreviewed this
+Confirmation, naming the batch count, the dispatch count (two per batch that has a Codex-eligible path; a
+batch with none skips Codex) and the limit: review all batches, review only the first batches up to the
+limit in planner order, or stop. Never go past the limit without that answer. Choosing the limited run leaves the later batches' slices unreviewed this
 round, by either model. Note each of those slices' names and files from the manifest's `slices` (they
 are not in `dropped_slices`) so section 6 can list them as **must be read directly**, and never pass
-them as `--completed-slice` in a later round. At or under the limit there is no extra question. The First-Send
-Confirmation then states the real dispatch count either way.
+them as `--completed-slice` in a later round. At or under the limit there is no extra question. If no batch
+has a Codex-eligible path, there is nothing to dispatch, so skip the question and enter single-model mode
+(`SKILL.md` Preflight). The First-Send Confirmation then states the real dispatch count either way.
 
 **Diffs come from files, not commands.** The planner wrote, per slice, `$RUN/diffs-1/<slice>.diff` (every
 file of the slice) and `$RUN/diffs-1/<slice>.codex.diff` (only the files with `codex_eligible: true`).
