@@ -156,6 +156,17 @@ def save(path: Path, entries: list[dict]) -> None:
         raise
 
 
+def positive_int(raw: str) -> int:
+    """A PR number: the tracked layout names its files pr-<N>.json, so N is 1 or greater."""
+    try:
+        value = int(raw)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{raw!r} is not a PR number") from None
+    if value < 1:
+        raise argparse.ArgumentTypeError("a PR number must be 1 or greater")
+    return value
+
+
 def pr_file(directory: Path, pr: int) -> Path:
     return directory / f"pr-{pr}.json"
 
@@ -241,8 +252,6 @@ def cmd_promote(args: argparse.Namespace) -> int:
     if not moving:
         print(f"No ledger entries for PR {args.pr}; nothing to promote.")
         return 0
-    if args.pr < 1:
-        raise LedgerError("a PR number must be 1 or greater")
     merged = load_pr(tracked, args.pr)
     for entry in moving:
         merged = upsert(merged, entry)
@@ -260,7 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     record = sub.add_parser("record", help="record or replace one finding's disposition")
-    record.add_argument("--pr", type=int, required=True)
+    record.add_argument("--pr", type=positive_int, required=True)
     record.add_argument("--finding", required=True, help="stable id, e.g. the review comment id")
     record.add_argument("--disposition", required=True, choices=DISPOSITIONS)
     record.add_argument("--path")
@@ -270,11 +279,11 @@ def build_parser() -> argparse.ArgumentParser:
     record.set_defaults(func=cmd_record)
 
     refuted = sub.add_parser("refuted", help="list a PR's false-positive entries")
-    refuted.add_argument("--pr", type=int, required=True)
+    refuted.add_argument("--pr", type=positive_int, required=True)
     refuted.set_defaults(func=cmd_refuted)
 
     promote = sub.add_parser("promote", help="move a PR's entries to its tracked pr-<N>.json")
-    promote.add_argument("--pr", type=int, required=True)
+    promote.add_argument("--pr", type=positive_int, required=True)
     promote.set_defaults(func=cmd_promote)
     return parser
 
