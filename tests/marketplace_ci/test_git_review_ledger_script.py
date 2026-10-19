@@ -844,3 +844,33 @@ def test_a_home_directory_that_cannot_be_entered_does_not_stop_the_script(
     finally:
         home.chmod(0o700)
     assert result.returncode == 0, result.stderr
+
+
+def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
+    tmp_path, tmp_path_factory
+):
+    """HOME is outside the checkout, but ~/.gitconfig points at a file the branch controls."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    planted = tmp_path / "planted-gitconfig"
+    planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
+    home = tmp_path_factory.mktemp("home")
+    (home / ".gitconfig").symlink_to(planted)
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 2, result.stderr
+
+
+def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
+    tmp_path, tmp_path_factory
+):
+    """A dotfiles directory outside the checkout is the user's own, so a link to it is honoured."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    dotfiles = tmp_path_factory.mktemp("dotfiles")
+    (dotfiles / "gitconfig").write_text(
+        f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8"
+    )
+    home = tmp_path_factory.mktemp("home")
+    (home / ".gitconfig").symlink_to(dotfiles / "gitconfig")
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 0, result.stderr
