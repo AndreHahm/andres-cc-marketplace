@@ -1647,6 +1647,23 @@ def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktem
     assert "new.txt" not in _listed(repo, real_index)
 
 
+def test_the_intent_add_index_override_is_what_protects_the_real_index(repo, tmp_path, mktemp_dirs):
+    """Mutation check: without the helper's own index override, the real index gets written."""
+    source = INTENT_ADD.read_text()
+    override = "export GIT_INDEX_FILE=$index\n"
+    assert source.count(override) == 1
+    mutant = tmp_path / "git-review-intent-add-mutant.sh"
+    mutant.write_text(source.replace(override, ""))
+    run_dir = mktemp_dirs()
+    (repo / "new.txt").write_text("brand new\n")
+    real_index = repo / ".git" / "index"
+    result = subprocess.run(
+        ["bash", str(mutant), str(run_dir)], cwd=repo, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert "new.txt" in _listed(repo, real_index)  # the mutant leaks: the test above can tell
+
+
 def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("x")
