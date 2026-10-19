@@ -1,6 +1,6 @@
 # SKILL.md Skeleton
 
-Standard skeleton for every workflow-based skill, regardless of pattern. The block below is an intentional whole-example illustration: splitting it would destroy its value as a single copy-ready file.
+Standard skeleton for every workflow-based skill, regardless of pattern. **R18 exception (recorded):** the block below intentionally exceeds the rulebook's 30-line code-block threshold. It is a whole-example illustration, and splitting it would destroy its value as a single copy-ready file.
 
 ```markdown
 ---
