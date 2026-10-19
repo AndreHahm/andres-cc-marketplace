@@ -412,9 +412,16 @@ def test_a_symlinked_pr_file_is_refused(tmp_path):
     assert _run(tmp_path, "promote", "--pr", "7").returncode == 2
 
 
-def test_promote_refuses_a_pr_number_below_one(tmp_path):
-    _record(tmp_path, finding="a", pr="0")
-    assert _run(tmp_path, "promote", "--pr", "0").returncode == 2
+def test_every_command_refuses_a_pr_number_below_one_before_touching_a_file(tmp_path):
+    for pr in ("0", "-3", "x"):
+        for args in (
+            ["record", f"--pr={pr}", "--finding", "a", "--disposition", "fixed"],
+            ["refuted", f"--pr={pr}"],
+            ["promote", f"--pr={pr}"],  # an empty ledger must not turn this into a no-op success
+        ):
+            assert _run(tmp_path, *args).returncode == 2, args
+    assert not (tmp_path / ".claude" / "local.json").exists()
+    assert not (tmp_path / ".claude" / "tracked").exists()
 
 
 def _load_script():
