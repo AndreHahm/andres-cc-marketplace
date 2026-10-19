@@ -7,9 +7,12 @@ the same file. All are JSON. A corrupt file is refused, never overwritten.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
 
@@ -480,3 +483,205 @@ def test_load_dir_ignores_an_interrupted_saves_temp_file_but_not_other_strays(tm
             (directory / stray).unlink()
         else:
             raise AssertionError(f"{stray} was ignored")
+
+
+# --- hardened git (PR #610 parity review): the git that runs is not picked by the PATH ---------
+
+ALLOWED_GIT_ENV = {
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",
+    "PATH",
+    "GIT_CONFIG_NOSYSTEM",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_NO_LAZY_FETCH",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_OPTIONAL_LOCKS",
+    "GIT_TERMINAL_PROMPT",
+    "PWD",  # added by the /bin/sh wrapper below, not by the script
+    "SHLVL",
+    "_",
+    "OLDPWD",
+}
+
+
+RECORD_ARGS = ("record", "--pr", "7", "--finding", "c1", "--disposition", "fixed")
+
+
+def _marker_for(tmp_path):
+    return tmp_path.parent / f"{tmp_path.name}-ran"
+
+
+def _plant_git(path, marker):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"#!/bin/sh\ntouch {marker}\nexit 0\n", encoding="utf-8")
+    path.chmod(0o755)
+
+
+def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
+    for planted in ("git", "bin/git", "sub/deeper/git"):
+        marker = _marker_for(tmp_path)
+        plant = tmp_path / planted
+        _plant_git(plant, marker)
+        path = f"{plant.parent}:/usr/bin:/bin"
+        result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": path})
+        assert result.returncode == 2, (planted, result.stderr)
+        assert "no usable git" in result.stderr
+        assert not marker.exists(), planted
+        plant.unlink()
+
+
+def test_a_symlink_into_the_repository_is_never_run(tmp_path):
+    link = tmp_path / "bin" / "git"
+    link.parent.mkdir()
+    link.symlink_to(shutil.which("git"))
+    result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": f"{link.parent}:/usr/bin:/bin"})
+    assert result.returncode == 2
+    assert "no usable git" in result.stderr
+
+
+def test_a_missing_git_is_a_refusal_not_a_traceback(tmp_path):
+    result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": str(tmp_path.parent / "no-such-bin")})
+    assert result.returncode == 2
+    assert result.stderr.startswith("Refused: no usable git")
+    assert "Traceback" not in result.stderr
+
+
+def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_path_factory):
+    bin_dir = tmp_path_factory.mktemp("fakebin")  # a sibling of the repository, not inside it
+    log = bin_dir / "log"
+    env_tool, real_git = shutil.which("env"), shutil.which("git")
+    (bin_dir / "git").write_text(
+        "#!/bin/sh\n"
+        f"{env_tool} >> {log}\n"
+        f'printf "ARGS:%s\\n" "$*" >> {log}\n'
+        f'exec {real_git} "$@"\n',
+        encoding="utf-8",
+    )
+    (bin_dir / "git").chmod(0o755)
+    hostile = {
+        "PATH": f"{bin_dir}:/usr/bin:/bin",
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg"),
+        "GIT_TRACE": "1",
+        "GIT_EXEC_PATH": str(tmp_path / "no-such-exec-path"),
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "core.fsmonitor",
+        "GIT_CONFIG_VALUE_0": "touch /tmp/never",
+        "GIT_SSH_COMMAND": "false",
+        "PAGER": "false",
+    }
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=hostile)
+    assert result.returncode == 0, result.stderr
+    lines = log.read_text(encoding="utf-8").splitlines()
+    env_lines = [line for line in lines if "=" in line and not line.startswith("ARGS:")]
+    seen = {line.split("=", 1)[0] for line in env_lines}
+    assert seen, "the wrapper recorded no environment"
+    assert seen <= ALLOWED_GIT_ENV, sorted(seen - ALLOWED_GIT_ENV)
+    values = dict(line.split("=", 1) for line in env_lines)
+    assert values["GIT_CONFIG_GLOBAL"] == os.devnull
+    assert values["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert values["PATH"] == str(bin_dir)  # git's own directory and nothing else
+    args = [line for line in lines if line.startswith("ARGS:")]
+    assert args and all("-c core.fsmonitor=false -c core.hooksPath=" in line for line in args), args
+
+
+# --- the "git is not inside the repository" guard (security review of PR #610) ---------------
+
+
+def _make_repo(path):
+    path.mkdir(parents=True)
+    commit = ["-c", "user.email=t@example.com", "-c", "user.name=t"]
+    for args in (
+        ["init", "-q", "-b", "main"],
+        [*commit, "commit", "-q", "--allow-empty", "-m", "x"],
+    ):
+        subprocess.run(["git", *args], cwd=path, check=True, capture_output=True)
+    return path
+
+
+def _stub_git(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    stub = directory / "git"
+    stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    stub.chmod(0o755)
+    return stub
+
+
+def _find_git_from(monkeypatch, cwd, *path_dirs):
+    monkeypatch.chdir(cwd)
+    monkeypatch.setenv("PATH", os.pathsep.join([*map(str, path_dirs), "/usr/bin", "/bin"]))
+    return _load_script()._find_git()
+
+
+def test_the_guard_still_accepts_a_git_outside_the_repository(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    tools = _stub_git(tmp_path / "tools").parent
+    assert _find_git_from(monkeypatch, repo, tools) == str(tools / "git")
+    assert _find_git_from(monkeypatch, repo) is not None  # the system git
+
+
+def test_a_git_planted_in_the_repository_is_refused_from_any_subdirectory(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    plant = _stub_git(repo / "bin").parent
+    deeper = repo / "sub" / "deeper"
+    deeper.mkdir(parents=True)
+    for start in (repo, repo / "sub", deeper):
+        assert _find_git_from(monkeypatch, start, plant) is None, start
+
+
+def test_a_link_outside_the_repository_that_points_into_it_is_refused(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    target = _stub_git(repo / "bin")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "git").symlink_to(target)
+    assert _find_git_from(monkeypatch, repo, outside) is None
+
+
+def test_a_git_in_the_main_checkout_is_refused_from_a_linked_worktree(tmp_path, monkeypatch):
+    main = _make_repo(tmp_path / "main")
+    linked = tmp_path / "linked"
+    subprocess.run(
+        ["git", "worktree", "add", "-q", "--detach", str(linked)],
+        cwd=main,
+        check=True,
+        capture_output=True,
+    )
+    plant = _stub_git(main / "bin").parent
+    assert _find_git_from(monkeypatch, linked, plant) is None
+    assert _find_git_from(monkeypatch, linked / ".." / "linked", plant) is None
+
+
+def test_a_git_in_an_outer_repository_is_refused_from_a_nested_one(tmp_path, monkeypatch):
+    outer = _make_repo(tmp_path / "outer")
+    inner = _make_repo(outer / "vendor" / "inner")
+    plant = _stub_git(outer / "bin").parent
+    assert _find_git_from(monkeypatch, inner, plant) is None
+
+
+def test_a_git_entry_that_cannot_be_read_is_not_trusted(tmp_path, monkeypatch):
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / ".git").write_text("not a pointer\n", encoding="utf-8")
+    tools = _stub_git(tmp_path / "tools").parent
+    assert _find_git_from(monkeypatch, broken, tools) is None
+
+
+def _file_system_ignores_case(directory):
+    probe = directory / "CaseProbe"
+    probe.mkdir()
+    return (directory / "caseprobe").exists()
+
+
+def test_a_path_spelled_with_other_letter_case_is_still_inside_the_repository(
+    tmp_path, monkeypatch
+):
+    if not _file_system_ignores_case(tmp_path):
+        pytest.skip("needs a case-insensitive file system (the default on macOS)")
+    repo = _make_repo(tmp_path / "Repo")
+    plant = _stub_git(repo / "bin").parent
+    respelled = tmp_path / "repo" / "bin"
+    assert _find_git_from(monkeypatch, repo, respelled) is None
+    assert plant.exists()
