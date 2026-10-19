@@ -612,8 +612,12 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
 - **Outcomes ledger.** `scripts/git-review-ledger.py` records one disposition per finding in a gitignored
   `.claude/review-ledger.local.json` (`record` adds it to the repository's `.git/info/exclude` when no ignore
   rule covers it, and refuses to write it if git still does not ignore it; a ledger path that is a symlink or
-  contains a control character is refused) and promotes a PR's entries to the tracked `.claude/review-outcomes.json`
-  before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger.
+  contains a control character is refused) and promotes a PR's entries to its own tracked `.claude/review-outcomes/pr-<N>.json`
+  before the PR's last push. It refuses a corrupt file, a path outside `.claude/` and a tracked working ledger. It runs `git` by an absolute
+  path found outside the repository, with a minimal environment and hooks and `fsmonitor` switched off; only the
+  `safe.directory` entries in the user's own global git configuration are passed on, so a checkout owned by another
+  user (a host-mounted repository) still works (a global config file the checkout could have written is ignored). `record` refuses a finding id that is not 1 to 64 ASCII letters,
+  digits or `. _ : -`.
   Injecting refuted findings into the reviewers' briefing is not done: it would change a Tier-1 file.
 
 ## Diff-scoped blocking
@@ -1059,7 +1063,7 @@ is confirmed only by the Cloud CLI re-check below.
 - **Do not replace the bare `git` with an absolute path** to satisfy B607. The command then becomes a
   variable, which Semgrep's `dangerous-subprocess-use` flags at severity Error, trading a Warning for
   an Error. A call that must take a variable command goes through a helper such as `_git` in `git-verify-fix-diff.py`
-  (`git-review-ledger.py` has none).
+  (`git-review-ledger.py` has the same one, added for the PR #610 parity review).
 - **Why inline comments:** a per-issue Codacy ignore keys on an issue id that changes when the code
   moves, so it needs re-applying after edits; a `# nosec` comment travels with the line and carries its
   reason. `.codacy.yml` `exclude_paths` is not a substitute for production scripts, because it drops a

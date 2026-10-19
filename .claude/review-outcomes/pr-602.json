@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4303122455",
+      "line": 273,
+      "note": "Real: reproduced on git 2.43.0. Fixed in 705738ed by flagging wildcard grants naming a word outside git's command names. Verifier self-review exited 2 (cannot judge a fix to scripts/marketplace_ci/).",
+      "path": "scripts/marketplace_ci/git_output_grants.py",
+      "pr": 602,
+      "recorded_at": "2026-10-17T15:07:25+00:00",
+      "rule": "unknown-subcommand-alias"
+    }
+  ]
+}

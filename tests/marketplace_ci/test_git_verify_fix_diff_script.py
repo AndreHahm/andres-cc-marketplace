@@ -669,3 +669,103 @@ def test_a_git_earlier_on_path_inside_the_repository_is_never_run(repo, tmp_path
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert not marker.exists()
+
+
+# --- the "git is not inside the repository" guard (security review of PR #610) ---------------
+
+
+def _make_repo(path):
+    path.mkdir(parents=True)
+    commit = ["-c", "user.email=t@example.com", "-c", "user.name=t"]
+    for args in (
+        ["init", "-q", "-b", "main"],
+        [*commit, "commit", "-q", "--allow-empty", "-m", "x"],
+    ):
+        subprocess.run(["git", *args], cwd=path, check=True, capture_output=True)
+    return path
+
+
+def _stub_git(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    stub = directory / "git"
+    stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    stub.chmod(0o755)
+    return stub
+
+
+def _find_git_from(monkeypatch, cwd, *path_dirs):
+    monkeypatch.chdir(cwd)
+    monkeypatch.setenv("PATH", os.pathsep.join([*map(str, path_dirs), "/usr/bin", "/bin"]))
+    return M._find_git()
+
+
+def test_the_guard_still_accepts_a_git_outside_the_repository(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    tools = _stub_git(tmp_path / "tools").parent
+    assert _find_git_from(monkeypatch, repo, tools) == str(tools / "git")
+    assert _find_git_from(monkeypatch, repo) is not None  # the system git
+
+
+def test_a_git_planted_in_the_repository_is_refused_from_any_subdirectory(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    plant = _stub_git(repo / "bin").parent
+    deeper = repo / "sub" / "deeper"
+    deeper.mkdir(parents=True)
+    for start in (repo, repo / "sub", deeper):
+        assert _find_git_from(monkeypatch, start, plant) is None, start
+
+
+def test_a_link_outside_the_repository_that_points_into_it_is_refused(tmp_path, monkeypatch):
+    repo = _make_repo(tmp_path / "repo")
+    target = _stub_git(repo / "bin")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "git").symlink_to(target)
+    assert _find_git_from(monkeypatch, repo, outside) is None
+
+
+def test_a_git_in_the_main_checkout_is_refused_from_a_linked_worktree(tmp_path, monkeypatch):
+    main = _make_repo(tmp_path / "main")
+    linked = tmp_path / "linked"
+    subprocess.run(
+        ["git", "worktree", "add", "-q", "--detach", str(linked)],
+        cwd=main,
+        check=True,
+        capture_output=True,
+    )
+    plant = _stub_git(main / "bin").parent
+    assert _find_git_from(monkeypatch, linked, plant) is None
+    assert _find_git_from(monkeypatch, linked / ".." / "linked", plant) is None
+
+
+def test_a_git_in_an_outer_repository_is_refused_from_a_nested_one(tmp_path, monkeypatch):
+    outer = _make_repo(tmp_path / "outer")
+    inner = _make_repo(outer / "vendor" / "inner")
+    plant = _stub_git(outer / "bin").parent
+    assert _find_git_from(monkeypatch, inner, plant) is None
+
+
+def test_a_git_entry_that_cannot_be_read_is_not_trusted(tmp_path, monkeypatch):
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / ".git").write_text("not a pointer\n", encoding="utf-8")
+    tools = _stub_git(tmp_path / "tools").parent
+    assert _find_git_from(monkeypatch, broken, tools) is None
+
+
+def _file_system_ignores_case(directory):
+    probe = directory / "CaseProbe"
+    probe.mkdir()
+    return (directory / "caseprobe").exists()
+
+
+def test_a_path_spelled_with_other_letter_case_is_still_inside_the_repository(
+    tmp_path, monkeypatch
+):
+    if not _file_system_ignores_case(tmp_path):
+        pytest.skip("needs a case-insensitive file system (the default on macOS)")
+    repo = _make_repo(tmp_path / "Repo")
+    plant = _stub_git(repo / "bin").parent
+    respelled = tmp_path / "repo" / "bin"
+    assert _find_git_from(monkeypatch, repo, respelled) is None
+    assert plant.exists()
