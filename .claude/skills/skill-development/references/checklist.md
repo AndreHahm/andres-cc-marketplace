@@ -30,7 +30,7 @@ Use this checklist to validate new or improved skills against best practices.
 - [ ] Action-oriented when possible (gerund form: `processing-pdfs`, `managing-databases`)
 
 ### Description Validation
-- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `references/size-limits.md`)
+- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`)
 - [ ] Third person voice ("Processes files", not "I can help you")
 - [ ] Includes specific trigger phrases (what it does AND when to use)
 - [ ] No XML/HTML tags (scoped to the `description` field only — see `troubleshooting-guide.md`'s "XML angle brackets" section for why, and its Codex-prompt-scaffolding note for why this does not extend to skill body content)
@@ -82,7 +82,7 @@ Use this checklist to validate new or improved skills against best practices.
 ### Paths
 - [ ] Forward slashes only (no Windows paths like `scripts\helper.py`)
 - [ ] Relative paths work across systems
-- [ ] {baseDir} used for portability when needed
+- [ ] `${CLAUDE_SKILL_DIR}` used for in-skill paths (never `{baseDir}`, which does not resolve)
 
 ### Scripts (if included)
 
@@ -209,7 +209,7 @@ For form filling, see references/FORMS.md
 - [ ] Discoverable by synonyms users might use
 
 ### Examples of Good/Poor Descriptions
-See `content-guidelines.md`'s "Examples of Good Descriptions" / "Examples of Poor Descriptions" — the canonical copy, kept in one place to avoid drift.
+See `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`'s "Examples of Good Descriptions" / "Examples of Poor Descriptions" — the canonical copy, kept in one place to avoid drift.
 
 ## Testing Checklist
 
@@ -266,7 +266,7 @@ If creating complex skills:
 - [ ] Only required tools are included (principle of least privilege)
 - [ ] No overly broad permissions (`Bash(*)`)
 - [ ] If `Bash` included: scope to specific commands (`Bash(git:*)`)
-  - Example: `Read,Write,Bash(python:*)` for Python skill
+  - Example: `Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/check.py *)` for a skill that runs one bundled Python script
   - Example: `Bash(git:*)` for git-only skill
 - [ ] Safe defaults (read-only when possible)
 
@@ -333,8 +333,8 @@ See `references/secrets-and-credentials.md` for complete guidance.
 
 For comprehensive best practices, see:
 - **How skills work**: `how-skills-work.md` (architecture, token loading, selection mechanism)
-- **Writing effective descriptions**: `content-guidelines.md` (description formula, trigger phrases, testing)
+- **Writing effective descriptions**: `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md` (description formula, trigger phrases, testing)
 - **Workflow patterns**: `templates.md` (checklist, feedback loop, conditional, template patterns)
 - **Testing & iteration**: `skill-workflow.md` Phase 7 and Testing Checklist
-- **Security & permissions**: `allowed-tools.md` (tool scoping, principle of least privilege)
+- **Security & permissions**: `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md` (tool scoping, principle of least privilege)
 - **Advanced patterns**: `advanced-patterns.md` (complex skill patterns, archetypes, risk tiering)

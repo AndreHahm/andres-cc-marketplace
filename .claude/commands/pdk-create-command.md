@@ -1,6 +1,6 @@
 ---
 description: Create a new Claude Code slash command with full feature support
-allowed-tools: Write, Read, Bash(mkdir:*)
+allowed-tools: Write, Bash(mkdir:*)
 argument-hint: '[command-name] [description]'
 version: 1.0.1
 ---
@@ -49,7 +49,7 @@ The `allowed-tools` field provides granular security control:
 
 - Basic: `allowed-tools: Read, Write, Edit`
 - Restricted bash: `allowed-tools: Bash(git:*), Read`  # Only git commands
-- Multiple restrictions: `allowed-tools: Read, Write, Bash(npm:*, git:*)`
+- Multiple restrictions: `allowed-tools: Read, Write, Bash(npm:*), Bash(git:*)`
 
 ## Features to Support
 
@@ -124,7 +124,7 @@ export const $ARGUMENTS: React.FC = () => {
 ```markdown
 ---
 description: Analyze dependencies
-allowed-tools: Read, Bash(npm:*, yarn:*, pnpm:*)
+allowed-tools: Read, Bash(npm:*), Bash(yarn:*), Bash(pnpm:*)
 ---
 
 Current dependencies:

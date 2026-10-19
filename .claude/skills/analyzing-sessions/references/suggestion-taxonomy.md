@@ -18,7 +18,7 @@
 | `ENHANCE` | Improves existing behavior without changing its purpose | Enhance: expand security scan to include substitution-variable audit |
 | `ADD` | Adds a missing capability, gate, check, or section | Add: AskUserQuestion pattern detection to pre-analysis |
 | `REMOVE` | Eliminates harmful, redundant, or misleading content | Remove: duplicate suggestion S03 (same fix as S01, different component) |
-| `AUDIT` | Schedules a future review when a fix cannot be made now | Audit: plugin-rulebook thresholds after next size-limits.md change |
+| `AUDIT` | Schedules a future review when a fix cannot be made now | Audit: plugin-rulebook thresholds after next pdk-size-limits.md change |
 
 ## Merge Rules
 

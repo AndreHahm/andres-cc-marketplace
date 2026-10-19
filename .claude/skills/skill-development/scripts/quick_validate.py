@@ -6,9 +6,16 @@ Provides validation functions for skill structure and frontmatter metadata.
 Used by package_skill.py and repair_skill.py scripts.
 """
 
+import io
+import re
 import sys
 from pathlib import Path
+
 import yaml
+
+# The closing frontmatter delimiter is a line that is exactly `---`;
+# a `---` inside a value must not end the block.
+FRONTMATTER_CLOSE = re.compile(r"^---[ \t]*$", re.MULTILINE)
 
 
 def validate_skill_frontmatter(skill_path):
@@ -26,17 +33,18 @@ def validate_skill_frontmatter(skill_path):
         return False, "SKILL.md not found"
 
     try:
-        content = skill_md.read_text(encoding='utf-8')
+        content = skill_md.read_text(encoding="utf-8")
 
         # Check for YAML frontmatter
-        if not content.startswith('---'):
+        if not content.startswith("---"):
             return False, "SKILL.md must start with YAML frontmatter (---)"
 
         # Extract frontmatter
         try:
-            frontmatter_end = content.find('---', 3)
-            if frontmatter_end == -1:
+            closing = FRONTMATTER_CLOSE.search(content, 3)
+            if closing is None:
                 return False, "YAML frontmatter not properly closed"
+            frontmatter_end = closing.start()
 
             frontmatter_text = content[3:frontmatter_end].strip()
             frontmatter = yaml.safe_load(frontmatter_text)
@@ -48,7 +56,7 @@ def validate_skill_frontmatter(skill_path):
         if not isinstance(frontmatter, dict):
             return False, "Frontmatter must be a dictionary"
 
-        required_fields = ['name', 'description']
+        required_fields = ["name", "description"]
         for field in required_fields:
             if field not in frontmatter:
                 return False, f"Missing required field: {field}"
@@ -56,7 +64,7 @@ def validate_skill_frontmatter(skill_path):
                 return False, f"Field '{field}' cannot be empty"
 
         # Validate skill name format
-        name = frontmatter['name']
+        name = frontmatter["name"]
         if not isinstance(name, str):
             return False, "Field 'name' must be a string"
 
@@ -64,7 +72,7 @@ def validate_skill_frontmatter(skill_path):
             return False, "Skill name too long (max 100 characters)"
 
         # Validate description
-        description = frontmatter['description']
+        description = frontmatter["description"]
         if not isinstance(description, str):
             return False, "Field 'description' must be a string"
 
@@ -99,7 +107,7 @@ def validate_skill_structure(skill_path):
         return False, "SKILL.md not found"
 
     # Check for expected subdirectories (optional but common)
-    optional_dirs = ['scripts', 'references', 'assets']
+    optional_dirs = ["scripts", "references", "assets"]
     for dir_name in optional_dirs:
         dir_path = skill_path / dir_name
         if dir_path.exists() and not dir_path.is_dir():
@@ -154,38 +162,44 @@ def diagnose_skill_issues(skill_path):
         "skill_path": str(skill_path),
         "issues": [],
         "warnings": [],
-        "suggestions": []
+        "suggestions": [],
     }
 
     # Check basic existence
     if not skill_path.exists():
-        diagnosis["issues"].append({
-            "type": "critical",
-            "category": "existence",
-            "message": "Skill directory does not exist",
-            "solution": f"Create skill directory at {skill_path}"
-        })
+        diagnosis["issues"].append(
+            {
+                "type": "critical",
+                "category": "existence",
+                "message": "Skill directory does not exist",
+                "solution": f"Create skill directory at {skill_path}",
+            }
+        )
         return diagnosis
 
     # Validate structure
     structure_valid, structure_msg = validate_skill_structure(skill_path)
     if not structure_valid:
-        diagnosis["issues"].append({
-            "type": "critical",
-            "category": "structure",
-            "message": structure_msg,
-            "solution": "Fix skill directory structure"
-        })
+        diagnosis["issues"].append(
+            {
+                "type": "critical",
+                "category": "structure",
+                "message": structure_msg,
+                "solution": "Fix skill directory structure",
+            }
+        )
 
     # Validate frontmatter
     frontmatter_valid, frontmatter_msg = validate_skill_frontmatter(skill_path)
     if not frontmatter_valid:
-        diagnosis["issues"].append({
-            "type": "critical",
-            "category": "frontmatter",
-            "message": frontmatter_msg,
-            "solution": "Fix SKILL.md YAML frontmatter"
-        })
+        diagnosis["issues"].append(
+            {
+                "type": "critical",
+                "category": "frontmatter",
+                "message": frontmatter_msg,
+                "solution": "Fix SKILL.md YAML frontmatter",
+            }
+        )
 
     # Add suggestions based on what's missing
     if not diagnosis["issues"]:
@@ -195,7 +209,8 @@ def diagnose_skill_issues(skill_path):
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding='utf-8')
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     if len(sys.argv) != 2:
         print("Usage: python quick_validate.py <path/to/skill>")
         sys.exit(1)

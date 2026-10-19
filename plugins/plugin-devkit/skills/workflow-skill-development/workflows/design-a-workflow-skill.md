@@ -12,9 +12,9 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 1. **Draft the `description` first — this is the most important field.** Claude decides whether to activate a skill based solely on the `description` in frontmatter. Third-person voice, include trigger keywords and exclusions. Test it: would this description cause the skill to activate for the right requests and stay silent for wrong ones?
 
-2. **Write the "When to Use" section.** List 4-6 specific scenarios where the skill applies. These scope the LLM's behavior after activation — be concrete: "when auditing Solidity for reentrancy" not "when doing security."
+2. **Write the "When to Use" section (required by plugin-rulebook R35).** List 4-6 specific scenarios where the skill applies. These scope the LLM's behavior after activation — be concrete: "when auditing Solidity for reentrancy" not "when doing security."
 
-3. **Write the "When NOT to Use" section.** List 3-5 scenarios where a different approach is better. Name the alternative: "use Semgrep for simple pattern matching" not "not for simple cases." These help the LLM redirect once active, but do not affect whether the skill activates.
+3. **Write the "When NOT to Use" section (required by R35).** List 3-5 scenarios where a different approach is better. Name the alternative: "use Semgrep for simple pattern matching" not "not for simple cases." These help the LLM redirect once active, but do not affect whether the skill activates — the exclusions belong in the `description` too.
 
 4. **Define 3-5 essential principles.** These are non-negotiable rules that apply to every invocation. Ask: "What mistake would ruin the output if the LLM made it?" Each principle guards against a specific failure mode.
 
@@ -32,7 +32,7 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 2. **Map to a pattern** using the Pattern Selection decision tree in SKILL.md's Pattern Selection section.
 
-3. **Validate the choice.** Does your skill's workflow naturally fit the selected pattern's skeleton? If you're forcing it, try a different pattern. Full structural skeletons live in `references/workflow-patterns.md`, which SKILL.md's own Reference Index already links to directly — not a required read during this step, and not a hop through this workflow file.
+3. **Validate the choice.** Does your skill's workflow naturally fit the selected pattern's skeleton? If you're forcing it, try a different pattern. SKILL.md's Pattern Summary table lists each pattern's key feature; that is enough to validate the choice.
 
 **Exit:** Pattern selected and validated against your skill's structure.
 
@@ -69,7 +69,7 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 **Actions:**
 
-1. **For each action in each phase**, identify the tool it needs. `references/tool-assignment-guide.md`'s "Tool Selection Matrix" — linked directly from SKILL.md's Reference Index — has the canonical operation-to-tool mapping (not restated here to avoid drift)
+1. **For each action in each phase**, identify the tool it needs, using SKILL.md's "Tool Assignment Quick Reference" and its Key rules (a dedicated tool such as Glob, Grep or Read beats the Bash equivalent)
 
 2. **Compile the unique tool list.** This becomes your `allowed-tools` in frontmatter.
 
@@ -77,12 +77,9 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 4. **Check for Bash misuse.** Any action using Bash for file operations (grep, find, cat) should use the dedicated tool instead.
 
-5. **If Bash is genuinely needed**, scope it to the specific command(s) actually invoked (e.g. `Bash(git:* date:*)`) — never grant a bare `Bash`, per plugin-rulebook R6.
+5. **If Bash is genuinely needed**, scope it to the specific command(s) actually invoked (e.g. `Bash(git:*) Bash(date:*)`) — never grant a bare `Bash`, per plugin-rulebook R6.
 
 6. **For agents**, repeat this process for the agent's tool list. Agent tools are specified with `tools:` not `allowed-tools:`.
-
-The complete tool selection matrix lives in `references/tool-assignment-guide.md`, linked directly from
-SKILL.md's own Reference Index — not a required read if Phase 4 is clear, and not a hop through this file.
 
 **Exit:** Validated tool list for each component (skill, agents).
 
@@ -118,9 +115,6 @@ SKILL.md's own Reference Index — not a required read if Phase 4 is clear, and 
 
 6. **Verify progressive disclosure:** SKILL.md contains only what's needed for every invocation. Details are in linked files.
 
-The content-splitting heuristic lives in `references/progressive-disclosure-guide.md`, linked directly
-from SKILL.md's own Reference Index — not a hop through this file.
-
 **Exit:** All content files written, line counts within limits.
 
 ---
@@ -131,9 +125,9 @@ from SKILL.md's own Reference Index — not a hop through this file.
 
 **Actions:**
 
-1. **Run the review checklist** — `workflows/review-checklist.md`, linked directly from SKILL.md alongside this file.
+1. **Run the review checklist** — SKILL.md's Validation Checklist; the longer self-review list is `workflows/review-checklist.md`, loaded from SKILL.md's Reference Index.
 
-2. **Check anti-patterns** against `references/anti-patterns-structure.md` (AP-1–AP-10) and `references/anti-patterns-tooling-content.md` (AP-11–AP-20), both linked directly from SKILL.md's own Reference Index. Scan for each one.
+2. **Check anti-patterns** against SKILL.md's Anti-Pattern Quick Reference table. Scan for each one; for a before/after fix on any hit, load the catalog from SKILL.md's Reference Index.
 
 3. **Validate file references.** Every path in SKILL.md must resolve to an existing file.
 

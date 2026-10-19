@@ -10,7 +10,7 @@ Common mistakes in workflow-based skill structure and workflow design (AP-1 thro
 
 **Symptom:** Skill has a vague `description` in frontmatter and no "When to Use" or "When NOT to Use" sections in the body.
 
-**Why it's wrong:** Claude decides whether to activate a skill based solely on the `description` field. A vague description causes wrong activations or missed activations. Once active, "When to Use" and "When NOT to Use" sections scope the LLM's behavior — without them, the LLM attempts tasks outside the skill's competence.
+**Why it's wrong:** Claude decides whether to activate a skill based solely on the `description` field. A vague description causes wrong activations or missed activations. Once active, "When to Use" and "When NOT to Use" sections scope the LLM's behavior — without them, the LLM attempts tasks outside the skill's competence. plugin-rulebook R35 requires both sections, so a missing one is a rule failure, not a style choice.
 
 **Before:**
 ```markdown
@@ -46,7 +46,7 @@ description: >-
 
 The `description` controls activation. The body sections scope behavior after activation.
 
-**Format rule:** Start descriptions with triggering conditions ("Use when..."), use third-person voice ("Analyzes X" not "I analyze X"), and include specific trigger keywords. See also AP-20 for the related trap of putting workflow steps in the description.
+**Format rule:** Follow `pdk-content-guidelines.md`'s description formula: third-person voice ("Analyzes X" not "I analyze X"), then a "Use when..." clause with specific trigger keywords. See also AP-20 for the related trap of putting workflow steps in the description.
 
 ---
 
@@ -101,7 +101,7 @@ python /Users/jane/projects/my-skill/scripts/analyze.py
 ```markdown
 Run the script:
 \`\`\`bash
-uv run {baseDir}/scripts/analyze.py
+uv run ${CLAUDE_SKILL_DIR}/scripts/analyze.py
 \`\`\`
 ```
 
