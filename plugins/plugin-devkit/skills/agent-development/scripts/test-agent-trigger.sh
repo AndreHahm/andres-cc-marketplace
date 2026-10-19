@@ -367,14 +367,15 @@ def _delegated_to_agent(stream_output: str, agent_name: str) -> bool:
     return False
 
 
-_PRIVILEGED_AGENT_KEYS = ("hooks", "mcpServers", "permissionMode", "tools", "disallowedTools")
+_KEPT_AGENT_KEYS = ("name", "description")
 
 
 def _strip_privileged_frontmatter(text: str) -> str:
     # The copy lands in a temp *project* agents directory, where an agent's own `hooks`,
     # `mcpServers` and `permissionMode` are honored (they are ignored only for plugin-scoped
-    # agents). Trigger testing needs just `name` and `description`, so drop every key that
-    # could run code or widen access, with its indented or list continuation lines.
+    # agents). Trigger testing needs just `name` and `description`, so this is an allowlist:
+    # every other top-level key (quoted, merged or flow-style spellings included) is dropped
+    # with its indented or list continuation lines.
     lines = text.split("\n")
     if not lines or lines[0].strip() != "---":
         return text
@@ -386,8 +387,8 @@ def _strip_privileged_frontmatter(text: str) -> str:
     for line in lines[1:end]:
         is_top_level_key = bool(line) and not line[0].isspace() and not line.startswith("-")
         if is_top_level_key:
-            key = line.split(":", 1)[0].strip()
-            dropping = key in _PRIVILEGED_AGENT_KEYS
+            key = line.split(":", 1)[0].strip().strip("\"'")
+            dropping = key not in _KEPT_AGENT_KEYS
         if not dropping:
             kept.append(line)
     return "\n".join([*kept, *lines[end:]])
