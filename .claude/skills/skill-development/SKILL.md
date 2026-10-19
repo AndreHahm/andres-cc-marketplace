@@ -94,7 +94,7 @@ Identify the entry path:
 
 - **Extract** ("turn this into a skill") — extract tools used, steps taken, and corrections made from the current conversation. Write a minimal SKILL.md and test on the original task first, then expand to variations.
 - **Greenfield** ("make a skill for X") — start with one concrete challenging task. Succeed on that single task, then extract the winning approach into a skill. Don't try to design for every scenario upfront.
-- **Audit** ("audit this skill I'm authoring", "this skill fails the checklist") — a skill still being authored, broken, or failing the Quality Checklist; a working skill that only needs polish goes to `skill-refiner-interactive`. Run the Quality Checklist first to identify violations. Snapshot with `cp -r` before any edits. Fix violations, compress, and move oversized content to `references/`. Test against the snapshot as baseline; re-optimize description if it changed.
+- **Audit** ("audit this skill I'm authoring", "this skill fails the checklist") — a skill still being authored, broken, or failing the Quality Checklist; a working skill that only needs polish goes to `skill-refiner-interactive`. Run the Quality Checklist first to identify violations. Snapshot the skill directory before any edits (the shell copy is not pre-approved by this skill, so expect an approval prompt). Fix violations, compress, and move oversized content to `references/`. Test against the snapshot as baseline; re-optimize description if it changed.
 - **Convert** ("convert this slash command to a skill") — read the slash command source, map each section to SKILL.md structure, and migrate references. Read `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` for the full detection, mapping, and validation workflow.
 
 Capture intent: what should this skill enable, when should it trigger, what is the expected output format, and how will success be measured. Proactively research edge cases, input/output formats, and dependencies before writing anything.
@@ -408,7 +408,7 @@ Run `python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py <path/to/skill>`, then
 
 ## Reference Guide
 
-The full index of every bundled reference, agent and script, with its purpose and the phase to read it in, is [`file-index.md`](references/file-index.md). Read the phase-matched file before each phase.
+The full index of every bundled reference, agent and script, with its purpose and the phase to read it in, is [`skill-resource-map.md`](references/skill-resource-map.md). Read the phase-matched file before each phase.
 
 **Internal dependencies** (not directly invoked — referenced by the scripts in the index): `scripts/run_eval.py`, `scripts/generate_report.py`, `scripts/improve_description.py`, `scripts/utils.py`, `scripts/__init__.py`, `eval-viewer/viewer.html`. `LICENSE.txt` — Apache License 2.0.
 
