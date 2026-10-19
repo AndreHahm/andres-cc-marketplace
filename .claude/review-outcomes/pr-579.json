@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4292168844",
+      "line": 333,
+      "note": "promotion moved to step 8 terminal paths (4ea97862)",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "pr": 579,
+      "recorded_at": "2026-10-16T08:24:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4292190594",
+      "line": 38,
+      "note": "full git location variable set scrubbed; regression test added (4ea97862)",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "pr": 579,
+      "recorded_at": "2026-10-16T08:24:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4292190606",
+      "line": 450,
+      "note": "eval summary limited to evals 1-24; iterations 8-9 added (4ea97862)",
+      "path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+      "pr": 579,
+      "recorded_at": "2026-10-16T08:24:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4298344139",
+      "line": 80,
+      "note": "Local working ledger now excluded via info/exclude; regression test added.",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+      "pr": 579,
+      "recorded_at": "2026-10-16T20:16:50+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4298344146",
+      "line": 136,
+      "note": "refuted merges tracked and local entries by key, local wins; regression test added.",
+      "path": "plugins/git-kit/scripts/git-review-ledger.py",
+      "pr": 579,
+      "recorded_at": "2026-10-16T20:16:51+00:00"
+    }
+  ]
+}

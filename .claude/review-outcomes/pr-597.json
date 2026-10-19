@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4302316458",
+      "line": 198,
+      "note": "Reproduced in all four checks; a hash after whitespace in the allowed-tools value now fails closed. Fixed in dca35034 with regression cases.",
+      "path": "plugins/git-kit/skills/github-issue-creator/scripts/smoke_test.py",
+      "pr": 597,
+      "recorded_at": "2026-10-17T10:26:34+00:00",
+      "rule": "yaml-comment-grant-check"
+    }
+  ]
+}

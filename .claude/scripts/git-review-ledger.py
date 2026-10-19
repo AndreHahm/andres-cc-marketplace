@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Outcomes ledger for `handling-review-findings`: one disposition per review finding.
 
-Two JSON files with the same shape, {"entries": [...]}:
+JSON files with the same shape, {"entries": [...]}:
   - a local, gitignored working ledger (default .claude/review-ledger.local.json), written
     during the fix loop (`record` adds it to the repository's .git/info/exclude when no ignore
     rule covers it);
-  - a git-tracked file (default .claude/review-outcomes.json) that `promote` fills with a
-    PR's entries before its last push.
+  - a git-tracked directory (default .claude/review-outcomes/) holding one pr-<N>.json per PR,
+    which `promote` fills with that PR's entries before its last push. A PR writes only its own
+    file, so concurrent PRs never edit the same lines and never conflict.
 
 Subcommands: record, refuted, promote. Exit codes: 0 ok, 2 refused (bad input, or a ledger file
 that is not valid JSON of the expected shape - it is never overwritten)."""
@@ -16,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess  # nosec B404  # runs git with list arguments, never a shell
 import sys
 import tempfile
@@ -27,7 +29,8 @@ REFUTED = (
     "false_positive",
 )  # a decline can rest on a reason that lapses; only a refutation stands
 DEFAULT_LOCAL = ".claude/review-ledger.local.json"
-DEFAULT_TRACKED = ".claude/review-outcomes.json"
+DEFAULT_TRACKED = ".claude/review-outcomes"
+PR_FILE = re.compile(r"pr-([1-9][0-9]*)\.json")
 # The set git-verify-fix-diff.py scrubs too: a stale one points this script's git calls elsewhere.
 GIT_LOCATION_VARS = (
     "GIT_DIR",
@@ -52,7 +55,7 @@ def repo_root() -> Path:
     return Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else Path.cwd()
 
 
-def confine(raw: str, root: Path) -> Path:
+def confine(raw: str, root: Path, directory: bool = False) -> Path:
     """A ledger lives only under the repository's .claude/ directory (symlinks resolved)."""
     if (root / ".claude").is_symlink():
         raise LedgerError(f"{root / '.claude'} is a symlink; ledgers live in a real .claude/ only")
@@ -63,7 +66,7 @@ def confine(raw: str, root: Path) -> Path:
     resolved = candidate.resolve()
     if any(ord(c) < 32 for c in str(resolved)):
         raise LedgerError("a ledger path may not contain control characters")
-    if resolved.suffix != ".json":
+    if not directory and resolved.suffix != ".json":
         raise LedgerError(f"{raw} is not a .json file; ledgers are JSON files only")
     if (root / ".claude").resolve() not in resolved.parents:
         raise LedgerError(f"{raw} is outside {root / '.claude'}; ledgers live under .claude/ only")
@@ -151,6 +154,48 @@ def save(path: Path, entries: list[dict]) -> None:
         raise
 
 
+def pr_file(directory: Path, pr: int) -> Path:
+    return directory / f"pr-{pr}.json"
+
+
+def _check_regular(path: Path) -> None:
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        raise LedgerError(f"{path} is not a regular file; tracked ledgers are regular files only")
+
+
+def load_pr(directory: Path, pr: int) -> list[dict]:
+    """One PR's tracked entries; a file carrying another PR's entry is refused."""
+    path = pr_file(directory, pr)
+    _check_regular(path)
+    entries = load(path)
+    if any(e.get("pr") != pr for e in entries):
+        raise LedgerError(f"{path} holds entries for a PR other than {pr}")
+    return entries
+
+
+def load_dir(directory: Path) -> list[dict]:
+    """Every PR's tracked entries in PR-number order (the corpus reader; a bad file refuses)."""
+    if not directory.exists():
+        return []
+    if not directory.is_dir():
+        raise LedgerError(f"{directory} is not a directory")
+    numbered = []
+    for child in directory.iterdir():
+        match = PR_FILE.fullmatch(child.name)
+        if not match:
+            raise LedgerError(f"{child} is not named pr-<N>.json")
+        numbered.append((int(match.group(1)), child))
+    entries: list[dict] = []
+    for pr, _ in sorted(numbered):
+        entries += load_pr(directory, pr)
+    return entries
+
+
+def _sort_key(entry: dict) -> tuple:
+    finding = str(entry.get("finding", ""))
+    return (not finding.isdigit(), int(finding) if finding.isdigit() else 0, finding)
+
+
 def _key(entry: dict) -> tuple:
     return (entry.get("pr"), entry.get("finding"))
 
@@ -177,7 +222,7 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 
 def cmd_refuted(args: argparse.Namespace) -> int:
-    merged = load(args.tracked)
+    merged = load_pr(args.tracked, args.pr)
     for entry in load(args.local):  # a later local record replaces the promoted one
         merged = upsert(merged, entry)
     refuted = [e for e in merged if e.get("pr") == args.pr and e.get("disposition") in REFUTED]
@@ -192,12 +237,15 @@ def cmd_promote(args: argparse.Namespace) -> int:
     if not moving:
         print(f"No ledger entries for PR {args.pr}; nothing to promote.")
         return 0
-    merged = load(tracked)
+    if args.pr < 1:
+        raise LedgerError("a PR number must be 1 or greater")
+    merged = load_pr(tracked, args.pr)
     for entry in moving:
         merged = upsert(merged, entry)
-    save(tracked, merged)
+    target = pr_file(tracked, args.pr)
+    save(target, sorted(merged, key=_sort_key))
     save(local, [e for e in local_entries if e.get("pr") != args.pr])
-    print(f"Promoted {len(moving)} entries for PR {args.pr} to {tracked}.")
+    print(f"Promoted {len(moving)} entries for PR {args.pr} to {target}.")
     return 0
 
 
@@ -221,7 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
     refuted.add_argument("--pr", type=int, required=True)
     refuted.set_defaults(func=cmd_refuted)
 
-    promote = sub.add_parser("promote", help="move a merged PR's entries to the tracked file")
+    promote = sub.add_parser("promote", help="move a PR's entries to its tracked pr-<N>.json")
     promote.add_argument("--pr", type=int, required=True)
     promote.set_defaults(func=cmd_promote)
     return parser
@@ -237,9 +285,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         root = repo_root()
         args.local = confine(args.local, root)
-        args.tracked = confine(args.tracked, root)
-        if args.local == args.tracked:
-            raise LedgerError("--local and --tracked must be different files")
+        args.tracked = confine(args.tracked, root, directory=True)
+        if args.tracked.exists() and not args.tracked.is_dir():
+            raise LedgerError(f"--tracked {args.tracked} must be a directory")
+        if args.local == args.tracked or args.tracked in args.local.parents:
+            raise LedgerError("--local must be a different file, outside the --tracked directory")
         refuse_if_tracked(args.local, root)
         if args.command == "record":
             ensure_ignored(args.local, root)
