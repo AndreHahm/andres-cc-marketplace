@@ -167,8 +167,9 @@ def _trusted_directories() -> tuple[str, ...]:
     checkout owned by another user (a host-mounted repository in a container) would be refused. Only
     these values are read back, as data, and passed on the command line; every other global setting
     stays out. Values come in order and empty ones are kept: for git an empty value resets the list,
-    so a directory the user revoked stays revoked. `-z` keeps a value with an escaped newline in one
-    piece. Entries in `include`d files are not read, so such a checkout is still refused. A
+    so a directory the user revoked stays revoked. A leading `~` is expanded here, because the
+    pinned environment has no HOME for git to do it. `-z` keeps a value with an escaped newline in
+    one piece. Entries in `include`d files are not read, so such a checkout is still refused. A
     configuration file the checkout could have written (a file under it, or the target of a link in
     HOME) is branch content, not the user's own, and is ignored."""
     home = os.environ.get("HOME", "")
@@ -210,7 +211,11 @@ def _trusted_directories() -> tuple[str, ...]:
     if read.returncode != 0:
         return ()
     values = os.fsdecode(read.stdout).split("\0")
-    return tuple(values[:-1] if values[-1] == "" else values)
+    entries = values[:-1] if values[-1] == "" else values
+    # Git expands a leading `~/` or `~user/` itself, but its pinned environment has no HOME to do it
+    # with; an entry that cannot be expanded would make git die on every check, so it is dropped.
+    expanded = (os.path.expanduser(v) if v.startswith("~") else v for v in entries)
+    return tuple(v for v in expanded if not v.startswith("~"))
 
 
 def repo_root() -> Path:

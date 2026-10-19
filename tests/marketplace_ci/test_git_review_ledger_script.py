@@ -874,3 +874,58 @@ def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
     env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 0, result.stderr
+
+
+# --- a `~` in a safe.directory entry (review of PR #610: Codex, second round) ---------------------
+
+
+def _checkout_in_home(tmp_path_factory, config_text):
+    """A checkout at <home>/repo, with the user's global config in <home>, outside the checkout."""
+    home = tmp_path_factory.mktemp("home").resolve()
+    repo = home / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    (repo / ".claude").mkdir()
+    (home / ".gitconfig").write_text(config_text.replace("<repo>", str(repo)), encoding="utf-8")
+    return home, repo
+
+
+def _record_from(repo, home, bin_dir):
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home), "PYTHONDONTWRITEBYTECODE": "1"}
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *RECORD_ARGS],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_a_tilde_safe_directory_entry_works_for_a_checkout_owned_by_another_user(tmp_path_factory):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    home, repo = _checkout_in_home(tmp_path_factory, "[safe]\n\tdirectory = ~/repo\n")
+    result = _record_from(repo, home, bin_dir)
+    assert result.returncode == 0, result.stderr
+    assert (repo / ".claude" / "review-ledger.local.json").exists()
+
+
+def test_an_entry_that_cannot_be_expanded_is_dropped_not_fatal(tmp_path_factory):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    config = "[safe]\n\tdirectory = ~no-such-user-zzz/x\n\tdirectory = <repo>\n"
+    home, repo = _checkout_in_home(tmp_path_factory, config)
+    result = _record_from(repo, home, bin_dir)
+    assert result.returncode == 0, result.stderr
+
+
+def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, tmp_path):
+    home = tmp_path_factory.mktemp("home").resolve()
+    (home / ".gitconfig").write_text(
+        "[safe]\n\tdirectory = ~/a\n\tdirectory = /abs/b\n\tdirectory =\n\tdirectory = *\n",
+        encoding="utf-8",
+    )
+    ledger = _load_script()
+    ledger._trusted_directories.cache_clear()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert ledger._trusted_directories() == (str(home / "a"), "/abs/b", "", "*")
