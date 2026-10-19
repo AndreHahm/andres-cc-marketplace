@@ -83,13 +83,54 @@ _KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
 _HARDENING = ("-c", "core.fsmonitor=false", "-c", f"core.hooksPath={os.devnull}")
 
 
-def _repository_root(start: Path) -> Path | None:
-    """The nearest ancestor of `start` holding a `.git` entry (a directory, or the file a linked
-    worktree has), found without running git."""
+def _main_working_tree(entry: Path) -> Path | None:
+    """For a linked worktree's `.git` file, the directory that owns the shared git directory."""
+    lines = entry.read_text(encoding="utf-8").splitlines()
+    first = lines[0] if lines else ""
+    if not first.startswith("gitdir:"):
+        raise ValueError(f"{entry} is not a gitdir pointer")
+    gitdir = (entry.parent / first.removeprefix("gitdir:").strip()).resolve()
+    commondir = gitdir / "commondir"
+    if not commondir.is_file():
+        return None  # a submodule: its superproject is an ancestor, which the walk finds anyway
+    common = (gitdir / commondir.read_text(encoding="utf-8").strip()).resolve()
+    return common.parent if common.name == ".git" else common
+
+
+def _repository_roots(start: Path) -> list[Path]:
+    """Every directory above `start` that a branch could have written: each ancestor holding a
+    `.git` entry (a directory, or the file a linked worktree or submodule has) and, for a linked
+    worktree, the main working tree. Found without running git."""
+    roots: list[Path] = []
     for candidate in (start, *start.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    return None
+        entry = candidate / ".git"
+        if not entry.exists():
+            continue
+        roots.append(candidate)
+        if entry.is_file():
+            main = _main_working_tree(entry)
+            if main is not None:
+                roots.append(main)
+    return roots
+
+
+def _is_inside(path: Path, guards: list[Path]) -> bool:
+    """Whether `path` lies under a guard, compared by file identity: letter case on a
+    case-insensitive file system, bind mounts and other aliases cannot hide a match."""
+    stats = []
+    for guard in guards:
+        try:
+            stats.append(os.stat(guard))
+        except OSError:
+            continue
+    for parent in path.parents:
+        try:
+            seen = os.stat(parent)
+        except OSError:
+            continue
+        if any(os.path.samestat(seen, other) for other in stats):
+            return True
+    return False
 
 
 def _find_git() -> str | None:
@@ -98,11 +139,13 @@ def _find_git() -> str | None:
     if not found or not os.path.isabs(found):  # an empty or relative PATH entry resolves here
         return None
     here = Path(os.path.realpath(Path.cwd()))
-    root = _repository_root(here)
-    guards = [here] if root is None else [here, root]
+    try:
+        guards = [here, *_repository_roots(here)]
+    except (OSError, ValueError):
+        return None  # a `.git` entry that cannot be read is not trusted
     # The path as found and where it resolves both count: a symlink in the repository is its file.
     for candidate in (Path(os.path.abspath(found)), Path(os.path.realpath(found))):
-        if any(candidate.is_relative_to(guard) for guard in guards):
+        if _is_inside(candidate, guards):
             return None
     return found
 

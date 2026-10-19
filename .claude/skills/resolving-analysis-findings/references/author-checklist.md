@@ -4,8 +4,8 @@ For a script that runs `git` or another command. Written from the findings in #5
 rationale for the `git`-through-`subprocess` items is in `docs/ci.md`, section "Codacy: `git` through
 `subprocess` in plugin scripts"; it is not repeated here.
 
-- [ ] **Reuse the script's existing helper** (`_git` in `git-verify-fix-diff.py`; `git-review-ledger.py`
-      has none) instead of a new `subprocess.run` with a command held in a variable. Why a variable
+- [ ] **Reuse the script's existing helper** (`_git` in `git-verify-fix-diff.py` and
+      `git-review-ledger.py`) instead of a new `subprocess.run` with a command held in a variable. Why a variable
       command is worse: `docs/ci.md`, same section.
 - [ ] **Literal subcommand, list arguments, no `shell=True`.** Untrusted text only ever as a later list
       element, after `--` where the command supports it.

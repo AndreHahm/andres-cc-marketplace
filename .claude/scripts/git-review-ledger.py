@@ -15,9 +15,11 @@ that is not valid JSON of the expected shape - it is never overwritten)."""
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
+import shutil
 import subprocess  # nosec B404  # runs git with list arguments, never a shell
 import sys
 import tempfile
@@ -33,27 +35,121 @@ DEFAULT_TRACKED = ".claude/review-outcomes"
 PR_FILE = re.compile(r"pr-([1-9][0-9]*)\.json")
 # save()'s temp file (mkstemp, prefix "<name>.", suffix ".tmp"): a hard kill can leave one behind.
 SAVE_TEMP = re.compile(r"pr-[1-9][0-9]*\.json\.[A-Za-z0-9_]+\.tmp")
-# The set git-verify-fix-diff.py scrubs too: a stale one points this script's git calls elsewhere.
-GIT_LOCATION_VARS = (
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_COMMON_DIR",
-    "GIT_NAMESPACE",
-    "GIT_PREFIX",
-)
+# The only inherited variables git is given: locale and time zone. Everything else (GIT_DIR,
+# GIT_CONFIG_*, GIT_TRACE*, GIT_EXEC_PATH, HOME, XDG_CONFIG_HOME, PAGER, ...) is dropped (#588).
+# Mirrors git-verify-fix-diff.py, which documents the same choices.
+_KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
+# Repository configuration can name an fsmonitor command, and hooks run on index writes and
+# checkouts; both are switched off on every call.
+_HARDENING = ("-c", "core.fsmonitor=false", "-c", f"core.hooksPath={os.devnull}")
+_PINNED_ENV = {
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_NO_LAZY_FETCH": "1",
+    "GIT_NO_REPLACE_OBJECTS": "1",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_TERMINAL_PROMPT": "0",
+}
 
 
 class LedgerError(Exception):
     pass
 
 
-def repo_root() -> Path:
-    out = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+def _main_working_tree(entry: Path) -> Path | None:
+    """For a linked worktree's `.git` file, the directory that owns the shared git directory."""
+    lines = entry.read_text(encoding="utf-8").splitlines()
+    first = lines[0] if lines else ""
+    if not first.startswith("gitdir:"):
+        raise ValueError(f"{entry} is not a gitdir pointer")
+    gitdir = (entry.parent / first.removeprefix("gitdir:").strip()).resolve()
+    commondir = gitdir / "commondir"
+    if not commondir.is_file():
+        return None  # a submodule: its superproject is an ancestor, which the walk finds anyway
+    common = (gitdir / commondir.read_text(encoding="utf-8").strip()).resolve()
+    return common.parent if common.name == ".git" else common
+
+
+def _repository_roots(start: Path) -> list[Path]:
+    """Every directory above `start` that a branch could have written: each ancestor holding a
+    `.git` entry (a directory, or the file a linked worktree or submodule has) and, for a linked
+    worktree, the main working tree. Found without running git."""
+    roots: list[Path] = []
+    for candidate in (start, *start.parents):
+        entry = candidate / ".git"
+        if not entry.exists():
+            continue
+        roots.append(candidate)
+        if entry.is_file():
+            main = _main_working_tree(entry)
+            if main is not None:
+                roots.append(main)
+    return roots
+
+
+def _is_inside(path: Path, guards: list[Path]) -> bool:
+    """Whether `path` lies under a guard, compared by file identity: letter case on a
+    case-insensitive file system, bind mounts and other aliases cannot hide a match."""
+    stats = []
+    for guard in guards:
+        try:
+            stats.append(os.stat(guard))
+        except OSError:
+            continue
+    for parent in path.parents:
+        try:
+            seen = os.stat(parent)
+        except OSError:
+            continue
+        if any(os.path.samestat(seen, other) for other in stats):
+            return True
+    return False
+
+
+def _find_git() -> str | None:
+    """An absolute path to git that is not inside the repository the script was started in."""
+    found = shutil.which("git")
+    if not found or not os.path.isabs(found):  # an empty or relative PATH entry resolves here
+        return None
+    here = Path(os.path.realpath(Path.cwd()))
+    try:
+        guards = [here, *_repository_roots(here)]
+    except (OSError, ValueError):
+        return None  # a `.git` entry that cannot be read is not trusted
+    # The path as found and where it resolves both count: a symlink in the repository is its file.
+    for candidate in (Path(os.path.abspath(found)), Path(os.path.realpath(found))):
+        if _is_inside(candidate, guards):
+            return None
+    return found
+
+
+@functools.cache
+def _git_path() -> str:
+    found = _find_git()
+    if found is None:
+        raise LedgerError("no usable git: it is missing, or found inside the repository")
+    return found
+
+
+def _clean_env() -> dict[str, str]:
+    env = {k: v for k, v in os.environ.items() if k in _KEEP_ENV}
+    env["PATH"] = os.path.dirname(_git_path())
+    env.update(_PINNED_ENV)
+    return env
+
+
+def _git(cwd: Path, *args: str, text: bool = False) -> subprocess.CompletedProcess:
+    return subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
+        [_git_path(), *_HARDENING, *args],
+        cwd=cwd,
+        env=_clean_env(),
+        capture_output=True,
+        text=text,
     )
+
+
+def repo_root() -> Path:
+    out = _git(Path.cwd(), "rev-parse", "--show-toplevel", text=True)
     return Path(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip() else Path.cwd()
 
 
@@ -78,11 +174,7 @@ def confine(raw: str, root: Path, directory: bool = False) -> Path:
 def refuse_if_tracked(path: Path, root: Path) -> None:
     """The working ledger must stay untracked (a force-added copy could carry planted entries)."""
     rel = os.path.relpath(path, root.resolve())
-    tracked = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "ls-files", "--error-unmatch", "--", f":(top,literal){rel}"],
-        cwd=root,
-        capture_output=True,
-    )
+    tracked = _git(root, "ls-files", "--error-unmatch", "--", f":(top,literal){rel}")
     if tracked.returncode not in (0, 1):
         raise LedgerError(
             f"could not check whether {rel} is tracked (git exit {tracked.returncode})"
@@ -99,11 +191,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
     rel = os.path.relpath(path, root.resolve())
 
     def ignored() -> bool:
-        probe = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
-            ["git", "check-ignore", "-q", "--no-index", "--", rel],
-            cwd=root,
-            capture_output=True,
-        )
+        probe = _git(root, "check-ignore", "-q", "--no-index", "--", rel)
         if probe.returncode not in (0, 1):
             raise LedgerError(
                 f"could not check whether {rel} is ignored (git exit {probe.returncode})"
@@ -112,12 +200,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
 
     if ignored():
         return
-    located = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
-        ["git", "rev-parse", "--git-path", "info/exclude"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-    )
+    located = _git(root, "rev-parse", "--git-path", "info/exclude", text=True)
     if located.returncode != 0 or not located.stdout.strip():
         raise LedgerError(f"could not locate this repository's info/exclude to ignore {rel}")
     exclude = Path(located.stdout.strip())
@@ -289,8 +372,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    for var in GIT_LOCATION_VARS:
-        os.environ.pop(var, None)
     try:
         args = build_parser().parse_args(argv)
     except SystemExit as exc:
