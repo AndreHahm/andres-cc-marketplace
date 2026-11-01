@@ -10,7 +10,7 @@ Two related skills: writing trigger descriptions so agents activate reliably, an
 
 An agent file has two places for triggering information:
 
-1. **`description:` field in YAML frontmatter.** Always loaded into parent context; used by the harness to decide when to dispatch. Keep it flat prose, ≤1024 chars.
+1. **`description:` field in YAML frontmatter.** Always loaded into parent context; used by the harness to decide when to dispatch. Keep it flat prose, aim for ≤1024 chars.
 2. **`## When to invoke` body section.** Loaded only when the agent runs. This is where detailed scenarios live — prose bullets, not transcript shapes.
 
 ### Description Format
@@ -19,7 +19,7 @@ An agent file has two places for triggering information:
 description: Use this agent when [conditions]. Typical triggers include [scenario 1], [scenario 2], and [scenario 3]. See "When to invoke" in the agent body for worked scenarios.
 ```
 
-**Components:**
+**Components** (cover all three inside the one description form above, which still starts "Use this agent when"):
 
 1. **Action** (required) — what does this agent do?
    - Good: `Execute read-only database queries for data analysis`
@@ -30,7 +30,7 @@ description: Use this agent when [conditions]. Typical triggers include [scenari
    - Bad: `when needed` / `for database work`
 
 3. **Constraints** (required) — what's in/out of scope
-   - Good: `SELECT only; write operations blocked`
+   - Good: `SELECT queries only`
    - Bad: absent or vague
 
 ### "When to invoke" Body Section
@@ -92,7 +92,7 @@ Don't write three near-duplicate scenarios that differ only in the literal phras
 
 ✅ **Specific** — reliable trigger:
 ```
-"Execute read-only SQL queries for data analysis. Use when analyzing data, generating reports, or exploring table structure. SELECT only."
+"Use this agent when analyzing data, generating reports, or exploring table structure with SELECT queries. Typical triggers include running a query and summarizing a table."
 ```
 
 ### Writing a Description: Step by Step
@@ -106,7 +106,7 @@ Don't write three near-duplicate scenarios that differ only in the literal phras
 Example for a database analyzer:
 - Use cases: analyze data, generate report, explore database structure
 - Trigger phrases: "analyze", "generate report", "explore structure"
-- Result: `Execute read-only database queries for data analysis. Use when exploring table structure, answering questions about data, or generating reports. SELECT only; write operations blocked.`
+- Result: `Use this agent when exploring table structure, answering questions about data, or generating reports with SELECT queries. Typical triggers include analyzing data and exploring a schema.`
 
 ### Trigger Phrase Library
 
@@ -158,7 +158,7 @@ description: Use this agent when you need to write or improve documentation for 
 | Vague description | "Analyze and execute operations" matches too many things | Add specific trigger phrases from real use cases |
 | Missing trigger phrases | "Use for code work" — Claude can't distinguish from other agents | Include 3+ concrete trigger actions |
 | Conflicting scope | "All operations supported" on a read-only agent | State constraints explicitly |
-| Description too long | >1024 chars overloads parent context | Trim to one focused sentence + noun phrases |
+| Description too long | >1024 chars (recommended cap) overloads parent context | Trim to one focused sentence + noun phrases |
 
 ### Debugging Triggering Issues
 
@@ -181,7 +181,7 @@ description: Use this agent when you need to write or improve documentation for 
 - [ ] 3+ specific trigger phrases (concrete actions, not vague intent)
 - [ ] Scope/constraints stated
 - [ ] No vague language ("when needed", "for work", "if applicable")
-- [ ] Length ≤1024 chars
+- [ ] Length ≤1024 chars (recommended)
 - [ ] No marketing language; uses concrete verbs
 - [ ] Would match realistic user requests
 - [ ] Would NOT match requests outside scope
@@ -292,7 +292,7 @@ Use when the agent needs to reference prior work:
 
 ```
 "The user just finished creating a new skill at <skill_path>.
-Invoke skill-refiner to:
+Invoke skill-refiner-interactive to:
 1. Analyze the skill (structure, clarity, efficiency)
 2. Apply refinements
 3. Validate final quality

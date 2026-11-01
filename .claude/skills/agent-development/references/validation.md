@@ -20,7 +20,7 @@ Verify the agent file is correctly formatted with all required fields.
 **Checklist:**
 - [ ] File is Markdown with YAML frontmatter (`---` delimiters)
 - [ ] `name` present: lowercase-hyphen, 3–64 chars
-- [ ] `description` present: 10–5,000 chars (this skill's own agent-description limit — not R21's 1024-char SKILL.md-description limit, a different field)
+- [ ] `description` present: 10–5,000 chars (the validator's range, not a documented platform limit; aim for ≤1024; not R21's SKILL.md-description limit, a different field)
 - [ ] `model` field valid: `inherit`, `sonnet`, `opus`, `haiku`, `fable`, or a full model ID
 - [ ] `model` role fit (advisory, not blocking): if the agent's role is clearly orchestrator/implementer/quality-gate, compare against the role-tier mapping in `references/configuration-reference.md` — a mismatch is worth a Minor note, not a required change; `inherit` is never itself a violation
 - [ ] `color` (if present): use the current valid list in `references/configuration-reference.md` — don't duplicate a separate enum here
@@ -50,7 +50,7 @@ Verify the description will reliably trigger delegation.
 - [ ] Trigger phrases match actual user request phrasings
 - [ ] Scope/constraints stated clearly
 - [ ] Description follows: [Action]. Use when [triggers]. [Constraints].
-- [ ] Length ≤1024 chars
+- [ ] Length ≤1024 chars (recommended)
 - [ ] No vague language; no marketing language
 - [ ] Uses concrete verbs (analyze, review, fix, generate, execute)
 

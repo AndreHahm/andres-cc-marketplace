@@ -50,5 +50,5 @@ own update cadence, not how much the local rule depending on it matters.
 
 If a source's actual behavior contradicts its current classification (e.g. a `stable`-tagged page
 turns out to change every release), update `volatility`/`authority` directly in `assets/sources.json`
-and re-run `scripts/compute_priority.py` — do not leave the stale classification in place just
+and re-run `python ${CLAUDE_SKILL_DIR}/scripts/compute_priority.py` — do not leave the stale classification in place just
 because it was correct when first seeded.

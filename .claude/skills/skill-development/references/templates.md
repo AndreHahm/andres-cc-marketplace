@@ -1,7 +1,5 @@
 # Templates for Skill Creation
 
-**R18 exception (recorded):** several templates below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready template; splitting one would break its usability. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
-
 ## Content-Size Decision Tree
 
 For the authoritative decision tree (which specific content goes in SKILL.md vs. references/, including the ~100-line content-type-specific trigger for API docs/schema tables/background material), see `skill-workflow.md` Part 1 (the 80% Rule) — not restated here to avoid drift with a conflicting flat threshold.
@@ -19,40 +17,20 @@ For the authoritative decision tree (which specific content goes in SKILL.md vs.
 
 Use this template as your starting point. Customize the sections based on your skill's complexity.
 
-### Basic Template (Minimal)
+### Basic Template
 
-````markdown
----
-name: skill-name
-description: >-
-  What the skill does. Use when [specific trigger contexts].
-  [Optional: key constraints or scope].
----
+Token-optimized: carries the five standard sections the rulebook expects (Quick Start, When to Use, When NOT to Use, Testing & Validation, Reference Guide).
 
-# Skill Name
+Template file: `${CLAUDE_SKILL_DIR}/assets/skill-template-basic.md`
 
-## Quick Start
-[Minimal example showing immediate usage. Code-first, 5-10 lines.]
+#### Token Budget Checklist
 
-```bash
-# Example command or workflow
-command example here
-```
-
-## Core Workflow
-[Main 3-5 step workflow. Imperative style: "Do X", "Run Y", "Configure Z"]
-
-## Advanced Options
-[Optional: specific variations, edge cases, configuration]
-
-## Key Notes
-- Important assumption or constraint
-- Common gotcha or best practice
-- Deployment location or integration point
-
-## Full Reference
-For detailed configuration, see `references/complete-guide.md`
-````
+- [ ] SKILL.md under 500 lines total.
+- [ ] Description uses `>-` multiline format with trigger phrases ("Use when...").
+- [ ] Quick Start, When to Use, When NOT to Use, Testing & Validation, Reference Guide present.
+- [ ] No YAML metadata arrays (`keywords:`, `files:`, `version:`, `argument-hint:` removed).
+- [ ] No emoji section prefixes; no Priority tags.
+- [ ] Complex reference material (>80 lines, <20% usage) moved to `references/` directory.
 
 ### Complex Skills Template
 
@@ -66,70 +44,13 @@ name: complex-skill-name
 description: >-
   What the skill does. Use when [specific trigger contexts].
   Designed for complex skill use with robust error handling.
-allowed-tools: Read,Write,Bash(python:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/run.py *)
 ---
 ```
 
 **Body:**
 
-````markdown
-# Skill Name
-
-## Overview
-[Brief description of what this skill does]
-
-## Prerequisites
-- Required software/libraries: Python 3.8+, requests library
-- Environment variables (required):
-  - `GITHUB_TOKEN`: Personal access token from https://github.com/settings/tokens
-  - `API_ENDPOINT`: Your API endpoint URL
-- Validation: Run `bash scripts/validate-env.sh` to verify setup
-
-## Quick Start
-[3-5 step usage with example]
-
-## Common Workflows
-- [Workflow 1]
-- [Workflow 2]
-- [Workflow 3]
-
-## Validation
-Run the validation script to test the skill:
-
-```bash
-bash scripts/validate-env.sh  # Verify environment setup
-bash scripts/validate.sh      # Full skill validation
-```
-
-## Error Handling
-[How the skill handles failures and what error messages mean]
-
-## Security Notes
-
-This skill requires credentials. Never hardcode them:
-
-**Required environment variables:**
-- `API_KEY`: Get from https://service.com/api-keys
-- `SECRET_TOKEN`: Get from https://service.com/settings
-
-**Setup:**
-```bash
-export API_KEY=your_key_here
-export SECRET_TOKEN=your_token_here
-bash scripts/validate-env.sh  # Verify setup
-```
-
-**See `references/secrets-and-credentials.md` for complete security guidance.**
-
-## Troubleshooting
-[Common issues and solutions]
-
-## Support
-Contact: [Team lead / owner]
-
-## Version History
-See [VERSION_HISTORY.md](../VERSION_HISTORY.md)
-````
+Body template file: `${CLAUDE_SKILL_DIR}/assets/skill-template-complex-body.md`
 
 ### SKILL.md Body Structure Examples
 
@@ -158,54 +79,11 @@ See [VERSION_HISTORY.md](../VERSION_HISTORY.md)
 
 For skills with detailed content, create `references/complete-guide.md` or task-specific files.
 
-```markdown
-# Complete Guide: [Skill Name]
-
-## Table of Contents
-- [Configuration](#configuration)
-- [Operations](#operations)
-- [Workflows](#workflows)
-- [Troubleshooting](#troubleshooting)
-
-## Configuration
-
-### Environment Variables
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| VAR_NAME | Yes | — | Description |
-| VAR_NAME | No | default_value | Description |
-
-### File Structure
-```
-project/
-├── config.yml
-├── src/
-└── tests/
-```
-
-## Operations
-
-### Basic Operation
-[Step-by-step instructions with code examples]
-
-### Advanced Operation
-[For users who understand the basics]
-
-## Workflows
-
-### Template: [Workflow Name]
-[Checklist or step-by-step workflow]
-
-## Troubleshooting
-
-### Error: [Error Message]
-**Cause:** Explanation
-**Solution:** Fix steps
-```
+Template file: `${CLAUDE_SKILL_DIR}/assets/reference-file-template.md`
 
 ## Description Formula & Examples
 
-See `content-guidelines.md`'s "Writing Effective Descriptions" section for the formula, good/poor examples, and full writing rules — not repeated here to avoid drift.
+See `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md`'s "Writing Effective Descriptions" section for the formula, good/poor examples, and full writing rules — not repeated here to avoid drift.
 
 ## Common Description Patterns
 
@@ -287,10 +165,10 @@ Use these optional fields to customize your skill's behavior:
 Apply principle of least privilege: only grant tools your skill needs.
 
 ```yaml
-# Example 1: File processing skill (read/write files, run Python)
+# Example 1: File processing skill (read/write files, run one bundled Python script)
 ---
 name: pdf-processor
-allowed-tools: Read,Write,Bash(python:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/extract.py *)
 ---
 
 # Example 2: Git workflow skill (git commands only)
@@ -302,18 +180,19 @@ allowed-tools: Bash(git:*)
 # Example 3: Read-only analysis (inspect code, no execution)
 ---
 name: code-analyzer
-allowed-tools: Read,Bash(grep:*,ls:*)
+allowed-tools: Read,Bash(grep:*),Bash(ls:*)
 ---
 
 # Example 4: Skill with external dependencies (limited network, file ops only)
 ---
 name: markdown-doc-generator
-allowed-tools: Read,Write,Bash(python:*,curl:*)
+allowed-tools: Read,Write,Bash(python ${CLAUDE_SKILL_DIR}/scripts/generate.py *),Bash(curl:*)
 ---
 ```
 
 **Key patterns:**
 - Specify exact commands: `Bash(git:*)` not `Bash(*)`
+- Pin an interpreter to one bundled script (`Bash(python ${CLAUDE_SKILL_DIR}/scripts/x.py *)`), not `Bash(python:*)`, which pre-approves `python -c`
 - For team skills: minimal permissions
 - Never use `Bash(*)` unless absolutely necessary
 
@@ -322,7 +201,7 @@ allowed-tools: Read,Write,Bash(python:*,curl:*)
 ### Reference File Organization
 ✅ One level deep:
 ```
-skill-creator/
+skill-development/
 ├── SKILL.md
 └── references/
     ├── templates.md
@@ -331,7 +210,7 @@ skill-creator/
 
 ❌ Nested chains (avoid):
 ```
-skill-creator/
+skill-development/
 └── references/
     └── templates/
         └── advanced/
@@ -339,10 +218,10 @@ skill-creator/
 ```
 
 ### Filename Conventions
-- **Main guide:** `complete-guide.md`, `guide.md`, or `reference.md`
+- **Main guide:** `complete-guide.md` or a topic name (e.g. `refinement-workflow.md`) — never bare `guide.md` or `reference.md`
 - **Task-specific:** `deployment-guide.md`, `troubleshooting.md`
 - **Curated lists:** `checklist.md`, `templates.md`, `patterns.md`
-- **Data:** `config.md`, `environment-variables.md`
+- **Data:** `environment-variables.md`, `hook-configuration.md` (never bare `config.md`)
 
 ## Token Efficiency Tips
 

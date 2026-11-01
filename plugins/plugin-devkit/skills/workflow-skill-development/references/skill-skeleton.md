@@ -1,16 +1,21 @@
 # SKILL.md Skeleton
 
-Standard skeleton for every workflow-based skill, regardless of pattern.
+Standard skeleton for every workflow-based skill, regardless of pattern. **R18 exception (recorded):** the block below intentionally exceeds the rulebook's 30-line code-block threshold. It is a whole-example illustration, and splitting it would destroy its value as a single copy-ready file.
 
 ```markdown
 ---
 name: kebab-case-name
-description: "Third-person description with trigger keywords — this is how Claude decides to activate the skill"
+description: >-
+  Third-person description with trigger keywords. This is how Claude decides
+  to activate the skill.
 allowed-tools: Tool1 Tool2 Tool3
 # Optional fields: see tool-assignment-guide.md for the full reference
 ---
 
 # Title
+
+## Quick Start
+[2-4 numbered steps: the shortest path from activation to a finished result]
 
 ## Essential Principles
 [3-5 non-negotiable rules with WHY explanations]
@@ -32,4 +37,7 @@ allowed-tools: Tool1 Tool2 Tool3
 
 ## Success Criteria
 [Checklist for output validation]
+
+## Testing & Validation
+[Phrases that should activate the skill; phrases that should NOT, naming the right alternative; checkable pass criteria. Add a "Last dated run record:" line once evals or a smoke test exist]
 ```

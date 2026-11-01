@@ -15,7 +15,11 @@ import time
 import webbrowser
 from pathlib import Path
 
-from scripts.generate_report import generate_html
+# Run by path (`python <skill-dir>/scripts/run_loop.py`), sys.path[0] is scripts/, so the
+# `scripts.*` package imports below need the skill directory on the path.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.generate_report import generate_html  # noqa: E402
 from scripts.improve_description import improve_description
 from scripts.run_eval import find_project_root, run_eval
 from scripts.utils import parse_skill_md

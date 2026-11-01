@@ -9,8 +9,8 @@ How to choose the right tools for skills, agents, and subagents.
 | Component | What it is | When to use | How it's triggered |
 |-----------|-----------|-------------|-------------------|
 | **Skill** | Knowledge/guidance (SKILL.md) | Teaching patterns, providing domain expertise, guiding decisions | Auto-activated when frontmatter `description` matches user intent |
-| **Agent** | Autonomous executor (agents/*.md) | Tasks that run independently, produce structured output | Spawned via Task tool with `subagent_type` |
-| **Subagent** | Agent spawned by another agent | Delegating subtasks within a larger workflow | Parent agent uses Task tool |
+| **Agent** | Autonomous executor (agents/*.md) | Tasks that run independently, produce structured output | Spawned via Agent tool with `subagent_type` |
+| **Subagent** | Agent spawned by another agent | Delegating subtasks within a larger workflow | Parent agent uses Agent tool |
 | **Command** | User-invoked action (commands/*.md) | Explicit operations the user triggers with `/command-name` | User types the slash command |
 | **Hook** | Event-driven interceptor (hooks/) | Validating or transforming tool calls automatically | System events (PreToolUse, PostToolUse, etc.) |
 | **LSP Server** | Code intelligence provider (.lsp.json) | Language-specific completions, diagnostics, hover info | Plugin includes `.lsp.json` config |
@@ -66,9 +66,11 @@ There are three substitution types:
 **When documenting these patterns in a skill:** Describe the syntax textually (as this file does) rather than using the raw patterns. Code fences and inline code do NOT prevent substitution — the loader processes the raw file content before any Markdown parsing.
 
 **Path variables by component type:**
+This is the one place the path conventions are stated; the other files point here.
+- **A skill's own files** (scripts, references, assets, in grants and instructions): the dollar-brace `CLAUDE_SKILL_DIR` variable. In a reference file or example, write it literally; in SKILL.md prose, name the variable in words, since the loader substitutes the dollar-brace form there.
 - **In command files** (`commands/*.md`): Use the dollar-brace `CLAUDE_PLUGIN_ROOT` variable to reference files within the plugin directory at runtime.
-- **In SKILL.md documentation examples**: Use `<PLUGIN_ROOT>` as a static placeholder — the loader would substitute the dollar-brace form, corrupting example code.
-- **In anti-pattern examples and scripts** (`{baseDir}`): A human-readable stand-in for project-relative paths. Not a resolved variable — document the actual path construction for your runtime.
+- **In SKILL.md documentation examples of a command's paths**: Use `<PLUGIN_ROOT>` as a static placeholder — the loader would substitute the dollar-brace form, corrupting example code. Write the real `CLAUDE_PLUGIN_ROOT` variable in the command file itself.
+- **Never use `{baseDir}`**: it is not a resolved variable in Claude Code, so a path written that way does not work.
 
 ---
 
@@ -83,9 +85,9 @@ There are three substitution types:
 | **Edit** | Modify existing files | Targeted changes to existing files |
 | **Bash** | Execute shell commands | Running tools, scripts, git operations |
 | **AskUserQuestion** | Get user input | Disambiguation, confirmation, preferences |
-| **Task** | Spawn subagents | Delegating complex subtasks |
+| **Agent** (older docs: Task) | Spawn subagents | Delegating complex subtasks |
 | **TaskCreate/TaskUpdate/TaskList** | Track progress | Multi-step workflows with dependencies |
-| **TodoRead/TodoWrite** | Track progress via todo list | Most skills and agents — enables progress tracking during execution |
+| **Todo tools** (names unverified; check the live tool list) | Track progress via todo list | Only a long pipeline whose instructions actually call them |
 | **WebFetch** | Fetch URL content | Reading web pages |
 | **WebSearch** | Search the web | Finding current information |
 
@@ -105,7 +107,7 @@ Map the operation you need to the correct tool:
 | Run a shell command | **Bash** | — |
 | Run a Python script | **Bash** (`uv run`) | — |
 | Get user confirmation | **AskUserQuestion** | Printing and hoping |
-| Delegate analysis | **Task** (subagent) | Doing everything inline |
+| Delegate analysis | **Agent** (subagent) | Doing everything inline |
 
 **Rule:** If a dedicated tool exists for the operation, use it. Only use Bash for operations that genuinely require shell execution (running programs, git commands, build tools).
 
@@ -123,17 +125,17 @@ Agents declare tools in frontmatter with `tools:` (not `allowed-tools:`):
 ---
 name: my-agent
 description: "What it does"
-tools: Read, Grep, Glob, TodoRead, TodoWrite
+tools: Read, Grep, Glob
 ---
 ```
 
-**Agent tool principle:** Agents should have the minimum tools needed for their specific task. A read-only analysis agent should not have Write or Bash. Most agents should include `TodoRead` and `TodoWrite` for progress tracking.
+**Agent tool principle:** Agents should have the minimum tools needed for their specific task. A read-only analysis agent should not have Write or Bash. Add a progress-tracking tool only if the agent's instructions call it.
 
 ---
 
 ## Subagent Context Passing
 
-When spawning a subagent via the Task tool, include:
+When spawning a subagent via the Agent tool, include:
 
 1. **What to analyze** — specific file paths, function names, or patterns
 2. **What to look for** — explicit criteria, not vague "analyze this"
@@ -157,14 +159,14 @@ Review the skill and tell me if it's good.
 
 ### Skills with `context: fork`
 
-A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). **Don't confuse this with `Agent(subagent_type: "fork")`** (`agent-development/references/how-subagents-work.md`'s "Context Isolation" section) — that's a separate mechanism, invoked via the Agent tool rather than a skill's frontmatter, that inherits the parent's *full* conversation context, the opposite of what this field does. Both are called "fork," but one starts empty and the other starts with everything; check which one a given instruction actually means before relying on either behavior. This differs from spawning subagents via the Task tool:
+A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). **Don't confuse this with `Agent(subagent_type: "fork")`** (`agent-development/references/how-subagents-work.md`'s "Context Isolation" section) — that's a separate mechanism, invoked via the Agent tool rather than a skill's frontmatter, that inherits the parent's *full* conversation context, the opposite of what this field does. Both are called "fork," but one starts empty and the other starts with everything; check which one a given instruction actually means before relying on either behavior. This differs from spawning subagents via the Agent tool:
 
 | Approach | System prompt | Task prompt | Use when |
 |----------|--------------|-------------|----------|
 | Skill + `context: fork` | From `agent` field type | SKILL.md content | Self-contained actions needing isolation (deploy, research, review) |
-| Task tool subagent | Subagent's definition | Parent's delegation message | Dynamic delegation within a workflow |
+| Agent tool subagent | Subagent's definition | Parent's delegation message | Dynamic delegation within a workflow |
 
-**Design rule:** If the skill represents one action the user triggers directly, use `context: fork`. If a workflow needs to delegate variable subtasks at runtime, use the Task tool.
+**Design rule:** If the skill represents one action the user triggers directly, use `context: fork`. If a workflow needs to delegate variable subtasks at runtime, use the Agent tool.
 
 ---
 
@@ -174,7 +176,7 @@ A skill with `context: fork` runs its content as a subagent prompt in isolation 
 |---------|---------|-----|
 | Listing `Bash` for file operations | Fragile, verbose, permission issues | Use Read/Write/Glob/Grep |
 | Listing `Write` on a read-only skill | Principle of least privilege violation | Remove Write if skill never creates files |
-| Listing `Task` without using subagents | Unused tools clutter the permission model | Only list tools you actually use |
+| Listing `Agent` without using subagents | Unused tools clutter the permission model | Only list tools you actually use |
 | Agent with `Bash` for `grep` | Dedicated Grep tool is more reliable | Use Grep tool instead |
 | No `AskUserQuestion` on interactive skill | Skill can't get user confirmation | Add AskUserQuestion if any gate/confirmation exists |
 | Missing `TaskCreate`/`TaskUpdate` on pipeline | Can't track multi-step progress | Add task tools for pipeline patterns |
@@ -189,23 +191,11 @@ Instructions must produce tool-calling patterns that stay efficient regardless o
 
 ### Combine-Then-Filter for Searches
 
-When a workflow searches for multiple patterns across multiple files, combine all patterns into a single regex and grep the entire codebase once.
-
-**Wrong:** "For each of these 10 patterns, grep all `.sol` files." (10 patterns × N files = 10N calls)
-
-**Right:** "Grep the codebase for `pattern1|pattern2|...|pattern10`. Filter results to exclude test paths." (1 call)
-
-The agent can then Read specific files of interest from the grep results, but the discovery step is a single call.
+When a workflow searches for multiple patterns across multiple files, combine all patterns into a single regex and grep the entire codebase once, then filter the results. Never loop patterns × files. The agent can then Read specific files of interest from the grep results, but the discovery step is a single call. The before/after example is AP-18 in `anti-patterns-tooling-content.md`.
 
 ### Batching for Subagent Work
 
-When a workflow needs to process many items (files, functions, findings), batch them into fixed-size groups instead of spawning one subagent per item.
-
-**Wrong:** "Spawn a subagent for each discovered file." (N files = N subagents)
-
-**Right:** "Batch files into groups of 10-20. Spawn one subagent per batch." (N/15 subagents, capped)
-
-Always specify the batch size explicitly. Without a number, the agent picks its own grouping (or doesn't batch at all).
+When a workflow needs to process many items (files, functions, findings), batch them into fixed-size groups (for example 10-20) and spawn one subagent per batch, not one per item. Always specify the batch size explicitly: without a number, the agent picks its own grouping or doesn't batch at all. The before/after example is AP-19 in `anti-patterns-tooling-content.md`.
 
 ### The 10,000-File Test
 
