@@ -118,6 +118,25 @@ manifest's `max_slice_bytes`; a slice that is alone over that size is its own ba
 its own Codex Phase 1 dispatch and its own Phase 2 dispatch.** A diff within budget is one batch, so
 the run is a single dispatch pair as before.
 
+**How many batches there can be, and the limit.** The planner does not cap batches: protected slices
+never count against the budget, and when nothing else is chosen the first slice is kept even if it
+alone is over budget. The size budget bounds only the rest. Packing is greedy in planner order, so two
+neighbouring batches always sum to more than `max_slice_bytes`, and the planner keeps at most
+`budget_bytes` of non-protected slices. That gives at most `2 * floor(budget_bytes / max_slice_bytes) + 1`
+batches from them. Take that number from the manifest's two values as the **batch limit**: 7 at the
+defaults (250000 and 80000), so up to 14 Codex dispatches.
+
+**If packing produces more batches than the batch limit** (only protected slices or an oversized first
+slice can cause that), do not dispatch yet. Ask via `AskUserQuestion`, before the First-Send
+Confirmation, naming the batch count, the dispatch count (two per batch that has a Codex-eligible path; a
+batch with none skips Codex) and the limit: review all batches, review only the first batches up to the
+limit in planner order, or stop. Never go past the limit without that answer. Choosing the limited run leaves the later batches' slices unreviewed this
+round, by either model. Note each of those slices' names and files from the manifest's `slices` (they
+are not in `dropped_slices`) so section 6 can list them as **must be read directly**, and never pass
+them as `--completed-slice` in a later round. At or under the limit there is no extra question. If no batch
+has a Codex-eligible path, there is nothing to dispatch, so skip the question and enter single-model mode
+(`SKILL.md` Preflight). The First-Send Confirmation then states the real dispatch count either way.
+
 **Diffs come from files, not commands.** The planner wrote, per slice, `$RUN/diffs-1/<slice>.diff` (every
 file of the slice) and `$RUN/diffs-1/<slice>.codex.diff` (only the files with `codex_eligible: true`).
 Claude's native pass `Read`s the `.diff` files of the batch; the Codex instruction files embed the
@@ -169,8 +188,9 @@ section 1 applies to every round.
 ## 6. Report (Phase 3)
 
 Copy into the report, as data: the manifest's `inspection_limits` sentences; every dropped slice with
-its files (a dropped slice **must be read directly**, not skimmed past); folders excluded by a pick or
-not offered; unfinished batches; `PLANNER_TOUCHED` and the answer given; the planner-unavailable
+its files (a dropped slice **must be read directly**, not skimmed past); every slice left out by a
+limited run at the batch limit (section 3), with its files, held to the same must-be-read-directly
+rule; folders excluded by a pick or not offered; unfinished batches; `PLANNER_TOUCHED` and the answer given; the planner-unavailable
 fallback if taken; any cross-check failure. State the manifest path and the completed slice names so a
 second round can use them.
 

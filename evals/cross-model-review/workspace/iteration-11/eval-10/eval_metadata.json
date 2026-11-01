@@ -1,0 +1,10 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response computes the batch limit as 2 * floor(250000 / 80000) + 1 = 7 from the manifest's budget_bytes and max_slice_bytes", "type": "functionality", "target": "scoped-review.md section 3"},
+    {"text": "Response says that with 9 batches (over the limit) nothing is dispatched yet and the user is asked via AskUserQuestion before the First-Send Confirmation, naming the batch count, the dispatch count and the limit", "type": "functionality", "target": "scoped-review.md section 3"},
+    {"text": "Response offers review all batches, review only the first 7 in planner order, or stop, and says the skill never goes past the limit without that answer", "type": "presence", "target": "scoped-review.md section 3"},
+    {"text": "Response says slices in batches not reviewed are noted from the manifest's slices (not dropped_slices), listed in the Phase 3 report as must be read directly, and are never passed as --completed-slice in a later round", "type": "functionality", "target": "scoped-review.md section 3"}
+  ]
+}
