@@ -588,7 +588,9 @@ def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_
             name, value = line.split("=", 1)
             keys[name] = value
     assert calls, "the wrapper recorded no call"
-    reads = [c for c in calls if "config --global -z --get-all safe.directory" in c[0]]
+    reads = [
+        c for c in calls if "config --global --no-includes -z --get-all safe.directory" in c[0]
+    ]
     others = [c for c in calls if c not in reads]
     assert len(reads) == 1 and others
     # the one call that reads the user's global config sees HOME, and nothing else extra
@@ -855,6 +857,17 @@ def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
     planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
     home = tmp_path_factory.mktemp("home")
     (home / ".gitconfig").symlink_to(planted)
+    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
+    assert result.returncode == 2, result.stderr
+
+
+def test_a_safe_directory_from_an_included_file_is_not_trusted(tmp_path, tmp_path_factory):
+    """The user's config includes a file the branch controls; its entry must not be honoured."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    planted = tmp_path / "planted-include"
+    planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
+    home = _write_global_config(tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {planted}\n")
     env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr

@@ -200,6 +200,7 @@ def _trusted_directories() -> tuple[str, ...]:
             Path(home),
             "config",
             "--global",
+            "--no-includes",  # git's default for --global already; stated so it never depends on it
             "-z",
             "--get-all",
             "safe.directory",
