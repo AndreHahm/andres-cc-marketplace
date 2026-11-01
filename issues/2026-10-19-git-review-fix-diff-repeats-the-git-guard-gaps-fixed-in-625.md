@@ -46,6 +46,6 @@ Related minor items from the same security review, same family, not fixed in #62
 Suggested labels: `t: security`, `a: ai-setup`, `p: medium`.
 
 ## References
-- Found while working on PR #625: https://github.com/AndreHahm/andres-cc-marketplace/pull/625
+- Found while working on [PR #625](https://github.com/AndreHahm/andres-cc-marketplace/pull/625)
 - Parent work: #610 (reference only, not closing)
 - Same family in `codex-kit`: #508 (planted `node` found through the working directory) and #510 (a bare `git` found through the working directory)
