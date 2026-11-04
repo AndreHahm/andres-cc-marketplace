@@ -6,6 +6,7 @@ replacing two shell functions, so they prove its logic and not Git Bash's behavi
 """
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,9 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[2] / "plugins" / "git-kit" / "scripts"
 LIB = SCRIPTS / "git-review-run-dir.sh"
 PROFILE = "C:/Users/runneradmin"
+# Resolved through PATH: a bare "bash" reaches Windows process creation, which searches System32
+# first and finds WSL's bash there instead of Git Bash.
+BASH = shutil.which("bash") or "bash"
 
 # Maps the short and differently cased spellings a fake cygpath sees to their long Windows form.
 FAKE_GIT_BASH = """
@@ -49,7 +53,7 @@ def _fake(run_dir, profile):
     if profile is not None:
         env["USERPROFILE"] = profile
     return subprocess.run(
-        ["bash", "-c", FAKE_GIT_BASH, "_", LIB.as_posix(), run_dir],
+        [BASH, "-c", FAKE_GIT_BASH, "_", LIB.as_posix(), run_dir],
         capture_output=True,
         text=True,
         check=False,
@@ -97,7 +101,7 @@ def test_git_bash_refuses_anything_else(run_dir, profile, message):
 )
 def test_git_bash_compares_the_repository_in_windows_form(root, refused):
     result = subprocess.run(
-        ["bash", "-c", FAKE_OUTSIDE_REPO, "_", LIB.as_posix(), "/tmp/tmp.abcdefgh", root],
+        [BASH, "-c", FAKE_OUTSIDE_REPO, "_", LIB.as_posix(), "/tmp/tmp.abcdefgh", root],
         capture_output=True,
         text=True,
         check=False,
@@ -113,7 +117,7 @@ def test_git_bash_detection_ignores_the_environment(tmp_path):
     shim.chmod(0o755)
     result = subprocess.run(
         [
-            "bash",
+            BASH,
             "-c",
             'source "$1"; run_dir_is_git_bash && echo weak || echo strict',
             "_",
@@ -125,7 +129,7 @@ def test_git_bash_detection_ignores_the_environment(tmp_path):
         env={**os.environ, "OSTYPE": "msys", "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}"},
     )
     native = subprocess.run(
-        ["bash", "-c", "/usr/bin/uname -s"], capture_output=True, text=True, check=True
+        [BASH, "-c", "/usr/bin/uname -s"], capture_output=True, text=True, check=True
     )
     expected = "weak" if native.stdout.startswith(("MINGW", "MSYS")) else "strict"
     assert result.stdout.strip() == expected
@@ -136,7 +140,7 @@ def test_windows_runs_really_take_the_git_bash_branch():
     if sys.platform != "win32":
         pytest.skip("only meaningful on Windows")
     result = subprocess.run(
-        ["bash", "-c", 'source "$1"; run_dir_is_git_bash', "_", LIB.as_posix()],
+        [BASH, "-c", 'source "$1"; run_dir_is_git_bash', "_", LIB.as_posix()],
         capture_output=True,
         text=True,
         check=False,
@@ -181,7 +185,7 @@ git diff --no-renames --name-only "$merge_base"
 test -s "$RUN/manifest-1.json"
 """
     result = subprocess.run(
-        ["bash", "-c", script, "_", SCRIPTS.as_posix(), _git(repo, "rev-parse", "HEAD")],
+        [BASH, "-c", script, "_", SCRIPTS.as_posix(), _git(repo, "rev-parse", "HEAD")],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -214,7 +218,7 @@ RUN=$(mktemp -d)
 bash "$script" "$RUN" "$@"
 """
     result = subprocess.run(
-        ["bash", "-c", script, "_", (SCRIPTS / helper).as_posix(), *args],
+        [BASH, "-c", script, "_", (SCRIPTS / helper).as_posix(), *args],
         cwd=repo,
         input="x",
         capture_output=True,

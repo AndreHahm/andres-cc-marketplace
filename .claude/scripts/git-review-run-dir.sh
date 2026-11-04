@@ -23,10 +23,10 @@ run_dir_is_git_bash() {
 
 check_run_dir_private() {
   if ! run_dir_is_git_bash; then
-    [ -n "$(find "$1" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+    [[ -n "$(find "$1" -maxdepth 0 -perm 700 2>/dev/null)" ]] || fail "run directory must have mode 0700"
     return 0
   fi
-  [ -n "${USERPROFILE:-}" ] || fail "USERPROFILE is not set"
+  [[ -n "${USERPROFILE:-}" ]] || fail "USERPROFILE is not set"
   local profile real
   # Windows form on purpose: the POSIX form of /tmp/x stays /tmp/x, and -l (which expands a short name
   # such as RUNNER~1) only works with -m or -w.
