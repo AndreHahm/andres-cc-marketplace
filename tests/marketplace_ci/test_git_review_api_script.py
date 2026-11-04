@@ -8,6 +8,7 @@ subcommands require.
 
 import importlib.util
 import os
+import stat
 import subprocess
 import sys
 import time
@@ -526,17 +527,143 @@ def test_a_file_in_the_scratch_tree_but_outside_a_scratchpad_directory_is_reject
     assert code != 0 and fake.gh_calls == []
 
 
+@pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX owner check")
 def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
     _, _, body = env
-    other_uid = os.getuid() + 1
+    other_uid = os.getuid() + 1  # ty: ignore[unresolved-attribute]
     monkeypatch.setattr(M.os, "getuid", lambda: other_uid)
     code, fake = _trigger(env, body)
     assert code != 0 and fake.gh_calls == []
 
 
-def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory():
+@pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX per-user root")
+def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory(monkeypatch):
+    monkeypatch.setattr(M, "IS_WINDOWS", False)
     roots = M.allowed_body_roots()
-    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)
+    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)  # ty: ignore[unresolved-attribute]
+
+
+# --- Windows branch (#623): runs on any platform by forcing IS_WINDOWS ----------------------------
+
+
+def test_windows_root_is_the_claude_directory_under_temp_without_uid_or_tmp(monkeypatch, tmp_path):
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    monkeypatch.setattr(M.tempfile, "gettempdir", lambda: str(tmp_path))
+    assert M.allowed_body_roots() == [os.path.join(os.path.realpath(tmp_path), "claude")]
+
+
+def test_windows_branch_accepts_a_body_without_any_owner_check(env, monkeypatch):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+
+    def no_getuid():
+        raise AssertionError("Windows has no uid; the owner check must not run")
+
+    monkeypatch.setattr(M.os, "getuid", no_getuid, raising=False)
+    assert M.read_body(str(body)) == b"hello"
+
+
+class _ReparseStat:
+    """A stat result claiming FILE_ATTRIBUTE_REPARSE_POINT, otherwise like the real one."""
+
+    def __init__(self, info):
+        self._info = info
+        self.st_file_attributes = stat.FILE_ATTRIBUTE_REPARSE_POINT
+
+    def __getattr__(self, name):
+        return getattr(self._info, name)
+
+
+def _lstat_marking(monkeypatch, marked):
+    real_lstat = os.lstat
+
+    def fake(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        return _ReparseStat(info) if os.path.normcase(str(path)) in marked else info
+
+    monkeypatch.setattr(M.os, "lstat", fake)
+
+
+@pytest.mark.parametrize("which", ["file", "directory"])
+def test_windows_branch_rejects_a_reparse_point_in_the_path(env, monkeypatch, which):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    target = body if which == "file" else body.parent
+    marked = {os.path.normcase(str(target)), os.path.normcase(os.path.realpath(target))}
+    with monkeypatch.context() as patched:
+        _lstat_marking(patched, marked)
+        with pytest.raises(M.UsageError, match="symlink or junction"):
+            M.read_body(str(body))
+
+
+def test_windows_branch_rejects_a_hard_linked_body(env, monkeypatch):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    os.link(body, body.parent / "second-name.txt")
+    with pytest.raises(M.UsageError, match="single-link"):
+        M.read_body(str(body))
+
+
+def test_windows_branch_still_rejects_a_path_outside_the_root(env, monkeypatch):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    outside = body.parent.parent / "outside.txt"
+    outside.write_text("secret")
+    with pytest.raises(M.UsageError, match="scratchpad"):
+        M.read_body(str(outside))
+
+
+@pytest.mark.parametrize(
+    ("root", "path", "expected"),
+    [
+        (r"C:\Temp\claude", r"c:\temp\Claude\p\scratchpad\a.txt", True),  # drive/case-insensitive
+        (r"C:\Temp\claude", r"D:\Temp\claude\p\scratchpad\a.txt", False),  # other drive
+        (r"C:\Temp\claude", "\\\\?\\C:\\Temp\\claude\\p\\scratchpad\\a.txt", False),  # \\?\ prefix
+        (r"C:\Temp\claude", r"\\host\share\claude\p\scratchpad\a.txt", False),  # UNC
+        (r"C:\Temp\claude", r"C:\Temp\claude-evil\p\scratchpad\a.txt", False),  # prefix lookalike
+    ],
+    ids=["case-insensitive", "other-drive", "extended-prefix", "unc", "lookalike"],
+)
+def test_windows_path_containment_is_case_insensitive_and_never_raises(
+    monkeypatch, root, path, expected
+):
+    import ntpath
+
+    with monkeypatch.context() as patched:
+        patched.setattr(M.os, "path", ntpath)
+        assert M._under(root, path) is expected
+
+
+def test_windows_reparse_walk_that_never_meets_the_root_fails_closed_instead_of_looping(
+    env, monkeypatch
+):
+    _, _, body = env
+    monkeypatch.setattr(M, "_under", lambda root, path: True)
+    unrelated_root = str(body.parent.parent / "somewhere-else")
+    assert M._reparse_point_below_root(os.path.realpath(body), [unrelated_root]) is True
+
+
+def test_a_file_swapped_between_the_check_and_the_open_is_rejected(env, monkeypatch):
+    _, _, body = env
+    real = os.path.realpath(body)
+    real_lstat = os.lstat
+
+    class _OtherFile:
+        def __init__(self, info):
+            self._info = info
+            self.st_ino = info.st_ino + 1
+
+        def __getattr__(self, name):
+            return getattr(self._info, name)
+
+    def lstat(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        return _OtherFile(info) if os.path.realpath(path) == real else info
+
+    with monkeypatch.context() as patched:
+        patched.setattr(M.os, "lstat", lstat)
+        with pytest.raises(M.UsageError, match="changed between"):
+            M.read_body(str(body))
 
 
 def test_body_file_reached_through_a_symlinked_directory_is_rejected(env):
@@ -573,7 +700,7 @@ def test_body_file_that_is_a_directory_is_rejected(env):
 def test_body_file_that_is_a_fifo_is_rejected_without_blocking(env):
     _, _, body = env
     fifo = body.parent / "pipe"
-    os.mkfifo(fifo)
+    os.mkfifo(fifo)  # ty: ignore[unresolved-attribute]
     code, fake = _trigger(env, fifo)
     assert code != 0 and fake.gh_calls == []
 
@@ -587,6 +714,7 @@ def test_body_file_that_is_a_fifo_is_rejected_without_blocking(env):
         b"x" * (M.MAX_BODY_CHARS + 1),
         b"x" * (M.MAX_BODY_BYTES + 1),
     ],
+    ids=["empty", "blank", "non-utf8", "too-many-chars", "too-many-bytes"],
 )
 def test_empty_non_utf8_or_oversized_body_is_rejected(env, content):
     _, _, body = env
