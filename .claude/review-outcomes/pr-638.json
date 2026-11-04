@@ -1,0 +1,64 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4467103193",
+      "line": 41,
+      "note": "fixed in 62937313; the profile requirement and TMPDIR workaround are documented in references/codex-pass-assembly.md because SKILL.md is at its line limit",
+      "path": "plugins/git-kit/scripts/git-review-run-dir.sh",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "git-bash-profile-requirement"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4467103197",
+      "line": 116,
+      "note": "fixed in 62937313; Preflight step 1 now stops on INTENT_ADD_REFUSED=1 for both the empty diff and the all-deleted diff, and the refusal fixture fails with the flag removed",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "intent-add-refusal-continues"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "PRR_kwDOTi7e-s8AAAABV8lWzg-nitpick-1",
+      "line": 159,
+      "note": "fixed in 62937313; the fixture adds an untracked file and fails if it reaches the diff; CodeRabbit nitpick from the review body, no inline thread, so the id is the review id plus a suffix",
+      "path": "plugins/git-kit/skills/cross-model-review/scripts/preflight_fixtures_test.py",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "refusal-fixture-no-untracked-file"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-41830422080-perm-precheck-755",
+      "line": 37,
+      "note": "mode 755 has neither the 020 nor the 002 bit, confirmed with find; issue 637 shows 755 passing this check, and the Windows job passed the end-to-end helper test on that head; CI finding with no comment id, so the id is the run id plus a slug",
+      "path": "plugins/git-kit/scripts/git-review-copy-index.sh",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "perm-precheck-rejects-git-bash-755"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-41856581720-intent-add-refused-unset",
+      "line": 116,
+      "note": "the finding assumes set -u, but neither the skill, its references nor its fixtures use nounset, so an unset variable expands to empty; not raised again on the next head; CI finding with no comment id",
+      "path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "unset-variable-under-nounset"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-41856581720-r9-fixture-username",
+      "line": 19,
+      "note": "fixed in 74a87ccc; the Windows-path fixtures use the placeholder user instead of the GitHub runner account; CI finding with no comment id",
+      "path": "tests/marketplace_ci/test_git_review_run_dir.py",
+      "pr": 638,
+      "recorded_at": "2026-11-04T15:44:05+00:00",
+      "rule": "R9-local-identifier"
+    }
+  ]
+}
