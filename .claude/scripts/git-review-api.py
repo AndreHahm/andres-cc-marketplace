@@ -164,7 +164,12 @@ def _is_reparse_point(info: os.stat_result) -> bool:
 
 
 def _reparse_point_below_root(real: str, roots: list[str]) -> bool:
-    """True when `real` or a parent below its matching root is a reparse point (Windows)."""
+    """True when `real` or a parent below its matching root is still a reparse point (Windows).
+
+    `real` comes from realpath, which already follows a symlink or junction it can resolve, so
+    this only fires for one realpath left in place (an unresolvable target, or another reparse
+    tag). It also fails closed on an lstat error, or when the walk never meets the root.
+    """
     for root in roots:
         if not _under(root, real):
             continue
@@ -192,7 +197,8 @@ def read_body(raw: str) -> bytes:
     descriptor (regular file, owned by the caller on POSIX, a single link so a hard link to a file
     elsewhere is refused). On Windows the given path's final component must not be a reparse point
     and none may remain in the resolved path below the root (a symlinked or junctioned parent is
-    followed by the resolve, so it is accepted only while its target stays under the root), and
+    followed by the resolve, so it is accepted only while its target stays under a `scratchpad`
+    directory of the root), and
     the owner check is replaced by the per-user temp directory. procfs-style files fail the
     location check. The opened descriptor must be the same file (device and inode, or the NTFS
     file index) that the checked path named just before the open; on Windows a missing file index
@@ -231,9 +237,13 @@ def read_body(raw: str) -> bytes:
     try:
         checked = os.lstat(real)
         fd = os.open(real, flags)
+        try:
+            info = os.fstat(fd)
+        except OSError:
+            os.close(fd)
+            raise
     except OSError as exc:
         raise UsageError(f"cannot open --body-file {raw!r}: {exc.strerror}") from exc
-    info = os.fstat(fd)
     if IS_WINDOWS and not checked.st_ino:  # no file index: the same-file check cannot run
         os.close(fd)
         raise UsageError(f"--body-file's filesystem reports no file index: {raw!r}")
