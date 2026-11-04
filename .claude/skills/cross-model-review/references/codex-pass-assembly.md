@@ -54,6 +54,10 @@ places is built across calls (first call without `--append`, the rest with it). 
 resolves outside `$RUN`. A refusal is a failed write: stop and report it, never fall back to another
 way of writing the file.
 
+On Git Bash `$RUN` must also sit inside `%USERPROFILE%`, because mode bits prove nothing there
+(`scripts/git-review-run-dir.sh`). The default temp directory normally does. If `TMPDIR` points outside
+the profile, every helper refuses; start the session with `TMPDIR` set to a folder inside the profile.
+
 ## Phase 1 Codex instruction file (per batch)
 
 Codex has no prior context, so its instruction file contains the diff **content itself**. Never

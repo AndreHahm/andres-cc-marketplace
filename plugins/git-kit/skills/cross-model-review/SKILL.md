@@ -165,7 +165,7 @@ call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't 
    re-runs the whole chain with `PLANNER_APPROVED=1` set first (`references/scoped-review.md` section 1).
    A non-zero `DIFF_STATUS` (an invalid `$BASE`, no local `main` ref, any other Git error) is a
    Preflight failure, not an empty scope: report the Git error and ask for a valid `$BASE`. Only exit 0
-   with an empty `$RUN/full.diff` means "nothing to review against $BASE" (mention `$SCOPE` if set): stop.
+   with an empty `$RUN/full.diff` means "nothing to review against $BASE" (mention `$SCOPE` if set): stop. `INTENT_ADD_REFUSED=1` overrides both: the diff is unreliable, so report the helper's error and stop, never as "nothing to review" (`references/diff-mechanics-rationale.md`).
    A planner failure (`PLAN_FAILED=1`) is never a pass; follow that section's fallback. Cross-check the
    manifest against the real changed files before using it.
 2. **Fix the reviewed files and group them.** The manifest's `files` are what the reviewers read, packed
