@@ -25,7 +25,7 @@ status and `skip-worktree` flags over unchanged. Confirmed empirically for both 
 matches the real `git diff` output exactly, where a from-scratch reseed diverges on each.
 
 `umask 077` matters because a plain file created by `cp`/`git` inherits the process umask, unlike
-`$RUN`'s `mktemp -d` (which git-kit's own conventions already treat as 0700 by default) — without it,
+`$RUN`'s `mktemp -d` (0700 by default, except on Git Bash: see `git-review-run-dir.sh`) — without it,
 the copied index can land world-readable (0644 in a default-umask reproduction), exposing repo
 filenames and object IDs on a shared machine for as long as the file persists (see the closing note
 on why it isn't deleted either).
@@ -56,5 +56,5 @@ unmodified — confirmed empirically (two tracked files, one genuinely changed: 
 fallback correctly reports only the changed one, but says nothing about the unchanged one, where a
 correctly-seeded index would agree). This isn't severe enough to abort the whole Preflight over — an
 index this thoroughly broken is already an unusual repository state, and the fallback still produces
-a usable, if narrower, diff — but it must be disclosed rather than silently absorbed, the same
-`|| true` discipline the `git add -N`/`git show` fallbacks elsewhere in this document already follow.
+a usable, if narrower, diff — but it must be disclosed rather than silently absorbed, as
+`$INTENT_ADD_REFUSED` is for a refused `git add -N` (`references/diff-mechanics-rationale.md`).
