@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -228,3 +229,37 @@ bash "$script" "$RUN" "$@"
     )
     assert result.returncode == 2, (result.stdout, result.stderr)
     assert "outside the repository" in result.stderr
+
+
+def test_a_same_size_edit_in_the_commits_second_stays_in_the_diff(tmp_path):
+    """The copied index keeps the original's timestamp, or git trusts the stale entry."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    time.sleep(1.05 - time.time() % 1)  # start just after a second boundary
+    (repo / "a.txt").write_text("one\n", encoding="utf-8")
+    _git(repo, "add", "a.txt")
+    _git(repo, "commit", "-qm", "init")
+    (repo / "a.txt").write_text("two\n", encoding="utf-8")
+    head = _git(repo, "rev-parse", "HEAD")
+    time.sleep(1.2)  # the copy happens in a later second than the edit
+    script = """
+set -euo pipefail
+umask 077
+RUN=$(mktemp -d)
+trap 'rm -rf -- "$RUN"' EXIT
+export GIT_INDEX_FILE=$RUN/index
+bash "$1/git-review-copy-index.sh" "$RUN"
+git diff --no-renames --name-only "$2"
+"""
+    result = subprocess.run(
+        [BASH, "-c", script, "_", SCRIPTS.as_posix(), head],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "a.txt" in result.stdout.splitlines()

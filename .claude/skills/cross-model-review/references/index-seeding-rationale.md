@@ -24,6 +24,10 @@ both — it isn't reconstructing state from a tree, it's carrying the real index
 status and `skip-worktree` flags over unchanged. Confirmed empirically for both scenarios: the copy
 matches the real `git diff` output exactly, where a from-scratch reseed diverges on each.
 
+The copy keeps the real index's timestamp (`touch -r`) but not its mode. Git rechecks an entry written in
+the same second as the index, and a newer copy would turn that off: a same-size edit made in that second
+would then be missing from the diff (found by the Windows CI job, PR #638).
+
 `umask 077` matters because a plain file created by `cp`/`git` inherits the process umask, unlike
 `$RUN`'s `mktemp -d` (0700 by default, except on Git Bash: see `git-review-run-dir.sh`) — without it,
 the copied index can land world-readable (0644 in a default-umask reproduction), exposing repo
@@ -49,6 +53,8 @@ throwaway index stays empty — the same starting point a from-scratch reseed wo
 data-loss bugs above. (That helper replaced a bare `cp` in the skill's `allowed-tools`, whose source and
 destination a grant could not constrain; the helper copies one file to `$RUN/index`, sets `umask 077`
 itself, never overwrites, and ignores `GIT_INDEX_FILE` when it looks up the real index.)
+If only its timestamp step fails, the flag is set with a full copy in place, and the gap is a possibly hidden
+same-size edit rather than an empty index.
 `git add -N` still intent-adds every worktree path in that state, so the review isn't blind, but the
 diff it produces can differ from the real one in a way worth knowing about: an unchanged file (same
 content in the worktree as at `$MERGE_BASE`) is silently omitted entirely, rather than shown as
