@@ -10,9 +10,9 @@ from a static argv (no shell), so no caller input can add an argument or swap th
 A body file is never handed to `gh` as a path: it must not be a symlink, must resolve to a regular
 file you own below a `scratchpad` directory of <temp>/claude-<uid>, is opened without following a
 final symlink, is size- and UTF-8-checked here, and its content is passed to `gh` on stdin. On
-Windows (no uid, no O_NOFOLLOW) the root is <temp>/claude (no uid suffix), no path component below
-it may be a symlink or junction, and the owner check is left to the per-user temp directory (a
-weaker residual).
+Windows (no uid, no O_NOFOLLOW) the root is <temp>/claude (no uid suffix), the file itself must not
+be a symlink or junction and its resolved path must hold none below the root, and the owner check
+is left to the per-user temp directory (a weaker residual).
 
 The subcommands that write or use GraphQL can no longer be seen by git-guard-raw-pr-review.sh (this
 script's own command text contains none of the words that guard matches), so they enforce the
@@ -190,10 +190,13 @@ def read_body(raw: str) -> bytes:
     cannot hide the real location), must sit below a `scratchpad` directory of the per-user
     scratch tree, and is opened with O_NOFOLLOW (POSIX) and checked with fstat on the opened
     descriptor (regular file, owned by the caller on POSIX, a single link so a hard link to a file
-    elsewhere is refused). On Windows no component below the root may be a reparse point, and the
-    owner check is replaced by the per-user temp directory. procfs-style files fail the location
-    check. The opened descriptor must be the same file (device and inode, or the NTFS file index)
-    that the checked path named just before the open. Residuals: other sessions' files in the same
+    elsewhere is refused). On Windows the given path's final component must not be a reparse point
+    and none may remain in the resolved path below the root (a symlinked or junctioned parent is
+    followed by the resolve, so it is accepted only while its target stays under the root), and
+    the owner check is replaced by the per-user temp directory. procfs-style files fail the
+    location check. The opened descriptor must be the same file (device and inode, or the NTFS
+    file index) that the checked path named just before the open; on Windows a missing file index
+    (st_ino 0) is refused rather than skipped. Residuals: other sessions' files in the same
     scratch tree remain readable, and a concurrent process running as the same user could swap a
     parent directory between the resolve and the open (on Windows, which has no O_NOFOLLOW, also
     the final file, narrowed but not closed by the same-file comparison); such a process already
@@ -216,7 +219,9 @@ def read_body(raw: str) -> bytes:
             f"{raw!r}"
         )
     if IS_WINDOWS and _reparse_point_below_root(real, roots):
-        raise UsageError(f"--body-file must not pass through a symlink or junction: {raw!r}")
+        raise UsageError(
+            f"--body-file's resolved path must not hold a symlink or junction: {raw!r}"
+        )
     if not IS_WINDOWS and not hasattr(os, "O_NOFOLLOW"):
         raise UsageError("--body-file needs O_NOFOLLOW on this platform")
     # O_NOFOLLOW and O_NONBLOCK are POSIX-only; O_BINARY is Windows-only.
@@ -229,6 +234,9 @@ def read_body(raw: str) -> bytes:
     except OSError as exc:
         raise UsageError(f"cannot open --body-file {raw!r}: {exc.strerror}") from exc
     info = os.fstat(fd)
+    if IS_WINDOWS and not checked.st_ino:  # no file index: the same-file check cannot run
+        os.close(fd)
+        raise UsageError(f"--body-file's filesystem reports no file index: {raw!r}")
     if checked.st_ino and (checked.st_dev, checked.st_ino) != (info.st_dev, info.st_ino):
         os.close(fd)
         raise UsageError(f"--body-file changed between the check and the open: {raw!r}")
