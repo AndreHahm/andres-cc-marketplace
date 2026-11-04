@@ -16,7 +16,7 @@ import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "plugins" / "git-kit" / "scripts"
 LIB = SCRIPTS / "git-review-run-dir.sh"
-PROFILE = "C:/Users/runneradmin"
+PROFILE = "C:/Users/user"
 # Resolved through PATH: a bare "bash" reaches Windows process creation, which searches System32
 # first and finds WSL's bash there instead of Git Bash.
 BASH = shutil.which("bash") or "bash"
@@ -30,9 +30,9 @@ run_dir_is_git_bash() { return 0; }
 cygpath() {
   [ "$1" = -lm ] || exit 9
   case $2 in
-    /tmp/*) echo "C:/Users/RunnerAdmin/AppData/Local/Temp/${2#/tmp/}" ;;
+    /tmp/*) echo "C:/Users/User/AppData/Local/Temp/${2#/tmp/}" ;;
     /shared/*) echo "D:/shared/${2#/shared/}" ;;
-    'C:\\Users\\RUNNER~1') echo "C:/Users/runneradmin" ;;
+    'C:\\Users\\USER~1') echo "C:/Users/user" ;;
     missing) return 1 ;;
     *) echo "$2" ;;
   esac
@@ -64,7 +64,7 @@ def _fake(run_dir, profile):
 
 @pytest.mark.parametrize(
     "profile",
-    [PROFILE, PROFILE + "/", "c:/users/RUNNERADMIN", r"C:\Users\RUNNER~1"],
+    [PROFILE, PROFILE + "/", "c:/users/USER", r"C:\Users\USER~1"],
 )
 def test_git_bash_accepts_a_directory_inside_the_profile(profile):
     result = _fake("/tmp/tmp.abcdefgh", profile)
@@ -93,11 +93,11 @@ def test_git_bash_refuses_anything_else(run_dir, profile, message):
 @pytest.mark.parametrize(
     ("root", "refused"),
     [
-        ("/c/Users/runneradmin", True),  # the temp directory is inside this work tree
+        ("/c/Users/user", True),  # the temp directory is inside this work tree
         ("/c", True),  # a repository at the root of the drive
-        ("/c/users/RUNNERADMIN/AppData", True),
-        ("/c/Users/runneradmin/repo", False),
-        ("/c/Users/runneradmin2", False),
+        ("/c/users/USER/AppData", True),
+        ("/c/Users/user/repo", False),
+        ("/c/Users/user2", False),
     ],
 )
 def test_git_bash_compares_the_repository_in_windows_form(root, refused):
