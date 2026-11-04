@@ -668,6 +668,7 @@ def test_end_to_end_gitattributes_cannot_hide_content_and_is_flagged(repo, tmp_p
     assert sizes["p.py"] > 400  # measured as text, not "Binary files differ"
     assert any(".gitattributes changed" in n for n in manifest["inspection_limits"])
     assert M.classify(".gitattributes") == "protected"
+    assert M.classify("plugins/git-kit/scripts/git-review-run-dir.sh") == "protected"
 
 
 def test_protected_files_are_kept_ahead_of_the_budget():

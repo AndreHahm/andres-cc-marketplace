@@ -150,6 +150,29 @@ def test_deletion_only_scope_does_not_abort():
         return True, "diff-build tolerates a SCOPE naming only a deletion"
 
 
+def test_intent_add_refusal_is_disclosed():
+    """A refused run directory leaves untracked files out of the diff: the chain continues, but
+    the refusal is recorded, unlike git's tolerated failure on a deletion-only scope (#637)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        init_repo(repo)
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
+        commit_all(repo, "init")
+        run_bash(repo, "git checkout -qb feature")
+        chain = diff_build_chain(extra='echo "REFUSED_VALUE=${INTENT_ADD_REFUSED:-UNSET}"')
+        marker = "RUN=$(mktemp -d)\n"
+        if marker not in chain:
+            return False, "could not find the run directory line in the extracted chain"
+        result = run_bash(repo, chain.replace(marker, marker + 'chmod 750 "$RUN"\n'))
+        if "DIFF_BUILD_COMPLETED" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"chain aborted when the helper refused {detail}"
+        if "REFUSED_VALUE=1" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"INTENT_ADD_REFUSED was not set when the helper refused {detail}"
+        return True, "a refused intent-add sets INTENT_ADD_REFUSED=1 instead of vanishing"
+
+
 def test_index_copy_failure_is_disclosed():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -387,6 +410,7 @@ def _empty_variable_run(*, with_mirror: bool) -> str:
                 "git-review-scope-run.sh",
                 "git-review-copy-index.sh",
                 "git-review-intent-add.sh",
+                "git-review-run-dir.sh",
             ):
                 source = SKILL_DIR.parent.parent / "scripts" / name
                 (mirror / name).write_bytes(source.read_bytes())
@@ -472,6 +496,7 @@ CHECKS = [
     test_dispatcher_check_matches_a_case_variant_path,
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,
+    test_intent_add_refusal_is_disclosed,
     test_index_copy_failure_is_disclosed,
     test_gitignored_tracked_file_reports_modified,
     test_sparse_checkout_entry_not_reported_deleted,

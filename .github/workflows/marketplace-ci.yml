@@ -286,6 +286,31 @@ jobs:
       # an unrelated PR over a file this PR did not touch.
       - run: uv run pre-commit run end-of-file-fixer --from-ref HEAD^1 --to-ref HEAD --show-diff-on-failure
 
+  # Informational (#637): not listed in any job's `needs`, so it cannot block a merge. Takes
+  # cross-model-review's run-directory helpers through a real run on a Windows runner, the only place
+  # their Git Bash branch runs for real. `shell: bash` matters: a bare `bash` from another shell can
+  # resolve to WSL's. It skips the kill-switch restore the jobs above do: it holds no secrets, and a
+  # stale kill-switch copy can only affect this one non-blocking job.
+  review-helpers-windows:
+    name: Review helpers on Windows Git Bash (informational)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+        shell: bash
+      - run: uv sync --group dev
+        shell: bash
+      - run: uv run pytest -q tests/marketplace_ci/test_git_review_run_dir.py
+        shell: bash
+
   marketplace-parity:
     name: Marketplace mirror/export parity
     runs-on: ubuntu-latest

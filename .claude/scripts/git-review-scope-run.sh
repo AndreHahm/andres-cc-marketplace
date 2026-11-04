@@ -8,7 +8,7 @@
 # binds the rest: the repository is the current directory (which must be the work tree root, since the
 # planner's --scope is a pathspec relative to it), and the manifest and slice diffs always
 # land at <run-dir>/manifest-<tag>.json and <run-dir>/diffs-<tag>, in a directory that exists, is
-# not a symlink, is owned by the caller, is shaped like `mktemp -d` output (tmp.<random>, mode 0700,
+# not a symlink, is owned by the caller, is shaped like `mktemp -d` output (tmp.<random>, private per git-review-run-dir.sh,
 # directly under the temp directory) and lies outside the repository. The only options passed
 # through are --scope, --exclude-dir, --prior-manifest and --completed-slice; the planner validates
 # their values itself. Environment variables that redirect git or Python (GIT_DIR, GIT_WORK_TREE,
@@ -37,9 +37,12 @@ shift 4
 [ -O "$run_dir" ] || fail "run directory must be owned by the current user"
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
-# Only a directory `mktemp -d` makes: tmp.<random> (mode 0700) directly under the temp directory.
+# Only a directory `mktemp -d` makes: tmp.<random> (private: git-review-run-dir.sh) directly under the temp directory.
 [[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
-[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+script_dir=$(CDPATH='' cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=git-review-run-dir.sh
+source "$script_dir/git-review-run-dir.sh"
+check_run_dir_private "$run_dir"
 run_parent=$(dirname -- "$run_dir")
 tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
 tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
@@ -52,9 +55,7 @@ top=$(CDPATH='' cd -P -- "$top" && pwd -P)
 [ "$repo" != / ] && [ "$top" != / ] || fail "refusing to treat / as the repository"
 [ "$repo" = "$top" ] || fail "run from the repository root: $repo is inside the work tree at $top"
 for root in "$repo" "$top"; do
-  case "$run_dir/" in
-    "$root"/*) fail "run directory must be outside the repository" ;;
-  esac
+  check_run_dir_outside_repo "$run_dir" "$root"
 done
 
 for name in $(compgen -e); do

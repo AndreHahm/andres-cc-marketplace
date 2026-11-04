@@ -29,9 +29,12 @@ unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_CONFIG_COUNT GIT_C
   GIT_CEILING_DIRECTORIES
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
-# Only a directory `mktemp -d` makes: tmp.<random> (mode 0700) directly under the temp directory.
+# Only a directory `mktemp -d` makes: tmp.<random> (private: git-review-run-dir.sh) directly under the temp directory.
 [[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
-[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+script_dir=$(CDPATH='' cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=git-review-run-dir.sh
+source "$script_dir/git-review-run-dir.sh"
+check_run_dir_private "$run_dir"
 run_parent=$(dirname -- "$run_dir")
 tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
 tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
@@ -41,9 +44,7 @@ top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"
 top=$(CDPATH='' cd -P -- "$top" && pwd -P)
 [ "$top" != / ] || fail "refusing to treat / as the repository"
-case "$run_dir/" in
-  "$top"/*) fail "run directory must be outside the repository" ;;
-esac
+check_run_dir_outside_repo "$run_dir" "$top"
 
 real=$(git rev-parse --git-path index)
 # The source must be this work tree's own index: a regular file, not a symlink, directly in its git dir.

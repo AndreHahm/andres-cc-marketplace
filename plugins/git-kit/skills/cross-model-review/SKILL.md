@@ -113,7 +113,7 @@ UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
 bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-copy-index.sh" "$RUN" 2>/dev/null || INDEX_COPY_FAILED=1
-bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || true
+bash "${CLAUDE_PLUGIN_ROOT:-.claude}/scripts/git-review-intent-add.sh" "$RUN" ${SCOPE:+"$SCOPE"} || [ $? -ne 2 ] || INTENT_ADD_REFUSED=1
 DIFF=(git diff --no-renames --text --no-ext-diff --no-textconv --ignore-submodules=none "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
@@ -125,7 +125,7 @@ fixed-shape helper (it copies one file to `$RUN/index`, never overwrites, and se
 repository's own sessions the `:-.claude` mirror form is deliberately ungranted and prompts, like the
 planner wrapper's. See `references/index-seeding-rationale.md`.
 
-**`|| true` on `git add -N` matters for a deletion-only `$SCOPE`**, and **`$UNTRACKED_FILES` matters
+**The `git add -N` failure tolerance matters for a deletion-only `$SCOPE`, while `$INTENT_ADD_REFUSED` records the helper refusing to run**, and **`$UNTRACKED_FILES` matters
 beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
@@ -138,7 +138,7 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
 an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
 `DISPATCHER_TOUCHED`, `PLANNER_TOUCHED`, `PLAN_FAILED`, `DIFF_STATUS`, the manifest path,
-`TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, and whether
+`TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, `INTENT_ADD_REFUSED`, and whether
 `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as a separate write-helper
 call afterward). From that point on, every `$VAR` reference here is shorthand for that
 literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`
@@ -421,7 +421,7 @@ fields. Note any `inspection_limits` from either side, including: the Preflight 
 deleted-path exclusion if it happened, any Claude finding dropped from the Codex challenge for that
 same reason, Preflight step 5's unverified-instructions fallback if either `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED` was set, Preflight step 6's dispatcher-not-verified disclosure if the diff
-touched the Codex scripts, and `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`).
+touched the Codex scripts, `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`), and `$INTENT_ADD_REFUSED` (`references/diff-mechanics-rationale.md`).
 Also report the scope plan as `references/scoped-review.md` section 6 says: the planner's own
 `inspection_limits`, every dropped slice (it **must be read**, not skimmed), folders excluded by a pick,
 unfinished batches, `PLANNER_TOUCHED`, and the manifest path with the **completed slice names** a

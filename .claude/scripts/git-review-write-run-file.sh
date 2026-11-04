@@ -11,7 +11,7 @@
 #
 # `cross-model-review` writes its scratch files through this helper instead of a `Write` grant, because
 # a `Write` grant cannot be limited to a path. The helper writes exactly one file, <run-dir>/<dest-name>,
-# and only into a directory shaped like `mktemp -d`'s output: tmp.<random>, mode 0700, owned by the
+# and only into a directory shaped like `mktemp -d`'s output: tmp.<random>, private per git-review-run-dir.sh, owned by the
 # caller, not a symlink, directly under the temp directory and outside the repository. That shape is a
 # check on the path, not proof the skill made the directory: any such directory the caller owns is
 # accepted. <dest-name> is a bare file name. The file is replaced atomically through a temporary file in
@@ -47,10 +47,13 @@ unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_COMMON_DIR GIT_CONFIG_COUNT GIT_C
   GIT_CEILING_DIRECTORIES
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
-# Only a directory `mktemp -d` makes: tmp.<random> (mode 0700) directly under the temp directory. Any
+# Only a directory `mktemp -d` makes: tmp.<random> (private: git-review-run-dir.sh) directly under the temp directory. Any
 # other directory the caller owns (a home directory, .git, another checkout) is refused.
 [[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
-[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+script_dir=$(CDPATH='' cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=git-review-run-dir.sh
+source "$script_dir/git-review-run-dir.sh"
+check_run_dir_private "$run_dir"
 run_parent=$(dirname -- "$run_dir")
 tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
 tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
@@ -60,9 +63,7 @@ top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"
 top=$(CDPATH='' cd -P -- "$top" && pwd -P)
 [ "$top" != / ] || fail "refusing to treat / as the repository"
-case "$run_dir/" in
-  "$top"/*) fail "run directory must be outside the repository" ;;
-esac
+check_run_dir_outside_repo "$run_dir" "$top"
 
 dest=$run_dir/$dest_name
 [ ! -d "$dest" ] || fail "destination is a directory"
