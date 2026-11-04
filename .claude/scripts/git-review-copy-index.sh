@@ -57,3 +57,6 @@ real_dir=$(CDPATH='' cd -P -- "$(dirname -- "$real")" && pwd -P)
 
 umask 077
 cp -- "$real" "$run_dir/index"
+# Keep the index's timestamp, not its mode. Git treats an entry written in the same second as the index
+# as unverified. A newer copy would hide a same-size edit made in that second from the review.
+touch -r "$real" -- "$run_dir/index"
