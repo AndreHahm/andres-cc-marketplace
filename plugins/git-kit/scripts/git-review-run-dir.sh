@@ -49,6 +49,7 @@ check_run_dir_outside_repo() {
     run=$(cygpath -lm "$run") || fail "cannot resolve the run directory"
     root=$(cygpath -lm "$root") || fail "cannot resolve the repository"
     run=${run,,}
+    root=${root%/} # a drive root is C:/, and the pattern below adds its own slash
     root=${root,,}
   fi
   case "$run/" in
