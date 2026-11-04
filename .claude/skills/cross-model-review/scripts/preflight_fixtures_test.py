@@ -159,7 +159,11 @@ def test_intent_add_refusal_is_disclosed():
         (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
-        chain = diff_build_chain(extra='echo "REFUSED_VALUE=${INTENT_ADD_REFUSED:-UNSET}"')
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
+        chain = diff_build_chain(
+            extra='echo "REFUSED_VALUE=${INTENT_ADD_REFUSED:-UNSET}"\n'
+            'git diff "$MERGE_BASE" | grep -q new_untracked.txt && echo UNTRACKED_IN_DIFF || true'
+        )
         marker = "RUN=$(mktemp -d)\n"
         if marker not in chain:
             return False, "could not find the run directory line in the extracted chain"
@@ -170,6 +174,8 @@ def test_intent_add_refusal_is_disclosed():
         if "REFUSED_VALUE=1" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
             return False, f"INTENT_ADD_REFUSED was not set when the helper refused {detail}"
+        if "UNTRACKED_IN_DIFF" in result.stdout:
+            return False, "the untracked file reached the diff, so nothing was refused"
         return True, "a refused intent-add sets INTENT_ADD_REFUSED=1 instead of vanishing"
 
 

@@ -23,8 +23,11 @@ failure here is expected and harmless, not a sign anything is actually wrong.
 
 The tolerance stops at git's own failure. `git-review-intent-add.sh` exits 2 when it refuses to run at
 all, for example on a run directory it will not accept, and then no untracked file reaches the diff.
-That sets `$INTENT_ADD_REFUSED=1`, which the report must disclose (issue #637: a refusal here used to
-vanish behind a bare `|| true`). The chain still continues, as it does for `$INDEX_COPY_FAILED`.
+That sets `$INTENT_ADD_REFUSED=1` (issue #637: a refusal here used to vanish behind a bare `|| true`).
+The chain still continues so its closing `echo` runs, then Preflight step 1 stops the review: the diff
+can't be trusted. A refused run directory is refused by the index helper too, so the throwaway index
+stays empty and every tracked file reads as deleted. A refusal by this helper alone leaves untracked
+files out, and an untracked-only change then gives an empty diff that looks like nothing to review.
 
 ## Why `$UNTRACKED_FILES` matters beyond the Preflight chain
 

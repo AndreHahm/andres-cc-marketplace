@@ -245,7 +245,7 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       count — never left stale after a scenario is added or removed
 - [ ] A failed `git add -N` never aborts the chained Preflight invocation before `git diff` runs (a
       `$SCOPE` resolving only to a deletion), and only the helper's own refusal (exit 2) sets
-      `$INTENT_ADD_REFUSED`, which the report discloses
+      `$INTENT_ADD_REFUSED`, which stops the review at Preflight step 1, never as "nothing to review"
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
 - [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry
