@@ -52,9 +52,10 @@ file elsewhere is refused), reads it itself (at most 256
 KiB, valid UTF-8, non-empty, at most 65,536 characters, which is GitHub's comment limit) and passes the
 content to `gh` on stdin. A file anywhere else — including an issue draft under the repo's `issues/` —
 must first be copied into the scratchpad with `Write`. Other sessions' scratchpads of the same user stay
-readable (residual). On Windows the root is `<temp>\claude` (no uid suffix; no WSL needed), no path
-component below it may be a symlink or junction, and the owner check is replaced by the per-user temp
-directory, which is a weaker residual. It exits with `gh`'s own
+readable (residual). On Windows the root is `<temp>\claude` (no uid suffix; no WSL needed), the file
+itself must not be a symlink or junction and its resolved path may hold none below the root (a symlinked
+parent is followed, so it passes only while its target stays under the root), and the owner check is
+replaced by the per-user temp directory, which is a weaker residual. It exits with `gh`'s own
 status and does not print the body it sends.
 
 `whoami` prints the authenticated login (used by `references/next-round-trigger.md`'s authorship

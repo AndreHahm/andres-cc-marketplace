@@ -643,6 +643,30 @@ def test_windows_reparse_walk_that_never_meets_the_root_fails_closed_instead_of_
     assert M._reparse_point_below_root(os.path.realpath(body), [unrelated_root]) is True
 
 
+def test_windows_branch_refuses_a_filesystem_with_no_file_index(env, monkeypatch):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    real = os.path.realpath(body)
+    real_lstat = os.lstat
+
+    class _NoIndex:
+        def __init__(self, info):
+            self._info = info
+            self.st_ino = 0
+
+        def __getattr__(self, name):
+            return getattr(self._info, name)
+
+    def lstat(path, *args, **kwargs):
+        info = real_lstat(path, *args, **kwargs)
+        return _NoIndex(info) if os.path.realpath(path) == real else info
+
+    with monkeypatch.context() as patched:
+        patched.setattr(M.os, "lstat", lstat)
+        with pytest.raises(M.UsageError, match="no file index"):
+            M.read_body(str(body))
+
+
 def test_a_file_swapped_between_the_check_and_the_open_is_rejected(env, monkeypatch):
     _, _, body = env
     real = os.path.realpath(body)
