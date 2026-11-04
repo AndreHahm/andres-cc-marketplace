@@ -314,6 +314,8 @@ jobs:
         shell: bash
       - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_run_dir.py
         shell: bash
+      - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_api_script.py
+        shell: bash
 
   marketplace-parity:
     name: Marketplace mirror/export parity

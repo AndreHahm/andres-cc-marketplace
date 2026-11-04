@@ -9,8 +9,10 @@ from a static argv (no shell), so no caller input can add an argument or swap th
 
 A body file is never handed to `gh` as a path: it must not be a symlink, must resolve to a regular
 file you own below a `scratchpad` directory of <temp>/claude-<uid>, is opened without following a
-final symlink, is size- and UTF-8-checked here, and its content is passed to `gh` on stdin. It
-needs a POSIX platform (owner and no-follow checks).
+final symlink, is size- and UTF-8-checked here, and its content is passed to `gh` on stdin. On
+Windows (no uid, no O_NOFOLLOW) the root is <temp>/claude (no uid suffix), no path component below
+it may be a symlink or junction, and the owner check is left to the per-user temp directory (a
+weaker residual).
 
 The subcommands that write or use GraphQL can no longer be seen by git-guard-raw-pr-review.sh (this
 script's own command text contains none of the words that guard matches), so they enforce the
@@ -49,6 +51,7 @@ MARKER_MAX_AGE = 60
 MAX_BODY_BYTES = 262144
 MAX_BODY_CHARS = 65536
 MAX_TITLE_CHARS = 256
+IS_WINDOWS = sys.platform == "win32"
 PROBE_TIMEOUT = 30  # seconds, the marker's git rev-parse probe
 CALL_TIMEOUT = 300  # seconds, the gh/git call itself (a paginated list can be slow)
 UNSUPPORTED_URL = "unsupported-push-url"
@@ -123,18 +126,60 @@ def _repo_slug(args) -> tuple[str, str]:
 
 
 def allowed_body_roots() -> list[str]:
-    """Per-user roots a body file may live under: <temp>/claude-<uid> (Claude Code's scratch)."""
+    """Per-user roots a body file may live under (Claude Code's scratch).
+
+    POSIX: <temp>/claude-<uid>. Windows: <temp>/claude, since the per-user temp directory is the
+    boundary there and there is no uid; /tmp is not a root. The temp directory comes from
+    tempfile.gettempdir() (TMPDIR, TEMP, TMP), so a caller that overrides those moves the root;
+    with no owner check on Windows, that is a disclosed residual.
+    """
+    if IS_WINDOWS:
+        return [os.path.join(os.path.realpath(tempfile.gettempdir()), "claude")]
     if not hasattr(os, "getuid"):
-        raise UsageError("--body-file needs a POSIX platform (owner and no-follow checks)")
+        raise UsageError("--body-file needs a POSIX or Windows platform (owner checks)")
     temps = {os.path.realpath(tempfile.gettempdir()), os.path.realpath("/tmp")}
     return sorted(os.path.join(temp, f"claude-{os.getuid()}") for temp in temps)
+
+
+def _under(root: str, path: str) -> bool:
+    """True when `path` is `root` or below it; a different drive or prefix style is not below."""
+    try:
+        common = os.path.commonpath([root, path])
+    except ValueError:  # Windows: different drives, or a \?\ prefix mixed with a plain path
+        return False
+    return os.path.normcase(common) == os.path.normcase(root)
 
 
 def _in_scratchpad(real: str, roots: list[str]) -> bool:
     """True when `real` sits under a root and below a directory named `scratchpad`."""
     for root in roots:
-        if os.path.commonpath([root, real]) == root:
+        if _under(root, real):
             return "scratchpad" in os.path.relpath(real, root).split(os.sep)[:-1]
+    return False
+
+
+def _is_reparse_point(info: os.stat_result) -> bool:
+    """True for a Windows symlink, junction or other reparse point (from lstat/fstat attributes)."""
+    return bool(getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def _reparse_point_below_root(real: str, roots: list[str]) -> bool:
+    """True when `real` or a parent below its matching root is a reparse point (Windows)."""
+    for root in roots:
+        if not _under(root, real):
+            continue
+        current = real
+        while os.path.normcase(current) != os.path.normcase(root):
+            try:
+                if _is_reparse_point(os.lstat(current)):
+                    return True
+            except OSError:
+                return True
+            parent = os.path.dirname(current)
+            if parent == current:  # reached a filesystem root without meeting `root`: fail closed
+                return True
+            current = parent
+        return False
     return False
 
 
@@ -143,26 +188,52 @@ def read_body(raw: str) -> bytes:
 
     The path itself must not be a symlink. It is then resolved (so a symlinked parent directory
     cannot hide the real location), must sit below a `scratchpad` directory of the per-user
-    scratch tree, and is opened with O_NOFOLLOW and checked with fstat on the opened descriptor
-    (regular file, owned by the caller, a single link so a hard link to a file elsewhere is
-    refused). procfs-style files fail the location check. Residuals: other sessions' files in the
-    same scratch tree remain readable, and a concurrent process running as the same user could swap
-    a parent directory between the resolve and the open; such a process already holds the user's
-    GitHub credentials, so that race is outside this check's threat model.
+    scratch tree, and is opened with O_NOFOLLOW (POSIX) and checked with fstat on the opened
+    descriptor (regular file, owned by the caller on POSIX, a single link so a hard link to a file
+    elsewhere is refused). On Windows no component below the root may be a reparse point, and the
+    owner check is replaced by the per-user temp directory. procfs-style files fail the location
+    check. The opened descriptor must be the same file (device and inode, or the NTFS file index)
+    that the checked path named just before the open. Residuals: other sessions' files in the same
+    scratch tree remain readable, and a concurrent process running as the same user could swap a
+    parent directory between the resolve and the open (on Windows, which has no O_NOFOLLOW, also
+    the final file, narrowed but not closed by the same-file comparison); such a process already
+    holds the user's GitHub credentials, so that race is outside this check's threat model.
     """
     if os.path.islink(raw):
         raise UsageError(f"--body-file must not be a symlink: {raw!r}")
+    if IS_WINDOWS:
+        try:
+            raw_is_reparse = _is_reparse_point(os.lstat(raw))
+        except OSError:
+            raw_is_reparse = False  # a missing file fails at the open below
+        if raw_is_reparse:
+            raise UsageError(f"--body-file must not be a symlink or junction: {raw!r}")
     real = os.path.realpath(raw)
-    if not _in_scratchpad(real, allowed_body_roots()):
+    roots = allowed_body_roots()
+    if not _in_scratchpad(real, roots):
         raise UsageError(
-            f"--body-file must be in your scratchpad (<temp>/claude-<uid>/.../scratchpad): {raw!r}"
+            f"--body-file must be in your scratchpad (<temp>/claude[-<uid>]/.../scratchpad): "
+            f"{raw!r}"
         )
+    if IS_WINDOWS and _reparse_point_below_root(real, roots):
+        raise UsageError(f"--body-file must not pass through a symlink or junction: {raw!r}")
+    if not IS_WINDOWS and not hasattr(os, "O_NOFOLLOW"):
+        raise UsageError("--body-file needs O_NOFOLLOW on this platform")
+    # O_NOFOLLOW and O_NONBLOCK are POSIX-only; O_BINARY is Windows-only.
+    flags = os.O_RDONLY
+    for name in ("O_NOFOLLOW", "O_NONBLOCK", "O_BINARY"):
+        flags |= getattr(os, name, 0)
     try:
-        fd = os.open(real, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        checked = os.lstat(real)
+        fd = os.open(real, flags)
     except OSError as exc:
         raise UsageError(f"cannot open --body-file {raw!r}: {exc.strerror}") from exc
     info = os.fstat(fd)
-    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
+    if checked.st_ino and (checked.st_dev, checked.st_ino) != (info.st_dev, info.st_ino):
+        os.close(fd)
+        raise UsageError(f"--body-file changed between the check and the open: {raw!r}")
+    owned = IS_WINDOWS or info.st_uid == os.getuid()  # Windows st_uid is always 0
+    if not stat.S_ISREG(info.st_mode) or not owned or info.st_nlink != 1:
         os.close(fd)
         raise UsageError(f"--body-file is not a single-link regular file owned by you: {raw!r}")
     with os.fdopen(fd, "rb") as handle:
