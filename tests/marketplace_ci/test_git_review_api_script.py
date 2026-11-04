@@ -667,6 +667,77 @@ def test_windows_branch_refuses_a_filesystem_with_no_file_index(env, monkeypatch
             M.read_body(str(body))
 
 
+def test_an_fstat_failure_after_the_open_closes_the_descriptor_and_is_a_usage_error(
+    env, monkeypatch
+):
+    _, _, body = env
+    opened, closed = [], []
+    real_open, real_close, real_fstat = os.open, os.close, os.fstat
+
+    def record_open(path, flags, *args, **kwargs):
+        fd = real_open(path, flags, *args, **kwargs)
+        opened.append(fd)
+        return fd
+
+    def fstat(fd):
+        if fd in opened:
+            raise OSError(5, "I/O error")
+        return real_fstat(fd)
+
+    def record_close(fd):
+        closed.append(fd)
+        real_close(fd)
+
+    with monkeypatch.context() as patched:
+        patched.setattr(M.os, "open", record_open)
+        patched.setattr(M.os, "fstat", fstat)
+        patched.setattr(M.os, "close", record_close)
+        with pytest.raises(M.UsageError, match="cannot open"):
+            M.read_body(str(body))
+    assert opened and closed == opened
+
+
+windows_junctions = pytest.mark.skipif(sys.platform != "win32", reason="needs real NTFS junctions")
+
+
+def _junction(link, target):
+    import _winapi  # Windows only; the skipif above keeps other platforms from reaching this
+
+    _winapi.CreateJunction(str(target), str(link))
+
+
+@windows_junctions
+def test_real_junction_as_the_body_file_itself_is_rejected(env):
+    _, _, body = env
+    link = body.parent / "jfile"
+    _junction(link, body.parent)
+    with pytest.raises(M.UsageError, match="symlink or junction"):
+        M.read_body(str(link))
+
+
+@windows_junctions
+def test_real_junction_parent_is_followed_while_its_target_stays_in_the_scratchpad(env):
+    _, _, body = env
+    inside = body.parent / "inside"
+    inside.mkdir()
+    (inside / "f.txt").write_text("via junction")
+    link = body.parent / "via"
+    _junction(link, inside)
+    assert M.read_body(str(link / "f.txt")) == b"via junction"
+
+
+@windows_junctions
+def test_real_junction_parent_to_outside_the_scratchpad_is_rejected(env, tmp_path):
+    _, _, body = env
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (outside / "f.txt").write_text("secret")
+    link = body.parent / "out"
+    _junction(link, outside)
+    with pytest.raises(M.UsageError, match="scratchpad"):
+        M.read_body(str(link / "f.txt"))
+
+
 def test_a_file_swapped_between_the_check_and_the_open_is_rejected(env, monkeypatch):
     _, _, body = env
     real = os.path.realpath(body)
