@@ -14,12 +14,17 @@ same diff command shows its full content as an addition. Without this, an all-un
 (the common case right after `git init` or creating a wholly new file) reports "nothing to review"
 despite genuinely having something to review.
 
-## Why `|| true` on `git add -N` matters for a deletion-only `$SCOPE`
+## Why a `git add -N` failure is tolerated for a deletion-only `$SCOPE`
 
 A deletion-only `$SCOPE` pathspec needs a disk match, so `git add -N` fails outright against it — and,
 untolerated, that failure aborts the whole `&&`-chained Preflight sequence before any later step runs.
 `git diff "$MERGE_BASE" -- "$SCOPE"` still shows the deletion correctly on its own; `git add -N`'s
 failure here is expected and harmless, not a sign anything is actually wrong.
+
+The tolerance stops at git's own failure. `git-review-intent-add.sh` exits 2 when it refuses to run at
+all, for example on a run directory it will not accept, and then no untracked file reaches the diff.
+That sets `$INTENT_ADD_REFUSED=1`, which the report must disclose (issue #637: a refusal here used to
+vanish behind a bare `|| true`). The chain still continues, as it does for `$INDEX_COPY_FAILED`.
 
 ## Why `$UNTRACKED_FILES` matters beyond the Preflight chain
 

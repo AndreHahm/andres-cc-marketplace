@@ -102,7 +102,7 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 26. Live-verified via a full, real two-phase run (both Codex dispatches, both Claude native passes)
     against this skill's own PR diff: `$SCOPE` set to a pathspec resolving only to a deleted tracked
     file → `git add -N -- "${SCOPE:-.}"` fails (`fatal: pathspec ... did not match any files`) but
-    the `|| true` tolerates it, the chain continues, and `git diff "$MERGE_BASE" -- "$SCOPE"` still
+    the chain's failure tolerance absorbs it, the chain continues, and `git diff "$MERGE_BASE" -- "$SCOPE"` still
     correctly shows the deletion. Unanimous finding: raised independently by Codex and Claude in
     Phase 1, confirmed by both again in Phase 2, with no refutation from either side.
 27. Live-verified, issue #78: on a real Windows machine, instructing Codex to run `git diff` itself
@@ -243,8 +243,9 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       on its own
 - [ ] The stated scenario count in SKILL.md's pointer to this file always matches this file's actual
       count — never left stale after a scenario is added or removed
-- [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
-      deletion must never abort the chained Preflight invocation before `git diff` runs
+- [ ] A failed `git add -N` never aborts the chained Preflight invocation before `git diff` runs (a
+      `$SCOPE` resolving only to a deletion), and only the helper's own refusal (exit 2) sets
+      `$INTENT_ADD_REFUSED`, which the report discloses
 - [ ] The review scope planner is always run through the fixed-shape wrapper named by `allowed-tools`'s exact `bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-scope-run.sh` grant, spelled out literally in Preflight step 1, never through an array, and always resolved from the installed plugin root through `${CLAUDE_PLUGIN_ROOT:-.claude}` (the `.claude/` mirror when the variable is empty, a form deliberately left ungranted so it prompts), never from the `plugins/` folder of the repository under review; the wrapper accepts no `--repo`, `--output` or `--diff-dir`
 - [ ] The throwaway index is seeded only through `git-review-copy-index.sh` (one file to `$RUN/index`, no overwrite), never through a bare `cp` or a `Bash(cp:*)` grant
 - [ ] Every file the model authors or assembles is written through `git-review-write-run-file.sh` (one file directly under `$RUN`, parts only from `$RUN` or the two fixed prompts); the only other writes are Preflight's own `git show`/`git diff` redirects to fixed `$RUN` names; `allowed-tools` has no `Write` entry

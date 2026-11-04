@@ -8,7 +8,7 @@
 # the skill points git at a copy in its own run directory. This helper is what its allowed-tools grant
 # names instead of a bare `git add -N`: it sets GIT_INDEX_FILE itself, to <run-dir>/index, after
 # dropping every other GIT_* variable, in an owner-only temp directory shaped like `mktemp -d` output
-# (tmp.<random>, mode 0700, owned by the caller, not a symlink, directly under the temp directory,
+# (tmp.<random>, private per git-review-run-dir.sh, owned by the caller, not a symlink, directly under the temp directory,
 # outside the repository). That is a check on the path, not proof the skill made the directory. The
 # index file, if it exists, must be a regular file, not a symlink (a swap after that check is not
 # prevented). Git hooks and fsmonitor are disabled for the call. The one optional pathspec is passed
@@ -39,7 +39,10 @@ done
 
 run_dir=$(CDPATH='' cd -P -- "$run_dir" && pwd -P)
 [[ $(basename -- "$run_dir") =~ ^tmp\.[A-Za-z0-9]{8,12}$ ]] || fail "run directory must be a mktemp -d directory"
-[ -n "$(find "$run_dir" -maxdepth 0 -perm 700 2>/dev/null)" ] || fail "run directory must have mode 0700"
+script_dir=$(CDPATH='' cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source=git-review-run-dir.sh
+source "$script_dir/git-review-run-dir.sh"
+check_run_dir_private "$run_dir"
 run_parent=$(dirname -- "$run_dir")
 tmp_a=$(CDPATH='' cd -P -- /tmp 2>/dev/null && pwd -P || true)
 tmp_b=$(CDPATH='' cd -P -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P || true)
@@ -50,9 +53,7 @@ top=$(git rev-parse --show-toplevel 2>/dev/null || true)
 [ -n "$top" ] || fail "not inside a git work tree"
 top=$(CDPATH='' cd -P -- "$top" && pwd -P)
 [ "$top" != / ] || fail "refusing to treat / as the repository"
-case "$run_dir/" in
-  "$top"/*) fail "run directory must be outside the repository" ;;
-esac
+check_run_dir_outside_repo "$run_dir" "$top"
 
 index=$run_dir/index
 if [ -e "$index" ] || [ -L "$index" ]; then
