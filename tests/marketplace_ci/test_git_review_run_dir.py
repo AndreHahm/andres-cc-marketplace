@@ -40,7 +40,7 @@ FAKE_OUTSIDE_REPO = FAKE_GIT_BASH.replace(
     'check_run_dir_outside_repo "$2" "$3"',
 ).replace(
     "    missing) return 1 ;;",
-    '    /c/*) echo "C:/${2#/c/}" ;;\n    missing) return 1 ;;',
+    '    /c) echo "C:/" ;;\n    /c/*) echo "C:/${2#/c/}" ;;\n    missing) return 1 ;;',
 )
 
 
@@ -89,6 +89,7 @@ def test_git_bash_refuses_anything_else(run_dir, profile, message):
     ("root", "refused"),
     [
         ("/c/Users/runneradmin", True),  # the temp directory is inside this work tree
+        ("/c", True),  # a repository at the root of the drive
         ("/c/users/RUNNERADMIN/AppData", True),
         ("/c/Users/runneradmin/repo", False),
         ("/c/Users/runneradmin2", False),
