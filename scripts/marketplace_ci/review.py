@@ -1974,7 +1974,8 @@ def _dispatch_one(
     # 128 KiB, which failed every reviewer on a 4,500-path diff (issue #611). With a file the whole
     # list also stays in scope for the bridge's validation of what the reviewer cites.
     paths_path = instructions_dir / f"{name}.paths"
-    paths_path.write_text("".join(f"{p}\n" for p in reviewer_scope), encoding="utf-8")
+    # Bytes, not text mode: text mode writes "\r\n" on Windows, and the bridge splits on "\n" only.
+    paths_path.write_bytes("".join(f"{p}\n" for p in reviewer_scope).encode("utf-8"))
 
     argv = [
         "node",

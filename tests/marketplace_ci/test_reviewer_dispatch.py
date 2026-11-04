@@ -1683,6 +1683,29 @@ def test_the_paths_reach_the_bridge_in_a_file_one_per_line(monkeypatch, repo, co
     assert not Path(argv[argv.index("--target-paths-file") + 1]).is_relative_to(repo)
 
 
+def test_the_paths_file_has_bare_newlines_even_where_text_mode_would_write_crlf(
+    monkeypatch, repo, completed
+):
+    # The bridge splits the file on "\n" only, so a "\r\n" (what text mode writes on Windows) leaves
+    # a "\r" on every path and fails its path check. Reading the raw bytes is the point: read_text
+    # converts "\r\n" back to "\n" and would hide it.
+    raw: list[bytes] = []
+
+    def fake_run(argv, **kw):
+        if "--reviewer-type" in argv:
+            raw.append(Path(argv[argv.index("--target-paths-file") + 1]).read_bytes())
+            return completed(0, stdout=b"{}")
+        return completed(0, stdout=_FAKE_TOML_CONTENT)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    dispatch_reviewers(_scope("scripts/tool.py", "docs/notes.md"), base_sha="deadbeef", repo=repo)
+
+    assert raw
+    assert all(b"\r" not in data for data in raw)
+    assert all(data.endswith(b"\n") for data in raw)
+
+
 def test_the_rulebook_checker_keeps_its_narrowed_paths_in_its_file(monkeypatch, repo, completed):
     calls = _record_bridge_calls(monkeypatch, completed)
     skill, fixture = "plugins/demo-kit/skills/x/SKILL.md", "evals/demo/fixture.md"
