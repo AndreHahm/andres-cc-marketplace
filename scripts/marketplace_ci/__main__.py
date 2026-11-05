@@ -1179,6 +1179,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         compute_pr_delta,
         derive_review_scope,
         dispatch_reviewers,
+        fallback_files_changed,
         gate_decision,
         probe_sandbox,
         run_delta_structural_checks,
@@ -1249,6 +1250,24 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     except Exception as exc:  # fail closed: a check that crashed is not a clean pass
         return _fail_run_codex_review(args, f"script verifier failed: {exc!r}")
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
+    allow_fallback = getattr(args, "allow_unsandboxed_fallback", False)
+    if allow_fallback:
+        # The fallback runs the dispatcher and what it imports from the working tree with
+        # danger-full-access, so a branch that edits any of them must not get it, whoever calls
+        # this entry point; without it a failed sandbox probe fails closed (no reviewer starts).
+        touched = fallback_files_changed(repo, base_sha)
+        if touched is None or touched:
+            allow_fallback = False
+            why = (
+                "could not compare them with the base"
+                if touched is None
+                else "this branch changes " + ", ".join(touched)
+            )
+            print(
+                f"run-codex-review: unsandboxed fallback refused: it runs files from the working "
+                f"tree and {why}; reviewers run sandboxed only",
+                file=sys.stderr,
+            )
     if instructions_dir is not None:
         # Claim it exclusively and privately: the validation above is only a check, and
         # `mkdir(exist_ok=True)` later would accept a path planted since, symlinks included.
@@ -1268,7 +1287,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_ranges=changed_ranges,
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
-            allow_guardrails_fallback=getattr(args, "allow_unsandboxed_fallback", False),
+            allow_guardrails_fallback=allow_fallback,
             sandbox_probe=_sandbox_probe_for(args, probe_sandbox),
         )
     except OSError as exc:
