@@ -1,0 +1,112 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4483226772",
+      "note": "Valid; deferred to issue 649 because the fix edits a fallback file.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:34+00:00",
+      "rule": "fallback-ignores-model-and-timeout"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4483391112",
+      "note": "Maintainer design decision; reviewer accepted the trade-off.",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:34+00:00",
+      "rule": "sandbox-known-down-cached-probe"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4483391125",
+      "note": "Valid, heavy lift; deferred to issue 650.",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:34+00:00",
+      "rule": "fallback-check-to-launch-window"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391138",
+      "note": "Fixed in 4e4d1cf9; reviewer confirmed.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:34+00:00",
+      "rule": "sandbox-note-with-findings"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391149",
+      "note": "Fixed in 4e4d1cf9 with .codex/config.toml only, narrower than suggested.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:35+00:00",
+      "rule": "fallback-files-missing-codex-config"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391175",
+      "note": "Confirmed live and fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:35+00:00",
+      "rule": "which-selects-cwd-executable"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391201",
+      "note": "Fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:35+00:00",
+      "rule": "probe-unfiltered-path"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391225",
+      "note": "Fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:36+00:00",
+      "rule": "unsandboxed-flag-set-too-early"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391234",
+      "note": "Fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:36+00:00",
+      "rule": "stderr-hides-typed-failure"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4483391245",
+      "note": "Fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:36+00:00",
+      "rule": "sandbox-marker-lost-in-clip"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4484928929",
+      "note": "Confirmed live and fixed in this round; PATHEXT limited to directly startable extensions.",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:37+00:00",
+      "rule": "pathext-interpreter-only-entries"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "PRR_kwDOTi7e-s8AAAABWQjzrQ",
+      "note": "Review-body finding; fixed in 4e4d1cf9.",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 646,
+      "recorded_at": "2026-11-05T19:34:36+00:00",
+      "rule": "completed-findings-dropped-on-exit-2"
+    }
+  ]
+}
