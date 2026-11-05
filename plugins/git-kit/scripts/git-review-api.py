@@ -136,7 +136,11 @@ def allowed_body_roots() -> list[str]:
     follows TEMP/TMP, so a differing TMPDIR alone must not reject a valid scratchpad file.
     """
     if IS_WINDOWS:
-        temps = (tempfile.gettempdir(), os.environ.get("TEMP"), os.environ.get("TMP"))
+        # The per-user temp directory is the Windows trust boundary (see the docstring: a caller
+        # that overrides TMPDIR/TEMP/TMP moves the root, a disclosed residual). A body file must
+        # still sit below <temp>/claude/.../scratchpad and pass the link and reparse checks.
+        system_temp = tempfile.gettempdir()  # NOSONAR python:S5443 - accepted, see above
+        temps = (system_temp, os.environ.get("TEMP"), os.environ.get("TMP"))
         roots = (os.path.join(os.path.realpath(temp), "claude") for temp in temps if temp)
         return list(dict.fromkeys(roots))
     if not hasattr(os, "getuid"):
