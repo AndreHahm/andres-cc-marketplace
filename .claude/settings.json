@@ -144,6 +144,18 @@
             "onError": "warn"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/dck-session-context.sh\"",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
