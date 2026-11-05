@@ -511,8 +511,11 @@ def check_nested_claude_gets_no_secrets_and_few_tools():
     planted = {
         "CLAUDECODE": "1",
         "ANTHROPIC_API_KEY": "keep-me",
+        "CLAUDE_CODE_OAUTH_TOKEN": "keep-me",
         "AWS_SECRET_ACCESS_KEY": "leak-me",
         "GITHUB_TOKEN": "leak-me",
+        "ANTHROPIC_UNRELATED_TOKEN": "leak-me",
+        "CLAUDE_UNRELATED_SECRET": "leak-me",
     }
     saved = {k: os.environ.get(k) for k in planted}
     os.environ.update(planted)
@@ -539,10 +542,10 @@ def check_nested_claude_gets_no_secrets_and_few_tools():
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
-    if "CLAUDECODE" in env or "AWS_SECRET_ACCESS_KEY" in env or "GITHUB_TOKEN" in env:
+    if "CLAUDECODE" in env or any(value == "leak-me" for value in env.values()):
         return False, "child_env passes the nesting guard or an unrelated credential through"
-    if env.get("ANTHROPIC_API_KEY") != "keep-me":
-        return False, "child_env drops the variable the child needs to authenticate"
+    if env.get("ANTHROPIC_API_KEY") != "keep-me" or env.get("CLAUDE_CODE_OAUTH_TOKEN") != "keep-me":
+        return False, "child_env drops a variable the child needs to authenticate"
     if "--tools||" not in seen:
         return False, f"improve_description does not pass an empty --tools list: {seen!r}"
     if "--strict-mcp-config|" not in seen:
