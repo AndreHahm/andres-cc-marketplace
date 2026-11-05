@@ -2080,6 +2080,59 @@ def test_codex_is_never_resolved_from_inside_the_checkout(monkeypatch, tmp_path)
     assert seen["path"] == str(outside)
 
 
+def test_path_outside_checkout_drops_every_entry_that_leads_into_the_checkout(
+    monkeypatch, tmp_path
+):
+    inside = tmp_path / "repo"
+    (inside / ".venv" / "Scripts").mkdir(parents=True)
+    outside = tmp_path / "bin"
+    outside.mkdir(exist_ok=True)
+    monkeypatch.chdir(inside)
+    monkeypatch.setenv(
+        "PATH",
+        os.pathsep.join([".", "", str(inside), str(inside / ".venv" / "Scripts"), str(outside)]),
+    )
+    assert review._path_outside_checkout() == str(outside)
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_the_bridge_and_the_fallback_get_a_path_without_the_checkout(
+    monkeypatch, repo, change, dependency_index, trusted_node, fallback
+):
+    """Issue #644 review, finding M1: bridge-invoke.mjs and guarded-dispatch.mjs both find
+    `codex` by walking PATH from the checkout, so a `codex.cmd` committed there (or in an
+    activated `.venv\\Scripts`) would run first. Both launches must get a PATH without it."""
+    monkeypatch.chdir(repo)
+    outside = repo.parent / "outside-bin"
+    outside.mkdir(exist_ok=True)
+    monkeypatch.setenv(
+        "PATH", os.pathsep.join([".", str(repo / ".venv" / "Scripts"), str(outside)])
+    )
+    seen = []
+
+    def fake_bridge(argv, *, cwd, timeout, env=None):
+        seen.append((_is_guarded(argv), env))
+        if _is_guarded(argv) or not fallback:
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(review, "_run_bridge", fake_bridge)
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(lambda *_: None))
+    scope = _skill_scope(change, dependency_index)
+    kwargs = (
+        {"allow_guardrails_fallback": True, "sandbox_probe": _probe_confirming_down()}
+        if fallback
+        else {}
+    )
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo, **kwargs)
+    assert any(guarded for guarded, _ in seen) is fallback
+    assert seen
+    for _, env in seen:
+        assert env is not None and env["PATH"] == str(outside)
+
+
 def test_there_is_no_fallback_when_node_cannot_be_found_outside_the_checkout(
     monkeypatch, repo, change, dependency_index
 ):

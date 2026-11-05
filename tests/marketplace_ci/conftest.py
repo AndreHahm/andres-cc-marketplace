@@ -151,8 +151,8 @@ def _route_bridge_through_subprocess_run(monkeypatch):
     monkeypatch.setattr(
         review,
         "_run_bridge",
-        lambda argv, *, cwd, timeout: subprocess.run(
-            argv, cwd=cwd, capture_output=True, timeout=timeout
+        lambda argv, *, cwd, timeout, env=None: subprocess.run(
+            argv, cwd=cwd, env=env, capture_output=True, timeout=timeout
         ),
     )
 
