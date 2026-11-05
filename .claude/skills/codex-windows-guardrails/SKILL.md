@@ -194,6 +194,11 @@ provenance field imply otherwise.
   with no process ever spawned. Enabling the feature and running a real, spawning dispatch live was
   out of scope for this skill's build and remains an open item; `--dry-run true` narrows that gap
   (everything up to the spawn is now live-verified) but does not close it.
+  **First live run (2026-11-04, reported in issue #644):** `guarded-dispatch.mjs` with the local
+  override enabled and one tiny probe instruction exited 0 with a valid envelope, and Codex's shell
+  ran and returned the real first line of a repo file (`execution_profile: danger-full-access`). One
+  run on one machine, so the item stays open for the broader scenarios. The parity review
+  (`run-codex-review --allow-unsandboxed-fallback`) now uses this script as its opt-in fallback.
 
 **Quality gates:**
 - [ ] Never claims or documents sandbox-equivalence, anywhere its output is surfaced

@@ -1081,6 +1081,8 @@ def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
         else:
             status = "findings" if findings else "clean"
         results[report.reviewer] = {"status": status, "attempts": report.attempts}
+        if getattr(report, "unsandboxed", False):
+            results[report.reviewer]["unsandboxed"] = True
     return results
 
 
@@ -1154,6 +1156,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ReviewOutputError,
         ReviewResult,
         _changed_path_set,
+        _redact_json_values,
         aggregate_findings,
         collapse_identical_mirrors,
         compute_changed_line_ranges,
@@ -1161,6 +1164,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         derive_review_scope,
         dispatch_reviewers,
         gate_decision,
+        probe_sandbox,
         run_delta_structural_checks,
         validate_review_output,
     )
@@ -1248,6 +1252,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_ranges=changed_ranges,
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
+            allow_guardrails_fallback=getattr(args, "allow_unsandboxed_fallback", False),
+            sandbox_probe=probe_sandbox if sys.platform == "win32" else None,
         )
     except OSError as exc:
         # Raised only before any reviewer starts (e.g. the default instruction
@@ -1279,6 +1285,16 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
                 "status": "could_not_run",
                 "reviewer_results": _reviewer_results(reports),
+                # Raw envelope findings of the reviewers that did complete, so a partial run
+                # does not lose them (issue #644). Not validated or gated: the run is exit 2.
+                "completed_reviewer_findings": {
+                    r.reviewer: _redact_json_values(r.output["findings"])
+                    for r in reports
+                    if r.status == "completed"
+                    and isinstance(r.output, dict)
+                    and isinstance(r.output.get("findings"), list)
+                    and r.output["findings"]
+                },
                 "provenance": _run_provenance(repo, base_sha, reports),
                 "blocking": True,
             }
@@ -1531,6 +1547,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="new directory outside the checkout for the per-reviewer instruction files "
         "(default: a temporary directory, removed afterwards on a best-effort basis)",
+    )
+    run_codex_review.add_argument(
+        "--allow-unsandboxed-fallback",
+        action="store_true",
+        help="when a reviewer's Codex sandbox cannot start (the Windows setup-refresh failure, "
+        "issue #644), run it through codex-windows-guardrails: danger-full-access, no sandbox, "
+        "this account's permissions and network. Local use only; CI never passes it",
     )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
 

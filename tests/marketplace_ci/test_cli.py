@@ -2135,3 +2135,45 @@ def test_run_provenance_configured_model_is_none_when_the_variable_is_unset_or_b
     assert _run_provenance(git_repo.root, None, [])["configured_model"] is None
     monkeypatch.setenv(review_contract.MODEL_VARIABLE, "  ")
     assert _run_provenance(git_repo.root, None, [])["configured_model"] is None
+
+
+def test_run_codex_review_failure_file_keeps_the_findings_of_reviewers_that_completed(
+    monkeypatch, git_repo, tmp_path
+):
+    """Issue #644: one reviewer that could not run must not drop another's findings."""
+    import subprocess as subprocess_module
+
+    for name in ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer"):
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    git_repo.write("README.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/hooks/hooks.json", "{}")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+    finding = {"id": "F1", "severity": "Major", "summary": "kept"}
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            if "security-reviewer" in argv:
+                envelope = {"findings": [finding], "verdict": "Fail", "inspection_limits": []}
+                return subprocess_module.CompletedProcess(
+                    argv, returncode=0, stdout=json.dumps(envelope).encode(), stderr=b""
+                )
+            return subprocess_module.CompletedProcess(
+                argv, returncode=1, stdout=b"", stderr=b"boom"
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    out = tmp_path / "result.json"
+    assert main(["run-codex-review", "--base-sha", base_sha, "--output", str(out)]) == 2
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["reviewer_results"]["security-reviewer"]["status"] == "findings"
+    assert payload["completed_reviewer_findings"] == {"security-reviewer": [finding]}
