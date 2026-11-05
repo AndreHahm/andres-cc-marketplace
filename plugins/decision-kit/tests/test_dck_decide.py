@@ -1,9 +1,11 @@
 """Tests dck-decide.py against a local fake server. No network, no real key."""
 
+import ast
 import importlib.util
 import json
 import os
 import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -14,6 +16,7 @@ import pytest
 SKILL = Path(__file__).resolve().parents[1] / "skills" / "consulting-decision-model"
 SPEC = importlib.util.spec_from_file_location("dck_decide", SKILL / "scripts" / "dck-decide.py")
 assert SPEC is not None and SPEC.loader is not None
+sys.dont_write_bytecode = True
 dck = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(dck)
 
@@ -30,6 +33,11 @@ def answer(model, safe=0.99, risk=0.2, choice=None):
     if choice:
         answers["best_option"] = {"type": "choice", "choice": choice}
     return {"model": model, "answers": answers, "usage": {"cost": 0.0001}}
+
+
+@pytest.fixture(autouse=True)
+def no_proxy_for_the_local_server(monkeypatch):
+    monkeypatch.setenv("no_proxy", "127.0.0.1")
 
 
 @pytest.fixture
@@ -62,6 +70,7 @@ def server():
     state["base"] = f"http://127.0.0.1:{httpd.server_port}"
     yield state
     httpd.shutdown()
+    httpd.server_close()
 
 
 @pytest.fixture
@@ -112,6 +121,35 @@ def test_threshold_edges(server, repo):
     assert dck.run(decision(), server["base"], repo)["verdict"] == "no_stop"
     server["reply"][PIN] = (200, answer(PIN, safe=0.949))
     assert dck.run(decision(), server["base"], repo)["reason"] == "uncertain"
+
+
+def test_stop_threshold_edges(server, repo):
+    server["reply"][PIN] = (200, answer(PIN, safe=0.2))
+    out = dck.run(decision(claude_position="stop"), server["base"], repo)
+    assert out["reason"] == "agree_stop"
+    server["reply"][PIN] = (200, answer(PIN, safe=0.21))
+    out = dck.run(decision(claude_position="stop"), server["base"], repo)
+    assert out["reason"] == "uncertain"
+
+
+def test_missing_best_option_is_not_an_answer(server, repo):
+    server["reply"][PIN] = (200, answer(PIN))
+    server["reply"][FALL] = (200, answer(FALL))
+    data = decision(options={"a": "one", "b": "two"}, claude_choice="a")
+    assert dck.run(data, server["base"], repo)["verdict"] == "ask_user"
+
+
+def test_unknown_best_option_is_not_an_answer(server, repo):
+    server["reply"][PIN] = (200, answer(PIN, choice="c"))
+    server["reply"][FALL] = (200, answer(FALL, choice="c"))
+    data = decision(options={"a": "one", "b": "two"}, claude_choice="a")
+    assert dck.run(data, server["base"], repo)["verdict"] == "ask_user"
+
+
+def test_record_is_owner_only(server, repo):
+    server["reply"][PIN] = (200, answer(PIN))
+    out = dck.run(decision(), server["base"], repo)
+    assert Path(out["record"]).stat().st_mode & 0o777 == 0o600
 
 
 def test_higher_risk_asks(server, repo):
@@ -181,6 +219,7 @@ def test_malformed_key_sends_nothing_and_stays_out_of_output(server, repo, monke
     out = dck.run(decision(), server["base"], repo)
     assert out["verdict"] == "ask_user" and not server["requests"]
     assert bad not in json.dumps(out)
+    assert json.dumps(bad)[1:-1] not in json.dumps(out)
 
 
 def test_no_key_sends_nothing(server, repo, monkeypatch):
@@ -217,6 +256,21 @@ def test_no_key_sends_nothing(server, repo, monkeypatch):
         {"state": "GITHUB_TOKEN=" + "a" * 16},
         {"state": "AWS_SESSION_TOKEN=" + "a" * 16},
         {"state": "POSTGRES://user:hunter22@db/x"},
+        {"state": "ASIA" + "A" * 16},
+        {"state": "API_KEY_ASIA" + "A" * 16},
+        {"state": "password\\u003dhunter2hunter"},
+        {"state": "line\\\\nghp_" + "a" * 36},
+        {"state": "postgres:\\\\/\\\\/user:hunter22@db"},
+        {"state": "ya29." + "a" * 24},
+        {"state": "hf_" + "a" * 34},
+        {"state": "xapp-" + "1" * 24},
+        {"state": "https://hooks.slack.com/services/" + "a" * 12},
+        {"state": "whsec_" + "a" * 24},
+        {"state": "pypi-" + "a" * 54},
+        {"state": "dop_v1_" + "a" * 44},
+        {"state": "SG." + "a" * 18 + "." + "b" * 18},
+        {"state": "line\\u0022ghp_" + "a" * 36},
+        {"state": "postgres:\\/\\/user:hunter22@db"},
         {"state": "{'password': 'hunter2hunter'}"},
         {"state": "'password' => 'hunter2hunter'"},
         {"options": {"a": "x" * dck.MAX_STATE_CHARS, "b": "two"}, "claude_choice": "b"},
@@ -273,6 +327,14 @@ def test_a_parent_override_is_named_even_when_it_changes_nothing(server, repo, m
     assert any("project folder" in w and str(repo) in w for w in out["warnings"])
 
 
+def test_project_root_skips_an_unreadable_folder(repo, monkeypatch):
+    def denied(self):
+        raise PermissionError
+
+    monkeypatch.setattr(Path, "is_file", denied)
+    assert dck.project_root(repo) == repo
+
+
 def test_project_root_defaults_to_the_start_folder(repo):
     nested = repo / "a"
     nested.mkdir()
@@ -322,7 +384,14 @@ def test_redirect_is_not_followed(repo):
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     status, _ = dck.post(f"http://127.0.0.1:{httpd.server_port}", FAKE_KEY, {"model": "m"}, 5)
     httpd.shutdown()
+    httpd.server_close()
     assert status == 307 and seen == [dck.DECISIONS_PATH]
+
+
+def test_script_stays_compatible_with_python_3_9():
+    source = (SKILL / "scripts" / "dck-decide.py").read_text(encoding="utf-8")
+    ast.parse(source, feature_version=(3, 9))
+    assert "import UTC" not in source and "datetime.UTC" not in source
 
 
 def test_hook_is_silent_without_a_key():
@@ -330,13 +399,18 @@ def test_hook_is_silent_without_a_key():
     env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
     assert (
         subprocess.run(
-            ["bash", str(hook)], capture_output=True, text=True, env=env, check=True
+            ["bash", str(hook)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=env,
+            check=True,
         ).stdout
         == ""
     )
     env["OPENROUTER_API_KEY"] = FAKE_KEY
     out = subprocess.run(
-        ["bash", str(hook)], capture_output=True, text=True, env=env, check=True
+        ["bash", str(hook)], capture_output=True, text=True, encoding="utf-8", env=env, check=True
     ).stdout
     assert "consulting-decision-model" in out and FAKE_KEY not in out
 
@@ -409,7 +483,7 @@ def test_risk_half_step_rounds_up(server, repo):
     assert dck.run(decision(), server["base"], repo)["reason"] == "disagree_on_risk"
 
 
-def test_truncated_response_falls_back(repo):
+def test_truncated_response_is_no_answer(repo):
     import socket
 
     listener = socket.socket()
@@ -425,7 +499,8 @@ def test_truncated_response_falls_back(repo):
     threading.Thread(target=serve, daemon=True).start()
     status, body = dck.post(f"http://127.0.0.1:{listener.getsockname()[1]}", FAKE_KEY, {}, 5)
     listener.close()
-    assert status is None or body == b"short"
+    assert (status, body) == (200, b"short")
+    assert dck.parse_answers(body, PIN, decision()) is None
 
 
 def test_oversized_response_is_a_failure(repo, monkeypatch, server):

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Prints a short context note at SessionStart, only when an OpenRouter key is set.
 # Blocks nothing, reads no stdin, and never prints the key.
 [ -n "${OPENROUTER_API_KEY:-}" ] || exit 0

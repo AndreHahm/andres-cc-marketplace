@@ -19,7 +19,7 @@ The plugin is off until you enable it with `claude plugin enable decision-kit`, 
 export OPENROUTER_API_KEY=<your key>
 ```
 
-Without a key, the hook stays silent, so nothing prompts a consultation. If one runs anyway, it reports the
+Without a key, the hook stays silent, so it does not prompt a consultation. If one runs anyway, it reports the
 missing key. It stops to ask on a critical, security or high-risk decision, and otherwise reports that no
 second opinion is available.
 
@@ -35,8 +35,8 @@ switch from enabling the plugin. A project can set it in `.claude/decision-kit.l
   then reports that the check is off, or stops to ask on a critical, security or high-risk decision.
 
 The model can only add a stop. When it adds none, Claude behaves exactly as it would have without this
-plugin. Excerpts of your code or config go to OpenRouter, after a screen for known secret shapes and
-only under zero data retention. See
+plugin, and all normal permission gates still apply. Excerpts of your code or config go to OpenRouter, after a screen for known secret shapes and
+only under zero data retention, with no prompt per send. See
 [data handling](skills/consulting-decision-model/references/data-handling.md).
 
 ## Language

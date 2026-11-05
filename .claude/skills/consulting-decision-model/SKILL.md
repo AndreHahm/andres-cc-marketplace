@@ -4,9 +4,9 @@ description: >-
   Gets an independent answer from one pinned OpenRouter decision model before Claude acts on a
   critical, security-relevant, or low- or mid-confidence decision it made itself, and stops to ask
   the user on disagreement or uncertainty. Use before an irreversible action Claude chose (deleting
-  data, force-pushing, a migration, publishing), before a permission or trust-boundary change, when
+  data, force-pushing, a migration, publishing), before a permission change, when
   two options for a pending action look equally good or evidence is thin, or for "ask the decision
-  model", "check this decision" or "is this action safe to proceed". Not when the user ordered
+  model", "check this decision before you do it" or "is this action safe to proceed". Not when the user ordered
   that exact action on their own judgment, and not for a review of a diff
   (cross-model-review), a design or recommendation to present (codex-peer-review) or a plan or
   document (codex-verify): this skill judges one action or choice Claude is about to execute. The
@@ -36,6 +36,8 @@ have done anyway, including asking the user. Agreement is not proof of safety.
 | `security` | A permission or trust-boundary change, a new gate, handling of secrets, sandbox or network settings |
 | `confidence` | Claude would not put its own confidence at about 90% or more, or can name a plausible reason it is wrong; for example two options look equally good or the evidence is thin |
 
+On a merge, this check runs in addition to `merge-pr`'s own readiness gates.
+
 ## When NOT to Use
 
 - The user explicitly told Claude to do that exact action: that instruction is the decision. This does
@@ -54,7 +56,7 @@ classification and an honest `claude_risk`.
 
 Write the facts the decision rests on, including any rule it depends on: a model cannot judge against
 a policy it never saw. The script adds a fixed policy line per trigger. Send short excerpts, never a
-whole file, because the text goes to a third party. Set `claude_position` and `claude_risk` before
+whole file, because the text goes to a third party; the limit is 40,000 characters. Set `claude_position` and `claude_risk` before
 reading any answer, so the comparison stays honest.
 
 | Field | Values |
@@ -124,6 +126,9 @@ Surface every entry in `warnings` to the user, for example a pinned snapshot tha
   through the user's gate.
 - **Framing decides the answer.** A badly framed `state` gets a confident wrong answer. State the
   action exactly as it would run, with the target named.
+- **A command guard can block the run.** A hook such as git-kit's matches command text inside the heredoc,
+  so write a destructive command in plain words ("force-delete the local branch release-1.8") and keep the
+  action and target exact. The block is not a verdict: nothing ran, so this does not use up the single run.
 - **Removing a secret to pass the screen must not change the decision.** If the secret is the point,
   describe it ("the production token") instead.
 
@@ -159,11 +164,12 @@ and when to fire has no labelled examples until real consultation records exist.
 **Quality gates:**
 - [ ] A `refused` result means no request left the machine
 - [ ] Every request carries `provider: {"zdr": true}`
-- [ ] `no_stop` never removes a question Claude would have asked anyway
+- [ ] `no_stop` never removes a question Claude would have asked anyway (no test or eval reaches this)
 - [ ] A critical, security or high-risk decision never continues when the API is unavailable or the script fails
 - [ ] The API key appears in no output or record
 
 **Last dated run record:** 2026-11-05, `plugins/decision-kit/tests/test_dck_decide.py`,
-`scripts/smoke_test.py` and `evals/consulting-decision-model/workspace/iteration-{1,2}/eval-*/with_skill/grading.json`
-(4/4 each, with_skill only). Each ran against the revision of this file at its date; none was re-run after
-the later changes, and no agent used the real `AskUserQuestion`. The live API path is not yet run from this plugin.
+`scripts/smoke_test.py` and `evals/consulting-decision-model/workspace/iteration-3/benchmark.json` (with_skill 12/12, baseline 6/12).
+The baseline points lost are the two script assertions per eval; all three baselines also stopped and
+deleted nothing, so this shows the script runs, not that the skill is safer. No agent used the real
+`AskUserQuestion`, and only wording, gotchas and further screen shapes changed after that run. The live API path is not yet run from this plugin.
