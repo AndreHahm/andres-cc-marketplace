@@ -1765,3 +1765,374 @@ def test_an_unsafe_path_the_rulebook_checker_would_not_see_still_stops_every_rev
     assert {r.reviewer for r in reports} == {"dependency-reviewer", "plugin-rulebook-checker"}
     assert all(r.status == "failed" and r.attempts == 0 for r in reports)
     assert not calls
+
+
+# --- issue #644: Windows sandbox "setup refresh" failure -------------------------------------
+
+_REAL_PROBE_SANDBOX = review.probe_sandbox
+_REAL_EXECUTABLE_OUTSIDE_CHECKOUT = review._executable_outside_checkout
+
+
+@pytest.mark.parametrize(
+    "verdict, limit",
+    [
+        # The solo scripts-reviewer envelope from the issue: matched neither old heuristic.
+        (
+            "Unable to complete the static script review",
+            "failed before execution with `CreateProcess ... helper_unknown_error`",
+        ),
+        # The cross-model-review wordings the old regex missed.
+        ("Pass", "helper could not initialize"),
+        ("Pass", "failed during environment setup"),
+        (
+            "Pass",
+            "could not be started because the helper intermittently failed during process setup",
+        ),
+        (
+            "Pass",
+            "Failed to create unified exec process: helper_unknown_error: setup refresh had errors",
+        ),
+        ("Pass", "open ACL target for root-only update: used by another process. (os error 32)"),
+    ],
+)
+def test_inspected_nothing_catches_the_windows_sandbox_failure_wordings(verdict, limit):
+    envelope = {"findings": [], "verdict": verdict, "inspection_limits": [limit]}
+    assert review._inspected_nothing(envelope) is not None
+
+
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        {"findings": [], "verdict": "Pass", "inspection_limits": []},
+        {"findings": [], "verdict": "Pass", "inspection_limits": ["Read every changed file."]},
+        # A finding means the reviewer read something, whatever its notes say.
+        {"findings": [{"id": "F1"}], "verdict": "Pass", "inspection_limits": ["setup refresh"]},
+        {"findings": [{"id": "F1"}], "verdict": "Unable to finish", "inspection_limits": []},
+        # Ordinary review notes that merely use the same verbs must not become could-not-run.
+        {
+            "findings": [],
+            "verdict": "Pass",
+            "inspection_limits": [
+                "Could not start the test suite; reviewed the changed code statically.",
+                "Unable to create a virtualenv here, so no dependency was installed.",
+            ],
+        },
+    ],
+)
+def test_inspected_nothing_leaves_real_reviews_alone(envelope):
+    assert review._inspected_nothing(envelope) is None
+
+
+def test_inspected_nothing_reports_the_note_that_names_the_failure_not_the_first():
+    out = review._inspected_nothing(
+        {
+            "findings": [],
+            "verdict": "Pass",
+            "inspection_limits": ["Reviewed only the diff.", "setup refresh had errors"],
+        }
+    )
+    assert out == "setup refresh had errors"
+
+
+@pytest.fixture
+def trusted_node(monkeypatch):
+    """The fallback launches `node` by an absolute path found outside the checkout; give the
+    tests one that exists on any machine."""
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: f"/trusted/{name}")
+
+
+def _isolation_unavailable(argv):
+    return subprocess.CompletedProcess(
+        args=argv,
+        returncode=1,
+        stdout=b"",
+        stderr=b'{"ok":false,"category":"isolation_profile_unavailable","detail":"x"}',
+    )
+
+
+def _probe_confirming_down():
+    """A sandbox probe that passes once (the dispatch-start check), then reports it down."""
+    results = iter([None])
+    return lambda: next(results, "setup refresh had errors")
+
+
+def _is_guarded(argv):
+    return any("guarded-dispatch.mjs" in part for part in argv)
+
+
+def test_dispatch_falls_back_to_guardrails_only_with_consent(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    guarded_calls = Counter()
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            guarded_calls[reviewer] += 1
+            assert "--repo-root" in argv and "--target-paths" in argv
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+
+    refused = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" for r in refused)
+    assert not guarded_calls  # no consent, no unsandboxed run
+
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert all(r.status == "completed" and r.unsandboxed for r in reports)
+    assert all(r.attempts == 2 for r in reports)  # bridge once, guardrails once
+    assert set(guarded_calls.values()) == {1}
+
+
+def test_dispatch_falls_back_when_the_sandboxed_reviewer_keeps_returning_an_empty_review(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Pass", limits=["setup refresh had errors"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    probe_results = iter([None])  # healthy at dispatch start ...
+    calls = []
+
+    def probe():
+        calls.append(1)
+        return next(probe_results, "setup refresh had errors")  # ... down when re-checked
+
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=probe,
+    )
+    assert all(r.status == "completed" for r in reports)
+    assert all(r.attempts == 3 for r in reports)  # bridge, one empty retry, guardrails
+
+
+def test_dispatch_does_not_fall_back_for_an_empty_review_unrelated_to_the_sandbox(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv)
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Inconclusive: nothing read", limits=["ran out of context"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope, base_sha="deadbeef", repo=repo, allow_guardrails_fallback=True
+    )
+    assert all(r.status == "failed" for r in reports)
+
+
+def test_a_failing_sandbox_probe_stops_the_dispatch_without_consent(
+    monkeypatch, repo, change, dependency_index
+):
+    def on_call(reviewer, argv):
+        raise AssertionError("no reviewer should be started")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope, base_sha="deadbeef", repo=repo, sandbox_probe=lambda: "setup refresh had errors"
+    )
+    assert all(r.status == "failed" and r.attempts == 0 for r in reports)
+    assert all("probe failed" in (r.error or "") for r in reports)
+
+
+def test_a_failing_sandbox_probe_sends_consented_reviewers_straight_to_guardrails(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    def on_call(reviewer, argv):
+        assert _is_guarded(argv)
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: "setup refresh had errors",
+    )
+    assert all(r.status == "completed" and r.attempts == 1 for r in reports)
+
+
+def test_probe_sandbox_passes_once_any_attempt_works_and_fails_when_none_does(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(review, "_codex_executable", lambda: "codex")
+    outcomes = iter([(1, b"", b"setup refresh had errors"), (0, b"ok\r\n", b"")])
+
+    def fake_run(argv, **kw):
+        code, out, err = next(outcomes)
+        return subprocess.CompletedProcess(argv, code, out, err)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert _REAL_PROBE_SANDBOX() is None
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **kw: subprocess.CompletedProcess(argv, 1, b"", b"os error 32"),
+    )
+    reason = _REAL_PROBE_SANDBOX()
+    assert reason is not None and "os error 32" in reason
+
+
+def test_probe_sandbox_is_a_no_op_off_windows(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    def must_not_run(*args, **kwargs):
+        raise AssertionError("must not run")
+
+    monkeypatch.setattr(subprocess, "run", must_not_run)
+    assert _REAL_PROBE_SANDBOX() is None
+
+
+def test_a_reviewers_own_text_never_switches_it_to_guardrails_when_the_sandbox_probe_passes(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """The envelope is written by a model that reads the diff under review (security review,
+    issue #644): a sandbox-failure note must not buy danger-full-access."""
+
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv)
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Pass", limits=["the shell helper failed to start"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    for probe in (None, lambda: None):  # no probe at all, and a probe that finds the sandbox fine
+        reports = dispatch_reviewers(
+            scope,
+            base_sha="deadbeef",
+            repo=repo,
+            allow_guardrails_fallback=True,
+            sandbox_probe=probe,
+        )
+        assert all(r.status == "failed" and not r.unsandboxed for r in reports)
+
+
+def test_a_bridge_isolation_failure_alone_does_not_switch_to_guardrails_when_the_probe_passes(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv)
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: None,
+    )
+    assert all(r.status == "failed" for r in reports)
+
+
+def test_codex_is_never_resolved_from_inside_the_checkout(monkeypatch, tmp_path):
+    inside = tmp_path / "repo"
+    outside = tmp_path / "bin"
+    inside.mkdir()
+    outside.mkdir()
+    monkeypatch.chdir(inside)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(inside), ".", str(outside)]))
+    seen = {}
+
+    def fake_which(cmd, path=None):
+        seen["path"] = path
+        return "resolved"
+
+    monkeypatch.setattr(review.shutil, "which", fake_which)
+    assert _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("codex") == "resolved"
+    assert seen["path"] == str(outside)
+
+
+def test_there_is_no_fallback_when_node_cannot_be_found_outside_the_checkout(
+    monkeypatch, repo, change, dependency_index
+):
+    """A `node.exe` committed at the repo root must never be the launcher of an unsandboxed run
+    (cross-model review finding): without a trusted node the reviewer just fails as before."""
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: None)
+
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv)
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert all(r.status == "failed" and not r.unsandboxed for r in reports)
+
+
+def test_the_sandboxed_bridge_is_never_launched_through_a_node_found_inside_the_checkout(
+    monkeypatch, repo, change, dependency_index
+):
+    """Same weakness as the fallback's launcher: a `node.exe` at the repo root would run first on
+    Windows, outside any sandbox. Without a trusted node no reviewer is started at all."""
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: None)
+
+    def on_call(reviewer, argv):
+        raise AssertionError("no process should be started")
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert all(r.status == "failed" and r.attempts == 0 for r in reports)
+    assert all("node was not found" in (r.error or "") for r in reports)
+
+
+def test_the_bridge_argv_starts_with_the_resolved_node_path(
+    monkeypatch, repo, change, dependency_index
+):
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: f"/trusted/{name}")
+    seen = []
+
+    def on_call(reviewer, argv):
+        seen.append(argv[0])
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    dispatch_reviewers(scope, base_sha="deadbeef", repo=repo)
+    assert seen and set(seen) == {"/trusted/node"}

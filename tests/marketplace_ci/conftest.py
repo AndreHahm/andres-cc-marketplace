@@ -155,3 +155,18 @@ def _route_bridge_through_subprocess_run(monkeypatch):
             argv, cwd=cwd, capture_output=True, timeout=timeout
         ),
     )
+
+
+@pytest.fixture(autouse=True)
+def _no_real_sandbox_probe(monkeypatch):
+    """`run-codex-review` probes Codex's sandbox on Windows. No test may run the real Codex CLI;
+    `probe_sandbox` itself is tested in test_reviewer_dispatch.py with `subprocess.run` faked."""
+    monkeypatch.setattr(review, "probe_sandbox", lambda **_: None)
+
+
+@pytest.fixture(autouse=True)
+def _node_resolves_by_name(monkeypatch):
+    """Dispatch launches `node` by an absolute path found outside the checkout. Tests fake the
+    launch, so keep the bare name (their fakes key on `argv[0] == "node"`); the lookup itself is
+    tested in test_reviewer_dispatch.py against the real function."""
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: name)

@@ -19,6 +19,9 @@ settings that must match CI from the workflow file itself, so they cannot drift:
     read with `gh variable list --json`; when unset or unreadable the local Codex default is used
     and that is stated in the output.
 
+With `--allow-unsandboxed-fallback` a reviewer whose Codex sandbox cannot start (the Windows
+"setup refresh" failure, issue #644) is retried through codex-windows-guardrails without a sandbox.
+
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
 malformed or contradictory result file, and a pre-existing or unwritable --output path), 3 not
 applicable (this checkout has no marketplace CI to mirror).
@@ -42,6 +45,15 @@ WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 CONTRACT = "scripts/marketplace_ci/review_contract.py"
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
+# What the unsandboxed fallback runs from the working tree, none of it in CI's Tier-1 list: the
+# dispatcher, the two helpers it imports for its secret-file scan, and the settings that can
+# enable it. A branch that edits any of them could widen what a danger-full-access run may read.
+FALLBACK_FILES = (
+    "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+    "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
+    "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
+)
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 TIMEOUT_VARIABLE = "CODEX_KIT_REVIEW_TIMEOUT_MS"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
@@ -234,6 +246,14 @@ def resolve_timeout_ms(fallback: str) -> tuple[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, metavar="PATH", help="result JSON (scratch dir)")
+    parser.add_argument(
+        "--allow-unsandboxed-fallback",
+        action="store_true",
+        help="when Codex's Windows sandbox cannot start (issue #644), run the reviewers through "
+        "codex-windows-guardrails: danger-full-access, no sandbox, this account's permissions "
+        "and network. Only when the sandbox probe confirms it is down; refused when the branch "
+        "changes the guardrails' files; guardrails must also be enabled locally",
+    )
     args = parser.parse_args()
     # abspath, not resolve(): never follow a final-component symlink, so the existence check below
     # sees the path the caller named (a symlink is refused), not its target. (Before the chdir.)
@@ -410,6 +430,32 @@ def main() -> int:
         "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),
         "--output", str(output),
     ]  # fmt: skip
+    allow_fallback = args.allow_unsandboxed_fallback
+    if allow_fallback:
+        changed = fallback_touches(base_sha)
+        if changed is None or changed:
+            # Fail closed: the fallback's own code or its enabling settings differ from base (or
+            # could not be compared), so the local override is not a gate the branch cannot meet.
+            print(
+                "PARITY: --allow-unsandboxed-fallback refused: "
+                + (
+                    f"this branch changes {', '.join(changed)}."
+                    if changed
+                    else "could not compare the fallback's files with the base."
+                )
+                + " Review those files, or run without the flag.",
+                file=sys.stderr,
+            )
+            return 2
+    if allow_fallback:
+        argv.append("--allow-unsandboxed-fallback")
+        print(
+            "PARITY WARNING: --allow-unsandboxed-fallback: when a sandbox probe confirms Codex's "
+            "sandbox cannot start, reviewers run with danger-full-access (no sandbox: read and "
+            "write with this account's permissions anywhere on the machine, with network access, "
+            "steered by the diff under review) via codex-windows-guardrails, which must be "
+            "enabled locally."
+        )
     result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
     if result is None:
         print("PARITY: run-codex-review could not be started or timed out.", file=sys.stderr)
@@ -453,6 +499,14 @@ def _read_blocking(output: Path) -> bool | None:
     if not all(isinstance(data.get(key), list) for key in _RESULT_LIST_KEYS):
         return None
     return blocking
+
+
+def fallback_touches(base_sha: str) -> list[str] | None:
+    """FALLBACK_FILES this branch changed since `base_sha`, or None when git could not say."""
+    diff = _run(["git", "diff", "--name-only", f"{base_sha}...HEAD", "--", *FALLBACK_FILES])
+    if diff is None or diff.returncode != 0:
+        return None
+    return [line for line in diff.stdout.splitlines() if line]
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:

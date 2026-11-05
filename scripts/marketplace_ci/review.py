@@ -14,13 +14,14 @@ import os
 import posixpath
 import re
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import time
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -1653,6 +1654,7 @@ class ReviewerReport:
     output: dict | None = None
     error: str | None = None
     attempts: int = 1
+    unsandboxed: bool = False  # ran through codex-windows-guardrails (danger-full-access)
 
 
 # At most this many reviewers run at once. Two keeps the burst on the Codex
@@ -1886,24 +1888,121 @@ def _is_bridge_timeout(stderr: str) -> bool:
     return isinstance(parsed, dict) and parsed.get("category") == "timeout"
 
 
+# Wording a Codex sandbox that could not start a shell leaves in an envelope's `inspection_limits`
+# (issue #644: the Windows "setup refresh" failure, os error 32 on a runtime file, and the older
+# CreateProcess wordings). Free text, so a list that can miss a new wording -- the sandbox probe
+# and the reviewer's own verdict are the other signals; this only widens what counts as empty.
+_SANDBOX_FAILURE_RE = re.compile(
+    r"helper_unknown_error|setup refresh|os error 32|CreateProcess|process creation failed"
+    # A verb alone ("could not start the test suite") is an ordinary review note; it counts only
+    # with the process machinery named after it.
+    r"|(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:be\s+)?"
+    r"(?:create|start|started|initiali[sz]e)\b[^.;\n]{0,60}?\b(?:process|helper|shell|sandbox)\b"
+    r"|failed (?:during|before) (?:environment setup|execution)"
+    r"|helper (?:could not|failed|intermittently)",
+    re.IGNORECASE,
+)
+_EMPTY_VERDICT_PREFIXES = ("inconclusive", "unable")
+
+
 def _inspected_nothing(output: object) -> str | None:
     """A reviewer that could not read any target (e.g. its command bridge
     failed before returning file contents) still returns a schema-valid
-    envelope: no findings and an `Inconclusive` verdict. Counting that as a
-    completed review would pass the gate with zero coverage. The envelope has
-    no structured field for this, so this keys on the verdict's own prefix --
-    a deliberately narrow, fail-closed heuristic that can miss a differently
-    worded empty pass but never fails a review that raised findings. Returns
-    the reviewer's own first inspection limit (for the failure message) when
-    it matches, else None. Data only: the text is never acted on."""
+    envelope: no findings and either an `Inconclusive`/`Unable ...` verdict or
+    an inspection limit naming the sandbox failure (`_SANDBOX_FAILURE_RE`).
+    Counting that as a completed review would pass the gate with zero coverage.
+    The envelope has no structured field for this, so it is a fail-closed text
+    heuristic that can miss a differently worded empty pass but never fails a
+    review that raised findings. Returns the limit that names the failure (else
+    the first one) for the failure message when it matches, else None. Data
+    only: the text is never acted on."""
     if not isinstance(output, dict) or output.get("findings"):
         return None
-    verdict = output.get("verdict")
-    if not isinstance(verdict, str) or not verdict.strip().lower().startswith("inconclusive"):
-        return None
     limits = output.get("inspection_limits")
-    first = limits[0] if isinstance(limits, list) and limits and isinstance(limits[0], str) else ""
-    return _report_error(first) or "no inspection limit given"
+    notes = [n for n in limits if isinstance(n, str)] if isinstance(limits, list) else []
+    sandbox_note = next((n for n in notes if _SANDBOX_FAILURE_RE.search(n)), None)
+    verdict = output.get("verdict")
+    verdict_empty = isinstance(verdict, str) and verdict.strip().lower().startswith(
+        _EMPTY_VERDICT_PREFIXES
+    )
+    if sandbox_note is None and not verdict_empty:
+        return None
+    shown = sandbox_note if sandbox_note is not None else (notes[0] if notes else "")
+    return _report_error(shown) or "no inspection limit given"
+
+
+GUARDRAILS_DISPATCH_RELATIVE_PATH = Path(
+    "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs"
+)
+# Most of a command line the unsandboxed dispatcher takes its comma-joined --target-paths in;
+# Windows refuses a whole command line over 32,767 characters.
+_MAX_GUARDED_TARGET_PATHS_CHARS = 20000
+_PROBE_ATTEMPTS = 3
+_PROBE_TIMEOUT_SECONDS = 60
+
+
+def _executable_outside_checkout(name: str) -> str | None:
+    """`name` resolved from PATH entries outside the checkout, so a `name.exe` or `name.cmd` the
+    branch under review committed at the repo root (the cwd) is never the one that runs. A bare
+    name in an argv list is not safe on Windows: unless NoDefaultCurrentDirectoryInExePath is
+    set, CreateProcess looks in the parent's cwd first (verified with a planted `node.exe`)."""
+    cwd = Path.cwd().resolve()
+    entries = []
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if entry and not (Path(entry).resolve() / name).is_relative_to(cwd):
+            entries.append(entry)
+    return shutil.which(name, path=os.pathsep.join(entries))
+
+
+def _codex_executable() -> str | None:
+    return _executable_outside_checkout("codex")
+
+
+def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
+    """None when Codex's Windows sandbox can run a command (or off Windows, where there is no
+    setup refresh to fail), else why not. The failure is intermittent (issue #644), so one pass
+    in `attempts` tries clears it; only a probe that fails every time is a reason to skip the
+    sandboxed reviewers."""
+    if sys.platform != "win32":
+        return None
+    codex = _codex_executable()
+    if codex is None:
+        return "the codex CLI was not found outside the checkout"
+    reason = "no attempt ran"
+    for _ in range(attempts):
+        try:
+            result = subprocess.run(
+                [codex, "sandbox", "cmd", "/c", "echo", "ok"],
+                capture_output=True,
+                timeout=_PROBE_TIMEOUT_SECONDS,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            reason = f"{type(exc).__name__}: {exc}"
+            continue
+        out = result.stdout.decode("utf-8", errors="replace")
+        if result.returncode == 0 and out.strip().splitlines()[-1:] == ["ok"]:
+            return None
+        err = result.stderr.decode("utf-8", errors="replace")
+        reason = _report_error(err or out) or f"exit {result.returncode}"
+    return reason
+
+
+def _sandbox_confirmed_down(probe: Callable[[], str | None] | None) -> bool:
+    """True only when the sandbox probe itself fails. A reviewer's envelope text is written by a
+    model that reads the diff under review (and the bridge reclassifies that text into
+    `isolation_profile_unavailable`), so neither may switch a reviewer to `danger-full-access` on
+    its own: without a probe that fails, the reviewer is reported as could-not-run instead."""
+    return probe is not None and probe() is not None
+
+
+def _is_isolation_unavailable(stderr: str) -> bool:
+    """True only for the bridge's structured `isolation_profile_unavailable` failure."""
+    try:
+        parsed = json.loads(stderr)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(parsed, dict) and parsed.get("category") == "isolation_profile_unavailable"
 
 
 def _dispatch_one(
@@ -1922,6 +2021,9 @@ def _dispatch_one(
     changed_paths: Iterable[str] = (),
     whole_file: Iterable[str] = (),
     exceptions_briefing: str = "",
+    guardrails_script: Path | None = None,
+    start_unsandboxed: bool = False,
+    sandbox_probe: Callable[[], str | None] | None = None,
 ) -> ReviewerReport:
     reviewer_scope = scope.paths
     if name == "plugin-rulebook-checker":
@@ -1977,8 +2079,19 @@ def _dispatch_one(
     # Bytes, not text mode: text mode writes "\r\n" on Windows, and the bridge splits on "\n" only.
     paths_path.write_bytes("".join(f"{p}\n" for p in reviewer_scope).encode("utf-8"))
 
+    # `node` is resolved outside the checkout: a bare name in an argv list would let a `node.exe`
+    # committed at the repo root run first on Windows, ahead of the bridge's sandbox and of every
+    # guardrail check (see _executable_outside_checkout).
+    node = _executable_outside_checkout("node")
+    if node is None:
+        return ReviewerReport(
+            reviewer=name,
+            status="failed",
+            error="bridge could not be run: node was not found on PATH outside the checkout",
+            attempts=0,
+        )
     argv = [
-        "node",
+        node,
         str(bridge_script),
         "--reviewer-type",
         name,
@@ -1991,6 +2104,23 @@ def _dispatch_one(
         "--dispatch-id",
         dispatch_id,
     ]
+    # The unsandboxed fallback (codex-windows-guardrails), only when the caller consented. Its
+    # --target-paths is one comma-joined argument, so a scope too long for a command line has no
+    # fallback; the sandboxed attempt and its failure report are unchanged.
+    guarded_argv: list[str] | None = None
+    joined_paths = ",".join(reviewer_scope)
+    if guardrails_script is not None and len(joined_paths) <= _MAX_GUARDED_TARGET_PATHS_CHARS:
+        guarded_argv = [
+            node, str(guardrails_script),
+            "--reviewer-type", name,
+            "--instruction-file", str(instruction_path),
+            "--target-paths", joined_paths,
+            "--dispatch-id", dispatch_id,
+            "--repo-root", str(repo),
+        ]  # fmt: skip
+    unsandboxed = start_unsandboxed and guarded_argv is not None
+    if unsandboxed:
+        argv = guarded_argv
     call_seconds = _per_call_seconds() + _PROCESS_SLACK_SECONDS
     attempts = 0
     timeout_retries = 0
@@ -2033,6 +2163,22 @@ def _dispatch_one(
             )
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace")
+            if (
+                guarded_argv is not None
+                and not unsandboxed
+                and _is_isolation_unavailable(stderr)
+                and _sandbox_confirmed_down(sandbox_probe)
+            ):
+                unsandboxed, argv = True, guarded_argv
+                print(
+                    f"run-codex-review: {name} has no working Codex sandbox; retrying "
+                    "unsandboxed (--allow-unsandboxed-fallback)",
+                    file=sys.stderr,
+                )
+                continue
+            if unsandboxed and not stderr.strip():
+                # guarded-dispatch.mjs reports its typed failure as JSON on stdout.
+                stderr = result.stdout.decode("utf-8", errors="replace")
             if _is_bridge_timeout(stderr) and timeout_retries < max_timeout_retries:
                 timeout_retries += 1
                 print(
@@ -2056,10 +2202,29 @@ def _dispatch_one(
         empty_reason = _inspected_nothing(output)
         if empty_reason is None:
             return ReviewerReport(
-                reviewer=name, status="completed", output=output, attempts=attempts
+                reviewer=name,
+                status="completed",
+                output=output,
+                attempts=attempts,
+                unsandboxed=unsandboxed,
             )
         if first_empty_reason is None:
             first_empty_reason = empty_reason  # the original failure, kept past any retry
+        if (
+            guarded_argv is not None
+            and not unsandboxed
+            and _SANDBOX_FAILURE_RE.search(empty_reason)
+            and empty_retries >= max_empty_retries
+            and _sandbox_confirmed_down(sandbox_probe)
+        ):
+            # The sandbox is what failed, and the sandboxed retries are spent: one unsandboxed try.
+            unsandboxed, argv = True, guarded_argv
+            print(
+                f"run-codex-review: {name} could not use the Codex sandbox ({empty_reason}); "
+                "retrying unsandboxed (--allow-unsandboxed-fallback)",
+                file=sys.stderr,
+            )
+            continue
         if empty_retries < max_empty_retries:
             empty_retries += 1
             print(
@@ -2092,6 +2257,8 @@ def dispatch_reviewers(
     changed_ranges: LineRanges | None = None,
     changed_paths: Iterable[str] = (),
     exceptions: Sequence[ExceptionEntry] = (),
+    allow_guardrails_fallback: bool = False,
+    sandbox_probe: Callable[[], str | None] | None = None,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -2110,6 +2277,14 @@ def dispatch_reviewers(
     lines only; `None` leaves the instruction exactly as the base SHA has it. `exceptions`
     (the documented-exceptions registry) is appended to every reviewer's instruction as its own
     briefing, whatever `changed_ranges` is.
+
+    `allow_guardrails_fallback` is the caller's explicit consent to run a reviewer through
+    codex-windows-guardrails' `guarded-dispatch.mjs` -- `danger-full-access`, no sandbox, with this
+    account's permissions and network -- when its sandboxed run could not start (issue #644) and
+    `sandbox_probe` confirms the sandbox is down (a reviewer's own text never decides this). CI
+    never sets it. `sandbox_probe` (see `probe_sandbox`) also runs once before any reviewer: when
+    it reports the sandbox unusable, the reviewers go straight to the fallback if consented, else
+    all fail at once with the probe's reason instead of spending the dispatch budget.
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
     `None` they go in a fresh temporary directory outside `repo`, removed after
@@ -2134,6 +2309,28 @@ def dispatch_reviewers(
             ReviewerReport(reviewer=name, status="failed", error=error, attempts=0)
             for name in names
         )
+    guardrails_script = (
+        repo / GUARDRAILS_DISPATCH_RELATIVE_PATH if allow_guardrails_fallback else None
+    )
+    start_unsandboxed = False
+    probe_problem = sandbox_probe() if sandbox_probe is not None else None
+    if probe_problem:
+        if guardrails_script is not None:
+            start_unsandboxed = True
+            print(
+                f"run-codex-review: Codex sandbox probe failed ({probe_problem}); "
+                "running the reviewers unsandboxed (--allow-unsandboxed-fallback)",
+                file=sys.stderr,
+            )
+        else:
+            error = _report_error(
+                f"Codex sandbox probe failed ({probe_problem}); no reviewer was started. "
+                "Quit the Codex desktop app, or pass --allow-unsandboxed-fallback"
+            )
+            return tuple(
+                ReviewerReport(reviewer=name, status="failed", error=error, attempts=0)
+                for name in names
+            )
     changed_paths = tuple(changed_paths)
     exceptions_briefing = render_exceptions_briefing(exceptions)
     whole_file: frozenset[str] = frozenset()
@@ -2179,6 +2376,9 @@ def dispatch_reviewers(
                 changed_paths=changed_paths,
                 whole_file=whole_file,
                 exceptions_briefing=exceptions_briefing,
+                guardrails_script=guardrails_script,
+                start_unsandboxed=start_unsandboxed,
+                sandbox_probe=sandbox_probe,
             )
             for name in names
         ]

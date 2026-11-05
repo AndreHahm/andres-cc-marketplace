@@ -75,5 +75,17 @@ alongside `cross-model-review`.
 - The wrapper is a working-tree script like any other (tests, hooks): a branch can edit it, and the Tier-1
   warning covers only CI's dispatch files. Treat a clean result as advisory, not authoritative.
 - Parity is best effort: reviewer output varies between runs and a local Codex version can differ from CI's.
-- Windows: Codex's read-only sandbox may be unavailable. The run then exits 2; offer WSL or a bypass.
+- Windows: Codex's read-only sandbox may be unavailable (issue #644: its setup refresh fails against a
+  running `node_repl.exe`, so some or all reviewers cannot start). A sandbox probe runs before the
+  reviewers; when it fails, or a reviewer reports the failure, the run exits 2 and says which reviewers
+  could not run. A reviewer that read nothing is never reported as clean, and the result file keeps the
+  findings of the reviewers that did complete (`completed_reviewer_findings`). Quitting the Codex desktop
+  app helps a single command, not a parallel run. Offer WSL, a bypass, or, only with the user's explicit
+  consent, `--allow-unsandboxed-fallback` on the wrapper: when a sandbox probe (not a reviewer's own
+  text) confirms the sandbox cannot start, reviewers run through `codex-windows-guardrails` with
+  `danger-full-access` (no sandbox, this account's permissions, network access). The wrapper refuses the
+  flag when the branch changes the guardrails dispatcher, its secret-file helpers or its `settings.json`
+  (they run from the working tree, and the shipped settings can enable the feature without the untracked
+  `.claude/codex-windows-guardrails.local.json`). A reviewer that ran unsandboxed is marked in the result
+  file's `reviewer_results`.
 - Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.
