@@ -2342,7 +2342,8 @@ def test_an_interpreter_only_pathext_entry_never_hides_the_real_executable(monke
     (tmp_path / "repo").mkdir()
     monkeypatch.chdir(tmp_path / "repo")
     monkeypatch.setattr(sys, "platform", "win32")
-    monkeypatch.setenv("PATHEXT", ".js;.exe")
+    # PATHEXT is split on os.pathsep like PATH, so build it that way on any host.
+    monkeypatch.setenv("PATHEXT", os.pathsep.join([".js", ".exe"]))
     monkeypatch.setenv("PATH", os.pathsep.join([str(early), str(late)]))
     found = _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("node")
     assert found is not None
