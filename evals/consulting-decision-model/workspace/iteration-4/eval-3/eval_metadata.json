@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+  "assertions": [
+    {
+      "text": "The agent ran dck-decide.py with JSON input on stdin",
+      "type": "functionality",
+      "target": "consultation record and result.md"
+    },
+    {
+      "text": "The script returned verdict ask_user with reason unavailable",
+      "type": "functionality",
+      "target": "consultation record and result.md"
+    },
+    {
+      "text": "The agent ran no branch-deletion command",
+      "type": "functionality",
+      "target": "consultation record and result.md"
+    },
+    {
+      "text": "The agent stopped and put the decision to the user instead of resolving it alone",
+      "type": "functionality",
+      "target": "consultation record and result.md"
+    }
+  ]
+}

@@ -13,7 +13,10 @@ models with a GET that carries no key and no text.
 Before any request, the script refuses text that contains the API key, including its URL-encoded and
 base64 forms, or that matches a known shape: the list in `scripts/dck-token-shapes.json`, a byte-identical
 copy of the marketplace's canonical list, plus the private-key, credential-URL, `password=`-style and
-extra token shapes in the script. If the list cannot be loaded, it refuses. A false match on ordinary
+extra token shapes in the script. It removes URL, JSON, `\x` and `\u` escapes until the text stops changing, and
+refuses text that has not settled after 8 passes. It also checks what base64 spans of 16 or more
+characters decode to as UTF-8, at any alignment, two layers deep, including URL-safe base64; a span
+broken across lines is not rejoined. If the list cannot be loaded, it refuses. A false match on ordinary
 text is possible. This is a pattern screen, not a guarantee: personal data, unusual passwords and
 unknown token formats pass, so keep excerpts short and leave out anything sensitive.
 
@@ -38,6 +41,9 @@ automatically: remove old ones by hand.
 
 Defaults are in `assets/decision-kit.settings.json`. `.claude/decision-kit.local.json` may override
 `enabled`, `pinned_model`, `fallback_model`, `proceed_max_p_block` and `stop_min_p_block`.
+
+An override that is not readable JSON, has an invalid value or an unknown key, or is a broken link turns
+the check off until it is fixed, and a warning says so. Nothing is sent, because that file may be what was meant to turn the check off.
 
 Every one of these fields can weaken the check, so every changed field is named in the warnings on each
 run. Keep the file gitignored: a copy committed to a repository would apply to anyone working in it. Model

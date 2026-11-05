@@ -53,6 +53,11 @@ MAX_RESPONSE_BYTES = 2_000_000
 # The fallback has a 16,384-token context, and code runs at roughly 3 characters per token.
 MAX_STATE_CHARS = 40_000
 
+# Passes of URL and string decoding before the screen refuses. Ordinary text settles in one or two.
+MAX_DECODE_PASSES = 8
+MAX_BASE64_LAYERS = 2
+BASE64_SPAN = re.compile(r"[A-Za-z0-9+/_-]{16,}")
+
 # Worth trying the other model. 401, 402, 403 and 413 would fail the same way on both.
 FALLBACK_STATUSES = {404, 429, 500, 502, 503, 524, 529}
 
@@ -99,6 +104,10 @@ EXTRA_SHAPES = (
 )
 
 
+class _Unsettled(Exception):
+    """The text still changes after every decoding pass, so the screen cannot judge it."""
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """urllib would replay the Authorization header to a redirect target."""
 
@@ -133,28 +142,31 @@ def _valid_settings(settings: dict) -> bool:
 
 
 def load_settings(root: Path, warnings: list[str]) -> dict:
-    """Shipped defaults, then the optional local override. Changed fields go in the warnings."""
+    """Shipped defaults, then the optional local override. Changed fields go in the warnings.
+
+    An unusable override turns the check off: it may be the file that was meant to do that, and
+    the warning would only arrive after the text had left the machine.
+    """
     settings = json.loads(
         (SKILL_DIR / "assets" / "decision-kit.settings.json").read_text(encoding="utf-8")
     )
     if not _valid_settings(settings):
         raise ValueError("invalid shipped settings")
     path = root / LOCAL_SETTINGS
-    if not path.is_file():
+    if not os.path.lexists(path):
         return settings
+    off = {**settings, "enabled": False}
     try:
         local = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        warnings.append(f"{path} ignored: not readable JSON")
-        return settings
+        warnings.append(f"{path} is not readable JSON: the check is off until it is fixed")
+        return off
     merged = (
-        {**settings, **{k: v for k, v in local.items() if k in settings}}
-        if isinstance(local, dict)
-        else {}
+        {**settings, **local} if isinstance(local, dict) and set(local) <= set(settings) else {}
     )
     if not _valid_settings(merged):
-        warnings.append(f"{path} ignored: invalid values")
-        return settings
+        warnings.append(f"{path} has invalid values or keys: the check is off until it is fixed")
+        return off
     changed = sorted(k for k in settings if merged[k] != settings[k])
     if changed:
         warnings.append(f"{path} overrides: " + ", ".join(changed))
@@ -207,19 +219,44 @@ def _key_forms(key: str) -> list[str]:
 
 
 def _unescape(text: str) -> str:
-    """Undoes JSON and string escapes, repeatedly, because excerpts can be escaped twice."""
-    for _ in range(3):
-        before = text
-        text = text.replace("\\\\", "\\").replace("\\/", "/")
-        text = re.sub(
-            r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
-            lambda found: chr(int(found.group(1) or found.group(2), 16)),
-            text,
-        )
-        text = re.sub(r"\\[nrtbf\"']", " ", text)
-        if text == before:
-            break
-    return text
+    """Removes one layer of JSON and string escapes."""
+    text = text.replace("\\\\", "\\").replace("\\/", "/")
+    text = re.sub(
+        r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
+        lambda found: chr(int(found.group(1) or found.group(2), 16)),
+        text,
+    )
+    return re.sub(r"\\[nrtbf\"']", " ", text)
+
+
+def _decode_fully(text: str) -> str:
+    """`text` with its URL and string escapes removed. Raises `_Unsettled` if it never settles."""
+    for _ in range(MAX_DECODE_PASSES):
+        decoded = _unescape(urllib.parse.unquote(text))
+        if decoded == text:
+            return text
+        text = decoded
+    raise _Unsettled
+
+
+def _base64_payloads(text: str, layers: int = MAX_BASE64_LAYERS) -> list[str]:
+    """What each span that could be base64 decodes to. Most spans decode to noise, which is fine.
+
+    Ordinary neighbours such as `path/` or `name_` join a span, so every alignment is tried.
+    """
+    payloads: list[str] = []
+    for span in BASE64_SPAN.findall(text):
+        raw = span.replace("-", "+").replace("_", "/")
+        for offset in range(4):
+            chunk = raw[offset:]
+            if len(chunk) % 4 == 1:
+                chunk = chunk[:-1]
+            payload = base64.b64decode(chunk + "=" * (-len(chunk) % 4)).decode("utf-8", "replace")
+            payload = _decode_fully(payload)
+            payloads.append(payload)
+            if layers > 1:
+                payloads += _base64_payloads(payload, layers - 1)
+    return payloads
 
 
 def screen(texts: list[str], key: str) -> str | None:
@@ -227,6 +264,7 @@ def screen(texts: list[str], key: str) -> str | None:
 
     The shared shapes start at a word boundary, which a leading `_`, a URL escape or a JSON escape
     hides, so the boundary here counts `_` as a separator, and escapes are removed before matching.
+    Text that does not settle is refused, and base64 spans are checked in their decoded form.
     """
     try:
         raw = (SKILL_DIR / "scripts" / "dck-token-shapes.json").read_text(encoding="utf-8")
@@ -237,14 +275,15 @@ def screen(texts: list[str], key: str) -> str | None:
         return "the secret patterns could not be loaded"
     forms = _key_forms(key)
     for text in texts:
-        decoded = text
-        for _ in range(3):
-            decoded = urllib.parse.unquote(decoded)
-        decoded = _unescape(decoded)
-        if any(form in text or form in decoded for form in forms):
+        try:
+            decoded = _decode_fully(text)
+            views = [text, decoded, *_base64_payloads(decoded)]
+        except _Unsettled:
+            return "the text has too many layers of encoding to check"
+        if any(form in view for form in forms for view in views):
             return "the text contains the API key"
         for name, pattern in patterns:
-            if pattern.search(text) or pattern.search(decoded):
+            if any(pattern.search(view) for view in views):
                 return f"the text matches the secret shape {name}"
     return None
 
@@ -477,11 +516,8 @@ def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
 def project_root(start: Path) -> Path:
     """The nearest folder at or above `start` that holds the local settings, else `start`."""
     for folder in (start, *start.parents):
-        try:
-            if (folder / LOCAL_SETTINGS).is_file():
-                return folder
-        except OSError:
-            continue
+        if os.path.lexists(folder / LOCAL_SETTINGS):
+            return folder
     return start
 
 
