@@ -45,12 +45,18 @@ WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 CONTRACT = "scripts/marketplace_ci/review_contract.py"
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
-# What the unsandboxed fallback runs from the working tree, none of it in CI's Tier-1 list: the
-# dispatcher, the two helpers it imports for its secret-file scan, and the settings that can
-# enable it. A branch that edits any of them could widen what a danger-full-access run may read.
+# What the unsandboxed fallback runs from the working tree: the dispatcher, everything it imports
+# (directly or through those imports) and the data files they read at run time, plus the settings
+# that can enable it. A branch that edits any of them could widen what a danger-full-access run may
+# do. Some are in CI's Tier-1 list, which only warns here; this list makes the fallback refuse.
+# A test derives the import closure from guarded-dispatch.mjs, so a new import cannot escape it.
 FALLBACK_FILES = (
     "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
     "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
+    "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+    "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-process.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
     "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
 )
