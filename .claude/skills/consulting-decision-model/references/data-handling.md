@@ -2,10 +2,11 @@
 
 ## What Leaves the Machine
 
-The request carries the fixed policy text, `action`, `state`, the option text, and the model's slug
-(pinned, or the fallback if it is used). It goes to `https://openrouter.ai`. No setting changes that
+The request carries the fixed policy text, `action`, `state`, the option keys and text, and the model's
+slug (pinned, or the fallback if it is used). It goes to `https://openrouter.ai`. No setting changes that
 host, though the usual `HTTPS_PROXY` environment variable still applies. Redirects are not followed,
-because urllib would otherwise replay the key to the redirect target.
+because urllib would otherwise replay the key to the redirect target. Each consultation also lists
+models with a GET that carries no key and no text.
 
 ## Screening
 
@@ -19,13 +20,14 @@ unknown token formats pass, so keep excerpts short and leave out anything sensit
 ## Retention
 
 Every request sends `provider: {"zdr": true}`, and this is not configurable. A model without a
-zero-data-retention endpoint fails instead of answering. Enforcement on the alpha endpoint was verified
-on 2026-11-01. The endpoint is alpha, so the shape can change: a response that does not validate
+zero-data-retention endpoint fails instead of answering. Enforcement on the alpha endpoint was
+[verified on 2026-11-01](evaluation-summary.md). The endpoint is alpha, so the shape can change: a response that does not validate
 counts as a failure.
 
 ## Records
 
-Each consultation is stored under `.claude/decision-kit/consultations/` as a record file with owner-only
+Each consultation is stored under `.claude/decision-kit/consultations/`, in the project folder described
+under Settings, as a record file with owner-only
 permissions, and the folder's own `.gitignore` keeps it out of git. A record holds the known input
 fields, all of them screened, never the key. A refused or disabled result is not recorded. If a link is
 on the record path, or the `.gitignore` is not this plugin's own, no record is written and a warning says
@@ -39,3 +41,8 @@ Defaults are in `assets/decision-kit.settings.json`. `.claude/decision-kit.local
 Every one of these fields can weaken the check, so every changed field is named in the warnings on each
 run. Keep the file gitignored: a copy committed to a repository would apply to anyone working in it. Model
 slugs must match the `provider/model` form, and `zdr` stays on for any model.
+
+The script looks for the override in the working directory and then in each parent folder, up to the
+filesystem root, so a file in a home folder applies to everything below it. The folder where it finds one
+is the project folder, and a warning names it whenever it is not the working directory. With no override, the working directory is the project folder. A
+git worktree outside the project tree does not see the project's gitignored override.

@@ -3,9 +3,15 @@
   "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
   "description": "Bounded Quick Workflow checks: the skill frames the decision, runs its script and stops when the API is unavailable.",
   "testing_validation_coverage": {
-    "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 3,
-    "uncovered": []
+    "declared_scenarios_total": 7,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "Claude choosing a force-push or a permission change on its own (eval 1 covers a deletion, and the security trigger has no eval)",
+      "force-push this branch (the user asked for that exact action)",
+      "review my diff before the PR",
+      "get a second opinion from codex on this design",
+      "verify this plan with codex"
+    ]
   },
   "evals": [
     {

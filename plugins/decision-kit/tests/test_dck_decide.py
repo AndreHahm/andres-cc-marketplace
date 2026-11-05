@@ -88,7 +88,7 @@ def test_agreement_proceeds_and_records(server, repo):
     assert server["requests"][0]["provider"] == {"zdr": True}
     record = Path(out["record"]).read_text(encoding="utf-8")
     assert "Add a scoped grant" in record and FAKE_KEY not in record
-    assert (repo / ".claude/decision-kit/.gitignore").read_text() == "*\n"
+    assert (repo / ".claude/decision-kit/.gitignore").read_text(encoding="utf-8") == "*\n"
 
 
 @pytest.mark.parametrize(
@@ -206,6 +206,19 @@ def test_no_key_sends_nothing(server, repo, monkeypatch):
         {"state": "-----BEGIN RSA PRIVATE KEY-----"},
         {"state": "postgres://user:hunter22@db/x"},
         {"state": "password=correcthorse"},
+        {"state": "redis://:s3cretpassw0rd@host:6379"},
+        {"state": "SECRET_KEY=" + "a" * 16},
+        {"state": "aws_secret_access_key = wJalrXUtnFEMI"},
+        {"state": "TOKEN=" + "a" * 16},
+        {"state": "access_token: " + "a" * 16},
+        {"state": "Authorization: Bearer " + "a" * 16},
+        {"state": "'Authorization': 'Bearer " + "a" * 16 + "'"},
+        {"state": "'Authorization' => 'Bearer " + "a" * 16 + "'"},
+        {"state": "GITHUB_TOKEN=" + "a" * 16},
+        {"state": "AWS_SESSION_TOKEN=" + "a" * 16},
+        {"state": "POSTGRES://user:hunter22@db/x"},
+        {"state": "{'password': 'hunter2hunter'}"},
+        {"state": "'password' => 'hunter2hunter'"},
         {"options": {"a": "x" * dck.MAX_STATE_CHARS, "b": "two"}, "claude_choice": "b"},
         {"trigger": ["critical"]},
         {"trigger": {}},
@@ -230,6 +243,44 @@ def test_unreadable_patterns_refuse(tmp_path, monkeypatch):
 def _local(repo, **values):
     (repo / ".claude").mkdir(exist_ok=True)
     (repo / dck.LOCAL_SETTINGS).write_text(json.dumps(values), encoding="utf-8")
+
+
+def test_override_is_found_from_a_subdirectory(repo):
+    _local(repo, enabled=False)
+    nested = repo / "a" / "b"
+    nested.mkdir(parents=True)
+    assert dck.project_root(nested) == repo
+
+
+def test_run_from_a_subdirectory_uses_the_parent_override(server, repo, monkeypatch):
+    _local(repo, proceed_max_p_block=0.5)
+    nested = repo / "a"
+    nested.mkdir()
+    monkeypatch.chdir(nested)
+    server["reply"][PIN] = (200, answer(PIN, safe=0.6))
+    out = dck.run(decision(), server["base"])
+    assert out["verdict"] == "no_stop"
+    assert str(repo / dck.LOCAL_SETTINGS) in " ".join(out["warnings"])
+    assert Path(out["record"]).is_relative_to(repo / ".claude/decision-kit")
+
+
+def test_a_parent_override_is_named_even_when_it_changes_nothing(server, repo, monkeypatch):
+    _local(repo)
+    nested = repo / "a"
+    nested.mkdir()
+    monkeypatch.chdir(nested)
+    out = dck.run(decision(), server["base"])
+    assert any("project folder" in w and str(repo) in w for w in out["warnings"])
+
+
+def test_project_root_defaults_to_the_start_folder(repo):
+    nested = repo / "a"
+    nested.mkdir()
+    assert dck.project_root(nested) == nested
+
+
+def test_a_token_count_is_not_refused():
+    assert dck.screen(["The token limit: 4000 per request."], FAKE_KEY) is None
 
 
 def test_local_override_is_honoured(server, repo):
