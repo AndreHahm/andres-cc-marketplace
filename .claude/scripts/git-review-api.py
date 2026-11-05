@@ -131,21 +131,39 @@ def allowed_body_roots() -> list[str]:
     POSIX: <temp>/claude-<uid>. Windows: <temp>/claude, since the per-user temp directory is the
     boundary there and there is no uid; /tmp is not a root. The temp directory comes from
     tempfile.gettempdir() (TMPDIR, TEMP, TMP), so a caller that overrides those moves the root;
-    with no owner check on Windows, that is a disclosed residual.
+    with no owner check on Windows, that is a disclosed residual. On Windows the TEMP and TMP
+    directories are roots too: gettempdir() reads TMPDIR first, but Claude Code's scratch tree
+    follows TEMP/TMP, so a differing TMPDIR alone must not reject a valid scratchpad file.
     """
     if IS_WINDOWS:
-        return [os.path.join(os.path.realpath(tempfile.gettempdir()), "claude")]
+        temps = (tempfile.gettempdir(), os.environ.get("TEMP"), os.environ.get("TMP"))
+        roots = (os.path.join(os.path.realpath(temp), "claude") for temp in temps if temp)
+        return list(dict.fromkeys(roots))
     if not hasattr(os, "getuid"):
         raise UsageError("--body-file needs a POSIX or Windows platform (owner checks)")
     temps = {os.path.realpath(tempfile.gettempdir()), os.path.realpath("/tmp")}
     return sorted(os.path.join(temp, f"claude-{os.getuid()}") for temp in temps)
 
 
+def _drive_spelling(path: str) -> str:
+    """Windows: drop an extended-length prefix before a drive letter, for comparison only.
+
+    `realpath` keeps the prefix of a path that came in with it, which lifts MAX_PATH for the later
+    open, so the path used for I/O stays as it is; only the strings compared for containment go
+    through this. An extended UNC path has no drive letter and is left alone.
+    """
+    prefix = "\\\\?\\"
+    if path.startswith(prefix) and path[len(prefix) + 1 : len(prefix) + 2] == ":":
+        return path[len(prefix) :]
+    return path
+
+
 def _under(root: str, path: str) -> bool:
-    """True when `path` is `root` or below it; a different drive or prefix style is not below."""
+    """True when `path` is `root` or below it; a different drive or a UNC path is not below."""
+    root, path = _drive_spelling(root), _drive_spelling(path)
     try:
         common = os.path.commonpath([root, path])
-    except ValueError:  # Windows: different drives, or a \?\ prefix mixed with a plain path
+    except ValueError:  # Windows: different drives, or a UNC path mixed with a drive path
         return False
     return os.path.normcase(common) == os.path.normcase(root)
 
@@ -154,7 +172,8 @@ def _in_scratchpad(real: str, roots: list[str]) -> bool:
     """True when `real` sits under a root and below a directory named `scratchpad`."""
     for root in roots:
         if _under(root, real):
-            return "scratchpad" in os.path.relpath(real, root).split(os.sep)[:-1]
+            relative = os.path.relpath(_drive_spelling(real), _drive_spelling(root))
+            return "scratchpad" in relative.split(os.sep)[:-1]
     return False
 
 
@@ -174,7 +193,8 @@ def _reparse_point_below_root(real: str, roots: list[str]) -> bool:
         if not _under(root, real):
             continue
         current = real
-        while os.path.normcase(current) != os.path.normcase(root):
+        root_key = os.path.normcase(_drive_spelling(root))
+        while os.path.normcase(_drive_spelling(current)) != root_key:
             try:
                 if _is_reparse_point(os.lstat(current)):
                     return True
