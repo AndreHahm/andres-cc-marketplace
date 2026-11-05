@@ -1144,6 +1144,74 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     assert rc == 0
 
 
+def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags):
+    """Runs `run-codex-review` with dispatch replaced by a spy; returns (exit code, whether the
+    unsandboxed fallback was allowed, stderr). `touched` is what the comparison of the fallback's
+    files with the base reports (a list, or None when git could not say)."""
+    import subprocess as subprocess_module
+
+    from scripts.marketplace_ci import review as review_module
+
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    seen = {}
+
+    def spy(scope, **kwargs):
+        seen["allow"] = kwargs["allow_guardrails_fallback"]
+        raise OSError("stop after recording")  # handled: exit 2, nothing dispatched
+
+    monkeypatch.setattr(review_module, "dispatch_reviewers", spy)
+    monkeypatch.setattr(review_module, "fallback_files_changed", lambda repo, base: touched)
+    monkeypatch.chdir(git_repo.root)
+    capsys.readouterr()
+    rc = main(["run-codex-review", "--base-sha", base_sha, *flags])
+    return rc, seen["allow"], capsys.readouterr().err
+
+
+def test_run_codex_review_allows_the_unsandboxed_fallback_when_no_file_it_runs_changed(
+    monkeypatch, git_repo, capsys
+):
+    _, allowed, _ = _run_with_dispatch_spy(
+        monkeypatch, git_repo, capsys, [], "--allow-unsandboxed-fallback"
+    )
+    assert allowed is True
+
+
+@pytest.mark.parametrize("touched", [["plugins/codex-kit/scripts/lib/codex-exec.mjs"], None])
+def test_run_codex_review_refuses_the_unsandboxed_fallback_for_a_branch_that_edits_its_files(
+    monkeypatch, git_repo, capsys, touched
+):
+    """Issue #644 parity review: the refusal lived only in the git-kit wrapper, so a direct call
+    with --allow-unsandboxed-fallback (and --sandbox-known-down) ran the branch's own dispatcher
+    with danger-full-access. An unanswerable comparison counts as changed."""
+    _, allowed, err = _run_with_dispatch_spy(
+        monkeypatch,
+        git_repo,
+        capsys,
+        touched,
+        "--allow-unsandboxed-fallback",
+        "--sandbox-known-down",
+    )
+    assert allowed is False
+    assert "unsandboxed fallback refused" in err
+
+
+def test_run_codex_review_without_the_flag_never_compares_the_fallback_files(
+    monkeypatch, git_repo, capsys
+):
+    _, allowed, err = _run_with_dispatch_spy(monkeypatch, git_repo, capsys, ["x"])
+    assert allowed is False
+    assert "refused" not in err
+
+
 def test_run_codex_review_instructions_dir_option_redirects_instruction_files(
     monkeypatch, git_repo, tmp_path_factory
 ):

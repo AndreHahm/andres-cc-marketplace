@@ -1940,6 +1940,55 @@ GUARDRAILS_DISPATCH_RELATIVE_PATH = Path(
 _MAX_GUARDED_TARGET_PATHS_CHARS = 20000
 _PROBE_ATTEMPTS = 3
 _PROBE_TIMEOUT_SECONDS = 60
+# What the unsandboxed fallback runs from the working tree: the dispatcher, everything it imports
+# (directly or through those imports), the data files they read at run time and the settings that
+# can enable it. A branch that edits any of them could widen what a danger-full-access run may do,
+# so `fallback_files_changed` lets `run-codex-review` refuse the fallback. The git-kit parity
+# wrapper keeps a copy to say so early; a test pins the two together and derives the import closure
+# from guarded-dispatch.mjs, so a new import cannot escape this list.
+FALLBACK_FILES = (
+    "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+    "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
+    "plugins/codex-kit/skills/codex-windows-guardrails/assets/dangerous-command-instructions.txt",
+    "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+    "plugins/codex-kit/scripts/lib/codex-exec.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-process.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
+    "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
+    "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
+)
+
+
+def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
+    """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
+    `base_sha`, or None when git could not say (which callers treat as changed). The fallback runs
+    these files from the working tree, so committed, staged and unstaged edits all count; a
+    single-ref `git diff` covers all three, where `base...HEAD` would miss an uncommitted one."""
+    try:
+        merge_base = subprocess.run(
+            ["git", "merge-base", base_sha, "HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=_PROBE_TIMEOUT_SECONDS,
+            check=False,
+        )
+        base = merge_base.stdout.strip()
+        if merge_base.returncode != 0 or not base:
+            return None
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", base, "--", *FALLBACK_FILES],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=_PROBE_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if diff.returncode != 0:
+        return None
+    return [line for line in diff.stdout.splitlines() if line]
 
 
 def _path_outside_checkout() -> str:
@@ -2138,6 +2187,7 @@ def _dispatch_one(
     timeout_retries = 0
     empty_retries = 0
     first_empty_reason: str | None = None
+    ran_unsandboxed = False  # an unsandboxed call was actually made, whatever its outcome
     while True:
         if time.monotonic() + call_seconds > deadline:
             # Fail loudly rather than start a call the job budget can't
@@ -2150,8 +2200,10 @@ def _dispatch_one(
                     f"{'retry' if attempts else 'start'} (attempts so far: {attempts})"
                 ),
                 attempts=attempts,
+                unsandboxed=ran_unsandboxed,
             )
         attempts += 1
+        ran_unsandboxed = ran_unsandboxed or unsandboxed
         try:
             result = _run_bridge(argv, cwd=repo, timeout=call_seconds, env=child_env)
         except OSError as exc:
@@ -2163,6 +2215,7 @@ def _dispatch_one(
                 status="failed",
                 error=_report_error(f"bridge could not be run: {type(exc).__name__}: {exc}"),
                 attempts=attempts,
+                unsandboxed=ran_unsandboxed,
             )
         except subprocess.TimeoutExpired:
             # Never retried: a process that outlived its own timeout plus
@@ -2172,6 +2225,7 @@ def _dispatch_one(
                 status="failed",
                 error=f"bridge process killed after {call_seconds:.0f}s (outlived its own timeout)",
                 attempts=attempts,
+                unsandboxed=ran_unsandboxed,
             )
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace")
@@ -2203,13 +2257,18 @@ def _dispatch_one(
                 status="failed",
                 error=_report_error(stderr),
                 attempts=attempts,
+                unsandboxed=ran_unsandboxed,
             )
 
         try:
             output = json.loads(result.stdout)
         except json.JSONDecodeError:
             return ReviewerReport(
-                reviewer=name, status="failed", error="malformed bridge output", attempts=attempts
+                reviewer=name,
+                status="failed",
+                error="malformed bridge output",
+                attempts=attempts,
+                unsandboxed=ran_unsandboxed,
             )
         empty_reason = _inspected_nothing(output)
         if empty_reason is None:
@@ -2253,6 +2312,7 @@ def _dispatch_one(
                 f"reviewer returned an inconclusive verdict with no findings: {first_empty_reason}"
             ),
             attempts=attempts,
+            unsandboxed=ran_unsandboxed,
         )
 
 

@@ -2080,6 +2080,34 @@ def test_codex_is_never_resolved_from_inside_the_checkout(monkeypatch, tmp_path)
     assert seen["path"] == str(outside)
 
 
+def test_a_failed_unsandboxed_attempt_is_still_reported_as_unsandboxed(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Issue #644 parity review: every failed return after a guardrails attempt dropped the flag,
+    so the result file and provenance named no reviewer that had run with danger-full-access."""
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv,
+                returncode=1,
+                stdout=b'{"ok":false,"category":"x","detail":"y"}',
+                stderr=b"",
+            )
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert reports and all(r.status == "failed" and r.unsandboxed for r in reports)
+
+
 def test_path_outside_checkout_drops_every_entry_that_leads_into_the_checkout(
     monkeypatch, tmp_path
 ):

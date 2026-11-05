@@ -171,6 +171,57 @@ def test_fallback_touches_fails_closed_when_git_cannot_answer(monkeypatch):
     assert wrapper.fallback_touches("abc") is None
 
 
+def test_the_wrappers_fallback_list_matches_the_one_run_codex_review_enforces():
+    from scripts.marketplace_ci import review
+
+    assert _load_wrapper().FALLBACK_FILES == review.FALLBACK_FILES
+
+
+def test_every_file_the_dispatcher_runs_is_in_the_enforced_refusal_list():
+    from scripts.marketplace_ci import review
+
+    assert _closure(ENTRY) - set(review.FALLBACK_FILES) == set()
+
+
+def test_fallback_files_changed_is_empty_for_an_untouched_branch(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    assert review.fallback_files_changed(repo, "main") == []
+
+
+@pytest.mark.parametrize("how", ["committed", "staged", "unstaged"])
+def test_fallback_files_changed_sees_every_kind_of_edit(branch_repo, how):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[4]
+    (repo / target).write_text("changed\n", encoding="utf-8")
+    if how == "committed":
+        _git(repo, "commit", "-q", "-am", "edit")
+    elif how == "staged":
+        _git(repo, "add", target)
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def test_fallback_files_changed_ignores_a_change_made_only_on_the_base(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    _git(repo, "checkout", "-q", "main")
+    (repo / review.FALLBACK_FILES[1]).write_text("changed on main\n", encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "main moves on")
+    _git(repo, "checkout", "-q", "feature")
+    assert review.fallback_files_changed(repo, "main") == []
+
+
+def test_fallback_files_changed_is_none_when_git_cannot_answer(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    assert review.fallback_files_changed(repo, "no-such-ref") is None
+
+
 # --- the fallback is automatic, like cross-model-review's: decided by the wrapper, no question ---
 
 
