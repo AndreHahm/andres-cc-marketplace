@@ -55,8 +55,11 @@ must first be copied into the scratchpad with `Write`. Other sessions' scratchpa
 readable (residual). On Windows the root is `<temp>\claude` (no uid suffix; no WSL needed), the file
 itself must not be a symlink or junction and its resolved path may hold none below the root (a symlinked
 parent is followed, so it passes only while its target stays under the root), and the owner check is
-replaced by the per-user temp directory, which is a weaker residual. It exits with `gh`'s own
-status and does not print the body it sends.
+replaced by the per-user temp directory, which is a weaker residual. The roots on Windows come from
+`TMPDIR`, `TEMP` and `TMP` (each gives its own `<dir>\claude`), and a `\\?\C:\…` spelling of the path is
+accepted when it names the same place. The documented `python3 -I` command needs a `python3` executable on
+`PATH` on the Windows machine (a machine with only `python` or `py` fails), and the command stays as
+written because the `allowed-tools` grant and the smoke test pin it. It exits with `gh`'s own status and does not print the body it sends.
 
 `whoami` prints the authenticated login (used by `references/next-round-trigger.md`'s authorship
 check). `push-destinations` prints each of `origin`'s push URLs as `owner/repo`, one per line (used by

@@ -550,6 +550,31 @@ def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory(monkey
 def test_windows_root_is_the_claude_directory_under_temp_without_uid_or_tmp(monkeypatch, tmp_path):
     monkeypatch.setattr(M, "IS_WINDOWS", True)
     monkeypatch.setattr(M.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.delenv("TEMP", raising=False)
+    monkeypatch.delenv("TMP", raising=False)
+    assert M.allowed_body_roots() == [os.path.join(os.path.realpath(tmp_path), "claude")]
+
+
+def test_windows_roots_include_temp_and_tmp_when_tmpdir_differs(monkeypatch, tmp_path):
+    other = tmp_path / "other"
+    other.mkdir()
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    monkeypatch.setattr(M.tempfile, "gettempdir", lambda: str(tmp_path / "from-tmpdir"))
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    monkeypatch.setenv("TMP", str(other))
+    roots = M.allowed_body_roots()
+    assert roots == [
+        os.path.join(os.path.realpath(tmp_path / "from-tmpdir"), "claude"),
+        os.path.join(os.path.realpath(tmp_path), "claude"),
+        os.path.join(os.path.realpath(other), "claude"),
+    ]
+
+
+def test_windows_roots_do_not_repeat_when_temp_tmp_and_tmpdir_agree(monkeypatch, tmp_path):
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    monkeypatch.setattr(M.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    monkeypatch.setenv("TMP", str(tmp_path))
     assert M.allowed_body_roots() == [os.path.join(os.path.realpath(tmp_path), "claude")]
 
 
@@ -619,11 +644,37 @@ def test_windows_branch_still_rejects_a_path_outside_the_root(env, monkeypatch):
     [
         (r"C:\Temp\claude", r"c:\temp\Claude\p\scratchpad\a.txt", True),  # drive/case-insensitive
         (r"C:\Temp\claude", r"D:\Temp\claude\p\scratchpad\a.txt", False),  # other drive
-        (r"C:\Temp\claude", "\\\\?\\C:\\Temp\\claude\\p\\scratchpad\\a.txt", False),  # \\?\ prefix
+        (
+            r"C:\Temp\claude",
+            "\\\\?\\C:\\Temp\\claude\\p\\scratchpad\\a.txt",
+            True,
+        ),  # \\?\ same place
+        (
+            r"C:\Temp\claude",
+            "\\\\?\\D:\\Temp\\claude\\p\\scratchpad\\a.txt",
+            False,
+        ),  # \\?\ other drive
+        ("\\\\?\\C:\\Temp\\claude", r"C:\Temp\claude\p\scratchpad\a.txt", True),  # \\?\ on the root
+        (
+            r"C:\Temp\claude",
+            "\\\\?\\C:\\Temp\\claude-evil\\p\\scratchpad\\a.txt",
+            False,
+        ),  # \\?\ lookalike
+        (r"C:\Temp\claude", "\\\\?\\UNC\\host\\share\\claude\\p\\a.txt", False),  # \\?\UNC\
         (r"C:\Temp\claude", r"\\host\share\claude\p\scratchpad\a.txt", False),  # UNC
         (r"C:\Temp\claude", r"C:\Temp\claude-evil\p\scratchpad\a.txt", False),  # prefix lookalike
     ],
-    ids=["case-insensitive", "other-drive", "extended-prefix", "unc", "lookalike"],
+    ids=[
+        "case-insensitive",
+        "other-drive",
+        "extended-prefix-same-place",
+        "extended-prefix-other-drive",
+        "extended-prefix-on-root",
+        "extended-prefix-lookalike",
+        "extended-unc",
+        "unc",
+        "lookalike",
+    ],
 )
 def test_windows_path_containment_is_case_insensitive_and_never_raises(
     monkeypatch, root, path, expected
@@ -699,6 +750,13 @@ def test_an_fstat_failure_after_the_open_closes_the_descriptor_and_is_a_usage_er
 
 
 windows_junctions = pytest.mark.skipif(sys.platform != "win32", reason="needs real NTFS junctions")
+
+
+@windows_junctions
+def test_windows_reads_a_body_file_given_with_the_extended_drive_prefix(env, monkeypatch):
+    _, _, body = env
+    monkeypatch.setattr(M, "IS_WINDOWS", True)
+    assert M.read_body("\\\\?\\" + os.path.realpath(body)) == b"hello"
 
 
 def _junction(link, target):
