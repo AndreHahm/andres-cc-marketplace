@@ -8,6 +8,7 @@ subcommands require.
 
 import importlib.util
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -530,7 +531,7 @@ def test_a_file_in_the_scratch_tree_but_outside_a_scratchpad_directory_is_reject
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX owner check")
 def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
     _, _, body = env
-    other_uid = os.getuid() + 1  # ty: ignore[unresolved-attribute]
+    other_uid = os.getuid() + 1  # ty: ignore[unresolved-attribute, unused-ignore-comment]
     monkeypatch.setattr(M.os, "getuid", lambda: other_uid)
     code, fake = _trigger(env, body)
     assert code != 0 and fake.gh_calls == []
@@ -540,7 +541,7 @@ def test_a_file_owned_by_another_user_is_rejected(env, monkeypatch):
 def test_real_roots_are_the_per_user_claude_tree_under_the_temp_directory(monkeypatch):
     monkeypatch.setattr(M, "IS_WINDOWS", False)
     roots = M.allowed_body_roots()
-    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)  # ty: ignore[unresolved-attribute]
+    assert roots and all(r.endswith(f"claude-{os.getuid()}") for r in roots)  # ty: ignore[unresolved-attribute, unused-ignore-comment]
 
 
 # --- Windows branch (#623): runs on any platform by forcing IS_WINDOWS ----------------------------
@@ -703,7 +704,7 @@ windows_junctions = pytest.mark.skipif(sys.platform != "win32", reason="needs re
 def _junction(link, target):
     import _winapi  # Windows only; the skipif above keeps other platforms from reaching this
 
-    _winapi.CreateJunction(str(target), str(link))
+    _winapi.CreateJunction(str(target), str(link))  # ty: ignore[unresolved-attribute]
 
 
 @windows_junctions
@@ -795,7 +796,7 @@ def test_body_file_that_is_a_directory_is_rejected(env):
 def test_body_file_that_is_a_fifo_is_rejected_without_blocking(env):
     _, _, body = env
     fifo = body.parent / "pipe"
-    os.mkfifo(fifo)  # ty: ignore[unresolved-attribute]
+    os.mkfifo(fifo)  # ty: ignore[unresolved-attribute, unused-ignore-comment]
     code, fake = _trigger(env, fifo)
     assert code != 0 and fake.gh_calls == []
 
@@ -828,10 +829,19 @@ def test_a_body_at_the_character_limit_is_accepted(env):
 # --- the marker writer accepts the new guard type ----------------------------------------------
 
 
+def _git_bash() -> str:
+    """Git for Windows' bash: a bare `bash` on a Windows runner can be the WSL launcher."""
+    if sys.platform != "win32":
+        return "bash"
+    git = shutil.which("git")
+    candidate = Path(git).parent.parent / "bin" / "bash.exe" if git else None
+    return str(candidate) if candidate and candidate.is_file() else "bash"
+
+
 def test_marker_writer_accepts_the_wrapper_guard_type(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     result = subprocess.run(
-        ["bash", str(MARKER_WRITER), GUARD, "handling-review-findings"],
+        [_git_bash(), str(MARKER_WRITER), GUARD, "handling-review-findings"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
