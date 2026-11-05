@@ -1,7 +1,7 @@
 {
   "skill_name": "consulting-decision-model",
   "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
-  "description": "Bounded Quick Workflow checks: the skill frames the decision, runs its script and stops when the API is unavailable.",
+  "description": "Bounded checks: the skill frames the decision, runs its script and stops when the API is unavailable. Each eval runs in a disposable shallow clone with OPENROUTER_API_KEY removed; named branches do not exist there and are treated as described.",
   "testing_validation_coverage": {
     "declared_scenarios_total": 7,
     "declared_scenarios_covered": 2,

@@ -3,7 +3,7 @@
 ## What Leaves the Machine
 
 The request carries the fixed policy text, `action`, `state`, the option keys and text, and the model's
-slug (pinned, or the fallback if it is used). It goes to `https://openrouter.ai`. No setting changes that
+slug (pinned, or the fallback if it is used). It goes to [OpenRouter](https://openrouter.ai). No setting changes that
 host, though the usual `HTTPS_PROXY` environment variable still applies. Redirects are not followed,
 because urllib would otherwise replay the key to the redirect target. Each consultation also lists
 models with a GET that carries no key and no text.
@@ -28,10 +28,11 @@ counts as a failure.
 
 Each consultation is stored under `.claude/decision-kit/consultations/`, in the project folder described
 under Settings, as a record file with owner-only
-permissions, and the folder's own `.gitignore` keeps it out of git. A record holds the known input
+permissions on Linux and macOS (Windows does not honor these modes), and the folder's own `.gitignore` keeps it out of git. A record holds the known input
 fields, all of them screened, never the key. A refused or disabled result is not recorded. If a link is
 on the record path, or the `.gitignore` is not this plugin's own, no record is written and a warning says
-so; the verdict is unaffected. Records hold excerpts, so treat them as you would the source.
+so; the verdict is unaffected. Records hold excerpts, so treat them as you would the source. They are never deleted
+automatically: remove old ones by hand.
 
 ## Settings
 

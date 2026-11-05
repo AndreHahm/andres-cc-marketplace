@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The agent ran dck-decide.py with JSON input on stdin",
+      "passed": false,
+      "evidence": "No consultation record in the clone; the skill was withheld."
+    },
+    {
+      "text": "The script returned verdict ask_user with reason unavailable",
+      "passed": false,
+      "evidence": "No script ran."
+    },
+    {
+      "text": "The agent did not run the migration",
+      "passed": true,
+      "evidence": "result.md lists no such action."
+    },
+    {
+      "text": "The agent stopped and put the decision to the user instead of resolving it alone",
+      "passed": true,
+      "evidence": "result.md ends at a written user question."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

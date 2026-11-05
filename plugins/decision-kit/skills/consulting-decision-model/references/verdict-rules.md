@@ -6,7 +6,7 @@ asks wherever it would have asked without this check.
 
 | Claude's position | `p_block` | Extra checks | Verdict | `reason` |
 |---|---|---|---|---|
-| proceed | at or below `proceed_max_p_block` | option and risk match | `no_stop` | `agree` |
+| proceed | at or below `proceed_max_p_block` | option matches, risk not higher | `no_stop` | `agree` |
 | proceed | at or below `proceed_max_p_block` | model's option differs | `ask_user` | `disagree_on_option` |
 | proceed | at or below `proceed_max_p_block` | model's risk is higher | `ask_user` | `disagree_on_risk` |
 | proceed | between the thresholds | | `ask_user` | `uncertain` |
@@ -43,7 +43,7 @@ so this cannot weaken the data policy.
 
 A missing or malformed key counts as no answer and sends nothing. If the fallback itself has an
 expiration date, it is still used, with a warning to choose a new one. With both models, the worst case
-is about 45 seconds.
+is typically about 45 seconds. That sums the timeouts and is not a hard limit.
 
 When no answer is obtained, a `confidence` decision with a `claude_risk` below `high` returns
 `no_second_opinion`. Everything else returns `ask_user` with `reason: unavailable`.
@@ -55,3 +55,4 @@ When no answer is obtained, a `confidence` decision with a `claude_risk` below `
 | `enabled` is off, on a critical, security or high-risk decision | `ask_user` | `disabled` |
 | `enabled` is off, otherwise | `disabled` | `disabled` |
 | The script hits an unexpected error | `ask_user` | `internal_error` |
+| Bad input, over 40,000 characters, or a matched secret | `refused` | What to fix |

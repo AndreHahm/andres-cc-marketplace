@@ -180,7 +180,7 @@
     {
       "name": "decision-kit",
       "source": "./plugins/decision-kit",
-      "description": "Get an independent answer from one pinned OpenRouter decision model before a critical, security-relevant or low- or mid-confidence decision Claude made itself, and stop to ask the user on disagreement or uncertainty. The model can only add a stop, never authorize an action. Opt-in: needs OPENROUTER_API_KEY, sends screened excerpts under zero data retention, and fails closed for critical decisions.",
+      "description": "Get an independent answer from one pinned OpenRouter decision model before a critical, security-relevant or low- or mid-confidence decision Claude made itself, and stop to ask the user on disagreement or uncertainty. The model can only add a stop, never authorize an action. Opt-in: needs OPENROUTER_API_KEY, sends screened excerpts under zero data retention, and fails closed for critical, security and high-risk decisions.",
       "version": "1.0.0-alpha.1",
       "author": {
         "name": "Andre Hahm",

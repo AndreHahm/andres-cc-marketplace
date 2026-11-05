@@ -18,7 +18,8 @@ Verdicts:
   no_stop           the model adds no stop; this authorizes nothing
   no_second_opinion no answer was available for a below-high-risk confidence decision
   ask_user          disagreement, uncertainty, agreement on a stop, an unavailable API on a
-                    critical, security or high-risk decision, or an internal error
+                    critical, security or high-risk decision, the `enabled` setting off on such
+                    a decision, or an internal error
   refused           nothing was sent; fix the input and run once more
   disabled          the plugin's `enabled` setting is off, for a below-high-risk confidence decision
 """
@@ -38,7 +39,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -86,6 +87,15 @@ EXTRA_SHAPES = (
     ("stripe_key", r"[sr]k_(?:live|test)_[A-Za-z0-9]{16,}"),
     ("gitlab_token", r"glpat-[A-Za-z0-9_-]{20,}"),
     ("npm_token", r"npm_[A-Za-z0-9]{36,}"),
+    ("aws_temporary_key", r"(?<![A-Za-z0-9])ASIA[A-Z0-9]{16}"),
+    ("google_oauth_token", r"ya29\.[A-Za-z0-9_-]{20,}"),
+    ("huggingface_token", r"hf_[A-Za-z0-9]{30,}"),
+    ("slack_app_token", r"xapp-[0-9A-Za-z-]{20,}"),
+    ("slack_webhook", r"hooks\.slack\.com/services/\S+"),
+    ("stripe_webhook_secret", r"whsec_[A-Za-z0-9]{20,}"),
+    ("pypi_token", r"pypi-[A-Za-z0-9_-]{50,}"),
+    ("digitalocean_token", r"dop_v1_[a-f0-9]{40,}"),
+    ("sendgrid_key", r"SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}"),
 )
 
 
@@ -196,6 +206,22 @@ def _key_forms(key: str) -> list[str]:
     )
 
 
+def _unescape(text: str) -> str:
+    """Undoes JSON and string escapes, repeatedly, because excerpts can be escaped twice."""
+    for _ in range(3):
+        before = text
+        text = text.replace("\\\\", "\\").replace("\\/", "/")
+        text = re.sub(
+            r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
+            lambda found: chr(int(found.group(1) or found.group(2), 16)),
+            text,
+        )
+        text = re.sub(r"\\[nrtbf\"']", " ", text)
+        if text == before:
+            break
+    return text
+
+
 def screen(texts: list[str], key: str) -> str | None:
     """Returns why the text must not leave the machine, or None. An unreadable pattern file refuses.
 
@@ -214,7 +240,7 @@ def screen(texts: list[str], key: str) -> str | None:
         decoded = text
         for _ in range(3):
             decoded = urllib.parse.unquote(decoded)
-        decoded = re.sub(r"\\[nrt\"]", " ", decoded)
+        decoded = _unescape(decoded)
         if any(form in text or form in decoded for form in forms):
             return "the text contains the API key"
         for name, pattern in patterns:
@@ -438,7 +464,7 @@ def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
         else:
             with os.fdopen(os.open(ignore, flags, 0o600), "w", encoding="utf-8") as handle:
                 handle.write("*\n")
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")  # noqa: UP017 (Python 3.9)
         path = folder / "consultations" / f"{stamp}-{secrets.token_hex(4)}.json"
         with os.fdopen(os.open(path, flags, 0o600), "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2)
@@ -451,8 +477,11 @@ def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
 def project_root(start: Path) -> Path:
     """The nearest folder at or above `start` that holds the local settings, else `start`."""
     for folder in (start, *start.parents):
-        if (folder / LOCAL_SETTINGS).is_file():
-            return folder
+        try:
+            if (folder / LOCAL_SETTINGS).is_file():
+                return folder
+        except OSError:
+            continue
     return start
 
 
@@ -506,7 +535,7 @@ def run(data: Any, base: str = API_BASE, root: Path | None = None) -> dict:
     if answers:
         result["answers"] = {k: v for k, v in answers.items() if k != "usage"}
     record = {
-        "time": datetime.now(UTC).isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),  # noqa: UP017 (Python 3.9)
         "input": {
             k: data[k] for k in INPUT_FIELDS if k in data and (k != "claude_choice" or options)
         },
