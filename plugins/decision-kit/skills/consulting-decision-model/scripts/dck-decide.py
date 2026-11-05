@@ -62,6 +62,11 @@ BASE64_SPAN = re.compile(r"[A-Za-z0-9+/_-]{16,}")
 FALLBACK_STATUSES = {404, 429, 500, 502, 503, 524, 529}
 
 LOCAL_SETTINGS = ".claude/decision-kit.local.json"
+KEY_NAME = "OPENROUTER_API_KEY"
+ENV_FILE = ".env"
+PLACEHOLDER_KEY = "your-openrouter-api-key"
+MAX_LOCAL_FILE_BYTES = 65_536
+ENV_LINE = re.compile(rf"\s*(?:export\s+)?{KEY_NAME}\s*=\s*(.*?)\s*")
 RECORDS_DIR = ".claude/decision-kit"
 TRIGGERS = ("critical", "security", "confidence")
 SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -141,6 +146,44 @@ def _valid_settings(settings: dict) -> bool:
     return bool(slugs) and isinstance(settings.get("enabled"), bool) and 0 <= low < high <= 1
 
 
+def read_local_file(path: Path) -> str:
+    """A small regular text file. A committed link to a device or a huge file raises ValueError."""
+    if not path.is_file() or path.stat().st_size > MAX_LOCAL_FILE_BYTES:
+        raise ValueError(path)
+    return path.read_text(encoding="utf-8-sig")
+
+
+def _value_in_env_file(path: Path) -> str:
+    """The key's value in dotenv's format, or "". The last assignment wins."""
+    value = ""
+    for line in read_local_file(path).split("\n"):
+        found = ENV_LINE.fullmatch(line)
+        if found:
+            text = found.group(1)
+            quoted = text[:1] in ("'", '"')
+            value = text[1:].partition(text[0])[0] if quoted else re.split(r"\s+#", text)[0]
+    return value
+
+
+def find_key(start: Path, warnings: list[str]) -> tuple[str, str]:
+    """(key, where it was found). The environment wins, then the nearest .env that holds the key."""
+    key = os.environ.get(KEY_NAME, "")
+    if key:
+        return key, "the environment"
+    for folder in (start, *start.parents):
+        path = folder / ENV_FILE
+        if not os.path.lexists(path):
+            continue
+        try:
+            key = _value_in_env_file(path)
+        except (OSError, ValueError):
+            warnings.append(f"{path} ignored: not a small UTF-8 text file")
+            continue
+        if key:
+            return key, str(path)
+    return "", ""
+
+
 def load_settings(root: Path, warnings: list[str]) -> dict:
     """Shipped defaults, then the optional local override. Changed fields go in the warnings.
 
@@ -157,7 +200,7 @@ def load_settings(root: Path, warnings: list[str]) -> dict:
         return settings
     off = {**settings, "enabled": False}
     try:
-        local = json.loads(path.read_text(encoding="utf-8"))
+        local = json.loads(read_local_file(path))
     except (OSError, ValueError):
         warnings.append(f"{path} is not readable JSON: the check is off until it is fixed")
         return off
@@ -358,17 +401,15 @@ def post(base: str, key: str, payload: dict, timeout: float) -> tuple[int | None
     return (status, body) if body is not None else (None, b"")
 
 
-def expiring_snapshots(base: str, timeout: float) -> set[str]:
-    """Dated slugs with an expiration date. A failed lookup returns nothing."""
+def model_entries(base: str, timeout: float) -> list[dict] | None:
+    """The decision models the API lists, or None if the lookup failed."""
     deadline = time.monotonic() + timeout
     try:
         with _OPENER.open(base + MODELS_PATH, timeout=timeout) as response:  # nosec B310
             entries = json.loads(_read_capped(response, deadline) or b"")["data"]
-        return {
-            e["canonical_slug"]
-            for e in entries
-            if e.get("expiration_date") and e.get("canonical_slug")
-        }
+        return [
+            e for e in entries if isinstance(e, dict) and isinstance(e.get("canonical_slug"), str)
+        ]
     except (
         urllib.error.URLError,
         http.client.HTTPException,
@@ -377,10 +418,15 @@ def expiring_snapshots(base: str, timeout: float) -> set[str]:
         ValueError,
         KeyError,
         TypeError,
-        AttributeError,
         RecursionError,
     ):
-        return set()
+        return None
+
+
+def expiring_snapshots(base: str, timeout: float) -> set[str]:
+    """Dated slugs with an expiration date. A failed lookup returns nothing."""
+    entries = model_entries(base, timeout) or []
+    return {e["canonical_slug"] for e in entries if e.get("expiration_date")}
 
 
 def _number(value: object) -> bool:
@@ -523,6 +569,7 @@ def project_root(start: Path) -> Path:
 
 def run(data: Any, base: str = API_BASE, root: Path | None = None) -> dict:
     warnings: list[str] = []
+    start = root or Path.cwd()
     if root is None:
         root = project_root(Path.cwd())
         if root != Path.cwd():
@@ -542,17 +589,19 @@ def run(data: Any, base: str = API_BASE, root: Path | None = None) -> dict:
             "reason": f"the text exceeds {MAX_STATE_CHARS} characters",
             "warnings": warnings,
         }
-    key = os.environ.get("OPENROUTER_API_KEY", "")
+    key = find_key(start, warnings)[0]
+    if key == PLACEHOLDER_KEY:
+        key = ""
     problem = screen(texts, key)
     if problem:
         return {"verdict": "refused", "reason": problem, "warnings": warnings}
 
     answers, model, source = None, settings["pinned_model"], "none"
     if not key:
-        warnings.append("OPENROUTER_API_KEY is not set")
+        warnings.append(f"{KEY_NAME} is not set in the environment or a {ENV_FILE} file")
     elif not re.fullmatch(r"[\x21-\x7e]+", key):
         warnings.append(
-            "OPENROUTER_API_KEY contains whitespace or control characters; check how it is set"
+            f"{KEY_NAME} contains whitespace or control characters; check how it is set"
         )
     else:
         answers, model, source = consult(base, key, data, settings, warnings)

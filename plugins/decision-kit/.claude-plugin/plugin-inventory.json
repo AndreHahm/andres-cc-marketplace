@@ -81,6 +81,88 @@
         }
       ],
       "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-11-05",
+      "details": {
+        "schema": "command"
+      },
+      "domain": "decision-support",
+      "functional_role": "infrastructure",
+      "id": "component_a4bae4ae",
+      "name": "dck-doctor",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/dck-doctor.md"
+          ],
+          "name": "dck-doctor",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/dck-doctor.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/dck-doctor.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-11-05",
+      "details": {
+        "schema": "command"
+      },
+      "domain": "decision-support",
+      "functional_role": "infrastructure",
+      "id": "component_05e1cf95",
+      "name": "dck-init",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/dck-init.md"
+          ],
+          "name": "dck-init",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/dck-init.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/dck-init.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
     }
   ],
   "extensions": {},

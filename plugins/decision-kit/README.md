@@ -15,9 +15,10 @@ Install it from this marketplace:
 
 The plugin is off until you enable it with `claude plugin enable decision-kit`, and it needs a key:
 
-```bash
-export OPENROUTER_API_KEY=<your key>
-```
+1. Run `/dck-init` to create `.env.example`, or to add the OpenRouter entry to the one you have.
+2. Copy the entry to a gitignored `.env` in your project root, and set your real key there. This works the
+   same on Windows and Linux. An `OPENROUTER_API_KEY` environment variable also works, and wins if set.
+3. Run `/dck-doctor` to check the setup. Each run sends six small, fixed decisions, at a small cost.
 
 Without a key, the hook stays silent, so it does not prompt a consultation. If one runs anyway, it reports the
 missing key. It stops to ask on a critical, security or high-risk decision, and otherwise reports that no
@@ -29,6 +30,8 @@ switch from enabling the plugin. A project can set it in `.claude/decision-kit.l
 ## What It Does
 
 - **Skill:** `consulting-decision-model` frames the decision, runs the script and acts on the verdict.
+- **Commands:** `/dck-init` writes the example entry, and `/dck-doctor` checks the settings, the key, the
+  connection and both decision models. Neither shows your key.
 - **Hook:** a `SessionStart` hook adds a short note on when to consult, only when the key is set. It
   fires on every session start, including after `/clear` and compaction, because context is lost
   then. It does not read the `enabled` setting, so with `enabled: false` the note still appears. The skill
@@ -41,7 +44,8 @@ only under zero data retention, with no prompt per send. See
 
 ## Language
 
-Python 3.9 or newer, standard library only. The one hook is a short Bash script.
+Python 3.9 or newer, standard library only. The `.env` file is read by a small built-in reader, not the
+python-dotenv package. The one hook is a short Bash script.
 
 ## Status
 
