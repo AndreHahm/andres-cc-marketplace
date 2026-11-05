@@ -8,6 +8,20 @@ host, though the usual `HTTPS_PROXY` environment variable still applies. Redirec
 because urllib would otherwise replay the key to the redirect target. Each consultation also lists
 models with a GET that carries no key and no text.
 
+## The API Key
+
+The script uses `OPENROUTER_API_KEY` from the environment when it is set. Otherwise it reads the nearest
+`.env` file that holds the key, in the working directory or a parent folder, up to the filesystem root.
+It reads only that one entry, in dotenv's single-line format, with its own small reader instead of the
+python-dotenv package, and adds nothing to the environment. A line inside another entry's multi-line quoted
+value is read as an ordinary line. The file must be a regular text file of at most 64 KiB, and the example
+value from `/dck-init` counts as no key. Keep `.env` gitignored: a `.env` committed to a repository
+supplies its key to anyone working there, and their excerpts would then go through that key's account.
+
+`/dck-doctor` sends six fixed decisions, three per model, under the same `zdr` flag. They hold no project
+content. It sends no decisions when the check is off or no usable key is found, though it still fetches
+the model list, which carries no key and no text.
+
 ## Screening
 
 Before any request, the script refuses text that contains the API key, including its URL-encoded and

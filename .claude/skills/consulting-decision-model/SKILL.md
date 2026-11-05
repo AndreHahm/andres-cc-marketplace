@@ -11,7 +11,7 @@ description: >-
   (cross-model-review), a design or recommendation to present (codex-peer-review) or a plan or
   document (codex-verify): this skill judges one action or choice Claude is about to execute. The
   model can only add a stop, never authorize an action.
-allowed-tools: AskUserQuestion Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py:*)
+allowed-tools: AskUserQuestion Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py:*) Bash(python -I ${CLAUDE_PLUGIN_ROOT}/skills/consulting-decision-model/scripts/dck-decide.py:*)
 ---
 
 # Consulting the Decision Model
@@ -83,8 +83,9 @@ DCK_INPUT
 
 `options` and `claude_choice` are optional; use them when Claude is choosing between options. Keep the
 quoted heredoc delimiter, since the text can contain shell characters, and keep the JSON on one line
-with newlines escaped, so no line of text can end the heredoc. `OPENROUTER_API_KEY` must be in the
-environment: never read, print or pass it yourself.
+with newlines escaped, so no line of text can end the heredoc. Use `python` where `python3` does not
+exist, as on many Windows machines. The script finds `OPENROUTER_API_KEY` in the environment or in a
+`.env` file at or above the working directory: never read, print or pass it yourself.
 
 ## Step 3: Read the Output
 
@@ -116,7 +117,8 @@ If the output is anything other than one of these verdicts, or the script fails,
 Never run the script again after `ask_user` or an unavailable result, and never rephrase the facts to
 get a different answer: the question goes to the user. Only `refused` allows a second run.
 
-Surface every entry in `warnings` to the user, for example a pinned snapshot that needs re-pinning.
+Surface every entry in `warnings` to the user, for example a pinned snapshot that needs re-pinning. For
+a missing key or a failing API, point the user at `/dck-doctor`.
 
 ## Gotchas
 
@@ -173,4 +175,5 @@ and when to fire has no labelled examples until real consultation records exist.
 The baseline points lost are the two script assertions per eval; all three baselines also stopped and
 deleted nothing, so this shows the script runs, not that the skill is safer. `iteration-4` re-ran the three
 with-skill agents on the fixed screen and override handling: 12/12, with no baseline. No agent used the real
-`AskUserQuestion`. The live API path is not yet run from this plugin.
+`AskUserQuestion`. `dck-doctor.py` ran against the live API on 2026-11-05 on Linux: both models answered all three
+decision types. `dck-decide.py` itself has only run against the fake server, and nothing has run on Windows.
