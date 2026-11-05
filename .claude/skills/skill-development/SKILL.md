@@ -15,7 +15,7 @@ when_to_use: >-
   slash command to a skill", "apply a skill template", "rewrite a skill's description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "merge two
   duplicate skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
-allowed-tools: Read Write Edit Grep Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*)
+allowed-tools: Read Write Edit Grep WebFetch Agent Skill Bash(python ${CLAUDE_SKILL_DIR}/scripts/repair_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/scan_skills.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/package_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/init_skill.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/quick_validate.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py *) Bash(python ${CLAUDE_SKILL_DIR}/scripts/run_loop.py *) Bash(python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py *) Bash(mkdir:*)
 ---
 
 # Skill Development for Claude Code Plugins
