@@ -33,9 +33,29 @@ _CHILD_ENV_NAMES = frozenset(
         "SSL_CERT_FILE",
         "SSL_CERT_DIR",
         "NODE_EXTRA_CA_CERTS",
+        # Claude Code authentication, per https://code.claude.com/docs/en/authentication
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_CUSTOM_HEADERS",
+        "ANTHROPIC_PROFILE",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        # Endpoint and provider. The switches stay so that a child of a cloud-provider setup
+        # fails on its missing keys instead of silently billing another account.
+        "ANTHROPIC_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_FOUNDRY",
+        "CLAUDE_CODE_USE_VERTEX",
+        # Config directory, which holds the login, and model selection
+        "CLAUDE_CONFIG_DIR",
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_MODEL",
+        "ANTHROPIC_DEFAULT_FABLE_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
     }
 )
-_CHILD_ENV_PREFIXES = ("LC_", "XDG_", "ANTHROPIC_", "CLAUDE_")
+_CHILD_ENV_PREFIXES = ("LC_", "XDG_")
 
 
 def child_env() -> dict[str, str]:
@@ -43,7 +63,8 @@ def child_env() -> dict[str, str]:
 
     Drops CLAUDECODE (the nesting guard, safe to bypass for a programmatic child) and any
     variable outside the allowlist above. A setup that authenticates through other
-    variables (for example cloud-provider keys) must add them here deliberately.
+    variables (for example cloud-provider keys or workload identity federation) must add
+    them here deliberately.
     """
     return {
         k: v
