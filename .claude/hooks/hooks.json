@@ -141,6 +141,18 @@
             "onError": "warn"
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/dck-session-context.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
