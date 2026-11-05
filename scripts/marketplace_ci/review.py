@@ -2029,8 +2029,13 @@ def _executable_outside_checkout(name: str) -> str | None:
     entries are searched here directly instead."""
     suffixes = [""]
     if sys.platform == "win32":
+        # Only what CreateProcess starts directly: an interpreter-only entry (.JS, .VBS, ...)
+        # found in an earlier folder would otherwise hide the real executable in a later one.
+        spawnable = {".com", ".exe", ".bat", ".cmd"}
         pathext = [
-            e for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep) if e
+            e
+            for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep)
+            if e.lower() in spawnable
         ]
         if not name.lower().endswith(tuple(e.lower() for e in pathext)):
             suffixes = pathext

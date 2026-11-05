@@ -2327,6 +2327,28 @@ def test_the_bridge_and_the_fallback_get_a_path_without_the_checkout(
         assert env is not None and env["PATH"] == str(outside)
 
 
+def test_an_interpreter_only_pathext_entry_never_hides_the_real_executable(monkeypatch, tmp_path):
+    """Review of PR #646 (F12): a `node.js` in an earlier PATH folder was returned ahead of the
+    real `node.exe` in a later one, though CreateProcess cannot start a .js file directly."""
+    early = tmp_path / "early"
+    late = tmp_path / "late"
+    early.mkdir()
+    late.mkdir()
+    (early / "node.js").write_bytes(b"x")
+    real = late / "node.exe"
+    real.write_bytes(b"x")
+    real.chmod(0o755)
+    (early / "node.js").chmod(0o755)
+    (tmp_path / "repo").mkdir()
+    monkeypatch.chdir(tmp_path / "repo")
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("PATHEXT", ".js;.exe")
+    monkeypatch.setenv("PATH", os.pathsep.join([str(early), str(late)]))
+    found = _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("node")
+    assert found is not None
+    assert Path(found) == real
+
+
 def test_there_is_no_fallback_when_node_cannot_be_found_outside_the_checkout(
     monkeypatch, repo, change, dependency_index
 ):
