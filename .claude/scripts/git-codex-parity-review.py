@@ -508,8 +508,14 @@ def _read_blocking(output: Path) -> bool | None:
 
 
 def fallback_touches(base_sha: str) -> list[str] | None:
-    """FALLBACK_FILES this branch changed since `base_sha`, or None when git could not say."""
-    diff = _run(["git", "diff", "--name-only", f"{base_sha}...HEAD", "--", *FALLBACK_FILES])
+    """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
+    `base_sha`, or None when git could not say. The fallback runs these files from the working
+    tree, so committed, staged and unstaged edits all count; a single-ref `git diff` covers all
+    three, where `base...HEAD` would miss anything not yet committed."""
+    merge_base = _run(["git", "merge-base", base_sha, "HEAD"])
+    if merge_base is None or merge_base.returncode != 0 or not merge_base.stdout.strip():
+        return None
+    diff = _run(["git", "diff", "--name-only", merge_base.stdout.strip(), "--", *FALLBACK_FILES])
     if diff is None or diff.returncode != 0:
         return None
     return [line for line in diff.stdout.splitlines() if line]

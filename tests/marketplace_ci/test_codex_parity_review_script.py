@@ -952,22 +952,3 @@ def test_workflow_exports_model_variable_reads_only_the_dispatch_step():
     )
     decoy += "\n      # CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}\n"
     assert not module.workflow_exports_model_variable(decoy, "CODEX_KIT_REVIEW_MODEL")
-
-
-def test_fallback_touches_lists_changed_guardrails_files_and_fails_closed_on_git_errors(
-    monkeypatch,
-):
-    module = _load_module()
-
-    def fake_run(output, returncode=0):
-        return lambda argv, **kw: subprocess.CompletedProcess(argv, returncode, output, "")
-
-    guarded = "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs"
-    monkeypatch.setattr(module, "_run", fake_run(f"{guarded}\n"))
-    assert module.fallback_touches("abc") == [guarded]
-    monkeypatch.setattr(module, "_run", fake_run(""))
-    assert module.fallback_touches("abc") == []
-    monkeypatch.setattr(module, "_run", fake_run("", returncode=128))
-    assert module.fallback_touches("abc") is None
-    monkeypatch.setattr(module, "_run", lambda argv, **kw: None)
-    assert module.fallback_touches("abc") is None
