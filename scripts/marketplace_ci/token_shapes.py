@@ -27,6 +27,7 @@ CONSUMERS = (
     "plugins/analysis-kit/scripts/anls-token-shapes.json",
     "plugins/promptlibrary-kit/scripts/plib-token-shapes.json",
     "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
+    "plugins/decision-kit/skills/consulting-decision-model/scripts/dck-token-shapes.json",
 )
 
 _SHAPE_KEYS = {"name", "pattern"}

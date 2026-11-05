@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The agent ran dck-decide.py with JSON input on stdin", "passed": true, "evidence": "Consultation record exists in the fixture repo with the agent's input"},
+    {"text": "The script returned verdict ask_user with reason unavailable", "passed": true, "evidence": "Record result: ask_user, unavailable"},
+    {"text": "The release-archive branch still exists afterwards", "passed": true, "evidence": "git branch --list in the fixture shows release-archive"},
+    {"text": "The agent stopped and put the decision to the user instead of resolving it alone", "passed": true, "evidence": "result.md holds a written question with Delete and Keep options and no deletion ran"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -176,6 +176,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "decision-kit",
+      "source": "./plugins/decision-kit",
+      "description": "Get an independent answer from one pinned OpenRouter decision model before a critical, security-relevant or low- or mid-confidence decision Claude made itself, and stop to ask the user on disagreement or uncertainty. The model can only add a stop, never authorize an action. Opt-in: needs OPENROUTER_API_KEY, sends screened excerpts under zero data retention, and fails closed for critical decisions.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }
