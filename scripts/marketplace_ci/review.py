@@ -2064,7 +2064,7 @@ def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
             # codex is an absolute path from _executable_outside_checkout (PATH entries outside
             # the checkout) and every other argument is a literal, so no untrusted text reaches
             # the command. A bare "codex" would be B607 and could run a planted executable.
-            result = subprocess.run(  # nosemgrep
+            result = subprocess.run(  # nosec B603  # vetted path, literal args  # nosemgrep
                 [codex, "sandbox", "cmd", "/c", "echo", "ok"],  # nosemgrep
                 capture_output=True,
                 env={**os.environ, "PATH": _path_outside_checkout()},
