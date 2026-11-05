@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "plugins/git-kit/scripts/git-review-api.py"
 MARKER_WRITER = ROOT / "plugins/git-kit/scripts/git-write-marker.sh"
 GUARD = "gh-pr-review-wrapper"
+# Resolved through PATH, as test_git_review_run_dir.py does: a bare "bash" reaches Windows process
+# creation, which searches System32 first and finds WSL's bash instead of Git Bash.
+BASH = shutil.which("bash") or "bash"
 
 
 def _load_module():
@@ -698,7 +701,8 @@ def test_windows_reparse_walk_that_never_meets_the_root_fails_closed_instead_of_
 def test_windows_branch_refuses_a_filesystem_with_no_file_index(env, monkeypatch):
     _, _, body = env
     monkeypatch.setattr(M, "IS_WINDOWS", True)
-    real = os.path.realpath(body)
+    # Compare spellings fixed before the patch: realpath() itself calls os.lstat on POSIX.
+    targets = {os.path.normcase(str(body)), os.path.normcase(os.path.realpath(body))}
     real_lstat = os.lstat
 
     class _NoIndex:
@@ -711,7 +715,7 @@ def test_windows_branch_refuses_a_filesystem_with_no_file_index(env, monkeypatch
 
     def lstat(path, *args, **kwargs):
         info = real_lstat(path, *args, **kwargs)
-        return _NoIndex(info) if os.path.realpath(path) == real else info
+        return _NoIndex(info) if os.path.normcase(str(path)) in targets else info
 
     with monkeypatch.context() as patched:
         patched.setattr(M.os, "lstat", lstat)
@@ -799,7 +803,8 @@ def test_real_junction_parent_to_outside_the_scratchpad_is_rejected(env, tmp_pat
 
 def test_a_file_swapped_between_the_check_and_the_open_is_rejected(env, monkeypatch):
     _, _, body = env
-    real = os.path.realpath(body)
+    # Compare spellings fixed before the patch: realpath() itself calls os.lstat on POSIX.
+    targets = {os.path.normcase(str(body)), os.path.normcase(os.path.realpath(body))}
     real_lstat = os.lstat
 
     class _OtherFile:
@@ -812,7 +817,7 @@ def test_a_file_swapped_between_the_check_and_the_open_is_rejected(env, monkeypa
 
     def lstat(path, *args, **kwargs):
         info = real_lstat(path, *args, **kwargs)
-        return _OtherFile(info) if os.path.realpath(path) == real else info
+        return _OtherFile(info) if os.path.normcase(str(path)) in targets else info
 
     with monkeypatch.context() as patched:
         patched.setattr(M.os, "lstat", lstat)
@@ -887,19 +892,10 @@ def test_a_body_at_the_character_limit_is_accepted(env):
 # --- the marker writer accepts the new guard type ----------------------------------------------
 
 
-def _git_bash() -> str:
-    """Git for Windows' bash: a bare `bash` on a Windows runner can be the WSL launcher."""
-    if sys.platform != "win32":
-        return "bash"
-    git = shutil.which("git")
-    candidate = Path(git).parent.parent / "bin" / "bash.exe" if git else None
-    return str(candidate) if candidate and candidate.is_file() else "bash"
-
-
 def test_marker_writer_accepts_the_wrapper_guard_type(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     result = subprocess.run(
-        [_git_bash(), str(MARKER_WRITER), GUARD, "handling-review-findings"],
+        [BASH, str(MARKER_WRITER), GUARD, "handling-review-findings"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
