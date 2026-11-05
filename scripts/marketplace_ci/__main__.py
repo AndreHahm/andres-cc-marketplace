@@ -1092,6 +1092,21 @@ def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
     return results
 
 
+def _completed_reviewer_findings(reports: Sequence) -> dict:
+    """Raw envelope findings of the reviewers that did complete, so a run that exits 2 does not lose
+    them (issue #644). Not validated or gated: the run is exit 2."""
+    from scripts.marketplace_ci.review import _redact_json_values
+
+    return {
+        r.reviewer: _redact_json_values(r.output["findings"])
+        for r in reports
+        if r.status == "completed"
+        and isinstance(r.output, dict)
+        and isinstance(r.output.get("findings"), list)
+        and r.output["findings"]
+    }
+
+
 def _fail_run_codex_review(
     args: argparse.Namespace,
     message: str,
@@ -1111,6 +1126,7 @@ def _fail_run_codex_review(
             "blocking": True,
             "error": message[:_MAX_ERROR_CHARS],
             "reviewer_results": _reviewer_results(reports, failed),
+            "completed_reviewer_findings": _completed_reviewer_findings(reports),
             "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), reports),
         }
         Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
@@ -1172,7 +1188,6 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ReviewOutputError,
         ReviewResult,
         _changed_path_set,
-        _redact_json_values,
         aggregate_findings,
         collapse_identical_mirrors,
         compute_changed_line_ranges,
@@ -1320,16 +1335,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
                 "status": "could_not_run",
                 "reviewer_results": _reviewer_results(reports),
-                # Raw envelope findings of the reviewers that did complete, so a partial run
-                # does not lose them (issue #644). Not validated or gated: the run is exit 2.
-                "completed_reviewer_findings": {
-                    r.reviewer: _redact_json_values(r.output["findings"])
-                    for r in reports
-                    if r.status == "completed"
-                    and isinstance(r.output, dict)
-                    and isinstance(r.output.get("findings"), list)
-                    and r.output["findings"]
-                },
+                "completed_reviewer_findings": _completed_reviewer_findings(reports),
                 "provenance": _run_provenance(repo, base_sha, reports),
                 "blocking": True,
             }

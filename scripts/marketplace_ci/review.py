@@ -14,7 +14,6 @@ import os
 import posixpath
 import re
 import secrets
-import shutil
 import signal
 import subprocess
 import sys
@@ -1906,6 +1905,17 @@ _SANDBOX_FAILURE_RE = re.compile(
 _EMPTY_VERDICT_PREFIXES = ("inconclusive", "unable")
 
 
+def _sandbox_failure_note(output: object) -> str | None:
+    """The unclipped inspection limit that names a sandbox failure, else None. The fallback gate
+    asks this, not the clipped text `_inspected_nothing` returns: a long note can lose its marker
+    in the clipped middle."""
+    if not isinstance(output, dict):
+        return None
+    limits = output.get("inspection_limits")
+    notes = [n for n in limits if isinstance(n, str)] if isinstance(limits, list) else []
+    return next((n for n in notes if _SANDBOX_FAILURE_RE.search(n)), None)
+
+
 def _inspected_nothing(output: object) -> str | None:
     """A reviewer that could not read any target (e.g. its command bridge
     failed before returning file contents) still returns a schema-valid
@@ -1913,15 +1923,19 @@ def _inspected_nothing(output: object) -> str | None:
     an inspection limit naming the sandbox failure (`_SANDBOX_FAILURE_RE`).
     Counting that as a completed review would pass the gate with zero coverage.
     The envelope has no structured field for this, so it is a fail-closed text
-    heuristic that can miss a differently worded empty pass but never fails a
-    review that raised findings. Returns the limit that names the failure (else
-    the first one) for the failure message when it matches, else None. Data
-    only: the text is never acted on."""
-    if not isinstance(output, dict) or output.get("findings"):
+    heuristic that can miss a differently worded empty pass. A review that raised
+    findings counts as real unless its own limits name a sandbox failure: it then
+    read only part of its targets, and passing it would give that part's
+    coverage for the whole. Returns the limit that names the failure (else the
+    first one) for the failure message when it matches, else None. Data only:
+    the text is never acted on."""
+    if not isinstance(output, dict):
         return None
     limits = output.get("inspection_limits")
     notes = [n for n in limits if isinstance(n, str)] if isinstance(limits, list) else []
-    sandbox_note = next((n for n in notes if _SANDBOX_FAILURE_RE.search(n)), None)
+    sandbox_note = _sandbox_failure_note(output)
+    if output.get("findings") and sandbox_note is None:
+        return None
     verdict = output.get("verdict")
     verdict_empty = isinstance(verdict, str) and verdict.strip().lower().startswith(
         _EMPTY_VERDICT_PREFIXES
@@ -1956,6 +1970,9 @@ FALLBACK_FILES = (
     "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
     "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
+    # Codex reads the project's config (it can name MCP servers that start as commands) from the
+    # checkout it runs in, so the fallback's launch depends on it too.
+    ".codex/config.toml",
 )
 
 
@@ -1965,7 +1982,7 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     these files from the working tree, so committed, staged and unstaged edits all count; a
     single-ref `git diff` covers all three, where `base...HEAD` would miss an uncommitted one."""
     try:
-        merge_base = subprocess.run(
+        merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
             ["git", "merge-base", base_sha, "HEAD"],
             cwd=repo,
             capture_output=True,
@@ -1976,7 +1993,7 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         base = merge_base.stdout.strip()
         if merge_base.returncode != 0 or not base:
             return None
-        diff = subprocess.run(
+        diff = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
             ["git", "diff", "--name-only", base, "--", *FALLBACK_FILES],
             cwd=repo,
             capture_output=True,
@@ -2007,8 +2024,24 @@ def _executable_outside_checkout(name: str) -> str | None:
     """`name` resolved from PATH entries outside the checkout, so a `name.exe` or `name.cmd` the
     branch under review committed at the repo root (the cwd) is never the one that runs. A bare
     name in an argv list is not safe on Windows: unless NoDefaultCurrentDirectoryInExePath is
-    set, CreateProcess looks in the parent's cwd first (verified with a planted `node.exe`)."""
-    return shutil.which(name, path=_path_outside_checkout())
+    set, CreateProcess looks in the parent's cwd first (verified with a planted `node.exe`), and so
+    does `shutil.which` (it returned the planted file in the current directory), so the filtered
+    entries are searched here directly instead."""
+    suffixes = [""]
+    if sys.platform == "win32":
+        pathext = [
+            e for e in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep) if e
+        ]
+        if not name.lower().endswith(tuple(e.lower() for e in pathext)):
+            suffixes = pathext
+    for entry in _path_outside_checkout().split(os.pathsep):
+        if not entry:
+            continue
+        for suffix in suffixes:
+            candidate = Path(entry) / f"{name}{suffix}"
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+    return None
 
 
 def _codex_executable() -> str | None:
@@ -2028,9 +2061,13 @@ def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
     reason = "no attempt ran"
     for _ in range(attempts):
         try:
-            result = subprocess.run(
-                [codex, "sandbox", "cmd", "/c", "echo", "ok"],
+            # codex is an absolute path from _executable_outside_checkout (PATH entries outside
+            # the checkout) and every other argument is a literal, so no untrusted text reaches
+            # the command. A bare "codex" would be B607 and could run a planted executable.
+            result = subprocess.run(  # nosemgrep
+                [codex, "sandbox", "cmd", "/c", "echo", "ok"],  # nosemgrep
                 capture_output=True,
+                env={**os.environ, "PATH": _path_outside_checkout()},
                 timeout=_PROBE_TIMEOUT_SECONDS,
                 check=False,
             )
@@ -2051,6 +2088,33 @@ def _sandbox_confirmed_down(probe: Callable[[], str | None] | None) -> bool:
     `isolation_profile_unavailable`), so neither may switch a reviewer to `danger-full-access` on
     its own: without a probe that fails, the reviewer is reported as could-not-run instead."""
     return probe is not None and probe() is not None
+
+
+# The typed failures guarded-dispatch.mjs raises before it starts Codex: no danger-full-access
+# process ran for them, so the reviewer is not reported as unsandboxed. Any other failure, or one
+# that names no category, may have started one and is reported as unsandboxed.
+_GUARDRAILS_REFUSAL_CATEGORIES = frozenset(
+    {
+        "guardrails_disabled",
+        "invalid_arguments",
+        "repository_boundary_violation",
+        "secret_file_in_scope",
+        "target_path_not_found",
+    }
+)
+
+
+def _typed_failure_category(stdout: bytes) -> str | None:
+    """The `category` of a typed failure (`{"ok": false, "category": ...}`) printed on stdout, else
+    None. Data only."""
+    try:
+        parsed = json.loads(stdout)
+    except ValueError:  # JSONDecodeError and UnicodeDecodeError
+        return None
+    if isinstance(parsed, dict) and parsed.get("ok") is False:
+        category = parsed.get("category")
+        return category if isinstance(category, str) else None
+    return None
 
 
 def _is_isolation_unavailable(stderr: str) -> bool:
@@ -2203,7 +2267,6 @@ def _dispatch_one(
                 unsandboxed=ran_unsandboxed,
             )
         attempts += 1
-        ran_unsandboxed = ran_unsandboxed or unsandboxed
         try:
             result = _run_bridge(argv, cwd=repo, timeout=call_seconds, env=child_env)
         except OSError as exc:
@@ -2220,6 +2283,7 @@ def _dispatch_one(
         except subprocess.TimeoutExpired:
             # Never retried: a process that outlived its own timeout plus
             # slack is a hang, not the bridge's structured `timeout` outcome.
+            ran_unsandboxed = ran_unsandboxed or unsandboxed  # it may have started Codex
             return ReviewerReport(
                 reviewer=name,
                 status="failed",
@@ -2229,6 +2293,9 @@ def _dispatch_one(
             )
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace")
+            typed = _typed_failure_category(result.stdout) if unsandboxed else None
+            if unsandboxed and typed not in _GUARDRAILS_REFUSAL_CATEGORIES:
+                ran_unsandboxed = True
             if (
                 guarded_argv is not None
                 and not unsandboxed
@@ -2242,8 +2309,9 @@ def _dispatch_one(
                     file=sys.stderr,
                 )
                 continue
-            if unsandboxed and not stderr.strip():
-                # guarded-dispatch.mjs reports its typed failure as JSON on stdout.
+            if unsandboxed and (typed is not None or not stderr.strip()):
+                # guarded-dispatch.mjs reports its typed failure as JSON on stdout; a warning Node
+                # printed on stderr must not hide it.
                 stderr = result.stdout.decode("utf-8", errors="replace")
             if _is_bridge_timeout(stderr) and timeout_retries < max_timeout_retries:
                 timeout_retries += 1
@@ -2260,6 +2328,7 @@ def _dispatch_one(
                 unsandboxed=ran_unsandboxed,
             )
 
+        ran_unsandboxed = ran_unsandboxed or unsandboxed
         try:
             output = json.loads(result.stdout)
         except json.JSONDecodeError:
@@ -2284,7 +2353,7 @@ def _dispatch_one(
         if (
             guarded_argv is not None
             and not unsandboxed
-            and _SANDBOX_FAILURE_RE.search(empty_reason)
+            and _sandbox_failure_note(output) is not None
             and empty_retries >= max_empty_retries
             and _sandbox_confirmed_down(sandbox_probe)
         ):
@@ -2308,9 +2377,7 @@ def _dispatch_one(
         return ReviewerReport(
             reviewer=name,
             status="failed",
-            error=(
-                f"reviewer returned an inconclusive verdict with no findings: {first_empty_reason}"
-            ),
+            error=(f"reviewer returned an inconclusive review: {first_empty_reason}"),
             attempts=attempts,
             unsandboxed=ran_unsandboxed,
         )

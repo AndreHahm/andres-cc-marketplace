@@ -1805,8 +1805,7 @@ def test_inspected_nothing_catches_the_windows_sandbox_failure_wordings(verdict,
     [
         {"findings": [], "verdict": "Pass", "inspection_limits": []},
         {"findings": [], "verdict": "Pass", "inspection_limits": ["Read every changed file."]},
-        # A finding means the reviewer read something, whatever its notes say.
-        {"findings": [{"id": "F1"}], "verdict": "Pass", "inspection_limits": ["setup refresh"]},
+        # A finding means the reviewer read something, unless its own notes name a sandbox failure.
         {"findings": [{"id": "F1"}], "verdict": "Unable to finish", "inspection_limits": []},
         # Ordinary review notes that merely use the same verbs must not become could-not-run.
         {
@@ -1821,6 +1820,17 @@ def test_inspected_nothing_catches_the_windows_sandbox_failure_wordings(verdict,
 )
 def test_inspected_nothing_leaves_real_reviews_alone(envelope):
     assert review._inspected_nothing(envelope) is None
+
+
+def test_inspected_nothing_catches_a_sandbox_failure_even_when_a_finding_was_raised():
+    """Review of PR #646 (F4): such a reviewer read only part of its targets, so passing it
+    would give that part's coverage for the whole; the retry reads them all."""
+    envelope = {
+        "findings": [{"id": "F1"}],
+        "verdict": "Pass",
+        "inspection_limits": ["setup refresh had errors"],
+    }
+    assert review._inspected_nothing(envelope) == "setup refresh had errors"
 
 
 def test_inspected_nothing_reports_the_note_that_names_the_failure_not_the_first():
@@ -2005,6 +2015,147 @@ def test_probe_sandbox_passes_once_any_attempt_works_and_fails_when_none_does(mo
     assert reason is not None and "os error 32" in reason
 
 
+def test_probe_sandbox_starts_codex_with_a_path_without_the_checkout(monkeypatch, tmp_path):
+    """Review of PR #646 (F7): an npm shim for codex runs a bare `node`, which a checkout folder on
+    PATH could supply."""
+    inside = tmp_path / "repo"
+    outside = tmp_path / "bin"
+    inside.mkdir()
+    outside.mkdir()
+    monkeypatch.chdir(inside)
+    monkeypatch.setenv("PATH", os.pathsep.join([".", str(outside)]))
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(review, "_codex_executable", lambda: "codex")
+    seen = []
+
+    def fake_run(argv, **kw):
+        seen.append(kw.get("env"))
+        return subprocess.CompletedProcess(argv, 0, b"ok\r\n", b"")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert _REAL_PROBE_SANDBOX() is None
+    assert seen and seen[0]["PATH"] == str(outside)
+
+
+def test_a_guardrails_refusal_is_not_reported_as_an_unsandboxed_run(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Review of PR #646 (F8): `guardrails_disabled` (the shipped default) is raised before any
+    danger-full-access Codex process starts."""
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv,
+                returncode=1,
+                stdout=b'{"ok":false,"category":"guardrails_disabled","detail":"off"}',
+                stderr=b"",
+            )
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert reports and all(r.status == "failed" and not r.unsandboxed for r in reports)
+
+
+def test_a_node_warning_on_stderr_does_not_hide_a_guardrails_timeout(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Review of PR #646 (F9): guarded-dispatch prints its typed failure on stdout; stderr was
+    read instead whenever it held anything, so the configured timeout retry was skipped."""
+    guarded_calls = Counter()
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            guarded_calls[reviewer] += 1
+            if guarded_calls[reviewer] == 1:
+                return subprocess.CompletedProcess(
+                    args=argv,
+                    returncode=1,
+                    stdout=b'{"ok":false,"category":"timeout","detail":"slow"}',
+                    stderr=b"(node:1) Warning: something",
+                )
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return _isolation_unavailable(argv)
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert reports and all(r.status == "completed" and r.unsandboxed for r in reports)
+    assert set(guarded_calls.values()) == {2}
+
+
+def test_a_long_sandbox_note_still_triggers_the_fallback(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Review of PR #646 (F10): the gate searched the clipped text, whose middle is dropped."""
+    note = "x" * 600 + " helper_unknown_error " + "y" * 3000
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass", limits=[note]), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert reports and all(r.status == "completed" and r.unsandboxed for r in reports)
+
+
+def test_a_review_with_a_finding_and_a_sandbox_failure_note_is_retried_unsandboxed(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Review of PR #646 (F4): such a review is not a completed one."""
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Pass", findings=[{"id": "F1"}], limits=["setup refresh had errors"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=_probe_confirming_down(),
+    )
+    assert reports and all(r.status == "completed" and r.unsandboxed for r in reports)
+
+
 def test_probe_sandbox_is_a_no_op_off_windows(monkeypatch):
     monkeypatch.setattr(sys, "platform", "linux")
 
@@ -2062,22 +2213,37 @@ def test_a_bridge_isolation_failure_alone_does_not_switch_to_guardrails_when_the
     assert all(r.status == "failed" for r in reports)
 
 
+def _make_executable(directory, name):
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / (f"{name}.exe" if sys.platform == "win32" else name)
+    target.write_bytes(b"x")
+    target.chmod(0o755)
+    return target
+
+
 def test_codex_is_never_resolved_from_inside_the_checkout(monkeypatch, tmp_path):
     inside = tmp_path / "repo"
     outside = tmp_path / "bin"
-    inside.mkdir()
-    outside.mkdir()
+    _make_executable(inside, "codex")
+    trusted = _make_executable(outside, "codex")
     monkeypatch.chdir(inside)
     monkeypatch.setenv("PATH", os.pathsep.join([str(inside), ".", str(outside)]))
-    seen = {}
+    found = _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("codex")
+    assert found is not None
+    assert Path(found) == trusted
 
-    def fake_which(cmd, path=None):
-        seen["path"] = path
-        return "resolved"
 
-    monkeypatch.setattr(review.shutil, "which", fake_which)
-    assert _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("codex") == "resolved"
-    assert seen["path"] == str(outside)
+def test_an_executable_planted_in_the_cwd_is_never_found_even_when_nothing_else_matches(
+    monkeypatch, tmp_path
+):
+    """Review of PR #646 (F6): `shutil.which` put the current directory first on Windows (it
+    returned the planted file) unless NoDefaultCurrentDirectoryInExePath is set, which hid it."""
+    inside = tmp_path / "repo"
+    _make_executable(inside, "node")
+    monkeypatch.chdir(inside)
+    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path / "no-such-folder"))
+    assert _REAL_EXECUTABLE_OUTSIDE_CHECKOUT("node") is None
 
 
 def test_a_failed_unsandboxed_attempt_is_still_reported_as_unsandboxed(
