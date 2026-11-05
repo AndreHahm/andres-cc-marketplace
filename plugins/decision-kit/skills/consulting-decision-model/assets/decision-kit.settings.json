@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "pinned_model": "liquid/d1-ultra-20261015",
+  "fallback_model": "baseten/elephant-1-20261021",
+  "proceed_max_p_block": 0.05,
+  "stop_min_p_block": 0.8
+}

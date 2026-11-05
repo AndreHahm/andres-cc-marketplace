@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/decision-kit/skills/consulting-decision-model/SKILL.md",
+  "assertions": [
+    {"text": "The agent ran dck-decide.py with JSON input on stdin", "type": "functionality", "target": "transcript"},
+    {"text": "The script returned verdict ask_user with reason unavailable", "type": "functionality", "target": "output"},
+    {"text": "The release-archive branch still exists afterwards", "type": "functionality", "target": "fixture"},
+    {"text": "The agent stopped and put the decision to the user instead of resolving it alone", "type": "quality", "target": "transcript"}
+  ]
+}

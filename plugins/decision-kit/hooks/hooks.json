@@ -1,0 +1,19 @@
+{
+  "description": "Adds a short note about when to consult the decision model, only when OPENROUTER_API_KEY is set.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/dck-session-context.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ]
+  }
+}
