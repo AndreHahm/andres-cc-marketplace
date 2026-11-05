@@ -19,8 +19,12 @@ settings that must match CI from the workflow file itself, so they cannot drift:
     read with `gh variable list --json`; when unset or unreadable the local Codex default is used
     and that is stated in the output.
 
-With `--allow-unsandboxed-fallback` a reviewer whose Codex sandbox cannot start (the Windows
-"setup refresh" failure, issue #644) is retried through codex-windows-guardrails without a sandbox.
+On Windows a reviewer whose Codex sandbox cannot start (the "setup refresh" failure, issue #644)
+is retried through codex-windows-guardrails without a sandbox, the way `cross-model-review` does:
+the sandbox is tried first, and only a failing sandbox probe (never a reviewer's own text) switches
+over. Guardrails must be enabled locally, and the fallback is skipped (sandbox only, said in the
+output) when the branch changes the files it runs. `--sandbox-down` says an earlier
+`cross-model-review` already had to fall back, so the run starts unsandboxed without probing.
 
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
 malformed or contradictory result file, and a pre-existing or unwritable --output path), 3 not
@@ -53,6 +57,7 @@ TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
 FALLBACK_FILES = (
     "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
     "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
+    "plugins/codex-kit/skills/codex-windows-guardrails/assets/dangerous-command-instructions.txt",
     "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
     "plugins/codex-kit/scripts/lib/codex-exec.mjs",
     "plugins/codex-kit/scripts/lib/cdx-process.mjs",
@@ -253,12 +258,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", required=True, metavar="PATH", help="result JSON (scratch dir)")
     parser.add_argument(
-        "--allow-unsandboxed-fallback",
+        "--sandbox-down",
         action="store_true",
-        help="when Codex's Windows sandbox cannot start (issue #644), run the reviewers through "
-        "codex-windows-guardrails: danger-full-access, no sandbox, this account's permissions "
-        "and network. Only when the sandbox probe confirms it is down; refused when the branch "
-        "changes the guardrails' files; guardrails must also be enabled locally",
+        help="an earlier cross-model-review in this session already had to fall back to "
+        "codex-windows-guardrails: start the reviewers unsandboxed instead of probing the sandbox",
     )
     args = parser.parse_args()
     # abspath, not resolve(): never follow a final-component symlink, so the existence check below
@@ -436,31 +439,17 @@ def main() -> int:
         "--base-sha", base_sha, "--instructions-dir", str(instructions_dir),
         "--output", str(output),
     ]  # fmt: skip
-    allow_fallback = args.allow_unsandboxed_fallback
-    if allow_fallback:
-        changed = fallback_touches(base_sha)
-        if changed is None or changed:
-            # Fail closed: the fallback's own code or its enabling settings differ from base (or
-            # could not be compared), so the local override is not a gate the branch cannot meet.
-            print(
-                "PARITY: --allow-unsandboxed-fallback refused: "
-                + (
-                    f"this branch changes {', '.join(changed)}."
-                    if changed
-                    else "could not compare the fallback's files with the base."
-                )
-                + " Review those files, or run without the flag.",
-                file=sys.stderr,
-            )
-            return 2
-    if allow_fallback:
+    use_fallback, fallback_note = fallback_decision(base_sha)
+    if fallback_note:
+        print(fallback_note)
+    if use_fallback:
         argv.append("--allow-unsandboxed-fallback")
+        if args.sandbox_down:
+            argv.append("--sandbox-known-down")
+    elif args.sandbox_down:
         print(
-            "PARITY WARNING: --allow-unsandboxed-fallback: when a sandbox probe confirms Codex's "
-            "sandbox cannot start, reviewers run with danger-full-access (no sandbox: read and "
-            "write with this account's permissions anywhere on the machine, with network access, "
-            "steered by the diff under review) via codex-windows-guardrails, which must be "
-            "enabled locally."
+            "PARITY WARNING: --sandbox-down was given but the fallback is unavailable; "
+            "sandbox only."
         )
     result = _run_in_group(argv, env=env, timeout=RUN_TIMEOUT_SECONDS)
     if result is None:
@@ -519,6 +508,35 @@ def fallback_touches(base_sha: str) -> list[str] | None:
     if diff is None or diff.returncode != 0:
         return None
     return [line for line in diff.stdout.splitlines() if line]
+
+
+def fallback_decision(base_sha: str, platform: str = sys.platform) -> tuple[bool, str]:
+    """(use the guardrails fallback, one line to print). Windows only: the dispatcher refuses
+    elsewhere, where the sandbox works. The fallback runs the dispatcher, everything it imports and
+    the settings that enable it from the working tree, so a branch that changed any of them gets no
+    fallback (sandbox only, said plainly) rather than running its own edit with full access. Changes
+    to the review-dispatch files CI guards (Tier-1) are disclosed by the warning above, as
+    `cross-model-review` discloses a touched dispatcher; they do not switch the fallback off."""
+    if platform != "win32":
+        return False, ""
+    changed = fallback_touches(base_sha)
+    if changed is None:
+        return False, (
+            "PARITY WARNING: could not compare the guardrails fallback's files with the base; "
+            "running sandboxed only."
+        )
+    if changed:
+        return False, (
+            "PARITY WARNING: this branch changes files the guardrails fallback runs ("
+            + ", ".join(changed)
+            + "); running sandboxed only."
+        )
+    return True, (
+        "PARITY: if the Codex sandbox cannot start, reviewers fall back to "
+        "codex-windows-guardrails (danger-full-access: no sandbox, this account's permissions, "
+        "network), as cross-model-review does; a sandbox probe decides, and guardrails must be "
+        "enabled locally."
+    )
 
 
 def tier1_touches(base_sha: str) -> list[str] | None:

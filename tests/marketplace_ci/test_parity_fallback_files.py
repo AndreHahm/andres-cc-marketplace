@@ -1,10 +1,9 @@
-"""The parity wrapper refuses the unsandboxed fallback when the branch changed any file that
-`guarded-dispatch.mjs` runs (issue #644, cross-model review). The refusal list is derived here from
-the real import graph, so a new import in the dispatcher cannot silently escape it. Followed:
-static and dynamic relative imports and `new URL("./x", import.meta.url)` reads. Not followed: a
-file located with `path.join(...)` and read with `fs`; the one such read today, the guardrails
-`assets/settings.json`, is listed by hand. The wrapper also refuses changes that are only staged
-or unstaged, since the fallback runs the working tree."""
+"""The parity wrapper skips the unsandboxed fallback when the branch changed any file that
+`guarded-dispatch.mjs` runs (issue #644, cross-model review). The list is derived here from the real
+import graph, so a new import in the dispatcher cannot silently escape it. Followed: static and
+dynamic relative imports, `new URL("./x", import.meta.url)` reads and `path.join(SKILL_DIR, ...)`
+reads (the guardrails assets). The wrapper also sees changes that are only staged or unstaged,
+since the fallback runs the working tree."""
 
 import importlib.util
 import posixpath
@@ -21,6 +20,9 @@ ENTRY = "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispa
 # run-time data read `new URL("./x.json", import.meta.url)`.
 _STATIC_IMPORT = re.compile(r"""(?:from|import)\s*\(?\s*["'](\.{1,2}/[^"']+)["']""")
 _URL_READ = re.compile(r"""new URL\(\s*["'](\.{1,2}/[^"']+)["']\s*,\s*import\.meta\.url""")
+# `path.join(SKILL_DIR, "assets", "x.txt")`: SKILL_DIR is the skill folder, one level above the
+# `scripts/` folder the dispatcher lives in (`path.resolve(SCRIPT_DIR, "..")`).
+_SKILL_DIR_JOIN = re.compile(r"""path\.join\(\s*SKILL_DIR\s*((?:,\s*"[^"]+"\s*)+)\)""")
 
 
 def _load_wrapper():
@@ -48,6 +50,10 @@ def _closure(entry: str) -> set[str]:
                 pending.append(
                     posixpath.normpath(posixpath.join(posixpath.dirname(current), target))
                 )
+        skill_dir = posixpath.dirname(posixpath.dirname(current))
+        for joined in _SKILL_DIR_JOIN.findall(text):
+            parts = re.findall(r'"([^"]+)"', joined)
+            pending.append(posixpath.normpath(posixpath.join(skill_dir, *parts)))
     return seen
 
 
@@ -68,6 +74,9 @@ def test_the_closure_finds_the_known_transitive_imports():
     closure = _closure(ENTRY)
     assert "plugins/codex-kit/scripts/lib/codex-exec.mjs" in closure
     assert "plugins/codex-kit/scripts/lib/cdx-process.mjs" in closure  # via codex-exec.mjs
+    guardrails = "plugins/codex-kit/skills/codex-windows-guardrails/assets/"
+    assert guardrails + "settings.json" in closure  # path.join(SKILL_DIR, ...) reads
+    assert guardrails + "dangerous-command-instructions.txt" in closure
     assert "plugins/codex-kit/scripts/lib/cdx-token-shapes.json" in closure  # run-time data read
 
 
@@ -160,3 +169,100 @@ def test_fallback_touches_fails_closed_when_git_cannot_answer(monkeypatch):
     failing = subprocess.CompletedProcess([], 128, "", "")
     monkeypatch.setattr(wrapper, "_run", lambda argv, **kw: failing)
     assert wrapper.fallback_touches("abc") is None
+
+
+# --- the fallback is automatic, like cross-model-review's: decided by the wrapper, no question ---
+
+
+def test_fallback_decision_is_on_for_an_untouched_branch_on_windows(branch_repo):
+    wrapper, _ = branch_repo
+    use, note = wrapper.fallback_decision("main", platform="win32")
+    assert use is True
+    assert "codex-windows-guardrails" in note and "danger-full-access" in note
+
+
+def test_fallback_decision_is_silent_and_off_where_the_sandbox_works(branch_repo):
+    wrapper, _ = branch_repo
+    assert wrapper.fallback_decision("main", platform="linux") == (False, "")
+
+
+def test_fallback_decision_skips_the_fallback_when_the_branch_changed_what_it_runs(branch_repo):
+    wrapper, repo = branch_repo
+    target = wrapper.FALLBACK_FILES[-1]  # the prompt asset the dispatcher reads at run time
+    (repo / target).write_text("changed\n", encoding="utf-8")
+    use, note = wrapper.fallback_decision("main", platform="win32")
+    assert use is False
+    assert target in note and "sandboxed only" in note
+
+
+def test_fallback_decision_skips_the_fallback_when_git_cannot_answer(monkeypatch):
+    wrapper = _load_wrapper()
+    monkeypatch.setattr(wrapper, "_run", lambda argv, **kw: None)
+    use, note = wrapper.fallback_decision("abc", platform="win32")
+    assert use is False and "sandboxed only" in note
+
+
+def test_the_asset_the_dispatcher_puts_in_its_prompt_is_protected():
+    wrapper = _load_wrapper()
+    assert any(p.endswith("dangerous-command-instructions.txt") for p in wrapper.FALLBACK_FILES)
+
+
+# --- run-codex-review wiring ---
+
+
+def _cli():
+    from scripts.marketplace_ci import __main__ as cli
+
+    return cli
+
+
+def test_sandbox_known_down_replaces_the_probe_with_a_failing_one():
+    import argparse
+
+    cli = _cli()
+    args = argparse.Namespace(sandbox_known_down=True)
+    probe = cli._sandbox_probe_for(args, lambda: None)
+    assert probe is not None and "reported down by the caller" in (probe() or "")
+
+
+def test_without_the_hint_the_real_probe_runs_on_windows_only(monkeypatch):
+    import argparse
+
+    cli = _cli()
+    args = argparse.Namespace(sandbox_known_down=False)
+    real = lambda: None  # noqa: E731
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    assert cli._sandbox_probe_for(args, real) is real
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    assert cli._sandbox_probe_for(args, real) is None
+
+
+def test_the_parser_knows_both_fallback_flags_and_defaults_them_off():
+    cli = _cli()
+    parsed = cli.build_parser().parse_args(["run-codex-review", "--base-sha", "abc"])
+    assert parsed.allow_unsandboxed_fallback is False
+    assert parsed.sandbox_known_down is False
+    flagged = cli.build_parser().parse_args(
+        [
+            "run-codex-review",
+            "--base-sha",
+            "abc",
+            "--allow-unsandboxed-fallback",
+            "--sandbox-known-down",
+        ]
+    )
+    assert flagged.allow_unsandboxed_fallback and flagged.sandbox_known_down
+
+
+def test_provenance_names_the_reviewers_that_ran_unsandboxed():
+    cli = _cli()
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    reports = [
+        ReviewerReport(reviewer="a-reviewer", status="completed", output={}, unsandboxed=True),
+        ReviewerReport(reviewer="b-reviewer", status="completed", output={}),
+    ]
+    provenance = cli._run_provenance(REPO, "deadbeef", reports)
+    assert provenance["unsandboxed_reviewers"] == ["a-reviewer"]
+    clean = cli._run_provenance(REPO, "deadbeef", [reports[1]])
+    assert "unsandboxed_reviewers" not in clean
