@@ -1842,7 +1842,7 @@ def _report_error(text: str) -> str:
 
 
 def _run_bridge(
-    argv: list[str], *, cwd: Path, timeout: float
+    argv: list[str], *, cwd: Path, timeout: float, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[bytes]:
     """`subprocess.run(..., capture_output=True, timeout=...)`, except the
     bridge starts in its own session (POSIX) so a timeout kills its whole
@@ -1854,6 +1854,7 @@ def _run_bridge(
     with subprocess.Popen(
         argv,
         cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         start_new_session=posix,
@@ -1941,17 +1942,24 @@ _PROBE_ATTEMPTS = 3
 _PROBE_TIMEOUT_SECONDS = 60
 
 
+def _path_outside_checkout() -> str:
+    """PATH without the entries that lead into the checkout (a relative entry such as `.`, or a
+    folder inside it, e.g. an activated `.venv\\Scripts`), so nothing the branch under review
+    committed there can be found by a name lookup."""
+    cwd = Path.cwd().resolve()
+    entries = []
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if entry and not Path(entry).resolve().is_relative_to(cwd):
+            entries.append(entry)
+    return os.pathsep.join(entries)
+
+
 def _executable_outside_checkout(name: str) -> str | None:
     """`name` resolved from PATH entries outside the checkout, so a `name.exe` or `name.cmd` the
     branch under review committed at the repo root (the cwd) is never the one that runs. A bare
     name in an argv list is not safe on Windows: unless NoDefaultCurrentDirectoryInExePath is
     set, CreateProcess looks in the parent's cwd first (verified with a planted `node.exe`)."""
-    cwd = Path.cwd().resolve()
-    entries = []
-    for entry in os.environ.get("PATH", "").split(os.pathsep):
-        if entry and not (Path(entry).resolve() / name).is_relative_to(cwd):
-            entries.append(entry)
-    return shutil.which(name, path=os.pathsep.join(entries))
+    return shutil.which(name, path=_path_outside_checkout())
 
 
 def _codex_executable() -> str | None:
@@ -2121,6 +2129,10 @@ def _dispatch_one(
     unsandboxed = start_unsandboxed and guarded_argv is not None
     if unsandboxed:
         argv = guarded_argv
+    # The bridge and guarded-dispatch both find `codex` by walking PATH, relative entries
+    # included, with cwd at the checkout: a `codex.cmd` the branch committed there would run
+    # ahead of the real CLI, outside every guardrail. Give them a PATH without such entries.
+    child_env = {**os.environ, "PATH": _path_outside_checkout()}
     call_seconds = _per_call_seconds() + _PROCESS_SLACK_SECONDS
     attempts = 0
     timeout_retries = 0
@@ -2141,7 +2153,7 @@ def _dispatch_one(
             )
         attempts += 1
         try:
-            result = _run_bridge(argv, cwd=repo, timeout=call_seconds)
+            result = _run_bridge(argv, cwd=repo, timeout=call_seconds, env=child_env)
         except OSError as exc:
             # The bridge could not be started (e.g. no `node` binary). Report it
             # here, with the attempts already made, so a retry that happened
