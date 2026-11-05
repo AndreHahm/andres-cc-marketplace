@@ -5,6 +5,7 @@ import base64
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -25,6 +26,9 @@ SPEC.loader.exec_module(dck)
 PIN = "liquid/d1-ultra-20261015"
 FALL = "baseten/elephant-1-20261021"
 FAKE_KEY = "test-placeholder-value"
+# On Windows a bare `bash` from a subprocess can resolve to WSL's instead of Git Bash.
+BASH = shutil.which("bash") or "bash"
+unix_only = pytest.mark.skipif(sys.platform == "win32", reason="needs Unix links, devices or modes")
 
 
 def answer(model, safe=0.99, risk=0.2, choice=None):
@@ -154,6 +158,7 @@ def test_unknown_best_option_is_not_an_answer(server, repo):
     assert dck.run(data, server["base"], repo)["verdict"] == "ask_user"
 
 
+@unix_only
 def test_record_is_owner_only(server, repo):
     server["reply"][PIN] = (200, answer(PIN))
     out = dck.run(decision(), server["base"], repo)
@@ -390,6 +395,7 @@ def test_unusable_override_sends_nothing(server, repo, content):
     assert not server["requests"]
 
 
+@unix_only
 def test_broken_override_link_sends_nothing(server, repo):
     (repo / ".claude").mkdir(exist_ok=True)
     (repo / dck.LOCAL_SETTINGS).symlink_to(repo / "missing.json")
@@ -510,7 +516,7 @@ def test_hook_is_silent_without_a_key():
     env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
     assert (
         subprocess.run(
-            ["bash", str(hook)],
+            [BASH, str(hook)],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -521,7 +527,7 @@ def test_hook_is_silent_without_a_key():
     )
     env["OPENROUTER_API_KEY"] = FAKE_KEY
     out = subprocess.run(
-        ["bash", str(hook)], capture_output=True, text=True, encoding="utf-8", env=env, check=True
+        [BASH, str(hook)], capture_output=True, text=True, encoding="utf-8", env=env, check=True
     ).stdout
     assert "consulting-decision-model" in out and FAKE_KEY not in out
 
@@ -553,6 +559,7 @@ def test_request_marks_facts_as_data(server, repo):
         ".claude/decision-kit/.gitignore",
     ],
 )
+@unix_only
 def test_links_on_the_record_path_block_the_record(server, repo, tmp_path_factory, link):
     outside = tmp_path_factory.mktemp("outside")
     (repo / link).parent.mkdir(parents=True, exist_ok=True)
@@ -626,7 +633,7 @@ def test_bad_listing_is_ignored(server):
 
 def _cli(stdin: bytes, env=None):
     done = subprocess.run(
-        ["python3", "-I", str(SKILL / "scripts" / "dck-decide.py")],
+        [sys.executable, "-I", str(SKILL / "scripts" / "dck-decide.py")],
         input=stdin,
         capture_output=True,
         env=env,
@@ -649,7 +656,7 @@ def test_cli_crash_asks_the_user(tmp_path):
     script.write_bytes((SKILL / "scripts" / "dck-decide.py").read_bytes())
     data = json.dumps(decision()).encode()
     done = subprocess.run(
-        ["python3", "-I", str(script)], input=data, capture_output=True, check=True, timeout=30
+        [sys.executable, "-I", str(script)], input=data, capture_output=True, check=True, timeout=30
     )
     out = json.loads(done.stdout)
     assert (out["verdict"], out["reason"]) == ("ask_user", "internal_error")
@@ -733,12 +740,12 @@ def test_hook_sees_the_key_in_an_env_file(tmp_path):
     nested.mkdir()
     (tmp_path / ".env").write_text(f"OPENROUTER_API_KEY={FAKE_KEY}\n", encoding="utf-8")
     out = subprocess.run(
-        ["bash", str(hook)], capture_output=True, text=True, env=env, cwd=nested, check=True
+        [BASH, str(hook)], capture_output=True, text=True, env=env, cwd=nested, check=True
     ).stdout
     assert "consulting-decision-model" in out and FAKE_KEY not in out
     (tmp_path / ".env").write_text("OPENROUTER_API_KEY=\n", encoding="utf-8")
     silent = subprocess.run(
-        ["bash", str(hook)], capture_output=True, text=True, env=env, cwd=nested, check=True
+        [BASH, str(hook)], capture_output=True, text=True, env=env, cwd=nested, check=True
     )
     assert silent.stdout == ""
 
@@ -786,6 +793,7 @@ def test_init_never_touches_env(tmp_path):
     assert (tmp_path / ".env").read_text(encoding="utf-8") == "OTHER=1\n"
 
 
+@unix_only
 def test_init_refuses_a_symlink(tmp_path):
     target = tmp_path / "target"
     target.write_text("x", encoding="utf-8")
@@ -863,12 +871,14 @@ def test_oversized_env_file_is_not_read(tmp_path, monkeypatch):
     assert "not a small UTF-8 text file" in warnings[0]
 
 
+@unix_only
 def test_env_link_to_a_device_is_not_read(tmp_path, monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     (tmp_path / ".env").symlink_to("/dev/zero")
     assert dck.find_key(tmp_path, []) == ("", "")
 
 
+@unix_only
 def test_override_link_to_a_device_turns_the_check_off(repo):
     (repo / ".claude").mkdir()
     (repo / dck.LOCAL_SETTINGS).symlink_to("/dev/zero")
@@ -882,6 +892,35 @@ def test_doctor_does_not_repeat_an_odd_expiration_value(server, repo):
         "data": [{"canonical_slug": PIN, "expiration_date": text}, {"canonical_slug": FALL}]
     }
     assert text not in json.dumps(doctor.run(server["base"], repo))
+
+
+@pytest.mark.parametrize(
+    ("options", "reason"),
+    [(255, None), (256, "options must hold at most 255 keys")],
+)
+def test_option_count_limit(options, reason):
+    keys = {f"o{n}": "criterion" for n in range(options)}
+    assert dck.validate_input(decision(options=keys, claude_choice="o0")) == reason
+
+
+@pytest.mark.parametrize(
+    ("env_line", "environment"),
+    [
+        (f"OPENROUTER_API_KEY={dck.PLACEHOLDER_KEY}\n", None),
+        (f'export OPENROUTER_API_KEY="{dck.PLACEHOLDER_KEY}"\n', None),
+        (f"OPENROUTER_API_KEY={FAKE_KEY}\n", dck.PLACEHOLDER_KEY),
+    ],
+)
+def test_hook_treats_the_example_value_as_no_key(tmp_path, env_line, environment):
+    hook = SKILL.parents[1] / "hooks" / "dck-session-context.sh"
+    env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
+    if environment:
+        env["OPENROUTER_API_KEY"] = environment
+    (tmp_path / ".env").write_text(env_line, encoding="utf-8")
+    done = subprocess.run(
+        [BASH, str(hook)], capture_output=True, text=True, env=env, cwd=tmp_path, check=True
+    )
+    assert done.stdout == ""
 
 
 def test_doctor_rejects_the_example_value(server, repo, monkeypatch):
@@ -952,7 +991,7 @@ def test_doctor_warns_when_env_is_not_ignored(server, repo, monkeypatch):
 def test_doctor_cli_prints_a_report_without_the_key():
     env = {**os.environ, "OPENROUTER_API_KEY": dck.PLACEHOLDER_KEY}
     done = subprocess.run(
-        ["python3", "-I", str(SKILL / "scripts" / "dck-doctor.py")],
+        [sys.executable, "-I", str(SKILL / "scripts" / "dck-doctor.py")],
         capture_output=True,
         env=env,
         timeout=30,

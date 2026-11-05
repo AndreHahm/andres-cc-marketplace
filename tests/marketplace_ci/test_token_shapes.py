@@ -220,6 +220,7 @@ def test_consumer_filenames_follow_each_plugins_prefix():
         "anls-token-shapes.json",
         "plib-token-shapes.json",
         "cdx-token-shapes.json",
+        "dck-token-shapes.json",
     ]
 
 

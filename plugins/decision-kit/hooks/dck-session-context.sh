@@ -2,13 +2,23 @@
 set -euo pipefail
 # Prints a short context note at SessionStart, only when an OpenRouter key is set.
 # Blocks nothing, reads no stdin, and never prints the key.
+readonly EXAMPLE_VALUE=your-openrouter-api-key
 has_key() {
-  [ -n "${OPENROUTER_API_KEY:-}" ] && return 0
-  local dir parent
+  if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+    [ "$OPENROUTER_API_KEY" != "$EXAMPLE_VALUE" ]
+    return
+  fi
+  local dir line parent
   dir=$PWD
   while :; do
-    if [ -f "$dir/.env" ] && grep -Eq '^[[:space:]]*(export[[:space:]]+)?OPENROUTER_API_KEY[[:space:]]*=[[:space:]]*[^[:space:]#]' "$dir/.env"; then
-      return 0
+    if [ -f "$dir/.env" ]; then
+      line=$(grep -E '^[[:space:]]*(export[[:space:]]+)?OPENROUTER_API_KEY[[:space:]]*=[[:space:]]*[^[:space:]#]' "$dir/.env" 2>/dev/null | tail -n 1 || true)
+      if [ -n "$line" ]; then
+        case "$line" in
+          *"$EXAMPLE_VALUE"*) return 1 ;;
+          *) return 0 ;;
+        esac
+      fi
     fi
     parent=$(dirname "$dir")
     [ "$parent" != "$dir" ] || return 1
