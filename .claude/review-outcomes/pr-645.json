@@ -1,0 +1,49 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4477110995",
+      "line": 137,
+      "note": "Windows roots now also come from TEMP and TMP; fixed in a3563a47",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "pr": 645,
+      "recorded_at": "2026-11-05T07:39:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4477111011",
+      "line": 149,
+      "note": "extended drive prefix compared without the prefix, I/O path unchanged; fixed in a3563a47",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "pr": 645,
+      "recorded_at": "2026-11-05T07:39:20+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4477111033",
+      "line": 254,
+      "note": "Windows has no owner check; the same documented residual as the earlier m3; risk accepted by the user, not fixed",
+      "path": "plugins/git-kit/scripts/git-review-api.py",
+      "pr": 645,
+      "recorded_at": "2026-11-05T07:39:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cr-followup-python3-note",
+      "line": 55,
+      "note": "note that Windows needs a python3 executable on PATH; fixed in a3563a47",
+      "path": "plugins/git-kit/skills/handling-review-findings/references/github-api-mechanics.md",
+      "pr": 645,
+      "recorded_at": "2026-11-05T07:39:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "cr-nitpick-windows-paths-test",
+      "line": 1978,
+      "note": "Windows job now runs the bare-LF paths test; fixed in 7bd21163",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 645,
+      "recorded_at": "2026-11-05T07:39:21+00:00"
+    }
+  ]
+}
