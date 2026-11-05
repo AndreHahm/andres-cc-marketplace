@@ -1144,7 +1144,7 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     assert rc == 0
 
 
-def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags):
+def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags, reports=None):
     """Runs `run-codex-review` with dispatch replaced by a spy; returns (exit code, whether the
     unsandboxed fallback was allowed, stderr). `touched` is what the comparison of the fallback's
     files with the base reports (a list, or None when git could not say)."""
@@ -1166,6 +1166,8 @@ def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags):
 
     def spy(scope, **kwargs):
         seen["allow"] = kwargs["allow_guardrails_fallback"]
+        if reports is not None:
+            return reports
         raise OSError("stop after recording")  # handled: exit 2, nothing dispatched
 
     monkeypatch.setattr(review_module, "dispatch_reviewers", spy)
@@ -1202,6 +1204,31 @@ def test_run_codex_review_refuses_the_unsandboxed_fallback_for_a_branch_that_edi
     )
     assert allowed is False
     assert "unsandboxed fallback refused" in err
+
+
+def test_run_codex_review_keeps_completed_findings_when_a_reviewer_returns_unusable_output(
+    monkeypatch, git_repo, capsys, tmp_path
+):
+    """Review of PR #646 (F11): only the dispatch-failure branch kept them; the invalid-output
+    exit dropped the other reviewers' findings from the artifact."""
+    from scripts.marketplace_ci.review import ReviewerReport
+
+    finding = {"id": "F1", "severity": "Major"}
+    reports = (
+        ReviewerReport(
+            reviewer="security-reviewer",
+            status="completed",
+            output={"findings": [finding], "verdict": "Fail"},
+        ),
+        ReviewerReport(reviewer="skill-reviewer", status="completed", output=None),
+    )
+    out = tmp_path / "out.json"
+    rc, _, _ = _run_with_dispatch_spy(
+        monkeypatch, git_repo, capsys, [], "--output", str(out), reports=reports
+    )
+    assert rc == 2
+    written = json.loads(out.read_text(encoding="utf-8"))
+    assert written["completed_reviewer_findings"] == {"security-reviewer": [finding]}
 
 
 def test_run_codex_review_without_the_flag_never_compares_the_fallback_files(

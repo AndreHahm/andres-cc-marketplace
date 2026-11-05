@@ -64,6 +64,7 @@ FALLBACK_FILES = (
     "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
     "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
     "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
+    ".codex/config.toml",  # Codex reads the project's config (it can start MCP servers) from here
 )
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 TIMEOUT_VARIABLE = "CODEX_KIT_REVIEW_TIMEOUT_MS"
