@@ -71,6 +71,7 @@ RECORDS_DIR = ".claude/decision-kit"
 TRIGGERS = ("critical", "security", "confidence")
 SKILL_DIR = Path(__file__).resolve().parents[1]
 SLUG = re.compile(r"[a-z0-9._-]+/[a-z0-9._:-]+")
+MAX_OPTIONS = 255
 INPUT_FIELDS = (
     "trigger",
     "action",
@@ -235,6 +236,8 @@ def validate_input(data: object) -> str | None:
     if options is not None:
         if not isinstance(options, dict) or len(options) < 2:
             return "options must map at least two keys to criteria"
+        if len(options) > MAX_OPTIONS:
+            return f"options must hold at most {MAX_OPTIONS} keys"
         if not all(
             isinstance(k, str) and isinstance(v, str) and k and v for k, v in options.items()
         ):

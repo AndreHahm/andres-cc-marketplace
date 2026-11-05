@@ -319,6 +319,9 @@ jobs:
       # Text mode writes CRLF only on Windows, so the Linux job cannot catch a revert of the bare-LF write.
       - run: uv run --no-sync --no-build pytest -q "tests/marketplace_ci/test_reviewer_dispatch.py::test_the_paths_file_has_bare_newlines_even_where_text_mode_would_write_crlf"
         shell: bash
+      # decision-kit promises Windows support; its link, device and file-mode tests skip here.
+      - run: uv run --no-sync --no-build pytest -q plugins/decision-kit/tests
+        shell: bash
 
   marketplace-parity:
     name: Marketplace mirror/export parity
