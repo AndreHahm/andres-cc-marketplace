@@ -1,0 +1,92 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": "2026-11-05",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "decision-support",
+      "functional_role": "integration",
+      "id": "component_b361f149",
+      "name": "consulting-decision-model",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/consulting-decision-model"
+          ],
+          "name": "consulting-decision-model",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/consulting-decision-model",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/consulting-decision-model"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-11-05",
+      "details": {
+        "schema": "hook"
+      },
+      "domain": "decision-support",
+      "functional_role": "infrastructure",
+      "id": "component_44b00e16",
+      "name": "SessionStart-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionStart-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-11-05",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_ea31c18c",
+  "plugin_name": "decision-kit",
+  "prefix": "dck",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-11-05"
+}
