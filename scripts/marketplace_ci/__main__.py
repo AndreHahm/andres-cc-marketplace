@@ -1059,7 +1059,7 @@ def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict
             value = envelope.get(key)
             if reported[key] is None and isinstance(value, str):
                 reported[key] = value
-    return {
+    provenance = {
         "head_sha": second_parent or merge_ref_sha,
         "merge_ref_sha": merge_ref_sha,
         "base_sha": base_sha,
@@ -1067,6 +1067,12 @@ def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict
         "pinned_cli_version": review_contract.CODEX_CLI_VERSION,
         **reported,
     }
+    unsandboxed = sorted(r.reviewer for r in reports if getattr(r, "unsandboxed", False))
+    if unsandboxed:
+        # Reviewers that ran through codex-windows-guardrails (danger-full-access, best-effort
+        # guardrails): the isolation of the whole result is only as strong as its weakest reviewer.
+        provenance["unsandboxed_reviewers"] = unsandboxed
+    return provenance
 
 
 def _reviewer_results(reports: Sequence, failed: Sequence[str] = ()) -> dict:
@@ -1137,6 +1143,16 @@ def _verifier_result(outcome) -> dict:
         "findings": len(outcome.findings),
         "checked": len(outcome.checked),
     }
+
+
+def _sandbox_probe_for(args: argparse.Namespace, probe):
+    """The pre-dispatch sandbox probe: the real one on Windows (the setup-refresh failure exists
+    nowhere else), or a stub that reports the sandbox down when the caller already knows it is."""
+    if getattr(args, "sandbox_known_down", False):
+        return lambda: (
+            "reported down by the caller (an earlier cross-model-review had to fall back)"
+        )
+    return probe if sys.platform == "win32" else None
 
 
 def _handle_run_codex_review(args: argparse.Namespace) -> int:
@@ -1253,7 +1269,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
             allow_guardrails_fallback=getattr(args, "allow_unsandboxed_fallback", False),
-            sandbox_probe=probe_sandbox if sys.platform == "win32" else None,
+            sandbox_probe=_sandbox_probe_for(args, probe_sandbox),
         )
     except OSError as exc:
         # Raised only before any reviewer starts (e.g. the default instruction
@@ -1551,9 +1567,16 @@ def build_parser() -> argparse.ArgumentParser:
     run_codex_review.add_argument(
         "--allow-unsandboxed-fallback",
         action="store_true",
-        help="when a reviewer's Codex sandbox cannot start (the Windows setup-refresh failure, "
-        "issue #644), run it through codex-windows-guardrails: danger-full-access, no sandbox, "
-        "this account's permissions and network. Local use only; CI never passes it",
+        help="when a sandbox probe confirms a reviewer's Codex sandbox cannot start (the Windows "
+        "setup-refresh failure, issue #644), run it through codex-windows-guardrails: "
+        "danger-full-access, no sandbox, this account's permissions and network. Passed by the "
+        "local parity wrapper on Windows after it checks the fallback's files; CI never passes it",
+    )
+    run_codex_review.add_argument(
+        "--sandbox-known-down",
+        action="store_true",
+        help="the caller already knows the Codex sandbox is down (an earlier cross-model-review "
+        "had to fall back): treat the pre-dispatch probe as failed instead of running it",
     )
     run_codex_review.set_defaults(handler=_handle_run_codex_review)
 

@@ -254,6 +254,14 @@ Before creating a PR, check for uncommitted changes:
      the user's Codex account. Ask via `AskUserQuestion` before **every** run, including re-runs after a
      fix, even if step 4's First-Send Confirmation was answered — that consent covers
      `cross-model-review`'s dispatch, not this one. Declining counts as a bypass (below), not a quiet skip.
+     **One question covers both outcomes, as `cross-model-review`'s First-Send Confirmation does** — never
+     a separate sandboxed-versus-unsandboxed choice. On Windows the wrapper falls back to
+     `codex-windows-guardrails` on its own when a sandbox probe confirms the sandbox cannot start, so
+     disclose in that one question that this means `danger-full-access` (no sandbox, this account's
+     permissions, network access, steered by the diff under review) and that guardrails must be enabled
+     locally. If step 4's `cross-model-review` already had to fall back to guardrails in this session, add
+     `--sandbox-down` to the command so the run starts unsandboxed; if it did not run (bypassed), the
+     wrapper's own small probe decides.
    - Exit `0` clean → step 1. Exit `1` → show the blocking findings and ask fix / re-run / bypass; if the
      result file is missing or its `blocking` is not true, treat it as exit `2`. Exit `2` is "could not
      run", **never a pass** — ask retry / bypass. Exit `3` (no marketplace CI here) → skip, and say so in
