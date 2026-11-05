@@ -115,11 +115,11 @@ Surface every entry in `warnings` to the user, for example a pinned snapshot tha
 ## Testing & Validation
 
 Deterministic logic is tested by `plugins/decision-kit/tests/test_dck_decide.py` against a local fake
-server. `scripts/smoke_test.py` checks this skill's own files. `evals/consulting-decision-model/` holds one
-bounded scenario, an unavailable API on a critical decision. Three scenarios are not warranted yet: the
-verdicts, screening and failure handling are script logic that fixtures test better than agent evals, and
-the remaining judgment, when to fire and how to frame a decision, has no labelled examples until real
-consultation records exist.
+server. `scripts/smoke_test.py` checks this skill's own files. `evals/consulting-decision-model/` holds three
+bounded scenarios, each with the API unavailable: a critical decision Claude chose, a requested check of a
+migration, and a requested check before deleting branches. They cover framing and the stop, not model
+answers: the verdicts, screening and failure handling are script logic that fixtures test better than
+agent evals, and when to fire has no labelled examples until real consultation records exist.
 
 **Verify this skill activates on:**
 - "ask the decision model whether this migration is safe"
@@ -140,5 +140,5 @@ consultation records exist.
 - [ ] The API key appears in no output or record
 
 **Last dated run record:** 2026-11-05, `plugins/decision-kit/tests/test_dck_decide.py`,
-`scripts/smoke_test.py` and `evals/consulting-decision-model/workspace/iteration-1/eval-1/with_skill/grading.json`
-(4/4, with_skill only). The live API path is not yet run from this plugin.
+`scripts/smoke_test.py` and `evals/consulting-decision-model/workspace/iteration-{1,2}/eval-*/with_skill/grading.json`
+(12/12 across three evals, with_skill only). The live API path is not yet run from this plugin.
