@@ -2,8 +2,8 @@
 """Ask the pinned OpenRouter decision model for a second opinion and print a JSON verdict.
 
 Reads one JSON object on stdin and writes one JSON object on stdout. Standard library only.
-This is the only code in decision-kit that talks to the API. The thresholds live here so that
-the verdict does not depend on how Claude reads the numbers.
+This is the only code in decision-kit that talks to the API. The thresholds are applied here so
+that the verdict does not depend on how Claude reads the numbers.
 
 Input fields:
   trigger           "critical", "security" or "confidence"
@@ -16,11 +16,11 @@ Input fields:
 
 Verdicts:
   no_stop           the model adds no stop; this authorizes nothing
-  no_second_opinion no answer was available for a low-risk confidence decision
+  no_second_opinion no answer was available for a below-high-risk confidence decision
   ask_user          disagreement, uncertainty, agreement on a stop, an unavailable API on a
                     critical, security or high-risk decision, or an internal error
   refused           nothing was sent; fix the input and run once more
-  disabled          the plugin's `enabled` setting is off, for a confidence decision
+  disabled          the plugin's `enabled` setting is off, for a below-high-risk confidence decision
 """
 
 from __future__ import annotations
@@ -73,8 +73,16 @@ INPUT_FIELDS = (
 # Shapes the shared list does not carry, because it is prefix-based and also drives redaction.
 EXTRA_SHAPES = (
     ("private_key", r"-----BEGIN [A-Z ]*PRIVATE KEY"),
-    ("credential_url", r"[a-z][a-z0-9+.-]*://[^\s:/@]+:[^\s/@]+@"),
-    ("secret_assignment", r"(?i)(?:password|passwd|api[_-]?key|secret)\"?\s*[:=]\s*\"?[^\s\"]{8,}"),
+    ("credential_url", r"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*://[^\s:/@]*:[^\s/@]+@"),
+    (
+        "secret_assignment",
+        r"(?i)(?:password|passwd|api[_-]?key|access[_-]?key|secret(?:[_-]?(?:access[_-]?)?key)?"
+        r"|(?<![A-Za-z0-9])token)[\"']?\s*(?:=>|[:=])\s*[\"']?[^\s\"']{8,}",
+    ),
+    (
+        "authorization_header",
+        r"(?i)authorization[\"']?\s*(?:=>|[:=])\s*[\"']?(?:bearer|basic|token)\s+\S{8,}",
+    ),
     ("stripe_key", r"[sr]k_(?:live|test)_[A-Za-z0-9]{16,}"),
     ("gitlab_token", r"glpat-[A-Za-z0-9_-]{20,}"),
     ("npm_token", r"npm_[A-Za-z0-9]{36,}"),
@@ -127,7 +135,7 @@ def load_settings(root: Path, warnings: list[str]) -> dict:
     try:
         local = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        warnings.append(f"{LOCAL_SETTINGS} ignored: not readable JSON")
+        warnings.append(f"{path} ignored: not readable JSON")
         return settings
     merged = (
         {**settings, **{k: v for k, v in local.items() if k in settings}}
@@ -135,11 +143,11 @@ def load_settings(root: Path, warnings: list[str]) -> dict:
         else {}
     )
     if not _valid_settings(merged):
-        warnings.append(f"{LOCAL_SETTINGS} ignored: invalid values")
+        warnings.append(f"{path} ignored: invalid values")
         return settings
     changed = sorted(k for k in settings if merged[k] != settings[k])
     if changed:
-        warnings.append(f"{LOCAL_SETTINGS} overrides: " + ", ".join(changed))
+        warnings.append(f"{path} overrides: " + ", ".join(changed))
     return merged
 
 
@@ -406,7 +414,7 @@ def _high_stakes(data: dict) -> bool:
 
 
 def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
-    """Local full record (D6). The folder ignores itself, so this holds in any repository.
+    """Local full record. The folder ignores itself, so this holds in any repository.
 
     A repository can commit a link or a `.gitignore` here to move records somewhere public or
     un-ignore them, so any of those means no record is written.
@@ -440,9 +448,20 @@ def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
         return None
 
 
+def project_root(start: Path) -> Path:
+    """The nearest folder at or above `start` that holds the local settings, else `start`."""
+    for folder in (start, *start.parents):
+        if (folder / LOCAL_SETTINGS).is_file():
+            return folder
+    return start
+
+
 def run(data: Any, base: str = API_BASE, root: Path | None = None) -> dict:
-    root = root or Path.cwd()
     warnings: list[str] = []
+    if root is None:
+        root = project_root(Path.cwd())
+        if root != Path.cwd():
+            warnings.append(f"Using the project folder {root}")
     problem = validate_input(data)
     if problem:
         return {"verdict": "refused", "reason": problem, "warnings": warnings}

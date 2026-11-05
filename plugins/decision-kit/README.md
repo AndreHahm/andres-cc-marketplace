@@ -41,7 +41,7 @@ only under zero data retention. See
 
 ## Language
 
-Python, standard library only. The one hook is a short Bash script.
+Python 3.9 or newer, standard library only. The one hook is a short Bash script.
 
 ## Status
 

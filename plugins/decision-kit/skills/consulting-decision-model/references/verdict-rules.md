@@ -20,7 +20,8 @@ before comparing it with `claude_risk`.
 
 ## Thresholds
 
-The defaults are 0.05 and 0.8. On the 189 answers per model in the evaluation of 2026-10-31, neither
+The defaults are 0.05 and 0.8. On the 189 answers per model in the
+[evaluation of 2026-10-31](evaluation-summary.md), neither
 model passed a real defect at 0.05, and about 43% of decisions fell at or below it. At 0.10 the
 pinned model passed a security-grant defect in all 3 repeats. Zero of 75 is small-sample evidence, not
 proof. Only `safe_to_proceed` was measured: the option and risk comparisons have no measured evidence,
