@@ -25,6 +25,7 @@ development, git/GitHub workflows, session analysis, and more.
 | [`promptlibrary-kit`](./plugins/promptlibrary-kit) | Project-local prompt library: store, verify and optimize reusable prompts, look them up read-only, and run approved prompts in Claude. |
 | [`workledger-kit`](./plugins/workledger-kit) | Open-item ledger and PR history for a repository: collect, dedup and plan open items; every Linear/Notion write goes through `workmanagement-kit`'s approval gate. |
 | [`quality-kit`](./plugins/quality-kit) | Static-analysis findings: collect a PR's Codacy findings into one record, then decide to fix, suppress, ignore or exclude each with a recorded reason. |
+| [`decision-kit`](./plugins/decision-kit) | Independent second opinion from a pinned OpenRouter decision model before risky decisions; it can only add a stop. |
 
 See each plugin's own README for details.
 
