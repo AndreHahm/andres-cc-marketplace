@@ -1,12 +1,14 @@
 """Tests dck-decide.py against a local fake server. No network, no real key."""
 
 import ast
+import base64
 import importlib.util
 import json
 import os
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
@@ -328,10 +330,10 @@ def test_a_parent_override_is_named_even_when_it_changes_nothing(server, repo, m
 
 
 def test_project_root_skips_an_unreadable_folder(repo, monkeypatch):
-    def denied(self):
+    def denied(path, **kwargs):
         raise PermissionError
 
-    monkeypatch.setattr(Path, "is_file", denied)
+    monkeypatch.setattr(os, "lstat", denied)
     assert dck.project_root(repo) == repo
 
 
@@ -353,10 +355,113 @@ def test_local_override_is_honoured(server, repo):
     assert any("overrides: proceed_max_p_block" in w for w in out["warnings"])
 
 
-def test_invalid_local_override_is_ignored(server, repo):
+def test_invalid_local_override_turns_the_check_off(server, repo):
     _local(repo, proceed_max_p_block=0.9, stop_min_p_block=0.1)
-    server["reply"][PIN] = (200, answer(PIN, safe=0.6))
-    assert dck.run(decision(), server["base"], repo)["reason"] == "uncertain"
+    out = dck.run(decision(), server["base"], repo)
+    assert (out["verdict"], out["reason"]) == ("ask_user", "disabled")
+    assert any("has invalid values" in w for w in out["warnings"])
+    assert not server["requests"]
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"enabled": false,}',
+        '{"enabled": false, "proceed_max_p_block": "x"}',
+        "[]",
+        "not json",
+        '{"enable": false}',
+        '{"Enabled": false}',
+        '{"disabled": true}',
+    ],
+)
+def test_unusable_override_sends_nothing(server, repo, content):
+    (repo / ".claude").mkdir(exist_ok=True)
+    (repo / dck.LOCAL_SETTINGS).write_text(content, encoding="utf-8")
+    out = dck.run(decision(trigger="confidence"), server["base"], repo)
+    assert out["verdict"] == "disabled"
+    assert any("the check is off" in w for w in out["warnings"])
+    assert not server["requests"]
+
+
+def test_broken_override_link_sends_nothing(server, repo):
+    (repo / ".claude").mkdir(exist_ok=True)
+    (repo / dck.LOCAL_SETTINGS).symlink_to(repo / "missing.json")
+    out = dck.run(decision(trigger="confidence"), server["base"], repo)
+    assert out["verdict"] == "disabled"
+    assert not server["requests"]
+
+
+def test_override_that_is_a_folder_sends_nothing(server, repo):
+    (repo / dck.LOCAL_SETTINGS).mkdir(parents=True)
+    assert dck.run(decision(), server["base"], repo)["reason"] == "disabled"
+    assert not server["requests"]
+
+
+def _percent_encoded(text, layers):
+    for _ in range(layers):
+        text = text.replace("%", "%25")
+    return text
+
+
+@pytest.mark.parametrize("layers", range(7))
+def test_every_settling_url_encoding_is_screened(layers):
+    token = "ghp_" + "a" * 36
+    reason = dck.screen([_percent_encoded("%20" + token, layers)], "")
+    assert reason == "the text matches the secret shape github_token"
+
+
+def test_text_that_does_not_settle_is_refused():
+    text = _percent_encoded("%20" + "ghp_" + "a" * 36, 12)
+    assert dck.screen([text], "") == "the text has too many layers of encoding to check"
+
+
+def test_text_inside_base64_that_does_not_settle_is_refused():
+    plain = "%" + "25" * 8 + "67" + "hp_" + "a" * 36
+    text = base64.b64encode(plain.encode()).decode()
+    assert dck.screen([text], "") == "the text has too many layers of encoding to check"
+
+
+@pytest.mark.parametrize("before", ["", "x", "ab", "tokens/", "blob-", "name_"])
+@pytest.mark.parametrize("after", ["", "x", "yz", "/end"])
+def test_base64_beside_ordinary_characters_is_refused(before, after):
+    plain = "ghp_" + "a" * 36 + "xy"
+    encoded = base64.b64encode(plain.encode()).decode()
+    assert "github_token" in str(dck.screen([before + encoded + after], ""))
+
+
+def test_screen_stays_fast_at_the_size_limit():
+    blob = base64.b64encode(b"x" * 21_000).decode()
+    started = time.monotonic()
+    assert dck.screen(["/".join([blob] * 2)[: dck.MAX_STATE_CHARS]], "") is None
+    assert time.monotonic() - started < 5
+
+
+def test_nested_string_escapes_are_screened():
+    assert dck.screen(["\\\\\\\\\\\\\\\\n" + "ghp_" + "a" * 36], "")
+
+
+@pytest.mark.parametrize("encode", [base64.b64encode, base64.urlsafe_b64encode])
+def test_base64_of_a_known_shape_is_refused(encode):
+    plain = ("token " + "ghp_" + "a" * 36).encode()
+    assert "github_token" in str(dck.screen([encode(plain).decode()], ""))
+    assert "github_token" in str(dck.screen([encode(encode(plain)).decode()], ""))
+
+
+def test_base64_without_padding_and_url_escaped_is_refused():
+    encoded = base64.b64encode(("ghp_" + "a" * 36 + "x").encode()).decode()
+    assert "github_token" in str(dck.screen([encoded.rstrip("=")], ""))
+    assert "github_token" in str(dck.screen([encoded.replace("=", "%3D")], ""))
+
+
+def test_base64_of_the_key_is_refused():
+    encoded = base64.urlsafe_b64encode(FAKE_KEY.encode()).decode()
+    assert dck.screen([encoded], FAKE_KEY) == "the text contains the API key"
+
+
+def test_ordinary_long_paths_and_hashes_pass_the_screen():
+    text = "plugins/decision-kit/skills/consulting-decision-model 2be57dfec9768fd7b6e98190020d82c1"
+    assert dck.screen([text], FAKE_KEY) is None
 
 
 def test_disabled(server, repo):
@@ -416,7 +521,6 @@ def test_hook_is_silent_without_a_key():
 
 
 def test_key_forms_are_refused(server, repo):
-    import base64
     from urllib.parse import quote
 
     for form in (quote(FAKE_KEY, safe=""), base64.b64encode(FAKE_KEY.encode()).decode()):

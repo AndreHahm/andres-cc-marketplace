@@ -52,7 +52,7 @@ When no answer is obtained, a `confidence` decision with a `claude_risk` below `
 
 | Situation | Verdict | `reason` |
 |---|---|---|
-| `enabled` is off, on a critical, security or high-risk decision | `ask_user` | `disabled` |
-| `enabled` is off, otherwise | `disabled` | `disabled` |
+| `enabled` is off or the override is unusable, on a critical, security or high-risk decision | `ask_user` | `disabled` |
+| `enabled` is off or the override is unusable, otherwise | `disabled` | `disabled` |
 | The script hits an unexpected error | `ask_user` | `internal_error` |
-| Bad input, over 40,000 characters, or a matched secret | `refused` | What to fix |
+| Bad input, over 40,000 characters, a matched secret, or text with too many layers of encoding | `refused` | What to fix |

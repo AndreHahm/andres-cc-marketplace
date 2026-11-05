@@ -171,5 +171,6 @@ and when to fire has no labelled examples until real consultation records exist.
 **Last dated run record:** 2026-11-05, `plugins/decision-kit/tests/test_dck_decide.py`,
 `scripts/smoke_test.py` and `evals/consulting-decision-model/workspace/iteration-3/benchmark.json` (with_skill 12/12, baseline 6/12).
 The baseline points lost are the two script assertions per eval; all three baselines also stopped and
-deleted nothing, so this shows the script runs, not that the skill is safer. No agent used the real
-`AskUserQuestion`, and only wording, gotchas and further screen shapes changed after that run. The live API path is not yet run from this plugin.
+deleted nothing, so this shows the script runs, not that the skill is safer. `iteration-4` re-ran the three
+with-skill agents on the fixed screen and override handling: 12/12, with no baseline. No agent used the real
+`AskUserQuestion`. The live API path is not yet run from this plugin.
