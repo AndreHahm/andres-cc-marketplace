@@ -434,7 +434,10 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
         detail = str(exc)
         if isinstance(exc, subprocess.CalledProcessError) and exc.stderr:
-            detail += f" (git said: {exc.stderr.decode(errors='replace').strip()})"
+            said = (
+                exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode(errors="replace")
+            )
+            detail += f" (git said: {said.strip()})"
         print(f"Verifiers could not run: {detail}", file=sys.stderr)
         print(json.dumps({"could_not_run": detail}))
         return 2
