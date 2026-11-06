@@ -803,6 +803,16 @@ def test_a_url_in_git_stderr_is_replaced_whole(url):
     assert "s3cret-token" not in said
 
 
+def test_control_characters_in_git_stderr_are_shown_as_text_not_acted_on():
+    # a file name with a newline lands raw in git's own message, e.g. `unable to index file 'a\nb'`
+    said = M._git_said(b"error: unable to index file 'a\nfatal: FORGED \x1b[2J\ttab'\n")
+    assert said == r"error: unable to index file 'a\nfatal: FORGED \x1b[2J\ttab'"
+    assert said.isprintable()
+    assert M._git_said("naïve – ünïcode ok") == "naïve – ünïcode ok"  # printable text is kept
+    escaped = M._git_said(b"x\n" * 400)
+    assert len(escaped) == M._STDERR_LIMIT  # the cap applies after escaping, not before
+
+
 def test_git_stderr_in_a_could_not_run_message_is_redacted_and_capped():
     leaky = (
         "fatal: unable to access 'https://user:s3cret-token@example.com/o/r.git/': 403 " + "x" * 900
@@ -812,3 +822,22 @@ def test_git_stderr_in_a_could_not_run_message_is_redacted_and_capped():
     assert "<url>" in said
     assert len(said) == M._STDERR_LIMIT
     assert M._git_said("no url here\n") == "no url here"
+
+
+def test_a_failed_repository_lookup_does_not_echo_git_stderr_raw(monkeypatch, capsys):
+    real_run = subprocess.run
+
+    def fake_run(argv, **kwargs):
+        if "--show-toplevel" in argv:
+            stderr = "fatal: odd 'a\nFORGED \x1b[2J' at https://u:tok@example.com/r"
+            return subprocess.CompletedProcess(argv, 128, stdout="", stderr=stderr)
+        return real_run(argv, **kwargs)
+
+    monkeypatch.setenv("PATH", os.environ["PATH"])  # main() prepends to PATH; restore it afterwards
+    monkeypatch.setattr(M.subprocess, "run", fake_run)
+    assert M.main(["--base", "a" * 40, "--upstream", UPSTREAM]) == 2
+    streams = capsys.readouterr()
+    detail = json.loads(streams.out)["could_not_run"]
+    assert "FORGED" in detail  # the diagnostic is still shown ...
+    assert detail.isprintable() and "tok" not in detail  # ... as text, with the URL replaced
+    assert len(streams.err.strip().splitlines()) == 1
