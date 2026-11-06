@@ -70,12 +70,18 @@ def probe(base: str, key: str, model: str, question: str, kind: str) -> tuple[st
 
 
 def _env_is_ignored(path: Path) -> bool:
-    """A plain read of the .gitignore next to the file, not a git check."""
+    """A plain read of the .gitignore next to the file, not a git check: tracking is not seen."""
     try:
         lines = dck.read_local_file(path.with_name(".gitignore")).splitlines()
     except (OSError, ValueError):
         return False
-    return any(line.strip() in (".env", ".env*", "/.env") for line in lines)
+    ignored = False
+    for line in lines:
+        if line.strip() in (".env", ".env*", "/.env"):
+            ignored = True
+        elif line.strip() in ("!.env", "!/.env"):
+            ignored = False
+    return ignored
 
 
 def _settings_check(start: Path) -> tuple[dict, dict]:

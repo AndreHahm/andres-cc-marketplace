@@ -35,13 +35,15 @@ def _write(path: Path, flags: int, data: bytes) -> None:
 
 
 def init(root: Path) -> dict:
-    """Returns the action taken. A symlink or unreadable file is left alone."""
+    """Returns the action taken. A symlink, special, huge or unreadable file is left alone."""
     path = root / EXAMPLE_FILE
     if path.is_symlink():
         return {"action": "refused", "reason": "is a symlink", "path": str(path)}
     if not path.exists():
         _write(path, os.O_CREAT | os.O_EXCL, ENTRY.encode("utf-8"))
         return {"action": "created", "path": str(path)}
+    if not path.is_file() or path.stat().st_size > dck.MAX_LOCAL_FILE_BYTES:
+        return {"action": "refused", "reason": "is not a small regular file", "path": str(path)}
     data = path.read_bytes()
     try:
         lines = data.decode("utf-8-sig").splitlines()

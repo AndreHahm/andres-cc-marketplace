@@ -544,7 +544,7 @@ def write_record(root: Path, record: dict, warnings: list[str]) -> str | None:
         (folder / "consultations").mkdir(parents=True, exist_ok=True, mode=0o700)
         ignore = folder / ".gitignore"
         if ignore.exists():
-            if ignore.read_text(encoding="utf-8") != "*\n":
+            if read_local_file(ignore) != "*\n":
                 warnings.append(
                     "no consultation record written: the folder's .gitignore was changed"
                 )

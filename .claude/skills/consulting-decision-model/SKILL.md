@@ -176,4 +176,5 @@ The baseline points lost are the two script assertions per eval; all three basel
 deleted nothing, so this shows the script runs, not that the skill is safer. `iteration-5` re-ran the three
 with-skill agents at the `.env` and `dck-doctor` code: 12/12, with no baseline. No agent used the real
 `AskUserQuestion`. `dck-doctor.py` ran against the live API on 2026-11-05 on Linux: both models answered all three
-decision types. `dck-decide.py` itself has only run against the fake server, and nothing has run on Windows.
+decision types. `dck-decide.py` itself has only run against the fake server. On Windows only the plugin's test suite has run, in
+CI's informational job on 2026-11-06; no live API call has run there.
