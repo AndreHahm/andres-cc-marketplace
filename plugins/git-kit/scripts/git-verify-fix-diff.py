@@ -67,9 +67,12 @@ _STDERR_LIMIT = 500  # characters of git's stderr echoed in a could-not-run mess
 
 
 def _git_said(stderr: bytes | str) -> str:
-    """git's stderr for an error message: URLs replaced (they can carry credentials), capped."""
+    """git's stderr for an error message: URLs replaced (they can carry credentials), control
+    characters shown as text (a file name in the message can hold a newline or ESC), capped."""
     text = stderr if isinstance(stderr, str) else stderr.decode(errors="replace")
-    return _URL.sub("<url>", text.strip())[:_STDERR_LIMIT]
+    text = _URL.sub("<url>", text.strip())
+    text = "".join(c if c.isprintable() else c.encode("unicode_escape").decode() for c in text)
+    return text[:_STDERR_LIMIT]
 
 
 _REPO = r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"
@@ -369,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
             text=True,
         )
         if top.returncode != 0 and "not a git repository" not in top.stderr:
-            raise RuntimeError(f"git could not locate the repository: {top.stderr.strip()}")
+            raise RuntimeError(f"git could not locate the repository: {_git_said(top.stderr)}")
         in_repo = top.returncode == 0
         repo_root = Path(top.stdout.strip()) if in_repo else Path.cwd()
         here = (repo_root / _VERIFIERS).is_file()
