@@ -14,6 +14,14 @@ from pathlib import Path
 
 import pytest
 
+# A PATH holding git and nothing else the checkout controls. POSIX uses the system directories; on
+# Windows those do not exist, so it is git's own directory.
+BASE_PATH = os.path.dirname(shutil.which("git") or "") if os.name == "nt" else "/usr/bin:/bin"
+# These tests stand in for git with a shell script, link files, change file owners, use non-UTF8
+# names or point HOME at a directory; none of that works on native Windows.
+posix_only = pytest.mark.skipif(
+    os.name == "nt", reason="needs POSIX shell scripts, links, owners or HOME"
+)
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
 
 
@@ -33,7 +41,7 @@ def _run(tmp_path, *args, extra_env=None):
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin", **(extra_env or {})},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH, **(extra_env or {})},
     )
 
 
@@ -288,7 +296,7 @@ def test_a_newline_in_the_ledger_path_cannot_write_rules_into_info_exclude(tmp_p
         capture_output=True,
         text=True,
         cwd=_init_repo(tmp_path),
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH},
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert "!/.env" not in _exclude_text(tmp_path)
@@ -304,7 +312,7 @@ def test_a_symlinked_ledger_path_is_refused(tmp_path):
         capture_output=True,
         text=True,
         cwd=root,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH},
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert "symlink" in result.stderr
@@ -313,6 +321,7 @@ def test_a_symlinked_ledger_path_is_refused(tmp_path):
     }
 
 
+@posix_only
 def test_a_path_that_is_not_utf8_is_refused_not_a_traceback(tmp_path):
     root = _init_repo(tmp_path)
     odd = os.fsdecode(bytes(root / ".claude") + b"/bad\xff.json")
@@ -322,7 +331,7 @@ def test_a_path_that_is_not_utf8_is_refused_not_a_traceback(tmp_path):
         capture_output=True,
         text=True,
         cwd=root,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH},
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert "Traceback" not in result.stderr
@@ -339,7 +348,7 @@ def test_a_ledger_a_repository_rule_already_ignores_is_not_excluded_again(tmp_pa
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH},
     )
     assert result.returncode == 0, result.stderr
     exclude = tmp_path / ".git" / "info" / "exclude"
@@ -519,12 +528,13 @@ def _plant_git(path, marker):
     path.chmod(0o755)
 
 
+@posix_only
 def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
     for planted in ("git", "bin/git", "sub/deeper/git"):
         marker = _marker_for(tmp_path)
         plant = tmp_path / planted
         _plant_git(plant, marker)
-        path = f"{plant.parent}:/usr/bin:/bin"
+        path = f"{plant.parent}{os.pathsep}{BASE_PATH}"
         result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": path})
         assert result.returncode == 2, (planted, result.stderr)
         assert "no usable git" in result.stderr
@@ -532,11 +542,14 @@ def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
         plant.unlink()
 
 
+@posix_only
 def test_a_symlink_into_the_repository_is_never_run(tmp_path):
     link = tmp_path / "bin" / "git"
     link.parent.mkdir()
     link.symlink_to(shutil.which("git"))
-    result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": f"{link.parent}:/usr/bin:/bin"})
+    result = _run(
+        tmp_path, *RECORD_ARGS, extra_env={"PATH": f"{link.parent}{os.pathsep}{BASE_PATH}"}
+    )
     assert result.returncode == 2
     assert "no usable git" in result.stderr
 
@@ -548,6 +561,7 @@ def test_a_missing_git_is_a_refusal_not_a_traceback(tmp_path):
     assert "Traceback" not in result.stderr
 
 
+@posix_only
 def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_path_factory):
     bin_dir = tmp_path_factory.mktemp("fakebin")  # a sibling of the repository, not inside it
     log = bin_dir / "log"
@@ -566,7 +580,7 @@ def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_
         f"[safe]\n\tdirectory = {trusted}\n[core]\n\tsshCommand = false\n", encoding="utf-8"
     )
     hostile = {
-        "PATH": f"{bin_dir}:/usr/bin:/bin",
+        "PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}",
         "HOME": str(home),
         "XDG_CONFIG_HOME": str(tmp_path_factory.mktemp("xdg")),
         "GIT_TRACE": "1",
@@ -634,6 +648,7 @@ def _find_git_from(monkeypatch, cwd, *path_dirs):
     return _load_script()._find_git()
 
 
+@posix_only
 def test_the_guard_still_accepts_a_git_outside_the_repository(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     tools = _stub_git(tmp_path / "tools").parent
@@ -733,11 +748,12 @@ def test_a_checkout_owned_by_another_user_works_when_the_users_global_config_tru
 ):
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     home = _home_with_safe_directory(tmp_path_factory, tmp_path.resolve())
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 0, result.stderr
 
 
+@posix_only
 def test_a_checkout_owned_by_another_user_is_still_refused_when_nothing_trusts_it(
     tmp_path, tmp_path_factory
 ):
@@ -745,7 +761,7 @@ def test_a_checkout_owned_by_another_user_is_still_refused_when_nothing_trusts_i
     unrelated = _home_with_safe_directory(tmp_path_factory, tmp_path / "some-other-checkout")
     empty = tmp_path_factory.mktemp("emptyhome")
     for home in (unrelated, empty):
-        env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+        env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
         result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
         assert result.returncode == 2, result.stderr
         assert "Traceback" not in result.stderr
@@ -795,13 +811,14 @@ def _write_global_config(home, text):
 
 def _plain_git_trusts(home, repo):
     """Whether the user's own git, with this global config, accepts the other-owner checkout."""
-    env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}
+    env = {"PATH": BASE_PATH, "HOME": str(home), "GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}
     done = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"], cwd=repo, env=env, capture_output=True, text=True
     )
     return done.returncode == 0
 
 
+@posix_only
 def test_a_revoked_safe_directory_stays_revoked(tmp_path, tmp_path_factory):
     """An empty value resets git's list; the script must trust exactly what the user's git does."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
@@ -811,31 +828,36 @@ def test_a_revoked_safe_directory_stays_revoked(tmp_path, tmp_path_factory):
     )
     _run(tmp_path, "promote", "--pr", "9")  # make the repository exist
     expected_ok = _plain_git_trusts(home, repo)
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert (result.returncode == 0) == expected_ok, (expected_ok, result.stderr)
 
 
+@posix_only
 def test_a_value_with_an_escaped_newline_is_not_split_into_a_wildcard(tmp_path, tmp_path_factory):
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     home = _write_global_config(
         tmp_path_factory.mktemp("home"), "[safe]\n\tdirectory = /nowhere\\n*\n"
     )
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
 
 
+@posix_only
 def test_a_global_config_inside_the_checkout_is_not_the_users_own(tmp_path, tmp_path_factory):
     """If HOME is the checkout (some containers), the branch decides what the file says."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     _write_global_config(tmp_path, f"[safe]\n\tdirectory = {tmp_path.resolve()}\n")
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(tmp_path)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason="root can enter a directory with no permissions")
+@pytest.mark.skipif(
+    not hasattr(os, "geteuid") or os.geteuid() == 0,
+    reason="needs a POSIX non-root user: root, and Windows, can enter a chmod 000 directory",
+)
 def test_a_home_directory_that_cannot_be_entered_does_not_stop_the_script(
     tmp_path, tmp_path_factory
 ):
@@ -848,6 +870,7 @@ def test_a_home_directory_that_cannot_be_entered_does_not_stop_the_script(
     assert result.returncode == 0, result.stderr
 
 
+@posix_only
 def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
     tmp_path, tmp_path_factory
 ):
@@ -857,18 +880,19 @@ def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
     planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
     home = tmp_path_factory.mktemp("home")
     (home / ".gitconfig").symlink_to(planted)
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
 
 
+@posix_only
 def test_a_safe_directory_from_an_included_file_is_not_trusted(tmp_path, tmp_path_factory):
     """The user's config includes a file the branch controls; its entry must not be honoured."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     planted = tmp_path / "planted-include"
     planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
     home = _write_global_config(tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {planted}\n")
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
 
@@ -884,7 +908,7 @@ def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
     )
     home = tmp_path_factory.mktemp("home")
     (home / ".gitconfig").symlink_to(dotfiles / "gitconfig")
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home)}
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 0, result.stderr
 
@@ -904,7 +928,11 @@ def _checkout_in_home(tmp_path_factory, config_text):
 
 
 def _record_from(repo, home, bin_dir):
-    env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(home), "PYTHONDONTWRITEBYTECODE": "1"}
+    env = {
+        "PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}",
+        "HOME": str(home),
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
     return subprocess.run(
         [sys.executable, str(SCRIPT), *RECORD_ARGS],
         cwd=repo,
@@ -930,6 +958,7 @@ def test_an_entry_that_cannot_be_expanded_is_dropped_not_fatal(tmp_path_factory)
     assert result.returncode == 0, result.stderr
 
 
+@posix_only
 def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, tmp_path):
     home = tmp_path_factory.mktemp("home").resolve()
     (home / ".gitconfig").write_text(

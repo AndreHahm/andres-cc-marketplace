@@ -15,6 +15,9 @@ from pathlib import Path
 
 import pytest
 
+# These tests need a colon in a path or a shell script standing in for git, neither of which works
+# on native Windows.
+posix_only = pytest.mark.skipif(os.name == "nt", reason="needs POSIX paths or shell scripts")
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-verify-fix-diff.py"
 SKILL = "plugins/demo-kit/skills/demo/SKILL.md"
@@ -239,6 +242,7 @@ def test_worktree_mode_from_a_linked_worktree_writes_nothing_into_the_common_sto
         assert probe.returncode != 0, f"{blob} reached the common object store"
 
 
+@posix_only
 def test_worktree_mode_works_in_a_repository_path_containing_a_colon(repo, tmp_path):
     base = _commit(repo, SKILL, GOOD, "add skill")
     moved = tmp_path / "re:po"
@@ -622,6 +626,7 @@ def _ran(markers):
     return sorted(name for name, path in markers.items() if path.exists())
 
 
+@posix_only
 def test_control_plain_git_runs_every_planted_command(repo, tmp_path):
     """Without the script's hardening each route fires, so the tests below are not vacuous."""
     _fix_in_repo(repo, committed=False)
@@ -699,6 +704,7 @@ def _find_git_from(monkeypatch, cwd, *path_dirs):
     return M._find_git()
 
 
+@posix_only
 def test_the_guard_still_accepts_a_git_outside_the_repository(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     tools = _stub_git(tmp_path / "tools").parent
