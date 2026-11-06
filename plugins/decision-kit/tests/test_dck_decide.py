@@ -256,7 +256,7 @@ def test_no_key_sends_nothing(server, repo, monkeypatch):
         {"state": "%2520ghp_" + "a" * 36},
         {"state": "line\\nghp_" + "a" * 36},
         {"state": "-----BEGIN RSA PRIVATE KEY-----"},
-        {"state": "postgres://user:hunter22@db/x"},
+        {"state": "postgres://user:" + "hunter22@db/x"},
         {"state": "password=correcthorse"},
         {"state": "redis://:s3cretpassw0rd@host:6379"},
         {"state": "SECRET_KEY=" + "a" * 16},
@@ -268,7 +268,7 @@ def test_no_key_sends_nothing(server, repo, monkeypatch):
         {"state": "'Authorization' => 'Bearer " + "a" * 16 + "'"},
         {"state": "GITHUB_TOKEN=" + "a" * 16},
         {"state": "AWS_SESSION_TOKEN=" + "a" * 16},
-        {"state": "POSTGRES://user:hunter22@db/x"},
+        {"state": "POSTGRES://user:" + "hunter22@db/x"},
         {"state": "ASIA" + "A" * 16},
         {"state": "API_KEY_ASIA" + "A" * 16},
         {"state": "password\\u003dhunter2hunter"},
@@ -609,7 +609,13 @@ def test_truncated_response_is_no_answer(repo):
 
     def serve():
         conn, _ = listener.accept()
-        conn.recv(65536)
+        # Read the whole request: closing with unread data resets the connection, and the client
+        # sends the body separately, so a single recv makes this test fail at random.
+        request = b""
+        for chunk in iter(lambda: conn.recv(65536), b""):
+            request += chunk
+            if request.endswith(b"{}"):
+                break
         conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nshort")
         conn.close()
 
