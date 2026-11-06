@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 PLUGIN_SCRIPTS = SKILL_DIR.parent.parent / "scripts"
 FORBIDDEN_GRANT_NAMES = {"Read", "Write", "Edit", "WebFetch", "Bash"}
-ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)", "AskUserQuestion"}
+ALLOWED_OTHER_GRANTS = {"Agent(prompt-reviewer)", "Skill(session-detail)"}
 
 
 def _load_common():
@@ -102,17 +102,25 @@ def check_triage_is_a_dedicated_gate():
     after = body.find("7. **Review and optimize.**")
     if start < 0 or end < start or after < end:
         return False, "triage step 5, step 6 or step 7 not found in the body"
-    step = body[start:end]
+    step = " ".join(body[start:end].split())
     for needed in (
         "AskUserQuestion",
-        '"Prompt (Recommended)"',
-        '"Skill: `skill-development`"',
-        '"Workflow skill: `workflow-skill-development`"',
+        '"Prompt',
+        '"Skill: `skill-development`',
+        '"Workflow skill: `workflow-skill-development`',
+        "Exactly one label carries",
         "end the add flow here",
         'Only if the user picks "Prompt"',
     ):
         if needed not in step:
             return False, f"triage step lacks {needed!r}: it could be merged into step 6 or skipped"
+    options_start = step.find("with these three options")
+    options_end = step.find("Exactly one label carries")
+    if options_start < 0 or options_end < options_start:
+        return False, "triage step no longer lists its three options before the one-marker rule"
+    marked = step[options_start:options_end].count("(Recommended)")
+    if marked != 1:
+        return False, f"the triage options carry {marked} '(Recommended)' markers, expected one"
     if "AskUserQuestion" not in body[end:after]:
         return False, "step 6 no longer has its own AskUserQuestion for the file-draft decision"
     return True, "triage is its own AskUserQuestion with the three options, apart from step 6's"
