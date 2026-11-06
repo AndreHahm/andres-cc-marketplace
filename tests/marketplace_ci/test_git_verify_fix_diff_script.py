@@ -787,3 +787,14 @@ def test_a_git_failure_with_either_stderr_type_still_reads_as_could_not_run(
     monkeypatch.setattr(M, "_git_path", boom)
     assert M.main(["--base", "a" * 40, "--upstream", UPSTREAM]) == 2
     assert "said no" in json.loads(capsys.readouterr().out)["could_not_run"]
+
+
+def test_git_stderr_in_a_could_not_run_message_is_redacted_and_capped():
+    leaky = (
+        "fatal: unable to access 'https://user:s3cret-token@example.com/o/r.git/': 403 " + "x" * 900
+    )
+    said = M._git_said(leaky.encode())
+    assert "s3cret-token" not in said and "user:" not in said
+    assert "https://***@example.com/o/r.git/" in said
+    assert len(said) == M._STDERR_LIMIT
+    assert M._git_said("no url here\n") == "no url here"
