@@ -756,6 +756,16 @@ def test_hook_sees_the_key_in_an_env_file(tmp_path):
     assert silent.stdout == ""
 
 
+def test_hook_sees_the_key_after_a_bom(tmp_path):
+    hook = SKILL.parents[1] / "hooks" / "dck-session-context.sh"
+    env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
+    (tmp_path / ".env").write_text(f"OPENROUTER_API_KEY={FAKE_KEY}\n", encoding="utf-8-sig")
+    out = subprocess.run(
+        [BASH, str(hook)], capture_output=True, text=True, env=env, cwd=tmp_path, check=True
+    ).stdout
+    assert "consulting-decision-model" in out and FAKE_KEY not in out
+
+
 def _sibling(name):
     spec = importlib.util.spec_from_file_location(name, SKILL / "scripts" / f"{name}.py")
     assert spec is not None and spec.loader is not None
@@ -800,6 +810,29 @@ def test_init_never_touches_env(tmp_path):
 
 
 @unix_only
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs a FIFO")
+def test_a_fifo_gitignore_stops_the_record_instead_of_hanging(server, repo):
+    (repo / dck.RECORDS_DIR).mkdir(parents=True)
+    os.mkfifo(repo / dck.RECORDS_DIR / ".gitignore")
+    server["reply"][PIN] = (200, answer(PIN))
+    assert "record could not be written" in " ".join(
+        dck.run(decision(), server["base"], repo)["warnings"]
+    )
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs a FIFO")
+def test_init_refuses_a_fifo(tmp_path):
+    os.mkfifo(tmp_path / ".env.example")
+    assert init.init(tmp_path)["action"] == "refused"
+
+
+def test_init_refuses_a_huge_file(tmp_path):
+    path = tmp_path / ".env.example"
+    path.write_bytes(b"#" * (dck.MAX_LOCAL_FILE_BYTES + 1))
+    assert init.init(tmp_path)["action"] == "refused"
+    assert path.stat().st_size == dck.MAX_LOCAL_FILE_BYTES + 1
+
+
 def test_init_refuses_a_symlink(tmp_path):
     target = tmp_path / "target"
     target.write_text("x", encoding="utf-8")
@@ -992,10 +1025,24 @@ def test_doctor_warns_when_env_is_not_ignored(server, repo, monkeypatch):
     (repo / ".gitignore").write_text(".env\n", encoding="utf-8")
     report = doctor.run(server["base"], repo)
     assert not any(".gitignore" in c["detail"] for c in report["checks"])
+    (repo / ".gitignore").write_text(".env\n!.env\n", encoding="utf-8")
+    report = doctor.run(server["base"], repo)
+    assert any(c["status"] == "warn" and ".gitignore" in c["detail"] for c in report["checks"])
+    (repo / ".gitignore").write_text("!.env\n.env\n", encoding="utf-8")
+    report = doctor.run(server["base"], repo)
+    assert not any(".gitignore" in c["detail"] for c in report["checks"])
 
 
 def test_doctor_cli_prints_a_report_without_the_key():
-    env = {**os.environ, "OPENROUTER_API_KEY": dck.PLACEHOLDER_KEY}
+    # A dead proxy keeps the model listing off the network.
+    env = {
+        **os.environ,
+        "OPENROUTER_API_KEY": dck.PLACEHOLDER_KEY,
+        "HTTPS_PROXY": "http://127.0.0.1:1",
+        "https_proxy": "http://127.0.0.1:1",
+        "NO_PROXY": "",
+        "no_proxy": "",
+    }
     done = subprocess.run(
         [sys.executable, "-I", str(SKILL / "scripts" / "dck-doctor.py")],
         capture_output=True,
