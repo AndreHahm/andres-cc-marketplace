@@ -19,6 +19,11 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-review-fix-diff.py"
 SYSTEM_PATH = os.environ.get("PATH", "/usr/bin:/bin")
+# These tests stand in for git with a shell script, link files or join PATH with ":"; none of that
+# works on native Windows (a script named `git` cannot be run as git, PATH is split on ";").
+posix_only = pytest.mark.skipif(
+    os.name == "nt", reason="needs POSIX shell scripts, symlinks or a ':'-separated PATH"
+)
 
 
 def _git(repo, *args):
@@ -314,6 +319,7 @@ def test_a_global_config_named_by_the_environment_is_ignored(fixed, tmp_path):
     _assert_correct_and_not_run(_run(repo, "--base", base, env=env), marker)
 
 
+@posix_only
 def test_a_git_planted_in_the_repository_is_never_used(fixed, tmp_path):
     repo, base = fixed
     marker = tmp_path / "ran"
@@ -407,6 +413,7 @@ def test_control_plain_git_diff_writes_a_trace_file(fixed, tmp_path):
 # script is started. PR #589 review: only the starting directory used to be checked.
 
 
+@posix_only
 @pytest.mark.parametrize("planted", ["git", "bin/git", "sub/git", "sub/deeper/git"])
 def test_a_git_planted_anywhere_in_the_repository_is_never_used_from_a_subdirectory(
     fixed, tmp_path, planted
@@ -424,6 +431,7 @@ def test_a_git_planted_anywhere_in_the_repository_is_never_used_from_a_subdirect
     assert result.stdout == ""
 
 
+@posix_only
 def test_a_git_planted_in_a_linked_worktree_is_never_used(fixed, tmp_path):
     repo, base = fixed
     linked = tmp_path / "linked"
@@ -437,6 +445,7 @@ def test_a_git_planted_in_a_linked_worktree_is_never_used(fixed, tmp_path):
     assert result.returncode == 2
 
 
+@posix_only
 def test_a_symlink_into_the_repository_is_never_used(fixed, tmp_path):
     repo, base = fixed
     link = repo / "bin" / "git"
@@ -483,6 +492,7 @@ def test_the_time_limit_does_not_use_sigalrm():
     assert "threading.Timer" in source
 
 
+@posix_only
 def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
     import time
 

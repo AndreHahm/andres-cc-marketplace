@@ -14,6 +14,11 @@ from pathlib import Path
 
 import pytest
 
+# Mode bits, symlinks, case-distinct names, ':' in file names and the mktemp/bash helper scripts
+# (owner and 0700 checks, /tmp paths) are POSIX mechanisms; none of that works on native Windows.
+posix_only = pytest.mark.skipif(
+    os.name == "nt", reason="needs POSIX modes, symlinks, case-sensitive names or shell helpers"
+)
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-scope.py"
 
 
@@ -481,6 +486,7 @@ def _run(repo, out, *extra):
     )
 
 
+@posix_only
 def test_end_to_end_excludes_configured_dir_and_collapses_mirror(repo, tmp_path):
     (repo / "issues").mkdir()
     (repo / "issues/1.md").write_text("noise")
@@ -738,6 +744,7 @@ def test_unreadable_fingerprint_is_never_skipped():
     assert [f["path"] for f in manifest["files"]] == ["a.py"]
 
 
+@posix_only
 def test_fingerprint_sees_symlink_target_mode_and_deletion(tmp_path):
     fp = M._make_fingerprint(tmp_path)
     (tmp_path / "f").write_text("x")
@@ -1059,6 +1066,7 @@ def test_local_exclusions_are_labelled_and_announced():
     assert any("local config applied" in n for n in config["notes"])
 
 
+@posix_only
 def test_local_config_case_variant_in_head_is_untrusted_even_with_a_narrow_scope(plain_repo):
     (plain_repo / ".CLAUDE").mkdir()
     (plain_repo / ".CLAUDE/Git-Kit.Local.json").write_text("{}")
@@ -1084,6 +1092,7 @@ def test_prior_manifest_inside_the_repository_is_refused(repo, tmp_path):
     assert manifest["round"] == 1 and "inside the repository" in manifest["fallback"]
 
 
+@posix_only
 def test_diff_dir_gets_a_diff_per_slice_and_a_codex_variant_without_ineligible_files(
     repo, tmp_path
 ):
@@ -1104,6 +1113,7 @@ def test_diff_dir_gets_a_diff_per_slice_and_a_codex_variant_without_ineligible_f
     assert oct((diffs / f"{name}.diff").stat().st_mode & 0o777) == "0o600"
 
 
+@posix_only
 def test_a_file_named_like_pathspec_magic_still_gets_its_own_diff(repo, tmp_path):
     (repo / "plain.py").write_text("print(1)\n")
     (repo / ":(glob)payload.sh").write_text("echo hidden-payload\n")
@@ -1188,6 +1198,7 @@ def test_round_two_without_completed_slices_reviews_everything_and_says_so(repo,
     assert any("no --completed-slice" in n for n in manifest["inspection_limits"])
 
 
+@posix_only
 def test_local_config_variant_committed_after_the_merge_base_is_caught_with_an_empty_index(
     plain_repo, tmp_path, monkeypatch
 ):
@@ -1234,6 +1245,7 @@ def _wrapper(repo, *args):
     )
 
 
+@posix_only
 def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1244,6 +1256,7 @@ def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path, mktemp_
     assert (run_dir / "diffs-1").is_dir()
 
 
+@posix_only
 def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1254,6 +1267,7 @@ def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path, mk
     assert not list(run_dir.iterdir())  # nothing planned from the wrong directory
 
 
+@posix_only
 def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     base = [str(run_dir), "1", _head(repo), "main"]
@@ -1269,6 +1283,7 @@ def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp
     assert not (tmp_path / "elsewhere.json").exists() and not (run_dir / "manifest-1.json").exists()
 
 
+@posix_only
 def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     link = tmp_path / "link"
@@ -1326,6 +1341,7 @@ def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_
     assert result.returncode == 2 and "outside the repository" in result.stderr
 
 
+@posix_only
 def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1341,6 +1357,7 @@ def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, 
         assert not list(target.iterdir())  # no manifest or diffs were written there
 
 
+@posix_only
 def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "a.py").write_text("1")
@@ -1351,6 +1368,7 @@ def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_
     assert not Path("/x").exists()
 
 
+@posix_only
 def test_the_wrapper_drops_environment_that_would_redirect_git_or_python(
     repo, tmp_path, monkeypatch, mktemp_dirs
 ):
@@ -1385,6 +1403,7 @@ def _copy_index(repo, *args, env=None):
     )
 
 
+@posix_only
 def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_elsewhere(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1400,6 +1419,7 @@ def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_
     assert _copy_index(repo, str(run_dir)).returncode == 2  # never overwrites
 
 
+@posix_only
 def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     target = tmp_path / "victim.txt"
@@ -1414,6 +1434,7 @@ def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path,
     assert not (tmp_path / "does-not-exist").exists()
 
 
+@posix_only
 def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, mktemp_dirs):
     run_dir = mktemp_dirs()
     for mode in (0o770, 0o707):
@@ -1436,6 +1457,7 @@ def test_the_index_helper_refuses_a_symlinked_source_index(repo, tmp_path, mktem
     assert not (run_dir / "index").exists()
 
 
+@posix_only
 def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1450,6 +1472,7 @@ def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_p
         assert not (target / "index").exists() or target == repo / ".git"
 
 
+@posix_only
 def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1509,6 +1532,7 @@ def _run_dir(mktemp_dirs):
     return mktemp_dirs()
 
 
+@posix_only
 def test_the_writer_concatenates_stdin_run_files_and_the_fixed_prompt_in_order(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1529,6 +1553,7 @@ def test_the_writer_concatenates_stdin_run_files_and_the_fixed_prompt_in_order(
     assert sorted(p.name for p in run_dir.iterdir()) == ["diffs", "out.md"]  # no temp left behind
 
 
+@posix_only
 def test_the_writer_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     victim = tmp_path / "victim.txt"
@@ -1543,6 +1568,7 @@ def test_the_writer_never_writes_through_a_planted_symlink(repo, tmp_path, mktem
     assert refused.returncode == 2 and victim.read_text() == "precious"
 
 
+@posix_only
 def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     secret = tmp_path / "secret.txt"
@@ -1571,6 +1597,7 @@ def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, m
     assert _write_run_file(repo, str(run_dir), "out.md", "@out.md").returncode == 2
 
 
+@posix_only
 def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     link = tmp_path / "link"
@@ -1633,6 +1660,7 @@ def _listed(repo, index):
     return out.stdout.split()
 
 
+@posix_only
 def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("brand new\n")
@@ -1648,6 +1676,7 @@ def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktem
     assert "new.txt" not in _listed(repo, real_index)
 
 
+@posix_only
 def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("x")
@@ -1659,6 +1688,7 @@ def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_
     assert victim.read_bytes() == b"precious"
 
 
+@posix_only
 def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1720,6 +1750,7 @@ def test_the_intent_add_helper_does_not_run_a_hook_from_the_reviewed_tree(
     assert not marker.exists()
 
 
+@posix_only
 def test_the_intent_add_helper_ignores_inherited_git_variables(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("x")
@@ -1736,6 +1767,7 @@ def test_the_intent_add_helper_ignores_inherited_git_variables(repo, tmp_path, m
     assert real_index.read_bytes() == before
 
 
+@posix_only
 def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1750,6 +1782,7 @@ def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
     assert result.returncode == 2 and "regular file" in result.stderr
 
 
+@posix_only
 def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     good = mktemp_dirs()
     assert _write_run_file(repo, str(good), "out.md", "-", stdin="ok").returncode == 0
@@ -1769,6 +1802,7 @@ def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, m
     assert not list(wrong_name.iterdir()) and not list(wrong_parent.iterdir())
 
 
+@posix_only
 def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variables(
     repo, mktemp_dirs
 ):

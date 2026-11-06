@@ -358,7 +358,11 @@ def test_a_document_the_parser_fails_on_is_a_blocking_finding_not_a_pass(monkeyp
     assert "could not be read" in finding.evidence and "ValueError" in finding.evidence
 
 
-@pytest.mark.parametrize("text", ["> " * 3000 + "x", "![" * 100_000])
+# Explicit ids: a 200 000-character generated id overflows the 32 767-character Windows limit on
+# the PYTEST_CURRENT_TEST environment variable pytest sets for each test.
+@pytest.mark.parametrize(
+    "text", ["> " * 3000 + "x", "![" * 100_000], ids=["nested-quotes", "nested-images"]
+)
 def test_nesting_deep_enough_to_overflow_the_parser_is_a_blocking_finding(text):
     (finding,) = _escapes(_check(text + "\n"))
     assert finding.severity == "Major" and "RecursionError" in finding.evidence
