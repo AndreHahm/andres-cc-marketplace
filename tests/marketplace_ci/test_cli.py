@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -1375,7 +1376,8 @@ def test_run_codex_review_claims_the_instructions_dir_privately(
     target = tmp_path_factory.mktemp("outside") / "instructions"
     main(["run-codex-review", "--base-sha", base_sha, "--instructions-dir", str(target)])
     assert seen
-    assert (target.stat().st_mode & 0o777) == 0o700
+    if os.name != "nt":  # NTFS has no 0700 mode to read back
+        assert (target.stat().st_mode & 0o777) == 0o700
 
 
 def test_run_codex_review_refuses_a_dir_planted_after_the_validation(
