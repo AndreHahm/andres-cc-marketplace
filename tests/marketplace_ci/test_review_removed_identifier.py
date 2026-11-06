@@ -11,6 +11,7 @@ removed.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -437,6 +438,9 @@ def test_the_unsafe_name_finding_gives_advice_that_fits_it(git_repo):
     assert "symlink" not in finding.remediation and "name" in finding.remediation
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="the file name contains ':', which NTFS reads as a data-stream marker"
+)
 def test_a_leftover_file_with_markdown_in_its_name_is_quoted_in_the_evidence(git_repo):
     git_repo.write(_skill("gone"), _doc("gone"))
     odd = "docs/[approve](https:--evil) @team.md"

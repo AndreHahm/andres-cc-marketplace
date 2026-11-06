@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,21 @@ from scripts.marketplace_ci import review_verifiers as rv
 from scripts.marketplace_ci.__main__ import main
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import gate_decision
+
+
+def _symlinks_unavailable() -> bool:
+    """Creating a symlink needs Developer Mode or elevation on Windows."""
+    with tempfile.TemporaryDirectory() as probe:
+        try:
+            (Path(probe) / "l").symlink_to(Path(probe), target_is_directory=True)
+        except OSError:
+            return True
+    return False
+
+
+requires_symlinks = pytest.mark.skipif(
+    _symlinks_unavailable(), reason="symlink creation not permitted on this machine/user"
+)
 
 SKILL = "plugins/demo-kit/skills/demo/SKILL.md"
 COMMAND = "plugins/demo-kit/commands/demo-run.md"
@@ -162,9 +178,16 @@ def _commit(root: Path, message: str) -> str:
     ).stdout.strip()
 
 
+def _set_mode(root: Path, rel: str, executable: bool) -> None:
+    """Set the script's mode where the verifier reads it: git's index (NTFS has no mode bits)."""
+    (root / rel).chmod(0o755 if executable else 0o644)
+    flag = "--chmod=+x" if executable else "--chmod=-x"
+    subprocess.run(["git", "update-index", "--add", flag, "--", rel], cwd=root, check=True)
+
+
 def _write_script(git_repo, rel, executable):
-    path = git_repo.write(rel, "#!/bin/sh\necho hi\n")
-    path.chmod(0o755 if executable else 0o644)
+    git_repo.write(rel, "#!/bin/sh\necho hi\n")
+    _set_mode(git_repo.root, rel, executable)
 
 
 def _outcome(git_repo, changed, base=None):
@@ -192,7 +215,7 @@ def test_dropping_the_executable_bit_is_caught_even_though_the_skill_is_untouche
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     git_repo.write(SKILL, _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)"))
     base = _commit(git_repo.root, "base")
-    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, False)
     _commit(git_repo.root, "chmod")
     outcome = _outcome(git_repo, (ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT),), base)
     (finding,) = outcome.findings
@@ -224,6 +247,7 @@ def test_running_out_of_the_read_budget_fails_closed_instead_of_skipping_docs(
         rv.run_verifiers(git_repo.root, (ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT),), "0" * 40)
 
 
+@requires_symlinks
 def test_an_unreadable_doc_in_a_touched_plugin_is_reported_not_skipped(git_repo):
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     git_repo.write("elsewhere.md", "x")
@@ -281,14 +305,14 @@ def _broken_doc(git_repo, symlink=False):
         git_repo.write(BROKEN, "---\nname: [unclosed\n---\n")
 
 
-@pytest.mark.parametrize("symlink", [False, True])
+@pytest.mark.parametrize("symlink", [False, pytest.param(True, marks=requires_symlinks)])
 def test_an_unreadable_unchanged_doc_is_reported_and_cites_the_plugins_changed_paths(
     git_repo, symlink
 ):
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     _broken_doc(git_repo, symlink)
     base = _commit(git_repo.root, "base")
-    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, False)
     _commit(git_repo.root, "chmod")
     outcome = _outcome(git_repo, (ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT),), base)
     (finding,) = outcome.findings
@@ -347,7 +371,7 @@ def test_a_chmod_alone_blocks_the_run(monkeypatch, git_repo, tmp_path):
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     git_repo.write(SKILL, _doc("Bash(${CLAUDE_PLUGIN_ROOT}/scripts/tool.sh:*)"))
     base = _commit(git_repo.root, "base")
-    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, False)
     _commit(git_repo.root, "chmod")
     real_run = subprocess.run
 
@@ -374,7 +398,7 @@ def test_a_chmod_alone_blocks_the_run_even_when_an_unchanged_doc_cannot_be_read(
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     _broken_doc(git_repo)
     base = _commit(git_repo.root, "base")
-    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, False)
     _commit(git_repo.root, "chmod")
     real_run = subprocess.run
 
@@ -402,7 +426,8 @@ def test_an_unreadable_unchanged_doc_blocks_even_when_the_plugin_change_is_an_or
     _broken_doc(git_repo)
     base = _commit(git_repo.root, "base")
     edited = git_repo.write(PLUGIN_SCRIPT, "#!/bin/sh\necho an ordinary content edit\n")
-    edited.chmod(0o755)
+    assert edited.exists()
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, True)
     _commit(git_repo.root, "edit the script's content only")
     real_run = subprocess.run
 
@@ -531,7 +556,7 @@ def test_a_multi_line_grant_is_reported_when_the_pr_drops_the_scripts_bit(git_re
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     git_repo.write(SKILL, _MULTILINE_GRANT + "body\n")
     base = _commit(git_repo.root, "base")
-    (git_repo.root / PLUGIN_SCRIPT).chmod(0o644)
+    _set_mode(git_repo.root, PLUGIN_SCRIPT, False)
     git_repo.write(SKILL, _MULTILINE_GRANT + "changed body\n")
     _commit(git_repo.root, "chmod and edit")
     changed = (ChangedPath("M", SKILL, SKILL), ChangedPath("M", PLUGIN_SCRIPT, PLUGIN_SCRIPT))

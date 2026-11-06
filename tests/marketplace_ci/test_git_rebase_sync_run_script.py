@@ -61,6 +61,9 @@ def clone(tmp_path):
     work = tmp_path / "work"
     _git(tmp_path, "init", "--bare", "-b", "main", str(origin))
     _git(tmp_path, "clone", str(origin), str(work))
+    # The script runs git with no global config; a user's core.autocrlf=true (Windows) would leave
+    # CRLF files in the work tree that the script's git then sees as modified.
+    _git(work, "config", "core.autocrlf", "false")
     _commit(work, "base.txt", "base\n")
     _git(work, "push", "origin", "main")
     _git(work, "remote", "set-head", "origin", "main")
