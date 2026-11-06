@@ -789,12 +789,26 @@ def test_a_git_failure_with_either_stderr_type_still_reads_as_could_not_run(
     assert "said no" in json.loads(capsys.readouterr().out)["could_not_run"]
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:s3cret-token@example.com/o/r.git",
+        "https://github.com/o/r.git?access_token=s3cret-token",
+        "ssh://git@example.com/o/r.git",
+    ],
+)
+def test_a_url_in_git_stderr_is_replaced_whole(url):
+    said = M._git_said(f"fatal: unable to access '{url}/': 403".encode())
+    assert said == "fatal: unable to access '<url> 403"
+    assert "s3cret-token" not in said
+
+
 def test_git_stderr_in_a_could_not_run_message_is_redacted_and_capped():
     leaky = (
         "fatal: unable to access 'https://user:s3cret-token@example.com/o/r.git/': 403 " + "x" * 900
     )
     said = M._git_said(leaky.encode())
-    assert "s3cret-token" not in said and "user:" not in said
-    assert "https://***@example.com/o/r.git/" in said
+    assert "s3cret-token" not in said and "example.com" not in said
+    assert "<url>" in said
     assert len(said) == M._STDERR_LIMIT
     assert M._git_said("no url here\n") == "no url here"
