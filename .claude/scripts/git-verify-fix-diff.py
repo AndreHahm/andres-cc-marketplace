@@ -62,6 +62,18 @@ from collections.abc import Iterator
 from pathlib import Path
 
 _OBJECT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+_URL_USERINFO = re.compile(
+    r"(?<=://)[^/@\s]+@"
+)  # credentials inside a URL: scheme://user:token@host
+_STDERR_LIMIT = 500  # characters of git's stderr echoed in a could-not-run message
+
+
+def _git_said(stderr: bytes | str) -> str:
+    """git's stderr for an error message: URL credentials redacted, length capped."""
+    text = stderr if isinstance(stderr, str) else stderr.decode(errors="replace")
+    return _URL_USERINFO.sub("***@", text.strip())[:_STDERR_LIMIT]
+
+
 _REPO = r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"
 _UPSTREAM = re.compile(_REPO)
 _ORIGIN_URL = re.compile(
@@ -434,10 +446,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
         detail = str(exc)
         if isinstance(exc, subprocess.CalledProcessError) and exc.stderr:
-            said = (
-                exc.stderr if isinstance(exc.stderr, str) else exc.stderr.decode(errors="replace")
-            )
-            detail += f" (git said: {said.strip()})"
+            detail += f" (git said: {_git_said(exc.stderr)})"
         print(f"Verifiers could not run: {detail}", file=sys.stderr)
         print(json.dumps({"could_not_run": detail}))
         return 2
