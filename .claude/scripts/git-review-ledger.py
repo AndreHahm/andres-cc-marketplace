@@ -244,7 +244,8 @@ def confine(raw: str, root: Path, directory: bool = False) -> Path:
 
 def refuse_if_tracked(path: Path, root: Path) -> None:
     """The working ledger must stay untracked (a force-added copy could carry planted entries)."""
-    rel = os.path.relpath(path, root.resolve())
+    # git pathspecs use "/" on every OS
+    rel = Path(os.path.relpath(path, root.resolve())).as_posix()
     tracked = _git(root, "ls-files", "--error-unmatch", "--", f":(top,literal){rel}")
     if tracked.returncode not in (0, 1):
         raise LedgerError(
@@ -259,7 +260,8 @@ def ensure_ignored(path: Path, root: Path) -> None:
 
     Where nothing ignores it (a repository without a `*.local.*` rule), add it to this
     repository's `info/exclude`; refuse to write the ledger if git still does not ignore it."""
-    rel = os.path.relpath(path, root.resolve())
+    # git pathspecs use "/" on every OS
+    rel = Path(os.path.relpath(path, root.resolve())).as_posix()
 
     def ignored() -> bool:
         probe = _git(root, "check-ignore", "-q", "--no-index", "--", rel)
@@ -278,7 +280,7 @@ def ensure_ignored(path: Path, root: Path) -> None:
     exclude = exclude if exclude.is_absolute() else root / exclude
     exclude.parent.mkdir(parents=True, exist_ok=True)
     escaped = "".join("\\" + c if c in "*?[\\" else c for c in rel.replace(os.sep, "/"))
-    with exclude.open("a", encoding="utf-8") as handle:
+    with exclude.open("a", encoding="utf-8", newline="") as handle:
         handle.write(f"/{escaped}\n")
     if not ignored():
         raise LedgerError(f"{rel} is not ignored by git and could not be excluded; not writing it")

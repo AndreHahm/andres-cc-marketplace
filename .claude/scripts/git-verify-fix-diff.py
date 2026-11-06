@@ -289,7 +289,9 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
         real_objects = _git(
             repo_root, "rev-parse", "--path-format=absolute", "--git-path", "objects"
         ).decode()
-        with open(os.path.join(objects, "info", "alternates"), "w", encoding="utf-8") as handle:
+        with open(
+            os.path.join(objects, "info", "alternates"), "w", encoding="utf-8", newline=""
+        ) as handle:  # newline="": git splits this file on LF only, so no CRLF on Windows
             handle.write(real_objects.strip() + "\n")  # read the repo's objects, never write them
         env = _clean_env(
             GIT_INDEX_FILE=os.path.join(tmp, "index"), GIT_OBJECT_DIRECTORY=objects, **ident
@@ -308,7 +310,7 @@ def _snapshot(repo_root: Path, head_sha: str) -> Iterator[tuple[Path, str]]:
         plain = _clean_env(**ident)
         run("clone", *_clone_args(tmp), str(repo_root), str(clone), env=plain)
         alternates = clone / ".git" / "objects" / "info" / "alternates"
-        with alternates.open("a", encoding="utf-8") as handle:
+        with alternates.open("a", encoding="utf-8", newline="") as handle:
             handle.write(objects + "\n")  # lets the clone read the snapshot commit
         run("checkout", "-q", "--detach", sha, cwd=clone, env=plain)
         yield clone, sha
@@ -430,8 +432,11 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             outcomes = run_verifiers(verify_repo, changed, args.base)
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
-        print(f"Verifiers could not run: {exc}", file=sys.stderr)
-        print(json.dumps({"could_not_run": str(exc)}))
+        detail = str(exc)
+        if isinstance(exc, subprocess.CalledProcessError) and exc.stderr:
+            detail += f" (git said: {exc.stderr.decode(errors='replace').strip()})"
+        print(f"Verifiers could not run: {detail}", file=sys.stderr)
+        print(json.dumps({"could_not_run": detail}))
         return 2
 
     checked = sorted({p for o in outcomes for p in o.checked})
