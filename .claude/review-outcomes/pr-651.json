@@ -1,0 +1,39 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4489623585",
+      "note": "BOM accepted by the hook, test added",
+      "pr": 651,
+      "recorded_at": "2026-11-06T06:44:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4489623601",
+      "note": "Negation handled in the plain read; no git call by design, tracked .env still unseen",
+      "pr": 651,
+      "recorded_at": "2026-11-06T06:44:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4489623614",
+      "note": "Non-regular and oversized example refused; records .gitignore read bounded too",
+      "pr": 651,
+      "recorded_at": "2026-11-06T06:44:35+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4489623626",
+      "note": "Out of scope, tracked in issue 647 for after the merge",
+      "pr": 651,
+      "recorded_at": "2026-11-06T06:44:35+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4489623639",
+      "note": "CLI test offline behind a dead proxy",
+      "pr": 651,
+      "recorded_at": "2026-11-06T06:44:35+00:00"
+    }
+  ]
+}
