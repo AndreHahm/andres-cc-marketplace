@@ -425,8 +425,7 @@ def test_an_unreadable_unchanged_doc_blocks_even_when_the_plugin_change_is_an_or
     _write_script(git_repo, PLUGIN_SCRIPT, executable=True)
     _broken_doc(git_repo)
     base = _commit(git_repo.root, "base")
-    edited = git_repo.write(PLUGIN_SCRIPT, "#!/bin/sh\necho an ordinary content edit\n")
-    assert edited.exists()
+    git_repo.write(PLUGIN_SCRIPT, "#!/bin/sh\necho an ordinary content edit\n")
     _set_mode(git_repo.root, PLUGIN_SCRIPT, True)
     _commit(git_repo.root, "edit the script's content only")
     real_run = subprocess.run

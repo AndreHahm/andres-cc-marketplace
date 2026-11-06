@@ -775,3 +775,15 @@ def test_a_path_spelled_with_other_letter_case_is_still_inside_the_repository(
     respelled = tmp_path / "repo" / "bin"
     assert _find_git_from(monkeypatch, repo, respelled) is None
     assert plant.exists()
+
+
+@pytest.mark.parametrize("stderr", [b"bytes said no", "text said no"])
+def test_a_git_failure_with_either_stderr_type_still_reads_as_could_not_run(
+    stderr, monkeypatch, capsys
+):
+    def boom():
+        raise subprocess.CalledProcessError(128, ["git"], stderr=stderr)
+
+    monkeypatch.setattr(M, "_git_path", boom)
+    assert M.main(["--base", "a" * 40, "--upstream", UPSTREAM]) == 2
+    assert "said no" in json.loads(capsys.readouterr().out)["could_not_run"]

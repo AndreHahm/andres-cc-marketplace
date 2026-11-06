@@ -10,7 +10,6 @@ lines 45, 93 and 113 of `skill-development/SKILL.md` while the PR added line 42.
 """
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -1163,9 +1162,10 @@ def test_symlink_target_comparison_folds_case_off_linux(tmp_path, monkeypatch):
     ranges = {"L": ((1, 1),)}
     monkeypatch.setattr(review_module, "_FOLD_PATHS", True)
     assert blocking_findings([cited], ranges, changed_paths=("L",), repo_root=tmp_path) == (cited,)
-    # On a case-insensitive filesystem (NTFS) realpath reports the on-disk spelling, so the
-    # comparison matches even without folding; only a case-sensitive one can show the difference.
-    if not os.path.realpath(tmp_path / "target.md").endswith("Target.md"):
+    # On a case-insensitive filesystem (NTFS, default APFS) "target.md" names the file written as
+    # "Target.md", so the comparison can match without folding; only a case-sensitive one can show
+    # the difference.
+    if not (tmp_path / "target.md").exists():
         monkeypatch.setattr(review_module, "_FOLD_PATHS", False)
         assert blocking_findings([cited], ranges, changed_paths=("L",), repo_root=tmp_path) == ()
 
