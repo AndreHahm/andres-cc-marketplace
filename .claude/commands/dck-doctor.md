@@ -21,6 +21,6 @@ overall result, and for each `fail` or `warn` say what to fix: the `.env` file, 
 a model that needs re-pinning. If the output is not that JSON report, say the doctor failed and show the
 error.
 
-Each run with a usable key sends six fixed decisions to OpenRouter, three per model, under zero data
-retention. They hold no project content and have a small cost. Say so when reporting them. Never read,
+Each run with a usable key sends up to six fixed decisions to OpenRouter, three per model (a failed model
+stops early), under zero data retention. They hold no project content and have a small cost. Say so when reporting them. Never read,
 print or ask for the key, and never read `.env` yourself.

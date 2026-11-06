@@ -18,7 +18,7 @@ The plugin is off until you enable it with `claude plugin enable decision-kit`, 
 1. Run `/dck-init` to create `.env.example`, or to add the OpenRouter entry to the one you have.
 2. Copy the entry to a gitignored `.env` in your project root, and set your real key there. This works the
    same on Windows and Linux. An `OPENROUTER_API_KEY` environment variable also works, and wins if set.
-3. Run `/dck-doctor` to check the setup. Each run sends six small, fixed decisions, at a small cost.
+3. Run `/dck-doctor` to check the setup. Each run sends up to six small, fixed decisions, at a small cost.
 
 Without a key, the hook stays silent, so it does not prompt a consultation. If one runs anyway, it reports the
 missing key. It stops to ask on a critical, security or high-risk decision, and otherwise reports that no
