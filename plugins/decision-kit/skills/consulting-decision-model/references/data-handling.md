@@ -18,7 +18,7 @@ value is read as an ordinary line. The file must be a regular text file of at mo
 value from `/dck-init` counts as no key. Keep `.env` gitignored: a `.env` committed to a repository
 supplies its key to anyone working there, and their excerpts would then go through that key's account.
 
-`/dck-doctor` sends six fixed decisions, three per model, under the same `zdr` flag. They hold no project
+`/dck-doctor` sends up to six fixed decisions, three per model, under the same `zdr` flag. They hold no project
 content. It sends no decisions when the check is off or no usable key is found, though it still fetches
 the model list, which carries no key and no text.
 
