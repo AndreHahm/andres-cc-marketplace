@@ -57,7 +57,7 @@ def check_bash_grants():
     unused = []
     for t in tokens:
         needle = t.split("/")[-1] if "/" in t else t
-        if not re.search(re.escape(needle), body):
+        if not re.search(rf"\b{re.escape(needle)}\b", body):
             unused.append(t)
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
@@ -68,9 +68,12 @@ def check_bash_grants():
 
 def check_bundled_scripts_exist():
     _, _, text = _frontmatter_and_body()
-    refs = set(re.findall(r"reviewing-evals/scripts/([\w.]+\.py)", text))
+    refs = set(re.findall(r"(?:reviewing-evals|\$\{CLAUDE_SKILL_DIR\})/scripts/([\w.]+\.py)", text))
     if not refs:
-        return True, "no skills/reviewing-evals/scripts/*.py references found in body (skip)"
+        return (
+            True,
+            "no reviewing-evals or ${CLAUDE_SKILL_DIR} scripts/*.py references found (skip)",
+        )
     missing = [r for r in refs if not (SKILL_DIR / "scripts" / r).is_file()]
     if missing:
         return False, "referenced bundled script(s) do not exist: " + ", ".join(sorted(missing))

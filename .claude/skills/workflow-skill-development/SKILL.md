@@ -5,11 +5,14 @@ description: >-
   with multi-step phases, sub-agent orchestration, decision trees, and progressive disclosure.
   Use when creating or implementing skills that involve sequential pipelines, routing patterns,
   safety gates, task tracking, phased execution, parallel sub-agent orchestration, or any
-  multi-step workflow command. Also applies when reviewing or refactoring existing workflow skills.
-  Not for simple single-purpose skills with no multi-step workflow — use skill-development
+  multi-step workflow skill. Also applies when redesigning the phase or routing structure of an
+  existing workflow skill; for a
+  scored quality review use skill-reviewer, for operator-approved polish skill-refiner-interactive.
+  Not for single-file slash commands (command-development) or simple single-purpose skills with no
+  sub-agents, confirmation gates, routing or workflows/ task files — use skill-development
   directly for those; this skill covers workflow/orchestration architecture only, not domain
   content authoring.
-allowed-tools: Read Glob Grep Write TodoRead TodoWrite Skill
+allowed-tools: Read Glob Grep Write Skill
 ---
 
 # Workflow Skill Development
@@ -34,7 +37,7 @@ For a full 6-phase process, see [design-a-workflow-skill.md](workflows/design-a-
 
 Claude decides whether to load a skill based solely on its frontmatter `description`. The body of SKILL.md — including "When to Use" and "When NOT to Use" sections — is only read AFTER the skill is already active. Put your trigger keywords, use cases, and exclusions in the description. A bad description means wrong activations or missed activations regardless of what the body says.
 
-"When to Use" and "When NOT to Use" sections are optional organizational aids, not activation mechanisms — they only scope the LLM's behavior once the skill is already active. Prefer packing use cases and exclusions into the `description` rather than relying on body sections to do that job. "When NOT to Use" should name specific alternatives: "use Semgrep for simple pattern matching" not "not for simple tasks."
+"When to Use" and "When NOT to Use" body sections are required (plugin-rulebook R35) but are not activation mechanisms — they only scope the LLM's behavior once the skill is already active. Put the triggers and exclusions in the `description` AND carry the standard sections; neither replaces the other. "When NOT to Use" should name specific alternatives: "use Semgrep for simple pattern matching" not "not for simple tasks."
 
 ### numbered-phases
 
@@ -52,7 +55,7 @@ Unnumbered prose instructions produce unreliable execution order. Every phase ne
 
 Skills use `allowed-tools:` in frontmatter. Agents use `tools:` in frontmatter. Subagents get tools from their `subagent_type`. Never list tools the component doesn't use. Never use Bash for operations that have dedicated tools (Glob, Grep, Read, Write, Edit).
 
-Most skills and agents should include `TodoRead` and `TodoWrite` in their tool list — these enable progress tracking during multi-step execution and are useful even for skills that don't explicitly manage tasks.
+Add a progress-tracking tool only when the instructions actually call it (a long multi-step pipeline that tracks tasks). A tool listed but never used violates least privilege like any other. The todo tool names are unverified against the current Claude Code tool list — check the live tool list before granting one.
 
 ### progressive-disclosure
 
@@ -112,9 +115,11 @@ plugins/<plugin-name>/
 
 ## When NOT to Use
 
-- Simple single-purpose skills with no workflow (just guidance) — write the SKILL.md directly
+- Simple single-purpose skills with no workflow (just guidance) — use `skill-development`, which covers creating, converting, repairing and consolidating them; this skill covers only multi-step workflow/orchestration architecture. Test: a skill needs this one only if it has sub-agent dispatch, a confirmation/safety gate, routing between independent tasks, or `workflows/` task files; a linear instruction list, however long, stays in `skill-development`
+- Repairing, consolidating or converting an existing skill, including a workflow skill — use `skill-development`; this skill takes over only to redesign that skill's phase or routing architecture
 - Writing the actual domain content of a skill (this teaches structure, not domain expertise)
-- Plugin configuration (plugin.json, hooks, commands) — use plugin development guides
+- Writing a slash command (a `commands/*.md` file the user runs by typing `/name`), even a multi-step one whose steps all sit in that one file — use `command-development`; this skill designs SKILL.md workflows that Claude activates from context, plus the orchestrator command that only launches a workflow and hands its phases to task files and sub-agents
+- Plugin configuration (plugin.json, hooks) — use plugin development guides
 - Non-skill Claude Code development — this is specifically for skill architecture
 
 ## Pattern Selection
@@ -146,6 +151,8 @@ How many distinct paths does the skill have?
 | **Linear Progression** | Single path, same every time | Numbered phases with entry/exit criteria |
 | **Safety Gate** | Destructive/irreversible actions | Two confirmation gates before execution |
 | **Task-Driven** | Complex dependencies, partial failure tolerance | TaskCreate/TaskUpdate with dependency tracking |
+
+These are workflow-architecture patterns: how phases are routed, ordered and gated. They are a different axis from the five skill-design patterns in `pdk-design-patterns.md` (Sequential workflow orchestration, Multi-MCP coordination, Iterative refinement, Context-aware tool selection, Domain-specific intelligence), which `skill-reviewer` checks; a workflow skill can be judged against both. Sequential Pipeline and Linear Progression are both forms of the design pattern "Sequential workflow orchestration"; Routing, Safety Gate and Task-Driven have no counterpart there.
 
 ## Structural Anatomy
 
@@ -185,7 +192,7 @@ Create `commands/<workflow-name>.md` — a lean dispatcher that references task 
 ```markdown
 ---
 description: <Workflow description>
-allowed-tools: Task, Read
+allowed-tools: Agent, Read
 model: sonnet
 ---
 
@@ -201,9 +208,9 @@ Launch general-purpose agent:
 ### Step 5: Verify
 
 Confirm the workflow actually works before considering it done:
-1. Walk through the Validation Checklist above end-to-end against the finished skill/command.
+1. Walk through the Validation Checklist below end-to-end against the finished skill/command.
 2. Invoke `plugin-rulebook` for naming, tool-scoping, and formatting compliance.
-3. Run `scripts/smoke_test.py` if the target skill has one persisted.
+3. If the target skill has a persisted `scripts/smoke_test.py`, ask the user to run it (this skill holds no `Bash` grant) and review the output.
 4. Test at least one real invocation through the orchestrator command, confirming each step's captured
    output matches what the next step expects.
 
@@ -270,10 +277,10 @@ The most common mistakes. Full catalog with before/after fixes: [anti-patterns-s
 
 | AP | Anti-Pattern | One-Line Fix |
 |----|-------------|-------------|
-| AP-1 | Missing goals/anti-goals | Put use cases and exclusions in `description`; When to Use/When NOT to Use body sections are optional |
+| AP-1 | Missing goals/anti-goals | Put use cases and exclusions in `description` AND carry the required When to Use/When NOT to Use sections (R35) |
 | AP-2 | Monolithic SKILL.md (>500 lines) | Split into references/ and workflows/ |
 | AP-3 | Reference chains (A -> B -> C) | All files one hop from SKILL.md |
-| AP-4 | Hardcoded paths | Use `{baseDir}` for all internal paths |
+| AP-4 | Hardcoded paths | Use the `CLAUDE_SKILL_DIR` variable for a skill's own files, `CLAUDE_PLUGIN_ROOT` in command files (dollar-brace form) |
 | AP-5 | Broken file references | Verify every path resolves before submitting |
 | AP-6 | Unnumbered phases | Number every phase with entry/exit criteria |
 | AP-7 | Missing exit criteria | Define what "done" means for every phase |
@@ -297,19 +304,20 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 
 | Component Type | Typical Tools |
 |---------------|---------------|
-| Read-only analysis skill | Read, Glob, Grep, TodoRead, TodoWrite |
-| Interactive analysis skill | Read, Glob, Grep, AskUserQuestion, TodoRead, TodoWrite |
-| Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked), TodoRead, TodoWrite |
-| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate, TodoRead, TodoWrite |
-| Read-only agent | Read, Grep, Glob, TodoRead, TodoWrite |
-| Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below), TodoRead, TodoWrite |
+| Read-only analysis skill | Read, Glob, Grep |
+| Interactive analysis skill | Read, Glob, Grep, AskUserQuestion |
+| Code generation skill | Read, Glob, Grep, Write, `Bash(python <skill-dir>/scripts/gen.py *)` (pinned to the one bundled script invoked) |
+| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Agent, TaskCreate, TaskList, TaskUpdate |
+| Read-only agent | Read, Grep, Glob |
+| Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below) |
 
 **Key rules:**
 - Use Glob (not `find`), Grep (not `grep`), Read (not `cat`) — always prefer dedicated tools
 - Skills use `allowed-tools:` — agents use `tools:`
 - List only tools that instructions actually reference
 - Read-only components should never have Write or Bash
-- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:* date:*)`, `Bash(python:*)`), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- In a skill's or command's `allowed-tools`, never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:*) Bash(date:*)`, or `Bash(python <skill-dir>/scripts/x.py *)` to pin an interpreter to one script), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
+- An agent's `tools` field is the reverse case: it takes bare tool names only, so an agent that needs shell access lists bare `Bash` and never a scoped `Bash(...)` entry. Give `Bash` only to an agent that must run commands, and keep read-only agents on `Read, Grep, Glob`
 
 ## Frontmatter Options
 
@@ -319,7 +327,7 @@ For orchestrator commands (workflow commands that dispatch sub-agents):
 |-------|---------|---------|
 | `description` | Brief description of workflow purpose | Required |
 | `argument-hint` | Expected arguments description (shown in autocomplete), 0-based order matching body usage — plugin-rulebook R22 | None |
-| `allowed-tools` | Tools the command can use | Inherits from conversation |
+| `allowed-tools` | Tools pre-approved without a permission prompt (does not restrict availability) | Nothing pre-approved |
 | `model` | Specific Claude model (`haiku` / `sonnet` / `opus`) | Inherits from conversation |
 
 **Model selection**: `haiku` — fast, simple workflows; `sonnet` — balanced (recommended default); `opus` — complex orchestration.
@@ -342,12 +350,12 @@ When designing workflow skills, reject these shortcuts:
 
 A well-designed workflow skill or command:
 
-- [ ] Has an activation-focused `description`; When to Use/When NOT to Use body sections, if present, are optional organizational aids
+- [ ] Has an activation-focused `description` AND the required When to Use/When NOT to Use body sections (R35)
 - [ ] Uses a recognizable pattern (routing, pipeline, linear, safety gate, or task-driven)
 - [ ] Numbers all phases with entry and exit criteria
 - [ ] Lists only the tools it actually uses (least privilege)
 - [ ] Keeps SKILL.md under 500 lines with details in references/workflows
-- [ ] Has no hardcoded paths (uses `{baseDir}`)
+- [ ] Has no hardcoded paths (uses the `CLAUDE_SKILL_DIR` variable for in-skill paths)
 - [ ] Has no broken file references
 - [ ] Has no reference chains (all links one hop from SKILL.md)
 - [ ] Includes a verification step at the end of the workflow
@@ -373,7 +381,7 @@ A well-designed workflow skill or command:
 
 **Verify it does NOT activate on:**
 - "write the domain content for this skill" → this teaches structure, not domain expertise
-- "create a slash command" with no multi-step workflow → `command-development`
+- "create a slash command", including a multi-step one in a single file → `command-development`
 - "fix a bug in this plugin's hook" → `hook-development`
 
 **Quality gates:**
@@ -385,6 +393,11 @@ A well-designed workflow skill or command:
   — re-run after any SKILL.md edit
 - The Pattern Selection decision tree, walked against each of the 5 patterns' own "When to use"
   description, resolves to that same pattern — no two patterns share an ambiguous entry point
+
+**Last dated run record:** `evals/workflow-skill-development/workspace/iteration-1/benchmark.json`,
+2026-08-24 (blind-comparison benchmark, evals 1-2). Eval 3 (monolithic SKILL.md, hardcoded paths, reference chain) ran
+2026-10-14 as a with-skill-only Quick Workflow (`evals/workflow-skill-development/workspace/iteration-2/eval-3/`): 4/4
+assertions, no baseline. `scripts/smoke_test.py` re-run 2026-10-14: 4/4 checks pass, exit 0.
 
 ## Reference Index
 

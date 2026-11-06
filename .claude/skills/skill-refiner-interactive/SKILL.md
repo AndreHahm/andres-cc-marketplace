@@ -7,8 +7,9 @@ description: >-
   new skills — use skill-development instead. For a one-shot quality report with no fixes, use the
   skill-reviewer agent instead. For automated fix-review loops with no user checkpoints, use
   skill-improver-loop instead. To measure a skill empirically against a baseline without
-  editing it, use skill-tester instead. For authoring or repairing a broken skill, use
-  skill-development instead.
+  editing it, use skill-tester instead. For a skill still being authored, broken, or failing
+  the Quality Checklist, use skill-development instead; this skill polishes a skill that
+  already works and passes the Quality Checklist.
 when_to_use: >-
   Use when refining skills, improving skill structure, validating against best practices,
   reducing token usage, consolidating references, checking production readiness, applying the
@@ -72,6 +73,7 @@ options:
 - **Fully automated fix-review loops with no user checkpoints** — use `skill-improver-loop` instead
 - **Iterating skill content during development** — use `skill-development`'s own iterative workflow
 - **Auditing or ranking the quality of many skills at once** — use `skill-stocktake`; this skill refines one skill at a time
+- **Redesigning a workflow skill's architecture** (phases, routing, sub-agent orchestration, a `workflows/` split) — use `workflow-skill-development`; this skill polishes a working skill's clarity, tokens and tool scope
 
 ## Core Workflow: Refinement
 
@@ -145,7 +147,7 @@ Standard sections (Quick Start, When to Use, When NOT to Use, Testing & Validati
    - Phase 1: File Inventory - list structure before/after
    - Phase 2: Read All - load complete content, verify no gaps
    - Phase 3: Frontmatter - check required metadata (name, description)
-   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern when the skill has a multi-step workflow (load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`) and spawn anti-patterns
+   - Phase 4: Body Content - re-check against the resolved R13 tiers from pre-analysis (not just <500), 80% rule applied, clarity improved; check workflow pattern when the skill has a multi-step workflow (load `${CLAUDE_SKILL_DIR}/../../references/pdk-design-patterns.md`) and spawn anti-patterns
    - Phase 5: References - confirm all linked files exist, complete, one level deep, no reference→reference chains
    - Phase 6: Tools - three-step reconciliation: undeclared tools, unused declared tools, Bash-for-dedicated-tool misuse
    - Phase 7: Testing - verify activation with real-world trigger phrases
@@ -224,7 +226,7 @@ Four invariants govern every content change: the 80% Rule (core vs. supplementar
 
 **Structural smoke test:** `scripts/smoke_test.py` runs 9 checks (layout, frontmatter, referenced files, orphans, Bash-grant usage, refinement step sequencing, reference-to-reference directives, R13/R18 size ceilings, AskUserQuestion header length); `scripts/test_smoke_test.py` proves it rejects deliberately broken copies (one or more per check) and still passes benign ones. Run both after any edit to this skill.
 
-**Last dated run record:** `evals/skill-refiner-interactive/` — 21 dry-run scenarios (plan-only, normal-refine, activation routing, gates and movement order, failed-goal loop, completion gate, declined deletion, Validation mode, mirror-divergence halt, review-round cap, large-skill extraction, escape hatch, existing-draft preservation, zero findings, Validation against diverged mirrors, intake conversion declined, need stated in context captured as a goal, single goal asked with two options, goal re-measured after a trigger rewrite, plan-only run on diverged mirrors, fix across an operator-excluded scope), `skill-tester` Quick Workflow, 2026-09-30. Iteration 6 passed 75/78; the three misses were two step-9 and marker-count expectations in evals 6 and 10 (resolved by clarifying step 9 and step 10 and revising those assertions), re-run as iteration 7 (evals 6, 7, 10, 12) and passed 23/23. The latest full run (iteration 8, all 14 evals, independently graded) passed 76/78: eval 4 missed on a real contradiction in step 4 (the gate-order sentence versus the early consolidation ask), fixed by naming that ask as the one exception to gate order, and eval 6 missed on assertion wording that called the first check run a round, which the skill defines as not one (reworded). Evals 4 and 6 were re-run as iteration 9 and passed 10/10; eval 4's first assertion (Gates 1-4 logged in order) is a borderline pass that depends on accepting that documented exception. A cross-model review of the PR then led to three fixes (Validation routing for diverged mirrors, the data-only boundary wording, and an overstated AskUserQuestion schema claim); the new eval 15 and regression guards evals 8 and 9 ran as iteration 10 and passed 16/16. A second review pass led to a fourth fix (unbounded input is exempt from the intake check, and the intake goal covers only sections the operator agrees to convert); the new eval 16 and guards evals 2 and 12 ran as iteration 11 and passed 16/16, though the exemption is applied unevenly across runs, and how a step-10 REQUIRED FAIL interacts with a BATCH 1 Question 4 exclusion is still undocumented. Codex's review of the PR then led to two more fixes (the data-only boundary now also covers text in a target skill's own files that tries to direct this workflow, and "Infer from context" now offers each need the operator's context states that pre-analysis cannot detect as a candidate goal); the new eval 17 and regression guard eval 12 ran as iteration 12 and passed 12/12. A second round of Codex and CodeRabbit review then led to ten more fixes (a single goal is asked with two options, goals are re-measured after the trigger loop rewrites the description, diverged mirrors are reconciled only when changes are applied, a fix that would cross an operator-excluded scope asks first, dirty-file rollback, wording corrections, and two smoke-test hardenings); the new evals 18-21 and guards 1, 5, 6, 9, 15 and 17 ran as iteration 13 and passed 53/54. The one miss was eval 15's "no DELEGATION REACHED marker" assertion, which failed on the runner's negated status line "DELEGATION REACHED: no" although the session correctly ended at the mirror halt. Repeating the expand-scope question every round, when the operator kept the exclusion, is a known mild repetition, not fixed here. All runs were dry-run simulations, and step 10's `plugin-rulebook` and `skill-reviewer` results were simulated rather than executed. A live plan-only dry run against `example-plugin` is recorded under `.claude/output/skill-refiner-interactive/` (local and gitignored, so absent from a fresh clone). Earlier iterations and their findings are kept in the same directory.
+**Last dated run record:** `evals/skill-refiner-interactive/` — 21 dry-run scenarios, `skill-tester` Quick Workflow, 2026-09-30. The latest full run passed 76/78 and its two misses were fixed and re-run; a later review-driven round (new evals 18-21 plus regression guards) passed 53/54, the one miss being a runner status-line wording case rather than a skill defect. All runs were dry-run simulations: the `plugin-rulebook` and `skill-reviewer` results in step 10 were simulated, not executed. Per-iteration results, the review rounds behind each fix and the known gaps are in `references/testing-run-history.md`. A live plan-only dry run against `example-plugin` is recorded under `.claude/output/skill-refiner-interactive/` (local and gitignored, so absent from a fresh clone).
 
 ## Reference Guide
 
@@ -240,9 +242,12 @@ Four invariants govern every content change: the 80% Rule (core vs. supplementar
 | `references/interview-question-templates.md` | BATCH 1/2, mirror-halt and trigger-regression question templates |
 | `references/validation-checklist.md` | Manual validation checklist |
 | `references/production-patterns.md` | Error handling, change documentation, security scope |
-| `references/allowed-tools.md` | Tool scoping validation |
-| `references/ask-user-question-patterns.md` | AskUserQuestion patterns and schema limits |
-| `references/content-guidelines.md` | Description and content writing guidance |
+| `references/testing-run-history.md` | Per-iteration eval results and the review rounds behind each fix |
+| `${CLAUDE_SKILL_DIR}/../../references/pdk-allowed-tools.md` | Tool scoping validation |
+| `${CLAUDE_SKILL_DIR}/../../references/pdk-ask-user-question-patterns.md` | AskUserQuestion patterns and schema limits |
+| `${CLAUDE_SKILL_DIR}/../../references/pdk-content-guidelines.md` | Description and content writing guidance |
+| `${CLAUDE_SKILL_DIR}/../../references/pdk-design-patterns.md` | Named workflow patterns and key techniques (refinement step 7 pattern check) |
+| `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md` | Tiered size limits for the R13/R18 checks |
 | `references/common-scenarios.md` | Step-by-step guidance for common refinement requests |
 | `plugin-rulebook` skill | Active rule configuration and compliance check |
 

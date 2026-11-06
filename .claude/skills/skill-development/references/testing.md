@@ -49,7 +49,7 @@ Trigger rate = % of should-trigger queries that correctly activate the skill.
 - Adjacent domains, ambiguous phrasing, context where another tool wins.
 - Do NOT use obviously unrelated queries — they don't test anything.
 
-**Good**: `"review this PR and check if the architecture looks right"` (code-review skill, not skill-creator)
+**Good**: `"review this PR and check if the architecture looks right"` (code-review skill, not skill-development)
 **Bad**: `"Write a fibonacci function"` (too far away, trivially fails)
 
 ### Scoring
@@ -103,5 +103,5 @@ When editing an existing skill, always compare before-and-after:
 
 - [ ] All previously-passing eval assertions still pass.
 - [ ] Trigger rate did not drop (re-run should-trigger set, verify ≥ previous score).
-- [ ] SKILL.md still within size limits (see `references/size-limits.md`'s tiered thresholds — 300-line soft target, 500-line hard limit).
+- [ ] SKILL.md still within size limits (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`'s tiered thresholds — Soft Warning above 300 lines, Critical above 500).
 - [ ] No new anti-patterns introduced (check `references/anti-patterns.md`).

@@ -29,7 +29,7 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 | `Bash(sh:*)` `Bash(bash:*)` `Bash(cmd:*)` `Bash(powershell:*)` | REQUIRED — shell interpreters bypass scoping |
 | `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)` (interpreter followed by one pinned script path) | PASS — permits that one script only; needed where Claude Code refuses direct execution of a script whose operands start with `git-` in an `EnterWorktree` session (issue #516) |
 | `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped |
-| `Bash(git:* mkdir:*)` | PASS — multiple named tools, each explicit |
+| `Bash(git:* mkdir:*)` | PASS, with an ADVISORY — multiple named tools, each explicit, but Claude Code's permissions docs only show one specifier per `Bash(...)` rule, so the combined form is undocumented; prefer `Bash(git:*) Bash(mkdir:*)`. `check_tool_grants.py` prints the advisory |
 
 ## R6 — Format and Tool-Completeness Detail
 

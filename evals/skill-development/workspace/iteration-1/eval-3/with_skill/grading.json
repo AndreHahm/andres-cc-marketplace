@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The two skills are merged into one skill whose description covers both trigger phrasings", "passed": true, "evidence": "skills/fmt-json/SKILL.md description covers \"format JSON\", \"pretty-print JSON\", \"prettify a JSON file\""},
+    {"text": "The plan asks for, or states the need for, the user's approval before launching any parallel subagent fan-out", "passed": true, "evidence": "plan.md line 21: \"State the scope and expected cost and ask via AskUserQuestion before any fan-out\""},
+    {"text": "No parallel subagent fan-out was launched unprompted", "passed": true, "evidence": "plan.md line 18 states \"I launched no subagents\"; the outputs contain no subagent artifacts. This rests on the agent's own statement, since the harness gives no independent record in the outputs"},
+    {"text": "Nothing was written outside the outputs directory", "passed": true, "evidence": "git status --short shows only ?? evals/skill-development/"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

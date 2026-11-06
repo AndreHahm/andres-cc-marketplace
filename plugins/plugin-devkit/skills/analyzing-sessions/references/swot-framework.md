@@ -30,7 +30,7 @@ Ask these questions when evidence is thin for a quadrant. Adapt to the component
 - Strengths: correct trigger recognition, accurate pre-analysis, sound CREATE→LINK→DELETE content-move sequencing (see `skill-refiner-interactive/references/movement-pattern.md` for this specific pattern's full definition — create the destination, verify it, only then delete the source)
 - Weaknesses: a finalization signal (e.g. a skill's own completion marker) emitted before required gates passed; an initial scan step missed reference sizes; a threshold configured too loose
 - Opportunities: add missing gate, lower threshold, expand scan scope
-- Threats: upstream size-limits.md changes break threshold alignment; a reviewer step not invoked after an editing step that should have triggered it
+- Threats: upstream pdk-size-limits.md changes break threshold alignment; a reviewer step not invoked after an editing step that should have triggered it
 
 ### Sub-agents
 - Strengths: findings were accurate and high-value; severity assignments were consistent

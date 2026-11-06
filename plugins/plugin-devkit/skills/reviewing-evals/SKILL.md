@@ -9,7 +9,7 @@ description: >-
   coverage-claim accuracy, assertion non-vacuity, scenario counting,
   run-record presence, and behavior-claim currency. Accepts a single skill
   path or a comma-separated list for a batch sweep. Does not run evals (use
-  skill-tester) or review skill quality (use skill-reviewer). Executes the
+  skill-tester), write evals (use skill-development) or review skill quality (use skill-reviewer). Executes the
   target skill's own scripts/smoke_test.* under a resolved-path trust boundary
   as part of Check 1 — this is real code execution, not read-only analysis.
 argument-hint: "[skill-path | skill-path,skill-path,...]"
@@ -34,6 +34,7 @@ instead of over multiple review rounds.
 
 - **Running evals or benchmarking** — use `skill-tester` (it executes evals with_skill vs baseline; this skill only checks `evals.json`'s structure — it does not execute the evals themselves, though it does execute the target's own `scripts/smoke_test.*` as part of Check 1, under the trust boundary in step 2 below)
 - **Reviewing skill quality** — use `skill-reviewer` (structure, content, clarity; this skill checks eval artifacts only)
+- **Creating, repairing or rewriting a skill or its evals** — use `skill-development` (it authors skills and writes their evals; this skill only audits existing eval artifacts and never edits)
 - **Fixing eval defects** — this skill finds and reports only; it cannot invoke `skill-development` itself (its `Skill` grant is scoped to `plugin-auditor` only). The caller/session applies the fix — via `skill-development` or a direct edit — then re-runs this check
 
 ## Quick Start
@@ -150,7 +151,7 @@ defect shapes and neither implements zero-match-iteration detection. These check
 scoped to eval/smoke-test scripts specifically so they can run before dispatch instead
 of waiting for the fan-out.
 
-Run `${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/check_evals.py --smoke-test <path> --skill-md <path>`
+Run `python ${CLAUDE_SKILL_DIR}/scripts/check_evals.py --smoke-test <path> --skill-md <path>`
 (this skill's own bundled script, not the target's — a bare `scripts/check_evals.py`
 reads ambiguously against the target's own `scripts/` directory this step is already
 focused on) for the mechanical portion (extracting literal `re.findall`/`re.search`
@@ -196,7 +197,7 @@ owned and schema-defined by `skill-tester`'s `references/eval-schema.md` — rea
 that file if a field's meaning is unclear rather than trusting this restatement,
 since this section can drift out of sync with the schema it describes.
 
-Run `${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/check_evals.py --evals-json <path>`
+Run `python ${CLAUDE_SKILL_DIR}/scripts/check_evals.py --evals-json <path>`
 (this skill's own bundled script) for the arithmetic portion
 (`declared_scenarios_covered` + `len(uncovered)` == `declared_scenarios_total`,
 plus a JSON-parse check) — it's purely mechanical, no need to do it by hand.
@@ -379,7 +380,7 @@ re.findall(...); if matches: return False` smoke-test function), which now
 exits 0 with a SKIP instead of the previously-reported false FAIL. Also
 verified via a cross-model review (Claude + Codex) of the full PR diff, which
 found the negative-count and alternation bugs Claude's own review missed. Run
-`python ${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/test_check_evals.py`
+`python ${CLAUDE_SKILL_DIR}/scripts/test_check_evals.py`
 to reproduce.
 
 ## Reference Guide

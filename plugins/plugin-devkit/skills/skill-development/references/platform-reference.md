@@ -11,11 +11,11 @@ For the latest spec, fetch official docs: `WebFetch https://code.claude.com/docs
 | Field | Description |
 |-------|-------------|
 | `name` | Lowercase letters, numbers, and hyphens only (max 64 chars). If omitted, uses directory name. When a plugin declares skills via `"skills": ["./"]` in `plugin.json`, the `name` field becomes the invocation name (not the directory basename), giving stable identity across install methods. |
-| `description` | Trigger condition — see Phase 5 for optimization. 80–1024 chars; combined with `when_to_use`, capped at 1536 chars in skill listing (skills.md). See `references/size-limits.md`. |
+| `description` | Trigger condition — see Phase 5 for optimization. 80–1024 chars; combined with `when_to_use`, capped at 1536 chars in skill listing (skills.md). See `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`. |
 | `when_to_use` | Additional context for when Claude should invoke. Trigger phrases or example requests. Up to 512 chars; counts toward the 1536-char cap (combined with description). (skills.md) |
 | `argument-hint` | Hint shown during autocomplete (e.g., `[issue-number]`). Must match what the body actually consumes — see plugin-rulebook R22 (missing/stale/wrong-position checks). |
 | `arguments` | Named positional arguments for `$name` substitution. Accepts space-separated string or YAML list. Names map to argument positions in order, 0-based (`$0` = first name). (skills.md) |
-| `allowed-tools` | Restrict tools (e.g., `Read, Grep, Bash(git *)`). Bare names and `Bash(command *)` command-scoped patterns work. `Write(path)` path-scoped does not. `$()` command substitution triggers a separate security prompt regardless. Skills inherit parent `settings.json` permissions: `permissions.allow` is additive, `permissions.deny` overrides skill `allowed-tools` (deny > allow). Honored in `--print` / headless mode since v2.1.119. |
+| `allowed-tools` | Pre-approve tools so they run without a permission prompt (e.g., `Read, Grep, Bash(git *)`); it does not restrict which tools are callable. Bare names and `Bash(command *)` command-scoped patterns work. `Write(path)` path-scoped does not. `$()` command substitution triggers a separate security prompt regardless. Skills inherit parent `settings.json` permissions: `permissions.allow` is additive, `permissions.deny` overrides skill `allowed-tools` (deny > allow). Honored in `--print` / headless mode since v2.1.119. |
 | `model` | Model override when this skill is active |
 | `effort` | Effort level override. Options: `low`, `medium`, `high`, `xhigh`, `max`. Available levels depend on the model. Default: inherits from session. (skills.md) |
 | `context` | `fork` to run in isolated subagent |
@@ -55,7 +55,7 @@ Indexed arguments use shell-style quoting. Wrap multi-word values in quotes to p
 
 `${CLAUDE_SKILL_DIR}` is the most important for skill authors. Use it whenever your SKILL.md body tells Claude to read a bundled file — it resolves correctly regardless of where the plugin is installed.
 
-If a skill expects free-form user input, include `$ARGUMENTS` at the intended position in the skill body. Claude Code does not append the typed argument text at the end of the skill on its own — a skill that omits `$ARGUMENTS` entirely never sees what the user typed after the slash command.
+If a skill expects free-form user input, include `$ARGUMENTS` at the intended position in the skill body. When no placeholder (`$ARGUMENTS`, an indexed `$N`, or a named argument) receives an argument, Claude Code appends `ARGUMENTS: <value>` to the end of the skill content, so the skill still sees what the user typed; a placement you choose yourself is clearer than relying on the appended line.
 
 ---
 

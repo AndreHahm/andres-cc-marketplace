@@ -261,7 +261,7 @@ When consolidating multiple reference files into one:
 
 ### Case Study: Correct Refinement ✅
 
-**Skill:** skill-creator (version 1.2.0 → 1.2.1)
+**Skill:** skill-development (version 1.2.0 → 1.2.1)
 
 **Plan:** Add "Refinement Preservation Rules" section with 4 gates
 
@@ -344,7 +344,7 @@ Use this systematic workflow to validate skills. Follow phases in order.
 - [ ] Action-oriented (gerund form preferred)
 
 **Description Quality:**
-- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `references/size-limits.md`)
+- [ ] `description` 80–1024 characters; `when_to_use` (if present) ≤512; combined ≤1536 (see `${CLAUDE_SKILL_DIR}/../../references/pdk-size-limits.md`)
 - [ ] Third person voice ("Processes files", not "I can help")
 - [ ] Includes specific trigger phrases
 - [ ] Formula: `[Action]. Use when [trigger contexts]. [Optional scope].`

@@ -16,17 +16,21 @@
       "prompt": "Here is a draft Claude Code workflow skill's SKILL.md body. Review it for structural anti-patterns and report what's wrong.\n\n---\n## Steps\n\nFirst, check the current state of the deployment. Then, if everything looks good, proceed to deploy. After deploying, verify the deployment succeeded and notify the team.\n\nSee [rollback-procedure.md](references/rollback-procedure.md) for details on what to do if it fails.\n---\n\n(Note: references/rollback-procedure.md does not exist in this skill's directory.)",
       "expected_output": "Flags that the phases/steps are unnumbered prose with no explicit entry/exit criteria (AP-6/AP-7), and flags that the references/rollback-procedure.md link is broken (AP-5) since the file doesn't exist.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Review a workflow skill that is monolithic, hardcodes paths and chains references",
+      "prompt": "Here is a summary of a draft Claude Code workflow skill. Review it for structural anti-patterns and report what is wrong and how to fix each problem.\n\n---\nname: deploy-pipeline\nSKILL.md is 640 lines long; every procedure, table and example is written inline in it.\nStep 2 of the body says: Read /Users/jane/projects/deploy/config.yaml\nStep 5 of the body says: Run /Users/jane/projects/deploy/scripts/push.sh\nreferences/overview.md ends with: Before continuing, read references/details.md.\nreferences/details.md ends with: Then read references/edge-cases.md.\n---",
+      "expected_output": "Flags that SKILL.md is monolithic at 640 lines, over the 500-line limit, and should be split into references/ and workflows/ (AP-2); flags the two absolute /Users/jane/... paths as hardcoded and says to use the CLAUDE_SKILL_DIR variable instead (AP-4); flags overview.md -> details.md -> edge-cases.md as a reference chain and says every file should be one hop from SKILL.md (AP-3).",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 20,
-    "declared_scenarios_covered": 4,
+    "declared_scenarios_covered": 7,
     "uncovered": [
-      "Has an activation-focused description; When to Use/When NOT to Use body sections, if present, are optional organizational aids",
+      "Has an activation-focused `description` AND the required When to Use/When NOT to Use body sections (R35)",
       "Lists only the tools it actually uses (least privilege)",
-      "Keeps SKILL.md under 500 lines with details in references/workflows",
-      "Has no hardcoded paths (uses {baseDir})",
-      "Has no reference chains (all links one hop from SKILL.md)",
       "Has a description that triggers correctly (third-person, specific keywords)",
       "Includes concrete examples for key instructions",
       "Explains WHY, not just WHAT, for essential principles",

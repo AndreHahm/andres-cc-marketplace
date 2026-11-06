@@ -86,7 +86,7 @@ workflows/build-process.md -> references/build-config.md
 
 **Why:** Each hop degrades context. By the second hop, the LLM has lost track of where it started and why. If a reference file needs content from another reference file, either merge them or restructure so SKILL.md links to both directly.
 
-**Exception:** Directory nesting for organization is fine (`references/guides/topic.md`). The restriction is on *reference chains* (file A telling the LLM to go read file B), not on directory depth.
+**Directory depth:** keep `references/` flat. plugin-rulebook R14 (REQUIRED) forbids subdirectories inside `references/`, so `references/guides/topic.md` is a violation; use `references/guides-topic.md` instead. Reference chains (file A telling the LLM to go read file B) are a separate, ADVISORY check.
 
 ---
 

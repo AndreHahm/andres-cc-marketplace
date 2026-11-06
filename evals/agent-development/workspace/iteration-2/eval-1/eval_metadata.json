@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/agent-development/SKILL.md",
+  "assertions": [
+    {"text": "Agent file has valid frontmatter with name, description, model, and color fields", "type": "structure", "target": "outputs/agents/test-coverage-checker.md frontmatter"},
+    {"text": "tools field (if present) is restricted to Read/Grep/Glob only, with no Write/Edit/Bash", "type": "structure", "target": "outputs/agents/test-coverage-checker.md frontmatter"},
+    {"text": "description field is a single sentence with no verbose <example> blocks", "type": "quality", "target": "outputs/agents/test-coverage-checker.md frontmatter"},
+    {"text": "Body includes a '## When to invoke' section with 2-4 prose trigger scenarios", "type": "structure", "target": "outputs/agents/test-coverage-checker.md body"},
+    {"text": "name field is lowercase-hyphenated, 3-50 characters, starts/ends alphanumeric", "type": "structure", "target": "outputs/agents/test-coverage-checker.md frontmatter"}
+  ]
+}

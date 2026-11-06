@@ -394,13 +394,7 @@ Track skill evolution in a footer section:
 - Enables version-specific discussions
 - Shows the skill is actively maintained
 
-Use optional frontmatter:
-```yaml
----
-name: skill-name
-version: 1.0.0
----
-```
+Keep the version in this body footer only: skill frontmatter must not carry a `version` field (plugin-rulebook R5; it is command-only).
 
 ### Quick Reference Ordering (Emphasis)
 

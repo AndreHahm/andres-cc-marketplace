@@ -3,10 +3,11 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules (R1-R37) for the naming, language, formatting and
   tool-scoping of all components (skills, agents, commands, hooks, rules) in a Claude Code plugin.
-  Use when creating, validating or refining a plugin component, checking a component's or a full
-  plugin's rule compliance (for the full multi-axis reviewer fan-out, see plugin-auditor), loading
-  the active rule configuration, or before finalizing or packaging any plugin component. Not
-  structural validation (manifest correctness, directory layout, component wiring), which is
+  Use when checking a component's or a full plugin's R1-R37 rule compliance, loading the active
+  rule configuration, or before finalizing or packaging a plugin component; the authoring skills
+  (skill-development, agent-development, and the like) fire first and invoke this at "before
+  finalizing". For the full multi-axis reviewer fan-out, see plugin-auditor; for trigger
+  collisions between components, see activation-reviewer. Not structural validation (manifest correctness, directory layout, component wiring), which is
   `plugin-validator`'s domain, and not scaffolding a plugin's directory structure or package
   layout, which is `plugin-development`'s domain.
 allowed-tools: Read Grep Glob Bash(git ls-files:*) Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/smoke_test.py:*)
@@ -27,7 +28,7 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 ## When to Use
 
 - Before finalizing any new plugin component
-- When validating or refining existing plugin components
+- When checking existing plugin components for rule compliance
 - When another plugin-devkit skill requests rulebook compliance via Skill tool
 - When auditing an entire plugin for consistency
 
@@ -38,6 +39,8 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 - Project-specific behavioral rules → `rule-development`
 - Validating a single existing rule file's quality (R1-R37 structure plus Incorrect/Correct examples, wording, scope) → the `rule-reviewer` agent, which already incorporates this skill's generic rules; one dispatch is enough
 - Skill quality metrics (token efficiency, trigger phrases) → `skill-reviewer`
+- Whether activation descriptions collide, or will fire correctly, across a set of skills or agents → `activation-reviewer`. This skill checks a description's size and format (R8, R21), not whether it selects the right component.
+- Authoring or editing a component (writing or rewriting a skill, agent, command or hook) → the matching authoring skill (`skill-development`, `agent-development`, `command-development`, `hook-development`); those invoke this skill at "before finalizing"
 - Security threat analysis → `skill-security`
 - Script/code correctness (file encodings, shell logic, mojibake, YAML parsing gaps) → `scripts-reviewer`. R1–R37 check structure, naming, formatting and frontmatter only, so a PASS makes no claim that scripts run correctly (a 3-command pipeline once passed cleanly with 2 functional bugs; see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason).
 - Wide-surface language compliance (scripts, config JSON, CLAUDE.md/README, beyond R1's file scope) → `language-reviewer`

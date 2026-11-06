@@ -91,7 +91,7 @@ Reference files within your plugin:
 ```markdown
 ---
 description: Analyze using plugin script
-allowed-tools: Bash(node:*), Read
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js *), Read
 ---
 
 Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js\`
@@ -113,7 +113,7 @@ Read template: @/path/to/plugins/plugin-name/templates/report.md
 ```markdown
 ---
 description: Run custom linter from plugin
-allowed-tools: Bash(node:*)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js *)
 ---
 
 Lint results: !\`node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js $0\`
@@ -331,7 +331,7 @@ Store analysis for future reference and comparison.
 
 ### Invoking Plugin Agents
 
-Commands can trigger plugin agents using the Task tool:
+Commands can trigger plugin agents using the Agent tool (formerly Task):
 
 ```markdown
 ---
@@ -347,12 +347,12 @@ The agent will:
 3. Suggest improvements
 4. Generate detailed report
 
-Note: This uses the Task tool to launch the plugin's code-analyzer agent.
+Note: This uses the Agent tool to launch the plugin's code-analyzer agent.
 ```
 
 **Key points:**
 - Agent must be defined in plugin's `agents/` directory
-- Claude will automatically use Task tool to launch agent
+- Claude will automatically use the Agent tool to launch the agent
 - Agent has access to same plugin resources
 
 ### Invoking Plugin Skills
@@ -389,6 +389,7 @@ Commands can be designed to work with plugin hooks:
 ```markdown
 ---
 description: Commit with pre-commit validation
+argument-hint: [files] [message]
 allowed-tools: Bash(git:*)
 ---
 
@@ -450,10 +451,8 @@ argument-hint: [environment]
 
 Validate environment: !\`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"\`
 
-$IF($0 in [dev, staging, prod],
-  Deploy to $0 environment using validated configuration,
-  ERROR: Invalid environment '$0'. Must be one of: dev, staging, prod
-)
+If the validation above printed INVALID, stop and report: Invalid environment '$0'. Must be one of: dev, staging, prod.
+Otherwise deploy to the $0 environment using the validated configuration.
 ```
 
 **Validation approaches:**
@@ -493,10 +492,8 @@ argument-hint: [environment] [version]
 
 Validate inputs: !\`test -n "$0" -a -n "$1" && echo "OK" || echo "MISSING"\`
 
-$IF($0 AND $1,
-  Deploy version $1 to $0 environment,
-  ERROR: Both environment and version required. Usage: /deploy [env] [version]
-)
+If the validation above printed MISSING, stop and report: Both environment and version required. Usage: /deploy [env] [version].
+Otherwise deploy version $1 to the $0 environment.
 ```
 
 ### Plugin Resource Validation

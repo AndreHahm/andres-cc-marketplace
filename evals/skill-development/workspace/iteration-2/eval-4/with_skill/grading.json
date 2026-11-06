@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "answer.md names skill-refiner-interactive as the skill for operator-approved refinement of an existing working skill",
+      "passed": true,
+      "evidence": "answer.md names skill-refiner-interactive"
+    },
+    {
+      "text": "answer.md explains the distinction: skill-development authors and repairs, the sibling refines with operator checkpoints",
+      "passed": true,
+      "evidence": "answer.md: skill-development authors and repairs; sibling refines with operator approval of each change"
+    },
+    {
+      "text": "No new skill was created and the five-phase creation process was not run",
+      "passed": true,
+      "evidence": "Only answer.md and notes.md exist; no skill created"
+    },
+    {
+      "text": "Nothing was written outside the outputs directory",
+      "passed": true,
+      "evidence": "No writes outside outputs/"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

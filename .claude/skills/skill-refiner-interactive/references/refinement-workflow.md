@@ -176,7 +176,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 - [ ] **Examples:** Code-first examples before abstract explanations
 - [ ] **Structure:** Clear sections (Quick Start → Workflows → Key Rules → References)
 - [ ] **Activation:** Trigger phrases present and clear (will Claude recognize requests?)
-- [ ] **Workflow pattern:** Load `${CLAUDE_PLUGIN_ROOT}/skills/skill-development/references/design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
+- [ ] **Workflow pattern:** Load `${CLAUDE_SKILL_DIR}/../../references/pdk-design-patterns.md`; identify which named pattern applies (Sequential Workflow Orchestration, Multi-MCP Coordination, Iterative Refinement, Context-aware Tool Selection, Domain-specific Intelligence); verify load-bearing key techniques are present — missing ones are Major
 - [ ] **Spawn anti-patterns:** No Cartesian product spawning (O(N×M) subagent spawns across independent lists), no unbounded agent spawning (loop spawn with no explicit count cap on a user-controlled list), no vague subagent prompts (dispatch with no file paths, goal, or output spec)
 
 **Pass Condition:** within the R13 tiers with no Critical, 80% rule applied, clear procedural content.
@@ -189,7 +189,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 - [ ] All files referenced in SKILL.md exist
 - [ ] No orphaned files (all reference files are linked)
 - [ ] One level deep only (no nested chains: `references/` → files, not `references/subdir/file`)
-- [ ] **No reference→reference chains:** scan each `references/*.md` for imperative directives to read another `references/` file — flag each as Major
+- [ ] **No reference→reference chains:** scan each `references/*.md` for imperative directives to read another `references/` file — flag each as Minor (R14 rates reference chains ADVISORY, matching `skill-reviewer`)
 - [ ] File naming consistent (lowercase, hyphens: `refinement-workflow.md`)
 - [ ] Each file has clear purpose (title, table of contents if >100 lines)
 - [ ] Links from SKILL.md are accurate (correct filenames)

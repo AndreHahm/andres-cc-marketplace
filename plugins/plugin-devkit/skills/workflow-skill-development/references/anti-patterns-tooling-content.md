@@ -41,7 +41,7 @@ Find all Python files using Glob with pattern `**/*.py`.
 
 **Before:**
 ```yaml
-allowed-tools: Bash Read Write Glob Grep Task AskUserQuestion
+allowed-tools: Bash Read Write Glob Grep Agent AskUserQuestion
 ```
 
 **After (for a read-only analysis skill):**
@@ -66,7 +66,7 @@ Spawn a subagent to analyze the function.
 
 **After:**
 ```markdown
-Spawn a Task agent (subagent_type=Explore) with prompt:
+Spawn an Agent subagent (subagent_type=Explore) with prompt:
 "Read the function `processInput` in `src/handler.py`. List all external
 calls it makes, what validation is performed on inputs, and whether any
 input reaches a shell command or SQL query without sanitization.
@@ -222,7 +222,7 @@ Combine patterns into one regex. Grep once across the codebase. Filter results a
 **Before:**
 ```markdown
 ### Phase 3: Analyze Code
-For each code file discovered in Phase 2, spawn a Task subagent to:
+For each code file discovered in Phase 2, spawn an Agent subagent to:
 - Read the file
 - Build a summary of its public API
 - Identify potential issues
@@ -231,7 +231,7 @@ For each code file discovered in Phase 2, spawn a Task subagent to:
 **After:**
 ```markdown
 ### Phase 3: Analyze Code
-Batch discovered files into groups of 10-20. For each batch, spawn a single Task subagent with prompt:
+Batch discovered files into groups of 10-20. For each batch, spawn a single Agent subagent with prompt:
 "Read the following files: [list]. For each file, summarize its public API and identify potential issues. Return a markdown table with one row per file."
 ```
 

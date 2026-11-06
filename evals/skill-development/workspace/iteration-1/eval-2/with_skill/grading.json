@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "A skills/release-notes/SKILL.md exists with a name and a description containing trigger phrases", "passed": true, "evidence": "name: release-notes; description lists \"draft release notes\", \"write release notes\", \"what shipped since the last tag\""},
+    {"text": "allowed-tools has Bash(git:*) and Bash(gh:*) as separate entries, not Bash(git:*, gh:*)", "passed": true, "evidence": "allowed-tools: Read Write Bash(git:*) Bash(gh:*)"},
+    {"text": "Read and Write remain granted", "passed": true, "evidence": "allowed-tools begins Read Write"},
+    {"text": "The original behavior is preserved: list merged PRs, group by conventional-commit type, write RELEASE_NOTES.md", "passed": true, "evidence": "body line 20 groups by conventional-commit prefix; line 21 writes RELEASE_NOTES.md with Write"},
+    {"text": "Nothing was written outside the outputs directory", "passed": true, "evidence": "git status --short shows only ?? evals/skill-development/"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
