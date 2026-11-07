@@ -10,6 +10,9 @@ All notable changes to this plugin are documented here.
 - Both adapters exit 1 when stdout cannot be written, and exit 2 when stdin is closed, instead of a traceback.
 - `collect_sonar.py` accepts only JSON whitespace between pages.
 - `using-sonarqube-cloud` checks a PR number before it reaches a command line.
+- The read skills pre-approve `sonar list issues`, and `using-sonarqube-cloud` also `sonar quality-gate status`.
+  `sonar api` still prompts every time, and the resolver grants no `sonar` command.
+- Project key checks in the skills now match the adapter's 400-character limit.
 
 ### Fixed
 - `using-sonarqube-cloud`'s two issue-list forms named an unset `$FIELDS` and failed; the filter is now inline.
