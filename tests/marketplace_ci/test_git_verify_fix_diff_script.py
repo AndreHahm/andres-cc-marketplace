@@ -524,6 +524,8 @@ REGISTRY = (REPO / ".claude/marketplace-sync.json").read_text(encoding="utf-8") 
         ".claude/marketplace-sync.json",
         "plugins/git-kit/scripts/git-verify-fix-diff.py",
         ".claude/scripts/git-verify-fix-diff.py",
+        ".claude/skills/handling-review-findings/references/fix-self-review.md",
+        "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
     ],
 )
 def test_fix_touching_an_ungraded_path_still_runs_the_verifiers_and_lists_it(repo, path):
@@ -533,6 +535,14 @@ def test_fix_touching_an_ungraded_path_still_runs_the_verifiers_and_lists_it(rep
     result = _run(repo, "--base", base)
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["ungraded"] == [path]
+
+
+def test_the_launch_procedures_skill_md_is_listed_as_ungraded(repo):
+    # SKILL.md is itself a verifier-covered component, so the exit code is not asserted here.
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    path = "plugins/git-kit/skills/handling-review-findings/SKILL.md"
+    _commit(repo, path, "x = 1\n", "touch launch procedure")
+    assert json.loads(_run(repo, "--base", base).stdout)["ungraded"] == [path]
 
 
 def test_ungraded_path_does_not_hide_a_blocking_finding_elsewhere(repo):
@@ -550,6 +560,7 @@ def test_ungraded_path_does_not_hide_a_blocking_finding_elsewhere(repo):
         ("scripts/marketplace_ci/extra.py", True),
         (".claude/marketplace-sync.json", True),
         ("plugins/git-kit/scripts/git-verify-fix-diff.py", False),
+        ("plugins/git-kit/skills/handling-review-findings/SKILL.md", False),
     ],
 )
 def test_result_caveat_only_when_the_verifiers_inputs_changed(repo, path, caveat):

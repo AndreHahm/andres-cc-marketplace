@@ -64,7 +64,7 @@ over the changed paths and prints `{"checked", "blocking"}`.
 - **Verifier modules come from the target branch** (where `HEAD` last met `refs/remotes/origin/HEAD`; without
   that ref, or when `origin`'s fetch URL is not `--upstream`, the run exits 2), never from the tree being
   judged and never from `--base`. A fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json`
-  or the script is still checked by the target branch's verifiers, but no verifier grades those paths
+  the script, or this skill's own `SKILL.md`, `references/fix-self-review.md` or `scripts/smoke_test.py` is still checked by the target branch's verifiers, but no verifier grades those paths
   themselves: the JSON lists them under `ungraded`. Say in the reply that those paths were not checked
   (never "verifiers passed" for them). When the registry or a verifier is among them, the JSON also carries
   a `result_caveat`: say in the reply, in your own words, that the other verdicts in that run may be weaker than
