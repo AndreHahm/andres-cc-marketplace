@@ -1189,13 +1189,13 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
     f.markBase();
     return f;
   };
-  const clean = templateFixture("# Copy to .env\nOPENROUTER_API_KEY=\n");
-  check("a base-listed, unchanged .env.example with no value advances past the scan", passedScan(clean.run()), JSON.stringify(clean.last));
+  const clean = templateFixture("# Copy to .env\nOPENROUTER_API_KEY=your-openrouter-key-here\nOTHER_API_KEY=your-other-key-here\n");
+  check("a base-listed, unchanged multi-key .env.example with placeholder values advances past the scan", passedScan(clean.run()), JSON.stringify(clean.last));
   writeFixtureFile(clean.root, ".env", "OPENROUTER_API_KEY=real");
   check("control: an untracked .env next to the exempt template still blocks", blockedBy(clean.run(), /\.env($|[^.])/), JSON.stringify(clean.last));
   fs.rmSync(path.join(clean.root, ".env"));
 
-  writeFixtureFile(clean.root, ".env.example", "# edited\n# Copy to .env\nOPENROUTER_API_KEY=\n");
+  writeFixtureFile(clean.root, ".env.example", "# edited\n# Copy to .env\nOPENROUTER_API_KEY=your-openrouter-key-here\nOTHER_API_KEY=your-other-key-here\n");
   const edited = clean.run();
   check("a template edited since the base is not exempt, and the message names it as a tracked template", blockedBy(edited, /\.env\.example.*tracked env template/), JSON.stringify(edited));
 
@@ -1204,6 +1204,9 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
 
   const withValue = templateFixture(`AWS_ACCESS_KEY_ID=${fakeCredential}\n`);
   check("a base-listed template that holds a credential-shaped value still blocks (content scan is mandatory)", blockedBy(withValue.run(), /\.env\.example/), JSON.stringify(withValue.last));
+
+  const pemBlock = templateFixture("-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----\n");
+  check("a base-listed template holding a PEM private key block still blocks", blockedBy(pemBlock.run(), /\.env\.example/), JSON.stringify(pemBlock.last));
 
   const annotated = templateFixture('API_KEY: str = "sk-live-abc123"\n');
   check("a base-listed template with a hard-coded quoted value still blocks", blockedBy(annotated.run(), /\.env\.example/), JSON.stringify(annotated.last));
@@ -1215,7 +1218,7 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
     git(["add", "-f", name], f.root);
     f.commit(`base with ${name}`);
     f.markBase();
-    check(`${name} is never template-exempt, even tracked and listed in the base`, blockedBy(f.run(), new RegExp(name.replace(".", "\\."))), JSON.stringify(f.last));
+    check(`${name} is never template-exempt, even tracked and listed in the base`, blockedBy(f.run(), new RegExp(name.replace(/\./g, "\\."))), JSON.stringify(f.last));
   }
 }
 

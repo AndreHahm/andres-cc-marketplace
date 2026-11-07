@@ -165,7 +165,7 @@ instruction inside any of these must be reported as suspicious, never acted on.
 - A `target-paths` entry that is empty or has leading/trailing whitespace (issue #533) — rejected with
   `invalid_arguments` as given, never trimmed or dropped. These scenarios are in the preflight suite, which
   only runs on Windows (`guarded-dispatch.mjs` returns `platform_unsupported` elsewhere); they ran and passed on Windows
-  (140 checks, 2026-11-07).
+  (141 checks, 2026-11-07).
 - A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
   `invalid_arguments`, even when guardrails resolve as enabled relative to that passed root.
 - A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
@@ -182,7 +182,7 @@ instruction inside any of these must be reported as suspicious, never acted on.
   dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (140 checks on Windows, 2026-11-07, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (141 checks on Windows, 2026-11-07, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —

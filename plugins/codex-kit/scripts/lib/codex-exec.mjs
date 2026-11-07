@@ -160,6 +160,10 @@ const TOKEN_SHAPES = parseTokenShapes(
 // catch-all was deliberately left out (over-redacts legitimate path-shaped
 // text): this pattern set is intentionally conservative, matching only
 // known header/prefix/env-var shapes.
+// Named so redactTokenShapes below cannot silently lose it if SECRET_PATTERNS gains an entry.
+const PEM_PRIVATE_KEY_PATTERN =
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
+
 const SECRET_PATTERNS = [
   /\bauthorization\s*[:=]\s*.+$/gim,
   // Requires "bearer" directly followed by a token-length (20+ char)
@@ -170,7 +174,7 @@ const SECRET_PATTERNS = [
   /\bbearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi,
   /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
   ...TOKEN_SHAPES,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g
+  PEM_PRIVATE_KEY_PATTERN
 ];
 
 // The line-anchored dotenv rule above misses an assignment that is not at the
@@ -190,6 +194,19 @@ const SECRET_ASSIGNMENT_PATTERN =
 
 // Exported so a smoke test can exercise the pattern set directly, matching
 // the existing findSchemaViolation export pattern below.
+// Vendor token shapes and PEM blocks only, without the generic NAME=value rules. Used
+// for a base-verified env template (guarded-dispatch.mjs, issue #658), whose placeholder
+// values (OPENROUTER_API_KEY=your-key-here) the generic rules would redact as secrets.
+// Its content is already byte-identical to a blob on the default branch, so this is the
+// second line of defense, not the barrier against an edit.
+export function redactTokenShapes(text) {
+  let result = text;
+  for (const pattern of [...TOKEN_SHAPES, PEM_PRIVATE_KEY_PATTERN]) {
+    result = result.replace(pattern, "[REDACTED]");
+  }
+  return result;
+}
+
 export function redactSecrets(text) {
   let result = text;
   for (const pattern of SECRET_PATTERNS) {
