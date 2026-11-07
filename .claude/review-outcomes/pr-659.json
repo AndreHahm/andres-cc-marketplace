@@ -1,0 +1,34 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4501523357",
+      "line": 708,
+      "note": "Fixed in b48e503e: the template-aware credential check no longer re-rejects placeholder AUTH/CREDENTIAL lines; real values still block. Covered by two new preflight checks.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 659,
+      "recorded_at": "2026-11-07T12:20:09+00:00",
+      "rule": "template-credential-assignment"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4501534130",
+      "line": 474,
+      "note": "Declined by the user: opaque values under non-secret-looking names (e.g. DATABASE_URL with userinfo) are the documented trade-off of the base-verified template exemption. Thread replied to and resolved at the user's request.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 659,
+      "recorded_at": "2026-11-07T12:20:10+00:00",
+      "rule": "template-url-userinfo"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4501534144",
+      "line": 1063,
+      "note": "Fixed in b48e503e: CODEX_KIT_REVIEW_TIMEOUT_MS above 2147483647 is rejected in the guarded fallback. The same gap in bridge-invoke.mjs is outside this PR and not fixed.",
+      "path": "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+      "pr": 659,
+      "recorded_at": "2026-11-07T12:20:10+00:00",
+      "rule": "timeout-ceiling"
+    }
+  ]
+}
