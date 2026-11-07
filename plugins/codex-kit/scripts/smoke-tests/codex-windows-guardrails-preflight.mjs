@@ -1214,6 +1214,13 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
   const authHeader = templateFixture("Authorization: Basic dXNlcjpwYXNz\n");
   check("a base-listed template holding an Authorization header line still blocks", blockedBy(authHeader.run(), /\.env\.example/), JSON.stringify(authHeader.last));
 
+  // PR #659 Codex P2: the generic CREDENTIAL/AUTH assignment rule must not re-reject placeholder lines the template predicate accepts.
+  const authPlaceholders = templateFixture("AUTH_TOKEN=your-auth-token\nCREDENTIAL=placeholder\n");
+  check("a base-listed template with placeholder AUTH_TOKEN and CREDENTIAL values advances past the scan", passedScan(authPlaceholders.run()), JSON.stringify(authPlaceholders.last));
+
+  const authRealValue = templateFixture("AUTH_TOKEN=opaque-internal-value\n");
+  check("a base-listed template with a non-placeholder AUTH_TOKEN value still blocks", blockedBy(authRealValue.run(), /\.env\.example/), JSON.stringify(authRealValue.last));
+
   const opaque = templateFixture("MY_API_KEY=short-internal-secret\n");
   check("a base-listed template with an opaque value under a secret-suggestive name still blocks (cross-model review round 2)", blockedBy(opaque.run(), /\.env\.example/), JSON.stringify(opaque.last));
 
@@ -1301,7 +1308,8 @@ console.log("\n=== issue #649: the unsandboxed dispatch honors CODEX_KIT_REVIEW_
     badModel.ok === false && /CODEX_KIT_REVIEW_MODEL must match/.test(badModel.detail),
     JSON.stringify(badModel)
   );
-  for (const bad of ["not-a-number", "-1", "0", "1.5"]) {
+  // 2147483648 is past Node's setTimeout ceiling (it would become a 1 ms timer): PR #659 CodeRabbit.
+  for (const bad of ["not-a-number", "-1", "0", "1.5", "2147483648"]) {
     const result = dry({ CODEX_KIT_REVIEW_MODEL: undefined, CODEX_KIT_REVIEW_TIMEOUT_MS: bad });
     check(
       `an invalid timeout (${bad}) is rejected before any exec, with the bridge's message`,
