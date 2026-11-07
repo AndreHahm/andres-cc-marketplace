@@ -22,17 +22,16 @@ check the command's text yourself before running it. Run the scan only on your o
 code from the repository's config files, so scanning someone else's checked-out PR branch would run their
 code. Alternatives for a narrower
 scope: `--staged` (only the git staging area), `--diff [base]` (changes against a base branch), `--files
-<paths...>`. `--inspect` reports which tools are available without analysing; `--fail-if-missing` stops if a
+<paths...>`. `--fail-if-missing` stops if a
 configured tool is unavailable; `--tool <id>` restricts to one tool.
 
 ## Config must exist first
 
-The scan reads `.codacy/codacy.config.json`. Without it, `codacy-analysis analyze . --inspect` reports "No
-.codacy/codacy.config.json found. Run `codacy-analysis init`" and finds 0 tools. The storage was decided
+The scan reads `.codacy/codacy.config.json`, and finds no tools without it. The storage was decided
 2026-10-17: the file is local and ignored (`.codacy/` is in `.gitignore`), so it follows each person's own
 tooling and no shared copy can drift. So:
 
-1. Run `--inspect` first. If the config is missing, stop and tell the user.
+1. Use `Read` on `.codacy/codacy.config.json` first. If the file is missing, stop and tell the user.
 2. Hand the user the exact command to run themselves; this skill does not run it, because it creates files in
    the repository:
 
