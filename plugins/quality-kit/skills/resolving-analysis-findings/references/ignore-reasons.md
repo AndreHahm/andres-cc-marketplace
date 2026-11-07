@@ -44,8 +44,27 @@ The comment is single-quoted and written by you from what the code does, using o
 
 A comment that restates the rule name ("subprocess call") is not a reason.
 
+## Sonar transitions
+
+Rung 3 for a `sonar` record. A remote write, with the per-command approval in `SKILL.md`'s "Sonar mechanisms".
+
+```text
+sonar api post /api/issues/do_transition -d '{"issue":"<issue_id>","transition":"<transition>","comment":"<comment>"}'
+```
+
+| Transition | Use when | Result (run 2026-11-07) |
+|---|---|---|
+| `falsepositive` | The rule misreads the code | `issueStatus: FALSE_POSITIVE`, `resolution: FALSE-POSITIVE` |
+| `accept` | Real pattern, accepted: not exploitable, deliberate, test or external code | `issueStatus: ACCEPTED`, `resolution: WONTFIX` |
+| `reopen` | Reverses either | `issueStatus: OPEN`, `resolution: null` |
+
+`comment` is an optional API parameter; here it is required, under the same character rules as Codacy's comment
+above, so it cannot break the JSON. `<issue_id>` must match the same pattern. Comments stay in the issue's history after a
+reopen. Never `/api/issues/bulk_change`: a bulk change is handed over, like rung 5.
+
 ## Audit
 
 `codacy issues <provider> <org> <repo> -i -n 1000 -o json` (run by the collecting skill, not directly from this
 skill) lists ignored issues with reason, comment, who and when. `collecting-analysis-findings` reads it as `--kind ignored`. Its `-I`/`--ignore` flag (bulk ignore) is
-not part of this workflow.
+not part of this workflow. For Sonar the collecting skill reads the marked issues with `--kind ignored`, and the
+record's `ignore_reason` is the `issueStatus`.
