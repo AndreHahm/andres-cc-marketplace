@@ -732,20 +732,30 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   (required; the skill passes the PR's base repository) must match `origin`'s fetch URL, or the run exits 2:
   a clone whose `origin` is a contributor's fork would otherwise trust that fork's default branch. The
   branch still picks which version of the target's verifiers judges it (the one at the merge-base). The
-  driver script runs from wherever it is started, so its exit 2 for a fix that edits it catches an honest
-  edit only; it removes its own directory from `sys.path` before any other import, so a sibling module a PR
-  adds there cannot shadow the standard library or the verifiers' dependencies. CI still judges the pushed
-  head.
+  driver script runs from wherever it is started; the skill starts it from the target branch's committed copy,
+  so a fix that edits the driver cannot grade itself. It removes its own directory from `sys.path` before any
+  other import, so a sibling module a PR adds there cannot shadow the standard library or the verifiers'
+  dependencies. `--target-branch <name>` (the PR's `baseRefName`) anchors on `refs/remotes/origin/<name>`
+  instead of `origin/HEAD`, so a PR against a non-default branch is judged by that branch's verifiers; the
+  name must be a plain branch name and the ref must exist locally, or the run exits 2. The PR's author picks
+  its base branch, so the commit that supplies the code (the merge-base) must also already be an ancestor of
+  `refs/remotes/origin/HEAD`, or the run exits 2: a PR into a branch that diverged from the default branch is
+  not verified. CI still judges the
+  pushed head.
 - **Touched-file logic.** Every finding `run_verifiers` returns for the changed files blocks; the script has
   no touched-line filter of its own. Verifiers that compare with a base compare with `--base` (the commit
   before the fix), so a value already over its limit before the fix and not worse after it passes here while
-  CI can still block. A fix that changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json` or the
-  script itself exits 2, because the verifiers cannot grade a change to themselves. `--base` must be an
+  CI can still block. A fix that changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json`, the
+  script itself or the launch-procedure files of `handling-review-findings` (its `SKILL.md`,
+  `references/fix-self-review.md` and `scripts/smoke_test.py`, plus their `.claude/` mirrors) is still checked
+  by the target branch's verifiers over the rest of the diff; no verifier grades those paths, so they are
+  listed under an `ungraded` key, and when the registry or a verifier is among them a `result_caveat` key says
+  the other verdicts may be weaker than they look. `--base` must be an
   ancestor of `HEAD`; without `--worktree` the committed `HEAD` is verified in a temporary clone.
-- **Output and exit codes.** One JSON object with `checked` and `blocking`. Exit 0 is clean,
+- **Output and exit codes.** One JSON object with `checked` and `blocking`, plus `ungraded` and
+  `result_caveat` when described above. Exit 0 is clean,
   1 a blocking finding, 2 not verified: the verifiers could not run, the verifiers exist at the target
-  branch but not in the tree, the diff is empty, `--worktree` runs in a sparse checkout, or the fix touches
-  what grades it. Exit 0 with "nothing to check" happens only where neither the target branch nor
+  branch but not in the tree, the diff is empty, or `--worktree` runs in a sparse checkout. Exit 0 with "nothing to check" happens only where neither the target branch nor
   the tree has `scripts/marketplace_ci/review_verifiers.py` (git-kit is installed in other repositories).
 - **Not covered.** It does not run the model reviewers, the structural check or the computed gate, and a
   clean result is not the CI verdict: CI still judges the pushed head.

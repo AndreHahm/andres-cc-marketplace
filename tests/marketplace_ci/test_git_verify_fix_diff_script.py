@@ -498,6 +498,52 @@ def test_no_target_branch_ref_means_no_trusted_verifiers(repo):
     assert "origin/HEAD" in result.stdout + result.stderr
 
 
+def test_target_branch_uses_the_prs_base_not_origin_head(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    _git(repo, "update-ref", "refs/remotes/origin/release/1.0", "HEAD~2")
+    ok = _run(repo, "--base", base, "--target-branch", "release/1.0")
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+    # The named base is what gets consulted, not origin/HEAD (which would pass here).
+    empty_tree = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+    unrelated = _git(repo, "commit-tree", "-m", "unrelated", empty_tree)
+    _git(repo, "update-ref", "refs/remotes/origin/unrelated", unrelated)
+    assert _run(repo, "--base", base).returncode == 0
+    bad = _run(repo, "--base", base, "--target-branch", "unrelated")
+    assert bad.returncode == 2, bad.stdout + bad.stderr
+    assert "no history" in bad.stdout + bad.stderr
+
+
+def test_target_branch_missing_ref_is_not_verified(repo):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    result = _run(repo, "--base", base, "--target-branch", "release/9.9")
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "refs/remotes/origin/release/9.9" in result.stdout + result.stderr
+
+
+def test_target_branch_must_already_be_on_the_default_branch(repo):
+    # A branch the PR's author picks must not supply code never merged to the default branch.
+    _commit(repo, "scripts/marketplace_ci/extra.py", "x = 1\n", "unmerged verifier change")
+    _git(repo, "update-ref", "refs/remotes/origin/evil", "HEAD")
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    bad = _run(repo, "--base", base, "--target-branch", "evil")
+    assert bad.returncode == 2, bad.stdout + bad.stderr
+    assert "not on the default branch" in bad.stdout + bad.stderr
+    # The same history anchored on the default branch itself is accepted.
+    assert _run(repo, "--base", base, "--target-branch", "main").returncode == 0
+
+
+@pytest.mark.parametrize("name", ["../main", "a..b", "-x", "a b", "main/", "", "x;y", "$(id)"])
+def test_target_branch_must_be_a_plain_branch_name(repo, name):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    _commit(repo, SKILL, GOOD + "\nMore text.\n", "fix")
+    result = _run(repo, "--base", base, f"--target-branch={name}")
+    assert result.returncode == 2, (name, result.stdout + result.stderr)
+    assert "plain branch name" in result.stdout + result.stderr
+
+
 # --- security re-review (#578): touched-file logic and untrusted-grader guards -------------------
 
 
