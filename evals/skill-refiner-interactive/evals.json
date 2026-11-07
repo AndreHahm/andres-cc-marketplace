@@ -235,8 +235,8 @@
     {
       "id": 24,
       "name": "goal-passes-when-exception-clears-command",
-      "prompt": "Read plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md and its references/goal-derivation.md and references/pre-analysis-checklist.md (read these files directly; do not rely on any other copy of the skill). A refinement session selected the 'Tool scoping (undeclared tool)' goal. At SKILL.md step 8 the re-run tool-scoping scan reports: one ungranted Bash command is cleared by R6's deliberately-ungranted exceptions with a confirmed reason, so the scan flags nothing. Record PASS or FAIL for the goal.",
-      "expected_output": "PASS: a command cleared by R6's exceptions is not flagged and does not fail the goal.",
+      "prompt": "Read plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md and its references/goal-derivation.md and references/pre-analysis-checklist.md (read these files directly; do not rely on any other copy of the skill). A refinement session selected the 'Tool scoping (undeclared tool)' goal. At SKILL.md step 8 the re-run tool-scoping scan reports: one ungranted Bash command is cleared by R6's deliberately-ungranted exceptions with a confirmed reason, so the scan flags nothing. Record PASS or FAIL for the goal. Also say what the goal result would be if that reason could not be confirmed.",
+      "expected_output": "PASS: a command cleared by R6's exceptions is not flagged and does not fail the goal. If the reason could not be confirmed, the result is ADVISORY (unverified): the goal still passes and the advisory stays in the report.",
       "files": []
     }
   ],

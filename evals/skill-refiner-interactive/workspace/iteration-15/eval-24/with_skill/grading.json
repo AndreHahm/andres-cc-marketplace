@@ -1,0 +1,26 @@
+{
+  "eval_id": 24,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Records PASS for a confirmed reason",
+      "passed": true,
+      "evidence": "Goal result: PASS"
+    },
+    {
+      "text": "Treats the cleared command as not flagged",
+      "passed": true,
+      "evidence": "Record it with no ADVISORY note"
+    },
+    {
+      "text": "States an unconfirmed reason is ADVISORY (unverified), the goal still passes and the advisory stays in the report",
+      "passed": true,
+      "evidence": "If the reason could not be confirmed: still PASS ... the ADVISORY (unverified) line kept for that command"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
