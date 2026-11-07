@@ -1211,6 +1211,29 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
   const annotated = templateFixture('API_KEY: str = "sk-live-abc123"\n');
   check("a base-listed template with a hard-coded quoted value still blocks", blockedBy(annotated.run(), /\.env\.example/), JSON.stringify(annotated.last));
 
+  for (const name of [".env.sample", ".env.template"]) {
+    const f = makeFixture();
+    writeFixtureFile(f.root, ".secretlintignore", `.secretlintignore\n${name}\n`);
+    writeFixtureFile(f.root, name, "SOME_API_KEY=your-key-here\n");
+    git(["add", "-f", name], f.root);
+    f.commit(`base with ${name}`);
+    f.markBase();
+    check(`${name} with a placeholder value is exempt like .env.example`, passedScan(f.run()), JSON.stringify(f.last));
+  }
+
+  // A non-template exemption keeps the full redactSecrets scan (the weaker template scan must not leak into it).
+  {
+    const f = makeFixture();
+    writeFixtureFile(f.root, ".secretlintignore", ".secretlintignore\nscripts/anls-secret-helper.py\n");
+    writeFixtureFile(path.join(f.root, "scripts"), "anls-secret-helper.py", "FOO_API_KEY=placeholder-value\n");
+    f.commit("exact-path exemption, generic assignment inside");
+    check(
+      "a non-template file exempted by exact path still blocks on a generic NAME_API_KEY=value line (full redactSecrets, not the template subset)",
+      blockedBy(f.run(), /anls-secret-helper\.py/),
+      JSON.stringify(f.last)
+    );
+  }
+
   for (const name of [".env.local", ".env.production"]) {
     const f = makeFixture();
     writeFixtureFile(f.root, ".secretlintignore", `.secretlintignore\n${name}\n`);
