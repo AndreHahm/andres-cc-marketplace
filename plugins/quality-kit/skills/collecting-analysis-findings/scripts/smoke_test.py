@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Smoke test for collecting-analysis-findings: adapter on fixtures, frontmatter, links, grants.
 
-Runs the adapter in-process (no subprocess) against synthetic fixtures shaped like the real
-Cloud CLI output, then checks this skill's SKILL.md and references. Exit 0 when every check
-passes, 1 otherwise.
+Runs the adapter in-process against synthetic fixtures shaped like the real Cloud CLI output, and
+as a subprocess only for the closed-stdout and full-disk checks, which need a real stream. Then
+checks this skill's SKILL.md and references. Exit 0 when every check passes, 1 otherwise.
 """
 
 from __future__ import annotations
