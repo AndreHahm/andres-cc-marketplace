@@ -221,8 +221,6 @@ EXPECTED_ALLOWED_TOOLS = (
     "Bash(git ls-files:*)",
     "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*)",
     "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*)",
-    "Bash(git merge-base HEAD refs/remotes/origin/:*)",
-    "Bash(git merge-base --is-ancestor:*)",
     "Bash(git cat-file -e:*)",
     "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*)",
     "Bash(gh issue list:*)",
