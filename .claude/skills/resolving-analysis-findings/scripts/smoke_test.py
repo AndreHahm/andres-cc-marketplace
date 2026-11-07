@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Smoke test for resolving-analysis-findings: structure, grants and decision-rule invariants.
 
-This skill is prose with no executable of its own, so the test checks what can drift: frontmatter,
+This skill is prose plus one small head-read script, so the test runs that script against a fake
+`gh` and checks what can drift: frontmatter,
 every referenced file, the tool grants against what the body uses, the five-rung ladder and the
 decision-rights table, the one-way dependency on collecting-analysis-findings, and that the inline
 suppression syntax is the same in this skill's references, docs/ci.md and the git-kit scripts it
@@ -11,9 +12,14 @@ Exit 0 when every check passes, 1 otherwise.
 
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
+import json
 import re
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 SKILL_DIR = HERE.parent
@@ -96,15 +102,101 @@ def check_grants(fm: dict[str, str], body: str) -> None:
         not re.search(r"\b(AskUserQuestion|Write)\b", grants),
     )
     check(
-        "grants only the two pinned gh pr view reads in Bash (no codacy command is pre-approved)",
+        "grants only the pinned head-read script in Bash (no gh or codacy command is pre-approved)",
         re.findall(r"(?<![\w(])Bash(?:\([^)]*\))?", grants)
-        == ["Bash(gh pr view --json url:*)", "Bash(gh pr view --json headRefOid:*)"],
+        == [
+            "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings"
+            "/scripts/read_pr_head.py:*)"
+        ],
     )
     check(
         "boundaries tell the user never to choose don't ask again",
         'never choose "don\'t ask again"' in body.replace("\n", " "),
     )
     check("body calls the collecting skill", "Skill(collecting-analysis-findings)" in body)
+
+
+def check_read_pr_head() -> None:
+    path = SKILL_DIR / "scripts" / "read_pr_head.py"
+    spec = importlib.util.spec_from_file_location("read_pr_head", path)
+    check("read_pr_head.py loads", spec is not None and spec.loader is not None)
+    if spec is None or spec.loader is None:
+        return
+    module = importlib.util.module_from_spec(spec)
+    previous = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
+    sha = "a" * 40
+    repo = "github.com/acme/repo"
+    options: dict[str, object] = {}
+
+    def outcome(
+        argv: list[str], stdout: str = "", code: int = 0
+    ) -> tuple[int, list[list[str]], str]:
+        calls: list[list[str]] = []
+        printed = io.StringIO()
+
+        def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+            calls.append(command)
+            options.update(kwargs)
+            return SimpleNamespace(returncode=code, stdout=stdout)
+
+        with contextlib.redirect_stdout(printed), contextlib.redirect_stderr(io.StringIO()):
+            return module.main(argv, run=fake_run), calls, printed.getvalue()
+
+    for name, value in {"a SHA-1": sha, "a SHA-256": "b" * 64}.items():
+        status, calls, printed = outcome(["acme/repo", "12"], json.dumps({"headRefOid": value}))
+        check(
+            f"read_pr_head prints only {name} from the one fixed command",
+            status == 0
+            and printed == value + "\n"
+            and calls == [["gh", "pr", "view", "12", "--repo", repo, "--json", "headRefOid"]],
+        )
+    check(
+        "read_pr_head leaves the working directory before running gh",
+        "os.chdir(Path(__file__).resolve().parent)" in read(path),
+    )
+    check(
+        "read_pr_head tolerates undecodable gh output and closes stdin",
+        options.get("errors") == "replace" and "stdin" in options,
+    )
+    for name, argv in {
+        "an option as the number": ["acme/repo", "--web"],
+        "an option as the repository": ["--repo", "12"],
+        "a repository with no owner": ["repo", "12"],
+        "a dot repository": ["acme/.", "12"],
+        "a dot-dot repository": ["acme/..", "12"],
+        "a repository with a trailing newline": ["acme/repo\n", "12"],
+        "a zero number": ["acme/repo", "0"],
+        "a leading zero": ["acme/repo", "012"],
+        "an overlong number": ["acme/repo", "1" * 11],
+        "a number with a trailing newline": ["acme/repo", "12\n"],
+        "an extra argument": ["acme/repo", "12", "--web"],
+        "a missing argument": ["acme/repo"],
+    }.items():
+        status, calls, printed = outcome(argv)
+        check(
+            f"read_pr_head refuses {name} before running gh",
+            status == 2 and not calls and not printed,
+        )
+    for name, stdout, code in (
+        ("a failed gh", "", 1),
+        ("output that is not JSON", "not json", 0),
+        ("a JSON list", "[]", 0),
+        ("JSON null", "null", 0),
+        ("a null SHA", json.dumps({"headRefOid": None}), 0),
+        ("a numeric SHA", json.dumps({"headRefOid": 5}), 0),
+        ("a branch name", json.dumps({"headRefOid": "main"}), 0),
+        ("an uppercase SHA", json.dumps({"headRefOid": "A" * 40}), 0),
+        ("a short SHA", json.dumps({"headRefOid": sha[:39]}), 0),
+        ("a long SHA", json.dumps({"headRefOid": sha + "a"}), 0),
+        ("a SHA with a trailing newline", json.dumps({"headRefOid": sha + "\n"}), 0),
+    ):
+        status, calls, printed = outcome(["acme/repo", "12"], stdout, code)
+        check(f"read_pr_head refuses {name}", status == 2 and bool(calls) and not printed)
 
 
 def check_rules(body: str) -> None:
@@ -233,6 +325,7 @@ def check_skill_file() -> None:
     check("SKILL.md has a frontmatter block", bool(separator))
     check_structure(text, fm, body)
     check_grants(fm, body)
+    check_read_pr_head()
     check_rules(body)
 
 
