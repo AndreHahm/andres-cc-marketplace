@@ -91,8 +91,9 @@ by this skill. The only command this skill pre-approves is `scripts/read_pr_head
 It validates one repository and PR number and prints only the head commit SHA, so a grant on it reaches one read.
 No `sonar` command is pre-approved: `sonar api post` shares a prefix with the reads, so the same one-time approval
 applies.
-`collecting-analysis-findings`, which this skill calls, keeps its own `gh pr view` prefix grant; a flag can
-follow that prefix, and R6 clears it because every form it reaches only reads.
+`collecting-analysis-findings`, which this skill calls, keeps its own two `gh pr view` grants, both ending in
+`--json number,headRefOid,url`; the `*` in one matches any text, flags included, and R6 clears it because every
+`gh pr view` form only reads.
 
 `Edit` is pre-approved in `allowed-tools`, so the path check and the question before an extra file in step 5
 are instructions to follow, not something a grant enforces; a symlink at an edit target may be written
@@ -352,5 +353,5 @@ not saved as files.
 | `references/local-scan.md` | The local `codacy-analysis` flags and the missing-config handling, and `sonar analyze` |
 | `references/author-checklist.md` | Checklist for new scripts that run `git` or another command |
 | `scripts/read_pr_head.py` | Prints one PR's head SHA for the rung 3 re-check; the only command this skill pre-approves |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (66 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (75 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
 | `collecting-analysis-findings` skill | Source of the findings record this skill reads |
