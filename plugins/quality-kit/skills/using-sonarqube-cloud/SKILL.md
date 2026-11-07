@@ -57,7 +57,10 @@ settings or permission mode already allow it. Approve each one once, and never c
 wider `sonar` allow rule: `sonar api post` shares a prefix with `sonar api get`, so a persistent rule there would
 pre-approve writes, and a bare `sonar api get` can print identity fields (`author`, `assignee`, `contributors`,
 comment logins). `jq`, which the read forms in `references/cli-commands.md` pipe into, is not granted either,
-so a piped form also prompts for the `jq` part; it only filters the output.
+so a piped form also prompts for the `jq` part; it only filters the output, so approve each run once and never add
+a persistent `jq` allow rule. The `sonar list issues` grant also
+reaches a bare run without that filter, which raises no prompt and prints `author` and `assignee`: always run the
+projected form.
 
 It never runs `sonar api` with any method but `get`, nor `sonar remediate`, `sonar analyze`, `sonar import`,
 `sonar integrate`, `sonar link`, `sonar auth`, `sonar config set|unset`, `sonar system reset`, `sonar allowlist`,
@@ -100,7 +103,7 @@ Scenarios 1 to 6 were followed in a plan-only dry run on 2026-11-07 and all met 
 
 **Quality gates:**
 - [ ] Runs no `sonar` write form, and pre-approves only `sonar list issues` and `sonar quality-gate status`
-- [ ] Every read form projects its fields, so no identity value reaches the session
+- [ ] Only projected read forms are run (never a bare `sonar list issues`, though its grant allows one), so no identity value reaches the session
 - [ ] A project key, branch, file, issue key or PR number is checked before it reaches a command line
 - [ ] Decisions and records are routed to their skills
 

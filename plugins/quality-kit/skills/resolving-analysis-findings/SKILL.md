@@ -194,7 +194,7 @@ For a `sonar` record, steps 1 to 6 apply with these mechanisms. Severities are v
 | Rung | Mechanism |
 |---|---|
 | 1. Fix in code | The same |
-| 2. Inline suppression | `# NOSONAR(S5655)` plus the reason on that line (`references/suppression-formats.md`) |
+| 2. Inline suppression | Python files only: `# NOSONAR(S5655)` plus the reason on that line (`references/suppression-formats.md`). No other language's form is verified, so a finding in any other file skips rung 2 |
 | 3. Per-issue transition | `sonar api post /api/issues/do_transition`, `falsepositive` or `accept`, with a comment (`references/ignore-reasons.md`) |
 | 4. Path exclusion | `sonar.issue.ignore.multicriteria` in `.sonarcloud.properties`. It is read from the default branch, so it takes effect after merge and the count cannot be proven to drop before then: say so |
 | 5. Gate or profile change | Handed to the user; `using-sonarqube-cloud` covers how |
@@ -202,9 +202,9 @@ For a `sonar` record, steps 1 to 6 apply with these mechanisms. Severities are v
 | Action | Who decides |
 |---|---|
 | Rung 1, any severity | Decided and disclosed; the count must be proven to drop |
-| Rung 2 on `MINOR` or `INFO`, not `VULNERABILITY`; or on `MAJOR` for a shape `docs/ci.md` records as accepted. Neither may carry a `SECURITY` impact or a `HIGH` or `BLOCKER` impact | Decided and disclosed, with the reason written in the comment |
-| Rung 2 on any other finding, on any finding with such an impact, or a name not listed here | `AskUserQuestion`, once per finding or per named group |
-| Rung 3, any severity | `AskUserQuestion` per command, as for Codacy: its exact text, after the fresh re-collect in step 1 and a `headRefOid` re-read. Always a remote write. `reopen` needs the same approval |
+| Rung 2 in a Python file on `MINOR` or `INFO`, not `VULNERABILITY`; or on `MAJOR` for a shape `docs/ci.md` records as accepted. Neither may carry a `SECURITY` impact or a `HIGH` or `BLOCKER` impact | Decided and disclosed, with the reason written in the comment |
+| Rung 2 in a Python file on any other finding, on any finding with such an impact, or a name not listed here | `AskUserQuestion`, once per finding or per named group |
+| Rung 3, any severity | `AskUserQuestion` per command, as for Codacy: its exact text, reason and comment per approval, after the fresh re-collect in step 1. Always a remote write. Before running the approved command, re-read the head with `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py <owner/repo> <pr>`; if it differs from the re-collected record's `source.head_commit_sha`, re-collect and ask again; on any non-zero exit, stop. `reopen` needs the same approval |
 | Rung 4 | `AskUserQuestion`, showing the exact diff and what the path stops being reported for |
 | Rung 5, bulk transitions, `sonar remediate` | Not run here: give the user the exact change |
 
@@ -262,8 +262,8 @@ stop and hand the user the `init` command from `references/local-scan.md`; never
 yourself. When local and Cloud counts differ, Cloud wins; record the difference.
 
 For a Sonar run, the scan is `sonar analyze` (`references/local-scan.md`). It has its own `AskUserQuestion`,
-which shows the exact `sonar analyze` command and whose text must say that Vortex analysis sends project files to Sonar and that the retention period is
-undocumented. It is never run on a yes given for the Codacy scan.
+which shows the exact `sonar analyze` command and whose text must say that the scan sends project files to Sonar (the CLI help does not
+say what plain `sonar analyze` uploads, so assume it does) and that the retention period is undocumented. It is never run on a yes given for the Codacy scan.
 
 ## Author checklist for new scripts
 

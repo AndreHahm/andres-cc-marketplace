@@ -60,8 +60,9 @@ sonar analyze --base main -p <key> --format json
 ```
 
 `--staged` and `--file <path>` narrow the scope. `--depth` picks `STANDARD` or `DEEP`, and `--force` skips the large
-change set prompt: do not pass it. Ask first through `AskUserQuestion`, and say that Vortex analysis sends project
-files to Sonar and that the retention period is undocumented. Read the output as printed; the collector has no parser for it.
+change set prompt: do not pass it. Ask first through `AskUserQuestion`, and say that the scan sends project
+files to Sonar and that the retention period is undocumented. The help names only the `agentic` subcommand as
+server-side Vortex analysis and does not say what plain `sonar analyze` uploads, so the question assumes it does. Read the output as printed; the collector has no parser for it.
 The subcommands `secrets`, `dependency-risks` and `agentic` are not part of this scan. Cloud wins here too.
 
 ## When local and Cloud disagree

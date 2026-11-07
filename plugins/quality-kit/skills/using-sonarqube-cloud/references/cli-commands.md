@@ -4,17 +4,42 @@ Checked 2026-11-07 against `sonar` CLI 1.11.0 and SonarQube Cloud.
 
 ## Read forms
 
-| Question | Command |
-|---|---|
-| A gate status | `sonar quality-gate status -p <key> --format json 2>/dev/null` (`--branch <b>` for another branch) |
-| A PR's gate, head and analysis date | `sonar api get "/api/project_pull_requests/list?project=<key>" 2>/dev/null \| jq '.pullRequests[] \| select(.key == "<n>") \| {key, analysisDate, sha: .commit.sha, gate: .status.qualityGateStatus}'` |
-| Open issues on a PR | `sonar list issues -p <key> --pull-request <n> --format json 2>/dev/null \| jq '.issues[] \| {key, rule, severity, type, impacts, component, line, message, issueStatus}'` |
-| Open issues on a branch | `sonar list issues -p <key> --branch <b> --format json 2>/dev/null \| jq '.issues[] \| {key, rule, severity, type, impacts, component, line, message, issueStatus}'` |
-| One file's issues | add `--file <path>` |
-| One issue's status and comment text | `sonar api get "/api/issues/search?issues=<key>&additionalFields=comments" 2>/dev/null \| jq '.issues[] \| {key, issueStatus, comments: [.comments[]?.markdown]}'` |
-| What an endpoint accepts | `sonar api get "/api/webservices/list?include_internals=false" 2>/dev/null` |
+Run each form exactly as written; the pipes are real shell pipes.
+
+A gate status (`--branch <b>` for another branch):
+
+```bash
+sonar quality-gate status -p <key> --format json 2>/dev/null
+```
+
+A PR's gate, head and analysis date:
+
+```bash
+sonar api get "/api/project_pull_requests/list?project=<key>" 2>/dev/null | jq '.pullRequests[] | select(.key == "<n>") | {key, analysisDate, sha: .commit.sha, gate: .status.qualityGateStatus}'
+```
+
+Open issues on a PR, or on a branch with `--branch <b>` in place of `--pull-request <n>`; add `--file <path>` for one
+file's issues:
+
+```bash
+sonar list issues -p <key> --pull-request <n> --format json 2>/dev/null | jq '.issues[] | {key, rule, severity, type, impacts, component, line, message, issueStatus}'
+```
+
+One issue's status and comment text:
+
+```bash
+sonar api get "/api/issues/search?issues=<key>&additionalFields=comments" 2>/dev/null | jq '.issues[] | {key, issueStatus, comments: [.comments[]?.markdown]}'
+```
+
+What an endpoint accepts:
+
+```bash
+sonar api get "/api/webservices/list?include_internals=false" 2>/dev/null
+```
 
 Each form keeps only what it needs, because the raw responses carry identity fields. `sonar quality-gate status` carries none.
+`sonar list issues` is pre-approved, so a bare run without the `jq` part raises no prompt and prints `author` and
+`assignee` into the session: never run it without the projection.
 
 `--page-size` is at most 500. The API refuses to go past 10,000 results with a `400`.
 

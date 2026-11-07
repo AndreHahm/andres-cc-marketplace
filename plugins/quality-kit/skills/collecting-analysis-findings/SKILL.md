@@ -138,7 +138,8 @@ allow rule**: a persistent rule is a prefix rule that would pre-approve every wr
 documented read forms are in `references/codacy-adapter.md`; a remote write belongs to
 `resolving-analysis-findings` behind its approval gate.
 
-Only `sonar list issues` is pre-approved, because that form has no write. `sonar api` is not, even for `get`: a
+Only `sonar list issues` is pre-approved, because that form has no write. Its raw output still holds `author` and
+`assignee`, and the grant also reaches a run with no pipe, so always pipe it into the adapter as step 3 shows. `sonar api` is not, even for `get`: a
 persistent rule there would let a bare read print identity fields (`author`, `assignee`, `contributors`, comment
 logins), and `sonar api post` is one word away. Each `sonar api get` raises a normal permission prompt showing its
 text, unless your own settings or permission mode already allow it. Approve each one once, and never choose
