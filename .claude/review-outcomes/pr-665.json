@@ -149,6 +149,36 @@
       "pr": 665,
       "recorded_at": "2026-11-07T19:48:29+00:00",
       "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42408128150-gh-prefix-grant",
+      "line": 16,
+      "note": "User still rates the prefix finding a false positive but chose a pinned script: read_pr_head.py validates repo and PR and replaces the gh grants.",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T20:16:22+00:00",
+      "rule": "permission-risk"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42408128150-refiner-chain",
+      "line": 204,
+      "note": "The refiner now reports these commands as unverified and defers to its plugin-rulebook check in step 10.",
+      "path": "plugins/plugin-devkit/skills/skill-refiner-interactive/references/refinement-workflow.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T20:16:22+00:00",
+      "rule": "self-containment/chain-violation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42408128150-reviewer-severity",
+      "line": 77,
+      "note": "command-reviewer now rates a missing grant Major, matching skill-reviewer.",
+      "path": "plugins/plugin-devkit/agents/command-reviewer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T20:16:22+00:00",
+      "rule": "governance-consistency"
     }
   ]
 }

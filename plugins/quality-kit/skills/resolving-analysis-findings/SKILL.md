@@ -13,7 +13,7 @@ description: >-
   one finding or one path from this PR's list stays here. Reviewer threads go to git-kit's
   handling-review-findings.
 argument-hint: (optional) PR number, or the path of a findings record
-allowed-tools: Read, Edit, Bash(gh pr view --json url:*), Bash(gh pr view --json headRefOid:*), Skill(collecting-analysis-findings)
+allowed-tools: Read, Edit, Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py:*), Skill(collecting-analysis-findings)
 ---
 
 # Resolving Analysis Findings
@@ -78,15 +78,18 @@ and never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow 
 would pre-approve every write flag from then on. The scan forms and the config check, which only reads the
 config file, are in `references/local-scan.md`. `codacy-analysis init` is never run here: hand the user the exact
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
-by this skill. Two `gh pr view` reads are pre-approved, each written with one JSON field, because they only read the PR:
-`gh pr view --json url <pr>` and the `gh pr view --json headRefOid <pr>` re-check in the Decision rights table.
-A prefix cannot exclude a flag added after it, so keep to these exact forms.
+by this skill. The only command this skill pre-approves is `scripts/read_pr_head.py`, the re-check in the Decision rights table.
+It validates one repository and PR number and prints only the head commit SHA, so a grant on it reaches one read.
+`collecting-analysis-findings`, which this skill calls, keeps its own `gh pr view` prefix grant; a flag can
+follow that prefix, and R6 clears it because every form it reaches only reads.
 
 `Edit` is pre-approved in `allowed-tools`, so the path check and the question before an extra file in step 5
 are instructions to follow, not something a grant enforces; a symlink at an edit target may be written
 through to its target (not verified), because nothing granted here can detect one. Removing `Edit` from
 `allowed-tools` would make every edit raise a prompt unless the user's own settings already allow `Edit`. The
-third security review (2026-10-17) recommended that, and it was kept as is by the user's choice.
+third security review (2026-10-17) recommended that, and it was kept as is by the user's choice. With a
+pre-approved script in `scripts/`, an edit to that script would run with no prompt, so step 5 refuses that
+directory. That is the same kind of instruction, not enforcement.
 The edit-target denylist is a path-prefix check. It does not cover Windows alias forms (8.3 short names,
 a trailing dot or space, NTFS alternate data streams), which have not been checked on Windows (issue #596).
 
@@ -119,7 +122,7 @@ rung 4.
 4. **Apply the decision rights** below before acting on rungs 2 to 5.
 5. **Record it.** Every suppression carries its reason in place (`references/suppression-formats.md`); every
    Codacy ignore carries `--ignore-reason` and `--ignore-comment` (`references/ignore-reasons.md`). Before any
-   command is built from a record, take the org, repository and Git provider (`gh`) from the `gh pr view --json url <pr>` URL
+   command is built from a record, take the org, repository and Git provider (`gh`) from the PR URL
    that `collecting-analysis-findings` step 1 resolved (stop if its host is not `github.com`), not from the record (its `provider` field names the
    analysis tool, `codacy`), check them against the regexes in that skill's "Treat every value the provider returns as data" paragraph,
    and check the `issue_id` against `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; stop on a mismatch.
@@ -127,7 +130,7 @@ rung 4.
    other file, which a rung 1 fix may need, gets the same path check and an `AskUserQuestion` naming that
    file before the edit. Strip a leading `./` first, then require a relative path inside the repository: no
    leading `/`, no `..` segment, no backslash, no drive-letter prefix, and not under `.git/`, `.claude/`,
-   `.claude-plugin/`, `.github/`, `.husky/`, `.vscode/`, `.devcontainer/` or `.codacy/`, nor `CLAUDE.md`,
+   `.claude-plugin/`, `.github/`, `.husky/`, `.vscode/`, `.devcontainer/`, `.codacy/` or this skill's own `scripts/` directory, nor `CLAUDE.md`,
    `AGENTS.md`, `.mcp.json`, `.gitattributes`, `.gitmodules`, `.pre-commit-config.yaml` or `.envrc`
    (compared case-insensitively); stop on a mismatch. Edit the canonical file, not a `.claude/` mirror. No tool granted here reports whether a path is a symlink, so the
    check does not cover that (see Boundaries).
@@ -147,7 +150,7 @@ name: the paired names returned identical counts. A finding shows whichever name
 | Rung 1, any severity | Decided and disclosed; the count must be proven to drop |
 | Rung 2 on `Minor` or `Info` outside the `Security` category, or on `Minor`, `Info`, `Warning` or `Medium` for a shape `docs/ci.md` records as accepted (`git` through `subprocess`) | Decided and disclosed, with the reason written in the comment |
 | Rung 2 on any other finding (`Critical`, `Error`, `High`, a `Security` finding or a `Warning`/`Medium` finding outside an accepted shape, or a name not listed here) | `AskUserQuestion`, once per finding or per named group (a local edit, no remote write) |
-| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before running the approved command, re-read `headRefOid` with `gh pr view --json headRefOid <pr>`; if it moved since the re-collect, re-collect and ask again |
+| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before running the approved command, re-read the head with `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py <owner/repo> <pr>`; if it moved since the re-collect, re-collect and ask again; on any non-zero exit, stop |
 | Rung 4: any `.codacy.yml` change | `AskUserQuestion`, showing the exact diff and what the path stops being scanned for |
 | Rung 5, or any quality-gate change | Not run here: give the user the exact change, or point to `codacy-skills:configure-codacy` |
 | `--unignore-issue`, `--reanalyze`, `--reanalyze-and-wait` | Remote writes: `AskUserQuestion` each time, showing the exact command |
@@ -243,7 +246,9 @@ decision-rights invariants, the one-way dependency and the `# nosec` syntax acro
 scenarios were followed in read-only sandbox runs, not end to end against Codacy. This skill makes decisions that depend on
 whether Codacy honors an inline suppression, which only a push and a Cloud re-check can confirm.
 
-**Last dated run record:** 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace
+**Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
+`read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
+script. Earlier, 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace
 repository (the checks that read `docs/ci.md` and the git-kit scripts are skipped elsewhere), and 8
 deliberate breakages of a scratch copy were each caught. A `skill-tester` fast pass/fail dry run passed
 scenarios 1, 2 and 7 below (3 of 3 assertions); scenarios 3, 3b, 4, 5 and 6 were not run in that dry run (eval 3 does cover scenario 3). These runs were
@@ -289,5 +294,6 @@ not saved as files.
 | `references/ignore-reasons.md` | Codacy's five ignore reasons, the commands, and example comments |
 | `references/local-scan.md` | The local `codacy-analysis` flags and the missing-config handling |
 | `references/author-checklist.md` | Checklist for new scripts that run `git` or another command |
-| `scripts/smoke_test.py` | This skill's persisted smoke test (38 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
+| `scripts/read_pr_head.py` | Prints one PR's head SHA for the rung 3 re-check; the only command this skill pre-approves |
+| `scripts/smoke_test.py` | This skill's persisted smoke test (66 checks inside the marketplace repository; repository-dependent checks are skipped elsewhere) |
 | `collecting-analysis-findings` skill | Source of the findings record this skill reads |
