@@ -8,16 +8,25 @@ blocks. This is touched-file logic with no touched-line filter of its own. It is
 verdict: the verifiers that compare with a base (size tiers, known paths, call-graph edges) compare
 with `--base`, the commit before the fix, so a value that was already over a limit before the fix
 and is not worse after it passes here, and CI can still block it.
-Prints one JSON object: {"checked": [...], "blocking": [...]}.
+Prints one JSON object: {"checked": [...], "blocking": [...]}, plus "ungraded": [...] when the diff
+touched a path no verifier grades (see below).
 
 The verifier modules are loaded (`git archive`) from the commit where HEAD last met the target
-branch (`refs/remotes/origin/HEAD`), never from the tree being judged and never from `--base`: a
+branch (`refs/remotes/origin/HEAD`, or `refs/remotes/origin/<name>` when `--target-branch <name>`
+names the PR's base branch), never from the tree being judged and never from `--base`: a
 PR's own earlier commit can precede `--base`, and the loaded modules are imported and run. Without
 that ref, or when `origin`'s fetch URL is not the required `--upstream owner/repo` (the PR's base
-repository), the run exits 2. This driver runs from wherever it was started, so the exit 2 below
-for a fix that changes the verifiers (scripts/marketplace_ci/), their registry
-(.claude/marketplace-sync.json) or this script only catches an honest edit. Such a fix cannot be
-judged by them, so it exits 2. A `--worktree` run snapshots the working tree into a throwaway
+repository), the run exits 2. A fix that changes the verifiers (scripts/marketplace_ci/), their
+registry (.claude/marketplace-sync.json), this script or its launch procedure (the SKILL.md,
+fix-self-review.md and smoke test of handling-review-findings) is still checked: the target branch's
+verifiers run over the rest of the diff. No verifier grades those paths themselves, so they are
+listed under an `ungraded` key and the reply must say they were not checked. For the
+launch-procedure files the verifiers do check structure, so the reply says that and that their
+effect on this gate was not checked. When the registry or a verifier is among them, a
+`result_caveat` key also says the other verdicts may be weaker than
+they look: the verifiers read the registry from the tree being judged. A fix to this script
+is the weakest case: when it is the copy that runs, the edited code takes part in its own run. A
+`--worktree` run snapshots the working tree into a throwaway
 commit built with a temporary
 index and verifies it in a temporary shared clone: no ref, the real index or the working tree is
 touched, and no object is written to the repository's object store. The snapshot's objects
@@ -30,7 +39,7 @@ Without `--worktree` the committed HEAD is verified in a temporary clone, whatev
 Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
 
 Exit codes: 0 clean, 1 a blocking finding, 2 not verified (the verifiers could not run, nothing
-changed, or the fix touches what grades it) - never a pass. Exit 0 with "nothing to check" only
+changed) - never a pass. Exit 0 with "nothing to check" only
 where neither the target branch nor the working tree has scripts/marketplace_ci/review_verifiers.py
 (git-kit is installed in other repositories). A clean result with an empty `checked` list means
 no changed file was a verifier-covered component: do not report it as "verifiers passed".
@@ -77,16 +86,26 @@ def _git_said(stderr: bytes | str) -> str:
 
 _REPO = r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"
 _UPSTREAM = re.compile(_REPO)
+_BRANCH_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._-]*(?:/[A-Za-z0-9_][A-Za-z0-9._-]*)*")
 _ORIGIN_URL = re.compile(
     rf"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)({_REPO}?)(?:\.git)?/?"
 )
 _VERIFIERS = "scripts/marketplace_ci/review_verifiers.py"
-_UNJUDGEABLE = (
+_UNGRADED = (
     "scripts/marketplace_ci/",
     ".claude/marketplace-sync.json",
     "plugins/git-kit/scripts/git-verify-fix-diff.py",
     ".claude/scripts/git-verify-fix-diff.py",
+    # The procedure that launches this driver and the grants that let it run.
+    "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+    "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+    "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
+    ".claude/skills/handling-review-findings/SKILL.md",
+    ".claude/skills/handling-review-findings/references/fix-self-review.md",
+    ".claude/skills/handling-review-findings/scripts/smoke_test.py",
 )
+# The subset of _UNGRADED that the target-branch verifiers read from the tree being judged.
+_VERIFIER_CONFIG = ("scripts/marketplace_ci/", ".claude/marketplace-sync.json")
 # The only inherited variables git is given: locale and time zone. Everything else (GIT_DIR,
 # GIT_CONFIG_*, GIT_TRACE*, GIT_EXEC_PATH, HOME, XDG_CONFIG_HOME, PAGER, ...) is dropped (#588).
 _KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
@@ -219,10 +238,21 @@ def _origin_repo(repo_root: Path) -> str | None:
     return matched.group(1) if matched else None
 
 
-def _target_ref(repo_root: Path) -> str | None:
-    """The target branch: whatever `refs/remotes/origin/HEAD` points at, or None.
+def _target_ref(repo_root: Path, branch: str | None = None) -> str | None:
+    """The target branch: `refs/remotes/origin/<branch>` when --target-branch names the PR's base,
+    else whatever `refs/remotes/origin/HEAD` points at. None when it does not resolve.
 
     This is local state; main() only trusts it after `origin` is confirmed to be --upstream."""
+    if branch is not None:
+        ref = f"refs/remotes/origin/{branch}"
+        found = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
+            _git_cmd("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"),
+            cwd=repo_root,
+            env=_clean_env(),
+            capture_output=True,
+            text=True,
+        )
+        return ref if found.returncode == 0 and _OBJECT_ID.fullmatch(found.stdout.strip()) else None
     out = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
         _git_cmd("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"),
         cwd=repo_root,
@@ -360,6 +390,10 @@ def main(argv: list[str] | None = None) -> int:
         help="owner/repo of the PR's base repository; origin's fetch URL must name it",
     )
     parser.add_argument(
+        "--target-branch",
+        help="the PR's base branch name (gh's baseRefName); default: what origin/HEAD points at",
+    )
+    parser.add_argument(
         "--worktree", action="store_true", help="verify the uncommitted working tree, not HEAD"
     )
     try:
@@ -385,7 +419,13 @@ def main(argv: list[str] | None = None) -> int:
         here = (repo_root / _VERIFIERS).is_file()
         if in_repo and not _OBJECT_ID.fullmatch(args.base):
             raise RuntimeError(f"base is not a full object id: {args.base!r}")
-        target = _target_ref(repo_root) if in_repo else None
+        if args.target_branch is not None and (
+            not _BRANCH_NAME.fullmatch(args.target_branch) or ".." in args.target_branch
+        ):
+            raise RuntimeError(
+                f"--target-branch is not a plain branch name: {args.target_branch!r}"
+            )
+        target = _target_ref(repo_root, args.target_branch) if in_repo else None
         at_target = target is not None and _has_verifiers(repo_root, target)
         if not here and not at_target:
             print(
@@ -396,7 +436,10 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError("not inside a git repository; the verifiers cannot be anchored")
         if target is None:
             raise RuntimeError(
-                "no refs/remotes/origin/HEAD to anchor the verifiers "
+                f"no refs/remotes/origin/{args.target_branch} to anchor the verifiers "
+                "(git fetch origin <branch>)"
+                if args.target_branch is not None
+                else "no refs/remotes/origin/HEAD to anchor the verifiers "
                 "(git remote set-head origin -a)"
             )
         if not _UPSTREAM.fullmatch(args.upstream):
@@ -409,6 +452,24 @@ def main(argv: list[str] | None = None) -> int:
             )
         head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         trusted = _trusted_commit(repo_root, target, head_sha)
+        if args.target_branch is not None:
+            # The PR's author picks its base branch, so a base branch alone is not a trust anchor:
+            # the commit that supplies the code must already be on the default branch.
+            default = _target_ref(repo_root)
+            on_default = default is not None and (
+                subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
+                    _git_cmd("merge-base", "--is-ancestor", trusted, default),
+                    cwd=repo_root,
+                    env=_clean_env(),
+                    capture_output=True,
+                ).returncode
+                == 0
+            )
+            if not on_default:
+                raise RuntimeError(
+                    f"the commit where HEAD met origin/{args.target_branch} is not on the default "
+                    "branch (refs/remotes/origin/HEAD); refusing to import verifiers from it"
+                )
         if not _has_verifiers(repo_root, trusted):
             raise RuntimeError(
                 "the verifiers are not present where HEAD met the target branch; "
@@ -443,13 +504,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps({"nothing_changed": True, "note": note}))
                 return 2
             touched = {p for c in changed for p in (c.old_path, c.new_path) if p}
-            if any(p.startswith(prefix) for p in touched for prefix in _UNJUDGEABLE):
-                msg = (
-                    "the fix changes the verifiers, their registry or this script; cannot judge it"
-                )
-                print(msg, file=sys.stderr)
-                print(json.dumps({"cannot_judge": True, "note": msg}))
-                return 2
+            ungraded = sorted(
+                p for p in touched if any(p.startswith(prefix) for prefix in _UNGRADED)
+            )
             outcomes = run_verifiers(verify_repo, changed, args.base)
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
         detail = str(exc)
@@ -472,7 +529,15 @@ def main(argv: list[str] | None = None) -> int:
         for outcome in outcomes
         for f in outcome.findings
     ]
-    print(json.dumps({"checked": checked, "blocking": blocking}, indent=2))
+    result = {"checked": checked, "blocking": blocking}
+    if ungraded:
+        result["ungraded"] = ungraded
+    if any(p.startswith(prefix) for p in ungraded for prefix in _VERIFIER_CONFIG):
+        result["result_caveat"] = (
+            "the fix changes what the verifiers read (their code or the sync registry), so "
+            "the other verdicts in this run may be weaker than they look"
+        )
+    print(json.dumps(result, indent=2))
     return 1 if blocking else 0
 
 

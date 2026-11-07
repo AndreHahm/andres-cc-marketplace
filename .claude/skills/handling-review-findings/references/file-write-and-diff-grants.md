@@ -161,3 +161,19 @@ tracked in #591.
 A macOS temp root, and a real `${CLAUDE_PLUGIN_ROOT}` install directory. The `.claude/` protected-path case
 is covered in the follow-up section above for the project `.claude/` directory only. Where Claude Code's scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`,
 a scratchpad write falls back to a prompt rather than succeeding silently.
+
+## Follow-up: launching the verifier driver from the target branch (Issue #656)
+
+Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
+grade itself (`references/fix-self-review.md`). Granted: `git cat-file -e:*` (prints nothing). The base name comes
+from `gh pr view --json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not**
+granted, so each prompts: the two `git merge-base` calls (`git merge-base HEAD 'refs/remotes/origin/<base>'` and
+`git merge-base --is-ancestor <target> refs/remotes/origin/HEAD`; a prefix grant would let any further argument or
+a redirect through, and the branch name is the PR's own base, so the first cannot be an exact form), `git remote
+get-url origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p
+<hash>:<path> > <scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I
+<scratchpad>/...` (running a file from a writable directory). The driver itself re-checks that its trusted commit is
+on the default branch. A reviewer comparing the body with `allowed-tools` will see these calls without grants: that
+is the intended state. The two `merge-base` grants were first added and then dropped in this change after CI's
+Codex security review flagged them as Major twice. Not checked live: how Claude Code's matcher treats a redirect on
+the remaining `git cat-file -e:*` grant, and the scratchpad path on a Windows host.
