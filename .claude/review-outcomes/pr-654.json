@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4492284426",
+      "line": 72,
+      "note": "Fixed in 94dfdbca; verifier self-review skipped by the user, so 4a never judged this fix",
+      "path": "plugins/git-kit/scripts/git-verify-fix-diff.py",
+      "pr": 654,
+      "recorded_at": "2026-11-07T06:17:45+00:00"
+    }
+  ]
+}
