@@ -19,9 +19,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-review-fix-diff.py"
 SYSTEM_PATH = os.environ.get("PATH", "/usr/bin:/bin")
-# A git.cmd stand-in runs through cmd.exe, which a launch finds through these two names. The minimal
-# environment below omits them, and the ledger tests failed on a windows-latest runner for that
-# reason (WinError 267, #655), so they are passed through here too.
+# A git.cmd stand-in runs through cmd.exe. Measured on a windows-latest runner (#655): the process
+# that launches it needs SYSTEMROOT or COMSPEC (either is enough), or the launch fails with
+# WinError 267; the launched process's own environment does not matter. The script is started with
+# the minimal environment below, so the test helper passes these two to it, as the ledger tests do.
 WINDOWS_CMD_ENV = (
     {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
     if os.name == "nt"
