@@ -316,6 +316,10 @@ jobs:
         shell: bash
       - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_api_script.py
         shell: bash
+      # The scope helpers' run-directory, index-copy, intent-add and write-file guards. Tests that need
+      # mode bits, case-distinct names or a mktemp-shaped path skip here with a stated reason (#655).
+      - run: uv run --no-sync --no-build pytest -q -rs tests/marketplace_ci/test_git_review_scope_script.py
+        shell: bash
       # Text mode writes CRLF only on Windows, so the Linux job cannot catch a revert of the bare-LF write.
       - run: uv run --no-sync --no-build pytest -q "tests/marketplace_ci/test_reviewer_dispatch.py::test_the_paths_file_has_bare_newlines_even_where_text_mode_would_write_crlf"
         shell: bash
