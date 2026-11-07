@@ -1177,6 +1177,48 @@ console.log("\n=== security review M2: an exemption the branch adds for a file A
   );
 }
 
+console.log("\n=== issue #658: a tracked env template is exempt only with base provenance AND a clean content scan; real env files never are ===");
+{
+  const templateFixture = (content, ignore = ".secretlintignore\n.env.example\n") => {
+    const f = makeFixture();
+    writeFixtureFile(f.root, ".secretlintignore", ignore);
+    writeFixtureFile(f.root, ".env.example", content);
+    // Force-add: a personal global excludesFile commonly ignores .env.*, which would leave the template untracked.
+    git(["add", "-f", ".env.example"], f.root);
+    f.commit("base with an env template");
+    f.markBase();
+    return f;
+  };
+  const clean = templateFixture("# Copy to .env\nOPENROUTER_API_KEY=\n");
+  check("a base-listed, unchanged .env.example with no value advances past the scan", passedScan(clean.run()), JSON.stringify(clean.last));
+  writeFixtureFile(clean.root, ".env", "OPENROUTER_API_KEY=real");
+  check("control: an untracked .env next to the exempt template still blocks", blockedBy(clean.run(), /\.env($|[^.])/), JSON.stringify(clean.last));
+  fs.rmSync(path.join(clean.root, ".env"));
+
+  writeFixtureFile(clean.root, ".env.example", "# edited\n# Copy to .env\nOPENROUTER_API_KEY=\n");
+  const edited = clean.run();
+  check("a template edited since the base is not exempt, and the message names it as a tracked template", blockedBy(edited, /\.env\.example.*tracked env template/), JSON.stringify(edited));
+
+  const unlisted = templateFixture("OPENROUTER_API_KEY=\n", ".secretlintignore\n");
+  check("a template not listed in the base .secretlintignore is not exempt", blockedBy(unlisted.run(), /\.env\.example/), JSON.stringify(unlisted.last));
+
+  const withValue = templateFixture(`AWS_ACCESS_KEY_ID=${fakeCredential}\n`);
+  check("a base-listed template that holds a credential-shaped value still blocks (content scan is mandatory)", blockedBy(withValue.run(), /\.env\.example/), JSON.stringify(withValue.last));
+
+  const annotated = templateFixture('API_KEY: str = "sk-live-abc123"\n');
+  check("a base-listed template with a hard-coded quoted value still blocks", blockedBy(annotated.run(), /\.env\.example/), JSON.stringify(annotated.last));
+
+  for (const name of [".env.local", ".env.production"]) {
+    const f = makeFixture();
+    writeFixtureFile(f.root, ".secretlintignore", `.secretlintignore\n${name}\n`);
+    writeFixtureFile(f.root, name, "OPENROUTER_API_KEY=\n");
+    git(["add", "-f", name], f.root);
+    f.commit(`base with ${name}`);
+    f.markBase();
+    check(`${name} is never template-exempt, even tracked and listed in the base`, blockedBy(f.run(), new RegExp(name.replace(".", "\\."))), JSON.stringify(f.last));
+  }
+}
+
 console.log("\n=== trusted-base tier: fails closed when no base can be resolved ===");
 {
   const f = makeFixture();

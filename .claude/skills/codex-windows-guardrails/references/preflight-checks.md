@@ -189,6 +189,8 @@ real secret already committed to the base under an exempt path is not caught her
 skips the same paths). If the base cannot be resolved (no `origin` ref, shallow clone), this tier is
 off and only the exact-path tier below applies.
 
+**Env-template exception (issue #658).** The "matches no *strict* pattern" condition above has exactly one exception: a tracked placeholder template named `.env.example`, `.env.sample` or `.env.template` (`isEnvTemplateName` in `cdx-secret-filenames.mjs`; an exact three-name list, never "ends in .example"). It may use this tier, but with a difference: it is **still content-scanned** afterwards. An edit to the template is blocked by the base-blob hash check; the content scan only catches recognized credential shapes already present in the base copy. The template-name match is case-insensitive on win32. `.env`, `.env.local`, `.env.production` and every other strict name stay ineligible, and the exact-path tier below never applies to a strict name. A blocked template reports a distinct detail naming it as a tracked env template and the three conditions (unchanged since the merge base, listed in the base `.secretlintignore`, no credential-shaped value).
+
 **Annotated assignments (security re-review m-5).** `redactSecrets`' assignment pattern is beaten by a type
 annotation, so `guarded-dispatch.mjs` carries its own check: an annotated assignment of a *quoted literal*
 to a secret-suggestive name (`API_KEY: str = "..."`, including richer annotations such as `Annotated[str, "x"]`, string prefixes, triple quotes and a literal wrapped in parentheses such as `API_KEY: str = ("x")`) fails the content scan, while `total_tokens: int = 0`

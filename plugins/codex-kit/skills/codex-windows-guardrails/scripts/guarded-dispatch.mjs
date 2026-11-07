@@ -8,7 +8,8 @@ import {
   matchesSecretFilename,
   matchesAnyStrictSecretFilename,
   LOOSE_SECRET_FILENAME_PATTERNS,
-  isExemptedBySecretlintignore
+  isExemptedBySecretlintignore,
+  isEnvTemplateName
 } from "../../../scripts/lib/cdx-secret-filenames.mjs";
 import {
   createBaseVerifier,
@@ -52,6 +53,11 @@ function matchesSecretPattern(basename) {
 // C1, issue #295).
 function matchesAnyStrictPattern(basename) {
   return matchesAnyStrictSecretFilename(basename, process.platform === "win32");
+}
+
+// Same case-insensitivity rule as matchesSecretPattern above (issue #658).
+function isEnvTemplate(basename) {
+  return isEnvTemplateName(basename, process.platform === "win32");
 }
 
 function typedFailure(category, detail) {
@@ -597,9 +603,20 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
           // is never eligible, same as the tier below. Falls through to that
           // tier unchanged when this tier doesn't apply or the base cannot
           // be resolved.
-          if (matchedOwnBasename && !matchesAnyStrictPattern(name) && isBaseVerifiedExempt(relativePath)) {
+          //
+          // Issue #658: the one strict-pattern exception is a well-known env
+          // placeholder template (.env.example/.sample/.template). It needs the
+          // same base provenance (tracked at the base, byte-identical, listed in
+          // the base .secretlintignore) AND it does not skip the content scan: it
+          // falls through to the scan below, so a real value placed in a template
+          // still blocks. .env and every other strict name stay ineligible.
+          const envTemplate = matchedOwnBasename && isEnvTemplate(name);
+          const baseVerifiedExempt =
+            matchedOwnBasename && (!matchesAnyStrictPattern(name) || envTemplate) && isBaseVerifiedExempt(relativePath);
+          if (baseVerifiedExempt && !envTemplate) {
             continue;
           }
+          const baseVerifiedTemplate = baseVerifiedExempt && envTemplate;
           // Two independent exemption signals, either sufficient to reach
           // the content-scan below (issue #295 adds the second): a
           // path-shape heuristic (isDocumentationAboutSecrets) and an
@@ -618,7 +635,10 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
           // present.
           const secretlintignoreExemption =
             isExemptedBySecretlintignore(repoRoot, relativePath) && !matchesAnyStrictPattern(name);
-          if (matchedOwnBasename && (isDocumentationAboutSecrets(relativePath, matched) || secretlintignoreExemption)) {
+          if (
+            matchedOwnBasename &&
+            (isDocumentationAboutSecrets(relativePath, matched) || secretlintignoreExemption || baseVerifiedTemplate)
+          ) {
             // Security review, issue #78 fix (M5): the path/extension
             // shape alone only proves this file is NAMED like
             // documentation about secrets -- it says nothing about
@@ -660,6 +680,12 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
             ) {
               continue;
             }
+          }
+          if (envTemplate) {
+            return typedFailure(
+              "secret_file_in_scope",
+              `${relativePath} matches sensitive-filename pattern ${matched}; it is a tracked env template, exempt only when it is unchanged since the merge base, listed in the base .secretlintignore, and holds no credential-shaped value`
+            );
           }
           return typedFailure("secret_file_in_scope", `${relativePath} matches sensitive-filename pattern ${matched}`);
         }
