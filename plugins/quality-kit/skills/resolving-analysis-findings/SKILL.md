@@ -78,7 +78,7 @@ and never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow 
 would pre-approve every write flag from then on. The scan forms and the config check, which only reads the
 config file, are in `references/local-scan.md`. `codacy-analysis init` is never run here: hand the user the exact
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
-by this skill. Two `gh pr view` reads are pre-approved, pinned to one JSON field each, because they only read the PR:
+by this skill. Two `gh pr view` reads are pre-approved, each written with one JSON field, because they only read the PR:
 `gh pr view --json url <pr>` and the `gh pr view --json headRefOid <pr>` re-check in the Decision rights table.
 A prefix cannot exclude a flag added after it, so keep to these exact forms.
 
