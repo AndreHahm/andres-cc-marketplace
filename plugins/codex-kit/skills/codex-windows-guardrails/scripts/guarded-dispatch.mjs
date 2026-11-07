@@ -447,6 +447,29 @@ function looksLikeCredentialAssignment(content) {
   return false;
 }
 
+// Issue #658 (cross-model review, round 2): a base-verified env template is scanned with
+// redactTokenShapes (vendor shapes, PEM, Bearer/Authorization) instead of redactSecrets,
+// because redactSecrets' generic NAME=value rule redacts every placeholder value. That
+// would leave an opaque value under a secret-suggestive name (MY_API_KEY=short-internal-secret)
+// unchecked, so this predicate flags any such assignment whose value is neither empty nor an
+// obvious placeholder. A name only has to CONTAIN one of the words (stricter than
+// redactSecrets), so a benign SORT_KEY=asc in a template is flagged too: fail closed.
+// A value starting with "your" is treated as a placeholder (your-openrouter-api-key).
+const TEMPLATE_SECRET_ASSIGNMENT = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/;
+const TEMPLATE_SECRET_NAME = /(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|API|CREDENTIAL|AUTH)/i;
+const TEMPLATE_PLACEHOLDER_VALUE =
+  /^(?:your[-_ .A-Za-z0-9]*|<[^<>]*>|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|x{3,}|\*{3,}|\.{3}|change[-_]?me|replace[-_ ]?me[-_ A-Za-z0-9]*|placeholder[-_ A-Za-z0-9]*|example[-_ A-Za-z0-9]*|todo|tbd|none|null|dummy|fake|redacted)$/i;
+
+function hasNonPlaceholderSecretAssignment(content) {
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(TEMPLATE_SECRET_ASSIGNMENT);
+    if (!match || !TEMPLATE_SECRET_NAME.test(match[1])) continue;
+    const value = match[2].replace(/^(["'])(.*)\1$/, "$2");
+    if (value !== "" && !TEMPLATE_PLACEHOLDER_VALUE.test(value)) return true;
+  }
+  return false;
+}
+
 function isDocumentationAboutSecrets(relativePath, matchedPattern) {
   // scripts-reviewer finding (M1, post-security-review): identify one of
   // the four loose patterns by REFERENCE against cdx-secret-filenames.mjs's own
@@ -678,6 +701,7 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
               content !== null &&
               isBoundedForContentScan(content) &&
               (baseVerifiedTemplate ? redactTokenShapes(content) : redactSecrets(content)) === content &&
+              !(baseVerifiedTemplate && hasNonPlaceholderSecretAssignment(content)) &&
               !looksLikeCredentialAssignment(content)
             ) {
               continue;
