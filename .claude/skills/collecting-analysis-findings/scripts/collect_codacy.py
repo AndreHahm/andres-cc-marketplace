@@ -333,7 +333,7 @@ def _write_private(path: Path, text: str) -> None:
         temporary.replace(path)
     except FileExistsError as exc:
         raise ShapeError(f"cannot write --output: remove the stale file {temporary.name}") from exc
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:  # UnicodeError: a lone surrogate in provider text
         raise ShapeError(f"cannot write --output: {type(exc).__name__}") from exc
     finally:
         if created:
