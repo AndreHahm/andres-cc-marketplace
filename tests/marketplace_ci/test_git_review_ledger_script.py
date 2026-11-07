@@ -47,6 +47,14 @@ needs_symlinks = pytest.mark.skipif(
     not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
 )
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
+# The Windows stand-in for git is a git.cmd batch file, which runs through cmd.exe. The script
+# process is started with a minimal environment, and on a windows-latest runner launching git.cmd
+# from it fails with WinError 267 (#655). These two names are what let the launch find cmd.exe.
+WINDOWS_CMD_ENV = (
+    {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
+    if os.name == "nt"
+    else {}
+)
 
 # TEMP-DIAG (#655): the script prints only an exception's message, so the Windows runner's
 # `WinError 267` gives no traceback. On that signature only, re-run main()'s steps one by one in a
@@ -111,7 +119,12 @@ def _run(tmp_path, *args, extra_env=None):
         str(tmp_path / ".claude" / "tracked"),
         *args,
     ]
-    env = {"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH, **(extra_env or {})}
+    env = {
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PATH": BASE_PATH,
+        **WINDOWS_CMD_ENV,
+        **(extra_env or {}),
+    }
     result = subprocess.run(
         [sys.executable, str(SCRIPT), *argv],
         capture_output=True,
@@ -1039,6 +1052,7 @@ def _record_from(repo, home, bin_dir):
     if os.name == "nt":
         # os.path.expanduser reads USERPROFILE on Windows, not HOME; there they normally agree.
         env["USERPROFILE"] = str(home)
+        env.update(WINDOWS_CMD_ENV)
     result = subprocess.run(
         [sys.executable, str(SCRIPT), *RECORD_ARGS],
         cwd=repo,
