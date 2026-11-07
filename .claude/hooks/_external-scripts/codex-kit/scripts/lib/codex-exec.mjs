@@ -164,14 +164,21 @@ const TOKEN_SHAPES = parseTokenShapes(
 const PEM_PRIVATE_KEY_PATTERN =
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
 
+// Named (like PEM_PRIVATE_KEY_PATTERN) so redactTokenShapes below keeps them if SECRET_PATTERNS changes.
+const AUTHORIZATION_HEADER_PATTERN =
+  /\bauthorization\s*[:=]\s*.+$/gim;
+
+// Requires "bearer" directly followed by a token-length (20+ char)
+// token-shaped run, not just the bare word -- the prior
+// /\bbearer\b\s*[:=]?\s*.+$/gim redacted the rest of ANY line merely
+// containing "bearer" (e.g. prose like "the bearer of this document"),
+// which is both an over-redaction bug and untested for that case.
+const BEARER_TOKEN_PATTERN =
+  /\bbearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi;
+
 const SECRET_PATTERNS = [
-  /\bauthorization\s*[:=]\s*.+$/gim,
-  // Requires "bearer" directly followed by a token-length (20+ char)
-  // token-shaped run, not just the bare word -- the prior
-  // /\bbearer\b\s*[:=]?\s*.+$/gim redacted the rest of ANY line merely
-  // containing "bearer" (e.g. prose like "the bearer of this document"),
-  // which is both an over-redaction bug and untested for that case.
-  /\bbearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi,
+  AUTHORIZATION_HEADER_PATTERN,
+  BEARER_TOKEN_PATTERN,
   /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
   ...TOKEN_SHAPES,
   PEM_PRIVATE_KEY_PATTERN
@@ -192,21 +199,21 @@ const SECRET_PATTERNS = [
 const SECRET_ASSIGNMENT_PATTERN =
   /(\b(?:[A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|ACCESSKEY|AUTHKEY|PRIVATEKEY|SIGNINGKEY)[A-Za-z0-9_]*|(?:[A-Za-z0-9]*_)*(?:KEY|API)(?:_[A-Za-z0-9_]*)?)[^\S\r\n]*=[^\S\r\n]*)(?!\[REDACTED\])(?:"(?:[^"\\\r\n]|\\[^\r\n]?)*(?:"|(?=[\r\n])|$)|'(?:[^'\\\r\n]|\\[^\r\n]?)*(?:'|(?=[\r\n])|$)|\S+)/gi;
 
-// Exported so a smoke test can exercise the pattern set directly, matching
-// the existing findSchemaViolation export pattern below.
-// Vendor token shapes and PEM blocks only, without the generic NAME=value rules. Used
+// Vendor token shapes, PEM blocks and the Bearer/Authorization matchers only, without the generic NAME=value rules. Used
 // for a base-verified env template (guarded-dispatch.mjs, issue #658), whose placeholder
 // values (OPENROUTER_API_KEY=your-key-here) the generic rules would redact as secrets.
 // Its content is already byte-identical to a blob on the default branch, so this is the
 // second line of defense, not the barrier against an edit.
 export function redactTokenShapes(text) {
   let result = text;
-  for (const pattern of [...TOKEN_SHAPES, PEM_PRIVATE_KEY_PATTERN]) {
+  for (const pattern of [...TOKEN_SHAPES, PEM_PRIVATE_KEY_PATTERN, AUTHORIZATION_HEADER_PATTERN, BEARER_TOKEN_PATTERN]) {
     result = result.replace(pattern, "[REDACTED]");
   }
   return result;
 }
 
+// Exported so a smoke test can exercise the pattern set directly, matching
+// the existing findSchemaViolation export pattern below.
 export function redactSecrets(text) {
   let result = text;
   for (const pattern of SECRET_PATTERNS) {
