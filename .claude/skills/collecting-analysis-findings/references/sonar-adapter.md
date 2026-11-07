@@ -71,6 +71,7 @@ statuses above. Anything else exits 2.
 | Code | Meaning | Output |
 |---|---|---|
 | 0 | Result written | On stdout, or with `--output` a one-line summary on stdout and the result in the file |
+| 1 | Stdout closed before the output was read: the reader left early, so treat the output as incomplete. With `--output`, the file is written and only the summary line was lost |
 | 2 | Every exit 2 of `collect_codacy.py` (see `codacy-adapter.md`), and: a `component` outside `<project key>:`, an unlisted PR, a `--status` file that is malformed, for another project or for another PR, a status or kind mismatch, pages missing, repeated or overlapping, more than 10,000 results, or an invalid `--project` | Message on stderr, nothing on stdout, no output file created or changed |
 | 3 | Valid so far, but more pages exist | Message on stderr with the page count, nothing on stdout, no output file |
 
