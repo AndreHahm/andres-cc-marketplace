@@ -31,9 +31,9 @@ The scan reads `.codacy/codacy.config.json`, and finds no tools without it. The 
 2026-10-17: the file is local and ignored (`.codacy/` is in `.gitignore`), so it follows each person's own
 tooling and no shared copy can drift. So:
 
-1. Use `Read` on `.codacy/codacy.config.json` first. If the file is missing, stop and tell the user.
-2. Hand the user the exact command to run themselves; this skill does not run it, because it creates files in
-   the repository:
+1. Use `Read` on `.codacy/codacy.config.json` first. If the file exists, run the scan.
+2. If the file is missing, stop and hand the user the exact command to run themselves; this skill does not run
+   it, because it creates files in the repository:
 
 ```text
 codacy-analysis init --default

@@ -65,7 +65,9 @@ command that no grant reaches when no narrower grant could be safe, for one of t
 - **Shared prefix:** what the component runs has a variable part, so its grant must end in a prefix, and a
   prefix cannot exclude arguments added after it. That prefix also accepts a flag or subcommand that changes
   state or overwrites files. The Boundaries section must name at least one, and a longer pinned prefix must not
-  be able to avoid it. A fully fixed command has no variable part: grant it exactly, with no `:*`.
+  be able to avoid it. The component's body must ask for approval of the exact command before each run that
+  changes state. This reason does not fit a fully fixed command, which has no variable part: grant it exactly,
+  with no `:*`, unless the sensitive read reason applies.
 - **Sensitive read:** the read prints identity fields or other sensitive output, so a persistent rule on it
   would expose them with no prompt. The Boundaries section must name the fields.
 
