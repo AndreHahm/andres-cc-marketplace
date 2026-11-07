@@ -139,8 +139,10 @@ documented read forms are in `references/codacy-adapter.md`; a remote write belo
 `resolving-analysis-findings` behind its approval gate.
 
 Only `sonar list issues` is pre-approved, because that form has no write. `sonar api` is not, even for `get`: a
-persistent rule there would let a bare read print identity fields, and `sonar api post` is one word away. Each
-`sonar api get` raises the same one-time approval, and the forbidden commands are in `references/sonar-adapter.md`.
+persistent rule there would let a bare read print identity fields (`author`, `assignee`, `contributors`, comment
+logins), and `sonar api post` is one word away. Each `sonar api get` raises a normal permission prompt showing its
+text, unless your own settings or permission mode already allow it. Approve each one once, and never choose
+"don't ask again" or add a `sonar api` allow rule. The forbidden commands are in `references/sonar-adapter.md`.
 
 The record is written by the script's own `--output`, which refuses any path that is not in a scratchpad
 directory you own (step 4), not by a shell redirect. Claude Code's documentation says a redirect target is
