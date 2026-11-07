@@ -1,7 +1,7 @@
 # Findings Record
 
 One provider-neutral record. `scripts/collect_codacy.py` writes it for Codacy (schema `1.0.0`) and
-`scripts/collect_sonar.py` for SonarQube Cloud (schema `1.1.0`, which adds one optional key); any future adapter
+`scripts/collect_sonar.py` for SonarQube Cloud (schema `1.1.0`, which adds `source.quality_gate` and `findings[].impacts`); any future adapter
 must write the same shape so `resolving-analysis-findings` reads every provider the same way.
 
 Abridged example (one finding shown; `groups` and `counts` cover all findings in the record):
