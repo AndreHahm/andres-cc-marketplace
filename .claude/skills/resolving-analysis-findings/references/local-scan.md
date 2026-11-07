@@ -50,6 +50,20 @@ The JSON the local scan writes is read as printed. The collecting skill's
 `collect_codacy.py` has no parser for it: its shape has not been verified here
 because the scan could not run without a config. Do not treat a local count as the PR's Codacy count.
 
+## Sonar: `sonar analyze`
+
+For a Sonar run. Flags read from `sonar analyze --help` (CLI 1.11.0) on 2026-11-07; the command itself has not been
+run here, so its output shape is not verified.
+
+```text
+sonar analyze --base main -p <key> --format json
+```
+
+`--staged` and `--file <path>` narrow the scope. `--depth` picks `STANDARD` or `DEEP`, and `--force` skips the large
+change set prompt: do not pass it. Ask first through `AskUserQuestion`, and say that Vortex analysis sends project
+files to Sonar and that the retention period is undocumented. Read the output as printed; the collector has no parser for it.
+The subcommands `secrets`, `dependency-risks` and `agentic` are not part of this scan. Cloud wins here too.
+
 ## When local and Cloud disagree
 
 Cloud wins. The local run may use different tool versions, miss tools that are not installed, or skip

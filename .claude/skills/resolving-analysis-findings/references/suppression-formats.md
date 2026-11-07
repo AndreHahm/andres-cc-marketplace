@@ -10,6 +10,7 @@ a stated reason, and rung 2 on anything other than a non-`Security` `Minor`/`Inf
 | Bandit, reason after `--` | `# nosec B404 -- reason words` | Works but noisy: Bandit reads each reason word as a test id and prints a warning per word. Use the trailing `# reason` form above |
 | Semgrep | `# nosemgrep` or `# nosemgrep: <rule-id>` on the flagged line | Repository precedent (for example workledger-kit's `subprocess.run` calls: `grep -rl nosemgrep plugins scripts`). Not re-verified against Codacy's Semgrep here |
 | ESLint | `// eslint-disable-next-line <rule> -- reason` | One file under `plugins/` uses `eslint-disable` (`codex-kit`'s `guarded-dispatch.mjs`); not verified against Codacy |
+| SonarQube Cloud (Python) | `# NOSONAR(S5655)  # literal path, no user input` | Rule-key form, because a bare `# NOSONAR` silences every rule on the line, including future issues. Not confirmed until the Cloud re-check after a push; other languages not checked |
 | Pylint, Biome | `# pylint: disable=<id>`, `// biome-ignore <rule>: reason` | No use in this repository; not verified. Do not rely on them without a check |
 
 ## Rules
