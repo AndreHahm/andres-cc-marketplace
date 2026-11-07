@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -22,7 +23,38 @@ BASE_PATH = os.path.dirname(shutil.which("git") or "") if os.name == "nt" else "
 posix_only = pytest.mark.skipif(
     os.name == "nt", reason="needs POSIX shell scripts, links, owners or HOME"
 )
+# Specific reasons, so a Windows skip names the mechanism it needs (#655).
+needs_bytes_paths = pytest.mark.skipif(
+    os.name == "nt",
+    reason="NTFS names are UTF-16, so a path with an invalid UTF-8 byte cannot exist",
+)
+needs_sh_stub_git = pytest.mark.skipif(
+    os.name == "nt",
+    reason="stands in for git with a #!/bin/sh script; no .cmd equivalent written yet",
+)
+
+
+def _can_symlink() -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+needs_symlinks = pytest.mark.skipif(
+    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
+)
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
+# The Windows stand-in for git is a git.cmd batch file, which runs through cmd.exe. The script
+# process is started with a minimal environment, and on a windows-latest runner launching git.cmd
+# from it fails with WinError 267 (#655). These two names are what let the launch find cmd.exe.
+WINDOWS_CMD_ENV = (
+    {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
+    if os.name == "nt"
+    else {}
+)
 
 
 def _run(tmp_path, *args, extra_env=None):
@@ -41,7 +73,12 @@ def _run(tmp_path, *args, extra_env=None):
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH, **(extra_env or {})},
+        env={
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PATH": BASE_PATH,
+            **WINDOWS_CMD_ENV,
+            **(extra_env or {}),
+        },
     )
 
 
@@ -175,6 +212,7 @@ def test_stale_git_location_variables_in_the_environment_are_ignored(tmp_path):
     assert (tmp_path / ".claude" / "local.json").exists()
 
 
+@needs_symlinks
 def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):
     outside = tmp_path / "elsewhere"
     outside.mkdir()
@@ -190,6 +228,7 @@ def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):
     assert list(outside.iterdir()) == []
 
 
+@needs_symlinks
 def test_symlink_escape_from_dot_claude_is_refused(tmp_path):
     outside = tmp_path / "elsewhere"
     outside.mkdir()
@@ -302,6 +341,7 @@ def test_a_newline_in_the_ledger_path_cannot_write_rules_into_info_exclude(tmp_p
     assert "!/.env" not in _exclude_text(tmp_path)
 
 
+@needs_symlinks
 def test_a_symlinked_ledger_path_is_refused(tmp_path):
     root = _init_repo(tmp_path)
     (root / ".claude" / "real.json").write_text('{"entries": []}\n', encoding="utf-8")
@@ -321,7 +361,7 @@ def test_a_symlinked_ledger_path_is_refused(tmp_path):
     }
 
 
-@posix_only
+@needs_bytes_paths
 def test_a_path_that_is_not_utf8_is_refused_not_a_traceback(tmp_path):
     root = _init_repo(tmp_path)
     odd = os.fsdecode(bytes(root / ".claude") + b"/bad\xff.json")
@@ -415,6 +455,7 @@ def test_a_tracked_file_carrying_another_prs_entry_is_refused(tmp_path):
     assert _run(tmp_path, "refuted", "--pr", "7").returncode == 2
 
 
+@needs_symlinks
 def test_a_symlinked_pr_file_is_refused(tmp_path):
     _record(tmp_path, finding="a", pr="7")
     _tracked(tmp_path, 7).parent.mkdir()
@@ -523,17 +564,22 @@ def _marker_for(tmp_path):
 
 
 def _plant_git(path, marker):
+    """Plant a git that records it ran; returns the file written (Windows needs an extension)."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        # shutil.which finds a .cmd through PATHEXT, the way it would find a planted git.exe.
+        path = path.with_name(path.name + ".cmd")
+        path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\n', encoding="utf-8")
+        return path
     path.write_text(f"#!/bin/sh\ntouch {marker}\nexit 0\n", encoding="utf-8")
     path.chmod(0o755)
+    return path
 
 
-@posix_only
 def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
     for planted in ("git", "bin/git", "sub/deeper/git"):
         marker = _marker_for(tmp_path)
-        plant = tmp_path / planted
-        _plant_git(plant, marker)
+        plant = _plant_git(tmp_path / planted, marker)
         path = f"{plant.parent}{os.pathsep}{BASE_PATH}"
         result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": path})
         assert result.returncode == 2, (planted, result.stderr)
@@ -542,9 +588,9 @@ def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
         plant.unlink()
 
 
-@posix_only
+@needs_symlinks
 def test_a_symlink_into_the_repository_is_never_run(tmp_path):
-    link = tmp_path / "bin" / "git"
+    link = tmp_path / "bin" / ("git.exe" if os.name == "nt" else "git")
     link.parent.mkdir()
     link.symlink_to(shutil.which("git"))
     result = _run(
@@ -561,7 +607,7 @@ def test_a_missing_git_is_a_refusal_not_a_traceback(tmp_path):
     assert "Traceback" not in result.stderr
 
 
-@posix_only
+@needs_sh_stub_git
 def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_path_factory):
     bin_dir = tmp_path_factory.mktemp("fakebin")  # a sibling of the repository, not inside it
     log = bin_dir / "log"
@@ -577,7 +623,7 @@ def test_git_gets_only_the_pinned_environment_and_hardening_flags(tmp_path, tmp_
     home = tmp_path_factory.mktemp("home")
     trusted = str(tmp_path.resolve())
     (home / ".gitconfig").write_text(
-        f"[safe]\n\tdirectory = {trusted}\n[core]\n\tsshCommand = false\n", encoding="utf-8"
+        f"[safe]\n\tdirectory = {_cfg(trusted)}\n[core]\n\tsshCommand = false\n", encoding="utf-8"
     )
     hostile = {
         "PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}",
@@ -648,7 +694,7 @@ def _find_git_from(monkeypatch, cwd, *path_dirs):
     return _load_script()._find_git()
 
 
-@posix_only
+@needs_sh_stub_git
 def test_the_guard_still_accepts_a_git_outside_the_repository(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     tools = _stub_git(tmp_path / "tools").parent
@@ -665,6 +711,7 @@ def test_a_git_planted_in_the_repository_is_refused_from_any_subdirectory(tmp_pa
         assert _find_git_from(monkeypatch, start, plant) is None, start
 
 
+@needs_symlinks
 def test_a_link_outside_the_repository_that_points_into_it_is_refused(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     target = _stub_git(repo / "bin")
@@ -727,6 +774,14 @@ def test_a_path_spelled_with_other_letter_case_is_still_inside_the_repository(
 def _other_owner_git(directory):
     """A git that behaves as if another user owned every checkout (git's own test switch)."""
     directory.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        # A #!/bin/sh file named git is never run here; shutil.which finds a .cmd through PATHEXT.
+        shim = directory / "git.cmd"
+        shim.write_text(
+            f'@echo off\r\nset GIT_TEST_ASSUME_DIFFERENT_OWNER=1\r\n"{shutil.which("git")}" %*\r\n',
+            encoding="utf-8",
+        )
+        return directory
     stub = directory / "git"
     stub.write_text(
         f'#!/bin/sh\nexport GIT_TEST_ASSUME_DIFFERENT_OWNER=1\nexec {shutil.which("git")} "$@"\n',
@@ -736,9 +791,14 @@ def _other_owner_git(directory):
     return directory
 
 
+def _cfg(path):
+    """A path as gitconfig wants it: a backslash in a value starts an escape sequence."""
+    return Path(path).as_posix()
+
+
 def _home_with_safe_directory(tmp_path_factory, *directories):
     home = tmp_path_factory.mktemp("home")
-    entries = "".join(f"\tdirectory = {d}\n" for d in directories)
+    entries = "".join(f"\tdirectory = {_cfg(d)}\n" for d in directories)
     (home / ".gitconfig").write_text(f"[safe]\n{entries}", encoding="utf-8")
     return home
 
@@ -753,7 +813,6 @@ def test_a_checkout_owned_by_another_user_works_when_the_users_global_config_tru
     assert result.returncode == 0, result.stderr
 
 
-@posix_only
 def test_a_checkout_owned_by_another_user_is_still_refused_when_nothing_trusts_it(
     tmp_path, tmp_path_factory
 ):
@@ -818,13 +877,12 @@ def _plain_git_trusts(home, repo):
     return done.returncode == 0
 
 
-@posix_only
 def test_a_revoked_safe_directory_stays_revoked(tmp_path, tmp_path_factory):
     """An empty value resets git's list; the script must trust exactly what the user's git does."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     repo = tmp_path.resolve()
     home = _write_global_config(
-        tmp_path_factory.mktemp("home"), f"[safe]\n\tdirectory = {repo}\n\tdirectory =\n"
+        tmp_path_factory.mktemp("home"), f"[safe]\n\tdirectory = {_cfg(repo)}\n\tdirectory =\n"
     )
     _run(tmp_path, "promote", "--pr", "9")  # make the repository exist
     expected_ok = _plain_git_trusts(home, repo)
@@ -833,7 +891,6 @@ def test_a_revoked_safe_directory_stays_revoked(tmp_path, tmp_path_factory):
     assert (result.returncode == 0) == expected_ok, (expected_ok, result.stderr)
 
 
-@posix_only
 def test_a_value_with_an_escaped_newline_is_not_split_into_a_wildcard(tmp_path, tmp_path_factory):
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     home = _write_global_config(
@@ -844,11 +901,10 @@ def test_a_value_with_an_escaped_newline_is_not_split_into_a_wildcard(tmp_path, 
     assert result.returncode == 2, result.stderr
 
 
-@posix_only
 def test_a_global_config_inside_the_checkout_is_not_the_users_own(tmp_path, tmp_path_factory):
     """If HOME is the checkout (some containers), the branch decides what the file says."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
-    _write_global_config(tmp_path, f"[safe]\n\tdirectory = {tmp_path.resolve()}\n")
+    _write_global_config(tmp_path, f"[safe]\n\tdirectory = {_cfg(tmp_path.resolve())}\n")
     env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(tmp_path)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
@@ -870,14 +926,14 @@ def test_a_home_directory_that_cannot_be_entered_does_not_stop_the_script(
     assert result.returncode == 0, result.stderr
 
 
-@posix_only
+@needs_symlinks
 def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
     tmp_path, tmp_path_factory
 ):
     """HOME is outside the checkout, but ~/.gitconfig points at a file the branch controls."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     planted = tmp_path / "planted-gitconfig"
-    planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
+    planted.write_text(f"[safe]\n\tdirectory = {_cfg(tmp_path.resolve())}\n", encoding="utf-8")
     home = tmp_path_factory.mktemp("home")
     (home / ".gitconfig").symlink_to(planted)
     env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
@@ -885,18 +941,25 @@ def test_a_global_config_that_is_a_link_into_the_checkout_is_not_the_users_own(
     assert result.returncode == 2, result.stderr
 
 
-@posix_only
 def test_a_safe_directory_from_an_included_file_is_not_trusted(tmp_path, tmp_path_factory):
     """The user's config includes a file the branch controls; its entry must not be honoured."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     planted = tmp_path / "planted-include"
-    planted.write_text(f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8")
-    home = _write_global_config(tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {planted}\n")
+    planted.write_text(f"[safe]\n\tdirectory = {_cfg(tmp_path.resolve())}\n", encoding="utf-8")
+    home = _write_global_config(
+        tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {_cfg(planted)}\n"
+    )
+    _run(tmp_path, "promote", "--pr", "9")  # make the repository exist
+    # Control: the user's own git follows the include and trusts the checkout, so the refusal below
+    # is the script ignoring the include. A backslash path is a config git cannot parse at all, and
+    # would also end in a refusal.
+    assert _plain_git_trusts(home, tmp_path.resolve())
     env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
 
 
+@needs_symlinks
 def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
     tmp_path, tmp_path_factory
 ):
@@ -904,7 +967,7 @@ def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     dotfiles = tmp_path_factory.mktemp("dotfiles")
     (dotfiles / "gitconfig").write_text(
-        f"[safe]\n\tdirectory = {tmp_path.resolve()}\n", encoding="utf-8"
+        f"[safe]\n\tdirectory = {_cfg(tmp_path.resolve())}\n", encoding="utf-8"
     )
     home = tmp_path_factory.mktemp("home")
     (home / ".gitconfig").symlink_to(dotfiles / "gitconfig")
@@ -923,7 +986,7 @@ def _checkout_in_home(tmp_path_factory, config_text):
     repo.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     (repo / ".claude").mkdir()
-    (home / ".gitconfig").write_text(config_text.replace("<repo>", str(repo)), encoding="utf-8")
+    (home / ".gitconfig").write_text(config_text.replace("<repo>", _cfg(repo)), encoding="utf-8")
     return home, repo
 
 
@@ -933,6 +996,10 @@ def _record_from(repo, home, bin_dir):
         "HOME": str(home),
         "PYTHONDONTWRITEBYTECODE": "1",
     }
+    if os.name == "nt":
+        # os.path.expanduser reads USERPROFILE on Windows, not HOME; there they normally agree.
+        env["USERPROFILE"] = str(home)
+        env.update(WINDOWS_CMD_ENV)
     return subprocess.run(
         [sys.executable, str(SCRIPT), *RECORD_ARGS],
         cwd=repo,
@@ -958,7 +1025,6 @@ def test_an_entry_that_cannot_be_expanded_is_dropped_not_fatal(tmp_path_factory)
     assert result.returncode == 0, result.stderr
 
 
-@posix_only
 def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, tmp_path):
     home = tmp_path_factory.mktemp("home").resolve()
     (home / ".gitconfig").write_text(
@@ -968,6 +1034,8 @@ def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, t
     ledger = _load_script()
     ledger._trusted_directories.cache_clear()
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))  # where os.path.expanduser looks on Windows
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.chdir(tmp_path)
-    assert ledger._trusted_directories() == (str(home / "a"), "/abs/b", "", "*")
+    # expanduser appends the rest with '/': str(home / "a") on POSIX, a mixed-slash path on Windows.
+    assert ledger._trusted_directories() == (f"{home}/a", "/abs/b", "", "*")

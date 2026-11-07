@@ -316,6 +316,19 @@ jobs:
         shell: bash
       - run: uv run --no-sync --no-build pytest -q tests/marketplace_ci/test_git_review_api_script.py
         shell: bash
+      # The review helpers' guards: the scope helpers' run-directory, index-copy, intent-add and
+      # write-file checks, and the ledger, fix-diff and verify-fix-diff checks that refuse a git inside
+      # the repository. Tests that need mode bits, case-distinct names, a ':' in a path, symlinks, a
+      # non-UTF-8 path or a #!/bin/sh stand-in for git skip here, nearly all with a stated reason
+      # (#655); the fix-diff time-limit test skips until #657 is fixed. A few cases that cannot occur
+      # on Windows are dropped inside tests that still run, so -rs does not list them.
+      - run: >-
+          uv run --no-sync --no-build pytest -q -rs
+          tests/marketplace_ci/test_git_review_scope_script.py
+          tests/marketplace_ci/test_git_review_ledger_script.py
+          tests/marketplace_ci/test_git_review_fix_diff_script.py
+          tests/marketplace_ci/test_git_verify_fix_diff_script.py
+        shell: bash
       # Text mode writes CRLF only on Windows, so the Linux job cannot catch a revert of the bare-LF write.
       - run: uv run --no-sync --no-build pytest -q "tests/marketplace_ci/test_reviewer_dispatch.py::test_the_paths_file_has_bare_newlines_even_where_text_mode_would_write_crlf"
         shell: bash

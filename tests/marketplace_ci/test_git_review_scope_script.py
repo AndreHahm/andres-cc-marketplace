@@ -10,6 +10,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,42 @@ import pytest
 posix_only = pytest.mark.skipif(
     os.name == "nt", reason="needs POSIX modes, symlinks, case-sensitive names or shell helpers"
 )
+# The markers below say which mechanism a skipped test needs, so a Windows skip is a stated gap and
+# not a blanket one (#655).
+needs_mode_bits = pytest.mark.skipif(
+    os.name == "nt", reason="asserts POSIX mode bits (0600/0700/0770); NTFS reports 0666"
+)
+needs_posix_names = pytest.mark.skipif(
+    os.name == "nt", reason="needs case-distinct or ':' file names, which Windows does not allow"
+)
+# Git Bash invents mode bits and git-review-run-dir.sh replaces the 0700 check there (#637), so a
+# chmod "loose" directory is not refused on Windows. Windows also cuts an argument at its first
+# newline, so the helpers' newline checks cannot be reached through argv.
+WINDOWS = os.name == "nt"
+
+
+def _argv_safe(cases):
+    """Drop the cases whose argument holds a newline where Windows would cut it."""
+    if not WINDOWS:
+        return cases
+    return [case for case in cases if not any("\n" in arg for arg in case)]
+
+
+def _can_symlink() -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+needs_symlinks = pytest.mark.skipif(
+    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
+)
+# Resolved through PATH, as test_git_review_run_dir.py does: a bare "bash" reaches Windows process
+# creation, which searches System32 first and finds WSL's bash instead of Git Bash.
+BASH = shutil.which("bash") or "bash"
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-scope.py"
 
 
@@ -486,7 +523,7 @@ def _run(repo, out, *extra):
     )
 
 
-@posix_only
+@needs_mode_bits
 def test_end_to_end_excludes_configured_dir_and_collapses_mirror(repo, tmp_path):
     (repo / "issues").mkdir()
     (repo / "issues/1.md").write_text("noise")
@@ -577,6 +614,7 @@ def test_existing_output_is_never_overwritten(repo, tmp_path):
     assert out.read_text() == "keep me"
 
 
+@needs_symlinks
 def test_symlink_output_is_refused(repo, tmp_path):
     target = tmp_path / "target.json"
     target.write_text("keep me")
@@ -625,6 +663,7 @@ def test_mirror_is_not_collapsed_when_canonical_is_neither_in_the_diff_nor_on_th
     assert _reasons(manifest) == {".claude/skills/a/SKILL.md": "mirror-identical"}
 
 
+@needs_symlinks
 def test_reader_never_reads_through_a_symlinked_parent_directory(tmp_path):
     (tmp_path / "real").mkdir()
     (tmp_path / "real/f.txt").write_text("secret")
@@ -637,6 +676,7 @@ def test_reader_never_reads_through_a_symlinked_parent_directory(tmp_path):
     assert read("../outside") is None
 
 
+@needs_symlinks
 def test_end_to_end_directory_symlink_cannot_launder_a_malicious_mirror(repo, tmp_path):
     (repo / "plugins/git-kit/skills").mkdir()
     (repo / ".claude/skills/new").mkdir(parents=True)
@@ -803,6 +843,7 @@ def test_local_config_case_variant_tracked_by_git_is_untrusted(plain_repo):
     assert M._local_config(plain_repo, _head(plain_repo), [])[1]
 
 
+@needs_symlinks
 def test_local_config_behind_a_symlink_is_untrusted(plain_repo, tmp_path):
     (tmp_path / "elsewhere").mkdir()
     (tmp_path / "elsewhere/git-kit.local.json").write_text("{}")
@@ -976,6 +1017,7 @@ def test_fingerprint_of_a_directory_is_other(tmp_path):
     assert M._make_fingerprint(tmp_path)("sub") == "other"
 
 
+@needs_symlinks
 def test_fingerprint_behind_a_symlinked_parent_is_unreadable(tmp_path):
     (tmp_path / "real").mkdir()
     (tmp_path / "real/f.py").write_text("x")
@@ -1066,7 +1108,7 @@ def test_local_exclusions_are_labelled_and_announced():
     assert any("local config applied" in n for n in config["notes"])
 
 
-@posix_only
+@needs_posix_names
 def test_local_config_case_variant_in_head_is_untrusted_even_with_a_narrow_scope(plain_repo):
     (plain_repo / ".CLAUDE").mkdir()
     (plain_repo / ".CLAUDE/Git-Kit.Local.json").write_text("{}")
@@ -1092,7 +1134,8 @@ def test_prior_manifest_inside_the_repository_is_refused(repo, tmp_path):
     assert manifest["round"] == 1 and "inside the repository" in manifest["fallback"]
 
 
-@posix_only
+@needs_mode_bits
+@needs_symlinks
 def test_diff_dir_gets_a_diff_per_slice_and_a_codex_variant_without_ineligible_files(
     repo, tmp_path
 ):
@@ -1113,7 +1156,7 @@ def test_diff_dir_gets_a_diff_per_slice_and_a_codex_variant_without_ineligible_f
     assert oct((diffs / f"{name}.diff").stat().st_mode & 0o777) == "0o600"
 
 
-@posix_only
+@needs_posix_names
 def test_a_file_named_like_pathspec_magic_still_gets_its_own_diff(repo, tmp_path):
     (repo / "plain.py").write_text("print(1)\n")
     (repo / ":(glob)payload.sh").write_text("echo hidden-payload\n")
@@ -1171,6 +1214,7 @@ def test_a_mirror_is_judged_against_the_verified_base_ref_not_the_older_merge_ba
     assert [f["path"] for f in manifest["files"]] == [".claude/scripts/a.sh"]
 
 
+@needs_symlinks
 def test_prior_manifest_symlink_is_refused(repo, tmp_path):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1198,7 +1242,7 @@ def test_round_two_without_completed_slices_reviews_everything_and_says_so(repo,
     assert any("no --completed-slice" in n for n in manifest["inspection_limits"])
 
 
-@posix_only
+@needs_posix_names
 def test_local_config_variant_committed_after_the_merge_base_is_caught_with_an_empty_index(
     plain_repo, tmp_path, monkeypatch
 ):
@@ -1214,6 +1258,7 @@ def test_local_config_variant_committed_after_the_merge_base_is_caught_with_an_e
 
 
 @pytest.mark.skipif(not M._NOFOLLOW_OPEN, reason="needs openat-style O_NOFOLLOW")
+@needs_symlinks
 def test_reads_refuse_a_component_swapped_for_a_symlink_after_the_check(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     (repo / "d").mkdir(parents=True)
@@ -1241,11 +1286,10 @@ WRAPPER = SCRIPT.with_name("git-review-scope-run.sh")
 
 def _wrapper(repo, *args):
     return subprocess.run(
-        ["bash", str(WRAPPER), *args], cwd=repo, capture_output=True, text=True, check=False
+        [BASH, str(WRAPPER), *args], cwd=repo, capture_output=True, text=True, check=False
     )
 
 
-@posix_only
 def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1256,7 +1300,6 @@ def test_the_wrapper_runs_the_planner_into_a_fixed_shape(repo, tmp_path, mktemp_
     assert (run_dir / "diffs-1").is_dir()
 
 
-@posix_only
 def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path, mktemp_dirs):
     (repo / "a.py").write_text("1")
     _git(repo, "add", "-N", "-A")
@@ -1267,7 +1310,6 @@ def test_the_wrapper_refuses_to_run_from_inside_the_work_tree(repo, tmp_path, mk
     assert not list(run_dir.iterdir())  # nothing planned from the wrong directory
 
 
-@posix_only
 def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     base = [str(run_dir), "1", _head(repo), "main"]
@@ -1283,7 +1325,7 @@ def test_the_wrapper_refuses_arguments_that_would_redirect_the_planner(repo, tmp
     assert not (tmp_path / "elsewhere.json").exists() and not (run_dir / "manifest-1.json").exists()
 
 
-@posix_only
+@needs_symlinks
 def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     link = tmp_path / "link"
@@ -1317,12 +1359,13 @@ def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path, mkt
         [str(repo), "1", sha, "main"],  # the run directory is the repository
         [str(repo / "sub" / ".."), "1", sha, "main"],  # resolves to the repository
     ]
-    for args in cases:
+    for args in _argv_safe(cases):
         result = _wrapper(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-scope-run.sh:"), (args, result.stderr)
 
 
+@needs_symlinks
 def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_repo(
     repo, tmp_path
 ):
@@ -1331,7 +1374,7 @@ def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_
     )  # mktemp-shaped, so only the repository check can refuse
     (tmp_path / "hop").symlink_to(repo)
     result = subprocess.run(
-        ["bash", str(WRAPPER), str(tmp_path / "hop" / "tmp.abcdefgh"), "1", _head(repo), "main"],
+        [BASH, str(WRAPPER), str(tmp_path / "hop" / "tmp.abcdefgh"), "1", _head(repo), "main"],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -1341,7 +1384,6 @@ def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_
     assert result.returncode == 2 and "outside the repository" in result.stderr
 
 
-@posix_only
 def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1350,7 +1392,7 @@ def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, 
     loose = mktemp_dirs()
     loose.chmod(0o750)
     sha = _head(repo)
-    for target in (wrong_name, wrong_parent, loose):
+    for target in (wrong_name, wrong_parent, *([] if WINDOWS else [loose])):
         result = _wrapper(repo, str(target), "1", sha, "main")
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-scope-run.sh:"), (target, result.stderr)
@@ -1368,7 +1410,6 @@ def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_
     assert not Path("/x").exists()
 
 
-@posix_only
 def test_the_wrapper_drops_environment_that_would_redirect_git_or_python(
     repo, tmp_path, monkeypatch, mktemp_dirs
 ):
@@ -1394,7 +1435,7 @@ COPY_INDEX = SCRIPT.with_name("git-review-copy-index.sh")
 
 def _copy_index(repo, *args, env=None):
     return subprocess.run(
-        ["bash", str(COPY_INDEX), *args],
+        [BASH, str(COPY_INDEX), *args],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -1403,7 +1444,7 @@ def _copy_index(repo, *args, env=None):
     )
 
 
-@posix_only
+@needs_mode_bits
 def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_elsewhere(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1419,7 +1460,7 @@ def test_the_index_helper_copies_the_real_index_even_when_git_index_file_points_
     assert _copy_index(repo, str(run_dir)).returncode == 2  # never overwrites
 
 
-@posix_only
+@needs_symlinks
 def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     target = tmp_path / "victim.txt"
@@ -1434,7 +1475,7 @@ def test_the_index_helper_never_writes_through_a_planted_symlink(repo, tmp_path,
     assert not (tmp_path / "does-not-exist").exists()
 
 
-@posix_only
+@needs_mode_bits
 def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, mktemp_dirs):
     run_dir = mktemp_dirs()
     for mode in (0o770, 0o707):
@@ -1444,6 +1485,7 @@ def test_the_index_helper_refuses_a_run_directory_others_can_write(repo, mktemp_
     assert not (run_dir / "index").exists()
 
 
+@needs_symlinks
 def test_the_index_helper_refuses_a_symlinked_source_index(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     outside = tmp_path / "other-index"
@@ -1457,7 +1499,6 @@ def test_the_index_helper_refuses_a_symlinked_source_index(repo, tmp_path, mktem
     assert not (run_dir / "index").exists()
 
 
-@posix_only
 def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1465,14 +1506,14 @@ def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_p
     wrong_parent.mkdir(mode=0o700)
     loose = mktemp_dirs()
     loose.chmod(0o750)
-    for target in (wrong_name, wrong_parent, loose, repo / ".git"):
+    for target in (wrong_name, wrong_parent, *([] if WINDOWS else [loose]), repo / ".git"):
         result = _copy_index(repo, str(target))
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-copy-index.sh:"), (target, result.stderr)
         assert not (target / "index").exists() or target == repo / ".git"
 
 
-@posix_only
+@needs_symlinks
 def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1480,7 +1521,7 @@ def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
     link = tmp_path / "link"
     link.symlink_to(run_dir)
     (repo / "inside").mkdir()
-    for args in (
+    cases = [
         [],
         [str(run_dir), "extra"],
         [str(link)],
@@ -1489,7 +1530,8 @@ def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
         [str(repo)],
         ["-"],
         [str(run_dir) + "\n"],
-    ):
+    ]
+    for args in _argv_safe(cases):
         result = _copy_index(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-copy-index.sh:"), (args, result.stderr)
@@ -1503,7 +1545,7 @@ WRITE_RUN_FILE = SCRIPT.with_name("git-review-write-run-file.sh")
 
 def _write_run_file(repo, *args, stdin=""):
     return subprocess.run(
-        ["bash", str(WRITE_RUN_FILE), *args],
+        [BASH, str(WRITE_RUN_FILE), *args],
         cwd=repo,
         input=stdin,
         capture_output=True,
@@ -1519,7 +1561,13 @@ def mktemp_dirs():
 
     def make() -> Path:
         out = subprocess.run(["mktemp", "-d"], capture_output=True, text=True, check=True)
-        path = Path(out.stdout.strip())
+        raw = out.stdout.strip()
+        if os.name == "nt":
+            # Git Bash prints /tmp/tmp.X, which Windows Python reads as \tmp\tmp.X and cannot open.
+            raw = subprocess.run(
+                ["cygpath", "-m", raw], capture_output=True, text=True, check=True
+            ).stdout.strip()
+        path = Path(raw)
         made.append(path)
         return path
 
@@ -1532,7 +1580,7 @@ def _run_dir(mktemp_dirs):
     return mktemp_dirs()
 
 
-@posix_only
+@needs_mode_bits
 def test_the_writer_concatenates_stdin_run_files_and_the_fixed_prompt_in_order(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1553,7 +1601,7 @@ def test_the_writer_concatenates_stdin_run_files_and_the_fixed_prompt_in_order(
     assert sorted(p.name for p in run_dir.iterdir()) == ["diffs", "out.md"]  # no temp left behind
 
 
-@posix_only
+@needs_symlinks
 def test_the_writer_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     victim = tmp_path / "victim.txt"
@@ -1568,7 +1616,7 @@ def test_the_writer_never_writes_through_a_planted_symlink(repo, tmp_path, mktem
     assert refused.returncode == 2 and victim.read_text() == "precious"
 
 
-@posix_only
+@needs_symlinks
 def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     secret = tmp_path / "secret.txt"
@@ -1597,7 +1645,7 @@ def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, m
     assert _write_run_file(repo, str(run_dir), "out.md", "@out.md").returncode == 2
 
 
-@posix_only
+@needs_symlinks
 def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     link = tmp_path / "link"
@@ -1622,11 +1670,12 @@ def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path,
         [str(tmp_path / "missing"), "out.md", "-"],
         [str(repo / "inside"), "out.md", "-"],
         [str(repo), "out.md", "-"],
-        [str(shared), "out.md", "-"],
         ["-", "out.md", "-"],
         [str(run_dir) + "\n", "out.md", "-"],
     ]
-    for args in cases:
+    if not WINDOWS:
+        cases.append([str(shared), "out.md", "-"])  # group-writable, not 0700
+    for args in _argv_safe(cases):
         result = _write_run_file(repo, *args, stdin="x")
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-write-run-file.sh:"), (args, result.stderr)
@@ -1639,7 +1688,7 @@ INTENT_ADD = SCRIPT.with_name("git-review-intent-add.sh")
 
 def _intent_add(repo, *args, env=None):
     return subprocess.run(
-        ["bash", str(INTENT_ADD), *args],
+        [BASH, str(INTENT_ADD), *args],
         cwd=repo,
         capture_output=True,
         text=True,
@@ -1660,7 +1709,6 @@ def _listed(repo, index):
     return out.stdout.split()
 
 
-@posix_only
 def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("brand new\n")
@@ -1676,7 +1724,7 @@ def test_the_intent_add_helper_only_touches_the_run_directorys_index(repo, mktem
     assert "new.txt" not in _listed(repo, real_index)
 
 
-@posix_only
+@needs_symlinks
 def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("x")
@@ -1688,7 +1736,7 @@ def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_
     assert victim.read_bytes() == b"precious"
 
 
-@posix_only
+@needs_symlinks
 def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1704,14 +1752,14 @@ def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
         [],
         [str(good), "a", "b"],
         [str(wrong_name)],
-        [str(loose)],
+        *([] if WINDOWS else [[str(loose)]]),
         [str(link)],
         [str(repo)],
         [str(repo / ".git")],
         ["-x"],
         [str(good), "a\nb"],
     ]
-    for args in cases:
+    for args in _argv_safe(cases):
         result = _intent_add(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-intent-add.sh:"), (args, result.stderr)
@@ -1750,7 +1798,6 @@ def test_the_intent_add_helper_does_not_run_a_hook_from_the_reviewed_tree(
     assert not marker.exists()
 
 
-@posix_only
 def test_the_intent_add_helper_ignores_inherited_git_variables(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "new.txt").write_text("x")
@@ -1767,7 +1814,6 @@ def test_the_intent_add_helper_ignores_inherited_git_variables(repo, tmp_path, m
     assert real_index.read_bytes() == before
 
 
-@posix_only
 def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1782,7 +1828,6 @@ def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
     assert result.returncode == 2 and "regular file" in result.stderr
 
 
-@posix_only
 def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     good = mktemp_dirs()
     assert _write_run_file(repo, str(good), "out.md", "-", stdin="ok").returncode == 0
@@ -1794,7 +1839,8 @@ def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, m
     loose.chmod(0o750)  # right shape, but not exactly 0700
     home_like = tmp_path / "home"
     (home_like / ".claude").mkdir(parents=True, mode=0o700)
-    for target in (wrong_name, wrong_parent, loose, home_like / ".claude", repo / ".git"):
+    loose_dirs = [] if WINDOWS else [loose]
+    for target in (wrong_name, wrong_parent, *loose_dirs, home_like / ".claude", repo / ".git"):
         result = _write_run_file(repo, str(target), "settings.json", "-", stdin="x")
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-write-run-file.sh:"), (target, result.stderr)
@@ -1802,7 +1848,7 @@ def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, m
     assert not list(wrong_name.iterdir()) and not list(wrong_parent.iterdir())
 
 
-@posix_only
+@needs_mode_bits
 def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variables(
     repo, mktemp_dirs
 ):
@@ -1816,7 +1862,7 @@ def test_the_writer_append_keeps_the_owner_only_mode_and_drops_git_config_variab
     env = {**os.environ, "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.worktree"}
     env["GIT_CONFIG_VALUE_0"] = str(run_dir)
     ran = subprocess.run(
-        ["bash", str(WRITE_RUN_FILE), str(run_dir), "env.md", "-"],
+        [BASH, str(WRITE_RUN_FILE), str(run_dir), "env.md", "-"],
         cwd=repo,
         input="x",
         capture_output=True,

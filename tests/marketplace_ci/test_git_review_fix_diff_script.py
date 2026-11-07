@@ -12,6 +12,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,14 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-review-fix-diff.py"
 SYSTEM_PATH = os.environ.get("PATH", "/usr/bin:/bin")
+# A git.cmd stand-in runs through cmd.exe, which a launch finds through these two names. The minimal
+# environment below omits them, and the ledger tests failed on a windows-latest runner for that
+# reason (WinError 267, #655), so they are passed through here too.
+WINDOWS_CMD_ENV = (
+    {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
+    if os.name == "nt"
+    else {}
+)
 # These tests stand in for git with a shell script, link files or join PATH with ":"; none of that
 # works on native Windows (a script named `git` cannot be run as git, PATH is split on ";").
 posix_only = pytest.mark.skipif(
@@ -33,7 +42,7 @@ def _git(repo, *args):
 
 
 def _run(cwd, *args, env=None):
-    base = {"PATH": SYSTEM_PATH, "HOME": str(cwd)}
+    base = {"PATH": SYSTEM_PATH, "HOME": str(cwd), **WINDOWS_CMD_ENV}
     base.update(env or {})
     return subprocess.run(
         [sys.executable, "-I", str(SCRIPT), *args],
@@ -56,6 +65,31 @@ def _hook(path, marker, body=""):
     # `: >` is a shell builtin: the marker is written even when the script runs with an empty PATH.
     path.write_text(f"#!/bin/sh\n: > {marker}\n{body}", encoding="utf-8")
     path.chmod(0o755)
+
+
+def _plant_git(path, marker):
+    """Plant a git that records it ran; returns the file written (Windows needs an extension)."""
+    if os.name != "nt":
+        _hook(path, marker)
+        return path
+    # shutil.which finds a .cmd through PATHEXT, the way it would find a planted git.exe.
+    path = path.with_name(path.name + ".cmd")
+    path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\n', encoding="utf-8")
+    return path
+
+
+def _can_symlink() -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+needs_symlinks = pytest.mark.skipif(
+    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
+)
 
 
 @pytest.fixture
@@ -413,47 +447,44 @@ def test_control_plain_git_diff_writes_a_trace_file(fixed, tmp_path):
 # script is started. PR #589 review: only the starting directory used to be checked.
 
 
-@posix_only
 @pytest.mark.parametrize("planted", ["git", "bin/git", "sub/git", "sub/deeper/git"])
 def test_a_git_planted_anywhere_in_the_repository_is_never_used_from_a_subdirectory(
     fixed, tmp_path, planted
 ):
     repo, base = fixed
     marker = tmp_path / "ran"
-    plant = repo / planted
-    plant.parent.mkdir(parents=True, exist_ok=True)
-    _hook(plant, marker)
+    (repo / planted).parent.mkdir(parents=True, exist_ok=True)
+    plant = _plant_git(repo / planted, marker)
     start = repo / "sub" / "deeper"
     start.mkdir(parents=True, exist_ok=True)
-    result = _run(start, "--base", base, env={"PATH": f"{plant.parent}:{SYSTEM_PATH}"})
+    result = _run(start, "--base", base, env={"PATH": f"{plant.parent}{os.pathsep}{SYSTEM_PATH}"})
     assert not marker.exists()
     assert result.returncode == 2
     assert result.stdout == ""
 
 
-@posix_only
 def test_a_git_planted_in_a_linked_worktree_is_never_used(fixed, tmp_path):
     repo, base = fixed
     linked = tmp_path / "linked"
     _git(repo, "worktree", "add", "-q", "--detach", str(linked), "HEAD")
     marker = tmp_path / "ran"
-    _hook(linked / "git", marker)
+    _plant_git(linked / "git", marker)
     start = linked / "sub"
     start.mkdir()
-    result = _run(start, "--base", base, env={"PATH": f"{linked}:{SYSTEM_PATH}"})
+    result = _run(start, "--base", base, env={"PATH": f"{linked}{os.pathsep}{SYSTEM_PATH}"})
     assert not marker.exists()
     assert result.returncode == 2
 
 
-@posix_only
+@needs_symlinks
 def test_a_symlink_into_the_repository_is_never_used(fixed, tmp_path):
     repo, base = fixed
-    link = repo / "bin" / "git"
+    link = repo / "bin" / ("git.exe" if os.name == "nt" else "git")
     link.parent.mkdir()
     link.symlink_to(shutil.which("git"))
     start = repo / "sub"
     start.mkdir()
-    result = _run(start, "--base", base, env={"PATH": f"{link.parent}:{SYSTEM_PATH}"})
+    result = _run(start, "--base", base, env={"PATH": f"{link.parent}{os.pathsep}{SYSTEM_PATH}"})
     assert result.returncode == 2
 
 
@@ -492,7 +523,14 @@ def test_the_time_limit_does_not_use_sigalrm():
     assert "threading.Timer" in source
 
 
-@posix_only
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason=(
+        "on Windows the time limit fires but the call returns only when a child holding the "
+        "output pipe exits (about 30 s with a .cmd git that runs ping); found by #655, "
+        "tracked in #657, not yet fixed in git-review-fix-diff.py"
+    ),
+)
 def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
     import time
 
