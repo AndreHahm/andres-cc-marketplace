@@ -75,10 +75,8 @@ No `codacy` or `codacy-analysis` command is pre-approved here. `codacy pull-requ
 a pre-approval would let those run without a prompt. Each command therefore raises a normal permission prompt
 showing its exact text, unless the user's own settings or permission mode already allow it, on top of the approval in the Decision rights table below. **Approve each one once,
 and never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow rule**: a persistent rule is a prefix rule that
-would pre-approve every write flag from then on. The fixed `codacy-analysis analyze . --inspect` check
-stays ungranted too: whether it loads tools once a config exists has not been verified, and a scan can run code
-from a repository's config. The scan forms and the `--inspect` config check are in
-`references/local-scan.md`. `codacy-analysis init` is never run here: hand the user the exact
+would pre-approve every write flag from then on. The scan forms and the config check, which only reads the
+config file, are in `references/local-scan.md`. `codacy-analysis init` is never run here: hand the user the exact
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
 by this skill. The `gh pr view` re-check in the Decision rights table is pre-approved, because it only reads the
 PR.
@@ -204,7 +202,7 @@ otherwise. A `codacy-analysis` allow rule in the user's own settings removes the
 command, so read its text yourself before running it. Run the scan only on your own branch: some linters load
 code from the repository's config files, so scanning someone else's checked-out PR branch would run their code.
 The scan needs `.codacy/codacy.config.json`. In this repository that file is local and ignored (decided
-2026-10-17; `.codacy/` is in `.gitignore`), so each person creates their own. If `--inspect` finds none,
+2026-10-17; `.codacy/` is in `.gitignore`), so each person creates their own. If the file is missing,
 stop and hand the user the `init` command from `references/local-scan.md`; never run `codacy-analysis init`
 yourself. When local and Cloud counts differ, Cloud wins; record the difference.
 
