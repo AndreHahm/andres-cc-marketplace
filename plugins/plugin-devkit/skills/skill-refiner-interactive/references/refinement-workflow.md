@@ -201,7 +201,7 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** Verify `allowed-tools` field matches actual tool usage and applies principle of least privilege.
 
 **Check:**
-- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — an undeclared tool is not pre-approved and remains subject to the active permission settings (R6 tool-completeness; Major)
+- [ ] **Undeclared tools:** All tools called in SKILL.md and all `references/*.md` files are listed in `allowed-tools` — an undeclared tool is not pre-approved and remains subject to the active permission settings (R6 tool-completeness; Major, unless R6's two deliberately-ungranted exceptions (`plugin-rulebook`'s `references/frontmatter-corrections.md`) clears the command, or rates it ADVISORY (unverified), which is reported as ADVISORY)
 - [ ] **Unused declared tools:** No tools in `allowed-tools` that are never referenced in SKILL.md or any reference file — principle of least privilege (Minor)
 - [ ] **Bash-for-dedicated-tool misuse:** No `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)` where Grep, Glob, Read would serve the same purpose (Minor)
 - [ ] Wildcards used appropriately (`Bash(git:*)` for git-only; bare `Agent` pre-approves any agent type, so narrow it to `Agent(<type>)` only where the current Claude Code docs confirm that form for `allowed-tools`)

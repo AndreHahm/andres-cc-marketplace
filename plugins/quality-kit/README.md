@@ -25,9 +25,10 @@ handled three different ways across this repository.
   `.codacy.yml` exclusions, needs an explicit approval each time; a pattern or quality-gate change, and the
   bulk ignore flags, are handed to you as an exact command and never run by the skills.
 - **No Codacy command is pre-approved.** The Codacy CLIs have write flags that a tool grant cannot narrow,
-  so every `codacy` and `codacy-analysis` command raises a normal permission prompt showing its text. Approve
-  each one once. Never choose "don't ask again" or add a `codacy` allow rule: that would pre-approve the write
-  flags too.
+  so every `codacy` and `codacy-analysis` command raises a normal permission prompt showing its text, unless your
+  own settings or permission mode already allow it. Approve
+  each one once. Never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow rule: that would
+  pre-approve the write flags too.
 - **Repository-specific policy** (which findings this repository accepts, and where) lives in the repository's
   own `CLAUDE.md`, `AGENTS.md` and `docs/ci.md`, not here.
 

@@ -28,8 +28,11 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 | `Bash(*)` | REQUIRED — unrestricted |
 | `Bash(sh:*)` `Bash(bash:*)` `Bash(cmd:*)` `Bash(powershell:*)` | REQUIRED — shell interpreters bypass scoping |
 | `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)` (interpreter followed by one pinned script path) | PASS — permits that one script only; needed where Claude Code refuses direct execution of a script whose operands start with `git-` in an `EnterWorktree` session (issue #516) |
-| `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped |
+| `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped (ADVISORY least-privilege note when it reaches a form the clause below excludes) |
 | `Bash(git:* mkdir:*)` | PASS — multiple named tools, each explicit |
+| `Bash(gh pr view --json url:*)` | PASS — a longer prefix of a read-only command, see below |
+
+**Prefix grant on a read-only command (PASS):** a trailing wildcard matches any arguments, so a flag can follow any prefix. A reviewer must not raise a finding for that alone (`-R/--repo` after `gh pr view --json url`, for example). The clause covers a named command, not a shell interpreter or general wrapper, or a longer prefix of it, when no form it reaches changes state, overwrites a file (an output-file flag counts), or prints credentials, secrets or arbitrary file contents. Public repository metadata and opening a browser do not count. Confirm this against the tool's documentation or `--help`. When the reviewer cannot confirm it, the verdict is ADVISORY (unverified). A prefix that reaches one of those forms gets no clearance here: it stays PASS as a named tool, with an ADVISORY least-privilege note.
 
 ## R6 — Format and Tool-Completeness Detail
 
@@ -53,6 +56,42 @@ all — equally unrestricted)
 own Boundaries section says that form is intentionally not pre-approved, so every real run raises a
 permission prompt for the user. Record it as an ADVISORY note at most. This does not cover a wider grant,
 a tool the Boundaries section does not mention, or an undocumented gap.
+
+**Deliberately ungranted command with no narrowable safe form (PASS):** a skill or command may run a Bash
+command that no grant reaches when no narrower grant could be safe, for one of three reasons:
+
+- **No read form:** every run the component makes changes state or publishes something, and its body asks for
+  approval of each run, showing the exact command. A read does not qualify.
+- **Shared prefix:** what the component runs has a variable part, so its grant must end in a prefix, and a
+  prefix cannot exclude arguments added after it. That prefix also accepts a flag or subcommand that changes
+  state or overwrites files. The Boundaries section must name at least one, and a longer pinned prefix must not
+  be able to avoid it. The component's body must ask for approval of the exact command before each run that
+  changes state. This reason does not fit a fully fixed command, which has no variable part: grant it exactly,
+  with no `:*`, unless the sensitive read reason applies.
+- **Sensitive read:** the read prints identity fields or other sensitive output, so a persistent rule on it
+  would expose them with no prompt. The Boundaries section must name the fields.
+
+The component's own Boundaries section must do all four of these:
+
+1. Name each command or subcommand covered.
+2. Say the component never pre-approves it, so it raises a permission prompt unless the user's own settings or
+   permission mode already allow it.
+3. State which reason applies.
+4. Tell the user to approve each run once and not to add a persistent allow rule, because that rule would also
+   pre-approve the forms this exception protects.
+
+"No grant reaches it" excludes a prefix of the command, a general interpreter or wrapper grant (`python`, `node`,
+`uv run`, `env`, `xargs`), and a granted script that runs the command. Check granted scripts too.
+
+The stated reason is a claim to verify, not proof: confirm it against the tool's documentation or `--help`. When
+it is confirmed the verdict is PASS, with no ADVISORY note. When the reviewer cannot confirm it, the verdict is
+ADVISORY (unverified), not PASS and not FAIL. `resolving-analysis-findings`' `codacy pull-request` and
+`codacy-analysis analyze --pr` commands are a shipped example of the shared prefix reason. `check_tool_grants.py` still lists such a command as a candidate; this
+exception is what clears that line.
+
+This does not cover a command with a narrower form that could safely be granted: grant that form, and use the
+write-form exception above if the real form stays ungranted. It also does not cover a Boundaries section missing
+any of the four items, a non-Bash tool, or an agent's `tools` field.
 
 ## R6 — Mechanical Assist for the Tool-Completeness Sub-Check
 

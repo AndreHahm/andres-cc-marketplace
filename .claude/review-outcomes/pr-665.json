@@ -1,0 +1,154 @@
+{
+  "entries": [
+    {
+      "disposition": "accepted",
+      "finding": "4503222906",
+      "line": 77,
+      "note": "Real, already tracked as issue 663: the export cannot be regenerated.",
+      "path": "plugins/plugin-devkit/agents/command-reviewer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "stale-export"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4503222913",
+      "line": 143,
+      "note": "Real but predates this PR, out of scope. Filed as issue 667.",
+      "path": "plugins/plugin-devkit/agents/skill-reviewer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "scan-scope"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222919",
+      "line": 29,
+      "note": "Checklist and summary now require the approve-once instruction.",
+      "path": "plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "r6-drift"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222924",
+      "line": 68,
+      "note": "Shared prefix now needs per-run approval; eval 29 covers it.",
+      "path": "plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "r6-policy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222929",
+      "line": 68,
+      "note": "Weak on the old text; clarified that the sensitive read reason still applies to a fixed command.",
+      "path": "plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "r6-clarity"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222938",
+      "line": 18,
+      "note": "Reports unverified, not Major, when plugin-rulebook is not found.",
+      "path": "plugins/plugin-devkit/skills/skill-refiner-interactive/references/pre-analysis-checklist.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "r6-deferral"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222944",
+      "line": 30,
+      "note": "README now states allow rules and permission mode can suppress the prompt.",
+      "path": "plugins/quality-kit/README.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "doc-accuracy"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4503222947",
+      "line": 35,
+      "note": "Handover now sits in the missing-config branch.",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/references/local-scan.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "flow"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42400671388-eval-24-answer",
+      "line": 18,
+      "note": "Corrected line 18 in place at the user request in ef8789c0; grading.json and the skill run record state the correction.",
+      "path": "evals/skill-refiner-interactive/workspace/iteration-14/eval-24/with_skill/outputs/answer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T18:45:04+00:00",
+      "rule": "correctness"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42400671388-gh-pr-view-grant",
+      "line": 16,
+      "note": "User rated it a false positive against the official docs but chose to narrow it anyway: two grants pinned to one JSON field each, fixed in ef8789c0.",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T18:45:04+00:00",
+      "rule": "permission-risk"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-42402809785-prefix-security",
+      "line": 16,
+      "note": "User verdict: false positive, same grounds. The docs confirm a trailing wildcard matches later flags; the exposure is read-only PR metadata for one turn.",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:02:04+00:00",
+      "rule": "security"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "ci-42402809785-r6-prefix-grant",
+      "line": 16,
+      "note": "User verdict: false positive. R6 passes named-command prefixes and allowed-tools does not restrict; a flag able to follow a read-only prefix is not a finding. R6 now states this.",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:02:03+00:00",
+      "rule": "R6 tool scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42405528901-command-reviewer-runtime",
+      "line": 77,
+      "note": "Dropped the fails-at-runtime claim for not pre-approved.",
+      "path": "plugins/plugin-devkit/agents/command-reviewer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42405528901-skill-reviewer-runtime",
+      "line": 143,
+      "note": "Dropped the blocked-at-runtime claim for not pre-approved.",
+      "path": "plugins/plugin-devkit/agents/skill-reviewer.md",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "ci-42405528901-skill-reviewer-toml-runtime",
+      "line": 123,
+      "note": "Regenerated from the fixed source.",
+      "path": ".codex/agents/skill-reviewer.toml",
+      "pr": 665,
+      "recorded_at": "2026-11-07T19:48:29+00:00",
+      "rule": "tool-scoping"
+    }
+  ]
+}

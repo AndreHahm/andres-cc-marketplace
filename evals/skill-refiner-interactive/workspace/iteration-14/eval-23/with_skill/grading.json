@@ -1,0 +1,21 @@
+{
+  "eval_id": 23,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Records FAIL for the goal",
+      "passed": true,
+      "evidence": "Result: FAIL"
+    },
+    {
+      "text": "Treats the Major as outside the ADVISORY carve-out",
+      "passed": true,
+      "evidence": "It is Major, not ADVISORY, so the carve-out does not apply"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

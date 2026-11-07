@@ -1,0 +1,21 @@
+{
+  "eval_id": 24,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "Records PASS for a confirmed reason",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Treats the cleared command as not flagged",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States an unconfirmed reason is ADVISORY (unverified), the goal still passes and the advisory stays in the report",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
