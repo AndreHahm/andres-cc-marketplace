@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "No inline suppression is applied without an approval question, because VULNERABILITY counts as Security",
+      "passed": true,
+      "evidence": "Fixes by default, asks before any suppression"
+    },
+    {
+      "text": "Any per-issue route is shown as sonar api post /api/issues/do_transition with falsepositive and a comment",
+      "passed": false,
+      "evidence": "Offers the 'Mark as Safe' UI action; no do_transition command"
+    },
+    {
+      "text": "That transition is stated to need its own approval, after a fresh re-collect",
+      "passed": false,
+      "evidence": "No fresh re-collect and no per-command approval for a transition"
+    },
+    {
+      "text": "No codacy command and no .codacy.yml change is proposed",
+      "passed": true,
+      "evidence": "No codacy command or .codacy.yml change"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The report says the analysis describes an older head",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report does not present the counts as current",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report does not treat the null is_analysing as proof that analysis finished",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

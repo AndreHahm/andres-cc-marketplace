@@ -178,6 +178,8 @@ an uplift. In the injection eval both arms treat the message as data; it separat
 issue id and tool. Iteration 2, after the audit fixes, gave the same 14 of 14 against 12 of 14 on the same
 two assertions. The adapter's own behavior is covered by the smoke test.
 
+**Sonar evidence:** evals 5 and 6, Full Pipeline, iteration 3, 2026-11-07, one run per arm, on the redacted fixtures: with skill 9 of 9 assertions, baseline 7 of 9. Only eval 5 separates the arms (the record and the two-pipe status step). Eval 6 passes for both arms, one assertion only because the baseline never mentions `is_analysing`. `scripts/smoke_test.py` passed all its checks the same day, adapter included.
+
 **Last dated run record:** 2026-10-17, `scripts/smoke_test.py`, 60 of 60 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;
 that run was not saved as a file, because real output holds committer emails.

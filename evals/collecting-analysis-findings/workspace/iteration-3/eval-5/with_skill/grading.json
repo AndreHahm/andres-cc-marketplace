@@ -1,0 +1,41 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The record names provider sonar and schema 1.1.0 with 3 findings",
+      "passed": true,
+      "evidence": "record.json: schema_version 1.1.0, provider sonar, counts.total 3"
+    },
+    {
+      "text": "The report gives 3 findings for rule shell:S7688 in .claude/hooks/dck-session-context.sh",
+      "passed": true,
+      "evidence": "report.md: shell:S7688, lines 8, 9, 15 in .claude/hooks/dck-session-context.sh"
+    },
+    {
+      "text": "The status was produced first with --kind pr-status and passed to --kind pr through --status",
+      "passed": true,
+      "evidence": "--kind pr-status wrote sonar-status.json, then --kind pr read it through --status"
+    },
+    {
+      "text": "The report says the analysis is current because the head matches",
+      "passed": true,
+      "evidence": "'Currency verdict: CURRENT', record SHA equals the given head"
+    },
+    {
+      "text": "The report gives the quality gate status OK",
+      "passed": true,
+      "evidence": "'Quality gate at that head: OK'"
+    },
+    {
+      "text": "No identity value (person-login, person@example.com) appears in the record or report",
+      "passed": true,
+      "evidence": "grep for person-login and person@example.com found none in outputs"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

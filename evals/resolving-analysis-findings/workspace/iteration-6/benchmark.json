@@ -1,0 +1,62 @@
+{
+  "skill_name": "resolving-analysis-findings",
+  "iteration": 6,
+  "timestamp": "2026-11-07T11:27:37+01:00",
+  "evals": [
+    {
+      "eval_id": 5,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 121666,
+        "avg_duration_ms": 44025
+      },
+      "baseline": {
+        "pass_rate": 0.5,
+        "assertions_passed": 2,
+        "assertions_total": 4,
+        "avg_tokens": 101828,
+        "avg_duration_ms": 27782
+      },
+      "delta": {
+        "pass_rate": 0.5,
+        "tokens": 19838,
+        "duration_ms": 16243
+      }
+    },
+    {
+      "eval_id": 6,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 112353,
+        "avg_duration_ms": 36811
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 4,
+        "assertions_total": 4,
+        "avg_tokens": 97213,
+        "avg_duration_ms": 25617
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 15140,
+        "duration_ms": 11194
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.75,
+    "improvement": 0.25,
+    "avg_tokens_with_skill": 117010,
+    "avg_tokens_baseline": 99521,
+    "token_cost": 17489,
+    "avg_duration_ms_with_skill": 40418,
+    "avg_duration_ms_baseline": 26700,
+    "duration_cost_ms": 13718
+  }
+}
