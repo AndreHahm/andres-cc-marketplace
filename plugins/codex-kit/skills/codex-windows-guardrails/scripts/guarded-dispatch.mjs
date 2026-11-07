@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
-import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
+import { runCodexExec, redactSecrets, redactTokenShapes } from "../../../scripts/lib/codex-exec.mjs";
 import {
   matchesSecretFilename,
   matchesAnyStrictSecretFilename,
@@ -608,8 +608,8 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
           // placeholder template (.env.example/.sample/.template). It needs the
           // same base provenance (tracked at the base, byte-identical, listed in
           // the base .secretlintignore) AND it does not skip the content scan: it
-          // falls through to the scan below, so a real value placed in a template
-          // still blocks. .env and every other strict name stay ineligible.
+          // falls through to the scan below (vendor token shapes, PEM and credential
+          // assignments only; an edit is blocked by the base-blob hash). .env and every other strict name stay ineligible.
           const envTemplate = matchedOwnBasename && isEnvTemplate(name);
           const baseVerifiedExempt =
             matchedOwnBasename && (!matchesAnyStrictPattern(name) || envTemplate) && isBaseVerifiedExempt(relativePath);
@@ -675,7 +675,7 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
             if (
               content !== null &&
               isBoundedForContentScan(content) &&
-              redactSecrets(content) === content &&
+              (baseVerifiedTemplate ? redactTokenShapes(content) : redactSecrets(content)) === content &&
               !looksLikeCredentialAssignment(content)
             ) {
               continue;
