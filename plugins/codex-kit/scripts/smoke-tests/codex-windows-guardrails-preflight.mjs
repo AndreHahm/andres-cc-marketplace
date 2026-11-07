@@ -1222,6 +1222,57 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
   }
 }
 
+console.log("\n=== issue #649: the unsandboxed dispatch honors CODEX_KIT_REVIEW_MODEL and CODEX_KIT_REVIEW_TIMEOUT_MS like the bridge ===");
+{
+  const f = makeFixture();
+  f.commit("init");
+  const withEnv = (vars, fn) => {
+    const previous = {};
+    for (const [key, value] of Object.entries(vars)) {
+      previous[key] = process.env[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    try {
+      return fn();
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  };
+  const dry = (vars) => withEnv(vars, () => runDispatchRaw(f.root, "target.md", instructionFile, "smoke-649", ["--dry-run", "true"]));
+  const wouldRun = (r) => (r && r.dryRun === true ? r.wouldRun : null);
+
+  const unset = dry({ CODEX_KIT_REVIEW_MODEL: undefined, CODEX_KIT_REVIEW_TIMEOUT_MS: undefined });
+  check(
+    "control: with neither override set, the dry run keeps the defaults (no --model, 240000 ms)",
+    wouldRun(unset) && wouldRun(unset).model === null && wouldRun(unset).timeoutMs === 240000,
+    JSON.stringify(unset).slice(0, 300)
+  );
+  const set = dry({ CODEX_KIT_REVIEW_MODEL: "gpt-5-mini", CODEX_KIT_REVIEW_TIMEOUT_MS: "600000" });
+  check(
+    "both overrides reach the exec: the model and a 600000 ms timeout are used",
+    wouldRun(set) && wouldRun(set).model === "gpt-5-mini" && wouldRun(set).timeoutMs === 600000,
+    JSON.stringify(set).slice(0, 300)
+  );
+  const badModel = dry({ CODEX_KIT_REVIEW_MODEL: "not a valid model slug!", CODEX_KIT_REVIEW_TIMEOUT_MS: undefined });
+  check(
+    "an invalid model slug is rejected before any exec, with the bridge's message",
+    badModel.ok === false && /CODEX_KIT_REVIEW_MODEL must match/.test(badModel.detail),
+    JSON.stringify(badModel)
+  );
+  for (const bad of ["not-a-number", "-1", "0", "1.5"]) {
+    const result = dry({ CODEX_KIT_REVIEW_MODEL: undefined, CODEX_KIT_REVIEW_TIMEOUT_MS: bad });
+    check(
+      `an invalid timeout (${bad}) is rejected before any exec, with the bridge's message`,
+      result.ok === false && /CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer/.test(result.detail),
+      JSON.stringify(result)
+    );
+  }
+}
+
 console.log("\n=== trusted-base tier: fails closed when no base can be resolved ===");
 {
   const f = makeFixture();

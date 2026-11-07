@@ -835,6 +835,26 @@ async function main() {
     return;
   }
 
+  // Issue #649: the same two optional overrides codex-review-bridge's
+  // bridge-invoke.mjs reads, with the same validation and messages, so a run
+  // that falls back to this unsandboxed path uses the model and timeout the
+  // caller advertised (CI's) instead of the local default and 240000 ms. Unset
+  // leaves runCodexExec's own defaults untouched.
+  const modelOverride = process.env.CODEX_KIT_REVIEW_MODEL;
+  if (modelOverride && !isValidToken(modelOverride)) {
+    fail("non_zero_exit", "CODEX_KIT_REVIEW_MODEL must match ^[A-Za-z0-9._-]{1,64}$");
+    return;
+  }
+  const timeoutOverrideRaw = process.env.CODEX_KIT_REVIEW_TIMEOUT_MS;
+  let timeoutOverrideMs;
+  if (timeoutOverrideRaw) {
+    timeoutOverrideMs = Number(timeoutOverrideRaw);
+    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0) {
+      fail("non_zero_exit", "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer");
+      return;
+    }
+  }
+
   // No trim()/filter(Boolean): each entry is checked exactly as given, so a
   // padded or empty entry is rejected instead of being normalized into a
   // valid-looking one (issue #533, same rule as bridge-invoke.mjs).
@@ -1009,7 +1029,9 @@ async function main() {
     sandbox: "danger-full-access",
     cwd: repoRoot,
     dispatchId,
-    dryRun
+    dryRun,
+    ...(modelOverride ? { model: modelOverride } : {}),
+    ...(timeoutOverrideMs ? { timeoutMs: timeoutOverrideMs } : {})
   });
 
   if (!result.ok) {
