@@ -1192,7 +1192,7 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
   const clean = templateFixture("# Copy to .env\nOPENROUTER_API_KEY=your-openrouter-key-here\nOTHER_API_KEY=your-other-key-here\n");
   check("a base-listed, unchanged multi-key .env.example with placeholder values advances past the scan", passedScan(clean.run()), JSON.stringify(clean.last));
   writeFixtureFile(clean.root, ".env", "OPENROUTER_API_KEY=real");
-  check("control: an untracked .env next to the exempt template still blocks", blockedBy(clean.run(), /\.env($|[^.])/), JSON.stringify(clean.last));
+  check("control: an untracked .env next to the exempt template still blocks", blockedBy(clean.run(), /^\.env matches sensitive-filename/), JSON.stringify(clean.last));
   fs.rmSync(path.join(clean.root, ".env"));
 
   writeFixtureFile(clean.root, ".env.example", "# edited\n# Copy to .env\nOPENROUTER_API_KEY=your-openrouter-key-here\nOTHER_API_KEY=your-other-key-here\n");
@@ -1207,6 +1207,12 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
 
   const pemBlock = templateFixture("-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----\n");
   check("a base-listed template holding a PEM private key block still blocks", blockedBy(pemBlock.run(), /\.env\.example/), JSON.stringify(pemBlock.last));
+
+  const bearer = templateFixture("CONFIG=Bearer abcdefghijklmnopqrstuvwxyz0123\n");
+  check("a base-listed template holding a Bearer token-length value under an ordinary name still blocks", blockedBy(bearer.run(), /\.env\.example/), JSON.stringify(bearer.last));
+
+  const authHeader = templateFixture("Authorization: Basic dXNlcjpwYXNz\n");
+  check("a base-listed template holding an Authorization header line still blocks", blockedBy(authHeader.run(), /\.env\.example/), JSON.stringify(authHeader.last));
 
   const annotated = templateFixture('API_KEY: str = "sk-live-abc123"\n');
   check("a base-listed template with a hard-coded quoted value still blocks", blockedBy(annotated.run(), /\.env\.example/), JSON.stringify(annotated.last));

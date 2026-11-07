@@ -600,7 +600,8 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
           // with fake credentials), and the provenance check is what makes
           // skipping it safe -- a branch cannot add an exemption or alter an
           // exempt file. A strict-pattern filename (.env, *.pem, id_rsa, ...)
-          // is never eligible, same as the tier below. Falls through to that
+          // is never eligible, same as the tier below, except the env templates
+          // described after this paragraph. Falls through to that
           // tier unchanged when this tier doesn't apply or the base cannot
           // be resolved.
           //
@@ -609,7 +610,8 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
           // same base provenance (tracked at the base, byte-identical, listed in
           // the base .secretlintignore) AND it does not skip the content scan: it
           // falls through to the scan below (vendor token shapes, PEM and credential
-          // assignments only; an edit is blocked by the base-blob hash). .env and every other strict name stay ineligible.
+          // assignments, plus Bearer/Authorization lines only; an edit is blocked by the
+          // base-blob hash). .env and every other strict name stay ineligible.
           const envTemplate = matchedOwnBasename && isEnvTemplate(name);
           const baseVerifiedExempt =
             matchedOwnBasename && (!matchesAnyStrictPattern(name) || envTemplate) && isBaseVerifiedExempt(relativePath);
