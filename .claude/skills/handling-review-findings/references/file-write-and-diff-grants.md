@@ -165,15 +165,17 @@ a scratchpad write falls back to a prompt rather than succeeding silently.
 ## Follow-up: launching the verifier driver from the target branch (Issue #656)
 
 Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
-grade itself (`references/fix-self-review.md`). Granted: `git cat-file -e:*` (prints nothing). The base name comes
-from `gh pr view --json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not**
-granted, so each prompts: the two `git merge-base` calls (`git merge-base HEAD 'refs/remotes/origin/<base>'` and
-`git merge-base --is-ancestor <target> refs/remotes/origin/HEAD`; a prefix grant would let any further argument or
-a redirect through, and the branch name is the PR's own base, so the first cannot be an exact form), `git remote
-get-url origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p
-<hash>:<path> > <scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I
-<scratchpad>/...` (running a file from a writable directory). The driver itself re-checks that its trusted commit is
-on the default branch. A reviewer comparing the body with `allowed-tools` will see these calls without grants: that
-is the intended state. The two `merge-base` grants were first added and then dropped in this change after CI's
-Codex security review flagged them as Major twice. Not checked live: how Claude Code's matcher treats a redirect on
+grade itself (`references/fix-self-review.md`). Granted: `git cat-file -e:*` (prints nothing) and `git merge-base:*` (the two calls
+`git merge-base HEAD 'refs/remotes/origin/<base>'` and `git merge-base --is-ancestor <target>
+refs/remotes/origin/HEAD`; every form of the command, checked against `git merge-base -h`, only prints commit IDs
+or an exit status, so it is a read-only prefix under R6's exception for one). The base name comes from `gh pr view
+--json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not** granted, so each
+prompts: `git remote get-url origin` (a fully fixed command; the URL can embed a token, so this is the
+sensitive-read reason, and this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p
+<hash>:<path> > <scratchpad>/...` (it prints any file's contents and a prefix grant plus a shell redirect could
+write any file) and `python3 -I <scratchpad>/...` (running a file from a writable directory). The driver itself
+re-checks that its trusted commit is on the default branch. A reviewer comparing the body with `allowed-tools`
+will see these three calls without grants: that is the intended state. History: the two `merge-base` grants were
+added, dropped after CI's Codex security review flagged them as Major twice, and restored after R6's read-only
+prefix clause (PR #665) said such a prefix passes. Not checked live: how Claude Code's matcher treats a redirect on
 the remaining `git cat-file -e:*` grant, and the scratchpad path on a Windows host.
