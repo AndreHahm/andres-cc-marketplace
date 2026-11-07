@@ -183,6 +183,29 @@ def check_rules(body: str) -> None:
     )
 
 
+def check_sonar(body: str) -> None:
+    section = body.split("## Sonar mechanisms", 1)[1].split("## Real or false positive", 1)[0]
+    check(
+        "a provider switch keeps one provider per run",
+        "**One provider per run.**" in body and "never edits `.codacy.yml`" in body,
+    )
+    check("Sonar's rung 2 uses the rule-key form", "# NOSONAR(S5655)" in section)
+    check(
+        "Sonar's rung 3 asks per command, and bulk transitions are not run",
+        "`AskUserQuestion` per command" in section and "bulk transitions" in section,
+    )
+    check("the rung 4 target is named", "`.sonarcloud.properties`" in section)
+    scan = (SKILL_DIR / "references" / "local-scan.md").read_text(encoding="utf-8")
+    check(
+        "the Sonar scan's question says files are sent and retention is undocumented",
+        "sends project files" in body and "undocumented" in body and "sends project" in scan,
+    )
+    check(
+        "no sonar command is pre-approved",
+        "Bash(sonar" not in frontmatter(body).get("allowed-tools", ""),
+    )
+
+
 def check_dependency() -> None:
     collecting = read(COLLECTING / "SKILL.md") if (COLLECTING / "SKILL.md").is_file() else ""
     if not collecting:
@@ -245,6 +268,7 @@ def guarded(name: str, run) -> None:
 
 def main() -> int:
     guarded("SKILL.md checks", check_skill_file)
+    guarded("Sonar checks", lambda: check_sonar(read(SKILL_DIR / "SKILL.md")))
     guarded("dependency checks", check_dependency)
     guarded("syntax consistency checks", check_syntax_consistency)
     print(f"\n{len(failures)} failure(s)" if failures else "\nall checks passed")

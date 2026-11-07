@@ -1042,6 +1042,14 @@ defined for it; that path is not reachable through either of today's two trigger
 `plugin-marketplace-review/SKILL.md`'s "Full review escalation" section for the exact per-trigger
 reviewer sets.
 
+## SonarCloud: a required check
+
+`SonarCloud Code Analysis` is a required status check in the `General` ruleset, next to `Codacy Static Code
+Analysis` and `CodeRabbit` (read from the ruleset 2026-11-07). The project uses Automatic Analysis, so no job in
+`marketplace-ci.yml` runs it and `.sonarcloud.properties` holds its settings. Because the check is required, a
+SonarCloud outage can block merges. The requirement was kept on purpose. Findings are decided by quality-kit's
+`resolving-analysis-findings`.
+
 ## Codacy: `git` through `subprocess` in plugin scripts
 
 Codacy's Bandit and Prospector_bandit engines flag three rules on any script that runs `git`, whatever
