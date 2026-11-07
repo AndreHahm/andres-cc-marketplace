@@ -35,6 +35,7 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 | `findings[].rule` | Provider rule id as given (`Bandit_B603`) | never |
 | `findings[].severity` | The provider's own severity string, verbatim. Codacy has two names for three tiers (`Critical` = `Error`, `Medium` = `Warning`, `Minor` = `Info`; `High` has no alias, verified 2026-10-17 by filtered overview counts); the record keeps the name the provider returned and does not normalize it | never |
 | `findings[].category`, `subcategory` | Provider category (`Security`, `Complexity`...; Sonar's `type`: `BUG`, `VULNERABILITY`, `CODE_SMELL`) | `subcategory` is often null, and always for Sonar |
+| `findings[].impacts` | Sonar's impacts, `[{software_quality, severity}]`, verbatim. Added in `1.1.0`, because `severity` alone can understate a finding (a `MAJOR` smell can have a `HIGH` impact) | Key absent for Codacy; an empty list when Sonar gives none |
 | `findings[].file`, `message` | Path and text, verbatim | never |
 | `findings[].line` | Line number | Null when the provider gives none |
 | `findings[].issue_id` | The id the ignore command takes | Null when the provider gives none (always the case for Codacy's `repo`; Sonar always gives one) |

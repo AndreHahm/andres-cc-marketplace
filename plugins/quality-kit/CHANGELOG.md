@@ -13,7 +13,7 @@ All notable changes to this plugin are documented here.
 - Sonar mechanisms and decision rights in `resolving-analysis-findings`, with one provider per run.
 
 ### Changed
-- The findings record is schema `1.1.0` for Sonar, with an optional `source.quality_gate`. Codacy records stay
+- The findings record is schema `1.1.0` for Sonar, with an optional `source.quality_gate` and per-finding `impacts`. Codacy records stay
   `1.0.0`.
 - The resolver's description no longer lists adding a script as a trigger, to stay within its size limit. The
   author checklist is unchanged.

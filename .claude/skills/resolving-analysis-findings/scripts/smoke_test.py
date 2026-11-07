@@ -288,6 +288,18 @@ def check_sonar(body: str) -> None:
         "`AskUserQuestion` per command" in section and "bulk transitions" in section,
     )
     check("the rung 4 target is named", "`.sonarcloud.properties`" in section)
+    check(
+        "a security or high impact always asks before rung 2",
+        "`SECURITY` impact or a `HIGH` or `BLOCKER` impact" in section,
+    )
+    check(
+        "the Sonar project key comes from the record and is validated",
+        "`source.repository`" in body and "^[A-Za-z0-9][A-Za-z0-9._:-]*$" in body,
+    )
+    check(
+        ".sonar-config.json is on the denylist, and rung 4 files stay at rung 4",
+        "`.sonar-config.json`" in body and "are edited only at" in " ".join(body.split()),
+    )
     scan = (SKILL_DIR / "references" / "local-scan.md").read_text(encoding="utf-8")
     check(
         "the Sonar scan's question says files are sent and retention is undocumented",
