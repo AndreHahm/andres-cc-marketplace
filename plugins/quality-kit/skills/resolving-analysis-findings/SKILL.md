@@ -288,6 +288,8 @@ decision-rights invariants, the one-way dependency and the `# nosec` syntax acro
 scenarios were followed in read-only sandbox runs, not end to end against Codacy. This skill makes decisions that depend on
 whether Codacy honors an inline suppression, which only a push and a Cloud re-check can confirm.
 
+**Sonar evidence:** evals 5, 6 and 7, Full Pipeline, one run per arm, 2026-11-07 (iterations 6 and 7): with skill 14 of 14 assertions, baseline 11 of 14. Evals 5 and 7 separate the arms (the exact transition behind an approval, and the rule-key `NOSONAR` form). Eval 6 passes for both arms. No Sonar write was run.
+
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
 script. Earlier, 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace

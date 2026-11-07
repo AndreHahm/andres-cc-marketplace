@@ -1,7 +1,7 @@
 {
   "skill_name": "collecting-analysis-findings",
   "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
-  "description": "Collect static-analysis findings (Codacy) into one provider-neutral record with a currency check; read-only.",
+  "description": "Collect static-analysis findings (Codacy, Sonar) into one provider-neutral record with a currency check; read-only.",
   "evals": [
     {
       "id": 1,
@@ -29,6 +29,20 @@
       "name": "unknown-shape",
       "prompt": "Collect the Codacy findings for pull request 7 of example-org/example-repo. The Cloud CLI is not available here: its JSON output for this PR is saved at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/unknown.json. GitHub reports the PR's current head commit as 2222222222222222222222222222222222222222. This is a sandbox. Do not run any `codacy`, `codacy-analysis` or `gh` command, do not use the network, and do not edit any file in the repository. Write scratch files only under your outputs directory.",
       "expected_output": "The input is not a shape the collector knows: it stops, says so plainly, and writes no findings record with counts.",
+      "files": []
+    },
+    {
+      "id": "5",
+      "name": "sonar-pr-findings-current",
+      "prompt": "Collect the Sonar findings for pull request 651 of project example_project. The sonar CLI is not available here, so read its saved output instead: the PR list is at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr-list.json and the issue list at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr.json. Pipe each file into the adapter on stdin in place of the sonar command. The GitHub head of this PR is 1111111111111111111111111111111111111111. Use <scratchpad>/eval-col-5/ as your scratchpad directory for the record and status files (create it with mode 700). Do not run gh, sonar or any network command. Copy the record and a short report into your outputs directory.",
+      "expected_output": "A record with provider sonar, 3 findings of rule shell:S7688, quality gate OK, and a statement that the analysis is current for the head.",
+      "files": []
+    },
+    {
+      "id": "6",
+      "name": "sonar-pr-stale-head",
+      "prompt": "Collect the Sonar findings for pull request 651 of project example_project. The sonar CLI is not available here, so read its saved output instead: the PR list is at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr-list.json and the issue list at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr.json. Pipe each file into the adapter on stdin in place of the sonar command. The GitHub head of this PR is 9999999999999999999999999999999999999999. Use <scratchpad>/eval-col-6/ as your scratchpad directory (create it with mode 700). Do not run gh, sonar or any network command. Copy a short report into your outputs directory.",
+      "expected_output": "A report that says the analysis is stale for the head and gives no counts as current.",
       "files": []
     }
   ]

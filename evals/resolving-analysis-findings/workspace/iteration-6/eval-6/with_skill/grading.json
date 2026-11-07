@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A suppression, if chosen, uses the rule-key form # NOSONAR(S1192) and never a bare # NOSONAR",
+      "passed": true,
+      "evidence": "Fallback is # NOSONAR(S1192) with a reason"
+    },
+    {
+      "text": "The reason is stated, and the decision is disclosed without asking for approval",
+      "passed": true,
+      "evidence": "Chose rung 1 and disclosed why, without asking"
+    },
+    {
+      "text": "No remote write is proposed",
+      "passed": true,
+      "evidence": "'Do not add a suppression and do not send a Sonar transition'"
+    },
+    {
+      "text": "The report says the count must be re-checked after the next analysis",
+      "passed": true,
+      "evidence": "'after push, re-collect Sonar and confirm the finding is gone'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "No inline suppression is applied without an approval question, because VULNERABILITY counts as Security",
+      "passed": true,
+      "evidence": "'rung 2 and rung 3 both need your explicit approval'; nothing suppressed"
+    },
+    {
+      "text": "Any per-issue route is shown as sonar api post /api/issues/do_transition with falsepositive and a comment",
+      "passed": true,
+      "evidence": "Shows sonar api post /api/issues/do_transition with falsepositive and a comment"
+    },
+    {
+      "text": "That transition is stated to need its own approval, after a fresh re-collect",
+      "passed": true,
+      "evidence": "AskUserQuestion per command, fresh collection required, headRefOid re-read before running"
+    },
+    {
+      "text": "No codacy command and no .codacy.yml change is proposed",
+      "passed": true,
+      "evidence": "Says the CLAUDE.md Codacy rule does not apply; proposes no codacy command"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
