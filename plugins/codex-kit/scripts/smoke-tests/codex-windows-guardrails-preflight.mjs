@@ -1217,6 +1217,9 @@ console.log("\n=== issue #658: a tracked env template is exempt only with base p
   const opaque = templateFixture("MY_API_KEY=short-internal-secret\n");
   check("a base-listed template with an opaque value under a secret-suggestive name still blocks (cross-model review round 2)", blockedBy(opaque.run(), /\.env\.example/), JSON.stringify(opaque.last));
 
+  const yourPrefix = templateFixture("MY_API_KEY=your-real-credential-value\n");
+  check("a base-listed template with an opaque value that merely starts with your- is not treated as a placeholder (cross-model review round 3)", blockedBy(yourPrefix.run(), /\.env\.example/), JSON.stringify(yourPrefix.last));
+
   const placeholders = templateFixture("A_API_KEY=\nB_TOKEN=<your token>\nC_SECRET=${C_SECRET}\nD_KEY=\"your-d-key\"\nE_PASSWORD=changeme\nF_SECRET=xxxx\n");
   check("a base-listed template whose secret-named values are empty or recognizable placeholders passes", passedScan(placeholders.run()), JSON.stringify(placeholders.last));
 

@@ -454,17 +454,20 @@ function looksLikeCredentialAssignment(content) {
 // unchecked, so this predicate flags any such assignment whose value is neither empty nor an
 // obvious placeholder. A name only has to CONTAIN one of the words (stricter than
 // redactSecrets), so a benign SORT_KEY=asc in a template is flagged too: fail closed.
-// A value starting with "your" is treated as a placeholder (your-openrouter-api-key).
-const TEMPLATE_SECRET_ASSIGNMENT = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/;
+// "your" counts only in the finite shape your-<up to 5 lowercase words>-key|token|secret|
+// password|passphrase|id|here (your-openrouter-api-key); a value with digits or any other
+// ending (your-real-credential-value) is not a placeholder. The value is trimmed in code, not
+// by a lazy regex group, to keep the match linear on a long line.
+const TEMPLATE_SECRET_ASSIGNMENT = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/;
 const TEMPLATE_SECRET_NAME = /(?:TOKEN|KEY|SECRET|PASSWORD|PASSWD|API|CREDENTIAL|AUTH)/i;
 const TEMPLATE_PLACEHOLDER_VALUE =
-  /^(?:your[-_ .A-Za-z0-9]*|<[^<>]*>|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|x{3,}|\*{3,}|\.{3}|change[-_]?me|replace[-_ ]?me[-_ A-Za-z0-9]*|placeholder[-_ A-Za-z0-9]*|example[-_ A-Za-z0-9]*|todo|tbd|none|null|dummy|fake|redacted)$/i;
+  /^(?:your(?:[-_ ][a-z]+){1,5}[-_ ](?:key|token|secret|password|passphrase|id|here)|<[^<>]*>|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|x{3,}|\*{3,}|\.{3}|change[-_]?me|replace[-_ ]?me|placeholder|example|todo|tbd|none|null|dummy|fake|redacted)$/i;
 
 function hasNonPlaceholderSecretAssignment(content) {
   for (const line of content.split(/\r?\n/)) {
     const match = line.match(TEMPLATE_SECRET_ASSIGNMENT);
     if (!match || !TEMPLATE_SECRET_NAME.test(match[1])) continue;
-    const value = match[2].replace(/^(["'])(.*)\1$/, "$2");
+    const value = match[2].trim().replace(/^(["'])(.*)\1$/, "$2");
     if (value !== "" && !TEMPLATE_PLACEHOLDER_VALUE.test(value)) return true;
   }
   return false;
