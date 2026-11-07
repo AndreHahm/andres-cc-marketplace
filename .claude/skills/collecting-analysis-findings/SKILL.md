@@ -3,16 +3,17 @@ name: collecting-analysis-findings
 description: >-
   Collects a pull request's or repository's static-analysis findings from a provider (Codacy or
   SonarQube Cloud) into one normalized, provider-neutral record, grouped by rule and file, with a
-  currency check against the PR head. Use for "list the Codacy findings for this PR", "collect the
-  Sonar findings for this PR", "group the security findings by rule and file", "what does the
-  analysis say about my branch", or "collect analysis findings" when the answer must be that record and carry the currency verdict. Writes nothing
-  to the repository or the provider: it never ignores, unignores or reanalyzes anything, and puts its
+  currency check against the PR head. Writes nothing to the repository or the provider: it never ignores, unignores or reanalyzes anything, and puts its
   record only in a scratchpad file. Not for deciding what to do with a finding
   (resolving-analysis-findings), not for ad hoc Codacy queries (codacy-skills:codacy-cloud-cli, when
   installed), not for ad hoc Sonar questions or setup (using-sonarqube-cloud), and not for
   configuring Codacy (codacy-skills:configure-codacy, when installed).
+when_to_use: >-
+  Use for "list the Codacy findings for this PR", "collect the Sonar findings for this PR", "group
+  the security findings by rule and file", "what does the analysis say about my branch", or "collect
+  analysis findings" when the answer must be that record and carry the currency verdict.
 argument-hint: (optional) PR number, "repo" for the default branch's security list, or "ignored" for the ignore audit list; add "sonar" and a project key to use that provider
-allowed-tools: Read, Bash(gh pr view:*), Bash(python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_codacy.py:*), Bash(python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_sonar.py:*)
+allowed-tools: Read, Bash(gh pr view --json number,headRefOid,url), Bash(gh pr view * --json number,headRefOid,url), Bash(python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_codacy.py:*), Bash(python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_sonar.py:*)
 ---
 
 # Collecting Analysis Findings
@@ -104,7 +105,7 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    `collect_sonar.py`, which takes the same options plus `--project` and `--status`. The record's fields are in
    `references/findings-record.md`.
 5. **Check currency (PR only).** Confirm the record's `source.pull_request` equals the requested number
-   (stop on a mismatch). Re-read `headRefOid` with `gh pr view` now, then compare it with the record's
+   (stop on a mismatch). Re-read `headRefOid` now, with the same `gh pr view` form as step 1, then compare it with the record's
    `source.head_commit_sha`. Different, or `is_analysing` true, means the analysis describes an
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on. Sonar gives no running flag, so `is_analysing` is null, which is not

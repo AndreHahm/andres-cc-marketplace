@@ -19,7 +19,7 @@ An adapter is acceptable only when all of these hold:
    provider whose output has not been seen stays "planned".
 5. **Documents its read commands and its write commands.** Every flag that changes remote state is listed as
    forbidden to this skill, as `codacy-adapter.md` and `sonar-adapter.md` do.
-6. **Carries a smoke test** in `scripts/` that runs in-process on the fixtures (no subprocess) and checks the
+6. **Carries a smoke test** in `scripts/` that runs on the fixtures, in-process where it can, and checks the
    fail-closed paths. Each skill owns its smoke test. `resolving-analysis-findings`' test looks this skill up
    by directory name, so renaming this skill means updating that test; an adapter added later should keep
    its adapter checks in this skill's test, separate from the SKILL.md checks.

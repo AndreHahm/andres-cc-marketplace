@@ -11,7 +11,7 @@ description: >-
   Use when triaging review feedback, deciding which reviewer to trigger next, or replying
   to/resolving/filing a specific finding. Not `collaborating-on-a-pr`'s reviewer actions,
   `github-issue-creator`'s general issue drafting, `codex-review-recovery`'s stuck-check
-  recovery, or quality-kit's `resolving-analysis-findings` (Codacy, Sonar) — see When NOT to Use.
+  recovery, or quality-kit's `resolving-analysis-findings` — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
 allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Edit(issues/**), Skill(commit), Grep
 ---
