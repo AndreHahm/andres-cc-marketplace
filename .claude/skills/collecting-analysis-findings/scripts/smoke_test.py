@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from contextlib import redirect_stderr, redirect_stdout
@@ -764,6 +765,77 @@ def check_sonar_adapter() -> None:
     check("the sonar adapter turns bytecode off before its import", sys.dont_write_bytecode is True)
 
 
+def run_with_closed_reader(script: str, *argv: str) -> subprocess.CompletedProcess[str]:
+    """Run an adapter whose stdout reader is already gone, so the first write fails every time."""
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+    try:
+        return subprocess.run(
+            [sys.executable, "-I", "-B", str(HERE / script), *argv],
+            stdin=subprocess.DEVNULL,
+            stdout=write_end,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            check=False,
+        )
+    finally:
+        os.close(write_end)
+
+
+def check_stream_edges(adapter) -> None:
+    project = ("--project", "example_project")
+    real_stdin = sys.stdin
+    sys.stdin = None  # what the interpreter sets when started with stdin closed
+    err = io.StringIO()
+    try:
+        with redirect_stderr(err), redirect_stdout(io.StringIO()):
+            code = load_adapter().main(
+                ["--kind", "pr", "--input", "-"]
+            )  # sonar imports this reader
+    except AttributeError as exc:
+        code, err = None, io.StringIO(repr(exc))
+    finally:
+        sys.stdin = real_stdin
+    check(
+        "a closed stdin exits 2 and names stdin",
+        code == 2 and "stdin" in err.getvalue(),
+        err.getvalue(),
+    )
+    runs = (
+        ("collect_codacy.py", "--kind", "pr", "--input", str(FIXTURES / "pr.json")),
+        (
+            "collect_sonar.py",
+            "--kind",
+            "pr-status",
+            *project,
+            "--input",
+            str(SONAR / "pr-list.json"),
+            "--pull-request",
+            "651",
+        ),
+    )
+    for script, *argv in runs:
+        done = run_with_closed_reader(script, *argv)
+        check(
+            f"{script}: a closed reader exits 1 without a traceback",
+            done.returncode == 1
+            and "Traceback" not in done.stderr
+            and "Exception" not in done.stderr
+            and "closed" in done.stderr,
+            done.stderr,
+        )
+    check(
+        "only JSON whitespace separates pages",
+        len(adapter._load_documents(" {} \t\r\n {} \n")) == 2,
+    )
+    try:
+        adapter._load_documents("{}\u00a0{}")
+    except ValueError:
+        check("a non-JSON space between pages is rejected", True)
+    else:
+        check("a non-JSON space between pages is rejected", False)
+
+
 def check_skills() -> None:
     for skill_dir in (SKILL_DIR,):
         skill_md = skill_dir / "SKILL.md"
@@ -868,6 +940,7 @@ def guarded(name: str, run) -> None:
 def main() -> int:
     guarded("adapter checks", check_adapter)
     guarded("sonar adapter checks", check_sonar_adapter)
+    guarded("stream edge checks", lambda: check_stream_edges(load_sonar()))
     guarded("skill checks", check_skills)
     print(f"\n{len(failures)} failure(s)" if failures else "\nall checks passed")
     return 1 if failures else 0

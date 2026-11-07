@@ -33,6 +33,7 @@ from collect_codacy import (  # noqa: E402 - the path must be set first
     ShapeError,
     _list,
     _obj,
+    _print_stdout,
     _read_json,
     _scratch_input,
     _scratch_output,
@@ -63,7 +64,7 @@ def _load_documents(text: str) -> list[Any]:
     decoder = json.JSONDecoder()
     documents, index = [], 0
     while True:
-        while index < len(text) and text[index].isspace():
+        while index < len(text) and text[index] in " \t\r\n":  # JSON's own whitespace, no other
             index += 1
         if index == len(text):
             return documents
@@ -361,13 +362,11 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_BAD_INPUT
         kind_pr_status = args.kind == "pr-status"
         summary = "status" if kind_pr_status else f"{result['counts']['total']} finding(s)"
-        print(f"{summary} written to {out_path.name}")
-        return 0
+        return _print_stdout(f"{summary} written to {out_path.name}", "collect_sonar")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):
         reconfigure(errors="backslashreplace")  # provider text may not fit the terminal encoding
-    print(text)
-    return 0
+    return _print_stdout(text, "collect_sonar")
 
 
 if __name__ == "__main__":
