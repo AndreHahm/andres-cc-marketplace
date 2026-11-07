@@ -236,7 +236,7 @@ def render_table(record: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _read_json(source: str) -> Any:
+def _read_json(source: str, decode: Callable[[str], Any] = json.loads) -> Any:
     try:
         if source == "-":
             # Read bytes, so the decode never depends on the console's locale encoding.
@@ -253,7 +253,7 @@ def _read_json(source: str) -> Any:
                 raw = handle.read(MAX_INPUT_BYTES + 1)
         if len(raw) > MAX_INPUT_BYTES:
             raise ShapeError(f"cannot read input: larger than {MAX_INPUT_BYTES} bytes")
-        return json.loads(raw.decode("utf-8"))
+        return decode(raw.decode("utf-8"))
     except (
         OSError,
         ValueError,

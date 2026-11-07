@@ -1,8 +1,8 @@
 # Adapter Contract
 
-What a provider adapter must provide so a second provider (CodeQL, SonarQube, another) can be added without
-changing `resolving-analysis-findings`. No second adapter exists today; this file is the checklist for
-writing one, not a promise that one is planned.
+What a provider adapter must provide so another provider (CodeQL, another) can be added. Codacy and SonarQube
+Cloud have adapters today; a new one needs its mechanisms added to `resolving-analysis-findings` as well, as
+Sonar's were. This file is the checklist for writing one, not a promise that one is planned.
 
 An adapter is acceptable only when all of these hold:
 
@@ -18,7 +18,7 @@ An adapter is acceptable only when all of these hold:
    the real tool produced, and the provider status table in `SKILL.md` gets a dated "verified" row. A
    provider whose output has not been seen stays "planned".
 5. **Documents its read commands and its write commands.** Every flag that changes remote state is listed as
-   forbidden to this skill, as `codacy-adapter.md` does for Codacy.
+   forbidden to this skill, as `codacy-adapter.md` and `sonar-adapter.md` do.
 6. **Carries a smoke test** in `scripts/` that runs in-process on the fixtures (no subprocess) and checks the
    fail-closed paths. Each skill owns its smoke test. `resolving-analysis-findings`' test looks this skill up
    by directory name, so renaming this skill means updating that test; an adapter added later should keep

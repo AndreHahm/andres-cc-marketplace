@@ -1,0 +1,155 @@
+{
+ "total": 3,
+ "p": 1,
+ "ps": 500,
+ "paging": {
+  "pageIndex": 1,
+  "pageSize": 500,
+  "total": 3
+ },
+ "effortTotal": 40,
+ "debtTotal": 40,
+ "issues": [
+  {
+   "key": "AaFIXTURE00000000001",
+   "rule": "shell:S7688",
+   "severity": "MAJOR",
+   "component": "example_project:.claude/hooks/dck-session-context.sh",
+   "project": "example_project",
+   "line": 8,
+   "hash": "00000000000000000000000000000000",
+   "textRange": {
+    "startLine": 8,
+    "endLine": 8,
+    "startOffset": 5,
+    "endOffset": 6
+   },
+   "flows": [],
+   "status": "OPEN",
+   "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+   "effort": "2min",
+   "debt": "2min",
+   "assignee": "person-login",
+   "author": "person@example.com",
+   "tags": [
+    "bash",
+    "best-practices",
+    "scripting",
+    "shell"
+   ],
+   "creationDate": "2026-11-05T19:32:52+0000",
+   "updateDate": "2026-11-05T20:11:37+0000",
+   "type": "CODE_SMELL",
+   "organization": "example-org",
+   "pullRequest": "651",
+   "cleanCodeAttribute": "CONVENTIONAL",
+   "cleanCodeAttributeCategory": "CONSISTENT",
+   "impacts": [
+    {
+     "softwareQuality": "RELIABILITY",
+     "severity": "HIGH"
+    }
+   ],
+   "issueStatus": "OPEN",
+   "projectName": "example-project",
+   "internalTags": [],
+   "lastChangeAnalysisUuid": "00000000000000000000",
+   "lastChangeSource": "ANALYSIS"
+  },
+  {
+   "key": "AaFIXTURE00000000002",
+   "rule": "shell:S7688",
+   "severity": "MAJOR",
+   "component": "example_project:.claude/hooks/dck-session-context.sh",
+   "project": "example_project",
+   "line": 9,
+   "hash": "00000000000000000000000000000000",
+   "textRange": {
+    "startLine": 9,
+    "endLine": 9,
+    "startOffset": 4,
+    "endOffset": 5
+   },
+   "flows": [],
+   "status": "OPEN",
+   "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+   "effort": "2min",
+   "debt": "2min",
+   "assignee": "person-login",
+   "author": "person@example.com",
+   "tags": [
+    "bash",
+    "best-practices",
+    "scripting",
+    "shell"
+   ],
+   "creationDate": "2026-11-05T19:32:52+0000",
+   "updateDate": "2026-11-05T20:11:37+0000",
+   "type": "CODE_SMELL",
+   "organization": "example-org",
+   "pullRequest": "651",
+   "cleanCodeAttribute": "CONVENTIONAL",
+   "cleanCodeAttributeCategory": "CONSISTENT",
+   "impacts": [
+    {
+     "softwareQuality": "RELIABILITY",
+     "severity": "HIGH"
+    }
+   ],
+   "issueStatus": "OPEN",
+   "projectName": "example-project",
+   "internalTags": [],
+   "lastChangeAnalysisUuid": "00000000000000000000",
+   "lastChangeSource": "ANALYSIS"
+  },
+  {
+   "key": "AaFIXTURE00000000003",
+   "rule": "shell:S7688",
+   "severity": "MAJOR",
+   "component": "example_project:.claude/hooks/dck-session-context.sh",
+   "project": "example_project",
+   "line": 15,
+   "hash": "00000000000000000000000000000000",
+   "textRange": {
+    "startLine": 15,
+    "endLine": 15,
+    "startOffset": 7,
+    "endOffset": 8
+   },
+   "flows": [],
+   "status": "OPEN",
+   "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+   "effort": "2min",
+   "debt": "2min",
+   "assignee": "person-login",
+   "author": "person@example.com",
+   "tags": [
+    "bash",
+    "best-practices",
+    "scripting",
+    "shell"
+   ],
+   "creationDate": "2026-11-05T19:32:52+0000",
+   "updateDate": "2026-11-05T20:11:37+0000",
+   "type": "CODE_SMELL",
+   "organization": "example-org",
+   "pullRequest": "651",
+   "cleanCodeAttribute": "CONVENTIONAL",
+   "cleanCodeAttributeCategory": "CONSISTENT",
+   "impacts": [
+    {
+     "softwareQuality": "RELIABILITY",
+     "severity": "HIGH"
+    }
+   ],
+   "issueStatus": "OPEN",
+   "projectName": "example-project",
+   "internalTags": [],
+   "lastChangeAnalysisUuid": "00000000000000000000",
+   "lastChangeSource": "ANALYSIS"
+  }
+ ],
+ "components": [],
+ "organizations": [],
+ "facets": []
+}
