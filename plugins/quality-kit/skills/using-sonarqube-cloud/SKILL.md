@@ -52,9 +52,11 @@ something to follow.
 ## Boundaries
 
 This skill changes nothing. It grants `sonar list issues` and `sonar quality-gate status`, which have no write. Every
-other `sonar` command raises a normal permission prompt showing its text, including `sonar api get`. Approve each one
-once, and never choose "don't ask again" or add a wider `sonar` allow rule: `sonar api post` shares a prefix with
-`sonar api get`, so a persistent rule there would pre-approve writes.
+other `sonar` command raises a normal permission prompt showing its text, including `sonar api get`, unless your own
+settings or permission mode already allow it. Approve each one once, and never choose "don't ask again" or add a
+wider `sonar` allow rule: `sonar api post` shares a prefix with `sonar api get`, so a persistent rule there would
+pre-approve writes. `jq`, which the read forms in `references/cli-commands.md` pipe into, is not granted either,
+so a piped form also prompts for the `jq` part; it only filters the output.
 
 It never runs `sonar api` with any method but `get`, nor `sonar remediate`, `sonar analyze`, `sonar import`,
 `sonar integrate`, `sonar link`, `sonar auth`, `sonar config set|unset`, `sonar system reset`, `sonar allowlist`,

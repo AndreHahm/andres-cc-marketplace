@@ -89,8 +89,13 @@ config file, are in `references/local-scan.md`. `codacy-analysis init` is never 
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
 by this skill. The only command this skill pre-approves is `scripts/read_pr_head.py`, the re-check in the Decision rights table.
 It validates one repository and PR number and prints only the head commit SHA, so a grant on it reaches one read.
-No `sonar` command is pre-approved: `sonar api post` shares a prefix with the reads, so the same one-time approval
-applies.
+No `sonar` command is pre-approved either: not `sonar api post` (the rung 3 transition), not `sonar analyze` (the
+local scan) and not the `sonar api get` reads. The reason is the shared prefix: `sonar api post` differs from the
+reads only in one word, and `sonar analyze` sends project files to Sonar with arguments that vary per run, so any
+grant would have to end in a prefix that also reaches those writes. Each one raises a normal permission prompt
+showing its exact text, unless the user's own settings or permission mode already allow it, on top of the
+approval in the Decision rights table or the scan question. **Approve each run once, and never choose "don't ask
+again" or add a `sonar` allow rule.**
 `collecting-analysis-findings`, which this skill calls, keeps its own two `gh pr view` grants, both ending in
 `--json number,headRefOid,url`; the `*` in one matches any text, flags included, and R6 clears it because every
 `gh pr view` form only reads.
@@ -256,7 +261,7 @@ stop and hand the user the `init` command from `references/local-scan.md`; never
 yourself. When local and Cloud counts differ, Cloud wins; record the difference.
 
 For a Sonar run, the scan is `sonar analyze` (`references/local-scan.md`). It has its own `AskUserQuestion`,
-whose text must say that Vortex analysis sends project files to Sonar and that the retention period is
+which shows the exact `sonar analyze` command and whose text must say that Vortex analysis sends project files to Sonar and that the retention period is
 undocumented. It is never run on a yes given for the Codacy scan.
 
 ## Author checklist for new scripts
