@@ -339,8 +339,8 @@ def test_fix_cannot_weaken_the_verifier_that_judges_it(repo):
     )
     _write(repo, SKILL, BAD)
     result = _run(repo, "--worktree", "--base", base)
-    assert result.returncode == 2, result.stdout + result.stderr
-    assert "cannot judge" in (result.stdout + result.stderr)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert json.loads(result.stdout)["ungraded"] == ["scripts/marketplace_ci/review_verifiers.py"]
 
 
 def test_git_failure_in_a_subdirectory_is_not_nothing_to_check(repo):
@@ -524,24 +524,40 @@ def test_every_finding_on_the_changed_set_blocks_whatever_its_line_or_path(repo,
     assert M.main(["--base", base, "--upstream", UPSTREAM]) == 1
 
 
-def test_fix_touching_the_verifiers_cannot_be_judged_by_them(repo):
+REGISTRY = (REPO / ".claude/marketplace-sync.json").read_text(encoding="utf-8")  # a valid registry
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "scripts/marketplace_ci/extra.py",
+        ".claude/marketplace-sync.json",
+        "plugins/git-kit/scripts/git-verify-fix-diff.py",
+        ".claude/scripts/git-verify-fix-diff.py",
+    ],
+)
+def test_fix_touching_an_ungraded_path_still_runs_the_verifiers_and_lists_it(repo, path):
     base = _commit(repo, SKILL, GOOD, "add skill")
-    _commit(repo, "scripts/marketplace_ci/extra.py", "x = 1\n", "touch verifiers")
+    text = REGISTRY if path.endswith(".json") else "x = 1\n"
+    _commit(repo, path, text, "touch ungraded path")
     result = _run(repo, "--base", base)
-    assert result.returncode == 2
-    assert "cannot judge" in (result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["ungraded"] == [path]
 
 
-def test_fix_touching_the_sync_registry_is_not_verified(repo):
+def test_ungraded_path_does_not_hide_a_blocking_finding_elsewhere(repo):
     base = _commit(repo, SKILL, GOOD, "add skill")
-    _commit(repo, ".claude/marketplace-sync.json", "{}\n", "touch registry")
-    assert _run(repo, "--base", base).returncode == 2
+    _commit(repo, ".claude/marketplace-sync.json", REGISTRY, "touch registry")
+    _commit(repo, SKILL, BAD, "bad fix")
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert json.loads(result.stdout)["ungraded"] == [".claude/marketplace-sync.json"]
 
 
-def test_fix_touching_the_driver_itself_is_not_verified(repo):
+def test_clean_fix_has_no_ungraded_key(repo):
     base = _commit(repo, SKILL, GOOD, "add skill")
-    _commit(repo, "plugins/git-kit/scripts/git-verify-fix-diff.py", "x = 1\n", "touch driver")
-    assert _run(repo, "--base", base).returncode == 2
+    _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
+    assert "ungraded" not in json.loads(_run(repo, "--base", base).stdout)
 
 
 def test_committed_mode_judges_the_commit_not_the_disk(repo):

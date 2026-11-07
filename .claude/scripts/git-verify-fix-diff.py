@@ -8,16 +8,19 @@ blocks. This is touched-file logic with no touched-line filter of its own. It is
 verdict: the verifiers that compare with a base (size tiers, known paths, call-graph edges) compare
 with `--base`, the commit before the fix, so a value that was already over a limit before the fix
 and is not worse after it passes here, and CI can still block it.
-Prints one JSON object: {"checked": [...], "blocking": [...]}.
+Prints one JSON object: {"checked": [...], "blocking": [...]}, plus "ungraded": [...] when the diff
+touched a path no verifier grades (see below).
 
 The verifier modules are loaded (`git archive`) from the commit where HEAD last met the target
 branch (`refs/remotes/origin/HEAD`), never from the tree being judged and never from `--base`: a
 PR's own earlier commit can precede `--base`, and the loaded modules are imported and run. Without
 that ref, or when `origin`'s fetch URL is not the required `--upstream owner/repo` (the PR's base
-repository), the run exits 2. This driver runs from wherever it was started, so the exit 2 below
-for a fix that changes the verifiers (scripts/marketplace_ci/), their registry
-(.claude/marketplace-sync.json) or this script only catches an honest edit. Such a fix cannot be
-judged by them, so it exits 2. A `--worktree` run snapshots the working tree into a throwaway
+repository), the run exits 2. A fix that changes the verifiers (scripts/marketplace_ci/), their
+registry (.claude/marketplace-sync.json) or this script is still checked: the target branch's
+verifiers run over the rest of the diff. No verifier grades those paths themselves, so they are
+listed under an `ungraded` key and the reply must say they were not checked. A fix to this script
+is the weakest case: when it is the copy that runs, the edited code takes part in its own run. A
+`--worktree` run snapshots the working tree into a throwaway
 commit built with a temporary
 index and verifies it in a temporary shared clone: no ref, the real index or the working tree is
 touched, and no object is written to the repository's object store. The snapshot's objects
@@ -30,7 +33,7 @@ Without `--worktree` the committed HEAD is verified in a temporary clone, whatev
 Needs PyYAML and markdown-it-py (the verifiers' own imports); without them every run exits 2.
 
 Exit codes: 0 clean, 1 a blocking finding, 2 not verified (the verifiers could not run, nothing
-changed, or the fix touches what grades it) - never a pass. Exit 0 with "nothing to check" only
+changed) - never a pass. Exit 0 with "nothing to check" only
 where neither the target branch nor the working tree has scripts/marketplace_ci/review_verifiers.py
 (git-kit is installed in other repositories). A clean result with an empty `checked` list means
 no changed file was a verifier-covered component: do not report it as "verifiers passed".
@@ -81,7 +84,7 @@ _ORIGIN_URL = re.compile(
     rf"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)({_REPO}?)(?:\.git)?/?"
 )
 _VERIFIERS = "scripts/marketplace_ci/review_verifiers.py"
-_UNJUDGEABLE = (
+_UNGRADED = (
     "scripts/marketplace_ci/",
     ".claude/marketplace-sync.json",
     "plugins/git-kit/scripts/git-verify-fix-diff.py",
@@ -443,13 +446,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps({"nothing_changed": True, "note": note}))
                 return 2
             touched = {p for c in changed for p in (c.old_path, c.new_path) if p}
-            if any(p.startswith(prefix) for p in touched for prefix in _UNJUDGEABLE):
-                msg = (
-                    "the fix changes the verifiers, their registry or this script; cannot judge it"
-                )
-                print(msg, file=sys.stderr)
-                print(json.dumps({"cannot_judge": True, "note": msg}))
-                return 2
+            ungraded = sorted(
+                p for p in touched if any(p.startswith(prefix) for prefix in _UNGRADED)
+            )
             outcomes = run_verifiers(verify_repo, changed, args.base)
     except Exception as exc:  # noqa: BLE001 - any failure must read as "could not run", never a pass
         detail = str(exc)
@@ -472,7 +471,10 @@ def main(argv: list[str] | None = None) -> int:
         for outcome in outcomes
         for f in outcome.findings
     ]
-    print(json.dumps({"checked": checked, "blocking": blocking}, indent=2))
+    result = {"checked": checked, "blocking": blocking}
+    if ungraded:
+        result["ungraded"] = ungraded
+    print(json.dumps(result, indent=2))
     return 1 if blocking else 0
 
 
