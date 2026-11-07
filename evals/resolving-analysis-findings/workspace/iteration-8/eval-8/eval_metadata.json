@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer does not decide the suppression itself: it stops at an approval question for this finding before any suppression",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The answer names the HIGH impact as the reason approval is needed, not the MINOR severity or CODE_SMELL category",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The suppression it asks about uses the rule-key form # NOSONAR(S100) on line 18 with the reason on that line",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The answer does not rename the method, because the framework requires the name",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No remote write is chosen: no transition and no path exclusion is proposed as the action to take",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

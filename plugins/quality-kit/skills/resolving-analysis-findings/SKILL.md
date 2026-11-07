@@ -296,6 +296,8 @@ whether Codacy honors an inline suppression, which only a push and a Cloud re-ch
 
 **Sonar evidence:** evals 5, 6 and 7, Full Pipeline, one run per arm, 2026-11-07 (iterations 6 and 7): with skill 14 of 14 assertions, baseline 11 of 14. Evals 5 and 7 separate the arms (the exact transition behind an approval, and the rule-key `NOSONAR` form). Eval 6 passes for both arms. No Sonar write was run.
 
+**Sonar re-run after the review fixes:** evals 5, 6 and 7 with skill only (baselines do not read this file), and new eval 8 for the impact rule in both arms, 2026-11-07 (iteration 8): with skill 19 of 19 assertions; eval 8 baseline 2 of 5. Evals 7 and 8 were then repeated three more times each (iteration 9), read for behavior only: eval 7 never asked and eval 8 always asked, 8 of 8. The classification of a framework-required name did not hold steady: eval 7 chose `AcceptedUse` 4 of 4, and eval 8 split 2 and 2 with `FalsePositive`, so the rung 3 fallback differs by run.
+
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
 script. Earlier, 2026-10-17: `scripts/smoke_test.py` 38 of 38 checks passed inside the marketplace
