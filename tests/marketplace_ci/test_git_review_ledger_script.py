@@ -774,6 +774,37 @@ def _other_owner_git(directory):
     return directory
 
 
+# Finds git the way the script does (shutil.which honours PATHEXT, so it finds git.cmd), then runs
+# it.
+_RUN_SHIM_PROBE = """
+import shutil, subprocess
+git = shutil.which("git")
+r = subprocess.run([git, "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+print(git)
+print(r.returncode)
+print(r.stderr)
+"""
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the .cmd stand-in only exists on Windows")
+def test_the_cmd_stand_in_runs_from_the_scripts_minimal_environment(tmp_path, tmp_path_factory):
+    """The script's own environment holds no more than this, so the stand-in must launch from it."""
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", **WINDOWS_CMD_ENV}
+    result = subprocess.run(
+        [sys.executable, "-c", _RUN_SHIM_PROBE],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    found, code, stderr = result.stdout.split("\n", 2)
+    assert found.lower().endswith("git.cmd"), result
+    # Plain git succeeds in a fresh repository; only the stand-in's owner switch makes it refuse.
+    assert code == "128" and "dubious ownership" in stderr, result
+
+
 def _cfg(path):
     """A path as gitconfig wants it: a backslash in a value starts an escape sequence."""
     return Path(path).as_posix()
