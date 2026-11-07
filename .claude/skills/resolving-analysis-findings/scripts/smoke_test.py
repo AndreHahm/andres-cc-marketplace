@@ -96,8 +96,8 @@ def check_grants(fm: dict[str, str], body: str) -> None:
         not re.search(r"\b(AskUserQuestion|Write)\b", grants),
     )
     check(
-        "grants no Bash at all (no codacy command is pre-approved; every one raises a prompt)",
-        "Bash" not in grants,
+        "grants only gh pr view in Bash (no codacy command is pre-approved)",
+        re.findall(r"Bash\([^)]*\)", grants) == ["Bash(gh pr view:*)"],
     )
     check(
         "boundaries tell the user never to choose don't ask again",

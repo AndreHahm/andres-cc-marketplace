@@ -130,6 +130,8 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 **Deliberately ungranted write form:** a real-run form of a granted script that the component's Boundaries documents as intentionally ungranted (so it prompts), next to a granted `--dry-run`-style form, is not a tool-completeness violation.
 
+**Deliberately ungranted command with no narrowable safe form:** a Bash command that no grant reaches is PASS, not a tool-completeness violation, when the component's Boundaries names it, says the component never pre-approves it, so it prompts unless the user's own settings or permission mode already allow it, states which of the three reasons in `references/frontmatter-corrections.md` applies, and warns against a persistent allow rule. A reason the reviewer cannot confirm is ADVISORY (unverified). A command with a narrower safe form must be granted instead.
+
 **Scope:** `allowed-tools` (skill/command frontmatter) and `tools` (agent frontmatter). See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full scope/verdict table, format examples, the tool-completeness sub-check, and the mechanical assist script (`scripts/check_tool_grants.py`) for the Bash-command case.
 
 ---
@@ -464,7 +466,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
-**Last dated run record:** 2026-10-18, `evals/plugin-rulebook/` (`skill-tester` Quick Workflow, `with_skill`-only):
+**Last dated run record:** 2026-11-07, `evals/plugin-rulebook/` (blind read of the worktree files, `with_skill`-only): evals 19-24 (R6's no-narrowable-safe-form exception), 6 of 6 verdicts as expected; 2026-10-18 (`skill-tester` Quick Workflow, `with_skill`-only):
 evals 16-18 (R33 `domain_prefix` and R37 interpreter-grant wording) 4/4 each (iteration 9, no baseline arm); 2026-10-01:
 evals 8-15 (R34-R37 and the R9/R14/R21/R31 extensions) 4/4 assertions each (iterations 6-8); evals 3-7 (R27/R33 prefix handling) 3/3 each (iterations 3-5);
 evals 1-2 passed 4/4 and 2/2 on 2026-08-15. Every iteration, plus R33's `test-against-example-plugin.md` dry-run record, is in
