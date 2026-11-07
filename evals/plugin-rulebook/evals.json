@@ -198,6 +198,13 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). Two cases. Case A: a skill's allowed-tools is Read, Bash(cat:*); its body runs `cat notes.txt`. cat prints the contents of any file it is given. Case B: a skill's allowed-tools is Read, Bash(acme status:*); its body runs `acme status`. No documentation or help text for acme is available to you. Give the R6 verdict for each grant.",
       "expected_output": "Case A: no clearance from the read-only prefix clause, because cat prints arbitrary file contents; PASS as a named tool with an ADVISORY least-privilege note. Case B: ADVISORY (unverified), because the reviewer cannot confirm what the prefix reaches.",
       "files": []
+    },
+    {
+      "id": 29,
+      "name": "R6 shared prefix needs per-run approval of a state-changing run",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read. Its body runs `acme sync <path>` directly, with no approval step of its own. acme's documentation, quoted in the task: `acme sync <path>` uploads the path; `--delete` removes remote files. Its Boundaries section says: this skill never pre-approves `acme sync`, so it raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is shared prefix, since a prefix grant cannot exclude `--delete`; approve each run once and do not add a persistent acme allow rule. Give the R6 verdict for this command.",
+      "expected_output": "The exception does not clear it: every run changes state, and the body does not ask for approval of the exact command before each run, so it stays a tool-completeness violation even though the Boundaries section is complete.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
