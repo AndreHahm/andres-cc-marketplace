@@ -32,10 +32,6 @@ needs_sh_stub_git = pytest.mark.skipif(
     os.name == "nt",
     reason="stands in for git with a #!/bin/sh script; no .cmd equivalent written yet",
 )
-needs_tilde_entries = pytest.mark.skipif(
-    os.name == "nt",
-    reason="a ~ safe.directory entry is not trusted as the test expects on Windows; not traced",
-)
 
 
 def _can_symlink() -> bool:
@@ -964,7 +960,7 @@ def _checkout_in_home(tmp_path_factory, config_text):
     repo.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     (repo / ".claude").mkdir()
-    (home / ".gitconfig").write_text(config_text.replace("<repo>", str(repo)), encoding="utf-8")
+    (home / ".gitconfig").write_text(config_text.replace("<repo>", _cfg(repo)), encoding="utf-8")
     return home, repo
 
 
@@ -974,6 +970,9 @@ def _record_from(repo, home, bin_dir):
         "HOME": str(home),
         "PYTHONDONTWRITEBYTECODE": "1",
     }
+    if os.name == "nt":
+        # os.path.expanduser reads USERPROFILE on Windows, not HOME; there they normally agree.
+        env["USERPROFILE"] = str(home)
     return subprocess.run(
         [sys.executable, str(SCRIPT), *RECORD_ARGS],
         cwd=repo,
@@ -983,7 +982,6 @@ def _record_from(repo, home, bin_dir):
     )
 
 
-@needs_tilde_entries
 def test_a_tilde_safe_directory_entry_works_for_a_checkout_owned_by_another_user(tmp_path_factory):
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     home, repo = _checkout_in_home(tmp_path_factory, "[safe]\n\tdirectory = ~/repo\n")
@@ -992,7 +990,6 @@ def test_a_tilde_safe_directory_entry_works_for_a_checkout_owned_by_another_user
     assert (repo / ".claude" / "review-ledger.local.json").exists()
 
 
-@needs_tilde_entries
 def test_an_entry_that_cannot_be_expanded_is_dropped_not_fatal(tmp_path_factory):
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     config = "[safe]\n\tdirectory = ~no-such-user-zzz/x\n\tdirectory = <repo>\n"
@@ -1001,7 +998,6 @@ def test_an_entry_that_cannot_be_expanded_is_dropped_not_fatal(tmp_path_factory)
     assert result.returncode == 0, result.stderr
 
 
-@needs_tilde_entries
 def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, tmp_path):
     home = tmp_path_factory.mktemp("home").resolve()
     (home / ".gitconfig").write_text(
@@ -1011,6 +1007,8 @@ def test_trusted_directories_come_back_expanded(monkeypatch, tmp_path_factory, t
     ledger = _load_script()
     ledger._trusted_directories.cache_clear()
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))  # where os.path.expanduser looks on Windows
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.chdir(tmp_path)
-    assert ledger._trusted_directories() == (str(home / "a"), "/abs/b", "", "*")
+    # expanduser appends the rest with '/': str(home / "a") on POSIX, a mixed-slash path on Windows.
+    assert ledger._trusted_directories() == (f"{home}/a", "/abs/b", "", "*")
