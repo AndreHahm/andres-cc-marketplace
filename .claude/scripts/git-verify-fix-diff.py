@@ -340,6 +340,13 @@ def _commit_clone(repo_root: Path, sha: str) -> Iterator[tuple[Path, str]]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the verifiers on the fix's own diff and return the exit code.
+
+    Returns 0 when nothing blocks (or there is nothing to check), 1 when a verifier returns a
+    blocking finding, and 2 when the fix was not verified: bad arguments, the verifiers could not
+    run, the diff is empty, or the fix changes what grades it. The module docstring has the
+    contract.
+    """
     # The verifiers' own git calls inherit os.environ: drop every GIT_* variable (GIT_DIR,
     # GIT_TRACE, GIT_CONFIG_*, ...), pin the configuration, and put the vetted git first on PATH.
     for var in [k for k in os.environ if k.startswith("GIT_")]:
