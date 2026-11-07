@@ -165,14 +165,15 @@ a scratchpad write falls back to a prompt rather than succeeding silently.
 ## Follow-up: launching the verifier driver from the target branch (Issue #656)
 
 Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
-grade itself (`references/fix-self-review.md`). Granted: `git merge-base HEAD refs/remotes/origin/:*` (read-only; the
-branch name is the PR's own base, so it cannot be an exact form), `git merge-base --is-ancestor:*` (exit code only)
-and `git cat-file -e:*` (prints nothing). Because those two `merge-base` grants are prefixes, the procedure pins the
-argument count and single-quotes the base name, and the driver itself re-checks that its trusted commit is on the
-default branch; a redirect appended to a granted `merge-base` call is not checked live either. The
-base name comes from `gh pr view --json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not** granted, so each prompts: `git remote get-url
-origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p <hash>:<path> >
-<scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I <scratchpad>/...`
-(running a file from a writable directory). A reviewer comparing the body with `allowed-tools` will see these calls
-without grants: that is the intended state, and the second security review of this change (no Critical) accepted it.
-Not checked live: how Claude Code's matcher treats the redirect, and the scratchpad path on a Windows host.
+grade itself (`references/fix-self-review.md`). Granted: `git cat-file -e:*` (prints nothing). The base name comes
+from `gh pr view --json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not**
+granted, so each prompts: the two `git merge-base` calls (`git merge-base HEAD 'refs/remotes/origin/<base>'` and
+`git merge-base --is-ancestor <target> refs/remotes/origin/HEAD`; a prefix grant would let any further argument or
+a redirect through, and the branch name is the PR's own base, so the first cannot be an exact form), `git remote
+get-url origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p
+<hash>:<path> > <scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I
+<scratchpad>/...` (running a file from a writable directory). The driver itself re-checks that its trusted commit is
+on the default branch. A reviewer comparing the body with `allowed-tools` will see these calls without grants: that
+is the intended state. The two `merge-base` grants were first added and then dropped in this change after CI's
+Codex security review flagged them as Major twice. Not checked live: how Claude Code's matcher treats a redirect on
+the remaining `git cat-file -e:*` grant, and the scratchpad path on a Windows host.

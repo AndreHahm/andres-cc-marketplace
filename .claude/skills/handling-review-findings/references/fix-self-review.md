@@ -31,7 +31,8 @@ the branch under review:
    verified. Third `git merge-base --is-ancestor <target> refs/remotes/origin/HEAD` must exit 0: the commit that
    supplies the driver and the verifiers has to be on the default branch already, because a base branch is not a
    trust anchor by itself. Exit 1 or an error: stop, not verified (this is what happens for a PR into a branch that
-   diverged from the default branch).
+   diverged from the default branch). The two `git merge-base` calls are not pre-approved either (a prefix grant
+   would let any further argument or a redirect through), so each prompts.
 3. `git cat-file -e <target>:plugins/git-kit/scripts/git-verify-fix-diff.py`. Exit 0: go on to step 4. Non-zero:
    run `git cat-file -e <target>:scripts/marketplace_ci/review_verifiers.py`. If that also fails and the current tree has no `scripts/marketplace_ci/`, git-kit is
    installed in another repository: run the installed copy
