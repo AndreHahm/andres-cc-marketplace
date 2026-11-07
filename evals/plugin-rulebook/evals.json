@@ -128,6 +128,48 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/executable-bit.md (read these files directly; do not rely on any other copy of the skill). Both skills below are newly created and both scripts are committed at git mode 100644. Skill A: allowed-tools is Bash(bash -c ${CLAUDE_PLUGIN_ROOT}/skills/a/scripts/run.sh:*) and its body runs the script that way. Skill B: allowed-tools is Bash(bash -eu -o pipefail ${CLAUDE_PLUGIN_ROOT}/skills/b/scripts/run.sh:*) and its body runs the script that way. Apply R37 to each: finding or not, severity, and the fix.",
       "expected_output": "Skill A has a REQUIRED FAIL: a shell given a command string (bash -c) runs the path itself, so it is a direct run at mode 100644; fix: git update-index --chmod=+x on it in every mirrored copy. Skill B has NO REQUIRED finding: bash with known-safe options and one plain script path reads the script as a file, so no executable bit is needed (at most an informational note).",
       "files": []
+    },
+    {
+      "id": 19,
+      "name": "R6 passes a documented, prompting, ungranted command with no narrowable safe form",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read, Edit. Its body runs `acme push` and `acme publish` and nothing else from acme, each only after an AskUserQuestion showing the exact command. acme's documentation, quoted in the task: push uploads the local tree, publish releases it. Its Boundaries section says: this skill never pre-approves `acme push` or `acme publish`, so each raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is no read form, since both are remote writes; approve each run once and do not add a persistent acme allow rule, because that rule would also pre-approve the other. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "PASS with no REQUIRED finding and no ADVISORY note: all four Boundaries items are present, the no-read-form reason is confirmed by the quoted documentation, and the body asks for approval per run. No grant should be added.",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "R6 still fails an ungranted command whose Boundaries omits the reason",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read, Edit. Its body runs `acme push`. Its Boundaries section says only: no acme command is pre-approved, so each run raises a permission prompt. Nothing else about acme appears in the file. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "REQUIRED FAIL: the exception needs Boundaries to state why no narrower grant is safe, and that reason is missing. The fix is to state the reason if one really applies, or otherwise grant a scoped form.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "R6 still fails an ungranted read when a narrower safe form could be granted",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read. Its body runs only `acme status`, a read-only command with no write subcommand under that prefix and no sensitive output. Its Boundaries section says: no acme command is pre-approved, so each run raises a permission prompt, because we prefer the user to see every command. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "REQUIRED FAIL: a narrower safe form exists, so the exception does not apply; preferring a prompt is not a reason no narrower grant is safe. The fix is to grant Bash(acme status:*).",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "R6 fails a shared-prefix claim that names no flag or subcommand",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read. Its body runs `acme log`. Its Boundaries section says: this skill never pre-approves `acme log`, so it raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is shared prefix, since a grant could permit something unwanted; approve each run once and do not add a persistent acme allow rule. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "REQUIRED FAIL: the shared prefix reason requires Boundaries to name at least one flag or subcommand, and none is named, so the exception does not apply. The fix is to name a real one if it exists, or otherwise grant Bash(acme log:*).",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "R6 reports an unconfirmable reason as ADVISORY, not PASS or FAIL",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read. Its body runs `acme report --since <date>`, with a different date each run. Its Boundaries section says: this skill never pre-approves `acme report`, whose date varies, so it raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is shared prefix, because `acme report` also accepts `--upload`, which publishes the report; approve each run once and do not add a persistent acme allow rule. acme is not installed and no documentation for it is available to you. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "ADVISORY (unverified), neither PASS nor a REQUIRED FAIL: Boundaries has all four items but the claim about --upload cannot be confirmed against documentation or --help.",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "R6 fails the exception when a wrapper grant reaches the command",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read, Bash(python:*). Its body runs `acme push` directly, only after an AskUserQuestion showing the exact command, and also runs a local Python script. acme's documentation, quoted in the task: push uploads the local tree. Its Boundaries section says: this skill never pre-approves `acme push`, so it raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is no read form, since it is a remote write; approve each run once and do not add a persistent acme allow rule. Separately, `python -m acme push` is an equivalent invocation of the same tool. Apply R6's tool-completeness sub-check to acme: finding or not, severity, and the fix.",
+      "expected_output": "The exception does not apply, so this is a REQUIRED FAIL: the general Bash(python:*) grant reaches acme through python -m acme, contradicting the Boundaries statement. The fix is to pin the Python grant to the one script.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
