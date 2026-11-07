@@ -811,6 +811,45 @@ def test_the_cmd_stand_in_runs_from_the_scripts_minimal_environment(tmp_path, tm
     assert code == "128" and "dubious ownership" in stderr, result
 
 
+# TEMP-RCA (#655): which process's environment decides whether git.cmd can be launched? Prints a
+# matrix (launching process x launched process) by failing on purpose. Remove with the fix.
+_RCA_PARENT = """
+import json, shutil, subprocess, sys
+shim = shutil.which("git")
+try:
+    r = subprocess.run([shim, "--version"], capture_output=True, text=True, cwd=sys.argv[2],
+                       env=json.loads(sys.argv[1]))
+    print("rc", r.returncode, (r.stdout or r.stderr).strip()[:50])
+except OSError as e:
+    print("OSError", e)
+"""
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the .cmd stand-in only exists on Windows")
+def test_rca_cmd_launch_matrix(tmp_path, tmp_path_factory):
+    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
+    base = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}"}
+    both = {"SYSTEMROOT": os.environ["SYSTEMROOT"], "COMSPEC": os.environ["COMSPEC"]}
+    parents = {
+        "none": {},
+        "SYSTEMROOT": {"SYSTEMROOT": both["SYSTEMROOT"]},
+        "COMSPEC": {"COMSPEC": both["COMSPEC"]},
+        "both": both,
+    }
+    children = {"none": {"PATH": str(bin_dir)}, "both": {"PATH": str(bin_dir), **both}}
+    rows = []
+    for plabel, pextra in parents.items():
+        for clabel, cextra in children.items():
+            run = subprocess.run(
+                [sys.executable, "-c", _RCA_PARENT, json.dumps(cextra), str(tmp_path)],
+                capture_output=True,
+                text=True,
+                env={**base, **pextra},
+            )
+            rows.append(f"launcher={plabel:10} launched={clabel:5} -> {run.stdout.strip()}")
+    pytest.fail("RCA MATRIX\n" + "\n".join(rows))
+
+
 def _cfg(path):
     """A path as gitconfig wants it: a backslash in a value starts an escape sequence."""
     return Path(path).as_posix()
