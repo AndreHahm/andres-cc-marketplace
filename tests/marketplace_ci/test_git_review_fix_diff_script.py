@@ -20,6 +20,14 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-review-fix-diff.py"
 SYSTEM_PATH = os.environ.get("PATH", "/usr/bin:/bin")
+# A git.cmd stand-in runs through cmd.exe, which a launch finds through these two names. The minimal
+# environment below omits them, and the ledger tests failed on a windows-latest runner for that
+# reason (WinError 267, #655), so they are passed through here too.
+WINDOWS_CMD_ENV = (
+    {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
+    if os.name == "nt"
+    else {}
+)
 # These tests stand in for git with a shell script, link files or join PATH with ":"; none of that
 # works on native Windows (a script named `git` cannot be run as git, PATH is split on ";").
 posix_only = pytest.mark.skipif(
@@ -34,7 +42,7 @@ def _git(repo, *args):
 
 
 def _run(cwd, *args, env=None):
-    base = {"PATH": SYSTEM_PATH, "HOME": str(cwd)}
+    base = {"PATH": SYSTEM_PATH, "HOME": str(cwd), **WINDOWS_CMD_ENV}
     base.update(env or {})
     return subprocess.run(
         [sys.executable, "-I", str(SCRIPT), *args],
