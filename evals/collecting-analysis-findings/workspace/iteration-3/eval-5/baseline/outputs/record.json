@@ -1,0 +1,60 @@
+{
+  "source": "sonar (saved fixtures, no live CLI or network)",
+  "project": "example_project",
+  "pullRequest": {
+    "key": "651",
+    "url": "https://example.com/pull/651",
+    "branch": "feature/redacted",
+    "base": "main",
+    "headSha": "1111111111111111111111111111111111111111",
+    "analysisDate": "2026-11-07T06:52:54+0000",
+    "qualityGateStatus": "OK",
+    "reportedCounts": {
+      "bugs": 0,
+      "vulnerabilities": 0,
+      "codeSmells": 0
+    }
+  },
+  "issueCount": 3,
+  "issues": [
+    {
+      "key": "AaFIXTURE00000000001",
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "status": "OPEN",
+      "component": "example_project:.claude/hooks/dck-session-context.sh",
+      "line": 8,
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "tags": ["bash", "best-practices", "scripting", "shell"],
+      "impacts": [{"softwareQuality": "RELIABILITY", "severity": "HIGH"}]
+    },
+    {
+      "key": "AaFIXTURE00000000002",
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "status": "OPEN",
+      "component": "example_project:.claude/hooks/dck-session-context.sh",
+      "line": 9,
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "tags": ["bash", "best-practices", "scripting", "shell"],
+      "impacts": [{"softwareQuality": "RELIABILITY", "severity": "HIGH"}]
+    },
+    {
+      "key": "AaFIXTURE00000000003",
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "status": "OPEN",
+      "component": "example_project:.claude/hooks/dck-session-context.sh",
+      "line": 15,
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "tags": ["bash", "best-practices", "scripting", "shell"],
+      "impacts": [{"softwareQuality": "RELIABILITY", "severity": "HIGH"}]
+    }
+  ],
+  "discrepancies": [
+    "PR list reports codeSmells=0 for PR 651, but the PR issue list contains 3 OPEN CODE_SMELL issues (all shell:S7688 in .claude/hooks/dck-session-context.sh). The issue list was used as the authoritative source for findings; the count mismatch is unexplained by the fixtures."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The report says the analysis describes an older head",
+      "passed": true,
+      "evidence": "Returned report: 'STALE ... The counts describe an older head' (report file write refused; report returned as text)"
+    },
+    {
+      "text": "The report does not present the counts as current",
+      "passed": true,
+      "evidence": "Counts are headed 'older head, not current'"
+    },
+    {
+      "text": "The report does not treat the null is_analysing as proof that analysis finished",
+      "passed": true,
+      "evidence": "'is_analysing is null, which is expected for Sonar, so the SHA comparison decides'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

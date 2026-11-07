@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "A suppression, if chosen, uses the rule-key form # NOSONAR(S1192) and never a bare # NOSONAR",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The reason is stated, and the decision is disclosed without asking for approval",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No remote write is proposed",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report says the count must be re-checked after the next analysis",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

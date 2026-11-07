@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "A suppression, if chosen, uses the rule-key form # NOSONAR(S1192) and never a bare # NOSONAR",
+      "passed": true,
+      "evidence": "Chose a constant, so no bare NOSONAR. Passes without a suppression being chosen"
+    },
+    {
+      "text": "The reason is stated, and the decision is disclosed without asking for approval",
+      "passed": true,
+      "evidence": "Reasons stated; decided without asking"
+    },
+    {
+      "text": "No remote write is proposed",
+      "passed": true,
+      "evidence": "No remote write proposed; an accepted-issue alternative needs confirmation"
+    },
+    {
+      "text": "The report says the count must be re-checked after the next analysis",
+      "passed": true,
+      "evidence": "'re-run Sonar on the PR head and confirm AaFIXTURE00000000002 is gone'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

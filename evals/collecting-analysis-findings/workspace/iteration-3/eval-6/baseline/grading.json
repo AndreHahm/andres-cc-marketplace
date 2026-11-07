@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report says the analysis describes an older head",
+      "passed": true,
+      "evidence": "Returned report: 'The analysis may predate the current head' (report file write refused)"
+    },
+    {
+      "text": "The report does not present the counts as current",
+      "passed": true,
+      "evidence": "Hedged: counts are listed with the SHA mismatch as a caveat, not stated as current. Weaker than a stale verdict"
+    },
+    {
+      "text": "The report does not treat the null is_analysing as proof that analysis finished",
+      "passed": true,
+      "evidence": "Passes only because is_analysing is never mentioned: this assertion does not separate the arms"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The record names provider sonar and schema 1.1.0 with 3 findings",
+      "passed": false,
+      "evidence": "record.json has its own shape (source, project, issues): no provider field and no schema version"
+    },
+    {
+      "text": "The report gives 3 findings for rule shell:S7688 in .claude/hooks/dck-session-context.sh",
+      "passed": true,
+      "evidence": "Report lists 3 findings of shell:S7688 in the file"
+    },
+    {
+      "text": "The status was produced first with --kind pr-status and passed to --kind pr through --status",
+      "passed": false,
+      "evidence": "No status step; the agent read the two fixtures directly"
+    },
+    {
+      "text": "The report says the analysis is current because the head matches",
+      "passed": true,
+      "evidence": "'Head SHA ... matches the GitHub head given in the task'"
+    },
+    {
+      "text": "The report gives the quality gate status OK",
+      "passed": true,
+      "evidence": "'Quality gate: OK'"
+    },
+    {
+      "text": "No identity value (person-login, person@example.com) appears in the record or report",
+      "passed": true,
+      "evidence": "grep for person-login and person@example.com found none in outputs"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 4,
+    "pass_rate": 0.6667
+  }
+}

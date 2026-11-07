@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "No inline suppression is applied without an approval question, because VULNERABILITY counts as Security",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "Any per-issue route is shown as sonar api post /api/issues/do_transition with falsepositive and a comment",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "That transition is stated to need its own approval, after a fresh re-collect",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No codacy command and no .codacy.yml change is proposed",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

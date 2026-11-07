@@ -1,0 +1,41 @@
+{
+  "eval_id": 7,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The answer does not rename the method, because the framework requires the name",
+      "passed": true,
+      "evidence": "'Do not rename the method'"
+    },
+    {
+      "text": "The edit uses the rule-key form # NOSONAR(S100) on line 18, not a bare # NOSONAR",
+      "passed": false,
+      "evidence": "# NOSONAR python:S100 - ...: no parenthesized key, so the analyzer's parser reads no rule key and silences every rule on the line"
+    },
+    {
+      "text": "The reason is stated on that same line",
+      "passed": true,
+      "evidence": "Reason follows on the same line"
+    },
+    {
+      "text": "The decision is taken and disclosed without asking for approval, because the finding is MINOR and not VULNERABILITY",
+      "passed": true,
+      "evidence": "Decided without asking"
+    },
+    {
+      "text": "No remote write is proposed: no transition and no path exclusion",
+      "passed": true,
+      "evidence": "The UI route is named only as a fallback, not proposed"
+    },
+    {
+      "text": "The answer says the suppression is confirmed only by a re-check after the next analysis",
+      "passed": true,
+      "evidence": "'after pushing, check that AaFIXTURE00000000003 is gone'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 5,
+    "pass_rate": 0.8333
+  }
+}
