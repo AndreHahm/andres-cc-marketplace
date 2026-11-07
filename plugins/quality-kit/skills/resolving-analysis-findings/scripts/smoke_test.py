@@ -97,8 +97,7 @@ def check_grants(fm: dict[str, str], body: str) -> None:
     )
     check(
         "grants only gh pr view in Bash (no codacy command is pre-approved)",
-        [g.strip() for g in grants.split(",") if g.strip().startswith("Bash")]
-        == ["Bash(gh pr view:*)"],
+        re.findall(r"(?<![\w(])Bash(?:\([^)]*\))?", grants) == ["Bash(gh pr view:*)"],
     )
     check(
         "boundaries tell the user never to choose don't ask again",

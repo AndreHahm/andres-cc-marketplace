@@ -1,0 +1,21 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Records PASS for the goal",
+      "passed": true,
+      "evidence": "Goal result: PASS"
+    },
+    {
+      "text": "Keeps the advisory in the report as ADVISORY, not dropped and not Major",
+      "passed": true,
+      "evidence": "reported as ADVISORY (unverified), not as a Major and not as a FAIL; stays in the report"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
