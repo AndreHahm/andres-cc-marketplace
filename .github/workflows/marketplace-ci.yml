@@ -318,8 +318,10 @@ jobs:
         shell: bash
       # The review helpers' guards: the scope helpers' run-directory, index-copy, intent-add and
       # write-file checks, and the ledger, fix-diff and verify-fix-diff checks that refuse a git inside
-      # the repository. Tests that need mode bits, case-distinct names, a ':' in a path or a #!/bin/sh
-      # stand-in for git skip here with a stated reason (#655).
+      # the repository. Tests that need mode bits, case-distinct names, a ':' in a path, symlinks, a
+      # non-UTF-8 path or a #!/bin/sh stand-in for git skip here, nearly all with a stated reason
+      # (#655); the fix-diff time-limit test skips until #657 is fixed. A few cases that cannot occur
+      # on Windows are dropped inside tests that still run, so -rs does not list them.
       - run: >-
           uv run --no-sync --no-build pytest -q -rs
           tests/marketplace_ci/test_git_review_scope_script.py
