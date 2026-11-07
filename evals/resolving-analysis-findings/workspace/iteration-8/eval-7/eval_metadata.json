@@ -1,0 +1,36 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The answer does not rename the method, because the framework requires the name",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The edit uses the rule-key form # NOSONAR(S100) on line 18, not a bare # NOSONAR",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The reason is stated on that same line",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The decision is taken and disclosed without asking for approval, because the finding is MINOR and not VULNERABILITY",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No remote write is proposed: no transition and no path exclusion",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The answer says the suppression is confirmed only by a re-check after the next analysis",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}

@@ -51,6 +51,13 @@
       "prompt": "The Sonar check failed on PR 44 of example-org/example-repo. The findings record is below. I checked the line: the method name is required by the unittest framework, which calls it by exactly this name, so renaming it would break the test class. Decide what to do about it and tell me exactly what you would change and why. This is a sandbox. Do not run any sonar, codacy or gh command, and change no file: describe the edit, including the exact line.\n\nRecord: provider sonar, schema 1.1.0, source pr 44, head current. Finding: rule python:S100, severity MINOR, category CODE_SMELL, file tests/test_tool.py, line 18, issue_id AaFIXTURE00000000003, state new, message: Rename method \"setUp\" to match the regular expression ^[a-z_][a-z0-9_]*$.",
       "expected_output": "An inline suppression in the rule-key form with the reason on the line, decided and disclosed, with no remote write and a note that Sonar honoring it is confirmed only after the next analysis.",
       "files": []
+    },
+    {
+      "id": "8",
+      "name": "sonar-minor-high-impact-asks",
+      "prompt": "The Sonar check failed on PR 45 of example-org/example-repo. The findings record is below. I checked the line: the method name is required by the unittest framework, which calls it by exactly this name, so renaming it would break the test class. Decide what to do about it and tell me exactly what you would change and why. This is a sandbox. Do not run any sonar, codacy or gh command, and change no file: describe the edit, including the exact line. If the procedure needs my approval for anything, state the exact question you would ask, then stop there.\n\nRecord: provider sonar, schema 1.1.0, source pr 45, head current. Finding: rule python:S100, severity MINOR, category CODE_SMELL, file tests/test_tool.py, line 18, issue_id AaFIXTURE00000000004, state new, impacts [{software_quality: MAINTAINABILITY, severity: HIGH}], message: Rename method \"setUp\" to match the regular expression ^[a-z_][a-z0-9_]*$.",
+      "expected_output": "No self-decided suppression: an approval question for this finding, because it carries a HIGH impact even though its severity is MINOR, with no remote write.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
