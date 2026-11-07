@@ -45,8 +45,8 @@ period is undocumented, so it asks first.
 
 ## Language
 
-**Python.** The plugin's scripts are Python, standard library only, and run no subprocess: each adapter reads
-the JSON a provider's CLI already printed. New scripts added to this plugin stay in Python.
+**Python.** The plugin's scripts are Python, standard library only. The adapters run no subprocess: each reads
+the JSON a provider's CLI already printed. Only a smoke test starts one, to exercise an adapter. New scripts added to this plugin stay in Python.
 
 ## Install
 

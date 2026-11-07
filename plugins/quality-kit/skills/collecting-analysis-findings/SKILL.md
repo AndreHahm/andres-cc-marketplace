@@ -88,7 +88,7 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    **Sonar:** the forms are in `references/sonar-adapter.md`, with the same one-time approval rule. A PR takes two
    pipes: first the PR list into `collect_sonar.py --kind pr-status --project <key> --pull-request <n> --output
    "<scratchpad>/sonar-status.json"`, then the issue list into `--kind pr --project <key> --status
-   "<scratchpad>/sonar-status.json"`. The user gives the project key. Exit 3 means more pages exist: re-run all
+   "<scratchpad>/sonar-status.json" --output "<scratchpad>/findings-record.json"`. The user gives the project key. Exit 3 means more pages exist: re-run all
    of them in one command, as that reference shows.
 4. **Normalize.** `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/collect_codacy.py
    --kind pr|repo|ignored --input - [--category Security] [--group-by rule|file|rule,file]
