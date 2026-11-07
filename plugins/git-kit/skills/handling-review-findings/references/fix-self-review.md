@@ -16,40 +16,41 @@ the reply's verification line says the user skipped the self-review, and 4e stil
 a skip is never assumed from silence or from an earlier run's answer. On "stop", leave the finding open.
 
 Run the driver from the target branch's committed copy, never from the tree being judged, so a fix that
-edits the driver cannot grade itself. Each step is its own `Bash` call; never combine them, and never use a
-`<rev>:<path>` argument whose `<rev>` could be empty, because git reads `:<path>` from the index, which holds
-the branch under review:
+edits the driver cannot grade itself. A launcher script does this in one call: it checks that `origin` is
+`<owner>/<repo>`, that the commit supplying the driver is already on the default branch, reads the driver
+from that commit into a private temporary directory it creates, runs it and deletes it. Each step is its
+own `Bash` call; never combine them, and never put a command substitution inside one:
 
-1. `git remote get-url origin` must name `<owner>/<repo>`, the PR's base repository. Otherwise stop: not verified.
-   This call is not pre-approved either (this skill's grants never include reading a remote URL), so it prompts.
-2. Three calls. First `gh pr view <the resolved PR reference> --json baseRefName --jq .baseRefName` prints `<base>`, the
-   branch the PR merges into (not necessarily the default branch, and chosen by the PR's author). It must be a plain
-   branch name: letters, digits, `.`, `_`, `-` and `/` only, no `..`, no leading `-`. Otherwise stop: not verified.
-   Put `<base>` in single quotes in every command below. Second `git merge-base HEAD 'refs/remotes/origin/<base>'`
-   with exactly those two arguments prints `<target>`. It must be exactly 40 or 64 hex characters. Otherwise
-   (including a missing `refs/remotes/origin/<base>`: `git fetch origin <base>` is the user's call) stop: not
-   verified. Third `git merge-base --is-ancestor <target> refs/remotes/origin/HEAD` must exit 0: the commit that
-   supplies the driver and the verifiers has to be on the default branch already, because a base branch is not a
-   trust anchor by itself. Exit 1 or an error: stop, not verified (this is what happens for a PR into a branch that
-   diverged from the default branch). The two `git merge-base` calls are pre-approved by this skill's
-   `git merge-base:*` grant (every form only prints commit IDs or an exit status).
-3. `git cat-file -e <target>:plugins/git-kit/scripts/git-verify-fix-diff.py`. Exit 0: go on to step 4. Non-zero:
-   run `git cat-file -e <target>:scripts/marketplace_ci/review_verifiers.py`. If that also fails and the current tree has no `scripts/marketplace_ci/`, git-kit is
-   installed in another repository: run the installed copy
-   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py"` with the arguments of step 5, and say in the
-   reply that the driver was not taken from the target branch. If it succeeds, or the current tree has `scripts/marketplace_ci/`, this is the marketplace repository and the
-   target branch lacks the driver: stop, not verified (never run the working-tree copy).
+1. `gh pr view <the resolved PR reference> --json baseRefName --jq .baseRefName` prints `<base>`, the
+   branch the PR merges into (not necessarily the default branch, and chosen by the PR's author). It must be
+   a plain branch name: letters, digits, `.`, `_`, `-` and `/` only, no `..`, no leading `-`. Otherwise stop:
+   not verified. Put `<base>` in single quotes in the command below. A missing `refs/remotes/origin/<base>`
+   is also not verified (`git fetch origin <base>` is the user's call).
+2. `git rev-parse HEAD` prints the commit the fix is applied to. It must be exactly 40 or 64 hex
+   characters; use that literal value as `<head>` below.
+3. Launcher identity, only when `CLAUDE_PLUGIN_ROOT` is empty (this repository's own sessions, where the
+   launcher is this tree's `.claude/scripts/` copy, so the branch under review could have edited it).
+   Three calls: `git rev-parse refs/remotes/origin/HEAD:plugins/git-kit/scripts/git-run-trusted-fix-diff.py`
+   prints the default branch's blob id; `git ls-files -s -- .claude/scripts/git-run-trusted-fix-diff.py` prints
+   the index's blob id (the second field); `git ls-files -m -o --exclude-standard --
+   .claude/scripts/git-run-trusted-fix-diff.py` must print nothing. Stop, not verified, unless the two blob ids
+   are equal and the last call printed nothing (a default branch without the launcher, a changed copy, or an
+   unstaged or untracked change all fail it). Say in the reply that the launcher differed from the default
+   branch's. This check is why a launcher edited by the PR cannot report a clean result: the launcher cannot
+   vouch for itself, and the driver's `ungraded` list only covers edits inside the current fix's own diff.
+   An installed plugin skips this step: its launcher is the install directory's, not this tree's.
 4. ```bash
-   git cat-file -p <target>:plugins/git-kit/scripts/git-verify-fix-diff.py > <scratchpad>/git-verify-fix-diff.trusted.py
+   python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-run-trusted-fix-diff.py --upstream <owner>/<repo> --target-branch '<base>' --base <head> --worktree
    ```
-   with `<target>` replaced by the literal hash from step 2. This call is not pre-approved either (a grant for
-   `git cat-file -p` plus a redirect could write any file), so it prompts.
-5. ```bash
-   python3 -I <scratchpad>/git-verify-fix-diff.trusted.py --worktree --base "$(git rev-parse HEAD)" --upstream <owner>/<repo> --target-branch '<base>'
-   ```
-   This call is deliberately not pre-approved (running a file from a writable directory is never granted), so
-   it raises a permission prompt each run: that is expected, so do not suggest a permanent allow rule for it.
+   This is the one call that runs code taken from the target branch, and it is granted: the launcher
+   refuses (exit 2, nothing run) unless the checks above hold, and passes the driver's own exit code on.
    Empty output, or output that is not the JSON object described below, counts as exit 2 (not verified).
+   Exit 4 means the commit where `HEAD` met the target branch has no driver. If the current tree has no
+   `scripts/marketplace_ci/` and `CLAUDE_PLUGIN_ROOT` is non-empty (git-kit is installed in another
+   repository, so the copy is the installed one and not this tree's), run the installed copy
+   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py"` with the same arguments, and say in the
+   reply that the driver was not taken from the target branch. Otherwise (this is the marketplace
+   repository and the target branch lacks the driver) stop: not verified, and never run the working-tree copy.
 
 The merge-base commit decides which version of the driver runs, so a branch cut from an old commit of the target
 branch gets that commit's driver. Until this change is on the target branch, that copy is the previous driver: it

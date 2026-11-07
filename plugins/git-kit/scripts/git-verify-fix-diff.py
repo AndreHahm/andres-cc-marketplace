@@ -96,6 +96,8 @@ _UNGRADED = (
     ".claude/marketplace-sync.json",
     "plugins/git-kit/scripts/git-verify-fix-diff.py",
     ".claude/scripts/git-verify-fix-diff.py",
+    "plugins/git-kit/scripts/git-run-trusted-fix-diff.py",
+    ".claude/scripts/git-run-trusted-fix-diff.py",
     # The procedure that launches this driver and the grants that let it run.
     "plugins/git-kit/skills/handling-review-findings/SKILL.md",
     "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",

@@ -165,17 +165,30 @@ a scratchpad write falls back to a prompt rather than succeeding silently.
 ## Follow-up: launching the verifier driver from the target branch (Issue #656)
 
 Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
-grade itself (`references/fix-self-review.md`). Granted: `git cat-file -e:*` (prints nothing) and `git merge-base:*` (the two calls
-`git merge-base HEAD 'refs/remotes/origin/<base>'` and `git merge-base --is-ancestor <target>
-refs/remotes/origin/HEAD`; every form of the command, checked against `git merge-base -h`, only prints commit IDs
-or an exit status, so it is a read-only prefix under R6's exception for one). The base name comes from `gh pr view
---json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not** granted, so each
-prompts: `git remote get-url origin` (a fully fixed command; the URL can embed a token, so this is the
-sensitive-read reason, and this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p
-<hash>:<path> > <scratchpad>/...` (it prints any file's contents and a prefix grant plus a shell redirect could
-write any file) and `python3 -I <scratchpad>/...` (running a file from a writable directory). The driver itself
-re-checks that its trusted commit is on the default branch. A reviewer comparing the body with `allowed-tools`
-will see these three calls without grants: that is the intended state. History: the two `merge-base` grants were
-added, dropped after CI's Codex security review flagged them as Major twice, and restored after R6's read-only
-prefix clause (PR #665) said such a prefix passes. Not checked live: how Claude Code's matcher treats a redirect on
-the remaining `git cat-file -e:*` grant, and the scratchpad path on a Windows host.
+grade itself (`references/fix-self-review.md`). One script does the launch: `git-run-trusted-fix-diff.py`,
+granted as `Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-run-trusted-fix-diff.py:*)`. It takes only
+`--upstream`, `--target-branch`, `--base` and `--worktree`, each checked against a fixed pattern before any git
+call, and it replaces three calls that used to prompt one by one (`git remote get-url origin`, `git cat-file -p
+<hash>:<path> > <file>` and `python3 -I <scratchpad file>`). Before it executes anything from the target branch it
+refuses (exit 2, nothing run) unless `origin`'s fetch URL names `--upstream` and the commit supplying the driver
+is an ancestor of `refs/remotes/origin/HEAD`, because the PR's author picks its base branch. It then reads the
+driver with `git cat-file blob`, writes it into a directory `tempfile.mkdtemp` created for it (mode 0700), runs it
+with `python3 -I` and removes the directory. No path is typed by the model, and no shell redirect is involved.
+The base name still comes from `gh pr view --json baseRefName`, already covered by the `gh pr view:*` grant.
+
+The launcher is a file in the checked-out tree, so in this repository's own sessions (where `${CLAUDE_PLUGIN_ROOT}`
+is empty and the `.claude/` mirror of the PR branch is used) a fix could edit it and change what runs without a
+prompt, including by printing a clean result without running the driver. The driver's `ungraded` list cannot cover
+this: it is printed by the launcher's own child, and only for edits inside the current fix's diff (an earlier
+commit of the PR is outside it). Step 4a therefore compares the launcher outside itself, before running it: the
+default branch's blob (`git rev-parse refs/remotes/origin/HEAD:plugins/git-kit/scripts/...`) must equal the
+index's blob for the `.claude/scripts/` copy (`git ls-files -s`), and `git ls-files -m -o --exclude-standard`
+must report no change to it; anything else is not verified. Until the launcher is on the default branch that
+check fails closed. Not closed: `git-review-api.py` and `git-review-ledger.py` are granted scripts with the same
+exposure, and this check does not cover them. An installed plugin runs the launcher from its install directory
+and skips the check. The git lookup helpers in the launcher are a copy of the driver's (they cannot be imported,
+since the driver in the tree is the untrusted one); the shared constants are a copy too, and
+`tests/marketplace_ci/test_git_run_trusted_fix_diff_script.py` fails if either differs.
+History: the launch was first three ungranted calls, then `git merge-base:*` and `git cat-file -e:*` grants,
+then (after CI's Codex review kept flagging the ungranted calls under R6) this one script. Not checked live:
+how Claude Code's matcher treats the grant on a Windows host.
