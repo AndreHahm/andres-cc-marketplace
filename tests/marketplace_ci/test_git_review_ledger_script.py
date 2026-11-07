@@ -523,17 +523,22 @@ def _marker_for(tmp_path):
 
 
 def _plant_git(path, marker):
+    """Plant a git that records it ran; returns the file written (Windows needs an extension)."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    if os.name == "nt":
+        # shutil.which finds a .cmd through PATHEXT, the way it would find a planted git.exe.
+        path = path.with_name(path.name + ".cmd")
+        path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\n', encoding="utf-8")
+        return path
     path.write_text(f"#!/bin/sh\ntouch {marker}\nexit 0\n", encoding="utf-8")
     path.chmod(0o755)
+    return path
 
 
-@posix_only
 def test_a_git_planted_in_the_repository_is_never_run(tmp_path):
     for planted in ("git", "bin/git", "sub/deeper/git"):
         marker = _marker_for(tmp_path)
-        plant = tmp_path / planted
-        _plant_git(plant, marker)
+        plant = _plant_git(tmp_path / planted, marker)
         path = f"{plant.parent}{os.pathsep}{BASE_PATH}"
         result = _run(tmp_path, *RECORD_ARGS, extra_env={"PATH": path})
         assert result.returncode == 2, (planted, result.stderr)
