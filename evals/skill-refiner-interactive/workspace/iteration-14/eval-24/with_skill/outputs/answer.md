@@ -15,6 +15,6 @@ From `plugins/plugin-devkit/skills/skill-refiner-interactive/references/goal-der
 
 ## Premise
 
-This verdict assumes the scenario's stated fact: the clearance has a confirmed reason. I did not re-open R6's `frontmatter-corrections.md` to check that reason. If the reason were not confirmed, the command would count as undeclared and the goal would fail.
+This verdict assumes the scenario's stated fact: the clearance has a confirmed reason. I did not re-open R6's `frontmatter-corrections.md` to check that reason. If the reason were not confirmed, the result would be ADVISORY (unverified): the goal would still pass and the advisory would stay in the report. [Sentence corrected after the run; see grading.json.]
 
 **Verdict: PASS**

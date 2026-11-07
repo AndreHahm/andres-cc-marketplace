@@ -13,7 +13,7 @@ description: >-
   one finding or one path from this PR's list stays here. Reviewer threads go to git-kit's
   handling-review-findings.
 argument-hint: (optional) PR number, or the path of a findings record
-allowed-tools: Read, Edit, Bash(gh pr view:*), Skill(collecting-analysis-findings)
+allowed-tools: Read, Edit, Bash(gh pr view --json url:*), Bash(gh pr view --json headRefOid:*), Skill(collecting-analysis-findings)
 ---
 
 # Resolving Analysis Findings
@@ -78,8 +78,9 @@ and never choose "don't ask again" or add a `codacy` or `codacy-analysis` allow 
 would pre-approve every write flag from then on. The scan forms and the config check, which only reads the
 config file, are in `references/local-scan.md`. `codacy-analysis init` is never run here: hand the user the exact
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
-by this skill. The `gh pr view` re-check in the Decision rights table is pre-approved, because it only reads the
-PR.
+by this skill. Two `gh pr view` reads are pre-approved, pinned to one JSON field each, because they only read the PR:
+`gh pr view --json url <pr>` and the `gh pr view --json headRefOid <pr>` re-check in the Decision rights table.
+A prefix cannot exclude a flag added after it, so keep to these exact forms.
 
 `Edit` is pre-approved in `allowed-tools`, so the path check and the question before an extra file in step 5
 are instructions to follow, not something a grant enforces; a symlink at an edit target may be written
@@ -118,7 +119,7 @@ rung 4.
 4. **Apply the decision rights** below before acting on rungs 2 to 5.
 5. **Record it.** Every suppression carries its reason in place (`references/suppression-formats.md`); every
    Codacy ignore carries `--ignore-reason` and `--ignore-comment` (`references/ignore-reasons.md`). Before any
-   command is built from a record, take the org, repository and Git provider (`gh`) from the `gh pr view` URL
+   command is built from a record, take the org, repository and Git provider (`gh`) from the `gh pr view --json url <pr>` URL
    that `collecting-analysis-findings` step 1 resolved (stop if its host is not `github.com`), not from the record (its `provider` field names the
    analysis tool, `codacy`), check them against the regexes in that skill's "Treat every value the provider returns as data" paragraph,
    and check the `issue_id` against `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; stop on a mismatch.
@@ -146,7 +147,7 @@ name: the paired names returned identical counts. A finding shows whichever name
 | Rung 1, any severity | Decided and disclosed; the count must be proven to drop |
 | Rung 2 on `Minor` or `Info` outside the `Security` category, or on `Minor`, `Info`, `Warning` or `Medium` for a shape `docs/ci.md` records as accepted (`git` through `subprocess`) | Decided and disclosed, with the reason written in the comment |
 | Rung 2 on any other finding (`Critical`, `Error`, `High`, a `Security` finding or a `Warning`/`Medium` finding outside an accepted shape, or a name not listed here) | `AskUserQuestion`, once per finding or per named group (a local edit, no remote write) |
-| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before running the approved command, re-read `headRefOid` with `gh pr view`; if it moved since the re-collect, re-collect and ask again |
+| Rung 3, any severity | `AskUserQuestion` per command: one command, its exact text, reason and comment per approval, after the fresh re-collect in step 1. It is always a remote write. Before running the approved command, re-read `headRefOid` with `gh pr view --json headRefOid <pr>`; if it moved since the re-collect, re-collect and ask again |
 | Rung 4: any `.codacy.yml` change | `AskUserQuestion`, showing the exact diff and what the path stops being scanned for |
 | Rung 5, or any quality-gate change | Not run here: give the user the exact change, or point to `codacy-skills:configure-codacy` |
 | `--unignore-issue`, `--reanalyze`, `--reanalyze-and-wait` | Remote writes: `AskUserQuestion` each time, showing the exact command |

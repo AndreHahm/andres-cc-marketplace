@@ -10,7 +10,7 @@
     {
       "text": "Treats the command as not flagged",
       "passed": true,
-      "evidence": "a command cleared by R6's exceptions 'is not flagged'. Note: the agent's aside that an unconfirmed reason would fail the goal is outside this scenario and does not match the rule, which rates that ADVISORY (unverified)."
+      "evidence": "a command cleared by R6's exceptions 'is not flagged'. Note: the stored answer's aside on an unconfirmed reason originally did not match the rule, which rates that ADVISORY (unverified); it was corrected in place after PR 665's CI review, and the original text is in git history at 7e4dea22. Iteration 15 tests that case."
     }
   ],
   "summary": {
