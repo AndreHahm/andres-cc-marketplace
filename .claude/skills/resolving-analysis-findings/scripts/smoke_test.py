@@ -294,7 +294,7 @@ def check_sonar(body: str) -> None:
     )
     check(
         "the Sonar project key comes from the record and is validated",
-        "`source.repository`" in body and "^[A-Za-z0-9][A-Za-z0-9._:-]*$" in body,
+        "`source.repository`" in body and "^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$" in body,
     )
     check(
         ".sonar-config.json is on the denylist, and rung 4 files stay at rung 4",
