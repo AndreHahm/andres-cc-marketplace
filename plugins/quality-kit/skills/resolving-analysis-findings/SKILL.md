@@ -249,7 +249,8 @@ The Cloud CLI is the authority, not GitHub's check annotations, which show a cap
 ## Local pre-PR scan
 
 Run before `create-pr` when the PR touches scripts or configuration, and only after asking via
-`AskUserQuestion` whether to run it now or skip it (it runs a local analysis tool over the branch). `references/local-scan.md` has the
+`AskUserQuestion` whether to run it now or skip it (it runs a local analysis tool over the branch); the question
+shows the exact `codacy-analysis` command, `--output` path included. `references/local-scan.md` has the
 verified flags. In short: `codacy-analysis analyze --pr --output-format json --output <scratchpad file>`. The
 `--output` path must be under the session scratchpad, and `--install-dependencies` is never passed; stop
 otherwise. A `codacy-analysis` allow rule in the user's own settings removes the permission prompt for this
