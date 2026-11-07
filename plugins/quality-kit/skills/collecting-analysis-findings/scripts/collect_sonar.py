@@ -124,6 +124,17 @@ def _key(issue: dict[str, Any], where: str) -> str:
     return value
 
 
+def _impacts(issue: dict[str, Any], where: str) -> list[dict[str, str | None]]:
+    """Keep each impact's quality and level: severity alone can understate a finding."""
+    return [
+        {
+            "software_quality": _str(_obj(item, f"{where}.impacts"), "softwareQuality", where),
+            "severity": _str(item, "severity", where),
+        }
+        for item in _list(issue.get("impacts", []), f"{where}.impacts")
+    ]
+
+
 def _finding(item: Any, where: str, *, project: str, state: str, ignored: bool) -> dict[str, Any]:
     issue = _obj(item, where)
     status = _str(issue, "issueStatus", where)
@@ -131,16 +142,18 @@ def _finding(item: Any, where: str, *, project: str, state: str, ignored: bool) 
         raise ShapeError(f"{where}.issueStatus: not a status this kind of list holds")
     comment = None
     if ignored:
-        comments = _list(issue.get("comments"), f"{where}.comments")
+        # An issue marked without a comment may omit the key: not seen, so allowed.
+        comments = _list(issue.get("comments", []), f"{where}.comments")
         if comments:  # The API lists them oldest first: checked 2026-11-07.
             last = _obj(comments[-1], f"{where}.comments[-1]")
-            comment = _str(last, "markdown", f"{where}.comments[-1]")
+            comment = _str(last, "markdown", f"{where}.comments[-1]", required=False)
     return {
         "provider": PROVIDER,
         "tool": None,
         "rule": _str(issue, "rule", where),
         "severity": _str(issue, "severity", where),
         "category": _str(issue, "type", where),
+        "impacts": _impacts(issue, where),
         "subcategory": None,
         "file": _file(issue, where, project),
         "line": _line(issue, where),
@@ -168,14 +181,15 @@ def _findings(
 
 
 def _read_status(raw: str, *, project: str) -> dict[str, Any]:
-    """Read the file a `pr-status` run wrote, trusting nothing about how it got there."""
+    """Read a `pr-status` file. Its shape is checked; that it came from such a run cannot be."""
     status = _obj(_read_json(str(_scratch_input(raw))), "--status")
     if set(status) != STATUS_KEYS:
-        raise ShapeError("--status: not a file written by --kind pr-status")
+        raise ShapeError("--status: not the shape --kind pr-status writes")
     if status["project"] != project:
         raise ShapeError("--status: written for another project")
     _status_sha(status)
-    _int(status, "pull_request", "--status")
+    if _int(status, "pull_request", "--status") < 1:
+        raise ShapeError("--status.pull_request: out of range")
     _str(status, "analysis_date", "--status")
     _str(status, "quality_gate", "--status")
     return status

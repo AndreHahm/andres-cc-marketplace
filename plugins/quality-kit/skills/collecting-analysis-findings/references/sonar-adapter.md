@@ -18,13 +18,15 @@ the CLI's banner. If `sonar` is not on `PATH`, the default install is `~/.local/
 
 **A PR takes two pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps
 only that PR's SHA, analysis date and gate status. `--kind pr --status "<scratchpad>/sonar-status.json"` then
-reads it and refuses issues from any other PR.
+reads it and refuses issues from any other PR. An empty issue list cannot be checked that way, and issues carry no
+commit, so the `--status` file is not bound to them: the head comparison in `SKILL.md` step 5 is what catches a stale one.
 
 **Several pages.** Exit 3 means the response has more pages, and its message gives the count. Run all pages in
 one command, `{ sonar list issues ... --page 1; sonar list issues ... --page 2; } 2>/dev/null | python3 -I ...`
 (the `ignored` form takes `&p=<n>`). The script reads the concatenated JSON and refuses missing, repeated or
 overlapping pages. `--page-size` defaults to and caps at 500. The API refuses to go past 10,000 results (`400`,
-checked 2026-11-07), so a larger total exits 2: narrow the query with `--file`.
+checked 2026-11-07), so a larger total exits 2: narrow the query with `--file`. A `--file` or `--branch` value comes
+from the user, never from a response, and must match the patterns in `SKILL.md`.
 
 The `ignored` form's filters were run and gave 0 results where `OPEN` gave 192, so they are honored. Its
 response with a marked issue present was not read through these filters: the fixture combines the real issue
@@ -52,10 +54,10 @@ The record keeps the response's name verbatim; filter there.
 
 - **`pr`, `repo`:** `{issues: [...], components, paging: {pageIndex, pageSize, total}, ...}`. Each issue has
   `key`, `rule`, `severity`, `type`, `component` (`<project key>:<path>`), `message`, `issueStatus`, `resolution`
-  and, on a PR, `pullRequest` (a string); `line` is absent on a file-level issue. `author` and `assignee` are
+  `impacts` (`[{softwareQuality, severity}]`) and, on a PR, `pullRequest` (a string); `line` is absent on a file-level issue. `author` and `assignee` are
   present when set and are dropped.
 - **`ignored`:** the same, with `comments: [{key, login, htmlText, markdown, updatable, createdAt, isFeedback}]`,
-  oldest first. `accept` leaves `issueStatus: ACCEPTED`, `resolution: WONTFIX`; `falsepositive` leaves
+  oldest first. A missing key counts as no comments (not seen; `comments` was present on every issue read). `accept` leaves `issueStatus: ACCEPTED`, `resolution: WONTFIX`; `falsepositive` leaves
   `FALSE_POSITIVE`, `FALSE-POSITIVE`. Only `issueStatus` and the last comment's `markdown` are kept.
 - **`pr-status`:** `{pullRequests: [{key, title, branch, base, target, url, analysisDate, contributors,
   commit: {sha, author, date, message}, status: {qualityGateStatus, bugs, vulnerabilities, codeSmells}, ...}]}`.
