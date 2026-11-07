@@ -18,7 +18,9 @@ that ref, or when `origin`'s fetch URL is not the required `--upstream owner/rep
 repository), the run exits 2. A fix that changes the verifiers (scripts/marketplace_ci/), their
 registry (.claude/marketplace-sync.json) or this script is still checked: the target branch's
 verifiers run over the rest of the diff. No verifier grades those paths themselves, so they are
-listed under an `ungraded` key and the reply must say they were not checked. A fix to this script
+listed under an `ungraded` key and the reply must say they were not checked. When the registry or
+a verifier is among them, a `result_caveat` key also says the other verdicts may be weaker than
+they look: the verifiers read the registry from the tree being judged. A fix to this script
 is the weakest case: when it is the copy that runs, the edited code takes part in its own run. A
 `--worktree` run snapshots the working tree into a throwaway
 commit built with a temporary
@@ -90,6 +92,8 @@ _UNGRADED = (
     "plugins/git-kit/scripts/git-verify-fix-diff.py",
     ".claude/scripts/git-verify-fix-diff.py",
 )
+# The subset of _UNGRADED that the target-branch verifiers read from the tree being judged.
+_VERIFIER_CONFIG = ("scripts/marketplace_ci/", ".claude/marketplace-sync.json")
 # The only inherited variables git is given: locale and time zone. Everything else (GIT_DIR,
 # GIT_CONFIG_*, GIT_TRACE*, GIT_EXEC_PATH, HOME, XDG_CONFIG_HOME, PAGER, ...) is dropped (#588).
 _KEEP_ENV = ("LANG", "LC_ALL", "LC_CTYPE", "TZ")
@@ -474,6 +478,11 @@ def main(argv: list[str] | None = None) -> int:
     result = {"checked": checked, "blocking": blocking}
     if ungraded:
         result["ungraded"] = ungraded
+    if any(p.startswith(prefix) for p in ungraded for prefix in _VERIFIER_CONFIG):
+        result["result_caveat"] = (
+            "the fix changes what the verifiers read (their code or the sync registry), so "
+            "the other verdicts in this run may be weaker than they look"
+        )
     print(json.dumps(result, indent=2))
     return 1 if blocking else 0
 

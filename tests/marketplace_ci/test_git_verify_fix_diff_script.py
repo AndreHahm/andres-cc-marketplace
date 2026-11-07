@@ -544,6 +544,21 @@ def test_ungraded_path_does_not_hide_a_blocking_finding_elsewhere(repo):
     assert json.loads(result.stdout)["ungraded"] == [".claude/marketplace-sync.json"]
 
 
+@pytest.mark.parametrize(
+    ("path", "caveat"),
+    [
+        ("scripts/marketplace_ci/extra.py", True),
+        (".claude/marketplace-sync.json", True),
+        ("plugins/git-kit/scripts/git-verify-fix-diff.py", False),
+    ],
+)
+def test_result_caveat_only_when_the_verifiers_inputs_changed(repo, path, caveat):
+    base = _commit(repo, SKILL, GOOD, "add skill")
+    text = REGISTRY if path.endswith(".json") else "x = 1\n"
+    _commit(repo, path, text, "touch ungraded path")
+    assert ("result_caveat" in json.loads(_run(repo, "--base", base).stdout)) is caveat
+
+
 def test_clean_fix_has_no_ungraded_key(repo):
     base = _commit(repo, SKILL, GOOD, "add skill")
     _commit(repo, SKILL, GOOD + "\nMore.\n", "fix")
