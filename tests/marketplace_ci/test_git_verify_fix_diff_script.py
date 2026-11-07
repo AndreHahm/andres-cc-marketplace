@@ -11,6 +11,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,20 @@ needs_colon_paths = pytest.mark.skipif(
 needs_sh_stub_git = pytest.mark.skipif(
     os.name == "nt",
     reason="plants #!/bin/sh scripts as git or hooks; no .cmd equivalent written yet (#655)",
+)
+
+
+def _can_symlink() -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+needs_symlinks = pytest.mark.skipif(
+    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
 )
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-verify-fix-diff.py"
@@ -728,6 +743,7 @@ def test_a_git_planted_in_the_repository_is_refused_from_any_subdirectory(tmp_pa
         assert _find_git_from(monkeypatch, start, plant) is None, start
 
 
+@needs_symlinks
 def test_a_link_outside_the_repository_that_points_into_it_is_refused(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     target = _stub_git(repo / "bin")
