@@ -30,9 +30,11 @@ needs_sh_stub_git = pytest.mark.skipif(
 
 needs_symlinks = pytest.mark.needs_symlinks  # the skip rule lives in conftest.py
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
-# The Windows stand-in for git is a git.cmd batch file, which runs through cmd.exe. The script
-# process is started with a minimal environment, and on a windows-latest runner launching git.cmd
-# from it fails with WinError 267 (#655). These two names are what let the launch find cmd.exe.
+# The Windows stand-in for git is a git.cmd batch file, which runs through cmd.exe. Measured on a
+# windows-latest runner (#655): the process that launches it needs SYSTEMROOT or COMSPEC (either
+# one is enough), or the launch fails with WinError 267. The environment of the launched process
+# does not matter, so the helpers may rebuild it without them. The script is started with a
+# minimal environment, so the test helpers pass these two to it.
 WINDOWS_CMD_ENV = (
     {k: os.environ[k] for k in ("SYSTEMROOT", "COMSPEC") if k in os.environ}
     if os.name == "nt"
@@ -775,11 +777,12 @@ def _other_owner_git(directory):
 
 
 # Finds git the way the script does (shutil.which honours PATHEXT, so it finds git.cmd), then runs
-# it.
+# it with the minimal environment the script gives git: no SYSTEMROOT or COMSPEC (WINDOWS_CMD_ENV).
 _RUN_SHIM_PROBE = """
-import shutil, subprocess
+import os, shutil, subprocess
 git = shutil.which("git")
-r = subprocess.run([git, "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+env = {"PATH": os.path.dirname(git), "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull}
+r = subprocess.run([git, "rev-parse", "--show-toplevel"], capture_output=True, text=True, env=env)
 print(git)
 print(r.returncode)
 print(r.stderr)
@@ -787,67 +790,23 @@ print(r.stderr)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="the .cmd stand-in only exists on Windows")
-def test_the_cmd_stand_in_runs_from_the_scripts_minimal_environment(tmp_path, tmp_path_factory):
-    """The script's own environment holds no more than this, so the stand-in must launch from it."""
+def test_the_cmd_stand_in_runs_with_the_environment_the_script_gives_git(
+    tmp_path, tmp_path_factory
+):
+    """The launching process has SYSTEMROOT and COMSPEC; the launched git.cmd has neither."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    env = {
-        "PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}",
-        # The script pins these two, so a runner's own safe.directory cannot hide the refusal.
-        "GIT_CONFIG_NOSYSTEM": "1",
-        "GIT_CONFIG_GLOBAL": os.devnull,
-        **WINDOWS_CMD_ENV,
-    }
     result = subprocess.run(
         [sys.executable, "-c", _RUN_SHIM_PROBE],
         cwd=tmp_path,
         capture_output=True,
         text=True,
-        env=env,
+        env={"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", **WINDOWS_CMD_ENV},
     )
     found, code, stderr = result.stdout.split("\n", 2)
     assert found.lower().endswith("git.cmd"), result
     # Plain git succeeds in a fresh repository; only the stand-in's owner switch makes it refuse.
     assert code == "128" and "dubious ownership" in stderr, result
-
-
-# TEMP-RCA (#655): which process's environment decides whether git.cmd can be launched? Prints a
-# matrix (launching process x launched process) by failing on purpose. Remove with the fix.
-_RCA_PARENT = """
-import json, shutil, subprocess, sys
-shim = shutil.which("git")
-try:
-    r = subprocess.run([shim, "--version"], capture_output=True, text=True, cwd=sys.argv[2],
-                       env=json.loads(sys.argv[1]))
-    print("rc", r.returncode, (r.stdout or r.stderr).strip()[:50])
-except OSError as e:
-    print("OSError", e)
-"""
-
-
-@pytest.mark.skipif(os.name != "nt", reason="the .cmd stand-in only exists on Windows")
-def test_rca_cmd_launch_matrix(tmp_path, tmp_path_factory):
-    bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
-    base = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}"}
-    both = {"SYSTEMROOT": os.environ["SYSTEMROOT"], "COMSPEC": os.environ["COMSPEC"]}
-    parents = {
-        "none": {},
-        "SYSTEMROOT": {"SYSTEMROOT": both["SYSTEMROOT"]},
-        "COMSPEC": {"COMSPEC": both["COMSPEC"]},
-        "both": both,
-    }
-    children = {"none": {"PATH": str(bin_dir)}, "both": {"PATH": str(bin_dir), **both}}
-    rows = []
-    for plabel, pextra in parents.items():
-        for clabel, cextra in children.items():
-            run = subprocess.run(
-                [sys.executable, "-c", _RCA_PARENT, json.dumps(cextra), str(tmp_path)],
-                capture_output=True,
-                text=True,
-                env={**base, **pextra},
-            )
-            rows.append(f"launcher={plabel:10} launched={clabel:5} -> {run.stdout.strip()}")
-    pytest.fail("RCA MATRIX\n" + "\n".join(rows))
 
 
 def _cfg(path):
