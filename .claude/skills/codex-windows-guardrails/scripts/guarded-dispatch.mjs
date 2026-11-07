@@ -434,10 +434,14 @@ function isBoundedForContentScan(content) {
   return true;
 }
 
-function looksLikeCredentialAssignment(content) {
+// templateAware: a base-verified env template already had every NAME=value line it can parse
+// judged by hasNonPlaceholderSecretAssignment (placeholders accepted, real values blocked), so
+// the generic CREDENTIAL/AUTH rule must not re-reject those same placeholder lines (PR #659,
+// Codex P2). A line that predicate cannot parse (e.g. a digit-leading name) still gets the rule.
+function looksLikeCredentialAssignment(content, templateAware = false) {
   for (const line of content.split(/\r?\n/)) {
     const match = line.match(CREDENTIAL_ASSIGNMENT_LINE_PATTERN);
-    if (match && !CREDENTIAL_ASSIGNMENT_CALL_SHAPE.test(match[1].trim())) {
+    if (match && !(templateAware && TEMPLATE_SECRET_ASSIGNMENT.test(line)) && !CREDENTIAL_ASSIGNMENT_CALL_SHAPE.test(match[1].trim())) {
       return true;
     }
     if (ANNOTATED_SECRET_LITERAL_PATTERN.test(line)) {
@@ -705,7 +709,7 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
               isBoundedForContentScan(content) &&
               (baseVerifiedTemplate ? redactTokenShapes(content) : redactSecrets(content)) === content &&
               !(baseVerifiedTemplate && hasNonPlaceholderSecretAssignment(content)) &&
-              !looksLikeCredentialAssignment(content)
+              !looksLikeCredentialAssignment(content, baseVerifiedTemplate)
             ) {
               continue;
             }
@@ -878,8 +882,9 @@ async function main() {
   let timeoutOverrideMs;
   if (timeoutOverrideRaw) {
     timeoutOverrideMs = Number(timeoutOverrideRaw);
-    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0) {
-      fail("non_zero_exit", "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer");
+    // Node clamps a setTimeout delay above 2^31-1 ms to 1 ms, which would time the run out at once.
+    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0 || timeoutOverrideMs > 2147483647) {
+      fail("non_zero_exit", "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer no greater than 2147483647");
       return;
     }
   }
