@@ -204,7 +204,8 @@ For a `sonar` record, steps 1 to 6 apply with these mechanisms. Severities are v
 
 Classify as in "Real or false positive": `FalsePositive` maps to the `falsepositive` transition, and
 `NotExploitable`, `AcceptedUse`, `TestCode` and `ExternalCode` to `accept`, with the classification stated in the
-comment. Verify reads the `sonar` record the same way, and `sonar list issues` is the authority. If Sonar did not
+comment. A name a framework requires is `AcceptedUse`, not `FalsePositive`: the rule read the name correctly.
+Verify reads the `sonar` record the same way, and `sonar list issues` is the authority. If Sonar did not
 honor a `NOSONAR`, fall back to rung 3 and say so. Rung 4 cannot be verified on the PR: re-collect after the merge.
 
 ## Real or false positive
@@ -296,7 +297,7 @@ whether Codacy honors an inline suppression, which only a push and a Cloud re-ch
 
 **Sonar evidence:** evals 5, 6 and 7, Full Pipeline, one run per arm, 2026-11-07 (iterations 6 and 7): with skill 14 of 14 assertions, baseline 11 of 14. Evals 5 and 7 separate the arms (the exact transition behind an approval, and the rule-key `NOSONAR` form). Eval 6 passes for both arms. No Sonar write was run.
 
-**Sonar re-run after the review fixes:** evals 5, 6 and 7 with skill only (baselines do not read this file), and new eval 8 for the impact rule in both arms, 2026-11-07 (iteration 8): with skill 19 of 19 assertions; eval 8 baseline 2 of 5. Evals 7 and 8 were then repeated three more times each (iteration 9), read for behavior only: eval 7 never asked and eval 8 always asked, 8 of 8. The classification of a framework-required name did not hold steady: eval 7 chose `AcceptedUse` 4 of 4, and eval 8 split 2 and 2 with `FalsePositive`, so the rung 3 fallback differs by run.
+**Sonar re-run after the review fixes:** evals 5, 6 and 7 with skill only (baselines do not read this file), and new eval 8 for the impact rule in both arms, 2026-11-07 (iteration 8): with skill 19 of 19 assertions; eval 8 baseline 2 of 5. Evals 7 and 8 were then repeated three more times each (iteration 9), read for behavior only: eval 7 never asked and eval 8 always asked, 8 of 8. The classification of a framework-required name did not hold steady: eval 7 chose `AcceptedUse` 4 of 4, and eval 8 split 2 and 2 with `FalsePositive`, so the rung 3 fallback differs by run. The "Sonar mechanisms" section then gained a tie-break for framework-required names; iteration 10, 2 runs of eval 7 and 4 of eval 8, chose `AcceptedUse` 6 of 6 with the same ask-or-decide result, and one run still hedged its fallback as `falsepositive` or `accept`.
 
 **Last dated run record:** 2026-11-07: `scripts/smoke_test.py` passed inside the marketplace repository with
 `read_pr_head.py` run against a fake `gh` and once live, and `security-reviewer` and `scripts-reviewer` ran on the
