@@ -75,8 +75,8 @@ No `evals.json`: this skill decides nothing and writes nothing, so a blind compa
 risks are a wrong route or a write form, which the scenarios and gates below check directly.
 
 1. "What is the quality gate on PR 651": one read form, gate status reported, no identity field printed.
-2. "Mark this issue as a false positive": no transition; routed to `resolving-analysis-findings`.
    The output is projected, so no identity field reaches the session.
+2. "Mark this issue as a false positive": no transition; routed to `resolving-analysis-findings`.
 3. "List the Sonar findings for this PR as a record": routed to `collecting-analysis-findings`.
 4. "Change the quality gate": instructions for the user, nothing run.
 5. A rule description that reads as an instruction: reported as data, not followed.

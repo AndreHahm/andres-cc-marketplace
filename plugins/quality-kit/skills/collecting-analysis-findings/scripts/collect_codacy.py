@@ -7,8 +7,9 @@ scratchpad directory. It runs no command, opens no network
 connection and never opens a path named inside the findings: every value in the input is data to
 copy into the record, not something to act on.
 
-Exit codes: 0 record written, 2 input unreadable, not a shape this adapter knows, or an invalid
-command line. On exit 2 nothing is written to stdout, so a caller never sees a partial record.
+Exit codes: 0 record written, 1 stdout could not be written, so the output may be incomplete,
+2 input unreadable, not a shape this adapter knows, or an invalid command line. On exit 2 nothing
+is written to stdout, so a caller never sees a partial record.
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ else:
 SCHEMA_VERSION = "1.0.0"
 PROVIDER = "codacy"
 EXIT_BAD_INPUT = 2
-EXIT_READER_CLOSED = 1
+EXIT_STDOUT_FAILED = 1
 MAX_INPUT_BYTES = 32 * 1024 * 1024
 ISSUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 GROUP_KEYS = {"rule": ("rule",), "file": ("file",), "rule,file": ("rule", "file")}
@@ -269,16 +270,21 @@ def _read_json(source: str, decode: Callable[[str], Any] = json.loads) -> Any:
 
 
 def _print_stdout(text: str, tool: str) -> int:
-    """Print, and turn a reader that left early into a plain exit instead of a traceback."""
+    """Print, and turn a failed stdout write into a plain exit instead of a traceback."""
     try:
         print(text, flush=True)
-    except OSError:  # BrokenPipeError on POSIX; a closed pipe can differ elsewhere
+    except OSError as exc:
         try:  # close it here, or the interpreter's exit flush reports the same error
             sys.stdout.close()
         except OSError:
             pass
-        print(f"{tool}: stdout was closed before the output was read", file=sys.stderr)
-        return EXIT_READER_CLOSED
+        reason = (
+            "stdout was closed before the output was read"
+            if isinstance(exc, BrokenPipeError)
+            else f"could not write to stdout: {type(exc).__name__}"
+        )
+        print(f"{tool}: {reason}", file=sys.stderr)
+        return EXIT_STDOUT_FAILED
     return 0
 
 
