@@ -12,7 +12,8 @@ Prints one JSON object: {"checked": [...], "blocking": [...]}, plus "ungraded": 
 touched a path no verifier grades (see below).
 
 The verifier modules are loaded (`git archive`) from the commit where HEAD last met the target
-branch (`refs/remotes/origin/HEAD`), never from the tree being judged and never from `--base`: a
+branch (`refs/remotes/origin/HEAD`, or `refs/remotes/origin/<name>` when `--target-branch <name>`
+names the PR's base branch), never from the tree being judged and never from `--base`: a
 PR's own earlier commit can precede `--base`, and the loaded modules are imported and run. Without
 that ref, or when `origin`'s fetch URL is not the required `--upstream owner/repo` (the PR's base
 repository), the run exits 2. A fix that changes the verifiers (scripts/marketplace_ci/), their
@@ -85,6 +86,7 @@ def _git_said(stderr: bytes | str) -> str:
 
 _REPO = r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+"
 _UPSTREAM = re.compile(_REPO)
+_BRANCH_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._-]*(?:/[A-Za-z0-9_][A-Za-z0-9._-]*)*")
 _ORIGIN_URL = re.compile(
     rf"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)({_REPO}?)(?:\.git)?/?"
 )
@@ -236,10 +238,21 @@ def _origin_repo(repo_root: Path) -> str | None:
     return matched.group(1) if matched else None
 
 
-def _target_ref(repo_root: Path) -> str | None:
-    """The target branch: whatever `refs/remotes/origin/HEAD` points at, or None.
+def _target_ref(repo_root: Path, branch: str | None = None) -> str | None:
+    """The target branch: `refs/remotes/origin/<branch>` when --target-branch names the PR's base,
+    else whatever `refs/remotes/origin/HEAD` points at. None when it does not resolve.
 
     This is local state; main() only trusts it after `origin` is confirmed to be --upstream."""
+    if branch is not None:
+        ref = f"refs/remotes/origin/{branch}"
+        found = subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
+            _git_cmd("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"),
+            cwd=repo_root,
+            env=_clean_env(),
+            capture_output=True,
+            text=True,
+        )
+        return ref if found.returncode == 0 and _OBJECT_ID.fullmatch(found.stdout.strip()) else None
     out = subprocess.run(  # nosec B603 B607  # literal git subcommand, list arguments, no shell
         _git_cmd("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"),
         cwd=repo_root,
@@ -377,6 +390,10 @@ def main(argv: list[str] | None = None) -> int:
         help="owner/repo of the PR's base repository; origin's fetch URL must name it",
     )
     parser.add_argument(
+        "--target-branch",
+        help="the PR's base branch name (gh's baseRefName); default: what origin/HEAD points at",
+    )
+    parser.add_argument(
         "--worktree", action="store_true", help="verify the uncommitted working tree, not HEAD"
     )
     try:
@@ -402,7 +419,13 @@ def main(argv: list[str] | None = None) -> int:
         here = (repo_root / _VERIFIERS).is_file()
         if in_repo and not _OBJECT_ID.fullmatch(args.base):
             raise RuntimeError(f"base is not a full object id: {args.base!r}")
-        target = _target_ref(repo_root) if in_repo else None
+        if args.target_branch is not None and (
+            not _BRANCH_NAME.fullmatch(args.target_branch) or ".." in args.target_branch
+        ):
+            raise RuntimeError(
+                f"--target-branch is not a plain branch name: {args.target_branch!r}"
+            )
+        target = _target_ref(repo_root, args.target_branch) if in_repo else None
         at_target = target is not None and _has_verifiers(repo_root, target)
         if not here and not at_target:
             print(
@@ -413,7 +436,10 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError("not inside a git repository; the verifiers cannot be anchored")
         if target is None:
             raise RuntimeError(
-                "no refs/remotes/origin/HEAD to anchor the verifiers "
+                f"no refs/remotes/origin/{args.target_branch} to anchor the verifiers "
+                "(git fetch origin <branch>)"
+                if args.target_branch is not None
+                else "no refs/remotes/origin/HEAD to anchor the verifiers "
                 "(git remote set-head origin -a)"
             )
         if not _UPSTREAM.fullmatch(args.upstream):
@@ -426,6 +452,24 @@ def main(argv: list[str] | None = None) -> int:
             )
         head_sha = _git(repo_root, "rev-parse", "HEAD").decode().strip()
         trusted = _trusted_commit(repo_root, target, head_sha)
+        if args.target_branch is not None:
+            # The PR's author picks its base branch, so a base branch alone is not a trust anchor:
+            # the commit that supplies the code must already be on the default branch.
+            default = _target_ref(repo_root)
+            on_default = default is not None and (
+                subprocess.run(  # nosec B603 B607  # literal git subcommand, list args, no shell
+                    _git_cmd("merge-base", "--is-ancestor", trusted, default),
+                    cwd=repo_root,
+                    env=_clean_env(),
+                    capture_output=True,
+                ).returncode
+                == 0
+            )
+            if not on_default:
+                raise RuntimeError(
+                    f"the commit where HEAD met origin/{args.target_branch} is not on the default "
+                    "branch (refs/remotes/origin/HEAD); refusing to import verifiers from it"
+                )
         if not _has_verifiers(repo_root, trusted):
             raise RuntimeError(
                 "the verifiers are not present where HEAD met the target branch; "

@@ -165,8 +165,12 @@ a scratchpad write falls back to a prompt rather than succeeding silently.
 ## Follow-up: launching the verifier driver from the target branch (Issue #656)
 
 Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
-grade itself (`references/fix-self-review.md`). Granted: `git merge-base HEAD refs/remotes/origin/HEAD` (an exact
-form) and `git cat-file -e:*` (prints nothing). Deliberately **not** granted, so each prompts: `git remote get-url
+grade itself (`references/fix-self-review.md`). Granted: `git merge-base HEAD refs/remotes/origin/:*` (read-only; the
+branch name is the PR's own base, so it cannot be an exact form), `git merge-base --is-ancestor:*` (exit code only)
+and `git cat-file -e:*` (prints nothing). Because those two `merge-base` grants are prefixes, the procedure pins the
+argument count and single-quotes the base name, and the driver itself re-checks that its trusted commit is on the
+default branch; a redirect appended to a granted `merge-base` call is not checked live either. The
+base name comes from `gh pr view --json baseRefName`, already covered by this skill's `gh pr view:*` grant. Deliberately **not** granted, so each prompts: `git remote get-url
 origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p <hash>:<path> >
 <scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I <scratchpad>/...`
 (running a file from a writable directory). A reviewer comparing the body with `allowed-tools` will see these calls

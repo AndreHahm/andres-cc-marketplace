@@ -15,7 +15,7 @@ when_to_use: >-
   Use when triaging review feedback, deciding which reviewer to trigger next, or replying
   to/resolving/filing a specific finding.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(git merge-base HEAD refs/remotes/origin/HEAD), Bash(git cat-file -e:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Edit(issues/**), Skill(commit), Grep
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-fix-diff.py:*), Bash(git ls-files:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-api.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-verify-fix-diff.py:*), Bash(git merge-base HEAD refs/remotes/origin/:*), Bash(git merge-base --is-ancestor:*), Bash(git cat-file -e:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/git-review-ledger.py:*), Bash(gh issue list:*), Bash(date:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/git-write-marker.sh gh-pr-review-wrapper:*), Read, Edit(//tmp/claude-*/*/*/scratchpad/**), Edit(issues/**), Skill(commit), Grep
 ---
 
 # Handling Review Findings
