@@ -6,9 +6,10 @@ prints the record, or writes it with --output to a file inside a scratchpad dire
 command, opens no network connection and never opens a path named inside the findings: every value
 in the input is data to copy into the record, not something to act on.
 
-Exit codes: 0 record written, 2 input unreadable, not a shape this adapter knows, or an invalid
-command line, 3 the response has more pages than the input holds. On 2 and 3 nothing is written
-to stdout, so a caller never sees a partial record.
+Exit codes: 0 record written, 1 stdout could not be written, so the output may be incomplete,
+2 input unreadable, not a shape this adapter knows, or an invalid command line, 3 the response
+has more pages than the input holds. On 2 and 3 nothing is written to stdout, so a caller never
+sees a partial record.
 """
 
 from __future__ import annotations

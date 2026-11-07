@@ -824,6 +824,23 @@ def check_stream_edges(adapter) -> None:
             and "closed" in done.stderr,
             done.stderr,
         )
+    if Path("/dev/full").exists():  # a write that fails for a reason other than a closed reader
+        with open("/dev/full", "wb") as full:
+            done = subprocess.run(
+                [sys.executable, "-I", "-B", str(HERE / runs[0][0]), *runs[0][1:]],
+                stdin=subprocess.DEVNULL,
+                stdout=full,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
+                check=False,
+            )
+        check(
+            "a full disk exits 1 and is not reported as a closed reader",
+            done.returncode == 1
+            and "could not write" in done.stderr
+            and "Traceback" not in done.stderr,
+            done.stderr,
+        )
     check(
         "only JSON whitespace separates pages",
         len(adapter._load_documents(" {} \t\r\n {} \n")) == 2,
