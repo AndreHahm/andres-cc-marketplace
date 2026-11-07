@@ -19,8 +19,10 @@ repository), the run exits 2. A fix that changes the verifiers (scripts/marketpl
 registry (.claude/marketplace-sync.json), this script or its launch procedure (the SKILL.md,
 fix-self-review.md and smoke test of handling-review-findings) is still checked: the target branch's
 verifiers run over the rest of the diff. No verifier grades those paths themselves, so they are
-listed under an `ungraded` key and the reply must say they were not checked. When the registry or
-a verifier is among them, a `result_caveat` key also says the other verdicts may be weaker than
+listed under an `ungraded` key and the reply must say they were not checked. For the
+launch-procedure files the verifiers do check structure, so the reply says that and that their
+effect on this gate was not checked. When the registry or a verifier is among them, a
+`result_caveat` key also says the other verdicts may be weaker than
 they look: the verifiers read the registry from the tree being judged. A fix to this script
 is the weakest case: when it is the copy that runs, the edited code takes part in its own run. A
 `--worktree` run snapshots the working tree into a throwaway

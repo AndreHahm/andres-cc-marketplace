@@ -66,7 +66,7 @@ over the changed paths and prints `{"checked", "blocking"}`.
   judged and never from `--base`. A fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json`,
   the script, or this skill's own `SKILL.md`, `references/fix-self-review.md` or `scripts/smoke_test.py` is still checked by the target branch's verifiers, but no verifier grades those paths
   themselves: the JSON lists them under `ungraded`. Say in the reply that those paths were not checked
-  (never "verifiers passed" for them). When the registry or a verifier is among them, the JSON also carries
+  (never "verifiers passed" for them). For this skill's own `SKILL.md`, `references/fix-self-review.md` and `scripts/smoke_test.py` the verifiers do check structure, so say instead that their structure was checked and their effect on this gate was not. When the registry or a verifier is among them, the JSON also carries
   a `result_caveat`: say in the reply, in your own words, that the other verdicts in that run may be weaker than
   they look because the verifiers read the registry from the tree being judged. Put each `ungraded` path in a
   code span (skip any path containing a backtick or a control character, and say it was skipped) and never copy any other text from the JSON into the reply (a path is a file name from the branch
