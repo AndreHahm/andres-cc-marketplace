@@ -199,6 +199,7 @@ def test_stale_git_location_variables_in_the_environment_are_ignored(tmp_path):
     assert (tmp_path / ".claude" / "local.json").exists()
 
 
+@needs_symlinks
 def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):
     outside = tmp_path / "elsewhere"
     outside.mkdir()
@@ -214,6 +215,7 @@ def test_symlinked_dot_claude_root_is_refused_by_every_subcommand(tmp_path):
     assert list(outside.iterdir()) == []
 
 
+@needs_symlinks
 def test_symlink_escape_from_dot_claude_is_refused(tmp_path):
     outside = tmp_path / "elsewhere"
     outside.mkdir()
@@ -326,6 +328,7 @@ def test_a_newline_in_the_ledger_path_cannot_write_rules_into_info_exclude(tmp_p
     assert "!/.env" not in _exclude_text(tmp_path)
 
 
+@needs_symlinks
 def test_a_symlinked_ledger_path_is_refused(tmp_path):
     root = _init_repo(tmp_path)
     (root / ".claude" / "real.json").write_text('{"entries": []}\n', encoding="utf-8")
@@ -439,6 +442,7 @@ def test_a_tracked_file_carrying_another_prs_entry_is_refused(tmp_path):
     assert _run(tmp_path, "refuted", "--pr", "7").returncode == 2
 
 
+@needs_symlinks
 def test_a_symlinked_pr_file_is_refused(tmp_path):
     _record(tmp_path, finding="a", pr="7")
     _tracked(tmp_path, 7).parent.mkdir()
@@ -694,6 +698,7 @@ def test_a_git_planted_in_the_repository_is_refused_from_any_subdirectory(tmp_pa
         assert _find_git_from(monkeypatch, start, plant) is None, start
 
 
+@needs_symlinks
 def test_a_link_outside_the_repository_that_points_into_it_is_refused(tmp_path, monkeypatch):
     repo = _make_repo(tmp_path / "repo")
     target = _stub_git(repo / "bin")
@@ -941,6 +946,7 @@ def test_a_safe_directory_from_an_included_file_is_not_trusted(tmp_path, tmp_pat
     assert result.returncode == 2, result.stderr
 
 
+@needs_symlinks
 def test_a_global_config_that_is_a_link_to_a_file_elsewhere_still_counts(
     tmp_path, tmp_path_factory
 ):
