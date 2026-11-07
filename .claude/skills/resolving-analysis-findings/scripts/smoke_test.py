@@ -96,8 +96,9 @@ def check_grants(fm: dict[str, str], body: str) -> None:
         not re.search(r"\b(AskUserQuestion|Write)\b", grants),
     )
     check(
-        "grants only gh pr view in Bash (no codacy command is pre-approved)",
-        re.findall(r"(?<![\w(])Bash(?:\([^)]*\))?", grants) == ["Bash(gh pr view:*)"],
+        "grants only the two pinned gh pr view reads in Bash (no codacy command is pre-approved)",
+        re.findall(r"(?<![\w(])Bash(?:\([^)]*\))?", grants)
+        == ["Bash(gh pr view --json url:*)", "Bash(gh pr view --json headRefOid:*)"],
     )
     check(
         "boundaries tell the user never to choose don't ask again",
