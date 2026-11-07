@@ -30,7 +30,8 @@ handled three different ways across this repository.
 - **No Codacy command is pre-approved.** The Codacy CLIs have write flags that a tool grant cannot narrow,
   so every `codacy` and `codacy-analysis` command raises a normal permission prompt showing its text. Approve
   each one once. Never choose "don't ask again" or add a `codacy` allow rule: that would pre-approve the write
-  flags too. The same applies to `sonar`: `sonar api post` shares a prefix with the `sonar api get` reads.
+  flags too. For `sonar`, only the read forms `sonar list issues` and `sonar quality-gate status` are
+  pre-approved: `sonar api post` shares a prefix with the `sonar api get` reads, so `sonar api` always prompts.
 - **Repository-specific policy** (which findings this repository accepts, and where) lives in the repository's
   own `CLAUDE.md`, `AGENTS.md` and `docs/ci.md`, not here.
 

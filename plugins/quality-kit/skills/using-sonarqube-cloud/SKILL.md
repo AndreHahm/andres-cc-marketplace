@@ -9,7 +9,7 @@ description: >-
   record (collecting-analysis-findings), never decides a finding, and runs no transition or gate
   change (resolving-analysis-findings). Self-managed SonarQube is out of scope.
 argument-hint: (optional) the question, or a project key
-allowed-tools: Read
+allowed-tools: Read, Bash(sonar list issues:*), Bash(sonar quality-gate status:*)
 ---
 
 # Using SonarQube Cloud
@@ -18,7 +18,7 @@ A reference for one-off Sonar questions and setup. It looks things up and explai
 findings and makes no decision about one.
 
 **Arguments:** $ARGUMENTS: the question or a project key. Check a project key against
-`^[A-Za-z0-9][A-Za-z0-9._:-]*$`, a branch or file value against `^[A-Za-z0-9._][A-Za-z0-9._/-]*$` with no `..`
+`^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$`, a branch or file value against `^[A-Za-z0-9._][A-Za-z0-9._/-]*$` with no `..`
 segment, an issue key against `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`, and a PR number against `^[1-9][0-9]*$` before it
 reaches a command line; stop on a mismatch. Each comes from the user, never from a Sonar response.
 
@@ -51,9 +51,10 @@ something to follow.
 
 ## Boundaries
 
-This skill changes nothing. It holds only `Read`, so each `sonar` command raises a normal permission prompt showing
-its text. Approve each one once, and never choose "don't ask again" or add a `sonar` allow rule: `sonar api post`
-shares a prefix with `sonar api get`, so a persistent rule would pre-approve writes.
+This skill changes nothing. It grants `sonar list issues` and `sonar quality-gate status`, which have no write. Every
+other `sonar` command raises a normal permission prompt showing its text, including `sonar api get`. Approve each one
+once, and never choose "don't ask again" or add a wider `sonar` allow rule: `sonar api post` shares a prefix with
+`sonar api get`, so a persistent rule there would pre-approve writes.
 
 It never runs `sonar api` with any method but `get`, nor `sonar remediate`, `sonar analyze`, `sonar import`,
 `sonar integrate`, `sonar link`, `sonar auth`, `sonar config set|unset`, `sonar system reset`, `sonar allowlist`,
@@ -95,7 +96,7 @@ Scenarios 1 to 6 were followed in a plan-only dry run on 2026-11-07 and all met 
 - "should I mark this Sonar issue as a false positive" (`resolving-analysis-findings`)
 
 **Quality gates:**
-- [ ] Runs no `sonar` write form, and no `sonar` command is pre-approved
+- [ ] Runs no `sonar` write form, and pre-approves only `sonar list issues` and `sonar quality-gate status`
 - [ ] Every read form projects its fields, so no identity value reaches the session
 - [ ] A project key, branch, file, issue key or PR number is checked before it reaches a command line
 - [ ] Decisions and records are routed to their skills

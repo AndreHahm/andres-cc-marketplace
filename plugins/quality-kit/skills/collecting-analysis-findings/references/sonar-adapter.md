@@ -76,5 +76,5 @@ statuses above. Anything else exits 2.
 | 3 | Valid so far, but more pages exist | Message on stderr with the page count, nothing on stdout, no output file |
 
 The script shares its input and output guards with `collect_codacy.py` by importing them, so a guard fixed
-there applies here. `sonar` commands are not pre-approved: the command raises its own permission prompt showing
-the whole pipeline. If the CLI fails, the adapter gets empty or invalid input and exits 2.
+there applies here. Only `sonar list issues` is pre-approved. A `sonar api get` raises its own permission prompt
+showing the whole pipeline. If the CLI fails, the adapter gets empty or invalid input and exits 2.

@@ -922,8 +922,8 @@ def check_skills() -> None:
         collecting,
     )
     check(
-        "collecting pre-approves no sonar command (`sonar api post` shares the read prefix)",
-        not re.search(r"Bash\(sonar", collecting),
+        "collecting pre-approves only `sonar list issues`, never `sonar api`",
+        re.findall(r"Bash\(sonar[^)]*\)", collecting) == ["Bash(sonar list issues:*)"],
         collecting,
     )
     sonar_ref = (SKILL_DIR / "references" / "sonar-adapter.md").read_text(encoding="utf-8")
