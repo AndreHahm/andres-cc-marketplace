@@ -791,7 +791,13 @@ def test_the_cmd_stand_in_runs_from_the_scripts_minimal_environment(tmp_path, tm
     """The script's own environment holds no more than this, so the stand-in must launch from it."""
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", **WINDOWS_CMD_ENV}
+    env = {
+        "PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}",
+        # The script pins these two, so a runner's own safe.directory cannot hide the refusal.
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        **WINDOWS_CMD_ENV,
+    }
     result = subprocess.run(
         [sys.executable, "-c", _RUN_SHIM_PROBE],
         cwd=tmp_path,
