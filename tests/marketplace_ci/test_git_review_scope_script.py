@@ -28,11 +28,17 @@ needs_mode_bits = pytest.mark.skipif(
 needs_posix_names = pytest.mark.skipif(
     os.name == "nt", reason="needs case-distinct or ':' file names, which Windows does not allow"
 )
-# These expect the helper to refuse a directory and it exits 0 on Windows. Whether the test's setup
-# (a chmod, a name shape) has no effect on NTFS or the guard is weaker there is not yet known.
-windows_guard_unverified = pytest.mark.skipif(
-    os.name == "nt", reason="helper accepts a directory this test expects refused on Windows (#655)"
-)
+# Git Bash invents mode bits and git-review-run-dir.sh replaces the 0700 check there (#637), so a
+# chmod "loose" directory is not refused on Windows. Windows also cuts an argument at its first
+# newline, so the helpers' newline checks cannot be reached through argv.
+WINDOWS = os.name == "nt"
+
+
+def _argv_safe(cases):
+    """Drop the cases whose argument holds a newline where Windows would cut it."""
+    if not WINDOWS:
+        return cases
+    return [case for case in cases if not any("\n" in arg for arg in case)]
 
 
 def _can_symlink() -> bool:
@@ -1329,7 +1335,6 @@ def test_the_wrapper_validates_each_fixed_argument(repo, tmp_path, mktemp_dirs):
     assert not list(run_dir.iterdir())
 
 
-@windows_guard_unverified
 def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     sha = _head(repo)
@@ -1342,7 +1347,7 @@ def test_the_wrapper_rejections_come_from_the_wrapper_itself(repo, tmp_path, mkt
         [str(repo), "1", sha, "main"],  # the run directory is the repository
         [str(repo / "sub" / ".."), "1", sha, "main"],  # resolves to the repository
     ]
-    for args in cases:
+    for args in _argv_safe(cases):
         result = _wrapper(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-scope-run.sh:"), (args, result.stderr)
@@ -1366,7 +1371,6 @@ def test_the_wrapper_refuses_a_run_directory_behind_a_symlinked_parent_into_the_
     assert result.returncode == 2 and "outside the repository" in result.stderr
 
 
-@windows_guard_unverified
 def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1375,7 +1379,7 @@ def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, 
     loose = mktemp_dirs()
     loose.chmod(0o750)
     sha = _head(repo)
-    for target in (wrong_name, wrong_parent, loose):
+    for target in (wrong_name, wrong_parent, *([] if WINDOWS else [loose])):
         result = _wrapper(repo, str(target), "1", sha, "main")
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-scope-run.sh:"), (target, result.stderr)
@@ -1481,7 +1485,6 @@ def test_the_index_helper_refuses_a_symlinked_source_index(repo, tmp_path, mktem
     assert not (run_dir / "index").exists()
 
 
-@windows_guard_unverified
 def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     wrong_name = tmp_path / "run"
     wrong_name.mkdir(mode=0o700)
@@ -1489,14 +1492,13 @@ def test_the_index_helper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_p
     wrong_parent.mkdir(mode=0o700)
     loose = mktemp_dirs()
     loose.chmod(0o750)
-    for target in (wrong_name, wrong_parent, loose, repo / ".git"):
+    for target in (wrong_name, wrong_parent, *([] if WINDOWS else [loose]), repo / ".git"):
         result = _copy_index(repo, str(target))
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-copy-index.sh:"), (target, result.stderr)
         assert not (target / "index").exists() or target == repo / ".git"
 
 
-@windows_guard_unverified
 def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1504,7 +1506,7 @@ def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
     link = tmp_path / "link"
     link.symlink_to(run_dir)
     (repo / "inside").mkdir()
-    for args in (
+    cases = [
         [],
         [str(run_dir), "extra"],
         [str(link)],
@@ -1513,7 +1515,8 @@ def test_the_index_helper_checks_the_run_directory_and_takes_nothing_else(
         [str(repo)],
         ["-"],
         [str(run_dir) + "\n"],
-    ):
+    ]
+    for args in _argv_safe(cases):
         result = _copy_index(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-copy-index.sh:"), (args, result.stderr)
@@ -1626,7 +1629,6 @@ def test_the_writer_refuses_parts_that_leave_the_run_directory(repo, tmp_path, m
     assert _write_run_file(repo, str(run_dir), "out.md", "@out.md").returncode == 2
 
 
-@windows_guard_unverified
 def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path, mktemp_dirs):
     run_dir = _run_dir(mktemp_dirs)
     link = tmp_path / "link"
@@ -1651,11 +1653,12 @@ def test_the_writer_checks_the_destination_and_the_run_directory(repo, tmp_path,
         [str(tmp_path / "missing"), "out.md", "-"],
         [str(repo / "inside"), "out.md", "-"],
         [str(repo), "out.md", "-"],
-        [str(shared), "out.md", "-"],
         ["-", "out.md", "-"],
         [str(run_dir) + "\n", "out.md", "-"],
     ]
-    for args in cases:
+    if not WINDOWS:
+        cases.append([str(shared), "out.md", "-"])  # group-writable, not 0700
+    for args in _argv_safe(cases):
         result = _write_run_file(repo, *args, stdin="x")
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-write-run-file.sh:"), (args, result.stderr)
@@ -1716,7 +1719,6 @@ def test_the_intent_add_helper_never_writes_through_a_planted_symlink(repo, tmp_
     assert victim.read_bytes() == b"precious"
 
 
-@windows_guard_unverified
 def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
     repo, tmp_path, mktemp_dirs
 ):
@@ -1732,14 +1734,14 @@ def test_the_intent_add_helper_checks_the_run_directory_and_the_pathspec(
         [],
         [str(good), "a", "b"],
         [str(wrong_name)],
-        [str(loose)],
+        *([] if WINDOWS else [[str(loose)]]),
         [str(link)],
         [str(repo)],
         [str(repo / ".git")],
         ["-x"],
         [str(good), "a\nb"],
     ]
-    for args in cases:
+    for args in _argv_safe(cases):
         result = _intent_add(repo, *args)
         assert result.returncode == 2, args
         assert result.stderr.startswith("git-review-intent-add.sh:"), (args, result.stderr)
@@ -1808,7 +1810,6 @@ def test_the_intent_add_helper_refuses_a_wrong_parent_and_a_non_file_index(
     assert result.returncode == 2 and "regular file" in result.stderr
 
 
-@windows_guard_unverified
 def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, mktemp_dirs):
     good = mktemp_dirs()
     assert _write_run_file(repo, str(good), "out.md", "-", stdin="ok").returncode == 0
@@ -1820,7 +1821,8 @@ def test_the_writer_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, m
     loose.chmod(0o750)  # right shape, but not exactly 0700
     home_like = tmp_path / "home"
     (home_like / ".claude").mkdir(parents=True, mode=0o700)
-    for target in (wrong_name, wrong_parent, loose, home_like / ".claude", repo / ".git"):
+    loose_dirs = [] if WINDOWS else [loose]
+    for target in (wrong_name, wrong_parent, *loose_dirs, home_like / ".claude", repo / ".git"):
         result = _write_run_file(repo, str(target), "settings.json", "-", stdin="x")
         assert result.returncode == 2, target
         assert result.stderr.startswith("git-review-write-run-file.sh:"), (target, result.stderr)
