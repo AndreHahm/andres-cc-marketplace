@@ -48,25 +48,78 @@ needs_symlinks = pytest.mark.skipif(
 )
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
 
+# TEMP-DIAG (#655): the script prints only an exception's message, so the Windows runner's
+# `WinError 267` gives no traceback. On that signature only, re-run main()'s steps one by one in a
+# child with the same environment and append which step raises, with its traceback. Remove once the
+# cause is fixed.
+_DIAG = """
+import importlib.util, os, sys, traceback
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("ledger", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+print("diag python", sys.version.split()[0], "cwd", os.getcwd())
+print("diag HOME", os.environ.get("HOME"), "USERPROFILE", os.environ.get("USERPROFILE"))
+def step(name, fn):
+    try:
+        out = fn()
+        print("diag", name, "ok", repr(out)[:300])
+        return out
+    except BaseException:
+        print("diag", name, "RAISED")
+        traceback.print_exc(file=sys.stdout)
+        raise SystemExit(0)
+home = os.environ.get("HOME", "")
+step("realpath gitconfig", lambda: os.path.realpath(Path(home) / ".gitconfig"))
+step("realpath xdg", lambda: os.path.realpath(Path(home) / ".config" / "git" / "config"))
+step("git config read", lambda: (lambda r: (r.returncode, r.stdout, r.stderr))(
+    m._git(Path(home), "config", "--global", "--no-includes", "-z", "--get-all",
+           "safe.directory", env={"HOME": home, "PATH": os.path.dirname(m._git_path()),
+           "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}, repin=False)))
+step("trusted", m._trusted_directories)
+args = m.build_parser().parse_args(sys.argv[2:])
+root = step("repo_root", m.repo_root)
+args.local = step("confine local", lambda: m.confine(args.local, root))
+args.tracked = step("confine tracked", lambda: m.confine(args.tracked, root, directory=True))
+step("refuse_if_tracked", lambda: m.refuse_if_tracked(args.local, root))
+step("ensure_ignored", lambda: m.ensure_ignored(args.local, root))
+step("func", lambda: args.func(args))
+"""
+
+
+def _with_diagnosis(result, argv, cwd, env):
+    if result.returncode != 2 or "WinError 267" not in result.stderr:
+        return result
+    diag = subprocess.run(
+        [sys.executable, "-c", _DIAG, str(SCRIPT), *argv],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        env=env,
+    )
+    result.stderr += "\n--- TEMP-DIAG ---\n" + diag.stdout + diag.stderr
+    return result
+
 
 def _run(tmp_path, *args, extra_env=None):
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     (tmp_path / ".claude").mkdir(exist_ok=True)
-    return subprocess.run(
-        [
-            sys.executable,
-            str(SCRIPT),
-            "--local",
-            str(tmp_path / ".claude" / "local.json"),
-            "--tracked",
-            str(tmp_path / ".claude" / "tracked"),
-            *args,
-        ],
+    argv = [
+        "--local",
+        str(tmp_path / ".claude" / "local.json"),
+        "--tracked",
+        str(tmp_path / ".claude" / "tracked"),
+        *args,
+    ]
+    env = {"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH, **(extra_env or {})}
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), *argv],
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": BASE_PATH, **(extra_env or {})},
+        env=env,
     )
+    return _with_diagnosis(result, argv, tmp_path, env)
 
 
 def _record(tmp_path, finding="c1", disposition="fixed", pr="7", **extra):
@@ -986,13 +1039,14 @@ def _record_from(repo, home, bin_dir):
     if os.name == "nt":
         # os.path.expanduser reads USERPROFILE on Windows, not HOME; there they normally agree.
         env["USERPROFILE"] = str(home)
-    return subprocess.run(
+    result = subprocess.run(
         [sys.executable, str(SCRIPT), *RECORD_ARGS],
         cwd=repo,
         capture_output=True,
         text=True,
         env=env,
     )
+    return _with_diagnosis(result, RECORD_ARGS, repo, env)
 
 
 def test_a_tilde_safe_directory_entry_works_for_a_checkout_owned_by_another_user(tmp_path_factory):
