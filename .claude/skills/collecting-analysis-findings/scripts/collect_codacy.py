@@ -35,6 +35,7 @@ else:
 SCHEMA_VERSION = "1.0.0"
 PROVIDER = "codacy"
 EXIT_BAD_INPUT = 2
+EXIT_READER_CLOSED = 1
 MAX_INPUT_BYTES = 32 * 1024 * 1024
 ISSUE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 GROUP_KEYS = {"rule": ("rule",), "file": ("file",), "rule,file": ("rule", "file")}
@@ -239,6 +240,8 @@ def render_table(record: dict[str, Any]) -> str:
 def _read_json(source: str, decode: Callable[[str], Any] = json.loads) -> Any:
     try:
         if source == "-":
+            if sys.stdin is None:  # the process started with stdin closed
+                raise ShapeError("cannot read input: stdin is closed")
             # Read bytes, so the decode never depends on the console's locale encoding.
             stream = getattr(sys.stdin, "buffer", None)
             if stream is not None:
@@ -263,6 +266,20 @@ def _read_json(source: str, decode: Callable[[str], Any] = json.loads) -> Any:
         if isinstance(exc, ShapeError):
             raise
         raise ShapeError(f"cannot read input: {type(exc).__name__}: {exc}") from exc
+
+
+def _print_stdout(text: str, tool: str) -> int:
+    """Print, and turn a reader that left early into a plain exit instead of a traceback."""
+    try:
+        print(text, flush=True)
+    except OSError:  # BrokenPipeError on POSIX; a closed pipe can differ elsewhere
+        try:  # close it here, or the interpreter's exit flush reports the same error
+            sys.stdout.close()
+        except OSError:
+            pass
+        print(f"{tool}: stdout was closed before the output was read", file=sys.stderr)
+        return EXIT_READER_CLOSED
+    return 0
 
 
 def _private_dir(directory: Path) -> bool:
@@ -374,13 +391,12 @@ def main(argv: list[str] | None = None) -> int:
         except ShapeError as exc:
             print(f"collect_codacy: {exc}", file=sys.stderr)
             return EXIT_BAD_INPUT
-        print(f"{record['counts']['total']} finding(s) written to {out_path.name}")
-        return 0
+        summary = f"{record['counts']['total']} finding(s) written to {out_path.name}"
+        return _print_stdout(summary, "collect_codacy")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):
         reconfigure(errors="backslashreplace")  # provider text may not fit the terminal encoding
-    print(text)
-    return 0
+    return _print_stdout(text, "collect_codacy")
 
 
 if __name__ == "__main__":
