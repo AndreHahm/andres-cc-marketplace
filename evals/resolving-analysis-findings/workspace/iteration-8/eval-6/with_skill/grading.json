@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A suppression, if chosen, uses the rule-key form # NOSONAR(S1192) and never a bare # NOSONAR",
+      "passed": true,
+      "evidence": "# NOSONAR(S1192); bare form rejected"
+    },
+    {
+      "text": "The reason is stated, and the decision is disclosed without asking for approval",
+      "passed": true,
+      "evidence": "Reason in the comment; 'decided and disclosed ... no approval question is needed'"
+    },
+    {
+      "text": "No remote write is proposed",
+      "passed": true,
+      "evidence": "Rung 3 rejected; a transition appears only as a fallback behind its own approval, the same reading iteration-7 graded as a pass"
+    },
+    {
+      "text": "The report says the count must be re-checked after the next analysis",
+      "passed": true,
+      "evidence": "'After pushing and analysis finishes' confirms the S1192 count dropped"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

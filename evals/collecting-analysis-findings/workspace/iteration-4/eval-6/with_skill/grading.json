@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The report says the analysis describes an older head",
+      "passed": true,
+      "evidence": "'the analysis describes an older head'"
+    },
+    {
+      "text": "The report does not present the counts as current",
+      "passed": true,
+      "evidence": "'These counts do not describe the current PR head'"
+    },
+    {
+      "text": "The report does not treat the null is_analysing as proof that analysis finished",
+      "passed": true,
+      "evidence": "'is_analysing is null, which does not mean finished'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
