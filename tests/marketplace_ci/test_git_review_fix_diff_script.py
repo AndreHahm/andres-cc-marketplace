@@ -520,7 +520,7 @@ def test_the_time_limit_does_not_use_sigalrm():
     reason=(
         "on Windows the time limit fires but the call returns only when a child holding the "
         "output pipe exits (about 30 s with a .cmd git that runs ping); found by #655, "
-        "not yet fixed in git-review-fix-diff.py"
+        "tracked in #657, not yet fixed in git-review-fix-diff.py"
     ),
 )
 def test_a_stalled_git_is_stopped_at_the_time_limit(tmp_path, monkeypatch):
