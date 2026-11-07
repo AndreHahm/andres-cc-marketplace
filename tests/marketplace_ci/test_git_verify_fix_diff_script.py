@@ -11,7 +11,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -28,18 +27,7 @@ needs_sh_stub_git = pytest.mark.skipif(
 )
 
 
-def _can_symlink() -> bool:
-    with tempfile.TemporaryDirectory() as scratch:
-        try:
-            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
-        except (OSError, NotImplementedError):
-            return False
-    return True
-
-
-needs_symlinks = pytest.mark.skipif(
-    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
-)
+needs_symlinks = pytest.mark.needs_symlinks  # the skip rule lives in conftest.py
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-verify-fix-diff.py"
 SKILL = "plugins/demo-kit/skills/demo/SKILL.md"

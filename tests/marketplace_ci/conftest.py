@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import functools
+import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -13,6 +16,26 @@ from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.registry import Registry
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+@functools.cache
+def _can_symlink() -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
+        except (OSError, NotImplementedError):
+            return False
+    return True
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line("markers", "needs_symlinks: skipped where symlinks cannot be created")
+
+
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    # One rule for the review-helper test files, which alias this marker as `needs_symlinks` (#655).
+    if item.get_closest_marker("needs_symlinks") and not _can_symlink():
+        pytest.skip("cannot create symlinks here (Windows needs Developer Mode)")
 
 
 class GitRepoHelper:

@@ -10,7 +10,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -18,11 +17,6 @@ import pytest
 # A PATH holding git and nothing else the checkout controls. POSIX uses the system directories; on
 # Windows those do not exist, so it is git's own directory.
 BASE_PATH = os.path.dirname(shutil.which("git") or "") if os.name == "nt" else "/usr/bin:/bin"
-# These tests stand in for git with a shell script, link files, change file owners, use non-UTF8
-# names or point HOME at a directory; none of that works on native Windows.
-posix_only = pytest.mark.skipif(
-    os.name == "nt", reason="needs POSIX shell scripts, links, owners or HOME"
-)
 # Specific reasons, so a Windows skip names the mechanism it needs (#655).
 needs_bytes_paths = pytest.mark.skipif(
     os.name == "nt",
@@ -34,18 +28,7 @@ needs_sh_stub_git = pytest.mark.skipif(
 )
 
 
-def _can_symlink() -> bool:
-    with tempfile.TemporaryDirectory() as scratch:
-        try:
-            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
-        except (OSError, NotImplementedError):
-            return False
-    return True
-
-
-needs_symlinks = pytest.mark.skipif(
-    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
-)
+needs_symlinks = pytest.mark.needs_symlinks  # the skip rule lives in conftest.py
 SCRIPT = Path(__file__).resolve().parents[2] / "plugins/git-kit/scripts/git-review-ledger.py"
 # The Windows stand-in for git is a git.cmd batch file, which runs through cmd.exe. The script
 # process is started with a minimal environment, and on a windows-latest runner launching git.cmd

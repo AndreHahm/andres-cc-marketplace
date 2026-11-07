@@ -10,16 +10,10 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
 
-# Mode bits, symlinks, case-distinct names, ':' in file names and the mktemp/bash helper scripts
-# (owner and 0700 checks, /tmp paths) are POSIX mechanisms; none of that works on native Windows.
-posix_only = pytest.mark.skipif(
-    os.name == "nt", reason="needs POSIX modes, symlinks, case-sensitive names or shell helpers"
-)
 # The markers below say which mechanism a skipped test needs, so a Windows skip is a stated gap and
 # not a blanket one (#655).
 needs_mode_bits = pytest.mark.skipif(
@@ -27,6 +21,10 @@ needs_mode_bits = pytest.mark.skipif(
 )
 needs_posix_names = pytest.mark.skipif(
     os.name == "nt", reason="needs case-distinct or ':' file names, which Windows does not allow"
+)
+needs_unmangled_args = pytest.mark.skipif(
+    os.name == "nt",
+    reason="Git Bash rewrites a POSIX-looking argument such as --output=/x into a Windows path",
 )
 # Git Bash invents mode bits and git-review-run-dir.sh replaces the 0700 check there (#637), so a
 # chmod "loose" directory is not refused on Windows. Windows also cuts an argument at its first
@@ -41,18 +39,7 @@ def _argv_safe(cases):
     return [case for case in cases if not any("\n" in arg for arg in case)]
 
 
-def _can_symlink() -> bool:
-    with tempfile.TemporaryDirectory() as scratch:
-        try:
-            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
-        except (OSError, NotImplementedError):
-            return False
-    return True
-
-
-needs_symlinks = pytest.mark.skipif(
-    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
-)
+needs_symlinks = pytest.mark.needs_symlinks  # the skip rule lives in conftest.py
 # Resolved through PATH, as test_git_review_run_dir.py does: a bare "bash" reaches Windows process
 # creation, which searches System32 first and finds WSL's bash instead of Git Bash.
 BASH = shutil.which("bash") or "bash"
@@ -784,7 +771,7 @@ def test_unreadable_fingerprint_is_never_skipped():
     assert [f["path"] for f in manifest["files"]] == ["a.py"]
 
 
-@posix_only
+@needs_mode_bits
 def test_fingerprint_sees_symlink_target_mode_and_deletion(tmp_path):
     fp = M._make_fingerprint(tmp_path)
     (tmp_path / "f").write_text("x")
@@ -1399,7 +1386,7 @@ def test_the_wrapper_only_accepts_a_mktemp_shaped_run_directory(repo, tmp_path, 
         assert not list(target.iterdir())  # no manifest or diffs were written there
 
 
-@posix_only
+@needs_unmangled_args
 def test_a_pass_through_value_that_looks_like_an_option_stays_a_value(repo, tmp_path, mktemp_dirs):
     run_dir = mktemp_dirs()
     (repo / "a.py").write_text("1")

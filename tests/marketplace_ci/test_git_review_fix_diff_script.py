@@ -12,7 +12,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -28,10 +27,11 @@ WINDOWS_CMD_ENV = (
     if os.name == "nt"
     else {}
 )
-# These tests stand in for git with a shell script, link files or join PATH with ":"; none of that
-# works on native Windows (a script named `git` cannot be run as git, PATH is split on ";").
-posix_only = pytest.mark.skipif(
-    os.name == "nt", reason="needs POSIX shell scripts, symlinks or a ':'-separated PATH"
+# Specific reason, so a Windows skip names the mechanism it needs (#655): there a script named `git`
+# cannot be run as git, and PATH is split on ";".
+needs_sh_stub_and_colon_path = pytest.mark.skipif(
+    os.name == "nt",
+    reason="plants a #!/bin/sh script named git and joins PATH with ':'",
 )
 
 
@@ -78,18 +78,7 @@ def _plant_git(path, marker):
     return path
 
 
-def _can_symlink() -> bool:
-    with tempfile.TemporaryDirectory() as scratch:
-        try:
-            os.symlink(Path(scratch) / "target", Path(scratch) / "link")
-        except (OSError, NotImplementedError):
-            return False
-    return True
-
-
-needs_symlinks = pytest.mark.skipif(
-    not _can_symlink(), reason="cannot create symlinks here (Windows needs Developer Mode)"
-)
+needs_symlinks = pytest.mark.needs_symlinks  # the skip rule lives in conftest.py
 
 
 @pytest.fixture
@@ -353,7 +342,7 @@ def test_a_global_config_named_by_the_environment_is_ignored(fixed, tmp_path):
     _assert_correct_and_not_run(_run(repo, "--base", base, env=env), marker)
 
 
-@posix_only
+@needs_sh_stub_and_colon_path
 def test_a_git_planted_in_the_repository_is_never_used(fixed, tmp_path):
     repo, base = fixed
     marker = tmp_path / "ran"
