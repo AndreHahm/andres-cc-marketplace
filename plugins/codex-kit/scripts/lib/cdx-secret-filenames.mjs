@@ -84,6 +84,18 @@ export function matchesAnyStrictSecretFilename(basename, caseInsensitive = false
   return STRICT_SECRET_FILENAME_PATTERNS.some((re) => new RegExp(re.source, flags).test(basename));
 }
 
+// Well-known placeholder-template names for an env file (issue #658). They match
+// the strict `/^\.env(\..*)?$/` pattern above, but a tracked template carries
+// variable names, not values. A caller may let one reach the trusted-base
+// exemption tier (cdx-lintignore-base.mjs) followed by a mandatory content scan;
+// `.env`, `.env.local`, `.env.production` and every other name stay strictly
+// blocked. Deliberately an exact three-name list, not "ends in .example".
+const ENV_TEMPLATE_FILENAME = /^\.env\.(example|sample|template)$/;
+
+export function isEnvTemplateName(basename, caseInsensitive = false) {
+  return new RegExp(ENV_TEMPLATE_FILENAME.source, caseInsensitive ? "i" : "").test(basename);
+}
+
 // --- .secretlintignore consultation (issue #295) ---
 //
 // Deliberately EXACT-FULL-PATH-ONLY (an optional leading `/` is stripped,
