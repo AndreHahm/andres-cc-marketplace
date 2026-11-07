@@ -161,3 +161,14 @@ tracked in #591.
 A macOS temp root, and a real `${CLAUDE_PLUGIN_ROOT}` install directory. The `.claude/` protected-path case
 is covered in the follow-up section above for the project `.claude/` directory only. Where Claude Code's scratch directory is not laid out as `/tmp/claude-<uid>/<project>/<session>/scratchpad`,
 a scratchpad write falls back to a prompt rather than succeeding silently.
+
+## Follow-up: launching the verifier driver from the target branch (Issue #656)
+
+Step 4a runs the driver from the target branch's committed copy so that a fix which edits the driver cannot
+grade itself (`references/fix-self-review.md`). Granted: `git merge-base HEAD refs/remotes/origin/HEAD` (an exact
+form) and `git cat-file -e:*` (prints nothing). Deliberately **not** granted, so each prompts: `git remote get-url
+origin` (this skill's smoke test forbids reading a remote URL without a prompt), `git cat-file -p <hash>:<path> >
+<scratchpad>/...` (a prefix grant plus a shell redirect could write any file) and `python3 -I <scratchpad>/...`
+(running a file from a writable directory). A reviewer comparing the body with `allowed-tools` will see these calls
+without grants: that is the intended state, and the second security review of this change (no Critical) accepted it.
+Not checked live: how Claude Code's matcher treats the redirect, and the scratchpad path on a Windows host.
