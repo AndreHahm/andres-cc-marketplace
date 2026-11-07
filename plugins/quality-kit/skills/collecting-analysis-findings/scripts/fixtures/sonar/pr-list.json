@@ -1,0 +1,72 @@
+{
+ "pullRequests": [
+  {
+   "key": "651",
+   "title": "redacted title",
+   "branch": "feature/redacted",
+   "base": "main",
+   "status": {
+    "qualityGateStatus": "OK",
+    "bugs": 0,
+    "vulnerabilities": 0,
+    "codeSmells": 0
+   },
+   "analysisDate": "2026-11-07T06:52:54+0000",
+   "url": "https://example.com/pull/651",
+   "target": "main",
+   "commit": {
+    "sha": "1111111111111111111111111111111111111111",
+    "author": {
+     "name": "Person",
+     "login": "person-login",
+     "avatar": "00000000"
+    },
+    "date": "2026-11-07T06:46:43+0000",
+    "message": "redacted message"
+   },
+   "contributors": [
+    {
+     "name": "Person",
+     "login": "person-login",
+     "avatar": "00000000"
+    }
+   ],
+   "pullRequestUuidV1": "00000000000000000000",
+   "pullRequestId": "651"
+  },
+  {
+   "key": "566",
+   "title": "redacted title",
+   "branch": "feature/redacted",
+   "base": "main",
+   "status": {
+    "qualityGateStatus": "OK",
+    "bugs": 0,
+    "vulnerabilities": 0,
+    "codeSmells": 0
+   },
+   "analysisDate": "2026-11-06T08:13:17+0000",
+   "url": "https://example.com/pull/566",
+   "target": "main",
+   "commit": {
+    "sha": "2222222222222222222222222222222222222222",
+    "author": {
+     "name": "Person",
+     "login": "person-login",
+     "avatar": "00000000"
+    },
+    "date": "2026-10-18T21:16:49+0000",
+    "message": "redacted message"
+   },
+   "contributors": [
+    {
+     "name": "Person",
+     "login": "person-login",
+     "avatar": "00000000"
+    }
+   ],
+   "pullRequestUuidV1": "00000000000000000000",
+   "pullRequestId": "566"
+  }
+ ]
+}

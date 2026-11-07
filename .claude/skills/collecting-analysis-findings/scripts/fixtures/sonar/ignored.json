@@ -1,0 +1,160 @@
+{
+ "total": 2,
+ "p": 1,
+ "ps": 500,
+ "paging": {
+  "pageIndex": 1,
+  "pageSize": 500,
+  "total": 2
+ },
+ "effortTotal": 5428,
+ "debtTotal": 5428,
+ "issues": [
+  {
+   "key": "AaFIXTURE00000000001",
+   "rule": "python:S8786",
+   "severity": "MAJOR",
+   "component": "example_project:plugins/decision-kit/skills/consulting-decision-model/scripts/dck-decide.py",
+   "project": "example_project",
+   "line": 165,
+   "hash": "00000000000000000000000000000000",
+   "textRange": {
+    "startLine": 165,
+    "endLine": 165,
+    "startOffset": 77,
+    "endOffset": 81
+   },
+   "flows": [],
+   "status": "RESOLVED",
+   "message": "Simplify this regular expression to reduce its runtime, as it has super-linear performance due to backtracking.",
+   "effort": "20min",
+   "debt": "20min",
+   "assignee": "person-login",
+   "author": "person@example.com",
+   "tags": [
+    "performance",
+    "regex"
+   ],
+   "creationDate": "2026-11-06T07:42:23+0000",
+   "updateDate": "2026-11-06T07:42:36+0000",
+   "type": "CODE_SMELL",
+   "organization": "example-org",
+   "cleanCodeAttribute": "EFFICIENT",
+   "cleanCodeAttributeCategory": "INTENTIONAL",
+   "impacts": [
+    {
+     "softwareQuality": "RELIABILITY",
+     "severity": "MEDIUM"
+    }
+   ],
+   "issueStatus": "ACCEPTED",
+   "projectName": "example-project",
+   "internalTags": [],
+   "lastChangeAnalysisUuid": "00000000000000000000",
+   "lastChangeSource": "ANALYSIS",
+   "resolution": "WONTFIX",
+   "comments": [
+    {
+     "key": "c1",
+     "login": "person-login",
+     "htmlText": "<p>first note</p>",
+     "markdown": "first note",
+     "updatable": true,
+     "createdAt": "2026-11-07T08:00:00+0000",
+     "isFeedback": false
+    },
+    {
+     "key": "c2",
+     "login": "person-login",
+     "htmlText": "<p>accepted: bounded input</p>",
+     "markdown": "accepted: bounded input",
+     "updatable": true,
+     "createdAt": "2026-11-07T09:00:00+0000",
+     "isFeedback": false
+    }
+   ]
+  },
+  {
+   "key": "AaFIXTURE00000000002",
+   "rule": "python:S8495",
+   "severity": "MAJOR",
+   "component": "example_project:plugins/git-kit/scripts/git-review-ledger.py",
+   "project": "example_project",
+   "line": 378,
+   "hash": "00000000000000000000000000000000",
+   "textRange": {
+    "startLine": 378,
+    "endLine": 378,
+    "startOffset": 4,
+    "endOffset": 13
+   },
+   "flows": [
+    {
+     "locations": [
+      {
+       "component": "example_project:plugins/git-kit/scripts/git-review-ledger.py",
+       "textRange": {
+        "startLine": 381,
+        "endLine": 381,
+        "startOffset": 8,
+        "endOffset": 33
+       },
+       "msg": "Returns a 3-tuple."
+      }
+     ]
+    },
+    {
+     "locations": [
+      {
+       "component": "example_project:plugins/git-kit/scripts/git-review-ledger.py",
+       "textRange": {
+        "startLine": 383,
+        "endLine": 383,
+        "startOffset": 4,
+        "endOffset": 56
+       },
+       "msg": "Returns a 4-tuple."
+      }
+     ]
+    }
+   ],
+   "status": "RESOLVED",
+   "message": "Refactor this function to always return tuples of the same length.",
+   "effort": "10min",
+   "debt": "10min",
+   "assignee": "person-login",
+   "author": "person@example.com",
+   "tags": [
+    "api-design",
+    "pitfall",
+    "type-system"
+   ],
+   "creationDate": "2026-11-01T10:50:18+0000",
+   "updateDate": "2026-11-01T10:50:30+0000",
+   "type": "CODE_SMELL",
+   "organization": "example-org",
+   "cleanCodeAttribute": "CLEAR",
+   "cleanCodeAttributeCategory": "INTENTIONAL",
+   "impacts": [
+    {
+     "softwareQuality": "MAINTAINABILITY",
+     "severity": "HIGH"
+    },
+    {
+     "softwareQuality": "RELIABILITY",
+     "severity": "HIGH"
+    }
+   ],
+   "issueStatus": "FALSE_POSITIVE",
+   "projectName": "example-project",
+   "internalTags": [],
+   "lastChangeAnalysisUuid": "00000000000000000000",
+   "lastChangeSource": "ANALYSIS",
+   "resolution": "FALSE-POSITIVE",
+   "comments": []
+  }
+ ],
+ "components": [],
+ "organizations": [],
+ "facets": []
+}
