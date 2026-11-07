@@ -1,0 +1,16 @@
+{
+  "eval_id": 23,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "Records FAIL for the goal",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Treats the Major as outside the ADVISORY carve-out",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

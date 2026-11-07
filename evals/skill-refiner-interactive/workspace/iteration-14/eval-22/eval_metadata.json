@@ -1,0 +1,16 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md",
+  "assertions": [
+    {
+      "text": "Records PASS for the goal",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Keeps the advisory in the report as ADVISORY, not dropped and not Major",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

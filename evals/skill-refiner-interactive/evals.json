@@ -217,6 +217,27 @@
         "transcript.md",
         "final-tree.txt"
       ]
+    },
+    {
+      "id": 22,
+      "name": "goal-passes-with-advisory-unverified",
+      "prompt": "Read plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md and its references/goal-derivation.md and references/pre-analysis-checklist.md (read these files directly; do not rely on any other copy of the skill). A refinement session selected the 'Tool scoping (undeclared tool)' goal. At SKILL.md step 8 the re-run tool-scoping scan reports: one Bash command in the skill is rated ADVISORY (unverified) under R6's deliberately-ungranted exceptions, because its stated reason could not be confirmed. Nothing else is flagged. Record PASS or FAIL for the goal, and say what happens to the advisory in the session report.",
+      "expected_output": "PASS: no undeclared tool is flagged as Major, and ADVISORY (unverified) does not fail the goal. The advisory stays in the report rather than being dropped.",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "goal-fails-on-major-undeclared-tool",
+      "prompt": "Read plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md and its references/goal-derivation.md and references/pre-analysis-checklist.md (read these files directly; do not rely on any other copy of the skill). A refinement session selected the 'Tool scoping (undeclared tool)' goal. At SKILL.md step 8 the re-run tool-scoping scan reports: the body calls Bash(acme push), absent from allowed-tools. No Boundaries section mentions it, so no R6 exception applies, and the scan flags it as Major. Record PASS or FAIL for the goal.",
+      "expected_output": "FAIL: an undeclared tool flagged as Major fails the goal, and the failed-goal question at step 8 follows.",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "goal-passes-when-exception-clears-command",
+      "prompt": "Read plugins/plugin-devkit/skills/skill-refiner-interactive/SKILL.md and its references/goal-derivation.md and references/pre-analysis-checklist.md (read these files directly; do not rely on any other copy of the skill). A refinement session selected the 'Tool scoping (undeclared tool)' goal. At SKILL.md step 8 the re-run tool-scoping scan reports: one ungranted Bash command is cleared by R6's deliberately-ungranted exceptions with a confirmed reason, so the scan flags nothing. Record PASS or FAIL for the goal.",
+      "expected_output": "PASS: a command cleared by R6's exceptions is not flagged and does not fail the goal.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

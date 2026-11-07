@@ -1,0 +1,21 @@
+{
+  "eval_id": 24,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Records PASS for the goal",
+      "passed": true,
+      "evidence": "Goal ... PASS; the scan flags nothing"
+    },
+    {
+      "text": "Treats the command as not flagged",
+      "passed": true,
+      "evidence": "a command cleared by R6's exceptions 'is not flagged'. Note: the agent's aside that an unconfirmed reason would fail the goal is outside this scenario and does not match the rule, which rates that ADVISORY (unverified)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
