@@ -928,7 +928,14 @@ def test_a_safe_directory_from_an_included_file_is_not_trusted(tmp_path, tmp_pat
     bin_dir = _other_owner_git(tmp_path_factory.mktemp("ownerbin"))
     planted = tmp_path / "planted-include"
     planted.write_text(f"[safe]\n\tdirectory = {_cfg(tmp_path.resolve())}\n", encoding="utf-8")
-    home = _write_global_config(tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {planted}\n")
+    home = _write_global_config(
+        tmp_path_factory.mktemp("home"), f"[include]\n\tpath = {_cfg(planted)}\n"
+    )
+    _run(tmp_path, "promote", "--pr", "9")  # make the repository exist
+    # Control: the user's own git follows the include and trusts the checkout, so the refusal below
+    # is the script ignoring the include. A backslash path is a config git cannot parse at all, and
+    # would also end in a refusal.
+    assert _plain_git_trusts(home, tmp_path.resolve())
     env = {"PATH": f"{bin_dir}{os.pathsep}{BASE_PATH}", "HOME": str(home)}
     result = _run(tmp_path, *RECORD_ARGS, extra_env=env)
     assert result.returncode == 2, result.stderr
