@@ -708,6 +708,8 @@ function scanSecretFiles(targetPaths, repoRoot, isBaseVerifiedExempt, base, scan
               content !== null &&
               isBoundedForContentScan(content) &&
               (baseVerifiedTemplate ? redactTokenShapes(content) : redactSecrets(content)) === content &&
+              // Keep this clause: looksLikeCredentialAssignment's templateAware skip relies on it
+              // judging every NAME=value line the skip leaves unchecked.
               !(baseVerifiedTemplate && hasNonPlaceholderSecretAssignment(content)) &&
               !looksLikeCredentialAssignment(content, baseVerifiedTemplate)
             ) {
@@ -869,7 +871,8 @@ async function main() {
   }
 
   // Issue #649: the same two optional overrides codex-review-bridge's
-  // bridge-invoke.mjs reads, with the same validation and messages, so a run
+  // bridge-invoke.mjs reads, with the same validation except that this copy also
+  // caps the timeout at Node's 2147483647 ms setTimeout ceiling, so a run
   // that falls back to this unsandboxed path uses the model and timeout the
   // caller advertised (CI's) instead of the local default and 240000 ms. Unset
   // leaves runCodexExec's own defaults untouched.
