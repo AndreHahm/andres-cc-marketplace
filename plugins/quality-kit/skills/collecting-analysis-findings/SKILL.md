@@ -102,14 +102,14 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    run does not create or modify the output file; an older record at the same path survives, so discard it. Exit 2 means the input is not a shape this adapter was verified
    against, the input or output path was refused, or the command line was invalid: report that plainly and stop,
    because a guessed mapping would feed wrong numbers to a decision. For Sonar use
-   `collect_sonar.py`, which takes the same options plus `--project` and `--status`. The record's fields are in
+   `collect_sonar.py`, which takes the same options plus `--project`, `--status` and, for a `repo` list read from another branch, `--branch`. The record's fields are in
    `references/findings-record.md`.
 5. **Check currency (PR only).** Confirm the record's `source.pull_request` equals the requested number
    (stop on a mismatch). Re-read `headRefOid` now, with the same `gh pr view` form as step 1, then compare it with the record's
    `source.head_commit_sha`. Different, or `is_analysing` true, means the analysis describes an
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on. Sonar gives no running flag, so `is_analysing` is null, which is not
-   "finished": there, the SHA comparison alone decides.
+   "finished": there, the SHA comparison alone decides. Its two reads are separate, so a re-analysis of the same head between them can pair the earlier gate with the later issue list, and the SHA check cannot see that: when reporting the gate next to the counts, say they come from two reads that may span two analyses of the same head.
 6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, the path of the record file and, for a PR, its `url` from step 1 (`resolving-analysis-findings` takes the owner and repository from it). Show the
    full record only when asked; it is long. A message for a secret-detection rule can contain the flagged
    value: keep the record in the scratchpad, and never reproduce such a message or value in the report. Give

@@ -16,14 +16,10 @@ Analysis shows no coverage figure there. See [Automatic Analysis](https://docs.s
 
 Settings for Automatic Analysis, read from the default branch only: a change takes effect after merge.
 
-```ini
-sonar.issue.ignore.multicriteria=p1
-sonar.issue.ignore.multicriteria.p1.ruleKey=python:S5443
-sonar.issue.ignore.multicriteria.p1.resourceKey=**/*.py
-```
-
-A new entry needs its id added to the first line too. `sonar.cpd.exclusions` leaves paths out of duplication
-detection only; they are still analyzed for issues.
+Ignoring a rule on a path (`sonar.issue.ignore.multicriteria`) is not set here but in the project UI,
+Administration → Analysis Scope → Ignore Issues on Multiple Criteria: a rule key such as `python:S5443` and a path
+pattern such as `**/*.py` (per SonarSource staff on its community forum, checked 2026-11-08: multi-value settings are set only in the UI, and the documented `.sonarcloud.properties` settings include none). `sonar.cpd.exclusions` leaves paths out of duplication detection only;
+they are still analyzed for issues.
 
 ## Quality gates and profiles
 

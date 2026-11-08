@@ -637,6 +637,46 @@ def check_sonar_adapter() -> None:
         record["source"] == {"kind": "repo", "repository": "example_project"}
         and {f["state"] for f in record["findings"]} == {"existing"},
     )
+    medium = {"software_quality": "RELIABILITY", "severity": "MEDIUM"}
+    check(
+        "repo fixture: both impacts of a two-impact issue, with exact levels",
+        sorted(
+            (f["impacts"] for f in record["findings"]), key=lambda i: json.dumps(i, sort_keys=True)
+        )
+        == sorted(
+            [
+                [medium],
+                [
+                    {"software_quality": "MAINTAINABILITY", "severity": "HIGH"},
+                    {"software_quality": "RELIABILITY", "severity": "HIGH"},
+                ],
+                [medium],
+            ],
+            key=lambda i: json.dumps(i, sort_keys=True),
+        ),
+    )
+    code, out, _ = run_main(
+        adapter,
+        "--kind",
+        "repo",
+        *project,
+        "--branch",
+        "release/1.x",
+        "--input",
+        str(SONAR / "repo.json"),
+    )
+    check(
+        "a repo list read with --branch keeps the branch in the source",
+        code == 0 and json.loads(out)["source"].get("branch") == "release/1.x",
+    )
+    for bad in (
+        ("--kind", "ignored", "--branch", "main"),
+        ("--kind", "repo", "--branch", "a/../b"),
+    ):
+        code, out, _ = run_main(
+            adapter, bad[0], bad[1], *project, *bad[2:], "--input", str(SONAR / "repo.json")
+        )
+        check(f"--branch rejected for {' '.join(bad)}", code == 2 and out == "")
     code, out, _ = run_main(
         adapter, "--kind", "ignored", *project, "--input", str(SONAR / "ignored.json")
     )
@@ -701,6 +741,11 @@ def check_sonar_adapter() -> None:
         "impacts are carried with their quality and level",
         all(i.get("software_quality") for f in json.loads(out)["findings"] for i in f["impacts"])
         and any(f["impacts"] for f in json.loads(out)["findings"]),
+    )
+    high = {"software_quality": "RELIABILITY", "severity": "HIGH"}
+    check(
+        "PR fixture: each impact keeps its exact level",
+        [f["impacts"] for f in json.loads(out)["findings"]] == [[high]] * 3,
     )
     ignored = json.loads((SONAR / "ignored.json").read_text(encoding="utf-8"))
     ignored["issues"][1].pop("comments")
@@ -846,6 +891,29 @@ def check_stream_edges(adapter) -> None:
             and "Traceback" not in done.stderr,
             done.stderr,
         )
+    closed = io.StringIO()
+    closed.close()
+    for label, stream in (("no stdout", None), ("a closed stdout object", closed)):
+        for script, *argv in runs:
+            codacy = script == "collect_codacy.py"
+            module = load_adapter() if codacy else load_sonar()
+            err = io.StringIO()
+            real_stdout = sys.stdout
+            sys.stdout = stream
+            try:
+                with redirect_stderr(err):
+                    # The table form also reconfigures the stream first; pr-status has no table.
+                    table = codacy and stream is not None
+                    code = module.main(argv + (["--format", "table"] if table else []))
+            except Exception as exc:  # the defect this checks for: a traceback
+                code, err = None, io.StringIO(repr(exc))
+            finally:
+                sys.stdout = real_stdout
+            check(
+                f"{script}: {label} exits 1 without a traceback",
+                code == 1 and "stdout" in err.getvalue(),
+                err.getvalue(),
+            )
     check(
         "only JSON whitespace separates pages",
         len(adapter._load_documents(" {} \t\r\n {} \n")) == 2,

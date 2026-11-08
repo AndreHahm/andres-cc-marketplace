@@ -51,6 +51,7 @@ EXIT_MORE_PAGES = 3
 MAX_RESULTS = 10_000
 PROJECT_KEY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$")
 COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+BRANCH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 OPEN_STATUSES = {"OPEN", "CONFIRMED"}
 IGNORED_STATUSES = {"ACCEPTED", "FALSE_POSITIVE"}
 STATUS_KEYS = {"project", "pull_request", "head_commit_sha", "analysis_date", "quality_gate"}
@@ -224,15 +225,16 @@ def parse_pull_request(
 
 
 def parse_repository_issues(
-    data: list[Any], project: str
+    data: list[Any], project: str, branch: str | None = None
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     issues = _collect_issues(data)
     for index, item in enumerate(issues):
         if "pullRequest" in _obj(item, f"issues[{index}]"):
             raise ShapeError(f"issues[{index}]: a PR issue in a repository list")
-    return {"kind": "repo", "repository": project}, _findings(
-        issues, project=project, state="existing"
-    )
+    source: dict[str, Any] = {"kind": "repo", "repository": project}
+    if branch is not None:  # absent means the default branch, as before
+        source["branch"] = branch
+    return source, _findings(issues, project=project, state="existing")
 
 
 def parse_ignored_issues(
@@ -250,11 +252,12 @@ def build_record(
     status: dict[str, Any] | None,
     category: str | None,
     group_by: str,
+    branch: str | None = None,
 ) -> dict[str, Any]:
     if status is not None:
         source, findings = parse_pull_request(data, project, status)
     elif kind == "repo":
-        source, findings = parse_repository_issues(data, project)
+        source, findings = parse_repository_issues(data, project, branch)
     else:
         source, findings = parse_ignored_issues(data, project)
     if category is not None:
@@ -307,6 +310,7 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--pull-request", type=int, help="required for --kind pr-status")
     parser.add_argument("--status", help="file written by --kind pr-status, for --kind pr")
+    parser.add_argument("--branch", help="for --kind repo: the --branch the list was read with")
     parser.add_argument("--group-by", choices=sorted(GROUP_KEYS), default="rule,file")
     parser.add_argument("--category", help="keep only findings whose category equals this value")
     parser.add_argument("--format", choices=("json", "table"), default="json")
@@ -323,6 +327,10 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
         parser.error("--kind pr-status has no table format")
     if args.kind == "pr" and not args.status:
         parser.error("--kind pr needs --status")
+    if args.branch is not None and (
+        args.kind != "repo" or not BRANCH.fullmatch(args.branch) or ".." in args.branch.split("/")
+    ):
+        parser.error("--branch: only for --kind repo, and only a plain branch name")
     return args
 
 
@@ -340,6 +348,7 @@ def _build(args: argparse.Namespace) -> dict[str, Any]:
         status=status,
         category=args.category,
         group_by=args.group_by,
+        branch=args.branch,
     )
 
 
@@ -368,7 +377,10 @@ def main(argv: list[str] | None = None) -> int:
         return _print_stdout(f"{summary} written to {out_path.name}", "collect_sonar")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):
-        reconfigure(errors="backslashreplace")  # provider text may not fit the terminal encoding
+        try:  # provider text may not fit the terminal encoding
+            reconfigure(errors="backslashreplace")
+        except ValueError:  # a closed stream: _print_stdout reports it
+            pass
     return _print_stdout(text, "collect_sonar")
 
 

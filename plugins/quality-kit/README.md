@@ -24,9 +24,9 @@ handled three different ways across this repository.
   without it. Self-managed SonarQube is out of scope.
 - **One provider per run.** A Sonar run never edits `.codacy.yml` or runs `codacy`, and the reverse.
 - **Remote writes are gated.** Ignoring, unignoring or reanalyzing through the Cloud CLI, a Sonar issue
-  transition, and any change to `.codacy.yml` exclusions or `.sonarcloud.properties`, needs an explicit approval
-  each time; a pattern or quality-gate change, and the bulk forms, are handed to you as an exact command and
-  never run by the skills.
+  transition, and any change to `.codacy.yml` exclusions, needs an explicit approval each time; a pattern or
+  quality-gate change, a Sonar path exclusion (a UI setting), and the bulk forms, are handed to you as an exact
+  command or setting and never run by the skills.
 - **No Codacy command is pre-approved.** The Codacy CLIs have write flags that a tool grant cannot narrow,
   so every `codacy` and `codacy-analysis` command raises a normal permission prompt showing its text, unless your
   own settings or permission mode already allow it. Approve
