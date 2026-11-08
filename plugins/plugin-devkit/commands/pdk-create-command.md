@@ -45,11 +45,11 @@ category: workflow  # workflow, ai-assistant, or validation
 
 ### Security with allowed-tools
 
-The `allowed-tools` field provides granular security control:
+The `allowed-tools` field controls which tools run without a permission prompt; it does not restrict which tools are available (use `disallowed-tools` or a deny rule for that):
 
 - Basic: `allowed-tools: Read, Write, Edit`
-- Restricted bash: `allowed-tools: Bash(git:*), Read`  # Only git commands
-- Multiple restrictions: `allowed-tools: Read, Write, Bash(npm:*, git:*)`
+- Scoped bash: `allowed-tools: Bash(git:*), Read`  # Only git commands skip the prompt
+- Multiple grants: `allowed-tools: Read, Write, Bash(npm:*, git:*)`
 
 ## Features to Support
 

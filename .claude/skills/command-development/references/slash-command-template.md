@@ -57,7 +57,7 @@ allowed-tools: {{ALLOWED_TOOLS}}
 | Field | Required | Description |
 |-------|----------|-------------|
 | `description` | Yes | Brief description shown in command list |
-| `allowed-tools` | No | Restrict tools available during execution |
+| `allowed-tools` | No | Tools pre-approved (no permission prompt) for the turn that runs the command; other tools stay callable |
 | `argument-hint` | No | Usage hint shown in command help |
 
 ### Dynamic Context
@@ -86,9 +86,9 @@ Process the following: $ARGUMENTS
 5. **Output Format** - Expected response structure
 6. **Options** - Available flags/modes (if applicable)
 
-### Tool Restrictions
+### Tool Pre-Approval
 
-Restrict tools with `allowed-tools` frontmatter (space-separated):
+Pre-approve tools with `allowed-tools` frontmatter (space-separated). This skips the permission prompt for the listed tools during the command's turn; it does not make any other tool unavailable (use `disallowed-tools` or a deny rule for that):
 
 ```yaml
 allowed-tools: Read Grep Glob

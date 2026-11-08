@@ -26,8 +26,9 @@ produced no output — the two directories are byte-identical.
 **Consequence:** whatever Claude-specific frontmatter fields or tool references a registered skill's
 `SKILL.md` happens to contain pass straight through to the Codex-facing copy, unexamined. In this
 case it's low-risk by circumstance, not by design — `plugin-marketplace-review` has
-`disable-model-invocation: true` and no `Bash`/`Skill` execution grant in its `allowed-tools`, so it's
-inert as an invocable capability under either platform. Nothing in the conversion pipeline itself
+`disable-model-invocation: true`, pre-approves no `Bash`/`Skill` execution in its `allowed-tools` (omitting
+a grant doesn't block a tool, it only means a call would prompt), and has a documentation-only body, so
+it's effectively inert as an invocable capability under either platform. Nothing in the conversion pipeline itself
 checks for or enforces that; a future registered skill with an execution grant or an
 `AskUserQuestion`/`Skill(...)` reference in its body would export unchanged, with no signal that those
 don't work the same way — or at all — under Codex (see `codex-skills-schema.md`'s "Tool availability
