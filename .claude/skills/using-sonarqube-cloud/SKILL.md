@@ -58,7 +58,8 @@ wider `sonar` allow rule: `sonar api post` shares a prefix with `sonar api get`,
 pre-approve writes, and a bare `sonar api get` can print identity fields (`author`, `assignee`, `contributors`,
 comment logins). `jq`, which the read forms in `references/cli-commands.md` pipe into, is not granted either,
 so a piped form also prompts for the `jq` part; it only filters the output, so approve each run once and never add
-a persistent `jq` allow rule. The `sonar list issues` grant also
+a persistent `jq` allow rule. The same piped forms start with `set -o pipefail;`, which only makes a failed `sonar`
+read fail the whole pipe; it is part of the one prompt, not a separate grant. The `sonar list issues` grant also
 reaches a bare run without that filter, which raises no prompt and prints `author` and `assignee`: always run the
 projected form.
 
