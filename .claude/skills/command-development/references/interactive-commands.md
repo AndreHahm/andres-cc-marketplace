@@ -153,7 +153,7 @@ Confirm configuration created and guide user on next steps.
 ```markdown
 ---
 description: Multi-stage interactive workflow
-allowed-tools: AskUserQuestion, Read, Write, Bash(git:*)
+allowed-tools: AskUserQuestion, Read, Write, Bash(git:*)  # pre-approves these only; other tools follow normal permission settings
 ---
 
 # Multi-Stage Deployment Setup
