@@ -1984,7 +1984,11 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     unstaged edits all count. The comparison hashes the file itself (`git hash-object`) against
     the merge-base blob, instead of asking `git diff`, which trusts the index's stat data: a
     `skip-worktree` or `assume-unchanged` flag set on a file would hide an edit from it (issue
-    #652). Still best effort: it does not cover the untracked guardrails override, the instruction
+    #652). The hash is of the raw bytes (`--no-filters`), because the dispatcher runs the raw file:
+    with filters on, git converts the working file through attributes the branch itself can set
+    (`working-tree-encoding`, `ident`), so a differently spelled file can hash to the base blob. A
+    working copy with other line endings than the blob therefore reads as changed, which fails
+    safe. Still best effort: it does not cover the untracked guardrails override, the instruction
     files, `~/.codex/config.toml`, or a write between this check and the launch."""
     try:
         merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
@@ -2010,7 +2014,7 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         hashed = None
         if present:
             hashed = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
-                ["git", "hash-object", "--stdin-paths"],
+                ["git", "hash-object", "--no-filters", "--stdin-paths"],
                 cwd=repo,
                 input="\n".join(present) + "\n",
                 capture_output=True,
@@ -2142,7 +2146,12 @@ class SandboxVerdict:
     at each failure, and an intermittent sandbox passed that re-probe about as often as it failed
     the reviewer). A passing probe is not remembered, since the sandbox can still fail later.
     Probes are serialized, so two reviewers cannot probe at once and disturb each other's setup
-    refresh. Every probe is appended to `log`, which the result file records as provenance."""
+    refresh. Every probe is appended to `log`, which the result file records as provenance.
+
+    Tradeoff: a remembered "down" is not probed again for each later reviewer. A reviewer whose own
+    failure wording matches the sandbox failure is therefore moved to the fallback on an earlier
+    probe, and a diff under review can steer a reviewer's wording. The fallback still needs the
+    caller's consent and the per-call check of the files it runs (`fallback_files_changed`)."""
 
     def __init__(self, probe: Callable[[], str | None], log: list[str] | None = None) -> None:
         self._probe = probe
