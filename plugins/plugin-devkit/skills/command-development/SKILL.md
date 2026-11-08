@@ -20,7 +20,7 @@ allowed-tools: Read Write Edit Glob Skill
 2. **Read existing commands** in the same category before writing a new one
 3. **Choose location** — project (`.claude/commands/`), personal (`~/.claude/commands/`), or plugin (`commands/`)
 4. **Write the body** as instructions FOR Claude (not a message to the user — see below)
-5. **Add frontmatter** for tool restrictions, model selection, or argument hints
+5. **Add frontmatter** for tool pre-approval, model selection, or argument hints
 6. **Test** with `/command-name [args]`
 
 ## When NOT to Use

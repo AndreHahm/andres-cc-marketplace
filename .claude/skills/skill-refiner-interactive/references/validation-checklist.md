@@ -99,7 +99,7 @@ If every box is checked, the skill is ready to deploy. If any check fails, ident
 | **Too long** | SKILL.md in a Warning or Critical R13 tier | Move supplementary content to references/ |
 | **Vague activation** | Description has no trigger phrases | Add specific phrases: "refine", "validate", "improve" |
 | **Missing files** | SKILL.md links to a non-existent reference | Create the missing file or update the link |
-| **Overly broad tools** | `allowed-tools: Bash(*)` | Restrict: `Bash(git:*)`, `Bash(npm:*)`, etc. |
+| **Overly broad tools** | `allowed-tools: Bash(*)` | Pre-approve narrowly: `Bash(git:*)`, `Bash(npm:*)`, etc. |
 | **Inconsistent structure** | Sections organized randomly | Reorganize: Quick Start → Workflows → Key Rules → References |
 | **Nested references** | `references/subdir/file.md` | Move to `references/file.md` (flatten) |
 | **Orphaned files** | Reference files not linked from SKILL.md | Link or delete unused files |

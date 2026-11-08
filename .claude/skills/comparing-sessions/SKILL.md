@@ -49,7 +49,7 @@ Compare two Claude Code sessions structurally and semantically, using two persis
 - **Cross-checking multiple different skills' reports from the same session/scope for duplicates, contradictions, or severity claims one undercuts another** — use `reviewing-analysis-findings` instead; this skill compares the same report lineage across two points in *time* (a prior persisted report vs. this session's current findings), not multiple different skills' reports produced from one shared scope
 - **Marking a recommendation's status** (`accepted`, `implemented`, `verified`, `measured`, ...) — use
   `tracking-recommendation-lifecycle` instead. This skill's own Phase 4 only *reads* the recommendation
-  registry (read-only — its own `allowed-tools` grant is mechanically scoped to `list`/`show` only, per
+  registry (read-only — its own `allowed-tools` grant pre-approves only `list`/`show`, per
   Gotchas) to interpret realized impact across two sessions; it never appends an event to it — that's the tracking
   skill's own write-path job.
 
@@ -143,7 +143,7 @@ entry, per `../../references/anls-report-evidence-convention.md`.
 - **Report format drift.** If the two reports come from different skill versions with different section structures, the diff will show many "only in A"/"only in B" entries that reflect format changes, not content changes — note this explicitly rather than treating it as a finding.
 - **Stable-ID matching only, never a prose join.** Phase 4 never guesses that a registry entry "sounds like" a report finding — a `recommendation_id` with no exact match in scope contributes nothing, even if a similarly-worded finding exists.
 - **No registry is a normal case, not a degraded one.** Phase 4 silently contributing zero entries when no registry exists is the expected, common path — don't treat "no Recommendation Impact section" as a gap in this skill's own coverage.
-- **The `anls_recommendation_registry.py` grant is mechanically scoped to `list`/`show` only.** `Bash(python */analysis-kit/scripts/anls_recommendation_registry.py list:*)` / `... show:*)` admits only those two subcommands — `append`/`init` are not reachable through this skill's own grant at all, matching its documented read-only use (see Phase 4 and the "When NOT to Use" note above). Always put `--registry <path>` *after* the subcommand in both Phase 4 calls (`anls_recommendation_registry.py`'s own argparse accepts it in either position, but only the after-the-subcommand form is inside this narrowed grant pattern).
+- **The `anls_recommendation_registry.py` grant pre-approves `list`/`show` only.** `Bash(python */analysis-kit/scripts/anls_recommendation_registry.py list:*)` / `... show:*)` skips the permission prompt for only those two subcommands — an `append`/`init` call would still be possible and would prompt; this skill never makes one, so its read-only use rests on its instructions, not on the grant (see Phase 4 and the "When NOT to Use" note above). Always put `--registry <path>` *after* the subcommand in both Phase 4 calls (`anls_recommendation_registry.py`'s own argparse accepts it in either position, but only the after-the-subcommand form is inside this narrowed grant pattern).
 
 ## Testing & Validation
 
@@ -184,7 +184,7 @@ a real recommendation registry with a near-miss stable-ID decoy, and the report-
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `../../scripts/anls_comparator.py` | Deterministic structural section-header diff between the two persisted reports being compared | Phase 2 |
 | `references/comparison-dimensions.md` | What counts as comparable between two sessions, including realized-impact matching | Phase 3, Phase 4 |
-| `../../scripts/anls_recommendation_registry.py` | Read-only `list`/`show` access to the recommendation lifecycle registry, mechanically scoped by this skill's own grant | Phase 4 |
+| `../../scripts/anls_recommendation_registry.py` | Read-only `list`/`show` access to the recommendation lifecycle registry, pre-approved by this skill's own grant (read-only use is by instruction) | Phase 4 |
 | `../../references/anls-recommendation-lifecycle-schema.md` | Registry event fields and status vocabulary Phase 4 reads | Phase 4 |
 | `../../references/anls-report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `../../references/anls-report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |

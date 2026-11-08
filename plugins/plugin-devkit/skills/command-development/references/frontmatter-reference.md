@@ -106,9 +106,9 @@ allowed-tools: "*"
 
 **When to use:**
 
-1. **Security:** Restrict command to safe operations
+1. **Security:** Pre-approve only safe operations, so anything else still prompts (`allowed-tools` does not block other tools; use `disallowed-tools` or a deny rule to make one unavailable)
    ```yaml
-   allowed-tools: Read, Grep  # Read-only command
+   allowed-tools: Read, Grep  # Pre-approves reads only; a Write would still prompt
    ```
 
 2. **Clarity:** Document required tools
@@ -456,7 +456,7 @@ Before committing command:
 
 1. **Start minimal:** Add frontmatter only when needed
 2. **Document arguments:** Always use argument-hint with arguments
-3. **Restrict tools:** Use most restrictive allowed-tools that works
+3. **Pre-approve narrowly:** Use the narrowest allowed-tools that works (it only skips prompts; it does not restrict tools)
 4. **Choose right model:** Use haiku for speed, opus for complexity
 5. **Manual-only sparingly:** Only use disable-model-invocation when necessary
 6. **Clear descriptions:** Make commands discoverable in `/help`
