@@ -454,7 +454,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 |---|---|
 | `references/scoped-review.md` | Planner run, folder pick, dispatch batches, timeouts, completed slices, round two |
 | `references/codex-pass-assembly.md` | Per-batch Codex eligibility, Phase 1 and Phase 2 instruction files |
-| `references/testing-scenarios.md` | The 36 scenarios and the quality-gate checklist |
+| `references/testing-scenarios.md` | The 37 scenarios and the quality-gate checklist |
 | `references/resolver-failure-handling.md`, `references/dispatcher-trust-pattern.md` | Partial failure; why the dispatcher-touched check is built the way it is (planner trust is in `references/scoped-review.md`) |
 | `references/diff-mechanics-rationale.md`, `references/index-seeding-rationale.md`, `references/embed-diff-not-run-rationale.md`, `references/symlink-exclusion-rationale.md`, `references/self-authored-envelope-fields.md`, `references/deliberately-not-done.md` | Why the Inputs and Preflight steps are built the way they are |
 | `scripts/smoke_test.py`, `scripts/preflight_fixtures_test.py` | Structural self-check; Preflight chain run against scratch repositories |
@@ -473,7 +473,7 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the
-36 numbered scenarios and full quality-gate checklist live there, covering every behavior described
+37 numbered scenarios and full quality-gate checklist live there, covering every behavior described
 above (single-model mode, `$MERGE_BASE` diff containment, dispatcher-trust matching, reviewer
 identity, closing-tag neutralization, partial-failure preservation, scoped review, and more).
 `scripts/preflight_fixtures_test.py` runs the Preflight chain, planner step included, against scratch
