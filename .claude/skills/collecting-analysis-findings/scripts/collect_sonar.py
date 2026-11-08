@@ -230,14 +230,16 @@ def parse_repository_issues(
     for index, item in enumerate(issues):
         if "pullRequest" in _obj(item, f"issues[{index}]"):
             raise ShapeError(f"issues[{index}]: a PR issue in a repository list")
-    return {"kind": "repo"}, _findings(issues, project=project, state="existing")
+    return {"kind": "repo", "repository": project}, _findings(
+        issues, project=project, state="existing"
+    )
 
 
 def parse_ignored_issues(
     data: list[Any], project: str
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     findings = _findings(_collect_issues(data), project=project, state="existing", ignored=True)
-    return {"kind": "ignored"}, findings
+    return {"kind": "ignored", "repository": project}, findings
 
 
 def build_record(
