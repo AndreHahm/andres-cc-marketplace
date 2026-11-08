@@ -32,14 +32,14 @@
       "files": []
     },
     {
-      "id": "5",
+      "id": 5,
       "name": "sonar-pr-findings-current",
       "prompt": "Collect the Sonar findings for pull request 651 of project example_project. The sonar CLI is not available here, so read its saved output instead: the PR list is at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr-list.json and the issue list at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr.json. Pipe each file into the adapter on stdin in place of the sonar command. The GitHub head of this PR is 1111111111111111111111111111111111111111. Use <scratchpad>/eval-col-5/ as your scratchpad directory for the record and status files (create it with mode 700). Do not run gh, sonar or any network command. Copy the record and a short report into your outputs directory.",
       "expected_output": "A record with provider sonar, 3 findings of rule shell:S7688, quality gate OK, and a statement that the analysis is current for the head.",
       "files": []
     },
     {
-      "id": "6",
+      "id": 6,
       "name": "sonar-pr-stale-head",
       "prompt": "Collect the Sonar findings for pull request 651 of project example_project. The sonar CLI is not available here, so read its saved output instead: the PR list is at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr-list.json and the issue list at plugins/quality-kit/skills/collecting-analysis-findings/scripts/fixtures/sonar/pr.json. Pipe each file into the adapter on stdin in place of the sonar command. The GitHub head of this PR is 9999999999999999999999999999999999999999. Use <scratchpad>/eval-col-6/ as your scratchpad directory (create it with mode 700). Do not run gh, sonar or any network command. Copy a short report into your outputs directory.",
       "expected_output": "A report that says the analysis is stale for the head and gives no counts as current.",
