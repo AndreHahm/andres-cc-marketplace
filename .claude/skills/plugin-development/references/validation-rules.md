@@ -107,7 +107,7 @@ FIX: Add frontmatter at top of SKILL.md:
 ---
 name: my-skill
 description: What it does
-allowed-tools: Read, Grep
+allowed-tools: Read, Grep  # replace with the tools this skill actually uses
 ---
 ```
 
@@ -144,7 +144,7 @@ FIX: Add to SKILL.md frontmatter:
 ---
 name: my-skill
 description: What it does
-allowed-tools: Read, Grep
+allowed-tools: Read, Grep  # replace with the tools this skill actually uses
 ---
 ```
 
@@ -170,7 +170,7 @@ allowed-tools: Read, Write, Bash(git:*)
 allowed-tools: Read, WebSearch, WebFetch
 ```
 
-**Full access**:
+**Broad pre-approval**:
 ```yaml
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git:*), WebSearch, WebFetch
 ```
