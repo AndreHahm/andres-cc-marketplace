@@ -18,11 +18,11 @@ Significantly degrade skill effectiveness:
 - SKILL.md exceeds 500 lines without using `references/` — overloads context, reduces comprehension
 - Missing "When to Use" or "When NOT to Use" sections
 - Description doesn't specify when to trigger — skill may never be selected
-- Missing `allowed-tools` field on a skill whose body uses tools — every use raises a permission prompt (R6 tool-completeness); a missing field pre-approves nothing and is not a least-privilege violation
+- Missing `allowed-tools` field on a skill whose body uses tools — every use falls to normal permission handling, a prompt unless settings allow or deny it (R6 tool-completeness); a missing field pre-approves nothing and is not a least-privilege violation
 - `name` contains reserved words ("claude", "anthropic") or YAML boolean keywords
 - Reference→reference chain violations — a `references/*.md` directing the reader to read another `references/` file
 - Cartesian product spawning, unbounded agent spawning, or vague subagent prompts
-- Undeclared tools (used in SKILL.md or a `references/` file but absent from `allowed-tools`) — every use raises a permission prompt (R6 tool-completeness); the tool is not blocked
+- Undeclared tools (used in SKILL.md or a `references/` file but absent from `allowed-tools`) — every use falls to normal permission handling, a prompt unless settings allow or deny it (R6 tool-completeness); the tool is not blocked
 - Missing load-bearing key techniques for the identified workflow pattern
 
 ## Minor Issues (evaluate before fixing)

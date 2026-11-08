@@ -1,0 +1,31 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States that allowed-tools pre-approves tools for the turn that invokes the skill and does not restrict which tools are available, so Write remains callable and would just prompt",
+      "passed": true,
+      "evidence": "(a) quotes the reworded SKILL.md R6: an unlisted tool \"falls through to normal permission handling: a prompt unless the user's settings allow or deny it\"; adds that Write is normally prompted, runs without a prompt if settings allow it, and is blocked by settings (not by the list) if settings deny it."
+    },
+    {
+      "text": "Classifies the missing Write grant as a tool-completeness finding about prompts, not as a blocked capability or a security boundary",
+      "passed": true,
+      "evidence": "(b) \"a completeness finding, not a restriction finding\"; suggested wording says each run will raise a permission prompt for Write unless the user's settings already allow it, and must not say the skill cannot use Write."
+    },
+    {
+      "text": "Names disallowed-tools or a permission deny rule as the way to actually restrict a tool",
+      "passed": true,
+      "evidence": "(c) \"disallowed-tools: Write in the frontmatter, or a settings.json permission deny rule\", quoting SKILL.md R6."
+    },
+    {
+      "text": "Does not claim the skill is read-only because of its allowed-tools list",
+      "passed": true,
+      "evidence": "(d) \"No. The skill is not read-only because of its allowed-tools list; Write stays callable and the body invokes it.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
