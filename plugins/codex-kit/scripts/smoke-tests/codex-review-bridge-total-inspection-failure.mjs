@@ -144,13 +144,19 @@ console.log("\n=== Issue #652: the Windows setup-refresh wordings are detected =
   for (const note of [
     "Failed to create unified exec process: helper_unknown_error: setup refresh had errors",
     "The shell helper reported: setup refresh had errors, so no file could be read.",
-    "Every command returned helper_unknown_error."
+    "Every command returned helper_unknown_error.",
+    // CodeRabbit on PR #681: the same failure worded with "failed" instead of "had errors".
+    "sandbox setup refresh failed; no workspace files could be read"
   ]) {
     check(`recognized: "${note}"`, isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
   }
   check(
     "a setup-refresh note with findings present is never reclassified",
     !isTotalInspectionFailure({ findings: [{ id: "F1" }], inspection_limits: ["setup refresh had errors"] })
+  );
+  check(
+    "a 'setup refresh failed' note with findings present is never reclassified",
+    !isTotalInspectionFailure({ findings: [{ id: "F1" }], inspection_limits: ["setup refresh failed"] })
   );
   for (const topical of [
     "Reviewed the setup refresh logic statically; it has no tests.",

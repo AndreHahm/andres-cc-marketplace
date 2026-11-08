@@ -369,12 +369,14 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // zero-finding envelope carrying only those was read as a clean approve. The two leading
 // alternatives are the exact tokens Codex prints. Like the alternatives below they are bare
 // substrings, so a topical note that quotes one (a diff that touches this code can make a model do
-// that) is the same accepted residual as above. `(os error 32)` is deliberately NOT matched: it is
+// that) is the same accepted residual as above. "setup refresh failed" is matched next to "had
+// errors" (PR #681 review: a model can paraphrase the failure); a broader "no files could be read"
+// is NOT, since an ordinary partial-read note says that too. `(os error 32)` is deliberately NOT matched: it is
 // the generic Windows sharing violation and shows up in a note about one locked file. The real
-// failure's notes carry `helper_unknown_error` or `setup refresh had errors` as well.
+// failure's notes usually carry `helper_unknown_error` or `setup refresh had errors` as well.
 // scripts/marketplace_ci/review.py's _SANDBOX_FAILURE_RE matches these tokens too (more broadly,
 // and it also takes `os error 32`, since a reviewer there is retried and a probe decides).
-const TOTAL_INSPECTION_FAILURE_PATTERN = /helper_unknown_error|setup refresh had errors|(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|(?:\b(?:because|since|as|due to|after|when)\s+|[;:]\s*)process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
+const TOTAL_INSPECTION_FAILURE_PATTERN = /helper_unknown_error|setup refresh (?:had errors|failed)|(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|(?:\b(?:because|since|as|due to|after|when)\s+|[;:]\s*)process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).

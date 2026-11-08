@@ -2066,7 +2066,11 @@ def render_could_not_run(
         )
         lines.append(
             f"  Effect: {completed} of {total} reviewers completed; "
-            + ("a failed reviewer reviewed nothing. " if completed else "no code was reviewed. ")
+            + (
+                "a failed reviewer's coverage is unknown (it may have read some files first). "
+                if completed
+                else "no reviewer completed, so no review is known to have covered the code. "
+            )
             + (
                 "Some reviewers ran unsandboxed (danger-full-access)."
                 if unsandboxed

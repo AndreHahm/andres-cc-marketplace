@@ -92,9 +92,15 @@ def test_render_groups_by_cause_not_by_reviewer_and_says_it_is_not_a_pass():
     assert "Raw detail: reviewer returned an inconclusive review: setup refresh had errors" in text
 
 
-def test_render_says_no_code_was_reviewed_when_nothing_completed():
-    text = render_could_not_run([_failed("a-reviewer", "setup refresh")])
-    assert "no code was reviewed" in text
+def test_render_does_not_claim_a_failed_reviewer_read_nothing():
+    """A reviewer can read some files before a sandbox failure or a timeout, so coverage is
+    reported as unknown, never as none."""
+    partial = render_could_not_run([_failed("a-reviewer", "setup refresh"), _done("b-reviewer")])
+    assert "a failed reviewer's coverage is unknown" in partial
+    assert "reviewed nothing" not in partial
+    none_done = render_could_not_run([_failed("a-reviewer", "setup refresh")])
+    assert "no reviewer completed" in none_done
+    assert "no code was reviewed" not in none_done
 
 
 def test_render_says_when_something_ran_unsandboxed():

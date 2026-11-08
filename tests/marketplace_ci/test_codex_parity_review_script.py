@@ -987,6 +987,40 @@ def test_a_sandbox_failure_in_a_could_not_run_result_suggests_sandbox_down(tmp_p
     assert hint is not None
     assert "dependency-reviewer" in hint and "skill-reviewer" not in hint
     assert "--sandbox-down" in hint
+    assert "rerun with it only if you accept" in hint
+
+
+@pytest.mark.parametrize(
+    "provenance",
+    [
+        {"unsandboxed_reviewers": ["dependency-reviewer"]},
+        {"sandbox_probe": ["probe 1: down (try 1 of 3: setup refresh had errors)"]},
+    ],
+    ids=["reviewer-already-unsandboxed", "probe-already-down"],
+)
+def test_sandbox_hint_does_not_recommend_the_mode_already_attempted(tmp_path, provenance):
+    """If the probe already failed, or the reviewer already ran unsandboxed, --sandbox-down would
+    repeat what happened; the hint must say so instead of recommending it."""
+    output = tmp_path / "out.json"
+    output.write_text(
+        json.dumps(
+            {
+                "dispatch_failed": [
+                    {
+                        "reviewer": "dependency-reviewer",
+                        "error": "setup refresh had errors",
+                        "code": "sandbox_setup_refresh_failed",
+                    }
+                ],
+                "provenance": provenance,
+            }
+        ),
+        encoding="utf-8",
+    )
+    hint = _load_module().sandbox_rerun_hint(output)
+    assert hint is not None and "dependency-reviewer" in hint
+    assert "rerun with it only if you accept" not in hint
+    assert "already" in hint
 
 
 @pytest.mark.parametrize(
