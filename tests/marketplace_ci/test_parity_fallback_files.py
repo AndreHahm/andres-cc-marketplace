@@ -411,7 +411,7 @@ def test_fallback_decision_skips_the_fallback_when_the_branch_changed_what_codex
 
 
 def test_fallback_decision_keeps_the_fallback_for_a_branch_that_edits_the_dispatcher(branch_repo):
-    """Issue #676: the dispatcher runs from a snapshot of the merge-base."""
+    """Issue #676: the dispatcher runs from a snapshot of the base tip."""
     from scripts.marketplace_ci import review
 
     wrapper, repo = branch_repo
@@ -495,7 +495,7 @@ def test_provenance_names_the_reviewers_that_ran_unsandboxed():
     assert "unsandboxed_reviewers" not in clean
 
 
-# --- Issue #676: the fallback runs from a snapshot of the merge-base, not the working tree ---
+# --- Issue #676: the fallback runs from a snapshot of the base tip, not the working tree ---
 
 
 def test_the_checkout_read_and_snapshot_files_together_are_the_refusal_list():
@@ -525,7 +525,7 @@ def test_snapshot_holds_the_base_bytes_of_every_snapshot_file(branch_repo, tmp_p
 
 @pytest.mark.parametrize("how", ["committed", "unstaged"])
 def test_snapshot_ignores_a_branch_edit_to_what_the_fallback_runs(branch_repo, tmp_path, how):
-    """The branch edits the dispatcher; the snapshot still holds the merge-base copy."""
+    """The branch edits the dispatcher; the snapshot still holds the base tip's copy."""
     from scripts.marketplace_ci import review
 
     _, repo = branch_repo
