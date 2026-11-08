@@ -1,0 +1,81 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4507579241",
+      "note": "detector also matches setup refresh failed (357a7faf)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:19+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507579246",
+      "note": "rerun hint checks probe and unsandboxed state (357a7faf)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507579252",
+      "note": "not-run only if the guardrails retry also fails (357a7faf)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:20+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507579257",
+      "note": "dir-creation OSError refuses the fallback (357a7faf)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:21+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507579263",
+      "note": "coverage of a failed reviewer reported as unknown (357a7faf)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:21+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4507579266",
+      "note": "filed as issue 687, fails safe, design change",
+      "pr": 681,
+      "recorded_at": "2026-11-08T20:53:21+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4507838044",
+      "note": "A kept as documented residual; B fixed in 2c72d5cb; C filed as issue 689",
+      "pr": 681,
+      "recorded_at": "2026-11-08T22:37:15+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507838049",
+      "note": "rerun hint is per reviewer (2c72d5cb)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T22:37:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507838052",
+      "note": "retry envelope with zero findings and failure note stays not run (2c72d5cb)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T22:37:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507838056",
+      "note": "resolve OSError refuses the fallback (2c72d5cb)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T22:37:16+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4507838060",
+      "note": "warning when snapshot cleanup leaves the folder (2c72d5cb)",
+      "pr": 681,
+      "recorded_at": "2026-11-08T22:37:17+00:00"
+    }
+  ]
+}
