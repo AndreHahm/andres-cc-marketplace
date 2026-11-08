@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4505906360",
+      "line": 31,
+      "note": "Claude and Codex approval behavior now stated separately; verified at head 862fa4b4.",
+      "path": "docs/skill-conversion-from-claude-to-codex.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505906365",
+      "line": 48,
+      "note": "Unlisted skill or command tools now assessed under permission settings; omitted agent tools inherit all.",
+      "path": "plugins/plugin-devkit/agents/permission-reviewer.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505906369",
+      "line": 109,
+      "note": "Purpose and examples now say allowed-tools pre-approves and does not restrict.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505906380",
+      "line": 111,
+      "note": "No claim remains that unlisted tools always prompt.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/frontmatter-reference.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:49+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505906390",
+      "line": 91,
+      "note": "Example block labelled as alternatives with one allowed-tools key each.",
+      "path": "plugins/plugin-devkit/skills/command-development/references/slash-command-template.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:50+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505906393",
+      "line": 29,
+      "note": "Severity difference between R6 compliance and the quality review is now stated in skill-reviewer.",
+      "path": "plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:50+00:00"
+    },
+    {
+      "disposition": "accepted",
+      "finding": "4505906400",
+      "line": 50,
+      "note": "All prompts removed defect is gone since the claim is limited to Bash; optional extra clause left out by choice.",
+      "path": "plugins/plugin-devkit/skills/skill-refiner-interactive/references/preservation-rules.md",
+      "pr": 675,
+      "recorded_at": "2026-11-08T20:40:50+00:00"
+    }
+  ]
+}
