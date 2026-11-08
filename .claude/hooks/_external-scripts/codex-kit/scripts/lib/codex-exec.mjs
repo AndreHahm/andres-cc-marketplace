@@ -31,6 +31,9 @@ function typedFailure(category, detail) {
   return { ok: false, category, detail };
 }
 
+// The largest delay Node's setTimeout honors (2^31 - 1 ms, about 24.8 days).
+const MAX_TIMEOUT_MS = 2147483647;
+
 const AUTH_FAILURE_PATTERN = /not authenticated|OPENAI_API_KEY|401 Unauthorized|Missing bearer/i;
 const UNSUPPORTED_OPTION_PATTERN = /unknown option|unrecognized/i;
 // Concrete sandbox-failure shapes, not the bare words "sandbox" / "permission
@@ -510,7 +513,8 @@ function makeScratchFiles(dispatchId) {
  * @param {object} opts
  * @param {string} opts.prompt - prompt text, piped via stdin
  * @param {object} opts.schema - JSON Schema object the response must match
- * @param {number} [opts.timeoutMs=240000]
+ * @param {number} [opts.timeoutMs=240000] - at most 2147483647 (Node's setTimeout ceiling); a larger
+ *   value resolves to a `NON_ZERO_EXIT` failure instead of becoming a 1 ms timer
  * @param {string} [opts.cwd]
  * @param {"read-only"|"workspace-write"|"danger-full-access"} opts.sandbox - always explicit, never omitted
  * @param {string} [opts.dispatchId]
@@ -530,6 +534,11 @@ function makeScratchFiles(dispatchId) {
 export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model, dryRun = false }) {
   if (!sandbox) {
     throw new Error("runCodexExec requires an explicit sandbox mode — never omit it (scope-expansion gap #4).");
+  }
+  // Node clamps a setTimeout delay above 2^31-1 ms to 1 ms, which would report a timeout almost at once
+  // (issue #660). Checked here so every caller is covered, not just the ones that validate their own input.
+  if (timeoutMs > MAX_TIMEOUT_MS) {
+    return Promise.resolve(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, `timeoutMs must be no greater than ${MAX_TIMEOUT_MS}`));
   }
 
   const scratch = makeScratchFiles(dispatchId);
