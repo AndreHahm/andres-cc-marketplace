@@ -25,7 +25,7 @@ Critical content that MUST be preserved during skill refinement. These rules pre
 - `description` field - Required for skill activation (Claude's discovery mechanism). It may be rewritten, but only additively: never narrow its scope or drop its trigger phrases. Moving trigger conditions out of `description` into the separate `when_to_use` field is additive across the two fields, as long as every phrase survives in one of them.
 
 **NEVER weaken:**
-- `allowed-tools` field - Principle of least privilege must be maintained or strengthened, never weakened
+- `allowed-tools` field - Pre-approve no more than before: keep or narrow the grant, never widen it (the field pre-approves tools; it does not restrict them)
 
 Example of correct vs. incorrect changes to the description:
 
@@ -44,15 +44,15 @@ After: description: "Improve and validate skills for clarity, efficiency, and pr
 Example of correct vs. incorrect changes to tool scoping:
 
 ```
-WRONG: Weakening tool scoping
+WRONG: Widening the grant
 Before: allowed-tools: Read Edit Write Glob
 After: allowed-tools: Read Edit Write Bash(*) Glob
-→ Problem: Now allows ANY command (security violation)
+→ Problem: Now pre-approves ANY command, so nothing prompts (R6 violation)
 
-CORRECT: Maintaining least privilege
+CORRECT: Keeping the grant narrow
 Before: allowed-tools: Read Edit Write Glob
 After: allowed-tools: Read Edit Glob
-→ Benefit: Still secure, more efficient (Write removed because it is unused)
+→ Benefit: Pre-approves only what is used (Write removed because it is unused)
 ```
 
 ### Quick Start Section
