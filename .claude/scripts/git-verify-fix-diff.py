@@ -18,8 +18,9 @@ PR's own earlier commit can precede `--base`, and the loaded modules are importe
 that ref, or when `origin`'s fetch URL is not the required `--upstream owner/repo` (the PR's base
 repository), the run exits 2. A fix that changes the verifiers (scripts/marketplace_ci/), their
 registry (.claude/marketplace-sync.json), this script or its launch procedure (the SKILL.md,
-fix-self-review.md and smoke test of handling-review-findings) is still checked: the target branch's
-verifiers run over the rest of the diff. No verifier grades those paths themselves, so they are
+fix-self-review.md, file-write-and-diff-grants.md and smoke test of handling-review-findings) is
+still checked: the target branch's verifiers run over the rest of the diff. No verifier grades
+those paths themselves, so they are
 listed under an `ungraded` key and the reply must say they were not checked. For the
 launch-procedure files the verifiers do check structure, so the reply says that and that their
 effect on this gate was not checked. When the registry or a verifier is among them, a
@@ -101,9 +102,11 @@ _UNGRADED = (
     # The procedure that launches this driver and the grants that let it run.
     "plugins/git-kit/skills/handling-review-findings/SKILL.md",
     "plugins/git-kit/skills/handling-review-findings/references/fix-self-review.md",
+    "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
     "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
     ".claude/skills/handling-review-findings/SKILL.md",
     ".claude/skills/handling-review-findings/references/fix-self-review.md",
+    ".claude/skills/handling-review-findings/references/file-write-and-diff-grants.md",
     ".claude/skills/handling-review-findings/scripts/smoke_test.py",
 )
 # The subset of _UNGRADED that the target-branch verifiers read from the tree being judged.

@@ -747,7 +747,7 @@ subcommand, so it is outside Tier 1 and needs no bypass attestation; the CI path
   before the fix), so a value already over its limit before the fix and not worse after it passes here while
   CI can still block. A fix that changes `scripts/marketplace_ci/`, `.claude/marketplace-sync.json`, the
   script itself or the launch-procedure files of `handling-review-findings` (its `SKILL.md`,
-  `references/fix-self-review.md` and `scripts/smoke_test.py`, plus their `.claude/` mirrors) is still checked
+  `references/fix-self-review.md`, `references/file-write-and-diff-grants.md` and `scripts/smoke_test.py`, plus their `.claude/` mirrors) is still checked
   by the target branch's verifiers over the rest of the diff; no verifier grades those paths, so they are
   listed under an `ungraded` key, and when the registry or a verifier is among them a `result_caveat` key says
   the other verdicts may be weaker than they look. `--base` must be an
