@@ -39,7 +39,7 @@ UNSCOPED_BASH_RE = re.compile(
     r")",
 )
 
-AGENT_SCOPED_BASH_RE = re.compile(r"(?m)^tools\s*:.*\bBash\(")
+AGENT_SCOPED_BASH_RE = re.compile(r"(?m)^tools\s*:[^\n]*(?:\n(?:[ \t]+|-)[^\n]*)*")
 AGENT_PATH_RE = re.compile(r"[/\\]agents[/\\][^/\\]+\.md$")
 
 SECRET_PATTERNS = [
@@ -77,7 +77,7 @@ def scan_file(path_str):
         return findings
 
     if AGENT_PATH_RE.search(path_str):
-        if AGENT_SCOPED_BASH_RE.search(text):
+        if any("Bash(" in m.group(0) for m in AGENT_SCOPED_BASH_RE.finditer(text)):
             findings.append(
                 f"{path_str}: agent tools should use bare Bash, not Bash(...) (mirrors R6)"
             )
