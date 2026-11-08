@@ -16,10 +16,12 @@ the CLI's banner. If `sonar` is not on `PATH`, the default install is `~/.local/
 | Default-branch issue list | `sonar list issues -p <key> --format json 2>/dev/null` (`--branch <b>` for another branch, and the same `--branch <b>` to `collect_sonar.py` so the record names it) | `repo` |
 | Issues already accepted or marked false positive | `sonar api get "/api/issues/search?projects=<key>&issueStatuses=ACCEPTED,FALSE_POSITIVE&additionalFields=comments&ps=500" 2>/dev/null` | `ignored` |
 
-**A PR takes two pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps
+**A PR takes three pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps
 only that PR's SHA, analysis date and gate status. `--kind pr --status "<scratchpad>/sonar-status.json"` then
 reads it and refuses issues from any other PR. An empty issue list cannot be checked that way, and issues carry no
-commit, so the `--status` file is not bound to them: the head comparison in `SKILL.md` step 5 is what catches a stale one.
+commit, so the `--status` file is not bound to them: the head comparison in `SKILL.md` step 5 is what catches a stale one. The third pipe re-reads the PR list after
+the issues with `--confirm "<scratchpad>/findings-record.json" --output "<scratchpad>/findings-record.json"`: it
+compares the SHA, analysis date and gate with the record's and sets `source.snapshot_consistent`.
 
 **Several pages.** Exit 3 means the response has more pages, and its message gives the count. Run all pages in
 one command, `{ sonar list issues ... --page 1; sonar list issues ... --page 2; } 2>/dev/null | python3 -I ...`

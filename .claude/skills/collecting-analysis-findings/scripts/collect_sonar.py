@@ -220,6 +220,9 @@ def parse_pull_request(
         "head_commit_sha": status["head_commit_sha"],
         "is_analysing": None,
         "quality_gate": status["quality_gate"],
+        "analysis_date": status["analysis_date"],
+        # Set by a later `--kind pr-status --confirm`: the gate and the issues are one analysis.
+        "snapshot_consistent": None,
     }
     return source, _findings(issues, project=project, state="new")
 
@@ -299,6 +302,24 @@ def build_status(data: list[Any], *, project: str, pull_request: int) -> dict[st
     return status
 
 
+def confirm_snapshot(record: Any, status: dict[str, Any]) -> dict[str, Any]:
+    """Mark a `pr` record consistent when a status read after it names the same analysis."""
+    source = _obj(_obj(record, "--confirm").get("source"), "--confirm.source")
+    if (
+        record.get("provider") != PROVIDER
+        or source.get("kind") != "pr"
+        or source.get("repository") != status["project"]
+        or source.get("pull_request") != status["pull_request"]
+        or "snapshot_consistent" not in source
+    ):
+        raise ShapeError("--confirm: not a sonar pr record for this project and PR")
+    source["snapshot_consistent"] = all(
+        source.get(key) == status[key]
+        for key in ("head_commit_sha", "analysis_date", "quality_gate")
+    )
+    return record
+
+
 def _arguments(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--kind", choices=("ignored", "pr", "pr-status", "repo"), required=True)
@@ -311,6 +332,9 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--pull-request", type=int, help="required for --kind pr-status")
     parser.add_argument("--status", help="file written by --kind pr-status, for --kind pr")
     parser.add_argument("--branch", help="for --kind repo: the --branch the list was read with")
+    parser.add_argument(
+        "--confirm", help="for --kind pr-status: a pr record to check against this later read"
+    )
     parser.add_argument("--group-by", choices=sorted(GROUP_KEYS), default="rule,file")
     parser.add_argument("--category", help="keep only findings whose category equals this value")
     parser.add_argument("--format", choices=("json", "table"), default="json")
@@ -331,6 +355,8 @@ def _arguments(argv: list[str] | None) -> argparse.Namespace:
         args.kind != "repo" or not BRANCH.fullmatch(args.branch) or ".." in args.branch.split("/")
     ):
         parser.error("--branch: only for --kind repo, and only a plain branch name")
+    if args.confirm is not None and args.kind != "pr-status":
+        parser.error("--confirm: only for --kind pr-status")
     return args
 
 
@@ -340,7 +366,10 @@ def _build(args: argparse.Namespace) -> dict[str, Any]:
     status = _read_status(args.status, project=args.project) if args.kind == "pr" else None
     data = _read_json(source, decode=_load_documents)
     if args.kind == "pr-status":
-        return build_status(data, project=args.project, pull_request=args.pull_request)
+        status = build_status(data, project=args.project, pull_request=args.pull_request)
+        if args.confirm is None:
+            return status
+        return confirm_snapshot(_read_json(str(_scratch_input(args.confirm))), status)
     return build_record(
         args.kind,
         data,
@@ -374,6 +403,9 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_BAD_INPUT
         kind_pr_status = args.kind == "pr-status"
         summary = "status" if kind_pr_status else f"{result['counts']['total']} finding(s)"
+        if args.confirm is not None:
+            consistent = result["source"]["snapshot_consistent"]
+            summary = "snapshot consistent" if consistent else "snapshot differs: re-collect"
         return _print_stdout(f"{summary} written to {out_path.name}", "collect_sonar")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):

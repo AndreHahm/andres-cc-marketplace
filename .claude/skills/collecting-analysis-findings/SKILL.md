@@ -86,10 +86,12 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    its exact text: read it, and approve only the read forms listed in the reference, one time only (never "don't
    ask again").
 
-   **Sonar:** the forms are in `references/sonar-adapter.md`, with the same one-time approval rule. A PR takes two
+   **Sonar:** the forms are in `references/sonar-adapter.md`, with the same one-time approval rule. A PR takes three
    pipes: first the PR list into `collect_sonar.py --kind pr-status --project <key> --pull-request <n> --output
    "<scratchpad>/sonar-status.json"`, then the issue list into `--kind pr --project <key> --status
-   "<scratchpad>/sonar-status.json" --output "<scratchpad>/findings-record.json"`. The user gives the project key. Exit 3 means more pages exist: re-run all
+   "<scratchpad>/sonar-status.json" --output "<scratchpad>/findings-record.json"`, then the PR list again into
+   `--kind pr-status --project <key> --pull-request <n> --confirm "<scratchpad>/findings-record.json" --output
+   "<scratchpad>/findings-record.json"`, which sets the record's `source.snapshot_consistent`. The user gives the project key. Exit 3 means more pages exist: re-run all
    of them in one command, as that reference shows.
 4. **Normalize.** `python3 -I ${CLAUDE_PROJECT_DIR}/.claude/skills/collecting-analysis-findings/scripts/collect_codacy.py
    --kind pr|repo|ignored --input - [--category Security] [--group-by rule|file|rule,file]
@@ -109,7 +111,7 @@ read and normalize in one piped command (3-4), check the analysis is current (5)
    `source.head_commit_sha`. Different, or `is_analysing` true, means the analysis describes an
    older head or is still running: say so, and do not present the counts as current. A closed PR keeps
    describing the head it closed on. Sonar gives no running flag, so `is_analysing` is null, which is not
-   "finished": there, the SHA comparison alone decides. Its two reads are separate, so a re-analysis of the same head between them can pair the earlier gate with the later issue list, and the SHA check cannot see that: when reporting the gate next to the counts, say they come from two reads that may span two analyses of the same head.
+   "finished": there, the SHA comparison alone decides. Its gate and issue reads are separate, so a re-analysis of the same head between them can pair the earlier gate with the later issue list, which the SHA check cannot see. `source.snapshot_consistent` true means the third read found the same analysis; false means a newer one landed: re-collect. Null means the third read did not run: say the gate and the counts may come from two analyses.
 6. **Report.** `Read` the record file, then give counts per rule and file, the currency verdict, the path of the record file and, for a PR, its `url` from step 1 (`resolving-analysis-findings` takes the owner and repository from it). Show the
    full record only when asked; it is long. A message for a secret-detection rule can contain the flagged
    value: keep the record in the scratchpad, and never reproduce such a message or value in the report. Give
