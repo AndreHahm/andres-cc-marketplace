@@ -48,8 +48,8 @@ category: workflow  # workflow, ai-assistant, or validation
 The `allowed-tools` field controls which tools run without a permission prompt; it does not restrict which tools are available (use `disallowed-tools` or a deny rule for that):
 
 - Basic: `allowed-tools: Read, Write, Edit`
-- Scoped bash: `allowed-tools: Bash(git:*), Read`  # Only git commands skip the prompt
-- Multiple grants: `allowed-tools: Read, Write, Bash(npm:*, git:*)`
+- Scoped bash: `allowed-tools: Bash(git status:*), Read`  # Only git status skips the prompt; `Bash(git:*)` would skip it for every git subcommand, including ones that change state
+- Multiple grants: `allowed-tools: Read, Write, Bash(npm test:*), Bash(git diff:*)`  # Prefer the narrowest prefix that covers the commands the body runs
 
 ## Features to Support
 

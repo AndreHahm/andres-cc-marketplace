@@ -91,7 +91,9 @@ Process the following: $ARGUMENTS
 Pre-approve tools with `allowed-tools` frontmatter (space-separated). This skips the permission prompt for the listed tools during the command's turn; it does not make any other tool unavailable (use `disallowed-tools` or a deny rule for that):
 
 ```yaml
+# Use one allowed-tools key per frontmatter block; these are two alternative examples
 allowed-tools: Read Grep Glob
+# or
 allowed-tools: Bash(git:*) Bash(npm:*)
 ```
 
