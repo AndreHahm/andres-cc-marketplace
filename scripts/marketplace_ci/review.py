@@ -1979,9 +1979,13 @@ FALLBACK_FILES = (
 
 def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
-    `base_sha`, or None when git could not say (which callers treat as changed). The fallback runs
-    these files from the working tree, so committed, staged and unstaged edits all count; a
-    single-ref `git diff` covers all three, where `base...HEAD` would miss an uncommitted one."""
+    `base_sha`, in FALLBACK_FILES order, or None when git could not say (which callers treat as
+    changed). The fallback runs these files from the working tree, so committed, staged and
+    unstaged edits all count. The comparison hashes the file itself (`git hash-object`) against
+    the merge-base blob, instead of asking `git diff`, which trusts the index's stat data: a
+    `skip-worktree` or `assume-unchanged` flag set on a file would hide an edit from it (issue
+    #652). Still best effort: it does not cover the untracked guardrails override, the instruction
+    files, `~/.codex/config.toml`, or a write between this check and the launch."""
     try:
         merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
             ["git", "merge-base", base_sha, "HEAD"],
@@ -1994,19 +1998,46 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         base = merge_base.stdout.strip()
         if merge_base.returncode != 0 or not base:
             return None
-        diff = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
-            ["git", "diff", "--name-only", base, "--", *FALLBACK_FILES],
+        tree = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
+            ["git", "ls-tree", "-z", base, "--", *FALLBACK_FILES],
             cwd=repo,
             capture_output=True,
             text=True,
             timeout=_PROBE_TIMEOUT_SECONDS,
             check=False,
         )
+        present = [p for p in FALLBACK_FILES if os.path.lexists(repo / p)]
+        hashed = None
+        if present:
+            hashed = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
+                ["git", "hash-object", "--stdin-paths"],
+                cwd=repo,
+                input="\n".join(present) + "\n",
+                capture_output=True,
+                text=True,
+                timeout=_PROBE_TIMEOUT_SECONDS,
+                check=False,
+            )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    if diff.returncode != 0:
+    if tree.returncode != 0 or (hashed is not None and hashed.returncode != 0):
         return None
-    return [line for line in diff.stdout.splitlines() if line]
+    in_base: dict[str, str] = {}
+    for entry in tree.stdout.split("\0"):
+        meta, _, path = entry.partition("\t")
+        parts = meta.split()
+        if path and len(parts) == 3:
+            # A non-blob (a submodule) never equals a hashed file, so it reads as changed.
+            in_base[path] = parts[2] if parts[1] == "blob" else "non-blob"
+    working: dict[str, str] = {}
+    if hashed is not None:
+        digests = hashed.stdout.split()
+        if len(digests) != len(present):
+            return None
+        working = dict(zip(present, digests, strict=True))
+    # Absent on both sides (no entry in either map) is unchanged; present on one side only, or
+    # with different content, is changed.
+    return [p for p in FALLBACK_FILES if in_base.get(p) != working.get(p)]
 
 
 def _path_outside_checkout() -> str:
@@ -2054,6 +2085,17 @@ def _codex_executable() -> str | None:
     return _executable_outside_checkout("codex")
 
 
+def _redact_local_paths(text: str) -> str:
+    """`text` with this account's home directory replaced by `~`, in the plain, forward-slash and
+    escaped-backslash spellings and whatever the letter case, so a reason stored in a result file
+    does not carry the account name (issue #652). `_report_error` redacts tokens, not paths."""
+    home = str(Path.home())
+    forms = {home, home.replace("\\", "/"), home.replace("\\", "\\\\")}
+    for form in sorted(filter(None, forms), key=len, reverse=True):
+        text = re.sub(re.escape(form), "~", text, flags=re.IGNORECASE)
+    return text
+
+
 def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
     """None when Codex's Windows sandbox can run a command on every one of `attempts` tries (or off
     Windows, where there is no setup refresh to fail), else why not. The failure is intermittent
@@ -2079,13 +2121,15 @@ def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             # An OSError's text can carry the absolute codex path; this reason is stored in the
-            # result file's provenance.
-            return _report_error(f"try {attempt} of {attempts}: {type(exc).__name__}: {exc}")
+            # result file's provenance, so local paths are replaced first (_report_error does not).
+            return _report_error(
+                _redact_local_paths(f"try {attempt} of {attempts}: {type(exc).__name__}: {exc}")
+            )
         out = result.stdout.decode("utf-8", errors="replace")
         if result.returncode == 0 and out.strip().splitlines()[-1:] == ["ok"]:
             continue
         err = result.stderr.decode("utf-8", errors="replace")
-        reason = _report_error(err or out) or f"exit {result.returncode}"
+        reason = _report_error(_redact_local_paths(err or out)) or f"exit {result.returncode}"
         return f"try {attempt} of {attempts}: {reason}"
     return None
 
@@ -2303,8 +2347,9 @@ def _dispatch_one(
                 unsandboxed=ran_unsandboxed,
             )
         if unsandboxed and unsandboxed_allowed is not None and not unsandboxed_allowed():
-            # Checked before every unsandboxed call, not only once before dispatch: an earlier
-            # unsandboxed reviewer, steered by the diff, could have edited a file this call runs.
+            # Checked before every unsandboxed call, not only once before dispatch, so an edit an
+            # earlier unsandboxed reviewer made to a file this call runs is caught. Best effort:
+            # see fallback_files_changed for what it does not cover.
             return ReviewerReport(
                 reviewer=name,
                 status="failed",

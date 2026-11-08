@@ -2086,6 +2086,43 @@ def test_a_failing_sandbox_probe_sends_consented_reviewers_straight_to_guardrail
     assert all(r.status == "completed" and r.attempts == 1 for r in reports)
 
 
+def test_probe_reasons_do_not_carry_the_home_directory(monkeypatch):
+    """Issue #652: the reason is stored in the result file's provenance."""
+    home = str(Path.home())
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(review, "_codex_executable", lambda: "codex")
+
+    def boom(argv, **kw):
+        raise FileNotFoundError(2, "no such file", f"{home}/bin/codex.cmd")
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    reason = _REAL_PROBE_SANDBOX()
+    assert reason is not None and home not in reason and "~" in reason
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda argv, **kw: subprocess.CompletedProcess(
+            argv, 1, b"", f"error in {home} setup refresh had errors".encode()
+        ),
+    )
+    reason = _REAL_PROBE_SANDBOX()
+    assert reason is not None and home not in reason and "setup refresh" in reason
+
+
+@pytest.mark.parametrize("spelling", ["plain", "slashes", "escaped", "upper"])
+def test_redact_local_paths_covers_every_spelling_of_the_home_directory(spelling):
+    home = str(Path.home())
+    written = {
+        "plain": home,
+        "slashes": home.replace("\\", "/"),
+        "escaped": home.replace("\\", "\\\\"),
+        "upper": home.upper(),
+    }[spelling]
+    redacted = review._redact_local_paths(f"open '{written}\\x\\codex.cmd' failed")
+    assert home.lower() not in redacted.lower() and redacted.startswith("open '~")
+
+
 def test_probe_sandbox_passes_only_when_every_attempt_works(monkeypatch):
     """Issue #652: the sandbox fails most commands on an affected machine, so one passing try out
     of three must not read as healthy."""

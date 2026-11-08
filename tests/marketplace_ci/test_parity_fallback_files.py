@@ -215,6 +215,44 @@ def test_fallback_files_changed_ignores_a_change_made_only_on_the_base(branch_re
     assert review.fallback_files_changed(repo, "main") == []
 
 
+@pytest.mark.parametrize("flag", ["--skip-worktree", "--assume-unchanged"])
+def test_fallback_files_changed_sees_an_edit_hidden_by_an_index_flag(branch_repo, flag):
+    """Issue #652: `git diff` trusts the index's stat data, so a file flagged skip-worktree or
+    assume-unchanged hides an edit from it; the content hash does not."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[0]
+    _git(repo, "update-index", flag, target)
+    (repo / target).write_text("edited behind the index\n", encoding="utf-8")
+    assert _git(repo, "diff", "--name-only", "main", "--", target) == ""  # the old check is blind
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def test_fallback_files_changed_sees_a_deleted_file(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[2]
+    (repo / target).unlink()
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def test_fallback_files_changed_sees_a_file_the_base_does_not_have(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[2]
+    _git(repo, "checkout", "-q", "main")
+    _git(repo, "rm", "-q", target)
+    _git(repo, "commit", "-q", "-m", "main drops the file")
+    _git(repo, "checkout", "-q", "-B", "feature")
+    assert review.fallback_files_changed(repo, "main") == []  # absent on both sides
+    (repo / target).parent.mkdir(parents=True, exist_ok=True)
+    (repo / target).write_text("new on the branch\n", encoding="utf-8")
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
 def test_fallback_files_changed_is_none_when_git_cannot_answer(branch_repo):
     from scripts.marketplace_ci import review
 
