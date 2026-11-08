@@ -47,7 +47,7 @@ Example of correct vs. incorrect changes to tool scoping:
 WRONG: Widening the grant
 Before: allowed-tools: Read Edit Write Glob
 After: allowed-tools: Read Edit Write Bash(*) Glob
-→ Problem: Now pre-approves ANY command, so nothing prompts (R6 violation)
+→ Problem: Now pre-approves ANY Bash command, so no Bash command prompts (R6 violation)
 
 CORRECT: Keeping the grant narrow
 Before: allowed-tools: Read Edit Write Glob

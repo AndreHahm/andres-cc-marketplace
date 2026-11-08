@@ -63,7 +63,7 @@ description: Generate API documentation
 **Required:** No
 **Default:** Inherits from conversation permissions
 
-**Purpose:** Restrict or specify which tools command can use
+**Purpose:** Pre-approve tools for the turn that runs the command; it does not restrict which tools are available
 
 **Formats:**
 
@@ -94,9 +94,9 @@ allowed-tools: Read Grep Edit
 
 **Bash with command filter:**
 ```yaml
-allowed-tools: Bash(git:*)           # Only git commands
-allowed-tools: Bash(npm:*)           # Only npm commands
-allowed-tools: Bash(docker:*)        # Only docker commands
+allowed-tools: Bash(git:*)           # Pre-approves only git commands
+allowed-tools: Bash(npm:*)           # Pre-approves only npm commands
+allowed-tools: Bash(docker:*)        # Pre-approves only docker commands
 ```
 
 **All tools (not recommended):**
@@ -106,9 +106,9 @@ allowed-tools: "*"
 
 **When to use:**
 
-1. **Security:** Pre-approve only safe operations, so anything else still prompts (`allowed-tools` does not block other tools; use `disallowed-tools` or a deny rule to make one unavailable)
+1. **Security:** Pre-approve only safe operations; anything else follows the normal permission settings (`allowed-tools` does not block other tools; use `disallowed-tools` or a deny rule to make one unavailable)
    ```yaml
-   allowed-tools: Read, Grep  # Pre-approves reads only; a Write would still prompt
+   allowed-tools: Read, Grep  # Pre-approves reads only; a Write follows the normal permission settings
    ```
 
 2. **Clarity:** Document required tools
@@ -122,7 +122,7 @@ allowed-tools: "*"
    ```
 
 **Best practices:**
-- Be as restrictive as possible
+- Pre-approve only what the command needs
 - Use command filters for Bash (e.g., `git:*` not `*`)
 - Only specify when different from conversation permissions
 - Document why specific tools are needed

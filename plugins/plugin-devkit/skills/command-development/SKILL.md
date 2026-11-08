@@ -86,7 +86,7 @@ Command body starts here.
 | Field | Purpose | Default |
 |-------|---------|---------|
 | `description` | Shown in `/help` — keep under 60 chars | First line of prompt |
-| `allowed-tools` | Tools the command may use (`Read`, `Bash(git:*)`, `*`) | Inherits from conversation |
+| `allowed-tools` | Tools pre-approved for the command (`Read`, `Bash(git:*)`, `*`) | Inherits from conversation |
 | `model` | Model override (`haiku`, `sonnet`, `opus`, `fable`) | Inherits from conversation |
 | `argument-hint` | Autocomplete hint (e.g. `[pr-number] [priority]`), 0-based order matching body usage — plugin-rulebook R22 | None |
 | `disable-model-invocation` | Prevent programmatic invocation | `false` |
