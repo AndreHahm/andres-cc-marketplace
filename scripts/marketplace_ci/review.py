@@ -2112,7 +2112,9 @@ FALLBACK_FILES = (
 
 
 # The one FALLBACK_FILES entry the fallback cannot run from a snapshot: Codex reads the project's
-# config from the checkout it runs in, so it is still compared with the base (issue #676).
+# config from the checkout it runs in, so it is still compared with the base (issue #676). The
+# comparison is with the branch's merge-base, not the base tip (unlike the snapshot): a change made
+# only on the base after the branch was cut is not blamed on the branch.
 CHECKOUT_READ_FILES = (".codex/config.toml",)
 # Everything else is read from the base tip's git objects by `snapshot_fallback_files`, so a
 # branch that edits it no longer loses the fallback: the edited copy is never the one that runs.
