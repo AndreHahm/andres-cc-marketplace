@@ -29,6 +29,7 @@ Abridged example (one finding shown; `groups` and `counts` cover all findings in
 |---|---|---|
 | `source.kind` | `pr`, `repo` (default-branch issue list) or `ignored` (issues already ignored) | never |
 | `source.repository`, `pull_request`, `head_commit_sha`, `is_analysing` | The PR, the head Codacy recorded for it, and whether analysis is running. `is_analysing` is null when the provider does not say (Sonar: a head mismatch shows a running analysis instead). For Sonar, `repository` holds the project key, on every source kind, and a `repo` source read with `--branch` also has `branch` (absent means the default branch) | **Key absent** (not null) for `repo` and `ignored`, except `repository`, which Sonar keeps for every kind |
+| `source.analysis_date`, `snapshot_consistent` | Sonar `pr` only: the analysis the gate came from, and whether a status read after the issue list named the same analysis (`true`), a newer one (`false`, re-collect), or was not run (`null`) | Key absent for Codacy and for Sonar `repo` and `ignored` |
 | `source.pr_status` | The PR's state (`Open`, `Closed`...) | Key absent for `repo` and `ignored`; null for a `pr` source that omits it, as Sonar does |
 | `source.quality_gate` | The gate status at the analyzed head (`OK`, `ERROR`...), verbatim. Added in `1.1.0` | Key absent for Codacy and for `repo` and `ignored` |
 | `findings[].tool` | The engine that raised it (`Bandit`, `Semgrep`, `Lizard`...) | Null for `repo` and `ignored`, which carry no tool, and always for Sonar, which names none |

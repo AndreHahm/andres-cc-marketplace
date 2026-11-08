@@ -832,6 +832,84 @@ def run_with_closed_reader(script: str, *argv: str) -> subprocess.CompletedProce
         os.close(write_end)
 
 
+def check_sonar_confirm() -> None:
+    """A status read after the issue list confirms, or refutes, that both are one analysis."""
+    adapter = load_sonar()
+    project = ("--project", "example_project")
+    pr_list = SONAR / "pr-list.json"
+    status, record = (
+        FIXTURES.parent / "confirm-status.json",
+        FIXTURES.parent / "confirm-record.json",
+    )
+    status_args = ("--kind", "pr-status", *project, "--pull-request", "651")
+    run_main(adapter, *status_args, "--input", str(pr_list), "--output", str(status))
+    run_main(
+        adapter,
+        "--kind",
+        "pr",
+        *project,
+        "--input",
+        str(SONAR / "pr.json"),
+        "--status",
+        str(status),
+        "--output",
+        str(record),
+    )
+    source = json.loads(record.read_text(encoding="utf-8"))["source"]
+    check(
+        "a pr record starts unconfirmed and keeps the analysis date",
+        source.get("snapshot_consistent") is None and bool(source.get("analysis_date")),
+    )
+    confirm = (*status_args, "--confirm", str(record), "--output", str(record))
+    code, out, _ = run_main(adapter, *confirm, "--input", str(pr_list))
+    confirmed = json.loads(record.read_text(encoding="utf-8"))
+    check(
+        "the same analysis read again confirms the snapshot",
+        code == 0
+        and "snapshot consistent" in out
+        and confirmed["source"]["snapshot_consistent"] is True
+        and confirmed["counts"]["total"] == 3,
+    )
+    later = json.loads(pr_list.read_text(encoding="utf-8"))
+    for entry in later["pullRequests"]:
+        if entry.get("key") == "651":
+            entry["analysisDate"] = "2099-01-01T00:00:00+0000"
+    newer = FIXTURES.parent / "confirm-later.json"
+    newer.write_text(json.dumps(later), encoding="utf-8")
+    code, out, _ = run_main(adapter, *confirm, "--input", str(newer))
+    check(
+        "a newer analysis between the reads marks the snapshot inconsistent",
+        code == 0
+        and "re-collect" in out
+        and json.loads(record.read_text(encoding="utf-8"))["source"]["snapshot_consistent"]
+        is False,
+    )
+    repo = FIXTURES.parent / "confirm-repo.json"
+    run_main(
+        adapter,
+        "--kind",
+        "repo",
+        *project,
+        "--input",
+        str(SONAR / "repo.json"),
+        "--output",
+        str(repo),
+    )
+    code, out, _ = run_main(adapter, *status_args, "--input", str(pr_list), "--confirm", str(repo))
+    check("--confirm refuses a record that is not a sonar pr record", code == 2 and out == "")
+    code, out, _ = run_main(
+        adapter,
+        "--kind",
+        "repo",
+        *project,
+        "--input",
+        str(SONAR / "repo.json"),
+        "--confirm",
+        str(record),
+    )
+    check("--confirm is refused outside --kind pr-status", code == 2 and out == "")
+
+
 def check_stream_edges(adapter) -> None:
     project = ("--project", "example_project")
     real_stdin = sys.stdin
@@ -1030,6 +1108,7 @@ def guarded(name: str, run) -> None:
 def main() -> int:
     guarded("adapter checks", check_adapter)
     guarded("sonar adapter checks", check_sonar_adapter)
+    guarded("sonar snapshot confirm checks", check_sonar_confirm)
     guarded("stream edge checks", lambda: check_stream_edges(load_sonar()))
     guarded("skill checks", check_skills)
     print(f"\n{len(failures)} failure(s)" if failures else "\nall checks passed")
