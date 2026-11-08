@@ -1203,6 +1203,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         ReviewResult,
         _changed_path_set,
         aggregate_findings,
+        classify_failure,
         collapse_identical_mirrors,
         compute_changed_line_ranges,
         compute_pr_delta,
@@ -1211,6 +1212,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         fallback_files_changed,
         gate_decision,
         probe_sandbox,
+        render_could_not_run,
         run_delta_structural_checks,
         snapshot_fallback_files,
         snapshot_intact,
@@ -1285,6 +1287,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     fallback_cleanup = contextlib.ExitStack()
     fallback_root: Path | None = None
     snapshot_manifest: dict[str, str] = {}
+    refusal: str | None = None  # why the requested fallback was refused, for the failure report
     if allow_fallback:
         # The fallback runs the dispatcher and what it imports from a snapshot of the base tip's
         # git objects, never from the working tree, so a branch that edits them still gets it
@@ -1292,7 +1295,6 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         # with the base; without a snapshot or with that file changed, a failed sandbox probe
         # fails closed (no reviewer starts).
         touched = fallback_files_changed(repo, base_sha, CHECKOUT_READ_FILES)
-        refusal = None
         if touched is None:
             refusal = "could not compare .codex/config.toml with the base"
         elif touched:
@@ -1343,6 +1345,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             exceptions=exceptions,
             allow_guardrails_fallback=allow_fallback,
             fallback_root=fallback_root,
+            fallback_refusal=refusal,
             sandbox_probe=_sandbox_probe_for(args, probe_sandbox),
             probe_log=probe_log,
             # Re-asked before every unsandboxed call: the snapshot must still match its blobs (an
@@ -1379,15 +1382,29 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 f"run-codex-review:   {r.reviewer} (attempts: {r.attempts}): {r.error}",
                 file=sys.stderr,
             )
+        # Said once per cause in plain words, after the raw lines above (which stay as they were).
+        fallback_note = None
+        if not getattr(args, "allow_unsandboxed_fallback", False):
+            fallback_note = "not requested (--allow-unsandboxed-fallback was not given)"
+        elif refusal is not None:
+            fallback_note = f"refused: {refusal}"
+        human = render_could_not_run(reports, fallback_note=fallback_note)
+        print(human, file=sys.stderr)
         if args.output:
             # A machine-readable copy of the failure for the uploaded artifact
             # (the log line carries the same text); nothing else reads this file.
             failure_payload = {
                 "mode": scope.mode,
                 "dispatch_failed": [
-                    {"reviewer": r.reviewer, "attempts": r.attempts, "error": r.error}
+                    {
+                        "reviewer": r.reviewer,
+                        "attempts": r.attempts,
+                        "error": r.error,
+                        "code": classify_failure(r.error),
+                    }
                     for r in failed_reports
                 ],
+                "human": human,
                 "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
                 "status": "could_not_run",
                 "reviewer_results": _reviewer_results(reports),

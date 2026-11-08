@@ -465,14 +465,11 @@ def main() -> int:
     return result.returncode
 
 
-# Wording a failed reviewer's error carries when the Codex sandbox, not the review, is what failed
-# (issue #644/#652). Advisory only: it decides whether to print a hint, never what runs.
-_SANDBOX_ERROR_MARKERS = (
-    "setup refresh",
-    "helper_unknown_error",
-    "os error 32",
-    "isolation_profile_unavailable",
-)
+# The failure code `run-codex-review` writes per failed reviewer when the Codex sandbox, not the
+# review, is what failed (issues #644/#652/#676). The wording that decides it lives in one place,
+# scripts/marketplace_ci/review.py (`classify_failure`), so this wrapper keeps no copy of it.
+# Advisory only: it decides whether to print a hint, never what runs.
+_SANDBOX_FAILURE_CODE = "sandbox_setup_refresh_failed"
 
 
 def sandbox_rerun_hint(output: Path) -> str | None:
@@ -492,9 +489,7 @@ def sandbox_rerun_hint(output: Path) -> str | None:
         {
             str(entry.get("reviewer"))
             for entry in failed
-            if isinstance(entry, dict)
-            and isinstance(entry.get("error"), str)
-            and any(marker in entry["error"].lower() for marker in _SANDBOX_ERROR_MARKERS)
+            if isinstance(entry, dict) and entry.get("code") == _SANDBOX_FAILURE_CODE
         }
     )
     if not names:
