@@ -239,6 +239,22 @@ console.log("\n=== runCodexExec: timeoutMs above Node's setTimeout ceiling is re
     JSON.stringify(tooLarge)
   );
 
+  for (const bad of [0, -1, NaN, 1.5, "600000", 1000n]) {
+    const result = await runCodexExec({
+      prompt: "test",
+      schema,
+      sandbox: "read-only",
+      dispatchId: "smoke-timeout-not-positive-integer",
+      timeoutMs: bad,
+      dryRun: true
+    });
+    check(
+      `timeoutMs ${typeof bad === "string" ? JSON.stringify(bad) : typeof bad === "bigint" ? `${bad}n` : String(bad)} is rejected as not a positive integer`,
+      result.ok === false && result.category === "non_zero_exit" && /positive integer/.test(result.detail || ""),
+      JSON.stringify(result)
+    );
+  }
+
   const atCeiling = await runCodexExec({
     prompt: "test",
     schema,
