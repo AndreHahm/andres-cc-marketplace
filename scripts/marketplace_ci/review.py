@@ -15,6 +15,7 @@ import posixpath
 import re
 import secrets
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1977,6 +1978,27 @@ FALLBACK_FILES = (
 )
 
 
+def _is_plain_file(repo: Path, relative: str) -> bool:
+    """True when `relative` (a `/`-separated path under `repo`) is a regular file reached through
+    no symlink and no Windows reparse point (a junction is one) on any of its components. Uses
+    `lstat`, which does not follow links: `git hash-object` does follow them, so a link to a copy
+    with the same bytes would otherwise hash like the file it replaced."""
+    reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    current = repo
+    info = None
+    for part in relative.split("/"):
+        current = current / part
+        try:
+            info = os.lstat(current)
+        except OSError:
+            return False
+        if stat.S_ISLNK(info.st_mode) or (
+            reparse and getattr(info, "st_file_attributes", 0) & reparse
+        ):
+            return False
+    return info is not None and stat.S_ISREG(info.st_mode)
+
+
 def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
     `base_sha`, in FALLBACK_FILES order, or None when git could not say (which callers treat as
@@ -1988,8 +2010,11 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     with filters on, git converts the working file through attributes the branch itself can set
     (`working-tree-encoding`, `ident`), so a differently spelled file can hash to the base blob. A
     working copy with other line endings than the blob therefore reads as changed, which fails
-    safe. Still best effort: it does not cover the untracked guardrails override, the instruction
-    files, `~/.codex/config.toml`, or a write between this check and the launch."""
+    safe. A path that is a symlink or junction, or sits under one, or is not a regular file, is
+    never hashed and reads as changed (`_is_plain_file`). Still best effort: it does not cover
+    the untracked guardrails override, the instruction files, `~/.codex/config.toml`, or a write
+    between this check and the launch."""
+    unsafe: set[str] = set()
     try:
         merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
             ["git", "merge-base", base_sha, "HEAD"],
@@ -2011,6 +2036,8 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
             check=False,
         )
         present = [p for p in FALLBACK_FILES if os.path.lexists(repo / p)]
+        unsafe = {p for p in present if not _is_plain_file(repo, p)}
+        present = [p for p in present if p not in unsafe]
         hashed = None
         if present:
             hashed = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
@@ -2039,9 +2066,9 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         if len(digests) != len(present):
             return None
         working = dict(zip(present, digests, strict=True))
-    # Absent on both sides (no entry in either map) is unchanged; present on one side only, or
-    # with different content, is changed.
-    return [p for p in FALLBACK_FILES if in_base.get(p) != working.get(p)]
+    # Absent on both sides (no entry in either map) is unchanged; present on one side only, with
+    # different content, or reached through a link (`unsafe`, never hashed), is changed.
+    return [p for p in FALLBACK_FILES if p in unsafe or in_base.get(p) != working.get(p)]
 
 
 def _path_outside_checkout() -> str:
