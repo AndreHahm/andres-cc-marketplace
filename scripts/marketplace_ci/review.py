@@ -2091,7 +2091,7 @@ _PROBE_ATTEMPTS = 3
 _PROBE_TIMEOUT_SECONDS = 60
 # What the unsandboxed fallback depends on: the dispatcher, everything it imports (directly or
 # through those imports), the data files they read at run time, the settings that can enable it and
-# the Codex project config. All but the config are launched from a snapshot of the merge-base
+# the Codex project config. All but the config are launched from a snapshot of the base tip
 # (`SNAPSHOT_FILES`), so a branch's edit never runs with danger-full-access; the config
 # (`CHECKOUT_READ_FILES`) is read from the checkout and is compared with the base instead. A test
 # derives the import closure from guarded-dispatch.mjs, so a new import cannot escape this list.
