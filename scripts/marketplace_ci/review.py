@@ -1948,6 +1948,139 @@ def _inspected_nothing(output: object) -> str | None:
     return _report_error(shown) or "no inspection limit given"
 
 
+# --- Plain-language failure explanations (issue #676) ---
+# A could-not-run result used to end in raw tool text such as `helper_unknown_error: setup refresh
+# had errors`: nothing said what happened, whether anything was reviewed or what to do next. The
+# catalogue maps each closed failure code to fixed wording. Classification reads the report's
+# error text (data, never acted on) and falls back to `unknown`, which prints the raw text.
+
+
+@dataclass(frozen=True)
+class FailureExplanation:
+    summary: str  # what happened
+    cause: str
+    action: str  # one concrete next step
+
+
+FAILURE_CATALOGUE: dict[str, FailureExplanation] = {
+    "sandbox_setup_refresh_failed": FailureExplanation(
+        "Codex's Windows sandbox failed to start",
+        "Before each sandboxed command Codex re-applies file permissions to its runtime folder, "
+        "and one locked file fails the whole step (issue #644). It is intermittent.",
+        "Quit the Codex desktop app and rerun; if reviewers still fail, rerun with the "
+        "unsandboxed fallback (git-kit's parity wrapper: --sandbox-down) only if you accept "
+        "danger-full-access.",
+    ),
+    "sandbox_probe_failed": FailureExplanation(
+        "The check that Codex's sandbox works failed before any reviewer started",
+        "A probe command run through the sandbox failed, so the run stopped instead of "
+        "spending its budget on reviewers that would fail the same way.",
+        "Quit the Codex desktop app and rerun, or allow the unsandboxed fallback if it was "
+        "refused.",
+    ),
+    "fallback_refused_files_changed": FailureExplanation(
+        "An unsandboxed run was refused",
+        "A file the fallback depends on changed or could not be compared with the base since "
+        "the review started.",
+        "Rerun without editing the checkout during the review.",
+    ),
+    "fallback_guardrails_disabled": FailureExplanation(
+        "The unsandboxed fallback is switched off locally",
+        "codex-windows-guardrails is not enabled on this machine.",
+        "Enable it in .claude/codex-windows-guardrails.local.json, or fix the sandbox instead.",
+    ),
+    "codex_not_found": FailureExplanation(
+        "A tool the review needs was not found",
+        "node or the codex CLI is not on PATH outside the checkout.",
+        "Install it or fix PATH, then rerun.",
+    ),
+    "bridge_timeout": FailureExplanation(
+        "A reviewer ran out of time",
+        "The reviewer call outlived its time limit.",
+        "Rerun; for a large diff raise CODEX_KIT_REVIEW_TIMEOUT_MS.",
+    ),
+    "budget_exhausted": FailureExplanation(
+        "The run's time budget ran out",
+        "Earlier calls and retries used it up before this reviewer could start or retry.",
+        "Rerun; a flaky sandbox is the usual reason for many retries.",
+    ),
+    "inconclusive_review": FailureExplanation(
+        "A reviewer returned an empty review",
+        "It read nothing, so counting it as a pass would give zero coverage.",
+        "Rerun; if it repeats, read the raw detail below.",
+    ),
+    "unknown": FailureExplanation(
+        "A reviewer failed for a reason this tool does not classify",
+        "The error text matched no known cause.",
+        "Read the raw detail below.",
+    ),
+}
+SANDBOX_FAILURE_CODES = frozenset({"sandbox_setup_refresh_failed", "sandbox_probe_failed"})
+
+
+def classify_failure(error: str | None) -> str:
+    """The `FAILURE_CATALOGUE` code for a failed reviewer's error text. Order matters: the more
+    specific messages this module writes itself come first, since a probe or inconclusive-review
+    message also carries the raw sandbox wording that `_SANDBOX_FAILURE_RE` matches. Data only."""
+    text = error or ""
+    low = text.lower()
+    if "dispatch budget exhausted" in low:
+        return "budget_exhausted"
+    if "unsandboxed run refused" in low:
+        return "fallback_refused_files_changed"
+    if "guardrails_disabled" in low:
+        return "fallback_guardrails_disabled"
+    if "codex sandbox probe failed" in low:
+        return "sandbox_probe_failed"
+    if re.search(r"(node|codex)\b[^.;]{0,40}\bnot found|not found on path", low):
+        return "codex_not_found"
+    if "bridge process killed" in low or re.search(r"category\W+timeout", low):
+        return "bridge_timeout"
+    if _SANDBOX_FAILURE_RE.search(text) or "isolation_profile_unavailable" in low:
+        return "sandbox_setup_refresh_failed"
+    if "inconclusive review" in low:
+        return "inconclusive_review"
+    return "unknown"
+
+
+def render_could_not_run(
+    reports: Sequence[ReviewerReport], *, fallback_note: str | None = None
+) -> str:
+    """The plain-language block for a run whose reviewers did not all complete: one paragraph per
+    distinct cause, not per reviewer. `fallback_note` says why no unsandboxed fallback was used
+    (shown for sandbox causes only). Exit 2 is stated as not a pass, and what ran unsandboxed is
+    stated either way."""
+    total = len(reports)
+    failed = [r for r in reports if r.status == "failed"]
+    completed = total - len(failed)
+    groups: dict[str, list[ReviewerReport]] = {}
+    for report in failed:
+        groups.setdefault(classify_failure(report.error), []).append(report)
+    unsandboxed = any(r.unsandboxed for r in reports)
+    lines = ["PARITY RESULT: could not run (exit 2 - this is NOT a pass)"]
+    for code, members in groups.items():
+        info = FAILURE_CATALOGUE[code]
+        names = ", ".join(r.reviewer for r in members)
+        lines.append(
+            f"  What happened: {info.summary} ({len(members)} of {total} reviewers: {names})"
+        )
+        lines.append(
+            f"  Effect: {completed} of {total} reviewers completed; "
+            + ("a failed reviewer reviewed nothing. " if completed else "no code was reviewed. ")
+            + (
+                "Some reviewers ran unsandboxed (danger-full-access)."
+                if unsandboxed
+                else "Nothing ran unsandboxed."
+            )
+        )
+        if code in SANDBOX_FAILURE_CODES and fallback_note:
+            lines.append(f"  Why no fallback: {fallback_note}")
+        lines.append(f"  Cause: {info.cause}")
+        lines.append(f"  What to do: {info.action}")
+        lines.append(f"  Raw detail: {members[0].error or 'none'}")
+    return "\n".join(lines)
+
+
 GUARDRAILS_DISPATCH_RELATIVE_PATH = Path(
     "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs"
 )
@@ -2639,6 +2772,7 @@ def dispatch_reviewers(
     probe_log: list[str] | None = None,
     unsandboxed_allowed: Callable[[], bool] | None = None,
     fallback_root: Path | None = None,
+    fallback_refusal: str | None = None,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -2669,7 +2803,9 @@ def dispatch_reviewers(
     when given, is asked before every unsandboxed call and refuses that call on False (a file the
     fallback runs changed since the review started). `fallback_root`, when given, is a directory
     `snapshot_fallback_files` filled: `guarded-dispatch.mjs` is then launched from there instead of
-    from `repo`, so the working tree's copy of what it runs is never executed.
+    from `repo`, so the working tree's copy of what it runs is never executed. `fallback_refusal`,
+    when the caller asked for the fallback and it was refused, says why; the probe-failed message
+    quotes it instead of suggesting a flag the caller already passed.
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
     `None` they go in a fresh temporary directory outside `repo`, removed after
@@ -2713,9 +2849,14 @@ def dispatch_reviewers(
                 file=sys.stderr,
             )
         else:
+            why_no_fallback = (
+                f"the unsandboxed fallback was refused: {fallback_refusal}"
+                if fallback_refusal
+                else "the unsandboxed fallback was not requested (--allow-unsandboxed-fallback)"
+            )
             error = _report_error(
-                f"Codex sandbox probe failed ({probe_problem}); no reviewer was started. "
-                "Quit the Codex desktop app, or pass --allow-unsandboxed-fallback"
+                f"Codex sandbox probe failed ({probe_problem}); no reviewer was started, "
+                f"and {why_no_fallback}. Quit the Codex desktop app and rerun"
             )
             return tuple(
                 ReviewerReport(reviewer=name, status="failed", error=error, attempts=0)

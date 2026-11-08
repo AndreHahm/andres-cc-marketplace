@@ -970,8 +970,14 @@ def test_a_sandbox_failure_in_a_could_not_run_result_suggests_sandbox_down(tmp_p
                         "error": (
                             "reviewer returned an inconclusive review: setup refresh had errors"
                         ),
+                        "code": "sandbox_setup_refresh_failed",
                     },
-                    {"reviewer": "skill-reviewer", "attempts": 1, "error": "bridge process killed"},
+                    {
+                        "reviewer": "skill-reviewer",
+                        "attempts": 1,
+                        "error": "bridge process killed",
+                        "code": "bridge_timeout",
+                    },
                 ],
             }
         ),
@@ -992,6 +998,13 @@ def test_a_sandbox_failure_in_a_could_not_run_result_suggests_sandbox_down(tmp_p
         json.dumps({"dispatch_failed": "x"}),
         json.dumps({"dispatch_failed": [{"reviewer": "a", "attempts": 1, "error": "timed out"}]}),
         json.dumps({"dispatch_failed": [{"reviewer": "a", "error": None}, "junk"]}),
+        # The wrapper keeps no copy of the sandbox wording: without the code it says nothing.
+        json.dumps(
+            {"dispatch_failed": [{"reviewer": "a", "attempts": 1, "error": "setup refresh failed"}]}
+        ),
+        json.dumps(
+            {"dispatch_failed": [{"reviewer": "a", "error": "x", "code": "sandbox_probe_failed"}]}
+        ),
     ],
 )
 def test_no_sandbox_hint_without_a_sandbox_failure_in_the_result(tmp_path, content):

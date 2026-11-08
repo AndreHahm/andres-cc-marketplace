@@ -1722,6 +1722,10 @@ def test_run_codex_review_writes_the_output_file_when_a_reviewer_dispatch_fails(
     assert payload["blocking"] is True
     assert payload["dispatch_failed"]
     assert all(f["error"] == "bridge exploded" for f in payload["dispatch_failed"])
+    # Issue #676: the raw error stays, and each entry gains a code plus one plain-language block.
+    assert all(f["code"] == "unknown" for f in payload["dispatch_failed"])
+    assert payload["human"].startswith("PARITY RESULT: could not run (exit 2 - this is NOT a pass)")
+    assert "Raw detail: bridge exploded" in payload["human"]
 
 
 def test_run_codex_review_full_mode_governance_trigger_actually_dispatches(monkeypatch, git_repo):
