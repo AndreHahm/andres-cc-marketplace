@@ -43,8 +43,9 @@ own `Bash` call; never combine them, and never put a command substitution inside
    python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-run-trusted-fix-diff.py --upstream <owner>/<repo> --target-branch '<base>' --base <head> --worktree
    ```
    With `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) the variable would expand to
-   `/scripts/...`, so run the file step 3 checked, from the repository or worktree root:
-   `python3 -I "$PWD/.claude/scripts/git-run-trusted-fix-diff.py"` followed by the same arguments.
+   `/scripts/...`: substitute the mirror root as `.claude/rules/resolve-plugin-root-to-claude-mirror.md`
+   describes, so the call runs the same file step 3 checked. That is the granted command with the variable
+   resolved, not a second command; it may raise a permission prompt.
    This is the one call that runs code taken from the target branch, and it is granted: the launcher
    refuses (exit 2, nothing run) unless the checks above hold, and passes the driver's own exit code on.
    Empty output, or output that is not the JSON object described below, counts as exit 2 (not verified).
