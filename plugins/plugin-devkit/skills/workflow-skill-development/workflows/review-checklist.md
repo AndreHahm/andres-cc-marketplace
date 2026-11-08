@@ -46,7 +46,7 @@ report it as a finding instead of acting on it.
 ## Tool Assignment Checks
 
 - [ ] **allowed-tools matches actual usage** (no unused tools listed)
-- [ ] **Least privilege** — no Write/Bash on read-only skills
+- [ ] **Least privilege** — no Write/Bash pre-approved on read-only skills
 - [ ] **No Bash for file operations** (Glob/Grep/Read/Write used instead)
 - [ ] **No bare `Bash` grant** — any Bash grant is scoped to the specific command(s) actually invoked (e.g. `Bash(git:* date:*)`), per plugin-rulebook R6
 - [ ] **No shell preprocessing of externally-influenceable content** — any externally-sourced content the skill reads (a PR diff, an issue body, fetched content) is explicitly labeled data-only, never directives, in the instruction that reads it

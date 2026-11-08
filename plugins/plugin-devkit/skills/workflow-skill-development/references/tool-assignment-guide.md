@@ -173,10 +173,10 @@ A skill with `context: fork` runs its content as a subagent prompt in isolation 
 | Mistake | Problem | Fix |
 |---------|---------|-----|
 | Listing `Bash` for file operations | Fragile, verbose, permission issues | Use Read/Write/Glob/Grep |
-| Listing `Write` on a read-only skill | Principle of least privilege violation | Remove Write if skill never creates files |
+| Listing `Write` on a read-only skill | Pre-approves writes the skill never needs (R6 grant hygiene) | Remove Write if skill never creates files |
 | Listing `Task` without using subagents | Unused tools clutter the permission model | Only list tools you actually use |
 | Agent with `Bash` for `grep` | Dedicated Grep tool is more reliable | Use Grep tool instead |
-| No `AskUserQuestion` on interactive skill | Skill can't get user confirmation | Add AskUserQuestion if any gate/confirmation exists |
+| Treating `AskUserQuestion` as needing a grant | Not needed: the tool is always callable, so listing it is a redundant no-op (R5 ADVISORY) | Use AskUserQuestion at any gate without listing it |
 | Missing `TaskCreate`/`TaskUpdate` on pipeline | Can't track multi-step progress | Add task tools for pipeline patterns |
 | Grep per-file per-pattern | N×M tool calls, agent shortcuts and misses results | Combine patterns into single regex, grep once |
 | One subagent per file | Context exhaustion, agent refuses or degrades | Batch into groups of 10-20 per subagent |
