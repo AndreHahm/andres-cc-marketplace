@@ -91,7 +91,8 @@ alongside `cross-model-review`.
   `.claude/codex-windows-guardrails.local.json`, otherwise the reviewer is reported could-not-run. When
   step 4's `cross-model-review` already had to fall back in this session, pass `--sandbox-down` so the
   run starts unsandboxed without probing. The fallback is skipped, and the output says so, when the
-  branch changes a file it runs (the dispatcher, its imports, its prompt asset or its `settings.json`).
+  branch changes `.codex/config.toml`, which Codex reads from the checkout. The dispatcher, its imports,
+  its prompt asset and its `settings.json` do not refuse it: they run from the base-tip snapshot.
   A reviewer that read nothing is never reported as clean, the result file keeps the findings of the
   reviewers that did complete (`completed_reviewer_findings`), and a reviewer that ran unsandboxed is
   named in `reviewer_results` and in `provenance.unsandboxed_reviewers`; `provenance.sandbox_probe`
