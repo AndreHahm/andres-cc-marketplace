@@ -271,16 +271,19 @@ def _read_json(source: str, decode: Callable[[str], Any] = json.loads) -> Any:
 
 def _print_stdout(text: str, tool: str) -> int:
     """Print, and turn a failed stdout write into a plain exit instead of a traceback."""
+    if sys.stdout is None:  # print() would drop the text silently and the run would look successful
+        print(f"{tool}: there is no stdout to write to", file=sys.stderr)
+        return EXIT_STDOUT_FAILED
     try:
         print(text, flush=True)
-    except OSError as exc:
+    except (OSError, ValueError) as exc:  # ValueError: the stream object itself is closed
         try:  # close it here, or the interpreter's exit flush reports the same error
             sys.stdout.close()
         except OSError:
             pass
         reason = (
             "stdout was closed before the output was read"
-            if isinstance(exc, BrokenPipeError)
+            if isinstance(exc, (BrokenPipeError, ValueError))
             else f"could not write to stdout: {type(exc).__name__}"
         )
         print(f"{tool}: {reason}", file=sys.stderr)
@@ -401,7 +404,10 @@ def main(argv: list[str] | None = None) -> int:
         return _print_stdout(summary, "collect_codacy")
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if args.format == "table" and callable(reconfigure):
-        reconfigure(errors="backslashreplace")  # provider text may not fit the terminal encoding
+        try:  # provider text may not fit the terminal encoding
+            reconfigure(errors="backslashreplace")
+        except ValueError:  # a closed stream: _print_stdout reports it
+            pass
     return _print_stdout(text, "collect_codacy")
 
 

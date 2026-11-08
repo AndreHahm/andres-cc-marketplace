@@ -13,7 +13,7 @@ the CLI's banner. If `sonar` is not on `PATH`, the default install is `~/.local/
 |---|---|---|
 | A PR's analysis state, first | `sonar api get "/api/project_pull_requests/list?project=<key>" 2>/dev/null` | `pr-status` |
 | A PR's open issues | `sonar list issues -p <key> --pull-request <n> --format json 2>/dev/null` | `pr` |
-| Default-branch issue list | `sonar list issues -p <key> --format json 2>/dev/null` (`--branch <b>` for another branch) | `repo` |
+| Default-branch issue list | `sonar list issues -p <key> --format json 2>/dev/null` (`--branch <b>` for another branch, and the same `--branch <b>` to `collect_sonar.py` so the record names it) | `repo` |
 | Issues already accepted or marked false positive | `sonar api get "/api/issues/search?projects=<key>&issueStatuses=ACCEPTED,FALSE_POSITIVE&additionalFields=comments&ps=500" 2>/dev/null` | `ignored` |
 
 **A PR takes two pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps

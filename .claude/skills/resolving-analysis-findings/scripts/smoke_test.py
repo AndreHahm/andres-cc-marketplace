@@ -287,7 +287,11 @@ def check_sonar(body: str) -> None:
         "Sonar's rung 3 asks per command, and bulk transitions are not run",
         "`AskUserQuestion` per command" in section and "bulk transitions" in section,
     )
-    check("the rung 4 target is named", "`.sonarcloud.properties`" in section)
+    check(
+        "Sonar's rung 4 is a UI setting handed to the user",
+        "Ignore Issues on Multiple Criteria" in section
+        and "not `.sonarcloud.properties`" in section,
+    )
     check(
         "a security or high impact always asks before rung 2",
         "`SECURITY` impact or a `HIGH` or `BLOCKER` impact" in section,
@@ -297,8 +301,10 @@ def check_sonar(body: str) -> None:
         "`source.repository`" in body and "^[A-Za-z0-9][A-Za-z0-9._:-]{0,399}$" in body,
     )
     check(
-        ".sonar-config.json is on the denylist, and rung 4 files stay at rung 4",
-        "`.sonar-config.json`" in body and "are edited only at" in " ".join(body.split()),
+        ".sonar-config.json is denied, .codacy.yml stays at rung 4, .sonarcloud.properties never",
+        "`.sonar-config.json`" in body
+        and "`.codacy.yml` is edited only at rung 4 and `.sonarcloud.properties` never"
+        in " ".join(body.split()),
     )
     scan = (SKILL_DIR / "references" / "local-scan.md").read_text(encoding="utf-8")
     check(
