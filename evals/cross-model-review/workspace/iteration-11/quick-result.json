@@ -1,0 +1,12 @@
+{
+  "version": "1.0",
+  "source": "skill-tester",
+  "mode": "quick",
+  "skill_name": "cross-model-review",
+  "summary": {"assertions_passed": 9, "assertions_total": 9, "pass_rate": 1.0},
+  "results": [
+    {"eval_id": 10, "name": "Codex pass that read nothing on Windows", "status": "pass", "assertions_passed": 5, "assertions_total": 5},
+    {"eval_id": 11, "name": "Guardrails retry that returns a zero-finding envelope naming the sandbox failure", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
+  ],
+  "coverage": {"declared_scenarios_total": 10, "declared_scenarios_covered": 10, "uncovered": []}
+}

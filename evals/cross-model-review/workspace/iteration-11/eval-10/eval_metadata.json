@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Treats the pass as not an approve: the zero-finding envelope naming the sandbox setup failure is reported as the typed failure isolation_profile_unavailable, so resolver step 2 applies",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "With guardrails at their disabled default, says the fallback returns guardrails_disabled, step 3 fires, and the user is asked via AskUserQuestion whether to proceed single-model (Claude only, findings capped at Medium) or stop",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Says Phase 3 records the Codex pass as not run, never as a clean approve",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Says there is no run-wide latch: a later Codex call still attempts Step 1 and reaches Step 2 only through its own typed failure",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Treats the (os error 32) envelope as a partial limitation that is not reclassified: a normal pass with that note recorded in inspection_limits",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

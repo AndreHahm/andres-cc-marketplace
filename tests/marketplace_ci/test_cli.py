@@ -1263,6 +1263,59 @@ def test_run_codex_review_refuses_the_fallback_when_the_snapshot_directory_canno
     assert "unsandboxed fallback refused: could not create the snapshot directory" in err
 
 
+def test_run_codex_review_refuses_the_fallback_when_the_snapshot_directory_cannot_be_resolved(
+    monkeypatch, git_repo, capsys
+):
+    """Windows path resolution can raise OSError once the directory exists: refuse, no traceback."""
+    from pathlib import Path
+
+    real_resolve = Path.resolve
+
+    def failing(self, *args, **kwargs):
+        if "codex-fallback-" in str(self):
+            raise OSError("cannot resolve")
+        return real_resolve(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", failing)
+    _, allowed, err = _run_with_dispatch_spy(
+        monkeypatch, git_repo, capsys, [], "--allow-unsandboxed-fallback"
+    )
+    assert allowed is False
+    assert _LAST_SPY_SEEN["fallback_root"] is None
+    assert "unsandboxed fallback refused: could not resolve the snapshot directory" in err
+
+
+def test_run_codex_review_warns_when_the_snapshot_directory_cannot_be_removed(
+    monkeypatch, git_repo, capsys
+):
+    """A file held open on Windows can block cleanup; the review still completes, with a warning
+    that names no local path."""
+    import tempfile
+
+    real = tempfile.TemporaryDirectory
+    kept = []
+
+    class Leaky(real):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            kept.append(self)  # keeps the object alive so its finalizer cannot remove the folder
+
+        def __exit__(self, exc, value, tb) -> None:
+            return None  # a cleanup that did not remove the folder
+
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", Leaky)
+    try:
+        _, allowed, err = _run_with_dispatch_spy(
+            monkeypatch, git_repo, capsys, [], "--allow-unsandboxed-fallback"
+        )
+    finally:
+        for leftover in kept:
+            real.cleanup(leftover)
+    assert allowed is True
+    assert "snapshot directory could not be removed" in err
+    assert "codex-fallback-" not in err
+
+
 @pytest.mark.parametrize("touched", [[".codex/config.toml"], None])
 def test_run_codex_review_refuses_the_unsandboxed_fallback_for_a_branch_that_edits_its_files(
     monkeypatch, git_repo, capsys, touched

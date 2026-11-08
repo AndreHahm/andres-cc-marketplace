@@ -1,0 +1,31 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Case A (zero findings plus a note naming the sandbox failure): the pass is recorded as not run, never a clean approve",
+      "passed": true,
+      "evidence": "\"Case A ... NOT a clean approve. Phase 3 records the Codex pass as NOT RUN ... the approve verdict is not counted.\""
+    },
+    {
+      "text": "Explains Case A's reason: guarded-dispatch.mjs does not run the bridge's total-failure detector, so the skill applies the same test to the retry's envelope itself",
+      "passed": true,
+      "evidence": "\"Does guarded-dispatch.mjs run the bridge's total-failure detector? No ... So Claude must apply the same test to the retry envelope itself.\""
+    },
+    {
+      "text": "Case B (one finding plus the same note): a completed pass whose finding is kept",
+      "passed": true,
+      "evidence": "\"Case B ... a COMPLETED pass ... The finding is merged and ranked normally\""
+    },
+    {
+      "text": "Case C (zero findings, empty inspection_limits): a completed pass, treated as a clean approve",
+      "passed": true,
+      "evidence": "\"Case C ... a COMPLETED, clean Codex pass ... Not listed as not run.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

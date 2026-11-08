@@ -498,29 +498,35 @@ def sandbox_rerun_hint(output: Path) -> str | None:
     provenance = provenance if isinstance(provenance, dict) else {}
     ran_unsandboxed = provenance.get("unsandboxed_reviewers")
     probe_log = provenance.get("sandbox_probe")
-    already_unsandboxed = isinstance(ran_unsandboxed, list) and any(
-        name in ran_unsandboxed for name in names
-    )
-    probe_already_down = isinstance(probe_log, list) and any(
+    ran = set(ran_unsandboxed) if isinstance(ran_unsandboxed, list) else set()
+    probe_was_down = isinstance(probe_log, list) and any(
         isinstance(line, str) and ": down" in line for line in probe_log
     )
-    if already_unsandboxed or probe_already_down:
-        # --sandbox-down would repeat what already happened, so it is not recommended.
-        why = (
-            "they already ran unsandboxed"
-            if already_unsandboxed
-            else "the sandbox probe had already reported it down"
+    # Per reviewer: one that already ran unsandboxed would just repeat that mode with
+    # --sandbox-down. A down probe alone does not mean a reviewer ran unsandboxed, so the others
+    # keep the advice.
+    already = [name for name in names if name in ran]
+    fresh = [name for name in names if name not in ran]
+    lines = []
+    if already:
+        lines.append(
+            f"PARITY: {', '.join(already)} reported a Codex sandbox failure although they already "
+            "ran unsandboxed; --sandbox-down would repeat that mode. Quit the Codex desktop app "
+            "and rerun."
         )
-        return (
-            f"PARITY: {', '.join(names)} reported a Codex sandbox failure although {why}; "
-            "--sandbox-down would repeat that mode. Quit the Codex desktop app and rerun."
+    if fresh:
+        evidence = (
+            "the sandbox probe reported the sandbox down, but they did not run unsandboxed"
+            if probe_was_down
+            else "their own text, which the sandbox probe did not confirm"
         )
-    return (
-        f"PARITY: {', '.join(names)} reported a Codex sandbox failure (their own text, which the "
-        "sandbox probe did not confirm). --sandbox-down skips the probe and starts every reviewer "
-        "through the guardrails fallback (unsandboxed: no sandbox, this account's permissions, "
-        "network); rerun with it only if you accept that."
-    )
+        lines.append(
+            f"PARITY: {', '.join(fresh)} reported a Codex sandbox failure ({evidence}). "
+            "--sandbox-down skips the probe and starts every reviewer through the guardrails "
+            "fallback (unsandboxed: no sandbox, this account's permissions, network); rerun with "
+            "it only if you accept that."
+        )
+    return "\n".join(lines)
 
 
 # Keys every completed run-codex-review result carries (scripts/marketplace_ci/__main__.py

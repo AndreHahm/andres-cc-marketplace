@@ -1,0 +1,36 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Treats the pass as not an approve: the zero-finding envelope naming the sandbox setup failure is reported as the typed failure isolation_profile_unavailable, so resolver step 2 applies",
+      "passed": true,
+      "evidence": "\"The skill does not accept this as a clean approve ... bridge-invoke.mjs reports it as the typed failure isolation_profile_unavailable. Resolver step 2 then applies\""
+    },
+    {
+      "text": "With guardrails at their disabled default, says the fallback returns guardrails_disabled, step 3 fires, and the user is asked via AskUserQuestion whether to proceed single-model (Claude only, findings capped at Medium) or stop",
+      "passed": true,
+      "evidence": "\"Guardrails are at the shipped default (disabled), so the fallback returns guardrails_disabled ... Resolver step 3 then runs ... the user is asked via AskUserQuestion whether to proceed single-model (Claude only, Medium confidence) or stop.\""
+    },
+    {
+      "text": "Says Phase 3 records the Codex pass as not run, never as a clean approve",
+      "passed": true,
+      "evidence": "\"The Codex pass is listed as not run, with the inspection_limits reason 'Codex unavailable'.\""
+    },
+    {
+      "text": "Says there is no run-wide latch: a later Codex call still attempts Step 1 and reaches Step 2 only through its own typed failure",
+      "passed": true,
+      "evidence": "\"There is no run-wide latch ... Every later call still tries Step 1 (the sandboxed bridge) first. It reaches Step 2 only through its own typed failure\""
+    },
+    {
+      "text": "Treats the (os error 32) envelope as a partial limitation that is not reclassified: a normal pass with that note recorded in inspection_limits",
+      "passed": true,
+      "evidence": "\"The envelope is a valid, completed pass. There is no fallback, no step 3 question and no single-model mode ... Phase 3 records the note in inspection_limits as data\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

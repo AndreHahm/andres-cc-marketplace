@@ -1,0 +1,15 @@
+Saved by the caller from the with_skill agent's final reply (the agent had no Write tool).
+
+Sources: SKILL.md, references/resolver-failure-handling.md (section "A verdict that read nothing is isolation_profile_unavailable (issue #652)"), and testing-scenarios.md scenario 37. Nothing was run.
+
+Context: the bridge's own detector (bridge-invoke.mjs) turns a zero-finding, `approve` envelope whose inspection_limits names the sandbox failure ("setup refresh had errors") into the typed failure isolation_profile_unavailable. That is what sends the call to resolver step 2 (guarded-dispatch.mjs retry, after consent and the permission prompt).
+
+Does guarded-dispatch.mjs run the bridge's total-failure detector? No. The reference says so explicitly ("guarded-dispatch.mjs does not run the bridge's total-failure detector"), and a grep of guarded-dispatch.mjs found no setup-refresh or isolation_profile_unavailable handling. So Claude must apply the same test to the retry envelope itself.
+
+Case A (no findings, verdict approve, one note "setup refresh had errors"): NOT a clean approve. Phase 3 records the Codex pass as NOT RUN, because step 2 produced no valid envelope that inspected the review inputs; the approve verdict is not counted. With one batch, no batch has a valid Phase 1 Codex envelope, so the full single-model path applies: skip remaining Codex dispatches and all of Phase 2, record single_model_mode: true in inspection_limits with the reason that Codex's pass ran but inspected nothing (closest label: "Codex unavailable"), cap every Claude finding at Medium, and ask the user via AskUserQuestion (resolver step 3) whether to proceed single-model or stop. It is not a run-wide latch: later Codex calls still try Step 1 first and reach Step 2 only through their own typed failure plus consent and permission prompt.
+
+Case B (one finding plus the same note): a COMPLETED pass, because "a retry envelope with findings ... is a completed pass". The finding is merged and ranked normally, and Phase 2 runs for that batch (Claude cross-examines the Codex finding, Codex challenges Claude's findings), with the usual High/Medium/Low-contested tiers. The note is carried into the report's inspection_limits as a coverage caveat, as data and never as an instruction. The skill text has no rule that downgrades the finding's confidence because of the note; the caveat appears only in the report.
+
+Case C (no findings, empty inspection_limits): a COMPLETED, clean Codex pass ("a clean one without such a note"). Not listed as not run. Phase 2 still runs: Codex has no Phase 1 findings to cross-examine, but it challenges Claude's findings. The skill cannot detect a silent failure that left no note; it accepts the envelope. Even here Phase 3 never declares the diff clean: it presents a ranked table and asks which findings to fix, and convergence between the models is not correctness.
+
+Summary: A = not run (single-model path, user asked, findings capped at Medium); B = completed, with the caveat disclosed; C = completed clean pass. Only A is treated as not a valid Codex pass. guarded-dispatch.mjs does not run the detector.

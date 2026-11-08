@@ -369,14 +369,16 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // zero-finding envelope carrying only those was read as a clean approve. The two leading
 // alternatives are the exact tokens Codex prints. Like the alternatives below they are bare
 // substrings, so a topical note that quotes one (a diff that touches this code can make a model do
-// that) is the same accepted residual as above. "setup refresh failed" is matched next to "had
-// errors" (PR #681 review: a model can paraphrase the failure); a broader "no files could be read"
-// is NOT, since an ordinary partial-read note says that too. `(os error 32)` is deliberately NOT matched: it is
+// that) is the same accepted residual as above. "setup refresh" followed by a small set of verbs
+// ("had/has/encountered/reported/hit errors", "failed") is matched too (PR #681 reviews: a model can
+// paraphrase the failure); the set is closed on purpose. The bare noun "failure" is NOT matched ("did
+// not exercise the setup refresh failure path" is a topical note), and neither is a broader "no files
+// could be read", since an ordinary partial-read note says that too. `(os error 32)` is deliberately NOT matched: it is
 // the generic Windows sharing violation and shows up in a note about one locked file. The real
 // failure's notes usually carry `helper_unknown_error` or `setup refresh had errors` as well.
 // scripts/marketplace_ci/review.py's _SANDBOX_FAILURE_RE matches these tokens too (more broadly,
 // and it also takes `os error 32`, since a reviewer there is retried and a probe decides).
-const TOTAL_INSPECTION_FAILURE_PATTERN = /helper_unknown_error|setup refresh (?:had errors|failed)|(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|(?:\b(?:because|since|as|due to|after|when)\s+|[;:]\s*)process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
+const TOTAL_INSPECTION_FAILURE_PATTERN = /helper_unknown_error|setup refresh (?:(?:had|has|encountered|reported|hit)\s+(?:an?\s+)?errors?|(?:has\s+)?failed)|(?:could not|couldn['’]t|cannot|can['’]t|unable to|failed to)\s+(?:create|start)\b(?:[^.;,\n]|\.(?=\S)){0,40}?\bprocess\b|CreateProcessAsUserW|(?:\b(?:because|since|as|due to|after|when)\s+|[;:]\s*)process creation failed\b|\bprocess creation failed\s*(?:[;:,.(-]|with\b|$)/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).
