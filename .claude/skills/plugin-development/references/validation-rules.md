@@ -162,7 +162,7 @@ allowed-tools: Read, Write, Edit
 
 **Automation**:
 ```yaml
-allowed-tools: Read, Write, Bash(git:*)
+allowed-tools: Read, Write, Bash(<tool>:*)
 ```
 
 **Research**:
@@ -172,7 +172,7 @@ allowed-tools: Read, WebSearch, WebFetch
 
 **Broad pre-approval**:
 ```yaml
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git:*), WebSearch, WebFetch
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(<tool>:*), WebSearch, WebFetch
 ```
 
 ## Validation Workflow
@@ -261,7 +261,7 @@ python scripts/validate_plugin.py plugin/ --check 2025
 3. **Common Tools by Skill Type**:
    - Analysis skills: `Read, Grep, Glob`
    - Editor skills: `Read, Write, Edit`
-   - Automation: `Read, Write, Bash(git:*)`
+   - Automation: `Read, Write, Bash(<tool>:*)`
    - Research: `Read, WebSearch, WebFetch`
 
 4. **Re-validate**:
