@@ -573,7 +573,7 @@ PERFORMANCE:
 
 SECURITY CONSIDERATIONS:
   - Validates all inputs to prevent injection
-  - Pre-approves only the Bash commands it needs via allowed-tools (other commands still prompt)
+  - Pre-approves only the Bash commands it needs via allowed-tools (other commands follow the normal permission settings)
   - No credentials in command file
 
 TESTING:

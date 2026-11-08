@@ -47,7 +47,7 @@ class SkillPackager:
         return sorted(all_skills, key=lambda x: x.name)
 
     def validate_skill_2025(self, skill_dir):
-        """Check if skill is 2025 compliant (has allowed-tools field)."""
+        """Check if skill meets the plugin-devkit allowed-tools convention (has the field)."""
         skill_md = skill_dir / "SKILL.md"
         if not skill_md.exists():
             return False, "SKILL.md not found"
@@ -64,9 +64,9 @@ class SkillPackager:
 
                 frontmatter = content[3:frontmatter_end]
                 if 'allowed-tools:' not in frontmatter and 'allowed_tools:' not in frontmatter:
-                    return False, "Missing 'allowed-tools' field (2025 schema)"
+                    return False, "Missing 'allowed-tools' field (plugin-devkit convention)"
 
-                return True, "2025 compliant"
+                return True, "has allowed-tools field"
         except Exception as e:
             return False, f"Error reading SKILL.md: {e}"
 
@@ -135,7 +135,7 @@ class SkillPackager:
 
         # Validate if requested
         if validate:
-            print("\nValidating skills (2025 schema compliance)...")
+            print("\nValidating skills (allowed-tools convention)...")
             for skill_dir in skills:
                 is_valid, message = self.validate_skill_2025(skill_dir)
                 if is_valid:
@@ -193,7 +193,7 @@ class SkillPackager:
             print(f"\nWarnings ({len(self.skills_warnings)}):")
             for skill_name, warning in self.skills_warnings.items():
                 print(f"  ⚠ {skill_name}: {warning}")
-                if "2025 schema" in warning:
+                if "plugin-devkit convention" in warning:
                     print(f"    FIX: Add to {skill_name}/SKILL.md frontmatter:")
                     print(f"         allowed-tools: Read, Write, Bash")
 
@@ -208,7 +208,7 @@ Examples:
   # Package all skills
   python package_skills.py .claude/skills my-plugin/
 
-  # Package with 2025 compliance validation
+  # Package with allowed-tools convention validation
   python package_skills.py .claude/skills my-plugin/ --validate
 
   # Package specific skills
@@ -226,7 +226,7 @@ Examples:
     parser.add_argument('source_dir', help='Source directory containing skills')
     parser.add_argument('plugin_dir', help='Target plugin directory')
     parser.add_argument('--skills', help='Comma-separated list of specific skills to package')
-    parser.add_argument('--validate', action='store_true', help='Validate skills for 2025 compliance')
+    parser.add_argument('--validate', action='store_true', help='Validate skills for the allowed-tools convention')
     parser.add_argument('--dry-run', action='store_true', help='Preview without actually copying')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
 

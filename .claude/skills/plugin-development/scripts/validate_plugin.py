@@ -317,17 +317,17 @@ def validate_components(plugin_path, verbose=False):
 
 
 def validate_2025_compliance(plugin_path, verbose=False):
-    """Validate 2025 schema compliance (allowed-tools field in skills)."""
-    result = ValidationResult("2025 schema compliance")
+    """Validate the plugin-devkit allowed-tools convention (--check 2025)."""
+    result = ValidationResult("allowed-tools convention")
 
     skills_dir = plugin_path / "skills"
     if not skills_dir.exists():
-        result.add_warning("No skills directory (2025 compliance check skipped)")
+        result.add_warning("No skills directory (allowed-tools convention check skipped)")
         return result
 
     skill_dirs = [d for d in skills_dir.iterdir() if d.is_dir()]
     if not skill_dirs:
-        result.add_warning("No skills found (2025 compliance check skipped)")
+        result.add_warning("No skills found (allowed-tools convention check skipped)")
         return result
 
     for skill_dir in skill_dirs:
@@ -349,11 +349,11 @@ def validate_2025_compliance(plugin_path, verbose=False):
                         else:
                             result.add_check(
                                 False,
-                                f"Skill '{skill_dir.name}' missing 'allowed-tools' field (2025 schema requirement). "
+                                f"Skill '{skill_dir.name}' missing 'allowed-tools' field (plugin-devkit convention; the platform treats it as optional). "
                                 f"FIX: Add to SKILL.md frontmatter: allowed-tools: Read, Write, Bash"
                             )
         except Exception as e:
-            result.add_warning(f"Error checking 2025 compliance for {skill_dir.name}: {e}")
+            result.add_warning(f"Error checking allowed-tools convention for {skill_dir.name}: {e}")
 
     return result
 
