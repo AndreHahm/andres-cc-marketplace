@@ -17,10 +17,12 @@ for the test proving this guarantee actually holds."""
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import subprocess
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -1194,6 +1196,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     """
     from scripts.marketplace_ci import review_contract, review_verifiers
     from scripts.marketplace_ci.review import (
+        CHECKOUT_READ_FILES,
         FULL_ESCALATION_PATHS,
         PrDeltaError,
         ReviewOutputError,
@@ -1209,6 +1212,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         gate_decision,
         probe_sandbox,
         run_delta_structural_checks,
+        snapshot_fallback_files,
+        snapshot_intact,
         validate_review_output,
     )
 
@@ -1277,21 +1282,41 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return _fail_run_codex_review(args, f"script verifier failed: {exc!r}")
     changed_ranges = compute_changed_line_ranges(repo, base_sha)
     allow_fallback = getattr(args, "allow_unsandboxed_fallback", False)
+    fallback_cleanup = contextlib.ExitStack()
+    fallback_root: Path | None = None
+    snapshot_manifest: dict[str, str] = {}
     if allow_fallback:
-        # The fallback runs the dispatcher and what it imports from the working tree with
-        # danger-full-access, so a branch that edits any of them must not get it, whoever calls
-        # this entry point; without it a failed sandbox probe fails closed (no reviewer starts).
-        touched = fallback_files_changed(repo, base_sha)
-        if touched is None or touched:
-            allow_fallback = False
-            why = (
-                "could not compare them with the base"
-                if touched is None
-                else "this branch changes " + ", ".join(touched)
+        # The fallback runs the dispatcher and what it imports from a snapshot of the base tip's
+        # git objects, never from the working tree, so a branch that edits them still gets it
+        # (issue #676). Only .codex/config.toml, which Codex reads from the checkout, is compared
+        # with the base; without a snapshot or with that file changed, a failed sandbox probe
+        # fails closed (no reviewer starts).
+        touched = fallback_files_changed(repo, base_sha, CHECKOUT_READ_FILES)
+        refusal = None
+        if touched is None:
+            refusal = "could not compare .codex/config.toml with the base"
+        elif touched:
+            refusal = "this branch changes " + ", ".join(touched) + ", which Codex reads"
+        else:
+            scratch = Path(
+                fallback_cleanup.enter_context(
+                    tempfile.TemporaryDirectory(
+                        prefix="codex-fallback-", ignore_cleanup_errors=True
+                    )
+                )
             )
+            if scratch.resolve().is_relative_to(repo.resolve()):
+                refusal = "the snapshot directory would be inside the checkout (check TMPDIR)"
+            else:
+                refusal = snapshot_fallback_files(repo, base_sha, scratch, snapshot_manifest)
+                if refusal is None:
+                    fallback_root = scratch
+        if refusal is not None:
+            allow_fallback = False
+            fallback_cleanup.close()
             print(
-                f"run-codex-review: unsandboxed fallback refused: it runs files from the working "
-                f"tree and {why}; reviewers run sandboxed only",
+                f"run-codex-review: unsandboxed fallback refused: {refusal}; "
+                "reviewers run sandboxed only",
                 file=sys.stderr,
             )
     if instructions_dir is not None:
@@ -1301,6 +1326,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             instructions_dir.parent.mkdir(parents=True, exist_ok=True)
             instructions_dir.mkdir(mode=0o700)
         except OSError as exc:
+            fallback_cleanup.close()
             return _fail_run_codex_review(
                 args, f"cannot claim --instructions-dir {str(instructions_dir)!r}: {exc}"
             )
@@ -1316,11 +1342,21 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             changed_paths=_changed_path_set(changed),
             exceptions=exceptions,
             allow_guardrails_fallback=allow_fallback,
+            fallback_root=fallback_root,
             sandbox_probe=_sandbox_probe_for(args, probe_sandbox),
             probe_log=probe_log,
-            # Re-asked before every unsandboxed call; an unanswerable comparison counts as changed.
+            # Re-asked before every unsandboxed call: the snapshot must still match its blobs (an
+            # earlier unsandboxed reviewer could have overwritten it) and Codex's config must be
+            # unchanged; an unanswerable comparison counts as changed.
             unsandboxed_allowed=(
-                (lambda: fallback_files_changed(repo, base_sha) == []) if allow_fallback else None
+                (
+                    lambda: (
+                        snapshot_intact(repo, fallback_root, snapshot_manifest)
+                        and fallback_files_changed(repo, base_sha, CHECKOUT_READ_FILES) == []
+                    )
+                )
+                if allow_fallback and fallback_root is not None
+                else None
             ),
         )
     except OSError as exc:
@@ -1328,6 +1364,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         # directory would land inside the checkout); per-reviewer faults are
         # already reported as failed reports.
         return _fail_run_codex_review(args, f"cannot prepare reviewer dispatch: {exc}")
+    finally:
+        fallback_cleanup.close()
 
     failed_reports = [r for r in reports if r.status == "failed"]
     if failed_reports:

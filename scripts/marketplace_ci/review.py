@@ -1956,12 +1956,12 @@ GUARDRAILS_DISPATCH_RELATIVE_PATH = Path(
 _MAX_GUARDED_TARGET_PATHS_CHARS = 20000
 _PROBE_ATTEMPTS = 3
 _PROBE_TIMEOUT_SECONDS = 60
-# What the unsandboxed fallback runs from the working tree: the dispatcher, everything it imports
-# (directly or through those imports), the data files they read at run time and the settings that
-# can enable it. A branch that edits any of them could widen what a danger-full-access run may do,
-# so `fallback_files_changed` lets `run-codex-review` refuse the fallback. The git-kit parity
-# wrapper keeps a copy to say so early; a test pins the two together and derives the import closure
-# from guarded-dispatch.mjs, so a new import cannot escape this list.
+# What the unsandboxed fallback depends on: the dispatcher, everything it imports (directly or
+# through those imports), the data files they read at run time, the settings that can enable it and
+# the Codex project config. All but the config are launched from a snapshot of the merge-base
+# (`SNAPSHOT_FILES`), so a branch's edit never runs with danger-full-access; the config
+# (`CHECKOUT_READ_FILES`) is read from the checkout and is compared with the base instead. A test
+# derives the import closure from guarded-dispatch.mjs, so a new import cannot escape this list.
 FALLBACK_FILES = (
     "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
     "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
@@ -1976,6 +1976,14 @@ FALLBACK_FILES = (
     # checkout it runs in, so the fallback's launch depends on it too.
     ".codex/config.toml",
 )
+
+
+# The one FALLBACK_FILES entry the fallback cannot run from a snapshot: Codex reads the project's
+# config from the checkout it runs in, so it is still compared with the base (issue #676).
+CHECKOUT_READ_FILES = (".codex/config.toml",)
+# Everything else is read from the base tip's git objects by `snapshot_fallback_files`, so a
+# branch that edits it no longer loses the fallback: the edited copy is never the one that runs.
+SNAPSHOT_FILES = tuple(p for p in FALLBACK_FILES if p not in CHECKOUT_READ_FILES)
 
 
 def _is_plain_file(repo: Path, relative: str) -> bool:
@@ -1999,12 +2007,15 @@ def _is_plain_file(repo: Path, relative: str) -> bool:
     return info is not None and stat.S_ISREG(info.st_mode)
 
 
-def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
-    """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
-    `base_sha`, in FALLBACK_FILES order, or None when git could not say (which callers treat as
-    changed). The fallback runs these files from the working tree, so committed, staged and
-    unstaged edits all count. The comparison hashes the file itself (`git hash-object`) against
-    the merge-base blob, instead of asking `git diff`, which trusts the index's stat data: a
+def fallback_files_changed(
+    repo: Path, base_sha: str, files: Sequence[str] = FALLBACK_FILES
+) -> list[str] | None:
+    """`files` (default FALLBACK_FILES) whose working-tree content differs from the branch's
+    merge-base with `base_sha`, in `files` order, or None when git could not say (which callers
+    treat as changed). `run-codex-review` asks it about `CHECKOUT_READ_FILES`, which Codex reads
+    from the working tree, so committed, staged and unstaged edits all count. The comparison hashes
+    the file itself (`git hash-object`) against the merge-base blob, instead of asking `git diff`,
+    which trusts the index's stat data: a
     `skip-worktree` or `assume-unchanged` flag set on a file would hide an edit from it (issue
     #652). The hash is of the raw bytes (`--no-filters`), because the dispatcher runs the raw file:
     with filters on, git converts the working file through attributes the branch itself can set
@@ -2036,7 +2047,7 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         if merge_base.returncode != 0 or not base:
             return None
         tree = subprocess.run(  # nosec B603  # absolute git, no shell
-            [git, "ls-tree", "-z", base, "--", *FALLBACK_FILES],
+            [git, "ls-tree", "-z", base, "--", *files],
             cwd=repo,
             env=env,
             capture_output=True,
@@ -2044,7 +2055,7 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
             timeout=_PROBE_TIMEOUT_SECONDS,
             check=False,
         )
-        present = [p for p in FALLBACK_FILES if os.path.lexists(repo / p)]
+        present = [p for p in files if os.path.lexists(repo / p)]
         unsafe = {p for p in present if not _is_plain_file(repo, p)}
         present = [p for p in present if p not in unsafe]
         hashed = None
@@ -2078,7 +2089,94 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         working = dict(zip(present, digests, strict=True))
     # Absent on both sides (no entry in either map) is unchanged; present on one side only, with
     # different content, or reached through a link (`unsafe`, never hashed), is changed.
-    return [p for p in FALLBACK_FILES if p in unsafe or in_base.get(p) != working.get(p)]
+    return [p for p in files if p in unsafe or in_base.get(p) != working.get(p)]
+
+
+def snapshot_fallback_files(
+    repo: Path, base_sha: str, dest: Path, manifest: dict[str, str] | None = None
+) -> str | None:
+    """Writes `SNAPSHOT_FILES` as `base_sha` (CI's base tip) has them into `dest` (same relative
+    paths), so the unsandboxed fallback can run the dispatcher from there instead of from the
+    working tree (issues #676 and #650). The tip, not the branch's merge-base: the branch picks its
+    own fork point, so a merge-base copy could be an older dispatcher without later guardrail fixes.
+    The bytes come from git objects (`git cat-file blob`), never from the working tree, so an edit
+    made by the branch or during the run cannot reach them, and each written file is hashed back
+    against its blob id. `manifest`, when given, receives {relative path: blob id} for
+    `snapshot_intact`. Returns None on success, else why not (callers then refuse the fallback).
+    `dest` must already exist, outside `repo`, and be private to this run. The changed dispatcher
+    is reviewed as text but never executed with full access."""
+    if base_sha.startswith("-"):
+        return "the base is not a revision"
+    git = _executable_outside_checkout("git")
+    if git is None:
+        return "git was not found on PATH outside the checkout"
+    env = {**os.environ, "PATH": _path_outside_checkout()}
+
+    def run(argv: list[str], text: bool = False) -> subprocess.CompletedProcess:
+        return subprocess.run(  # nosec B603  # absolute git, no shell
+            [git, *argv], cwd=repo, env=env, capture_output=True,
+            text=text, timeout=_PROBE_TIMEOUT_SECONDS, check=False,
+        )  # fmt: skip
+
+    try:
+        resolved = run(["rev-parse", "--verify", "--quiet", f"{base_sha}^{{commit}}"], text=True)
+        base = resolved.stdout.strip()
+        if resolved.returncode != 0 or not base:
+            return "could not resolve the base commit"
+        tree = run(["ls-tree", "-z", base, "--", *SNAPSHOT_FILES], text=True)
+        if tree.returncode != 0:
+            return "could not list the base's copy of the fallback files"
+        blobs: dict[str, str] = {}
+        for entry in tree.stdout.split("\0"):
+            meta, _, path = entry.partition("\t")
+            parts = meta.split()
+            if path and len(parts) == 3 and parts[1] == "blob":
+                blobs[path] = parts[2]
+        missing = [p for p in SNAPSHOT_FILES if p not in blobs]
+        if missing:
+            return f"the base has no regular file {missing[0]}"
+        for relative, blob in blobs.items():
+            content = run(["cat-file", "blob", blob])
+            if content.returncode != 0:
+                return f"could not read the base's {relative}"
+            target = dest / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content.stdout)
+            check = run(["hash-object", "--no-filters", "--", str(target)], text=True)
+            if check.returncode != 0 or check.stdout.strip() != blob:
+                return f"the snapshot of {relative} does not match the base"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return _report_error(_redact_local_paths(f"{type(exc).__name__}: {exc}"))
+    if manifest is not None:
+        manifest.update(blobs)
+    return None
+
+
+def snapshot_intact(repo: Path, dest: Path, manifest: Mapping[str, str]) -> bool:
+    """True when every file `snapshot_fallback_files` wrote still has its recorded blob id. Asked
+    before every unsandboxed call: an earlier unsandboxed reviewer runs with this account's
+    permissions and could overwrite the snapshot a later launch would run. Anything it cannot
+    answer is False. Best effort: it does not cover a write between this check and the launch."""
+    git = _executable_outside_checkout("git")
+    if git is None or not manifest:
+        return False
+    paths = [str(dest / relative) for relative in manifest]
+    try:
+        if not all(_is_plain_file(dest, relative) for relative in manifest):
+            return False
+        hashed = subprocess.run(  # nosec B603  # absolute git, no shell
+            [git, "hash-object", "--no-filters", "--stdin-paths"],
+            cwd=repo,
+            env={**os.environ, "PATH": _path_outside_checkout()},
+            input="\n".join(paths) + "\n",
+            capture_output=True,
+            text=True,
+            timeout=_PROBE_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return hashed.returncode == 0 and hashed.stdout.split() == list(manifest.values())
 
 
 def _path_outside_checkout() -> str:
@@ -2540,6 +2638,7 @@ def dispatch_reviewers(
     sandbox_probe: Callable[[], str | None] | None = None,
     probe_log: list[str] | None = None,
     unsandboxed_allowed: Callable[[], bool] | None = None,
+    fallback_root: Path | None = None,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -2568,7 +2667,9 @@ def dispatch_reviewers(
     the sandbox unusable, the reviewers go straight to the fallback if consented, else all fail at
     once with the probe's reason instead of spending the dispatch budget. `unsandboxed_allowed`,
     when given, is asked before every unsandboxed call and refuses that call on False (a file the
-    fallback runs changed since the review started).
+    fallback runs changed since the review started). `fallback_root`, when given, is a directory
+    `snapshot_fallback_files` filled: `guarded-dispatch.mjs` is then launched from there instead of
+    from `repo`, so the working tree's copy of what it runs is never executed.
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
     `None` they go in a fresh temporary directory outside `repo`, removed after
@@ -2594,7 +2695,9 @@ def dispatch_reviewers(
             for name in names
         )
     guardrails_script = (
-        repo / GUARDRAILS_DISPATCH_RELATIVE_PATH if allow_guardrails_fallback else None
+        (fallback_root or repo) / GUARDRAILS_DISPATCH_RELATIVE_PATH
+        if allow_guardrails_fallback
+        else None
     )
     start_unsandboxed = False
     # One latched verdict for the whole run (see SandboxVerdict): the pre-dispatch probe and every

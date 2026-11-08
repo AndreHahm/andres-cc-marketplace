@@ -22,8 +22,10 @@ settings that must match CI from the workflow file itself, so they cannot drift:
 On Windows a reviewer whose Codex sandbox cannot start (the "setup refresh" failure, issue #644)
 is retried through codex-windows-guardrails without a sandbox, the way `cross-model-review` does:
 the sandbox is tried first, and only a failing sandbox probe (never a reviewer's own text) switches
-over. Guardrails must be enabled locally, and the fallback is skipped (sandbox only, said in the
-output) when the branch changes the files it runs. `--sandbox-down` says an earlier
+over. Guardrails must be enabled locally. The fallback runs the dispatcher from a snapshot of the
+base tip, so a branch that edits the dispatcher keeps it (issue #676); it is skipped (sandbox
+only, said in the output) only when the branch changes `.codex/config.toml`, which Codex reads from
+the checkout. `--sandbox-down` says an earlier
 `cross-model-review` already had to fall back, so the run starts unsandboxed without probing.
 
 Exit codes: 0 clean, 1 blocking findings, 2 could not run (never a pass; this includes a missing,
@@ -49,23 +51,11 @@ WORKFLOW = Path(".github/workflows/marketplace-ci.yml")
 ENTRY_POINT = Path("scripts/marketplace_ci/__main__.py")
 CONTRACT = "scripts/marketplace_ci/review_contract.py"
 TRUST_BOUNDARY = "scripts/marketplace_ci/trust_boundary.py"
-# What the unsandboxed fallback runs from the working tree: the dispatcher, everything it imports
-# (directly or through those imports) and the data files they read at run time, plus the settings
-# that can enable it. A branch that edits any of them could widen what a danger-full-access run may
-# do. Some are in CI's Tier-1 list, which only warns here; this list makes the fallback refuse.
-# A test derives the import closure from guarded-dispatch.mjs, so a new import cannot escape it.
-FALLBACK_FILES = (
-    "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
-    "plugins/codex-kit/skills/codex-windows-guardrails/assets/settings.json",
-    "plugins/codex-kit/skills/codex-windows-guardrails/assets/dangerous-command-instructions.txt",
-    "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs",
-    "plugins/codex-kit/scripts/lib/codex-exec.mjs",
-    "plugins/codex-kit/scripts/lib/cdx-process.mjs",
-    "plugins/codex-kit/scripts/lib/cdx-token-shapes.json",
-    "plugins/codex-kit/scripts/lib/cdx-secret-filenames.mjs",
-    "plugins/codex-kit/scripts/lib/cdx-lintignore-base.mjs",
-    ".codex/config.toml",  # Codex reads the project's config (it can start MCP servers) from here
-)
+# The one file the unsandboxed fallback still reads from the working tree: Codex reads the project's
+# config (it can start MCP servers) from the checkout it runs in. Everything else the fallback runs
+# (the dispatcher and what it imports) comes from a snapshot of the base tip's git objects, so a
+# branch that edits those keeps the fallback (issue #676). A test pins this to run-codex-review's.
+CHECKOUT_READ_FILES = (".codex/config.toml",)
 MODEL_VARIABLE = "CODEX_KIT_REVIEW_MODEL"
 TIMEOUT_VARIABLE = "CODEX_KIT_REVIEW_TIMEOUT_MS"
 # The CI job's own timeout-minutes is 45; stay under it so a hung run can't outlive CI's budget.
@@ -544,14 +534,16 @@ def _read_blocking(output: Path) -> bool | None:
 
 
 def fallback_touches(base_sha: str) -> list[str] | None:
-    """FALLBACK_FILES whose working-tree content differs from the branch's merge-base with
-    `base_sha`, or None when git could not say. The fallback runs these files from the working
-    tree, so committed, staged and unstaged edits all count; a single-ref `git diff` covers all
-    three, where `base...HEAD` would miss anything not yet committed."""
+    """CHECKOUT_READ_FILES whose working-tree content differs from the branch's merge-base with
+    `base_sha`, or None when git could not say. Codex reads these from the working tree, so
+    committed, staged and unstaged edits all count; a single-ref `git diff` covers all three,
+    where `base...HEAD` would miss anything not yet committed."""
     merge_base = _run(["git", "merge-base", base_sha, "HEAD"])
     if merge_base is None or merge_base.returncode != 0 or not merge_base.stdout.strip():
         return None
-    diff = _run(["git", "diff", "--name-only", merge_base.stdout.strip(), "--", *FALLBACK_FILES])
+    diff = _run(
+        ["git", "diff", "--name-only", merge_base.stdout.strip(), "--", *CHECKOUT_READ_FILES]
+    )
     if diff is None or diff.returncode != 0:
         return None
     return [line for line in diff.stdout.splitlines() if line]
@@ -559,22 +551,21 @@ def fallback_touches(base_sha: str) -> list[str] | None:
 
 def fallback_decision(base_sha: str, platform: str = sys.platform) -> tuple[bool, str]:
     """(use the guardrails fallback, one line to print). Windows only: the dispatcher refuses
-    elsewhere, where the sandbox works. The fallback runs the dispatcher, everything it imports and
-    the settings that enable it from the working tree, so a branch that changed any of them gets no
-    fallback (sandbox only, said plainly) rather than running its own edit with full access. Changes
-    to the review-dispatch files CI guards (Tier-1) are disclosed by the warning above, as
-    `cross-model-review` discloses a touched dispatcher; they do not switch the fallback off."""
+    elsewhere, where the sandbox works. `run-codex-review` runs the dispatcher and everything it
+    imports from a snapshot of the base tip, so a branch that edits them keeps the fallback (the
+    Tier-1 warning above discloses it). A branch that changed `.codex/config.toml`, which Codex
+    reads from the checkout, gets no fallback (sandbox only, said plainly)."""
     if platform != "win32":
         return False, ""
     changed = fallback_touches(base_sha)
     if changed is None:
         return False, (
-            "PARITY WARNING: could not compare the guardrails fallback's files with the base; "
+            "PARITY WARNING: could not compare .codex/config.toml with the base; "
             "running sandboxed only."
         )
     if changed:
         return False, (
-            "PARITY WARNING: this branch changes files the guardrails fallback runs ("
+            "PARITY WARNING: this branch changes a file Codex reads from the checkout ("
             + ", ".join(changed)
             + "); running sandboxed only."
         )
