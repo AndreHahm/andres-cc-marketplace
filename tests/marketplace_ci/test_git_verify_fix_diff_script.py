@@ -581,6 +581,8 @@ REGISTRY = (REPO / ".claude/marketplace-sync.json").read_text(encoding="utf-8") 
         "plugins/git-kit/scripts/git-verify-fix-diff.py",
         ".claude/scripts/git-verify-fix-diff.py",
         ".claude/skills/handling-review-findings/references/fix-self-review.md",
+        "plugins/git-kit/skills/handling-review-findings/references/file-write-and-diff-grants.md",
+        ".claude/skills/handling-review-findings/references/file-write-and-diff-grants.md",
         "plugins/git-kit/skills/handling-review-findings/scripts/smoke_test.py",
     ],
 )

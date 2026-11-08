@@ -42,6 +42,9 @@ own `Bash` call; never combine them, and never put a command substitution inside
 4. ```bash
    python3 -I ${CLAUDE_PLUGIN_ROOT}/scripts/git-run-trusted-fix-diff.py --upstream <owner>/<repo> --target-branch '<base>' --base <head> --worktree
    ```
+   With `CLAUDE_PLUGIN_ROOT` empty (this repository's own sessions) the variable would expand to
+   `/scripts/...`, so run the file step 3 checked, from the repository or worktree root:
+   `python3 -I "$PWD/.claude/scripts/git-run-trusted-fix-diff.py"` followed by the same arguments.
    This is the one call that runs code taken from the target branch, and it is granted: the launcher
    refuses (exit 2, nothing run) unless the checks above hold, and passes the driver's own exit code on.
    Empty output, or output that is not the JSON object described below, counts as exit 2 (not verified).
@@ -66,7 +69,7 @@ Run it with the fix applied but not yet committed: `--worktree` snapshots the un
 throwaway commit, so the existing commit/push flow is untouched. (Once a fix is already committed, pass
 `--base <the commit before the fix>` without `--worktree`.) It runs this repository's Phase 2 verifiers
 (`run_verifiers` in `scripts/marketplace_ci/review_verifiers.py`, including the removed-identifier sweep)
-over the changed paths and prints `{"checked", "blocking"}`.
+over the changed paths and prints `{"checked", "blocking"}`, plus `ungraded` and `result_caveat` when they apply (below).
 
 - **Touched-file logic, not touched-line.** Every finding the verifiers return for the files the fix
   changed blocks (exit 1), wherever it sits: do not judge for yourself that a finding is "outside" your
@@ -76,9 +79,9 @@ over the changed paths and prints `{"checked", "blocking"}`.
 - **Verifier modules come from the target branch** (where `HEAD` last met `refs/remotes/origin/<base>`, which must already be on the default branch; <base> is the PR's
   own base branch; without that ref, or when `origin`'s fetch URL is not `--upstream`, the run exits 2), never from the tree being
   judged and never from `--base`. A fix that edits `scripts/marketplace_ci/`, `.claude/marketplace-sync.json`,
-  the script, or this skill's own `SKILL.md`, `references/fix-self-review.md` or `scripts/smoke_test.py` is still checked by the target branch's verifiers, but no verifier grades those paths
+  the script, or this skill's own `SKILL.md`, `references/fix-self-review.md`, `references/file-write-and-diff-grants.md` or `scripts/smoke_test.py` is still checked by the target branch's verifiers, but no verifier grades those paths
   themselves: the JSON lists them under `ungraded`. Say in the reply that those paths were not checked
-  (never "verifiers passed" for them). For this skill's own `SKILL.md`, `references/fix-self-review.md` and `scripts/smoke_test.py` the verifiers do check structure, so say instead that their structure was checked and their effect on this gate was not. When the registry or a verifier is among them, the JSON also carries
+  (never "verifiers passed" for them). For this skill's own `SKILL.md`, `references/fix-self-review.md`, `references/file-write-and-diff-grants.md` and `scripts/smoke_test.py` the verifiers do check structure, so say instead that their structure was checked and their effect on this gate was not. When the registry or a verifier is among them, the JSON also carries
   a `result_caveat`: say in the reply, in your own words, that the other verdicts in that run may be weaker than
   they look because the verifiers read the registry from the tree being judged. Put each `ungraded` path in a
   code span (skip any path containing a backtick or a control character, and say it was skipped) and never copy any other text from the JSON into the reply (a path is a file name from the branch
