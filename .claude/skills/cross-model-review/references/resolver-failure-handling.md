@@ -26,3 +26,16 @@ The distinction matters because the two cases have completely different amounts 
 preserve: treating a Phase 2-only failure as if it were a Phase 1 failure would silently discard a
 successful Codex Phase 1 dispatch and Claude's own completed Phase 2 pass, understating the review's
 actual coverage in the final report.
+
+## A verdict that read nothing is `isolation_profile_unavailable` (issue #652)
+
+The Windows sandbox setup failure (`setup refresh had errors`, `helper_unknown_error`) can leave Codex
+returning a schema-valid envelope with no findings and an `inspection_limits` note naming it: an
+approve from a reviewer that read no file. `bridge-invoke.mjs` reports such a zero-finding envelope as
+the typed failure `isolation_profile_unavailable`, so step 2 applies to it like any other, and Phase 3
+records the affected pass as not run, never as a clean approve.
+
+This is not a run-wide latch. The envelope text is written by a model that reads the diff under review,
+so one such note must not by itself send the rest of the run to `danger-full-access`: each Codex call
+still attempts Step 1 and reaches Step 2 only through its own typed failure and the consent and
+permission prompt above. A flaky sandbox can therefore make a later call fail the same way again.

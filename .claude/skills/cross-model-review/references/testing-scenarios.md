@@ -155,6 +155,12 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     The manifest is cross-checked against the real changed-file list: a changed path in none of `files`,
     `excluded` or `dropped_slices` is `PLAN_FAILED`. Folder picks offer only names matching
     `^[A-Za-z0-9_][A-Za-z0-9._-]*/$` (no leading dash). The First-Send Confirmation lists every batch's paths and the dispatch count.
+37. On local Windows, Phase 1's Codex pass returns exit 0 with no findings, a verdict of `approve`, and
+    `inspection_limits` of `Failed to create unified exec process: helper_unknown_error: setup refresh
+    had errors` (issue #652) → the bridge reports it as `isolation_profile_unavailable`, never an
+    approve; resolver step 2 applies under the existing consent and permission prompt, and if guardrails
+    are disabled, step 3 fires. Phase 3 lists that pass as not run. A later Codex call still attempts
+    Step 1 itself: one model-written note never sends the rest of the run to `danger-full-access`.
 
 ## Quality gates
 
@@ -166,6 +172,8 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
       already asked — and always discloses the possible `danger-full-access` outcome, any Preflight
       step 6 dispatcher-trust gap, and any Preflight step 5 `REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED`
       state, not just the sandboxed-vs-not distinction
+- [ ] A Codex pass whose limits name the Windows sandbox setup failure is never reported as an approve,
+      and one such pass never switches the rest of the run to Step 2 on its own
 - [ ] Every finding given to a Phase 2 challenger pass is explicitly confirmed or refuted — never
       silently unaddressed, and never left in an undefined third state
 - [ ] A `severity: critical` finding is never dropped regardless of its confidence tier

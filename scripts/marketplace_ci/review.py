@@ -18,6 +18,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unicodedata
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -2054,17 +2055,17 @@ def _codex_executable() -> str | None:
 
 
 def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
-    """None when Codex's Windows sandbox can run a command (or off Windows, where there is no
-    setup refresh to fail), else why not. The failure is intermittent (issue #644), so one pass
-    in `attempts` tries clears it; only a probe that fails every time is a reason to skip the
-    sandboxed reviewers."""
+    """None when Codex's Windows sandbox can run a command on every one of `attempts` tries (or off
+    Windows, where there is no setup refresh to fail), else why not. The failure is intermittent
+    and frequent (issue #644: 139 of 178 refreshes failed on one day), so a probe that passes when
+    any one try works reports a sandbox that fails most commands as healthy (issue #652). One
+    failed try is enough to call it down; the first failure ends the probe."""
     if sys.platform != "win32":
         return None
     codex = _codex_executable()
     if codex is None:
         return "the codex CLI was not found outside the checkout"
-    reason = "no attempt ran"
-    for _ in range(attempts):
+    for attempt in range(1, max(attempts, 1) + 1):
         try:
             # codex is an absolute path from _executable_outside_checkout (PATH entries outside
             # the checkout) and every other argument is a literal, so no untrusted text reaches
@@ -2077,14 +2078,43 @@ def probe_sandbox(*, attempts: int = _PROBE_ATTEMPTS) -> str | None:
                 check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            reason = f"{type(exc).__name__}: {exc}"
-            continue
+            # An OSError's text can carry the absolute codex path; this reason is stored in the
+            # result file's provenance.
+            return _report_error(f"try {attempt} of {attempts}: {type(exc).__name__}: {exc}")
         out = result.stdout.decode("utf-8", errors="replace")
         if result.returncode == 0 and out.strip().splitlines()[-1:] == ["ok"]:
-            return None
+            continue
         err = result.stderr.decode("utf-8", errors="replace")
         reason = _report_error(err or out) or f"exit {result.returncode}"
-    return reason
+        return f"try {attempt} of {attempts}: {reason}"
+    return None
+
+
+class SandboxVerdict:
+    """The run's one view of whether the Codex sandbox is usable, wrapped around a probe.
+
+    Once any probe reports the sandbox down, it stays down for the rest of the run: a later probe
+    that happens to pass must not undo what the run already saw (issue #652: the gate re-probed
+    at each failure, and an intermittent sandbox passed that re-probe about as often as it failed
+    the reviewer). A passing probe is not remembered, since the sandbox can still fail later.
+    Probes are serialized, so two reviewers cannot probe at once and disturb each other's setup
+    refresh. Every probe is appended to `log`, which the result file records as provenance."""
+
+    def __init__(self, probe: Callable[[], str | None], log: list[str] | None = None) -> None:
+        self._probe = probe
+        self._lock = threading.Lock()
+        self.down_reason: str | None = None
+        self.log: list[str] = log if log is not None else []
+
+    def __call__(self) -> str | None:
+        with self._lock:
+            if self.down_reason is None:
+                reason = self._probe()
+                self.log.append(
+                    f"probe {len(self.log) + 1}: " + (f"down ({reason})" if reason else "ok")
+                )
+                self.down_reason = reason
+            return self.down_reason
 
 
 def _sandbox_confirmed_down(probe: Callable[[], str | None] | None) -> bool:
@@ -2150,6 +2180,7 @@ def _dispatch_one(
     guardrails_script: Path | None = None,
     start_unsandboxed: bool = False,
     sandbox_probe: Callable[[], str | None] | None = None,
+    unsandboxed_allowed: Callable[[], bool] | None = None,
 ) -> ReviewerReport:
     reviewer_scope = scope.paths
     if name == "plugin-rulebook-checker":
@@ -2267,6 +2298,19 @@ def _dispatch_one(
                 error=(
                     "dispatch budget exhausted before this reviewer could "
                     f"{'retry' if attempts else 'start'} (attempts so far: {attempts})"
+                ),
+                attempts=attempts,
+                unsandboxed=ran_unsandboxed,
+            )
+        if unsandboxed and unsandboxed_allowed is not None and not unsandboxed_allowed():
+            # Checked before every unsandboxed call, not only once before dispatch: an earlier
+            # unsandboxed reviewer, steered by the diff, could have edited a file this call runs.
+            return ReviewerReport(
+                reviewer=name,
+                status="failed",
+                error=(
+                    "unsandboxed run refused: a file the fallback runs changed (or could not be "
+                    "compared) since the review started"
                 ),
                 attempts=attempts,
                 unsandboxed=ran_unsandboxed,
@@ -2403,6 +2447,8 @@ def dispatch_reviewers(
     exceptions: Sequence[ExceptionEntry] = (),
     allow_guardrails_fallback: bool = False,
     sandbox_probe: Callable[[], str | None] | None = None,
+    probe_log: list[str] | None = None,
+    unsandboxed_allowed: Callable[[], bool] | None = None,
 ) -> tuple[ReviewerReport, ...]:
     """The whole of CI's Codex dispatch mechanism: for each reviewer name in
     `scope.validate` then `scope.audit`, extract its instruction from the base
@@ -2426,9 +2472,12 @@ def dispatch_reviewers(
     codex-windows-guardrails' `guarded-dispatch.mjs` -- `danger-full-access`, no sandbox, with this
     account's permissions and network -- when its sandboxed run could not start (issue #644) and
     `sandbox_probe` confirms the sandbox is down (a reviewer's own text never decides this). CI
-    never sets it. `sandbox_probe` (see `probe_sandbox`) also runs once before any reviewer: when
-    it reports the sandbox unusable, the reviewers go straight to the fallback if consented, else
-    all fail at once with the probe's reason instead of spending the dispatch budget.
+    never sets it. `sandbox_probe` (see `probe_sandbox`) is latched by `SandboxVerdict`, and
+    `probe_log` receives one line per probe. It also runs once before any reviewer: when it reports
+    the sandbox unusable, the reviewers go straight to the fallback if consented, else all fail at
+    once with the probe's reason instead of spending the dispatch budget. `unsandboxed_allowed`,
+    when given, is asked before every unsandboxed call and refuses that call on False (a file the
+    fallback runs changed since the review started).
 
     `instructions_dir` receives the per-reviewer instruction files. When it is
     `None` they go in a fresh temporary directory outside `repo`, removed after
@@ -2457,6 +2506,9 @@ def dispatch_reviewers(
         repo / GUARDRAILS_DISPATCH_RELATIVE_PATH if allow_guardrails_fallback else None
     )
     start_unsandboxed = False
+    # One latched verdict for the whole run (see SandboxVerdict): the pre-dispatch probe and every
+    # reviewer's fallback gate share it, so a sandbox seen down once stays down.
+    sandbox_probe = SandboxVerdict(sandbox_probe, probe_log) if sandbox_probe is not None else None
     probe_problem = sandbox_probe() if sandbox_probe is not None else None
     if probe_problem:
         if guardrails_script is not None:
@@ -2523,6 +2575,7 @@ def dispatch_reviewers(
                 guardrails_script=guardrails_script,
                 start_unsandboxed=start_unsandboxed,
                 sandbox_probe=sandbox_probe,
+                unsandboxed_allowed=unsandboxed_allowed,
             )
             for name in names
         ]
