@@ -319,7 +319,7 @@ For orchestrator commands (workflow commands that dispatch sub-agents):
 |-------|---------|---------|
 | `description` | Brief description of workflow purpose | Required |
 | `argument-hint` | Expected arguments description (shown in autocomplete), 0-based order matching body usage — plugin-rulebook R22 | None |
-| `allowed-tools` | Tools pre-approved while the command runs (does not restrict others) | None |
+| `allowed-tools` | Tools pre-approved while the command runs (does not restrict others) | Inherits from conversation |
 | `model` | Specific Claude model (`haiku` / `sonnet` / `opus`) | Inherits from conversation |
 
 **Model selection**: `haiku` — fast, simple workflows; `sonnet` — balanced (recommended default); `opus` — complex orchestration.
