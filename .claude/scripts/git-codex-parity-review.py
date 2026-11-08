@@ -494,6 +494,27 @@ def sandbox_rerun_hint(output: Path) -> str | None:
     )
     if not names:
         return None
+    provenance = data.get("provenance")
+    provenance = provenance if isinstance(provenance, dict) else {}
+    ran_unsandboxed = provenance.get("unsandboxed_reviewers")
+    probe_log = provenance.get("sandbox_probe")
+    already_unsandboxed = isinstance(ran_unsandboxed, list) and any(
+        name in ran_unsandboxed for name in names
+    )
+    probe_already_down = isinstance(probe_log, list) and any(
+        isinstance(line, str) and ": down" in line for line in probe_log
+    )
+    if already_unsandboxed or probe_already_down:
+        # --sandbox-down would repeat what already happened, so it is not recommended.
+        why = (
+            "they already ran unsandboxed"
+            if already_unsandboxed
+            else "the sandbox probe had already reported it down"
+        )
+        return (
+            f"PARITY: {', '.join(names)} reported a Codex sandbox failure although {why}; "
+            "--sandbox-down would repeat that mode. Quit the Codex desktop app and rerun."
+        )
     return (
         f"PARITY: {', '.join(names)} reported a Codex sandbox failure (their own text, which the "
         "sandbox probe did not confirm). --sandbox-down skips the probe and starts every reviewer "

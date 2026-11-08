@@ -1300,19 +1300,25 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         elif touched:
             refusal = "this branch changes " + ", ".join(touched) + ", which Codex reads"
         else:
-            scratch = Path(
-                fallback_cleanup.enter_context(
-                    tempfile.TemporaryDirectory(
-                        prefix="codex-fallback-", ignore_cleanup_errors=True
+            try:
+                scratch = Path(
+                    fallback_cleanup.enter_context(
+                        tempfile.TemporaryDirectory(
+                            prefix="codex-fallback-", ignore_cleanup_errors=True
+                        )
                     )
                 )
-            )
-            if scratch.resolve().is_relative_to(repo.resolve()):
-                refusal = "the snapshot directory would be inside the checkout (check TMPDIR)"
+            except OSError as exc:
+                # A full disk or a bad TMPDIR: refuse the fallback like any other snapshot problem.
+                # Only the error class is shown, since the message can carry a local path.
+                refusal = f"could not create the snapshot directory ({type(exc).__name__})"
             else:
-                refusal = snapshot_fallback_files(repo, base_sha, scratch, snapshot_manifest)
-                if refusal is None:
-                    fallback_root = scratch
+                if scratch.resolve().is_relative_to(repo.resolve()):
+                    refusal = "the snapshot directory would be inside the checkout (check TMPDIR)"
+                else:
+                    refusal = snapshot_fallback_files(repo, base_sha, scratch, snapshot_manifest)
+                    if refusal is None:
+                        fallback_root = scratch
         if refusal is not None:
             allow_fallback = False
             fallback_cleanup.close()

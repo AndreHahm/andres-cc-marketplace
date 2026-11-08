@@ -1241,6 +1241,28 @@ def test_run_codex_review_refuses_the_fallback_when_the_snapshot_cannot_be_built
     assert "unsandboxed fallback refused: the base has no regular file x" in err
 
 
+def test_run_codex_review_refuses_the_fallback_when_the_snapshot_directory_cannot_be_created(
+    monkeypatch, git_repo, capsys
+):
+    """A full disk or a bad TMPDIR must refuse the fallback with a message, not a traceback."""
+    import tempfile
+
+    real = tempfile.TemporaryDirectory
+
+    def failing(*args, **kwargs):
+        if kwargs.get("prefix") == "codex-fallback-":
+            raise OSError("no space left on device")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(tempfile, "TemporaryDirectory", failing)
+    _, allowed, err = _run_with_dispatch_spy(
+        monkeypatch, git_repo, capsys, [], "--allow-unsandboxed-fallback"
+    )
+    assert allowed is False
+    assert _LAST_SPY_SEEN["fallback_root"] is None
+    assert "unsandboxed fallback refused: could not create the snapshot directory" in err
+
+
 @pytest.mark.parametrize("touched", [[".codex/config.toml"], None])
 def test_run_codex_review_refuses_the_unsandboxed_fallback_for_a_branch_that_edits_its_files(
     monkeypatch, git_repo, capsys, touched
