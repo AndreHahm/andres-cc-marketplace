@@ -111,7 +111,7 @@ ACTIVATION: specific trigger phrases; description matches real requests
 CONTENT: SKILL.md 430 lines (Soft Warning tier, no Critical); 80% rule applied;
          examples are concrete
 ERROR HANDLING: missing files, malformed YAML and permission issues all handled
-TOOL SCOPING: least privilege; Bash limited to git and npm; no broad wildcards
+TOOL SCOPING: least privilege; Bash pre-approved only for git and npm; no broad wildcards
 DOCUMENTATION: before/after summaries, validation logging, complete references
 
 RECOMMENDATIONS: none. For team adoption, share the skill as a model for
