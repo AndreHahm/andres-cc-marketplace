@@ -2015,10 +2015,18 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
     the untracked guardrails override, the instruction files, `~/.codex/config.toml`, or a write
     between this check and the launch."""
     unsafe: set[str] = set()
+    # An absolute git from PATH entries outside the checkout: a bare "git" is looked up in the
+    # parent's cwd first on Windows (see _executable_outside_checkout), so a git.exe the branch
+    # committed at the repo root could answer these questions. Not found reads as "cannot say".
+    git = _executable_outside_checkout("git")
+    if git is None:
+        return None
+    env = {**os.environ, "PATH": _path_outside_checkout()}
     try:
-        merge_base = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
-            ["git", "merge-base", base_sha, "HEAD"],
+        merge_base = subprocess.run(  # nosec B603  # absolute git, no shell
+            [git, "merge-base", base_sha, "HEAD"],
             cwd=repo,
+            env=env,
             capture_output=True,
             text=True,
             timeout=_PROBE_TIMEOUT_SECONDS,
@@ -2027,9 +2035,10 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         base = merge_base.stdout.strip()
         if merge_base.returncode != 0 or not base:
             return None
-        tree = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
-            ["git", "ls-tree", "-z", base, "--", *FALLBACK_FILES],
+        tree = subprocess.run(  # nosec B603  # absolute git, no shell
+            [git, "ls-tree", "-z", base, "--", *FALLBACK_FILES],
             cwd=repo,
+            env=env,
             capture_output=True,
             text=True,
             timeout=_PROBE_TIMEOUT_SECONDS,
@@ -2040,9 +2049,10 @@ def fallback_files_changed(repo: Path, base_sha: str) -> list[str] | None:
         present = [p for p in present if p not in unsafe]
         hashed = None
         if present:
-            hashed = subprocess.run(  # nosec B603 B607  # literal git subcommand, no shell
-                ["git", "hash-object", "--no-filters", "--stdin-paths"],
+            hashed = subprocess.run(  # nosec B603  # absolute git, no shell
+                [git, "hash-object", "--no-filters", "--stdin-paths"],
                 cwd=repo,
+                env=env,
                 input="\n".join(present) + "\n",
                 capture_output=True,
                 text=True,
