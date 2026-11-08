@@ -14,6 +14,9 @@ from pathlib import Path
 
 import pytest
 
+# The real resolver, captured at import: conftest's autouse fixture replaces it per test.
+from scripts.marketplace_ci.review import _executable_outside_checkout as _real_resolver
+
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "plugins/git-kit/scripts/git-codex-parity-review.py"
 ENTRY = "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs"
@@ -307,6 +310,42 @@ def test_the_production_dispatch_call_passes_the_per_call_fallback_gate():
     assert calls, "no dispatch_reviewers call found in __main__.py"
     for call in calls:
         assert any(kw.arg == "unsandboxed_allowed" for kw in call.keywords)
+
+
+def test_fallback_files_changed_runs_an_absolute_git_from_outside_the_checkout(
+    branch_repo, monkeypatch
+):
+    """Security review: a bare "git" is looked up in the parent's cwd first on Windows, so a
+    git.exe the branch committed at the repo root could answer the gate's questions. Pins the
+    argv and the PATH the gate uses; a planted-executable run depends on the machine's
+    NoDefaultCurrentDirectoryInExePath setting, so it is not asserted here."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    monkeypatch.setattr(review, "_executable_outside_checkout", _real_resolver)
+    seen = []
+    real_run = subprocess.run
+
+    def spy(argv, **kwargs):
+        seen.append((argv[0], kwargs.get("env")))
+        return real_run(argv, **kwargs)
+
+    monkeypatch.setattr(review.subprocess, "run", spy)
+    assert review.fallback_files_changed(repo, "main") == []
+    assert len(seen) == 3  # merge-base, ls-tree, hash-object
+    for program, env in seen:
+        assert Path(program).is_absolute() and Path(program).stem.lower() == "git"
+        assert env is not None and env["PATH"] == review._path_outside_checkout()
+
+
+def test_fallback_files_changed_is_none_when_git_is_only_found_inside_the_checkout(
+    branch_repo, monkeypatch
+):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: None)
+    assert review.fallback_files_changed(repo, "main") is None
 
 
 def test_fallback_files_changed_sees_a_deleted_file(branch_repo):
