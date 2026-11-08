@@ -5,6 +5,7 @@ dynamic relative imports, `new URL("./x", import.meta.url)` reads and `path.join
 reads (the guardrails assets). The wrapper also sees changes that are only staged or unstaged,
 since the fallback runs the working tree."""
 
+import ast
 import importlib.util
 import posixpath
 import re
@@ -255,6 +256,57 @@ def test_fallback_files_changed_sees_an_edit_hidden_by_a_branch_supplied_encodin
     if filtered != _git(repo, "rev-parse", f"main:{target}"):
         pytest.skip("this git does not convert working-tree-encoding=UTF-7; no bypass to test")
     assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def _symlink_or_skip(link: Path, target: Path, *, directory: bool = False) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform or account cannot create symlinks")
+
+
+def test_fallback_files_changed_sees_a_file_swapped_for_a_symlink(branch_repo):
+    """Cross-model review, round 2: `git hash-object` follows a symlink, so a link to a copy with
+    the same bytes would hash like the file it replaced, where the earlier `git diff` check
+    reported the type change."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[0]
+    copy = repo / "same-bytes-copy.mjs"
+    copy.write_bytes(b"original\n")
+    (repo / target).unlink()
+    _symlink_or_skip(repo / target, copy)
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def test_fallback_files_changed_sees_a_directory_swapped_for_a_symlink(branch_repo):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    lib_prefix = "plugins/codex-kit/scripts/lib/"
+    lib_files = [p for p in review.FALLBACK_FILES if p.startswith(lib_prefix)]
+    assert lib_files  # guards the guard: the folder holds fallback files
+    moved = repo / "lib-copy"
+    (repo / lib_prefix.rstrip("/")).rename(moved)
+    _symlink_or_skip(repo / lib_prefix.rstrip("/"), moved, directory=True)
+    assert review.fallback_files_changed(repo, "main") == lib_files
+
+
+def test_the_production_dispatch_call_passes_the_per_call_fallback_gate():
+    """`dispatch_reviewers` leaves `unsandboxed_allowed` off by default, so a caller that forgets
+    it gets no per-call fallback-file check; the production caller must pass it."""
+    source = (REPO / "scripts/marketplace_ci/__main__.py").read_text(encoding="utf-8")
+    calls = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "dispatch_reviewers"
+    ]
+    assert calls, "no dispatch_reviewers call found in __main__.py"
+    for call in calls:
+        assert any(kw.arg == "unsandboxed_allowed" for kw in call.keywords)
 
 
 def test_fallback_files_changed_sees_a_deleted_file(branch_repo):
