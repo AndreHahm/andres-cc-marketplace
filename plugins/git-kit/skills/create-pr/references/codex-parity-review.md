@@ -68,6 +68,9 @@ alongside `cross-model-review`.
 - If the branch changed a review-dispatch-critical (Tier-1) file, the script prints a warning and still runs.
   CI hard-refuses in that case, and the local run executes the branch's own copy of that code with your Codex
   credentials, so treat a clean result as non-authoritative.
+- The unsandboxed fallback runs the dispatcher from a snapshot of the base tip (issue #676), so a branch
+  that edits it still gets the fallback, and that edit is reviewed as text only, never run with full access.
+  A branch that changes `.codex/config.toml`, which Codex reads from the checkout, gets no fallback.
 - Ten minutes or more per run. The reviewers read the working tree locally and send the diff and any files
   they read to OpenAI under the user's Codex account (hence a separate confirmation on every run).
 - On timeout the whole process group (`uv`, `node`, `codex`) is killed (POSIX), or the whole tree via `taskkill /F /T` (Windows, not exercised on a real Windows host); the wait

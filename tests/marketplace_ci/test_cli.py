@@ -1145,10 +1145,18 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     assert rc == 0
 
 
-def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags, reports=None):
+# What the dispatch spy of the latest `_run_with_dispatch_spy` call saw (allow, fallback_root, ...).
+_LAST_SPY_SEEN: dict = {}
+
+
+def _run_with_dispatch_spy(
+    monkeypatch, git_repo, capsys, touched, *flags, reports=None, snapshot_problem=None
+):
     """Runs `run-codex-review` with dispatch replaced by a spy; returns (exit code, whether the
     unsandboxed fallback was allowed, stderr). `touched` is what the comparison of the fallback's
-    files with the base reports (a list, or None when git could not say)."""
+    files with the base reports (a list, or None when git could not say); `snapshot_problem` is
+    what building the fallback snapshot reports (None: it worked). The spy also leaves the
+    snapshot directory it was given in `seen["fallback_root"]`."""
     import subprocess as subprocess_module
 
     from scripts.marketplace_ci import review as review_module
@@ -1167,15 +1175,30 @@ def _run_with_dispatch_spy(monkeypatch, git_repo, capsys, touched, *flags, repor
 
     def spy(scope, **kwargs):
         seen["allow"] = kwargs["allow_guardrails_fallback"]
+        seen["fallback_root"] = kwargs["fallback_root"]
+        seen["fallback_root_existed"] = (
+            kwargs["fallback_root"] is not None and kwargs["fallback_root"].is_dir()
+        )
         if reports is not None:
             return reports
         raise OSError("stop after recording")  # handled: exit 2, nothing dispatched
 
     monkeypatch.setattr(review_module, "dispatch_reviewers", spy)
-    monkeypatch.setattr(review_module, "fallback_files_changed", lambda repo, base: touched)
+    monkeypatch.setattr(
+        review_module,
+        "fallback_files_changed",
+        lambda repo, base, files=review_module.FALLBACK_FILES: touched,
+    )
+    monkeypatch.setattr(
+        review_module,
+        "snapshot_fallback_files",
+        lambda repo, base, dest, manifest=None: snapshot_problem,
+    )
     monkeypatch.chdir(git_repo.root)
     capsys.readouterr()
     rc = main(["run-codex-review", "--base-sha", base_sha, *flags])
+    _LAST_SPY_SEEN.clear()
+    _LAST_SPY_SEEN.update(seen)
     return rc, seen["allow"], capsys.readouterr().err
 
 
@@ -1188,7 +1211,37 @@ def test_run_codex_review_allows_the_unsandboxed_fallback_when_no_file_it_runs_c
     assert allowed is True
 
 
-@pytest.mark.parametrize("touched", [["plugins/codex-kit/scripts/lib/codex-exec.mjs"], None])
+def test_run_codex_review_runs_the_fallback_from_a_snapshot_outside_the_checkout_then_removes_it(
+    monkeypatch, git_repo, capsys
+):
+    """Issue #676: the fallback no longer depends on the working tree's copy of the dispatcher."""
+    _, allowed, _ = _run_with_dispatch_spy(
+        monkeypatch, git_repo, capsys, [], "--allow-unsandboxed-fallback"
+    )
+    seen = _LAST_SPY_SEEN
+    assert allowed is True
+    assert seen["fallback_root_existed"] is True
+    assert not seen["fallback_root"].resolve().is_relative_to(git_repo.root.resolve())
+    assert not seen["fallback_root"].exists()
+
+
+def test_run_codex_review_refuses_the_fallback_when_the_snapshot_cannot_be_built(
+    monkeypatch, git_repo, capsys
+):
+    _, allowed, err = _run_with_dispatch_spy(
+        monkeypatch,
+        git_repo,
+        capsys,
+        [],
+        "--allow-unsandboxed-fallback",
+        snapshot_problem="the base has no regular file x",
+    )
+    assert allowed is False
+    assert _LAST_SPY_SEEN["fallback_root"] is None
+    assert "unsandboxed fallback refused: the base has no regular file x" in err
+
+
+@pytest.mark.parametrize("touched", [[".codex/config.toml"], None])
 def test_run_codex_review_refuses_the_unsandboxed_fallback_for_a_branch_that_edits_its_files(
     monkeypatch, git_repo, capsys, touched
 ):

@@ -61,15 +61,10 @@ def _closure(entry: str) -> set[str]:
     return seen
 
 
-def test_every_file_the_dispatcher_runs_is_in_the_fallback_refusal_list():
-    wrapper = _load_wrapper()
-    missing = sorted(_closure(ENTRY) - set(wrapper.FALLBACK_FILES))
-    assert not missing, f"guarded-dispatch.mjs runs files the fallback refusal ignores: {missing}"
-
-
 def test_every_fallback_file_exists():
-    wrapper = _load_wrapper()
-    assert [p for p in wrapper.FALLBACK_FILES if not (REPO / p).is_file()] == []
+    from scripts.marketplace_ci import review
+
+    assert [p for p in review.FALLBACK_FILES if not (REPO / p).is_file()] == []
 
 
 def test_the_closure_finds_the_known_transitive_imports():
@@ -118,7 +113,9 @@ def branch_repo(tmp_path, monkeypatch):
     # `fallback_files_changed` hashes raw bytes, so the fixture pins LF bytes and no end-of-line
     # conversion: this repository's own `.gitattributes` (`eol=lf`) gives real checkouts the same.
     _git(repo, "config", "core.autocrlf", "false")
-    for name in wrapper.FALLBACK_FILES:
+    from scripts.marketplace_ci import review
+
+    for name in review.FALLBACK_FILES:
         target = repo / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"original\n")
@@ -136,7 +133,7 @@ def test_fallback_touches_is_empty_for_an_untouched_branch(branch_repo):
 
 def test_fallback_touches_sees_a_committed_edit(branch_repo):
     wrapper, repo = branch_repo
-    target = wrapper.FALLBACK_FILES[2]
+    target = wrapper.CHECKOUT_READ_FILES[0]
     (repo / target).write_text("changed\n", encoding="utf-8")
     _git(repo, "commit", "-q", "-am", "edit")
     assert wrapper.fallback_touches("main") == [target]
@@ -144,7 +141,7 @@ def test_fallback_touches_sees_a_committed_edit(branch_repo):
 
 def test_fallback_touches_sees_a_staged_edit_that_is_not_committed(branch_repo):
     wrapper, repo = branch_repo
-    target = wrapper.FALLBACK_FILES[3]
+    target = wrapper.CHECKOUT_READ_FILES[0]
     (repo / target).write_text("changed\n", encoding="utf-8")
     _git(repo, "add", target)
     assert wrapper.fallback_touches("main") == [target]
@@ -152,16 +149,26 @@ def test_fallback_touches_sees_a_staged_edit_that_is_not_committed(branch_repo):
 
 def test_fallback_touches_sees_an_unstaged_edit(branch_repo):
     wrapper, repo = branch_repo
-    target = wrapper.FALLBACK_FILES[0]
+    target = wrapper.CHECKOUT_READ_FILES[0]
     (repo / target).write_text("changed\n", encoding="utf-8")
     assert wrapper.fallback_touches("main") == [target]
+
+
+def test_fallback_touches_does_not_look_at_what_the_snapshot_covers(branch_repo):
+    """Issue #676: an edited dispatcher is not a reason to lose the fallback any more."""
+    from scripts.marketplace_ci import review
+
+    wrapper, repo = branch_repo
+    for name in review.SNAPSHOT_FILES:
+        (repo / name).write_text("changed\n", encoding="utf-8")
+    assert wrapper.fallback_touches("main") == []
 
 
 def test_fallback_touches_ignores_a_change_made_only_on_the_base_after_branching(branch_repo):
     """Compared with the merge-base, so a protected file that `main` changed since the branch
     was cut is not blamed on the branch."""
     wrapper, repo = branch_repo
-    target = wrapper.FALLBACK_FILES[1]
+    target = wrapper.CHECKOUT_READ_FILES[0]
     _git(repo, "checkout", "-q", "main")
     (repo / target).write_text("changed on main\n", encoding="utf-8")
     _git(repo, "commit", "-q", "-am", "main moves on")
@@ -178,10 +185,10 @@ def test_fallback_touches_fails_closed_when_git_cannot_answer(monkeypatch):
     assert wrapper.fallback_touches("abc") is None
 
 
-def test_the_wrappers_fallback_list_matches_the_one_run_codex_review_enforces():
+def test_the_wrappers_checkout_read_list_matches_the_one_run_codex_review_enforces():
     from scripts.marketplace_ci import review
 
-    assert _load_wrapper().FALLBACK_FILES == review.FALLBACK_FILES
+    assert _load_wrapper().CHECKOUT_READ_FILES == review.CHECKOUT_READ_FILES
 
 
 def test_every_file_the_dispatcher_runs_is_in_the_enforced_refusal_list():
@@ -394,13 +401,24 @@ def test_fallback_decision_is_silent_and_off_where_the_sandbox_works(branch_repo
     assert wrapper.fallback_decision("main", platform="linux") == (False, "")
 
 
-def test_fallback_decision_skips_the_fallback_when_the_branch_changed_what_it_runs(branch_repo):
+def test_fallback_decision_skips_the_fallback_when_the_branch_changed_what_codex_reads(branch_repo):
     wrapper, repo = branch_repo
-    target = wrapper.FALLBACK_FILES[-1]  # the prompt asset the dispatcher reads at run time
+    target = wrapper.CHECKOUT_READ_FILES[0]
     (repo / target).write_text("changed\n", encoding="utf-8")
     use, note = wrapper.fallback_decision("main", platform="win32")
     assert use is False
     assert target in note and "sandboxed only" in note
+
+
+def test_fallback_decision_keeps_the_fallback_for_a_branch_that_edits_the_dispatcher(branch_repo):
+    """Issue #676: the dispatcher runs from a snapshot of the merge-base."""
+    from scripts.marketplace_ci import review
+
+    wrapper, repo = branch_repo
+    for name in review.SNAPSHOT_FILES:
+        (repo / name).write_text("changed\n", encoding="utf-8")
+    use, _ = wrapper.fallback_decision("main", platform="win32")
+    assert use is True
 
 
 def test_fallback_decision_skips_the_fallback_when_git_cannot_answer(monkeypatch):
@@ -411,8 +429,9 @@ def test_fallback_decision_skips_the_fallback_when_git_cannot_answer(monkeypatch
 
 
 def test_the_asset_the_dispatcher_puts_in_its_prompt_is_protected():
-    wrapper = _load_wrapper()
-    assert any(p.endswith("dangerous-command-instructions.txt") for p in wrapper.FALLBACK_FILES)
+    from scripts.marketplace_ci import review
+
+    assert any(p.endswith("dangerous-command-instructions.txt") for p in review.SNAPSHOT_FILES)
 
 
 # --- run-codex-review wiring ---
@@ -474,3 +493,173 @@ def test_provenance_names_the_reviewers_that_ran_unsandboxed():
     assert provenance["unsandboxed_reviewers"] == ["a-reviewer"]
     clean = cli._run_provenance(REPO, "deadbeef", [reports[1]])
     assert "unsandboxed_reviewers" not in clean
+
+
+# --- Issue #676: the fallback runs from a snapshot of the merge-base, not the working tree ---
+
+
+def test_the_checkout_read_and_snapshot_files_together_are_the_refusal_list():
+    from scripts.marketplace_ci import review
+
+    assert review.CHECKOUT_READ_FILES == (".codex/config.toml",)
+    assert (*review.SNAPSHOT_FILES, *review.CHECKOUT_READ_FILES) == review.FALLBACK_FILES
+
+
+def test_every_file_the_dispatcher_runs_is_in_the_snapshot():
+    from scripts.marketplace_ci import review
+
+    assert _closure(ENTRY) - set(review.SNAPSHOT_FILES) == set()
+
+
+def test_snapshot_holds_the_base_bytes_of_every_snapshot_file(branch_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    dest = tmp_path / "snap"
+    dest.mkdir()
+    assert review.snapshot_fallback_files(repo, "main", dest) is None
+    for name in review.SNAPSHOT_FILES:
+        assert (dest / name).read_bytes() == b"original\n"
+    assert not (dest / ".codex/config.toml").exists()
+
+
+@pytest.mark.parametrize("how", ["committed", "unstaged"])
+def test_snapshot_ignores_a_branch_edit_to_what_the_fallback_runs(branch_repo, tmp_path, how):
+    """The branch edits the dispatcher; the snapshot still holds the merge-base copy."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    edited = review.SNAPSHOT_FILES[0]
+    (repo / edited).write_bytes(b"edited by the branch\n")
+    if how == "committed":
+        _git(repo, "commit", "-q", "-am", "edit")
+    dest = tmp_path / "snap"
+    dest.mkdir()
+    assert review.snapshot_fallback_files(repo, "main", dest) is None
+    assert (dest / edited).read_bytes() == b"original\n"
+
+
+def test_snapshot_comes_from_the_base_tip_not_the_branchs_fork_point(branch_repo, tmp_path):
+    """A branch picks its own fork point, so an older merge-base copy (without later guardrail
+    fixes) must not be what runs with full access."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.SNAPSHOT_FILES[0]
+    _git(repo, "checkout", "-q", "main")
+    (repo / target).write_bytes(b"fixed on main later\n")
+    _git(repo, "commit", "-q", "-am", "main moves on")
+    _git(repo, "checkout", "-q", "feature")
+    dest = tmp_path / "snap"
+    dest.mkdir()
+    assert review.snapshot_fallback_files(repo, "main", dest) is None
+    assert (dest / target).read_bytes() == b"fixed on main later\n"
+
+
+@pytest.mark.parametrize("base", ["no-such-ref", "--output=x"])
+def test_snapshot_fails_with_a_reason_for_an_unresolvable_base(branch_repo, tmp_path, base):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    assert review.snapshot_fallback_files(repo, base, tmp_path) is not None
+
+
+def _snapshot(review, repo, tmp_path):
+    dest = tmp_path / "snap"
+    dest.mkdir()
+    manifest: dict[str, str] = {}
+    assert review.snapshot_fallback_files(repo, "main", dest, manifest) is None
+    return dest, manifest
+
+
+def test_snapshot_intact_is_true_for_a_fresh_snapshot(branch_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    dest, manifest = _snapshot(review, repo, tmp_path)
+    assert set(manifest) == set(review.SNAPSHOT_FILES)
+    assert review.snapshot_intact(repo, dest, manifest) is True
+
+
+def test_snapshot_intact_sees_a_file_overwritten_after_the_snapshot(branch_repo, tmp_path):
+    """An earlier unsandboxed reviewer runs as this account and could rewrite the snapshot."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    dest, manifest = _snapshot(review, repo, tmp_path)
+    (dest / review.SNAPSHOT_FILES[0]).write_bytes(b"tampered\n")
+    assert review.snapshot_intact(repo, dest, manifest) is False
+
+
+def test_snapshot_intact_sees_a_file_removed_after_the_snapshot(branch_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    dest, manifest = _snapshot(review, repo, tmp_path)
+    (dest / review.SNAPSHOT_FILES[0]).unlink()
+    assert review.snapshot_intact(repo, dest, manifest) is False
+
+
+def test_snapshot_intact_is_false_without_a_manifest(branch_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    assert review.snapshot_intact(repo, tmp_path, {}) is False
+
+
+def test_snapshot_fails_with_a_reason_when_the_base_lacks_a_file(branch_repo, tmp_path):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    _git(repo, "checkout", "-q", "main")
+    _git(repo, "rm", "-q", review.SNAPSHOT_FILES[1])
+    _git(repo, "commit", "-q", "-m", "drop")
+    dest = tmp_path / "snap"
+    dest.mkdir()
+    reason = review.snapshot_fallback_files(repo, "main", dest)
+    assert reason is not None and review.SNAPSHOT_FILES[1] in reason
+
+
+def test_snapshot_fails_with_a_reason_when_git_is_not_found_outside_the_checkout(
+    branch_repo, tmp_path, monkeypatch
+):
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    monkeypatch.setattr(review, "_executable_outside_checkout", lambda name: None)
+    assert review.snapshot_fallback_files(repo, "main", tmp_path) == (
+        "git was not found on PATH outside the checkout"
+    )
+
+
+def test_dispatch_launches_the_guardrails_script_from_the_snapshot_root(monkeypatch, tmp_path):
+    from scripts.marketplace_ci import review
+
+    seen = {}
+
+    def fake_dispatch_one(name, scope, **kwargs):
+        seen[name] = kwargs["guardrails_script"]
+        return review.ReviewerReport(reviewer=name, status="failed", error="stop", attempts=0)
+
+    monkeypatch.setattr(review, "_dispatch_one", fake_dispatch_one)
+    scope = review.ReviewScope(
+        mode="delta",
+        structural_check="delta",
+        validate=("skill-reviewer",),
+        audit=(),
+        paths=("a.md",),
+    )
+    repo, root = tmp_path / "repo", tmp_path / "snap"
+    for with_root in (root, None):
+        seen.clear()
+        review.dispatch_reviewers(
+            scope,
+            base_sha="0" * 40,
+            repo=repo,
+            instructions_dir=tmp_path / "ins",
+            allow_guardrails_fallback=True,
+            fallback_root=with_root,
+        )
+        assert seen["skill-reviewer"] == (
+            (with_root or repo) / review.GUARDRAILS_DISPATCH_RELATIVE_PATH
+        )
