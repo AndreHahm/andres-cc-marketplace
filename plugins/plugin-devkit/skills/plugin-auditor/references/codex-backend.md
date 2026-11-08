@@ -173,7 +173,7 @@ treat that as declined, never as consent. The trigger in (a) is a free-text heur
 `danger-full-access`. (`cross-model-review` differs on purpose: its own First-Send Confirmation
 already discloses the no-sandbox fallback up front, covering both outcomes, for a run the user started
 themselves, so it has no second `AskUserQuestion`; that disclosure states the same account-wide reach, and the
-fallback script is not pre-approved there either, so Claude Code's permission prompt still appears.)
+fallback script is not pre-approved there either, so Claude Code's permission prompt normally still appears (unless the user's own settings already allow it).)
 
 **Steps 0 and 1 still apply regardless of profile** (First-Send Confirmation; reviewer-name
 validation against `references/dispatch-table.md`'s enumerated set). **For steps 2 onward,

@@ -326,13 +326,13 @@ with open("contacts.csv") as f:
 ```yaml
 allowed-tools: Read,Write,Bash(*)
 ```
-**Problem:** Skill can execute ANY command (delete files, modify system, etc.).
+**Problem:** Every Bash command is pre-approved, so none will prompt (delete files, modify system, etc.).
 
 ✅ **GOOD:**
 ```yaml
-allowed-tools: Read,Write,Bash(python:*,grep:*)
+allowed-tools: Read Write Bash(python:*) Bash(grep:*)
 ```
-**Why it works:** Only Python and grep commands allowed.
+**Why it works:** Only Python and grep commands are pre-approved; other commands follow normal permission settings.
 
 ### Requesting Unnecessary Tools
 

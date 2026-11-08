@@ -350,7 +350,7 @@ def validate_2025_compliance(plugin_path, verbose=False):
                             result.add_check(
                                 False,
                                 f"Skill '{skill_dir.name}' missing 'allowed-tools' field (plugin-devkit convention; the platform treats it as optional). "
-                                f"FIX: Add to SKILL.md frontmatter: allowed-tools: Read, Write, Bash"
+                                f"FIX: Add to SKILL.md frontmatter: allowed-tools: Read, Grep"
                             )
         except Exception as e:
             result.add_warning(f"Error checking allowed-tools convention for {skill_dir.name}: {e}")

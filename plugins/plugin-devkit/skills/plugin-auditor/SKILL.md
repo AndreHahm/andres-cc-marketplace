@@ -197,7 +197,7 @@ rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped 
     the resolver first calls `guarded-dispatch.mjs` with `--dry-run true`; routes to Claude-native with no prompt on any
     typed failure from it (`guardrails_disabled` included); asks the second `AskUserQuestion` only after a passing dry
     run; treats an unavailable or declined prompt as Claude-native; and that Claude Code's own permission prompt also
-    appears for the script because it is deliberately absent from `allowed-tools`.
+    appears for the script (unless the user's own permission settings already allow it) because it is deliberately absent from `allowed-tools`.
 14. **Exit-0 total failure is not a clean pass (added 2026-10-12, not yet run live)** — feed the resolver a Codex result
     that is a schema-valid envelope with zero findings whose `inspection_limits` states process creation failed
     (the real Windows Codex 0.162.1 shape); confirm it is treated as `isolation_profile_unavailable` (the bridge

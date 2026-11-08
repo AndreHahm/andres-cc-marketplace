@@ -1,6 +1,6 @@
 # Tool Scoping with allowed-tools
 
-The `allowed-tools` field pre-approves the listed tools so Claude can use them without a permission prompt while your Skill is active — it does not restrict which tools are available (unlisted tools still fall through to normal permission prompting). Implement principle of least privilege anyway: only grant tools your skill actually needs.
+The `allowed-tools` field pre-approves the listed tools so Claude can normally use them without a permission prompt while your Skill is active — it does not restrict which tools are available (unlisted tools follow your normal permission settings). Implement principle of least privilege anyway: only grant tools your skill actually needs.
 
 ## Syntax Formats
 

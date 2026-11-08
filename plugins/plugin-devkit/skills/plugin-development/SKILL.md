@@ -292,7 +292,7 @@ See `references/quick-reference.md` for component templates and metadata require
 | Absolute paths in manifests | `"skills": "/Users/me/plugin/skills"` | `"skills": "./skills"` |
 | Non-kebab plugin name | `"name": "My_Plugin"` | `"name": "my-plugin"` |
 | `author` as string | `"author": "John Doe"` | `"author": {"name": "John Doe"}` |
-| Missing `allowed-tools` in SKILL.md | No frontmatter field | `allowed-tools: Read Write Bash` |
+| Missing `allowed-tools` in SKILL.md | No frontmatter field | `allowed-tools: Read Grep` |
 | No README.md | (missing) | Always include install + usage instructions |
 
 ### Common Failures (Quick Reference)

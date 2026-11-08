@@ -33,8 +33,8 @@ Commands use standardized frontmatter that follows Claude Code's official schema
 # Required field:
 description: Brief description of what the command does
 
-# Security control (highly recommended):
-allowed-tools: Read, Write, Bash(git:*)  # Specify allowed tools
+# Pre-approval (recommended; tools listed here skip the permission prompt):
+allowed-tools: Read, Write, Bash(git:*)  # Pre-approve tools
 
 # Optional fields:
 argument-hint: "<feature-name>"  # Help text for expected arguments

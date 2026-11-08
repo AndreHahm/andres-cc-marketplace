@@ -24,11 +24,11 @@ except DeploymentError as e:
 
 ## Tool Scoping
 
-Minimal pre-approval keeps surprising actions behind a permission prompt.
+Minimal pre-approval keeps surprising actions under your normal permission settings instead of pre-approving them.
 
 **Principles:**
 - Apply principle of least privilege: declare only tools Claude actually needs
-- Use scoped grants like `Bash(git:*)` so only those commands skip the permission prompt (other commands stay callable and prompt; use `disallowed-tools` or a deny rule to make a tool unavailable)
+- Use scoped grants like `Bash(git:*)` so only those commands are pre-approved (other commands stay callable under your normal permission settings; use `disallowed-tools` or a deny rule to make a tool unavailable)
 - Document why each tool is needed in frontmatter comments
 - Avoid over-permissioning; add tools conservatively
 
