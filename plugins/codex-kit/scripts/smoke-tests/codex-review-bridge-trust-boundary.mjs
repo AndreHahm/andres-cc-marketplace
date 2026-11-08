@@ -35,7 +35,7 @@ function check(label, condition, detail = "") {
   }
 }
 
-function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-test", extraEnv = {}) {
+function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-test", extraEnv = {}, extraArgs = []) {
   try {
     execFileSync(
       "node",
@@ -46,7 +46,8 @@ function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-tes
         "--target-paths", targetPaths,
         "--execution-profile", "read-only",
         "--dispatch-id", dispatchId,
-        "--cwd", tmpDir
+        "--cwd", tmpDir,
+        ...extraArgs
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...extraEnv } }
     );
@@ -170,9 +171,10 @@ console.log("\n=== CODEX_KIT_REVIEW_TIMEOUT_MS validation ===");
     tooLarge.stderr
   );
 
+  // --dry-run true: a real run with this budget could hang for days if a working codex is on PATH.
   const atCeiling = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
     CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483647"
-  });
+  }, ["--dry-run", "true"]);
   check(
     "CODEX_KIT_REVIEW_TIMEOUT_MS of exactly 2147483647 passes the format check",
     !atCeiling.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
