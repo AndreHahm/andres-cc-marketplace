@@ -39,6 +39,9 @@ UNSCOPED_BASH_RE = re.compile(
     r")",
 )
 
+AGENT_SCOPED_BASH_RE = re.compile(r"(?m)^tools\s*:.*\bBash\(")
+AGENT_PATH_RE = re.compile(r"[/\\]agents[/\\][^/\\]+\.md$")
+
 SECRET_PATTERNS = [
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
@@ -73,8 +76,15 @@ def scan_file(path_str):
     except Exception:
         return findings
 
-    if UNSCOPED_BASH_RE.search(text):
-        findings.append(f"{path_str}: unscoped Bash/shell-interpreter allowed-tools grant (mirrors R6 for skills/commands)")
+    if AGENT_PATH_RE.search(path_str):
+        if AGENT_SCOPED_BASH_RE.search(text):
+            findings.append(
+                f"{path_str}: agent tools should use bare Bash, not Bash(...) (mirrors R6)"
+            )
+    elif UNSCOPED_BASH_RE.search(text):
+        findings.append(
+            f"{path_str}: unscoped Bash/shell-interpreter allowed-tools grant (mirrors R6)"
+        )
 
     for line_no, line in enumerate(text.splitlines(), start=1):
         if any(hint in line for hint in PLACEHOLDER_HINTS):
