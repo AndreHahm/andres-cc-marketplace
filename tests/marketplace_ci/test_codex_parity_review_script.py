@@ -952,3 +952,50 @@ def test_workflow_exports_model_variable_reads_only_the_dispatch_step():
     )
     decoy += "\n      # CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}\n"
     assert not module.workflow_exports_model_variable(decoy, "CODEX_KIT_REVIEW_MODEL")
+
+
+def test_a_sandbox_failure_in_a_could_not_run_result_suggests_sandbox_down(tmp_path):
+    """Issue #652: the probe can pass while reviewers fail on the sandbox; the wrapper says which
+    reviewers, and that --sandbox-down starts them all through the fallback."""
+    module = _load_module()
+    output = tmp_path / "out.json"
+    output.write_text(
+        json.dumps(
+            {
+                "status": "could_not_run",
+                "dispatch_failed": [
+                    {
+                        "reviewer": "dependency-reviewer",
+                        "attempts": 2,
+                        "error": (
+                            "reviewer returned an inconclusive review: setup refresh had errors"
+                        ),
+                    },
+                    {"reviewer": "skill-reviewer", "attempts": 1, "error": "bridge process killed"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    hint = module.sandbox_rerun_hint(output)
+    assert hint is not None
+    assert "dependency-reviewer" in hint and "skill-reviewer" not in hint
+    assert "--sandbox-down" in hint
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        None,  # no file
+        "not json",
+        json.dumps([]),
+        json.dumps({"dispatch_failed": "x"}),
+        json.dumps({"dispatch_failed": [{"reviewer": "a", "attempts": 1, "error": "timed out"}]}),
+        json.dumps({"dispatch_failed": [{"reviewer": "a", "error": None}, "junk"]}),
+    ],
+)
+def test_no_sandbox_hint_without_a_sandbox_failure_in_the_result(tmp_path, content):
+    output = tmp_path / "out.json"
+    if content is not None:
+        output.write_text(content, encoding="utf-8")
+    assert _load_module().sandbox_rerun_hint(output) is None

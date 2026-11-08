@@ -139,6 +139,32 @@ console.log("\n=== Classifier-level: the captured Windows Codex 0.162.1 final me
   );
 }
 
+console.log("\n=== Issue #652: the Windows setup-refresh wordings are detected ===");
+{
+  for (const note of [
+    "Failed to create unified exec process: helper_unknown_error: setup refresh had errors",
+    "The shell helper reported: setup refresh had errors, so no file could be read.",
+    "Every command returned helper_unknown_error."
+  ]) {
+    check(`recognized: "${note}"`, isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
+  }
+  check(
+    "a setup-refresh note with findings present is never reclassified",
+    !isTotalInspectionFailure({ findings: [{ id: "F1" }], inspection_limits: ["setup refresh had errors"] })
+  );
+  for (const topical of [
+    "Reviewed the setup refresh logic statically; it has no tests.",
+    "The os error 32 mapping in errors.rs was not exercised.",
+    // The generic Windows sharing violation, from one locked file: a partial note, not a sandbox failure.
+    "Could not read build.log: the process cannot access the file because it is being used by another process. (os error 32)"
+  ]) {
+    check(
+      `a topical note about the code under review does NOT match: "${topical}"`,
+      !isTotalInspectionFailure({ findings: [], inspection_limits: [topical] })
+    );
+  }
+}
+
 console.log("\n=== Security review fix (M2): a PARTIAL read/access note no longer over-matches ===");
 {
   // An earlier draft's pattern also matched a bare "could not (inspect|

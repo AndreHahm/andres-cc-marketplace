@@ -1040,7 +1040,9 @@ def _git_out(repo: Path, *argv: str) -> str | None:
     return out or None
 
 
-def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict:
+def _run_provenance(
+    repo: Path, base_sha: str | None, reports: Sequence, probe_log: Sequence[str] = ()
+) -> dict:
     """What a review ran on, recorded in every result shape so an artifact can be read
     without the log: the PR head (second parent on the merge ref), the checked-out merge
     ref, the base the delta used, the model and CLI version the reviewers reported, and the pins
@@ -1072,6 +1074,10 @@ def _run_provenance(repo: Path, base_sha: str | None, reports: Sequence) -> dict
         # Reviewers that ran through codex-windows-guardrails (danger-full-access, best-effort
         # guardrails): the isolation of the whole result is only as strong as its weakest reviewer.
         provenance["unsandboxed_reviewers"] = unsandboxed
+    if probe_log:
+        # What each sandbox probe saw, in order: a probe that passed before reviewers failed on the
+        # sandbox mid-run (issue #652) is otherwise invisible in the result.
+        provenance["sandbox_probe"] = list(probe_log)
     return provenance
 
 
@@ -1127,7 +1133,12 @@ def _fail_run_codex_review(
             "error": message[:_MAX_ERROR_CHARS],
             "reviewer_results": _reviewer_results(reports, failed),
             "completed_reviewer_findings": _completed_reviewer_findings(reports),
-            "provenance": _run_provenance(Path.cwd(), getattr(args, "base_sha", None), reports),
+            "provenance": _run_provenance(
+                Path.cwd(),
+                getattr(args, "base_sha", None),
+                reports,
+                getattr(args, "sandbox_probe_log", ()),
+            ),
         }
         Path(args.output).write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
     return 2
@@ -1293,6 +1304,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             return _fail_run_codex_review(
                 args, f"cannot claim --instructions-dir {str(instructions_dir)!r}: {exc}"
             )
+    probe_log: list[str] = []
+    args.sandbox_probe_log = probe_log  # read by _fail_run_codex_review's provenance
     try:
         reports = dispatch_reviewers(
             scope,
@@ -1304,6 +1317,11 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
             exceptions=exceptions,
             allow_guardrails_fallback=allow_fallback,
             sandbox_probe=_sandbox_probe_for(args, probe_sandbox),
+            probe_log=probe_log,
+            # Re-asked before every unsandboxed call; an unanswerable comparison counts as changed.
+            unsandboxed_allowed=(
+                (lambda: fallback_files_changed(repo, base_sha) == []) if allow_fallback else None
+            ),
         )
     except OSError as exc:
         # Raised only before any reviewer starts (e.g. the default instruction
@@ -1336,7 +1354,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 "status": "could_not_run",
                 "reviewer_results": _reviewer_results(reports),
                 "completed_reviewer_findings": _completed_reviewer_findings(reports),
-                "provenance": _run_provenance(repo, base_sha, reports),
+                "provenance": _run_provenance(repo, base_sha, reports, probe_log),
                 "blocking": True,
             }
             Path(args.output).write_text(
@@ -1395,7 +1413,7 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         "reviewer_attempts": {r.reviewer: r.attempts for r in reports},
         "status": "findings" if findings else "clean",
         "reviewer_results": _reviewer_results(reports),
-        "provenance": _run_provenance(repo, base_sha, reports),
+        "provenance": _run_provenance(repo, base_sha, reports, probe_log),
         "structural_findings": [
             {"path": f.path, "operation": f.operation, "reason": f.reason}
             for f in structural_findings

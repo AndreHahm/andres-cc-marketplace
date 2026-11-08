@@ -265,7 +265,7 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    default** (`assets/settings.json` ships disabled; requires an untracked
    `.claude/codex-windows-guardrails.local.json` override to enable) — do not enable it yourself. A
    `guardrails_disabled` typed failure here is expected, not a bug. The fallback script is deliberately not
-   pre-approved in `allowed-tools`, so its first call raises Claude Code's own permission prompt.
+   pre-approved in `allowed-tools`, so its first call raises Claude Code's own permission prompt. A verdict that read nothing is this failure too (`references/resolver-failure-handling.md`).
 3. **On any other typed failure from either path** — including `guardrails_disabled`, the `codex`
    CLI itself missing, and **`codex-kit` not being installed at all** (`node` then fails at the OS
    level before either script produces its own typed-failure JSON — the same `cli_unavailable`

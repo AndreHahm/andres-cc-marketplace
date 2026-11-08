@@ -79,7 +79,10 @@ alongside `cross-model-review`.
   running `node_repl.exe` processes, including the reviewers' own parallel sessions, so some or all
   reviewers cannot start). The wrapper handles it the way `cross-model-review` does, with no question
   about sandboxed versus unsandboxed: reviewers run sandboxed first; a sandbox probe (never a
-  reviewer's own text) decides whether a failure is the sandbox, and then the affected reviewer runs
+  reviewer's own text) decides whether a failure is the sandbox. The probe passes only when all three
+  of its tries run a command, and once any probe has failed the sandbox stays down for the whole run
+  (issue #652; the sandbox fails intermittently, so one lucky pass proves nothing). The affected
+  reviewer then runs
   through `codex-windows-guardrails` (`danger-full-access`: no sandbox, this account's permissions,
   network access). Guardrails must be enabled in the untracked
   `.claude/codex-windows-guardrails.local.json`, otherwise the reviewer is reported could-not-run. When
@@ -88,5 +91,7 @@ alongside `cross-model-review`.
   branch changes a file it runs (the dispatcher, its imports, its prompt asset or its `settings.json`).
   A reviewer that read nothing is never reported as clean, the result file keeps the findings of the
   reviewers that did complete (`completed_reviewer_findings`), and a reviewer that ran unsandboxed is
-  named in `reviewer_results` and in `provenance.unsandboxed_reviewers`.
+  named in `reviewer_results` and in `provenance.unsandboxed_reviewers`; `provenance.sandbox_probe`
+  lists what each probe saw. When a run exits 2 because reviewers failed on the sandbox, the wrapper
+  names them and suggests rerunning with `--sandbox-down`.
 - Related: #525 (CI blocks on pre-existing findings in touched files) affects CI and this round equally.

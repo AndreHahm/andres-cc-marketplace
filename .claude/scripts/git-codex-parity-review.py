@@ -459,6 +459,10 @@ def main() -> int:
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
     if result.returncode not in (0, 1):
+        if use_fallback and not args.sandbox_down and result.returncode == 2:
+            hint = sandbox_rerun_hint(output)
+            if hint:
+                print(hint)
         return 2
     # Fail closed: an exit status alone is not evidence that a review ran and what it concluded.
     blocking = _read_blocking(output)
@@ -469,6 +473,48 @@ def main() -> int:
         print(f"PARITY: exit {result.returncode} contradicts the result (blocking={blocking}).")
         return 2
     return result.returncode
+
+
+# Wording a failed reviewer's error carries when the Codex sandbox, not the review, is what failed
+# (issue #644/#652). Advisory only: it decides whether to print a hint, never what runs.
+_SANDBOX_ERROR_MARKERS = (
+    "setup refresh",
+    "helper_unknown_error",
+    "os error 32",
+    "isolation_profile_unavailable",
+)
+
+
+def sandbox_rerun_hint(output: Path) -> str | None:
+    """A line telling the caller to rerun with `--sandbox-down`, when a could-not-run result names
+    reviewers that failed on the Codex sandbox, else None. The sandbox probe can pass while
+    reviewers still fail on a flaky sandbox (issue #652); `--sandbox-down` skips the probe and
+    starts every reviewer through the guardrails fallback. Data only: the result is read, never
+    acted on."""
+    try:
+        data = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    failed = data.get("dispatch_failed") if isinstance(data, dict) else None
+    if not isinstance(failed, list):
+        return None
+    names = sorted(
+        {
+            str(entry.get("reviewer"))
+            for entry in failed
+            if isinstance(entry, dict)
+            and isinstance(entry.get("error"), str)
+            and any(marker in entry["error"].lower() for marker in _SANDBOX_ERROR_MARKERS)
+        }
+    )
+    if not names:
+        return None
+    return (
+        f"PARITY: {', '.join(names)} reported a Codex sandbox failure (their own text, which the "
+        "sandbox probe did not confirm). --sandbox-down skips the probe and starts every reviewer "
+        "through the guardrails fallback (unsandboxed: no sandbox, this account's permissions, "
+        "network); rerun with it only if you accept that."
+    )
 
 
 # Keys every completed run-codex-review result carries (scripts/marketplace_ci/__main__.py

@@ -1938,6 +1938,98 @@ def test_dispatch_falls_back_when_the_sandboxed_reviewer_keeps_returning_an_empt
     assert all(r.attempts == 3 for r in reports)  # bridge, one empty retry, guardrails
 
 
+def test_dispatch_keeps_every_reviewer_unsandboxed_once_one_probe_found_the_sandbox_down(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    """Issue #652: with a flaky sandbox, a re-probe that happens to pass must not leave a later
+    reviewer sandboxed and failing. After the first failed probe every reviewer falls back."""
+
+    def on_call(reviewer, argv):
+        if _is_guarded(argv):
+            return subprocess.CompletedProcess(
+                args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+            )
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Pass", limits=["setup refresh had errors"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    # healthy at dispatch start, down on the first re-check, then healthy again for every later one
+    probe_results = iter([None, "setup refresh had errors"])
+    log: list[str] = []
+
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: next(probe_results, None),
+        probe_log=log,
+    )
+    assert all(r.status == "completed" and r.unsandboxed for r in reports)
+    assert log == ["probe 1: ok", "probe 2: down (setup refresh had errors)"]
+
+
+@pytest.mark.parametrize("probe_down_at_start", [True, False])
+def test_an_unsandboxed_call_is_refused_when_a_fallback_file_changed_mid_run(
+    monkeypatch, repo, change, dependency_index, trusted_node, probe_down_at_start
+):
+    """An earlier unsandboxed reviewer, steered by the diff, could edit a file a later unsandboxed
+    call runs; the fallback files are re-checked before every unsandboxed call, whether the run
+    started unsandboxed or a reviewer switched to it."""
+
+    def on_call(reviewer, argv):
+        assert not _is_guarded(argv), "an unsandboxed call ran although the files changed"
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=_envelope("Pass", limits=["setup refresh had errors"]),
+            stderr=b"",
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    probe_results = iter([] if probe_down_at_start else [None])
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: next(probe_results, "setup refresh had errors"),
+        unsandboxed_allowed=lambda: False,
+    )
+    assert all(r.status == "failed" and not r.unsandboxed for r in reports)
+    assert all("unsandboxed run refused" in (r.error or "") for r in reports)
+
+
+def test_an_unsandboxed_call_runs_when_the_fallback_files_are_unchanged(
+    monkeypatch, repo, change, dependency_index, trusted_node
+):
+    asked = []
+
+    def on_call(reviewer, argv):
+        return subprocess.CompletedProcess(
+            args=argv, returncode=0, stdout=_envelope("Pass"), stderr=b""
+        )
+
+    monkeypatch.setattr(subprocess, "run", _bridge_aware_run(on_call))
+    scope = _skill_scope(change, dependency_index)
+    reports = dispatch_reviewers(
+        scope,
+        base_sha="deadbeef",
+        repo=repo,
+        allow_guardrails_fallback=True,
+        sandbox_probe=lambda: "setup refresh had errors",
+        unsandboxed_allowed=lambda: asked.append(1) or True,
+    )
+    assert all(r.status == "completed" and r.unsandboxed for r in reports)
+    assert asked  # it was actually consulted
+
+
 def test_dispatch_does_not_fall_back_for_an_empty_review_unrelated_to_the_sandbox(
     monkeypatch, repo, change, dependency_index, trusted_node
 ):
@@ -1994,17 +2086,32 @@ def test_a_failing_sandbox_probe_sends_consented_reviewers_straight_to_guardrail
     assert all(r.status == "completed" and r.attempts == 1 for r in reports)
 
 
-def test_probe_sandbox_passes_once_any_attempt_works_and_fails_when_none_does(monkeypatch):
+def test_probe_sandbox_passes_only_when_every_attempt_works(monkeypatch):
+    """Issue #652: the sandbox fails most commands on an affected machine, so one passing try out
+    of three must not read as healthy."""
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setattr(review, "_codex_executable", lambda: "codex")
-    outcomes = iter([(1, b"", b"setup refresh had errors"), (0, b"ok\r\n", b"")])
+    calls = []
 
-    def fake_run(argv, **kw):
-        code, out, err = next(outcomes)
-        return subprocess.CompletedProcess(argv, code, out, err)
+    def run_with(outcomes):
+        queue = iter(outcomes)
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+        def fake_run(argv, **kw):
+            calls.append(argv)
+            code, out, err = next(queue)
+            return subprocess.CompletedProcess(argv, code, out, err)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+    run_with([(0, b"ok\r\n", b"")] * 3)
     assert _REAL_PROBE_SANDBOX() is None
+    assert len(calls) == 3
+
+    calls.clear()
+    run_with([(0, b"ok\r\n", b""), (1, b"", b"setup refresh had errors"), (0, b"ok\r\n", b"")])
+    reason = _REAL_PROBE_SANDBOX()
+    assert reason is not None and "try 2 of 3" in reason and "setup refresh" in reason
+    assert len(calls) == 2  # the first failure ends the probe
 
     monkeypatch.setattr(
         subprocess,
@@ -2013,6 +2120,37 @@ def test_probe_sandbox_passes_once_any_attempt_works_and_fails_when_none_does(mo
     )
     reason = _REAL_PROBE_SANDBOX()
     assert reason is not None and "os error 32" in reason
+
+
+def test_a_sandbox_verdict_stays_down_once_a_probe_has_failed():
+    """Issue #652: a later passing probe must not undo a failure the run already saw."""
+    outcomes = iter([None, "setup refresh had errors", None, None])
+    verdict = review.SandboxVerdict(lambda: next(outcomes))
+    assert verdict() is None  # a pass is not remembered...
+    assert verdict() == "setup refresh had errors"
+    assert verdict() == "setup refresh had errors"  # ...but a failure is, without probing again
+    assert verdict() == "setup refresh had errors"
+    assert verdict.log == ["probe 1: ok", "probe 2: down (setup refresh had errors)"]
+
+
+def test_a_sandbox_verdict_serializes_concurrent_probes():
+    active = []
+    overlap = []
+
+    def probe():
+        active.append(1)
+        overlap.append(len(active))
+        time.sleep(0.02)
+        active.pop()
+        return None
+
+    verdict = review.SandboxVerdict(probe)
+    threads = [threading.Thread(target=verdict) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert overlap == [1, 1, 1, 1]
 
 
 def test_probe_sandbox_starts_codex_with_a_path_without_the_checkout(monkeypatch, tmp_path):
