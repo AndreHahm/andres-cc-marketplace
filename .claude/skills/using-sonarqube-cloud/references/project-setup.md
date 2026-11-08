@@ -16,7 +16,7 @@ Analysis shows no coverage figure there. See [Automatic Analysis](https://docs.s
 
 Settings for Automatic Analysis, read from the default branch only: a change takes effect after merge.
 
-```properties
+```ini
 sonar.issue.ignore.multicriteria=p1
 sonar.issue.ignore.multicriteria.p1.ruleKey=python:S5443
 sonar.issue.ignore.multicriteria.p1.resourceKey=**/*.py

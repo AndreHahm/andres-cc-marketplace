@@ -633,14 +633,19 @@ def check_sonar_adapter() -> None:
     )
     record = json.loads(out)
     check(
-        "repo fixture: existing state and the bare repo source",
-        record["source"] == {"kind": "repo"}
+        "repo fixture: existing state and the project key in the source",
+        record["source"] == {"kind": "repo", "repository": "example_project"}
         and {f["state"] for f in record["findings"]} == {"existing"},
     )
     code, out, _ = run_main(
         adapter, "--kind", "ignored", *project, "--input", str(SONAR / "ignored.json")
     )
-    first, second = json.loads(out)["findings"]
+    record = json.loads(out)
+    check(
+        "ignored fixture: the project key in the source",
+        record["source"] == {"kind": "ignored", "repository": "example_project"},
+    )
+    first, second = record["findings"]
     check(
         "ignored fixture: status verbatim and the last comment's markdown only",
         first["ignored"] is True
