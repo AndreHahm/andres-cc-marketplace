@@ -65,10 +65,10 @@ instead of over multiple review rounds.
    specific target — never merge findings across targets into one combined pass/fail.
 4. **Reporting each target's own outcome (FAIL, BLOCKED, or clean) is unconditional and applies
    regardless of what the rest of this step does** — never gated behind the caller-skip branch below.
-   For a target with a FAIL: this skill has no `Write`/`Edit` grant, directly or transitively — its
+   For a target with a FAIL: this skill pre-approves no `Write`/`Edit`, directly or transitively — its
    `Skill` grant is scoped to `plugin-auditor` only (not the bare `Skill` this skill used to carry), and
-   `plugin-auditor` itself has no `Edit` grant, so this skill structurally cannot mutate any target's
-   files. Route the fix through a direct edit made by the caller/session, then re-run from step 2 for
+   `plugin-auditor` itself has no `Edit` grant, so this skill is not pre-approved to mutate any target's
+   files (an instruction-level rule, not structural enforcement). Route the fix through a direct edit made by the caller/session, then re-run from step 2 for
    that target. For a target that's BLOCKED: it does not enter this fix-and-re-run loop at
    all (a boundary escape isn't something an eval edit fixes, and re-running step 2 on an unchanged path
    just re-blocks it) — report it and exclude it from the batch's passing set; a human decides what to do

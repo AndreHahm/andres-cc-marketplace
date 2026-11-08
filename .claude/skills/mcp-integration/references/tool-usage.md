@@ -139,7 +139,7 @@ To create a task:
 
 ### Agent Configuration
 
-Agents can use MCP tools autonomously without pre-allowing them:
+Agents can use MCP tools listed in their `tools` field (or inherited):
 
 ```markdown
 ---
@@ -162,14 +162,14 @@ Autonomous agent for generating Asana project status reports.
 
 ## Available Tools
 
-The agent has access to all Asana MCP tools without pre-approval.
+The agent can use the Asana MCP tools (agent access is set by its `tools` field, not pre-approval).
 ```
 
 ### Agent Tool Access
 
-Agents have broader tool access than commands:
-- Can use any tool Claude determines is necessary
-- Don't need pre-allowed lists
+Commands and agents grant tools differently:
+- A command's `allowed-tools` only pre-approves listed tools; others stay callable under normal permission settings
+- An agent's `tools` field is a real allowlist (an omitted `tools` inherits all tools)
 - Should document which tools they typically use
 
 ## Tool Call Patterns

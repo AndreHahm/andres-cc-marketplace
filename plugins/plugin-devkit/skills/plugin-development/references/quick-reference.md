@@ -211,7 +211,7 @@ More text with examples.
 | Search files | `Glob` | Find plugin components |
 | Ask user questions | `AskUserQuestion` | Gather requirements |
 
-**Scoped, not disallowed:** `Bash` is limited to `Bash(jq:*) Bash(python:*) Bash(claude:*)` for this skill (see `SKILL.md`'s frontmatter) — not a blanket exclusion.
+**Scoped, not disallowed:** `Bash` is pre-approved only for `Bash(jq:*) Bash(python:*) Bash(claude:*)` for this skill (see `SKILL.md`'s frontmatter); other commands follow normal permission settings — not a blanket exclusion.
 
 ## Component-Specific Delegation
 

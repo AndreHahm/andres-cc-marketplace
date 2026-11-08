@@ -107,7 +107,7 @@ FIX: Add frontmatter at top of SKILL.md:
 ---
 name: my-skill
 description: What it does
-allowed-tools: Read, Write, Bash
+allowed-tools: Read, Grep
 ---
 ```
 
@@ -144,7 +144,7 @@ FIX: Add to SKILL.md frontmatter:
 ---
 name: my-skill
 description: What it does
-allowed-tools: Read, Write, Bash
+allowed-tools: Read, Grep
 ---
 ```
 
@@ -162,7 +162,7 @@ allowed-tools: Read, Write, Edit
 
 **Automation**:
 ```yaml
-allowed-tools: Read, Write, Bash
+allowed-tools: Read, Write, Bash(git:*)
 ```
 
 **Research**:
@@ -172,7 +172,7 @@ allowed-tools: Read, WebSearch, WebFetch
 
 **Full access**:
 ```yaml
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git:*), WebSearch, WebFetch
 ```
 
 ## Validation Workflow
@@ -215,7 +215,7 @@ python scripts/validate_plugin.py my-plugin/ --check 2025
 
 1. Open `SKILL.md`
 2. Find YAML frontmatter (between `---` markers)
-3. Add line: `allowed-tools: Read, Write, Bash`
+3. Add line: `allowed-tools: Read, Grep`
 4. Save file
 
 ### Convert Underscore Names to Kebab-Case
@@ -261,7 +261,7 @@ python scripts/validate_plugin.py plugin/ --check 2025
 3. **Common Tools by Skill Type**:
    - Analysis skills: `Read, Grep, Glob`
    - Editor skills: `Read, Write, Edit`
-   - Automation: `Read, Write, Bash`
+   - Automation: `Read, Write, Bash(git:*)`
    - Research: `Read, WebSearch, WebFetch`
 
 4. **Re-validate**:

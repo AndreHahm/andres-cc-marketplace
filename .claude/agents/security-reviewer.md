@@ -40,7 +40,7 @@ For each component's `allowed-tools`/`tools` field, first note what kind of fiel
 - In a skill or command's `allowed-tools`, flag any `Bash(*)`, bare `Bash`, or shell-interpreter scope (`Bash(sh:*)`, `Bash(bash:*)`, `Bash(cmd:*)`, `Bash(powershell:*)`; an interpreter followed by one pinned script path, such as `Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/x.sh:*)`, is not flagged) as **Critical** — this duplicates `plugin-rulebook` R6 by design; a security review that skipped tool-scoping would be incomplete, not a replacement for R6.
 - In an agent's `tools`, the rule is reversed (`plugin-rulebook` R6): bare `Bash` is the only valid form, so do not flag it. Flag a scoped `Bash(cmd:*)` entry there as **Major** — it is not valid scoping syntax in an agent's `tools` (R6); if the agent's Process uses Bash the fix is bare `Bash`, otherwise remove the entry.
 - Flag a tool grant broader than what the component's own documented Process actually uses (e.g. `Write` declared but the body never writes a file) as **Major** — unused pre-approval is exactly the surface a prompt-injection attack would exploit if it ever gained control of this component's context.
-- Flag any component with `Bash`/`Write`/`Edit` access whose own description or `When to Use` characterizes it as "read-only" or "review-only" as a **Critical** contradiction between claimed and actual capability.
+- Flag an agent whose `tools` (omitted `tools` inherits all) has `Bash`/`Write`/`Edit` but whose description says "read-only" as **Critical**; the same in a skill or command's `allowed-tools` is **Major** (grant hygiene).
 
 ## Step 3: Prompt-Injection Surface Analysis
 
@@ -57,7 +57,7 @@ Beyond `plugin-rulebook` R9's hardcoded-credential regex:
 
 Same severity-numbered convention as every other `*-reviewer` in this plugin:
 
-- **Critical (C1, C2 … Cn)**: unscoped Bash/shell-interpreter tool grants, claimed-vs-actual capability contradictions, unbounded prompt-injection surface
+- **Critical (C1, C2 … Cn)**: unscoped Bash/shell-interpreter tool grants, an agent's claimed-vs-actual capability contradictions, unbounded prompt-injection surface
 - **Major (M1, M2 … Mn)**: over-broad but scoped tool grants, ambiguous external-content boundaries, bulk external-data persistence
 - **Minor (m1, m2 … mn)**: informational notes, grouped under a single collapsible block:
 

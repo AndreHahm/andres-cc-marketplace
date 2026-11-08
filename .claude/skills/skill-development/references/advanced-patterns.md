@@ -435,7 +435,7 @@ Complex skills require:
 | **Error handling** | Errors must be clear, not silent failures |
 | **Testing** | Reliability required across different uses |
 | **Documentation** | Users unfamiliar with context |
-| **Tool scoping** | Minimize blast radius of malicious use |
+| **Tool scoping** | Pre-approve only what the skill needs (not a security boundary; use `disallowed-tools` or deny rules to restrict) |
 | **Version tracking** | Coordination and rollbacks |
 | **Validation script** | Verify skill works before use |
 | **Security review** | Catch edge cases and vulnerabilities |

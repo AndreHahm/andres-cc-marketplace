@@ -214,7 +214,7 @@ Claude loads quick start on every command execution, detailed guide only if refe
 
 Plugins are isolated by:
 - **Namespace:** `/plugin-name:command` prevents conflicts
-- **Permissions:** Tool access controlled via `allowed-tools`
+- **Permissions:** `allowed-tools` pre-approves listed tools; permission settings still govern the rest
 - **Scope:** Each plugin has its own directory
 
 ### Permissions Model
@@ -226,7 +226,7 @@ allowed-tools: Read,Write,Bash(git:*)
 Claude respects tool scoping:
 - `Read`: Can read files
 - `Write`: Can write/create files
-- `Bash(git:*)`: Only git commands (not all bash)
+- `Bash(git:*)`: pre-approves git commands (other commands follow normal permission settings)
 
 **Principle:** Least privilege (only necessary tools).
 

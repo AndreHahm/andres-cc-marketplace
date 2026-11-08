@@ -25,7 +25,7 @@ How to choose the right tools for skills, agents, and subagents.
 |-------|----------|-------------|
 | `name` | No | Display name (kebab-case, max 64 chars). Defaults to directory name. |
 | `description` | Recommended | What it does and when to use it. **Controls skill activation.** |
-| `allowed-tools` | No | Tools Claude can use without asking when skill is active. |
+| `allowed-tools` | No | Tools pre-approved while the skill is active (normally no prompt); does not restrict other tools. |
 | `disable-model-invocation` | No | Set `true` to prevent Claude from auto-loading. User invokes with `/name`. |
 | `user-invocable` | No | Set `false` to hide from `/` menu. Claude can still invoke. |
 | `context` | No | Set `fork` to run in an isolated subagent context. Skill content becomes the subagent prompt. |

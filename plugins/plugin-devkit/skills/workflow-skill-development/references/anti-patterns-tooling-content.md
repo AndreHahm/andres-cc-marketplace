@@ -37,7 +37,7 @@ Find all Python files using Glob with pattern `**/*.py`.
 
 **Symptom:** Skill lists tools it never uses, or includes Write/Bash for a read-only analysis skill.
 
-**Why it's wrong:** Every listed tool is pre-approved, so it runs without a permission prompt. A read-only analysis skill with Write listed could create files the user never got asked about. Grant only what the skill uses (listing a tool is a pre-approval, not a capability the skill needs; omitting one blocks nothing).
+**Why it's wrong:** Every listed tool is pre-approved, so it normally runs without a permission prompt (unless a deny/ask rule or the permission mode overrides). A read-only analysis skill with Write listed could create files the user never got asked about. Grant only what the skill uses (listing a tool is a pre-approval, not a capability the skill needs; omitting one blocks nothing).
 
 **Before:**
 ```yaml

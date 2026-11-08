@@ -179,7 +179,7 @@ skills/
 name: skill-name
 description: >-
   What the skill does. Use when [trigger context].
-allowed-tools: Read,Write,Bash
+allowed-tools: Read,Write,Bash(git:*)
 disable-model-invocation: false  # Allow Claude auto-invoke
 user-invocable: true              # Allow user /skill-name invocation
 ---

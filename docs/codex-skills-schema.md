@@ -55,8 +55,8 @@ dependencies:
 
 ### What Codex does **not** support
 
-Per the official doc, Codex does not support: tool restrictions limiting which tools a skill may
-access (so `allowed-tools` has no enforced effect on Codex, consistent with the base spec's own
+Per the official doc, Codex does not support: per-skill tool pre-approval or restriction
+(`allowed-tools` is only a pre-approval under Claude and has no effect on Codex, consistent with the base spec's own
 "experimental, varies by implementation" caveat), model pinning to a specific version, hook
 mechanisms for automation, or merging two skills that share the same `name` (both load separately
 rather than being deduplicated).

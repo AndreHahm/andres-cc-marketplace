@@ -32,7 +32,7 @@ COMPONENT_PATTERNS = [
 ]
 
 UNSCOPED_BASH_RE = re.compile(
-    r"(?:allowed-tools|tools)\s*:.*?\b("
+    r"\ballowed-tools\s*:.*?\b("
     r"Bash(?!\()"
     r"|Bash\(\*\)"
     r"|Bash\(\s*(sh|bash|cmd|powershell)\s*:"
@@ -74,7 +74,7 @@ def scan_file(path_str):
         return findings
 
     if UNSCOPED_BASH_RE.search(text):
-        findings.append(f"{path_str}: unscoped Bash/shell-interpreter tool grant (mirrors R6)")
+        findings.append(f"{path_str}: unscoped Bash/shell-interpreter allowed-tools grant (mirrors R6 for skills/commands)")
 
     for line_no, line in enumerate(text.splitlines(), start=1):
         if any(hint in line for hint in PLACEHOLDER_HINTS):

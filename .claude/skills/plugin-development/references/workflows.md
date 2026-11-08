@@ -462,4 +462,4 @@ plugins/domain-name/
 | Source paths | `"source": "plugins/my-plugin"` | `"source": "./plugins/my-plugin"` |
 | Nested commands | `commands/v1/latest/validate.md` | `commands/validate.md` |
 | Skipping JSON check | (assume it's valid) | `jq . .claude-plugin/plugin.json` |
-| Missing allowed-tools | No frontmatter field | `allowed-tools: Read Write Bash` |
+| Missing allowed-tools | No frontmatter field | `allowed-tools: Read Grep` |

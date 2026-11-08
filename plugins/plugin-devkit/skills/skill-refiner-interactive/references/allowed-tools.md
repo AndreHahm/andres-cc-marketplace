@@ -1,6 +1,6 @@
 # Tool Scoping with allowed-tools
 
-The `allowed-tools` field pre-approves the listed tools so Claude can use them without a permission prompt during the turn that invokes the skill — it does not restrict which tools are available (every tool remains callable; unlisted tools still just fall through to normal permission prompting). Implement principle of least privilege anyway: only grant tools your skill actually needs, since a broad grant skips approval prompts for actions a reviewer may want to catch.
+The `allowed-tools` field pre-approves the listed tools so Claude can normally use them without a permission prompt during the turn that invokes the skill — it does not restrict which tools are available (every tool remains callable; unlisted tools follow your normal permission settings). Implement principle of least privilege anyway: only grant tools your skill actually needs, since a broad grant skips approval prompts for actions a reviewer may want to catch.
 
 ## Table of Contents
 1. [Syntax Formats](#syntax-formats)

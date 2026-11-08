@@ -40,7 +40,7 @@ documents the *set* of tools covered; this note documents why each one stays uns
 3. Mark the commit `git bisect good` (exit code 0) or `git bisect bad` (non-zero).
 4. Repeat until `git bisect` reports the first bad commit, then report it with its message, author, date, and changed files.
 
-**Test-command scope**: `allowed-tools` only covers `npm`/`yarn`/`pnpm`/`pip`/`pytest`/`cargo`/`go`. If the user's test command needs a different tool (e.g. `bundle`, `mvn`, `gradle`), tell them explicitly that this skill can't run it under its current tool scope, and either ask them to run that step manually and report good/bad themselves, or fall back to Manual Guided Bisect.
+**Test-command scope**: `allowed-tools` only pre-approves `npm`/`yarn`/`pnpm`/`pip`/`pytest`/`cargo`/`go`. If the user's test command needs a different tool (e.g. `bundle`, `mvn`, `gradle`), tell them explicitly that it is not pre-approved and will prompt, and either ask them to run that step manually and report good/bad themselves, or fall back to Manual Guided Bisect.
 
 ### Manual guided bisect (`[good-commit] [bad-commit]`)
 

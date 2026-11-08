@@ -153,7 +153,7 @@ Confirm configuration created and guide user on next steps.
 ```markdown
 ---
 description: Multi-stage interactive workflow
-allowed-tools: AskUserQuestion, Read, Write, Bash
+allowed-tools: AskUserQuestion, Read, Write, Bash(git:*)
 ---
 
 # Multi-Stage Deployment Setup
@@ -275,7 +275,7 @@ Mutually exclusive choices should not use multiSelect.
 ```markdown
 ---
 description: Command with confirmation
-allowed-tools: AskUserQuestion, Bash
+allowed-tools: AskUserQuestion, Bash(git:*)
 ---
 
 # Destructive Operation
@@ -547,7 +547,7 @@ Reason: Can only use one database engine
 ```markdown
 ---
 description: Interactive with validation
-allowed-tools: AskUserQuestion, Bash
+allowed-tools: AskUserQuestion, Bash(git:*)
 ---
 
 # Setup with Validation
@@ -628,7 +628,7 @@ Options:
 ```markdown
 ---
 description: Context-aware questions
-allowed-tools: AskUserQuestion, Bash, Read
+allowed-tools: AskUserQuestion, Bash(git:*), Read
 ---
 
 # Context-Aware Setup

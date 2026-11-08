@@ -525,7 +525,7 @@ Use for: Verifying required plugin files exist
 2. **Forgetting to allow required tools:**
    ```markdown
    # Missing allowed-tools
-   !\`bash script.sh\`  # Will fail without Bash permission
+   !\`bash script.sh\`  # Runs under normal permission settings (prompts unless already allowed)
 
    # Correct - scope to the specific script, not Bash(*)
    ---
