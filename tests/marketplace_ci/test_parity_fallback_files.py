@@ -111,10 +111,13 @@ def branch_repo(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q", "-b", "main")
+    # `fallback_files_changed` hashes raw bytes, so the fixture pins LF bytes and no end-of-line
+    # conversion: this repository's own `.gitattributes` (`eol=lf`) gives real checkouts the same.
+    _git(repo, "config", "core.autocrlf", "false")
     for name in wrapper.FALLBACK_FILES:
         target = repo / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("original\n", encoding="utf-8")
+        target.write_bytes(b"original\n")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "base")
     _git(repo, "checkout", "-q", "-b", "feature")
@@ -226,6 +229,31 @@ def test_fallback_files_changed_sees_an_edit_hidden_by_an_index_flag(branch_repo
     _git(repo, "update-index", flag, target)
     (repo / target).write_text("edited behind the index\n", encoding="utf-8")
     assert _git(repo, "diff", "--name-only", "main", "--", target) == ""  # the old check is blind
+    assert review.fallback_files_changed(repo, "main") == [target]
+
+
+def test_fallback_files_changed_sees_an_edit_hidden_by_a_branch_supplied_encoding(branch_repo):
+    """Cross-model review of the #652 change: with filters on, `git hash-object` converts the
+    working file through attributes the branch itself can add. A file spelled in UTF-7 (the
+    newline as `+AAo-`) decodes to the base text, so it would hash to the base blob while the
+    dispatcher, which runs the raw bytes, reads a different file."""
+    from scripts.marketplace_ci import review
+
+    _, repo = branch_repo
+    target = review.FALLBACK_FILES[0]
+    attributes = f"{target} working-tree-encoding=UTF-7\n"
+    (repo / ".gitattributes").write_text(attributes, encoding="utf-8")
+    (repo / target).write_bytes(b"original+AAo-")
+    filtered = subprocess.run(
+        ["git", "hash-object", "--stdin-paths"],
+        cwd=repo,
+        input=f"{target}\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if filtered != _git(repo, "rev-parse", f"main:{target}"):
+        pytest.skip("this git does not convert working-tree-encoding=UTF-7; no bypass to test")
     assert review.fallback_files_changed(repo, "main") == [target]
 
 
