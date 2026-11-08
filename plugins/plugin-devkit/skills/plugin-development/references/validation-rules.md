@@ -131,13 +131,15 @@ FIX: Add frontmatter with name and description
 - Markdown files in `agents/` directory
 - Descriptive content about agent capabilities
 
-## 2025 Schema Compliance
+## allowed-tools Convention (`--check 2025`)
 
-### Required: allowed-tools Field
+### Expected: allowed-tools Field
+
+plugin-devkit expects every packaged skill to declare `allowed-tools`. This is a local convention, not a platform requirement: the platform treats the field as optional, and it only pre-approves tools.
 
 **Error**: Missing `allowed-tools`
 ```
-✗ Skill 'my-skill' missing 'allowed-tools' field (2025 schema)
+✗ Skill 'my-skill' missing 'allowed-tools' field (plugin-devkit convention; the platform treats it as optional)
 FIX: Add to SKILL.md frontmatter:
 ---
 name: my-skill
@@ -242,7 +244,7 @@ mv plugin/.claude-plugin/skills plugin/skills
 mv plugin/.claude-plugin/commands plugin/commands
 ```
 
-## Migration Guide: 2025 Schema
+## Migration Guide: allowed-tools Convention
 
 ### For Existing Plugins
 

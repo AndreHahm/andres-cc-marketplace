@@ -234,7 +234,7 @@ Run `claude plugin validate /path/to/plugin` directly. Then check `references/va
 
 **Never generate with incomplete data** — incomplete manifests cause validation failures. Run the interview flow first.
 
-**2025 Schema Compliance:** All packaged skills must have `allowed-tools` in their SKILL.md frontmatter. Audit with `python scripts/validate_plugin.py --check 2025`.
+**allowed-tools convention:** plugin-devkit expects every packaged skill to declare `allowed-tools` in its SKILL.md frontmatter. This is a local convention, not a platform requirement: the platform treats the field as optional, and it only pre-approves tools. Audit with `python scripts/validate_plugin.py --check 2025`.
 
 ---
 
@@ -245,7 +245,7 @@ Run `claude plugin validate /path/to/plugin` directly. Then check `references/va
 | `scripts/init_plugin.py` | Scaffold plugin structure (directories + plugin.json) | `--components skills,agents` |
 | `scripts/create_plugin.py` | Scaffold + register in marketplace.json | `--author-name --author-email --description --keywords` (all required), `--marketplace-root /path` |
 | `scripts/generate_manifest.py` | Generate schema-compliant plugin.json | `--template minimal\|standard\|complete` |
-| `scripts/validate_plugin.py` | Validate structure, manifest, 2025 compliance | `--check 2025 --verbose`, `--json` (CI) |
+| `scripts/validate_plugin.py` | Validate structure, manifest, allowed-tools convention | `--check 2025 --verbose`, `--json` (CI) |
 | `scripts/package_skills.py` | Copy `.claude/skills/` into plugin format | `--validate --dry-run` |
 | `scripts/bump_version.py` | Bump version in plugin.json + marketplace.json atomically | `major\|minor\|patch` |
 | `scripts/scan-plugin.sh` | Scan plugin and output JSON validation report | `/path/to/plugin /tmp/report.json` |
@@ -336,7 +336,7 @@ After creating or modifying a plugin:
 
 1. **JSON syntax** — `jq empty .claude-plugin/plugin.json && echo "Valid"` before anything else
 2. **Schema validation** — `claude plugin validate /path/to/plugin` (or `python scripts/validate_plugin.py`)
-3. **2025 compliance** — `python scripts/validate_plugin.py --check 2025` for `allowed-tools` audit
+3. **allowed-tools convention** — `python scripts/validate_plugin.py --check 2025` for `allowed-tools` audit
 4. **Local test** — `claude --plugin-dir /path/to/plugin` — verify components appear and activate correctly
 5. **Marketplace test** — if publishing: `claude plugin marketplace add . && claude plugin install <name>`
 
@@ -381,7 +381,7 @@ After creating or modifying a plugin:
 | `references/component-patterns.md` | Component design patterns |
 | `references/hooks.md` | Hook patterns and examples |
 | `references/validation-checklist.md` | Comprehensive best practices checklist |
-| `references/validation-rules.md` | 2025 compliance rules |
+| `references/validation-rules.md` | allowed-tools convention rules |
 | `references/marketplace-reference.md` | marketplace.json schema, distribution methods, team setup, versioning, troubleshooting |
 | `references/versioning-and-distribution.md` | Semver, changelog, distribution |
 | `references/plugin-paths-variables.md` | $CLAUDE_PLUGIN_ROOT and path portability |
