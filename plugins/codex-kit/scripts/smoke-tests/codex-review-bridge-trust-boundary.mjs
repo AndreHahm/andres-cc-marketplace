@@ -160,6 +160,25 @@ console.log("\n=== CODEX_KIT_REVIEW_TIMEOUT_MS validation ===");
     negative.stderr
   );
 
+  // 2147483648 is past Node's setTimeout ceiling: it would become a 1 ms timer (issue #660).
+  const tooLarge = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+    CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483648"
+  });
+  check(
+    "a CODEX_KIT_REVIEW_TIMEOUT_MS above 2147483647 is rejected before any Codex call, naming the bound",
+    !tooLarge.ok && tooLarge.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer no greater than 2147483647"),
+    tooLarge.stderr
+  );
+
+  const atCeiling = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+    CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483647"
+  });
+  check(
+    "CODEX_KIT_REVIEW_TIMEOUT_MS of exactly 2147483647 passes the format check",
+    !atCeiling.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
+    atCeiling.stderr
+  );
+
   const valid = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
     CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
   });

@@ -650,8 +650,9 @@ async function main() {
   let timeoutOverrideMs;
   if (timeoutOverrideRaw) {
     timeoutOverrideMs = Number(timeoutOverrideRaw);
-    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0) {
-      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer" }));
+    // Node clamps a setTimeout delay above 2^31-1 ms to 1 ms, which would time the run out at once (issue #660).
+    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0 || timeoutOverrideMs > 2147483647) {
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer no greater than 2147483647" }));
       process.exit(1);
     }
   }

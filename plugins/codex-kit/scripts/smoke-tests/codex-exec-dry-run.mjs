@@ -223,6 +223,37 @@ console.log("\n=== runCodexExec({ dryRun: true }): omitting cwd entirely never c
   check("wouldRun.cwd defaults to process.cwd(), matching real spawn's own omitted-cwd behavior", result.ok === true && result.wouldRun && result.wouldRun.cwd === process.cwd(), JSON.stringify(result.wouldRun));
 }
 
+console.log("\n=== runCodexExec: timeoutMs above Node's setTimeout ceiling is rejected, not turned into a 1 ms timer (issue #660) ===");
+{
+  const tooLarge = await runCodexExec({
+    prompt: "test",
+    schema,
+    sandbox: "read-only",
+    dispatchId: "smoke-timeout-too-large",
+    timeoutMs: 2147483648,
+    dryRun: true
+  });
+  check(
+    "2147483648 resolves to a non_zero_exit failure naming the bound",
+    tooLarge.ok === false && tooLarge.category === "non_zero_exit" && tooLarge.detail.includes("2147483647"),
+    JSON.stringify(tooLarge)
+  );
+
+  const atCeiling = await runCodexExec({
+    prompt: "test",
+    schema,
+    sandbox: "read-only",
+    dispatchId: "smoke-timeout-at-ceiling",
+    timeoutMs: 2147483647,
+    dryRun: true
+  });
+  check(
+    "2147483647 is not rejected by the bound (any other outcome, e.g. cli_unavailable, is fine)",
+    !(atCeiling.ok === false && atCeiling.category === "non_zero_exit" && /no greater than/.test(atCeiling.detail || "")),
+    JSON.stringify(atCeiling)
+  );
+}
+
 console.log("\n=== runCodexExec({ dryRun: true }): still reports CLI_UNAVAILABLE when codex isn't on PATH ===");
 {
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-empty-"));
