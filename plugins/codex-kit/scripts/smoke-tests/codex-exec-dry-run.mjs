@@ -264,8 +264,8 @@ console.log("\n=== runCodexExec: timeoutMs above Node's setTimeout ceiling is re
     dryRun: true
   });
   check(
-    "2147483647 is not rejected by the bound (any other outcome, e.g. cli_unavailable, is fine)",
-    !(atCeiling.ok === false && atCeiling.category === "non_zero_exit" && /no greater than/.test(atCeiling.detail || "")),
+    "2147483647 is accepted: no non_zero_exit validation rejection (a cli_unavailable outcome is fine)",
+    !(atCeiling.ok === false && atCeiling.category === "non_zero_exit"),
     JSON.stringify(atCeiling)
   );
 }
