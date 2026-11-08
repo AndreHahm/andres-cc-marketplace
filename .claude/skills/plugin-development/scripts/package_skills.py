@@ -195,7 +195,7 @@ class SkillPackager:
                 print(f"  ⚠ {skill_name}: {warning}")
                 if "plugin-devkit convention" in warning:
                     print(f"    FIX: Add to {skill_name}/SKILL.md frontmatter:")
-                    print(f"         allowed-tools: Read, Grep")
+                    print(f"         allowed-tools: <tools this skill uses>")
 
 
 def main():
