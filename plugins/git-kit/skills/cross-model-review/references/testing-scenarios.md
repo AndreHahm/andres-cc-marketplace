@@ -159,9 +159,11 @@ reading the skill against each case; 28 and 29 are also exercised by `scripts/pr
     `inspection_limits` of `Failed to create unified exec process: helper_unknown_error: setup refresh
     had errors` (issue #652) → the bridge reports it as `isolation_profile_unavailable`, never an
     approve; resolver step 2 applies under the existing consent and permission prompt, and if guardrails
-    are disabled, step 3 fires. Phase 3 lists that pass as not run only if the guardrails retry also
-    fails; a retry that returns a valid envelope is a completed pass and its findings are kept. A later
-    Codex call still attempts Step 1 itself: one model-written note never sends the rest of the run to
+    are disabled, step 3 fires. Phase 3 lists that pass as not run unless the guardrails retry returns
+    a valid envelope that did inspect the inputs: the dispatcher does not run the bridge's detector, so
+    a retry envelope with zero findings and a note naming the same failure is still not run, while one
+    with findings, or a clean one without such a note, is a completed pass. A later Codex call still
+    attempts Step 1 itself: one model-written note never sends the rest of the run to
     `danger-full-access`.
 
 ## Quality gates

@@ -1,0 +1,26 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {
+      "text": "Case A (zero findings plus a note naming the sandbox failure): the pass is recorded as not run, never a clean approve",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Explains Case A's reason: guarded-dispatch.mjs does not run the bridge's total-failure detector, so the skill applies the same test to the retry's envelope itself",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Case B (one finding plus the same note): a completed pass whose finding is kept",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Case C (zero findings, empty inspection_limits): a completed pass, treated as a clean approve",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

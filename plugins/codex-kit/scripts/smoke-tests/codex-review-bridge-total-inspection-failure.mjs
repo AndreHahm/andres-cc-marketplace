@@ -146,7 +146,11 @@ console.log("\n=== Issue #652: the Windows setup-refresh wordings are detected =
     "The shell helper reported: setup refresh had errors, so no file could be read.",
     "Every command returned helper_unknown_error.",
     // CodeRabbit on PR #681: the same failure worded with "failed" instead of "had errors".
-    "sandbox setup refresh failed; no workspace files could be read"
+    "sandbox setup refresh failed; no workspace files could be read",
+    // CodeRabbit, PR #681 round 2: further verbs for the same failure.
+    "sandbox setup refresh encountered errors and all workspace reads failed",
+    "The sandbox setup refresh has failed, so nothing could be inspected.",
+    "setup refresh reported errors for every command"
   ]) {
     check(`recognized: "${note}"`, isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
   }
@@ -160,6 +164,9 @@ console.log("\n=== Issue #652: the Windows setup-refresh wordings are detected =
   );
   for (const topical of [
     "Reviewed the setup refresh logic statically; it has no tests.",
+    "The setup refresh error handling was not exercised by the tests.",
+    "Did not exercise the setup refresh failure path in the tests.",
+    "Did not check what the setup refresh step reports when a path is missing.",
     "The os error 32 mapping in errors.rs was not exercised.",
     // The generic Windows sharing violation, from one locked file: a partial note, not a sandbox failure.
     "Could not read build.log: the process cannot access the file because it is being used by another process. (os error 32)"

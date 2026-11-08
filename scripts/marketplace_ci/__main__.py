@@ -1313,12 +1313,21 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
                 # Only the error class is shown, since the message can carry a local path.
                 refusal = f"could not create the snapshot directory ({type(exc).__name__})"
             else:
-                if scratch.resolve().is_relative_to(repo.resolve()):
-                    refusal = "the snapshot directory would be inside the checkout (check TMPDIR)"
+                try:
+                    inside_checkout = scratch.resolve().is_relative_to(repo.resolve())
+                except OSError as exc:
+                    refusal = f"could not resolve the snapshot directory ({type(exc).__name__})"
                 else:
-                    refusal = snapshot_fallback_files(repo, base_sha, scratch, snapshot_manifest)
-                    if refusal is None:
-                        fallback_root = scratch
+                    if inside_checkout:
+                        refusal = (
+                            "the snapshot directory would be inside the checkout (check TMPDIR)"
+                        )
+                    else:
+                        refusal = snapshot_fallback_files(
+                            repo, base_sha, scratch, snapshot_manifest
+                        )
+                        if refusal is None:
+                            fallback_root = scratch
         if refusal is not None:
             allow_fallback = False
             fallback_cleanup.close()
@@ -1375,6 +1384,14 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return _fail_run_codex_review(args, f"cannot prepare reviewer dispatch: {exc}")
     finally:
         fallback_cleanup.close()
+        if fallback_root is not None and os.path.exists(fallback_root):
+            # Cleanup is best effort (a file held open on Windows can block it) and must not fail
+            # the review, but a leftover folder holds a dispatcher copy: say so, with no path.
+            print(
+                "run-codex-review: warning: the fallback snapshot directory could not be removed "
+                "and is left in the temp directory",
+                file=sys.stderr,
+            )
 
     failed_reports = [r for r in reports if r.status == "failed"]
     if failed_reports:
