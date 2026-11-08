@@ -1,0 +1,26 @@
+{
+  "eval_id": 30,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {
+      "text": "States that allowed-tools pre-approves tools for the turn that invokes the skill and does not restrict which tools are available, so Write remains callable and would just prompt",
+      "type": "quality",
+      "target": "with_skill"
+    },
+    {
+      "text": "Classifies the missing Write grant as a tool-completeness finding about prompts, not as a blocked capability or a security boundary",
+      "type": "quality",
+      "target": "with_skill"
+    },
+    {
+      "text": "Names disallowed-tools or a permission deny rule as the way to actually restrict a tool",
+      "type": "presence",
+      "target": "with_skill"
+    },
+    {
+      "text": "Does not claim the skill is read-only because of its allowed-tools list",
+      "type": "quality",
+      "target": "with_skill"
+    }
+  ]
+}

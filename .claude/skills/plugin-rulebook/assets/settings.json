@@ -40,7 +40,7 @@
     "R6_tool_scoping_least_privilege": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "allowed-tools may be space-separated, comma-separated, or a YAML list; apply principle of least privilege",
+      "description": "allowed-tools may be space-separated, comma-separated, or a YAML list; pre-approve only what the component needs (allowed-tools pre-approves, it does not restrict)",
       "config": {
         "canonical_format": "space-separated",
         "accepted_formats": ["space-separated", "comma-separated", "yaml-list"],

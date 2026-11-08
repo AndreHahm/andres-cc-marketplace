@@ -1,0 +1,31 @@
+{
+  "eval_id": 30,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States that allowed-tools pre-approves tools for the turn that invokes the skill and does not restrict which tools are available, so Write remains callable and would just prompt",
+      "passed": true,
+      "evidence": "(a) quotes SKILL.md R6: it \"only pre-approves the listed tools for the turn that invokes it: it does not restrict which tools are available (every tool stays callable, and an unlisted one falls through to the normal permission prompt)\"; adds that Write is not pre-approved so the user's permission settings decide whether it prompts or runs."
+    },
+    {
+      "text": "Classifies the missing Write grant as a tool-completeness finding about prompts, not as a blocked capability or a security boundary",
+      "passed": true,
+      "evidence": "(b) \"The verdict is therefore a grant-completeness finding (missing pre-approval), not a restriction or capability finding\"; the finding wording is that report-file creation will raise a permission prompt and \"must not say Write is blocked, forbidden or unavailable\". The subject marked REQUIRED severity as its own inference from the tool-completeness sub-check."
+    },
+    {
+      "text": "Names disallowed-tools or a permission deny rule as the way to actually restrict a tool",
+      "passed": true,
+      "evidence": "(c) \"Make Write unavailable with `disallowed-tools` or a permission deny rule\", citing frontmatter-corrections.md and SKILL.md R6; \"Omitting Write from `allowed-tools` is not a restriction.\""
+    },
+    {
+      "text": "Does not claim the skill is read-only because of its allowed-tools list",
+      "passed": true,
+      "evidence": "(d) \"No. The skill is not read-only because of its allowed-tools list... Any 'read-only' claim resting on `Read Grep` would be wrong.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

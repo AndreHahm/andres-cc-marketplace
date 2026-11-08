@@ -205,6 +205,13 @@
       "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill's allowed-tools is Read. Its body runs `acme sync <path>` directly, with no approval step of its own. acme's documentation, quoted in the task: `acme sync <path>` uploads the path; `--delete` removes remote files. Its Boundaries section says: this skill never pre-approves `acme sync`, so it raises a permission prompt unless the user's own settings or permission mode already allow it; the reason is shared prefix, since a prefix grant cannot exclude `--delete`; approve each run once and do not add a persistent acme allow rule. Give the R6 verdict for this command.",
       "expected_output": "The exception does not clear it: every run changes state, and the body does not ask for approval of the exact command before each run, so it stays a tool-completeness violation even though the Boundaries section is complete.",
       "files": []
+    },
+    {
+      "id": 30,
+      "name": "R6 allowed-tools pre-approves; it does not restrict",
+      "prompt": "Read plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md (the R6 section) and plugins/plugin-devkit/skills/plugin-rulebook/references/frontmatter-corrections.md (read these files directly; do not rely on any other copy of the skill). A skill under review has the frontmatter `allowed-tools: Read Grep`. Its body instructs the reader to create a report file by calling Write. Answer four questions. (a) Does the allowed-tools list stop this skill from using Write? (b) What is the R6 verdict, and how should the finding be worded? (c) How would someone actually make Write unavailable while the skill is active? (d) Is this skill read-only because of its allowed-tools list?",
+      "expected_output": "allowed-tools only pre-approves tools for the turn that invokes the skill; it does not restrict which tools are available, so Write stays callable and just raises a permission prompt. The R6 verdict is a tool-completeness finding (Write used in the body but not pre-approved), worded as being about prompts, not a blocked capability or a security boundary. A real restriction is disallowed-tools or a permission deny rule. The skill is not read-only because of its allowed-tools list.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

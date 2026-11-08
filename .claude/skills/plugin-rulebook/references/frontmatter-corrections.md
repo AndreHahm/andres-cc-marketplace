@@ -10,6 +10,15 @@ Listing `AskUserQuestion` in `allowed-tools` is a harmless no-op, not a schema v
 
 Flag as ADVISORY ("redundant — AskUserQuestion doesn't need to be in allowed-tools, listing it has no effect") when present, not as a blocking REQUIRED violation. This corrects an earlier version of this rule that classified it as forbidden; if a `skill-reviewer`-style pass ever flags `AskUserQuestion` as a *missing* required tool grant, that finding is also incorrect for the same reason — the tool is always callable regardless of `allowed-tools`.
 
+## R6 — What a Skill or Command `allowed-tools` Grant Is
+
+Verified against current official docs (code.claude.com/docs/en/skills, "Pre-approve tools for a skill"): *"The `allowed-tools` field grants permission for the listed tools during the turn that invokes the skill, so Claude can use them without prompting you for approval."* It *"does not restrict which tools are available: every tool remains callable, and your permission settings still govern tools that are not listed."* The grant clears when the next message is sent. Two consequences for R6:
+
+- R6 on a skill or command is grant hygiene: how much the component runs without a prompt. A finding means "this pre-approves more than it needs", never "this component can do more than it should be able to". An unlisted tool is still callable, so a component cannot be shown restricted by what its `allowed-tools` omits.
+- A real restriction is `disallowed-tools` (*"Tools removed from Claude's available pool while this skill is active"*) or a permission deny rule. The docs also warn that a checked-in skill can grant itself broad tool access (*"A skill can grant itself broad tool access, so review the `allowed-tools` of skills checked into a repository"*), so a grant in the reviewed tree is no boundary against that same tree.
+
+An agent's `tools` field is different: it is an allowlist of the tools the subagent can use, which is why the agent-file section below applies.
+
 ## R6 — Agent Files: Scoped Bash Is a FAIL, Not a Tightening Target
 
 Verified against current official docs (code.claude.com/docs/en/sub-agents): an agent's `tools` frontmatter field has no documented Bash-scoping syntax at all — the only parenthetical-scoping form the platform supports there is `Agent(agent_type, ...)`, a specifically-documented mechanism for restricting which subagents can be spawned, not a general pattern applicable to other tools.
