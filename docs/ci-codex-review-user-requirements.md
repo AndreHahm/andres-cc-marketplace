@@ -57,8 +57,10 @@ Status: approved
 
 The anchor is the pull request head of the newest other Marketplace CI run for this pull request whose
 `Codex delta review` job ended in `success` or `failure` and whose `codex-review-result` artifact reports
-`findings` or `clean`. A cancelled or skipped run, and one that stopped before its reviewers ran
-(`could_not_run`), reviewed nothing and does not count. The anchor is read from the GitHub API, never from
+`findings` or `clean`, or whose `Publish Codex policy result` job passed on a valid bypass attestation and
+recorded that head as reviewed with no findings (R12). The artifact or record counts only when it names that
+run's own head and latest attempt; one without both does not count. A cancelled or skipped run, and one that
+stopped before its reviewers ran (`could_not_run`), reviewed nothing and does not count. The anchor is read from the GitHub API, never from
 the pull request, among the 30 most recent completed runs on the branch. A failed lookup means no anchor.
 
 Status: approved
@@ -84,18 +86,24 @@ or the finding is waived:
 
 - **Carry forward.** CI reads the anchor run's blocking findings from its `codex-review-result` artifact. A
   finding whose file is unchanged since the anchor blocks again, without a new Codex call. A finding whose
-  file changed is not carried: the file is in the delta (R6) and is reviewed again.
+  file changed is not carried: the file is in the delta (R6) and is reviewed again. A run that carries
+  findings records them in its own artifact as blocking findings, so they keep blocking after any number
+  of later runs that review other files; a run whose carried findings cannot be recorded reports
+  `could_not_run` and is not an anchor (R5).
 - **Waivers.** An accepted risk, a disclosed residual or a deferred finding is not carried when the pull
   request body lists it in a section `## Accepted Review Findings`, one line per finding:
   `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
   `: <reason or link>`. A `deferred` line needs an open issue in this repository, checked through the
-  GitHub API. Anyone who can edit the pull request body can waive a finding; the waiver stays visible in the
-  body.
+  GitHub API. Anyone who can edit the pull request body can waive a finding; the waiver is visible in the body
+  while it is in effect (see the accepted residual below).
 - **One section for every reviewer.** The section is part of both pull request templates
   (`.github/pull_request_template.md` and `git-kit`'s `create-pr` asset) and also lists accepted
   third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the same shape, with the
   reviewer's name in place of the rule. CI only acts on lines whose rule, path and line match one of its own
   carried findings.
+- **Accepted residual:** a waived finding is not written into the run's result. An author who adds an
+  `accepted` waiver, pushes a commit that does not touch the flagged file, then removes the waiver, drops
+  the finding for good, and the final body shows no waiver.
 
 Status: approved
 
@@ -129,6 +137,11 @@ instructions or configuration (`AGENTS*.md` at any depth, `.codex/`, the root `R
 have reviewed honestly. CI then reviews the whole pull request delta minus the exclusions. That run's
 findings are not carried (R7): the whole review replaces them.
 
+- **Accepted residual:** because such an anchor carries nothing, a harmless edit to a reviewer-steering file
+  (for example `REVIEW.md`) followed by a revert can clear carried findings, unless the whole-delta review
+  finds them again. The same holds for a pull request that edits the workflow to forge a review result or a
+  bypass record.
+
 Status: approved
 
 ## R11. A re-run of a failed job reviews the same delta
@@ -146,6 +159,14 @@ Status: approved
   or admin permission (or `CODEX_CI_REVIEW_BYPASS`). The `labeled` event starts a new run, which takes the
   place of re-running the failed job: `Publish Codex policy result` passes and the carried findings (R7)
   are cleared. Without a valid attestation, the failed review keeps blocking.
+- The clear is durable. A run that passes on a valid attestation for its head records that head as
+  reviewed with no findings, and later runs take it as their anchor (R5), so the bypassed findings are not
+  carried again after the next push. Only `Publish Codex policy result`, after the trusted attestation
+  check, records it; a label without a valid attestation records nothing. The record is still distrusted
+  like any anchor whose own changes touch a gate-critical or reviewer-steering file (R10).
+- **Accepted consequence:** the bypassed head's content counts as reviewed even when CI never reviewed it
+  (for example after a Tier-1 refusal or a review that could not run). Later runs review only what changes
+  after it. That is what the bypass means.
 - That labeled run makes no Codex call. Only the deterministic gates still run.
 - Any other label, and a title or body edit, does not clear a failed review (R7, R8). A body edit can
   only waive specific findings through the `## Accepted Review Findings` section (R7).
