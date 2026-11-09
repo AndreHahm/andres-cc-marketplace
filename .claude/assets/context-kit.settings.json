@@ -3,5 +3,6 @@
   "alert_min_context_percent": 50,
   "tool_call_threshold_1": 50,
   "tool_call_threshold_2": 100,
-  "tool_call_threshold_3": 150
+  "tool_call_threshold_3": 150,
+  "display_startup_banner": true
 }

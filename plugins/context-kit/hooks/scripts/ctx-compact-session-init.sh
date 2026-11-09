@@ -167,6 +167,30 @@ if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compac
     fi
 fi
 
+# Read a boolean setting (true/false): the project's local override
+# ($CLAUDE_PROJECT_DIR/.claude/context-kit.local.json), then the plugin's shipped
+# assets/context-kit.settings.json, then $2. Same grep approach and precedence as
+# _setting_int above; only a literal true or false is recognised, anything else is
+# not found and falls through to the default.
+_setting_bool() {
+    local key="$1" default="$2" file value
+    for file in "${CLAUDE_PROJECT_DIR:+${CLAUDE_PROJECT_DIR}/.claude/context-kit.local.json}" \
+        "${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/assets/context-kit.settings.json}"; do
+        [ -n "$file" ] && [ -f "$file" ] || continue
+        value=$(grep -oE "\"${key}\"[[:space:]]*:[[:space:]]*(true|false)" "$file" 2>/dev/null \
+            | head -n1 | grep -oE '(true|false)$')
+        if [ -n "$value" ]; then
+            echo "$value"
+            return
+        fi
+    done
+    echo "$default"
+}
+
+# The tracking file above is always set up; only the startup banner itself (stderr,
+# systemMessage and additionalContext) is optional -- display_startup_banner, default true.
+[ "$(_setting_bool display_startup_banner true)" = "true" ] || exit 0
+
 # Build config info for context
 CONFIG_INFO="Thresholds: ${T1}/${T2}/${T3} calls, ${TIME_THRESHOLD}s time limit."
 
