@@ -230,44 +230,68 @@ TRANSITION_DETECTED=0
 if [ "$LAST_PHASE" = "exploration" ] && [ "$CURRENT_PHASE" = "implementation" ]; then
     if [ "$EXPLORATION" -ge 10 ] && [ "$PHASE_TRANSITION_SUGGESTED" -eq 0 ]; then
         TRANSITION_DETECTED=1
-        PHASE_TRANSITION_SUGGESTED=1
+    fi
+fi
+
+# Real context percentage gate (issue #690). context-monitor.py publishes
+# "<percent> <min-percent>" to pct-<hash> on every tool call. The call-count, time and
+# phase alerts below say "context is filling up", which is only true once the real
+# percentage has reached the configured minimum -- so they stay silent until then. A
+# missing, stale-format or unreadable file keeps the gate closed (fail quiet).
+GATE_OPEN=0
+PCT_FILE="${TRACK_DIR}/pct-${SESSION_HASH}"
+if [ -f "$PCT_FILE" ]; then
+    _pct=""
+    _min=""
+    read -r _pct _min < "$PCT_FILE" 2>/dev/null
+    if [[ "$_pct" =~ ^[0-9]{1,3}$ ]] && [[ "$_min" =~ ^[0-9]{1,3}$ ]] \
+        && [ "$((10#$_pct))" -ge "$((10#$_min))" ]; then
+        GATE_OPEN=1
     fi
 fi
 
 # Check for suggestions
 SUGGESTION=""
 
-# Phase transition
-if [ "$TRANSITION_DETECTED" -eq 1 ]; then
-    SUGGESTION="[StrategicCompact] Phase transition detected (exploration -> implementation after ${EXPLORATION} reads). Consider /compact now to free context before coding."
-fi
+if [ "$GATE_OPEN" -eq 1 ]; then
+    # Each one-shot flag below is consumed only while the gate is open, and the
+    # thresholds compare with -ge (not -eq): an alert whose trigger passed while the
+    # gate was closed still fires on the first call after it opens. Several can
+    # become due at once; the last assignment wins, so one message is emitted.
 
-# Configurable thresholds
-if [ "$TOTAL" -eq "$T1" ] && [ "$SUGGESTED_T1" -eq 0 ]; then
-    SUGGESTED_T1=1
-    SUGGESTION="[StrategicCompact] ${T1} tool calls reached. If context feels cluttered, this is a good checkpoint for /compact."
-fi
+    # Phase transition
+    if [ "$TRANSITION_DETECTED" -eq 1 ]; then
+        PHASE_TRANSITION_SUGGESTED=1
+        SUGGESTION="[StrategicCompact] Phase transition detected (exploration -> implementation after ${EXPLORATION} reads). Consider /compact now to free context before coding."
+    fi
 
-if [ "$TOTAL" -eq "$T2" ] && [ "$SUGGESTED_T2" -eq 0 ]; then
-    SUGGESTED_T2=1
-    SUGGESTION="[StrategicCompact] ${T2} tool calls. Context is filling up. Recommend /compact, or say create handoff if session-kit is installed, before continuing."
-fi
+    # Configurable thresholds
+    if [ "$TOTAL" -ge "$T1" ] && [ "$SUGGESTED_T1" -eq 0 ]; then
+        SUGGESTED_T1=1
+        SUGGESTION="[StrategicCompact] ${T1} tool calls reached. If context feels cluttered, this is a good checkpoint for /compact."
+    fi
 
-if [ "$TOTAL" -eq "$T3" ] && [ "$SUGGESTED_T3" -eq 0 ]; then
-    SUGGESTED_T3=1
-    SUGGESTION="[StrategicCompact] ${T3} tool calls reached. Strongly recommend /compact, or say create handoff if session-kit is installed, now to maintain performance."
-fi
+    if [ "$TOTAL" -ge "$T2" ] && [ "$SUGGESTED_T2" -eq 0 ]; then
+        SUGGESTED_T2=1
+        SUGGESTION="[StrategicCompact] ${T2} tool calls. Context is filling up. Recommend /compact, or say create handoff if session-kit is installed, before continuing."
+    fi
 
-# Every 50 calls after T3
-if [ "$TOTAL" -gt "$T3" ] && [ $((TOTAL % 50)) -eq 0 ]; then
-    SUGGESTION="[StrategicCompact] ${TOTAL} tool calls in session. Consider /compact if not done recently."
-fi
+    if [ "$TOTAL" -ge "$T3" ] && [ "$SUGGESTED_T3" -eq 0 ]; then
+        SUGGESTED_T3=1
+        SUGGESTION="[StrategicCompact] ${T3} tool calls reached. Strongly recommend /compact, or say create handoff if session-kit is installed, now to maintain performance."
+    fi
 
-# Time-based suggestion (only once per session)
-if [ "$ELAPSED" -ge "$TIME_THRESHOLD" ] && [ "$SUGGESTED_TIME" -eq 0 ]; then
-    SUGGESTED_TIME=1
-    MINUTES=$((ELAPSED / 60))
-    SUGGESTION="[StrategicCompact] Session running for ${MINUTES} minutes. Long sessions accumulate stale context. Consider /compact, or say create handoff if session-kit is installed."
+    # Every 50 calls after T3
+    if [ "$TOTAL" -gt "$T3" ] && [ $((TOTAL % 50)) -eq 0 ]; then
+        SUGGESTION="[StrategicCompact] ${TOTAL} tool calls in session. Consider /compact if not done recently."
+    fi
+
+    # Time-based suggestion (only once per session)
+    if [ "$ELAPSED" -ge "$TIME_THRESHOLD" ] && [ "$SUGGESTED_TIME" -eq 0 ]; then
+        SUGGESTED_TIME=1
+        MINUTES=$((ELAPSED / 60))
+        SUGGESTION="[StrategicCompact] Session running for ${MINUTES} minutes. Long sessions accumulate stale context. Consider /compact, or say create handoff if session-kit is installed."
+    fi
 fi
 
 # Save updated state (atomic write)

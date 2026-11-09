@@ -66,7 +66,7 @@ produced contradictory advice for the same real percentage (found by consistency
 | Usage | Status | Action |
 |-------|--------|--------|
 | < 40% | HEALTHY | No action needed |
-| 40-<80% | MONITOR | Progressive awareness nudges at 40/55/65%; consider /compact soon |
+| 40-<80% | MONITOR | One awareness nudge at 65%; consider /compact soon |
 | 80-<90% | WARNING | Run /compact or /clear |
 | >= 90% | CRITICAL | Immediate action required |
 

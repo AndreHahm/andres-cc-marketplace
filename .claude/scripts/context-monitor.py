@@ -3,7 +3,7 @@
 Context Usage Monitor Hook
 
 Monitors approximate context usage and provides progressive, de-duplicated nudges:
-- At 40%, 55%, 65%: suggest capturing a reusable discovery before auto-compaction
+- At 65%: suggest capturing a reusable discovery before auto-compaction
 - At 80%: info-level note (auto-compact approaching)
 - At 90%: caution-level note (finish the current task at full quality)
 
@@ -45,7 +45,7 @@ import time
 from pathlib import Path
 
 # Thresholds (effective percentage, where 100% ~ auto-compact)
-LEARN_THRESHOLDS = [40, 55, 65]
+LEARN_THRESHOLDS = [65]
 THRESHOLD_WARN = 80
 THRESHOLD_CRITICAL = 90
 
@@ -57,6 +57,7 @@ THROTTLE_INTERVAL = 60
 # It is the effective value in the .claude/ mirror copies of this script, which sit
 # next to no settings file.
 DEFAULT_CONTEXT_WINDOW_TOKENS = 1_000_000
+DEFAULT_ALERT_MIN_PERCENT = 50  # likewise equal to alert_min_context_percent in the settings file
 DEFAULT_MAX_TOOL_CALLS = 400  # fallback proxy when no usage record exists yet
 SETTINGS_FILE_NAME = "context-kit.settings.json"
 LOCAL_SETTINGS_REL = Path(".claude") / "context-kit.local.json"
@@ -74,38 +75,73 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
-def _read_window_setting(path: Path) -> int | None:
-    """Read `context_window_tokens` from a settings JSON file, or None when the
-    file is missing, unparseable, or the value is not a positive integer.
+def _read_int_setting(path: Path, key: str, low: int, high: int | None) -> int | None:
+    """Read integer `key` from a settings JSON file, or None when the file is
+    missing, unparseable, or the value is not an integer within [low, high].
 
-    No trust-boundary check, unlike git-kit's settings: this value only tunes an
-    advisory percentage and gates no safety control or automation, so a tracked
-    copy of the local file is harmless."""
+    No trust-boundary check, unlike git-kit's settings: these values only tune
+    advisory nudges and gate no safety control or automation, so a tracked copy
+    of the local file is harmless."""
     try:
-        value = json.loads(path.read_text(encoding="utf-8")).get("context_window_tokens")
+        value = json.loads(path.read_text(encoding="utf-8")).get(key)
     except (OSError, ValueError, AttributeError):
         return None
-    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
-        return value
+    if isinstance(value, int) and not isinstance(value, bool) and value >= low:
+        if high is None or value <= high:
+            return value
     return None
 
 
-def _context_window_tokens() -> int:
-    """Resolve the context window size: env var, then the project's local
-    override, then the plugin's shipped default, then the built-in fallback."""
-    env_value = _env_int("CLAUDE_CONTEXT_WINDOW_TOKENS", 0)
-    if env_value:
-        return env_value
+def _lookup_setting(key: str, low: int, high: int | None, default: int) -> int:
+    """Resolve `key`: the project's local override, then the plugin's shipped
+    default file, then `default`. An invalid value in one file falls through to
+    the next."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     candidates = []
     if project_dir:
         candidates.append(Path(project_dir) / LOCAL_SETTINGS_REL)
     candidates.append(Path(__file__).resolve().parent.parent / SETTINGS_FILE_NAME)
     for candidate in candidates:
-        value = _read_window_setting(candidate)
-        if value:
+        value = _read_int_setting(candidate, key, low, high)
+        if value is not None:
             return value
-    return DEFAULT_CONTEXT_WINDOW_TOKENS
+    return default
+
+
+def _context_window_tokens() -> int:
+    """Resolve the context window size: env var, then the settings files, then
+    the built-in fallback."""
+    env_value = _env_int("CLAUDE_CONTEXT_WINDOW_TOKENS", 0)
+    if env_value:
+        return env_value
+    return _lookup_setting("context_window_tokens", 1, None, DEFAULT_CONTEXT_WINDOW_TOKENS)
+
+
+def _alert_min_percent() -> int:
+    """Real-context percentage at or above which the shell hooks may emit their
+    call-count, time and phase alerts (0 = always)."""
+    return _lookup_setting("alert_min_context_percent", 0, 100, DEFAULT_ALERT_MIN_PERCENT)
+
+
+def _publish_for_hooks(session_id: str, percentage: float) -> None:
+    """Hand the real percentage and the alert gate to the Bash hooks as
+    `pct-<hash>` ("<percent> <min-percent>") in their tracking directory.
+
+    The hash must equal ctx-compact-track-and-suggest.sh's SESSION_HASH, which is
+    the first 8 hex characters of md5 over the session id plus a trailing newline
+    (`echo "$id" | md5sum`). Best-effort: a failure just leaves the gate closed."""
+    import hashlib
+
+    digest = hashlib.md5(f"{session_id or 'default'}\n".encode(), usedforsecurity=False)
+    track_dir = Path.home() / ".claude" / "strategic-compact"
+    target = track_dir / f"pct-{digest.hexdigest()[:8]}"
+    try:
+        track_dir.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(".tmp")
+        tmp.write_text(f"{round(percentage)} {_alert_min_percent()}", encoding="utf-8")
+        tmp.replace(target)
+    except OSError:
+        pass
 
 
 def _latest_usage_tokens(transcript_path: str) -> int | None:
@@ -551,6 +587,7 @@ def run_context_monitor() -> int:
             (session_dir / "context-pct.txt").write_text(f"{percentage:.0f}", encoding="utf-8")
         except Exception:
             pass
+        _publish_for_hooks(session_id, percentage)
 
         # Check throttling
         if is_throttled(percentage, session_id):
@@ -562,10 +599,9 @@ def run_context_monitor() -> int:
         # below: if the very first unthrottled observation already lands
         # at 90%+ (e.g. resuming a session with an already-large
         # transcript, or one big tool call), the learn loop would
-        # otherwise emit 40%, then 55%, then 65% across three separate
-        # tool calls before ever reaching the urgent 90% warning on a
-        # fourth call -- delaying the most important warning exactly when
-        # auto-compaction is closest.
+        # otherwise emit the 65% learn nudge on this tool call and only reach
+        # the urgent 90% warning on the next one -- delaying the most
+        # important warning exactly when auto-compaction is closest.
 
         # Check 90% threshold (critical)
         if percentage >= THRESHOLD_CRITICAL and not shown["warn_90"]:
@@ -602,7 +638,7 @@ def run_context_monitor() -> int:
                 mark_threshold_shown("learn", threshold, session_id)
             return 0
 
-        # Check reusable-discovery thresholds (40%, 55%, 65%)
+        # Check reusable-discovery thresholds (65%)
         for threshold in LEARN_THRESHOLDS:
             if percentage >= threshold and threshold not in shown["learn"]:
                 emit(

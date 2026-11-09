@@ -986,7 +986,7 @@ def check_monitor_skips_sidechain_usage(tmp_path):
 
 def check_monitor_window_env_overrides_files(tmp_path):
     transcript = tmp_path / "env.jsonl"
-    write_transcript(transcript, 110_000)
+    write_transcript(transcript, 130_000)
     local = json.dumps({"context_window_tokens": 1_000_000})
     result = run_monitor(
         tmp_path,
@@ -995,8 +995,8 @@ def check_monitor_window_env_overrides_files(tmp_path):
         env_extra={"CLAUDE_CONTEXT_WINDOW_TOKENS": "200000"},
         project_files={".claude/context-kit.local.json": local},
     )
-    if "~55%" not in monitor_message(result):
-        return False, f"expected env window 200000 to win (110k -> ~55%), got {result.stdout!r}"
+    if "~65%" not in monitor_message(result):
+        return False, f"expected env window 200000 to win (130k -> ~65%), got {result.stdout!r}"
     return True, "CLAUDE_CONTEXT_WINDOW_TOKENS takes precedence over the local override file"
 
 
@@ -1052,8 +1052,132 @@ def check_monitor_without_usage_record_does_not_warn(tmp_path):
     )
 
 
+def _track_paths(home, session_id):
+    import hashlib
+
+    digest = hashlib.md5((session_id + "\n").encode(), usedforsecurity=False)
+    track_dir = home / ".claude" / "strategic-compact"
+    session_hash = digest.hexdigest()[:8]
+    return track_dir / f"session-{session_hash}", track_dir / f"pct-{session_hash}"
+
+
+def _set_tracking_total(track_file, total):
+    lines = track_file.read_text(encoding="utf-8").splitlines()
+    lines = [f"TOTAL={total}" if line.startswith("TOTAL=") else line for line in lines]
+    track_file.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
+
+
+def _tracking_value(track_file, key):
+    for line in track_file.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1]
+    return None
+
+
+def _run_track(home, session_id):
+    payload = json.dumps({"session_id": session_id, "tool_name": "Read"})
+    return run(TRACK_SCRIPT, payload, home)
+
+
+def check_count_alert_silent_while_context_below_gate(tmp_path):
+    # Issue #690: the 10th call crosses T1, but real context is 20% of a 50% gate.
+    home = make_home_with_tracking_file(tmp_path, "gatedlow")
+    track_file, pct_file = _track_paths(home, "gatedlow")
+    _set_tracking_total(track_file, 9)
+    pct_file.write_text("20 50", encoding="utf-8", newline="")
+    result = _run_track(home, "gatedlow")
+    if result.stdout.strip():
+        return False, f"a T1 alert fired below the context gate: {result.stdout!r}"
+    if _tracking_value(track_file, "SUGGESTED_T1") != "0":
+        return False, "the T1 one-shot flag was consumed while the gate was closed"
+    return True, "a call-count alert stays silent, and is not consumed, while real context < gate"
+
+
+def check_count_alert_fires_when_context_reaches_gate(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "gatedopen")
+    track_file, pct_file = _track_paths(home, "gatedopen")
+    _set_tracking_total(track_file, 9)
+    pct_file.write_text("50 50", encoding="utf-8", newline="")
+    result = _run_track(home, "gatedopen")
+    if "10 tool calls reached" not in result.stdout:
+        return False, f"expected the T1 alert at real context == gate, got {result.stdout!r}"
+    if _tracking_value(track_file, "SUGGESTED_T1") != "1":
+        return False, "the T1 one-shot flag was not set after the alert fired"
+    return True, "a call-count alert fires once real context reaches the gate"
+
+
+def check_count_alert_silent_without_valid_published_percentage(tmp_path):
+    for label, content in (
+        ("missing", None),
+        ("letters", "abc 50"),
+        ("one-field", "80"),
+        ("four-digit", "1000 50"),
+    ):
+        session = f"gateinvalid{label}"
+        home = make_home_with_tracking_file(tmp_path, session)
+        track_file, pct_file = _track_paths(home, session)
+        _set_tracking_total(track_file, 9)
+        if content is not None:
+            pct_file.write_text(content, encoding="utf-8", newline="")
+        result = _run_track(home, session)
+        if result.returncode != 0 or result.stdout.strip():
+            return False, f"{label} percentage file did not keep the gate closed: {result.stdout!r}"
+    return True, "a missing or malformed published percentage keeps the alert gate closed"
+
+
+def check_alert_due_while_gated_fires_after_gate_opens(tmp_path):
+    # T1=10 and T2=30 both passed while real context was below the gate. When it opens,
+    # the alert fires on the next call (>=, not ==), once, naming the highest due threshold.
+    home = make_home_with_tracking_file(tmp_path, "lateopen")
+    track_file, pct_file = _track_paths(home, "lateopen")
+    _set_tracking_total(track_file, 34)
+    pct_file.write_text("20 50", encoding="utf-8", newline="")
+    first = _run_track(home, "lateopen")
+    if first.stdout.strip():
+        return False, f"alert fired while the gate was closed: {first.stdout!r}"
+    pct_file.write_text("55 50", encoding="utf-8", newline="")
+    second = _run_track(home, "lateopen")
+    if "30 tool calls." not in second.stdout:
+        return False, f"expected the T2 alert once the gate opened, got {second.stdout!r}"
+    flags = [
+        _tracking_value(track_file, k) for k in ("SUGGESTED_T1", "SUGGESTED_T2", "SUGGESTED_T3")
+    ]
+    if flags != ["1", "1", "0"]:
+        return False, f"expected T1 and T2 consumed and T3 pending, got {flags}"
+    return True, "an alert that came due while gated fires once after the gate opens"
+
+
+def check_monitor_publishes_percentage_for_shell_hooks(tmp_path):
+    import hashlib
+
+    transcript = tmp_path / "pub.jsonl"
+    write_transcript(transcript, 600_000)
+    result = run_monitor(tmp_path, "pubdefault", transcript)
+    home = tmp_path / "home_pubdefault"
+    digest = hashlib.md5(b"pubdefault\n", usedforsecurity=False).hexdigest()[:8]
+    pct_file = home / ".claude" / "strategic-compact" / f"pct-{digest}"
+    if not pct_file.exists():
+        return False, f"monitor did not write {pct_file.name}: {result.stderr!r}"
+    if pct_file.read_text(encoding="utf-8") != "60 50":
+        return False, f"expected '60 50' (60% real, shipped gate 50), got {pct_file.read_text()!r}"
+    local = json.dumps({"alert_min_context_percent": 20})
+    run_monitor(
+        tmp_path, "publocal", transcript, project_files={".claude/context-kit.local.json": local}
+    )
+    digest = hashlib.md5(b"publocal\n", usedforsecurity=False).hexdigest()[:8]
+    local_file = tmp_path / "home_publocal" / ".claude" / "strategic-compact" / f"pct-{digest}"
+    if not local_file.exists() or local_file.read_text(encoding="utf-8") != "60 20":
+        return False, "the local alert_min_context_percent override was not published"
+    return True, "the monitor publishes '<percent> <gate>' under the shell hooks' session hash"
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
+    check_count_alert_silent_while_context_below_gate,
+    check_count_alert_fires_when_context_reaches_gate,
+    check_count_alert_silent_without_valid_published_percentage,
+    check_alert_due_while_gated_fires_after_gate_opens,
+    check_monitor_publishes_percentage_for_shell_hooks,
     check_tracking_file_is_not_executed_as_shell,
     check_real_test_command_triggers_milestone,
     check_substring_false_positive_rejected,

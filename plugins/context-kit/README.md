@@ -71,16 +71,19 @@ like:
 
 Every setting is optional; unset values fall back to safe, no-op-if-unconfigured defaults. The
 context-window size also has a config file: `context-kit.settings.json` at the plugin root ships the
-default (`context_window_tokens`), and an optional, gitignored `.claude/context-kit.local.json` in the
-project overrides it. Precedence for the window size: `CLAUDE_CONTEXT_WINDOW_TOKENS`, then the local
-file, then the shipped file, then `1000000`. Everything else below is an environment variable:
+default (`context_window_tokens`, `alert_min_context_percent`), and an optional, gitignored
+`.claude/context-kit.local.json` in the project overrides it. Precedence for the window size:
+`CLAUDE_CONTEXT_WINDOW_TOKENS`, then the local file, then the shipped file, then `1000000`.
+`alert_min_context_percent` (default `50`, range 0-100, `0` = no gate) is the real context percentage
+below which `strategic-compact` keeps its call-count, time and phase alerts silent. Everything else below
+is an environment variable:
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `CLAUDE_CONTEXT_WINDOW_TOKENS` | unset (see above; effective default `1000000`) | Context-window size used to turn the transcript's real token usage into a percentage in `context-monitor.py`; overrides both config files |
 | `CLAUDE_CONTEXT_MAX_TOOL_CALLS` | `400` | Fallback tool-call-count proxy when the transcript has no token-usage record yet |
-| `STRATEGIC_COMPACT_T1` / `_T2` / `_T3` | `50` / `75` / `100` | Tool-call-count thresholds for `strategic-compact`'s suggestions |
-| `STRATEGIC_COMPACT_TIME` | `1800` (30 min) | Time-based suggestion threshold, in seconds |
+| `STRATEGIC_COMPACT_T1` / `_T2` / `_T3` | `50` / `75` / `100` | Tool-call-count thresholds for `strategic-compact`'s suggestions (only fire once real context reaches `alert_min_context_percent`) |
+| `STRATEGIC_COMPACT_TIME` | `1800` (30 min) | Time-based suggestion threshold, in seconds (like the call-count thresholds, only fires once real context reaches `alert_min_context_percent`) |
 | `CONTEXT_KIT_PLANS_DIR` | unset (feature inert) | Optional plan-file directory (absolute, or relative to `$CLAUDE_PROJECT_DIR`) `ctx-pre-compact.py`/`ctx-post-compact-restore.py` scan for an active plan's status/current-task |
 | `CONTEXT_KIT_SESSION_LOGS_DIR` | unset (feature inert) | Optional session-log directory (same path rules) for a compaction note and the most-recent-log pointer surfaced on restore |
 
