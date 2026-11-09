@@ -70,10 +70,32 @@ _validate_int() {
     fi
 }
 
-# Read configurable thresholds from environment (with defaults)
-T1=$(_validate_int "${STRATEGIC_COMPACT_T1:-50}" 50)
-T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-75}" 75)
-T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-100}" 100)
+# Read a positive integer setting: the project's local override
+# ($CLAUDE_PROJECT_DIR/.claude/context-kit.local.json), then the plugin's shipped
+# assets/context-kit.settings.json, then $2. Plain grep, no jq needed; the digits-only
+# match means a non-numeric or hostile value is simply not found (and the result still
+# goes through _validate_int before it is written anywhere). Identical helper in
+# ctx-compact-track-and-suggest.sh. Precedence at the call sites: env var > local >
+# shipped > built-in default.
+_setting_int() {
+    local key="$1" default="$2" file value
+    for file in "${CLAUDE_PROJECT_DIR:+${CLAUDE_PROJECT_DIR}/.claude/context-kit.local.json}" \
+        "${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/assets/context-kit.settings.json}"; do
+        [ -n "$file" ] && [ -f "$file" ] || continue
+        value=$(grep -oE "\"${key}\"[[:space:]]*:[[:space:]]*[1-9][0-9]{0,8}" "$file" 2>/dev/null \
+            | head -n1 | grep -oE '[0-9]+$')
+        if [ -n "$value" ]; then
+            echo "$value"
+            return
+        fi
+    done
+    echo "$default"
+}
+
+# Read configurable thresholds: env var first, then settings files (with built-in defaults)
+T1=$(_validate_int "${STRATEGIC_COMPACT_T1:-$(_setting_int tool_call_threshold_1 50)}" 50)
+T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-$(_setting_int tool_call_threshold_2 100)}" 100)
+T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-$(_setting_int tool_call_threshold_3 150)}" 150)
 TIME_THRESHOLD=$(_validate_int "${STRATEGIC_COMPACT_TIME:-1800}" 1800)  # 30 minutes default
 
 # Initialize on fresh starts AND after compact (context is fresh after compact).

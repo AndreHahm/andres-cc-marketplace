@@ -137,6 +137,28 @@ _validate_int() {
     fi
 }
 
+# Read a positive integer setting: the project's local override
+# ($CLAUDE_PROJECT_DIR/.claude/context-kit.local.json), then the plugin's shipped
+# assets/context-kit.settings.json, then $2. Plain grep, no jq needed; the digits-only
+# match means a non-numeric or hostile value is simply not found (and the result still
+# goes through _validate_int before it is written anywhere). Identical helper in
+# ctx-compact-session-init.sh. Precedence at the call sites: env var > local > shipped
+# > built-in default.
+_setting_int() {
+    local key="$1" default="$2" file value
+    for file in "${CLAUDE_PROJECT_DIR:+${CLAUDE_PROJECT_DIR}/.claude/context-kit.local.json}" \
+        "${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/assets/context-kit.settings.json}"; do
+        [ -n "$file" ] && [ -f "$file" ] || continue
+        value=$(grep -oE "\"${key}\"[[:space:]]*:[[:space:]]*[1-9][0-9]{0,8}" "$file" 2>/dev/null \
+            | head -n1 | grep -oE '[0-9]+$')
+        if [ -n "$value" ]; then
+            echo "$value"
+            return
+        fi
+    done
+    echo "$default"
+}
+
 # Initialize tracking file if needed (with configurable defaults)
 if [ ! -f "$TRACK_FILE" ]; then
     START_TIME=$(date +%s)
@@ -153,9 +175,9 @@ if [ ! -f "$TRACK_FILE" ]; then
         echo "MILESTONE_SUGGESTED=0"
         echo "START_TIME=$START_TIME"
         echo "LAST_MILESTONE_TIME=$START_TIME"
-        echo "T1=$(_validate_int "${STRATEGIC_COMPACT_T1:-50}" 50)"
-        echo "T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-75}" 75)"
-        echo "T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-100}" 100)"
+        echo "T1=$(_validate_int "${STRATEGIC_COMPACT_T1:-$(_setting_int tool_call_threshold_1 50)}" 50)"
+        echo "T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-$(_setting_int tool_call_threshold_2 100)}" 100)"
+        echo "T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-$(_setting_int tool_call_threshold_3 150)}" 150)"
         echo "TIME_THRESHOLD=$(_validate_int "${STRATEGIC_COMPACT_TIME:-1800}" 1800)"
     } > "$TRACK_FILE"
 fi

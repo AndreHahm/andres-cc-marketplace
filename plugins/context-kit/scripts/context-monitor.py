@@ -28,7 +28,7 @@ main-chain assistant turn in the transcript (input + cache-read + cache-creation
 tokens), against the configured window. The window is resolved in this order:
 the CLAUDE_CONTEXT_WINDOW_TOKENS env var, then `context_window_tokens` in
 `.claude/context-kit.local.json` (gitignored, per project), then the same key in
-the shipped `context-kit.settings.json` at the plugin root, then 1,000,000. Only
+the shipped `assets/context-kit.settings.json`, then 1,000,000. Only
 when no usage record exists yet do we fall back to a tool-call counter
 (CLAUDE_CONTEXT_MAX_TOOL_CALLS, default 400). The transcript FILE SIZE is
 deliberately not used: it counts records that never reach the model (instructions
@@ -100,7 +100,7 @@ def _lookup_setting(key: str, low: int, high: int | None, default: int) -> int:
     candidates = []
     if project_dir:
         candidates.append(Path(project_dir) / LOCAL_SETTINGS_REL)
-    candidates.append(Path(__file__).resolve().parent.parent / SETTINGS_FILE_NAME)
+    candidates.append(Path(__file__).resolve().parent.parent / "assets" / SETTINGS_FILE_NAME)
     for candidate in candidates:
         value = _read_int_setting(candidate, key, low, high)
         if value is not None:
