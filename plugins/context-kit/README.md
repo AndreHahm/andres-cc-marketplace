@@ -78,6 +78,7 @@ context-window size, the alert gate and the tool-call thresholds also have a con
 |---|---|---|
 | `context_window_tokens` | `1000000` | Context-window size used to turn real token usage into a percentage |
 | `alert_min_context_percent` | `50` | Real context percentage (0-100, `0` = no gate) below which the call-count, time, phase and milestone alerts stay silent |
+| `display_startup_banner` | `true` | Show the "Context management active" message at every session start; `false` hides it (the tracking state is still set up) |
 | `tool_call_threshold_1` / `_2` / `_3` | `50` / `100` / `150` | Tool-call counts at which `strategic-compact` suggests compacting (once the gate is open) |
 
 Precedence, per key: the environment variable where one exists (`CLAUDE_CONTEXT_WINDOW_TOKENS`,

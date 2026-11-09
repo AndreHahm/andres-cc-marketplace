@@ -1369,8 +1369,65 @@ def check_session_init_reads_tool_call_thresholds_from_settings(tmp_path):
     )
 
 
+def _run_session_init(tmp_path, name, plugin_root=None, project_dir=None):
+    home = tmp_path / f"home_{name}"
+    (home / ".claude").mkdir(parents=True)
+    env: dict[str, str] = {**os.environ, "HOME": str(home)}
+    env.pop("CLAUDE_PLUGIN_ROOT", None)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    if plugin_root is not None:
+        env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+    if project_dir is not None:
+        env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+    payload = json.dumps({"session_id": name, "source": "startup"})
+    result = subprocess.run(
+        ["bash", str(HOOKS_DIR / "ctx-compact-session-init.sh")],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+    track_file, _ = _track_paths(home, name)
+    return result, track_file
+
+
+def check_startup_banner_shown_by_default(tmp_path):
+    builtin, _ = _run_session_init(tmp_path, "bannerbuiltin")
+    shipped, _ = _run_session_init(tmp_path, "bannershipped", plugin_root=PLUGIN_ROOT)
+    for label, result in (("built-in", builtin), ("shipped", shipped)):
+        if "Context management active" not in result.stdout:
+            return False, f"the {label} default did not show the startup banner: {result.stdout!r}"
+    return True, "the startup banner is shown by default, built in and in the shipped settings file"
+
+
+def check_startup_banner_can_be_hidden_by_settings(tmp_path):
+    plugin = tmp_path / "plugin_banner"
+    project = tmp_path / "project_banner"
+    _write_settings(
+        plugin / "assets" / "context-kit.settings.json", '{"display_startup_banner": false}'
+    )
+    shipped, track_file = _run_session_init(tmp_path, "bannerhidden", plugin_root=plugin)
+    if shipped.stdout.strip() or "Context management active" in shipped.stderr:
+        return False, f"shipped display_startup_banner=false still printed: {shipped.stdout!r}"
+    if not track_file.exists():
+        return False, "hiding the banner also skipped setting up the tracking file"
+    _write_settings(
+        project / ".claude" / "context-kit.local.json", '{"display_startup_banner": true}'
+    )
+    local, _ = _run_session_init(tmp_path, "bannerlocal", plugin_root=plugin, project_dir=project)
+    if "Context management active" not in local.stdout:
+        return False, "a local display_startup_banner=true did not override the shipped false"
+    return (
+        True,
+        "display_startup_banner=false hides the banner, keeps tracking; local file overrides it",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
+    check_startup_banner_shown_by_default,
+    check_startup_banner_can_be_hidden_by_settings,
     check_session_init_reads_tool_call_thresholds_from_settings,
     check_tool_call_thresholds_default_to_50_100_150,
     check_tool_call_thresholds_follow_settings_precedence,
