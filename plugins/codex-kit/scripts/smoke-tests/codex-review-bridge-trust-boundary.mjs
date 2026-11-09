@@ -179,7 +179,7 @@ console.log("\n=== CODEX_KIT_REVIEW_TIMEOUT_MS validation ===");
       fs.writeFileSync(path.join(stubDir, "codex.cmd"), "@echo off\r\n");
     } else {
       fs.writeFileSync(path.join(stubDir, "codex"), "#!/bin/sh\n");
-      fs.chmodSync(path.join(stubDir, "codex"), 0o755);
+      fs.chmodSync(path.join(stubDir, "codex"), 0o700);
     }
     const atCeiling = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
       CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483647",
