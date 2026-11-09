@@ -1,0 +1,20 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "PRR_kwDOTi7e-s8AAAABWxFXaQ-1",
+      "note": "at-ceiling check now asserts ok and wouldRun.timeoutMs, fixed in 65c04e15",
+      "path": "plugins/codex-kit/scripts/smoke-tests/codex-exec-dry-run.mjs",
+      "pr": 674,
+      "recorded_at": "2026-11-09T08:11:09+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "PRR_kwDOTi7e-s8AAAABWxFXaQ-2",
+      "note": "at-ceiling dry run now uses a codex stub and asserts wouldRun.timeoutMs, fixed in 65c04e15",
+      "path": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs",
+      "pr": 674,
+      "recorded_at": "2026-11-09T08:11:09+00:00"
+    }
+  ]
+}
