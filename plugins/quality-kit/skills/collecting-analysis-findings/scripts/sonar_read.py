@@ -16,10 +16,10 @@ Forms:
                                                   the quality gate status and its conditions
 
 `issues` and `ignored` print one JSON document per page, which `collect_sonar.py` reads from a pipe.
-Exit codes: 0 success; 1 `sonar` failed or timed out; 2 invalid arguments, `sonar` not on PATH, or a
-response that is not the expected shape; 3 more issues than PAGE_LIMIT pages hold. For
-`gate-status`, a `sonar` exit of 51 (failing gate) or 1 (no verdict computed) that printed a gate
-object is a verdict: it is printed and the wrapper exits 0.
+Exit codes: 0 success; 1 `sonar` failed or timed out; 2 invalid arguments, no `sonar` on PATH
+outside the caller's repository, or a response that is not the expected shape; 3 more issues than
+PAGE_LIMIT pages hold. For `gate-status`, a `sonar` exit of 51 (failing gate) or 1 (no verdict
+computed) that printed a gate object is a verdict: it is printed and the wrapper exits 0.
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess  # nosec B404  # runs sonar with a list argument and validated values, never a shell
 import sys
 from pathlib import Path
@@ -79,6 +78,7 @@ def _execute(sonar: str, arguments: list[str]) -> tuple[int, bytes]:
         done = subprocess.run(  # nosec B603  # nosemgrep  # list argv, absolute sonar, no shell
             [sonar, *arguments],
             cwd=Path.home(),
+            env=_child_env(),
             stdin=subprocess.DEVNULL,
             capture_output=True,
             timeout=TIMEOUT_SECONDS,
@@ -334,16 +334,105 @@ def _read(args: argparse.Namespace, sonar: str) -> list[Any]:
     return _pages(fetch_issues, comments=False)
 
 
+IS_WINDOWS = os.name == "nt"
+# Variables the sonar CLI reads to choose the server or binaries it talks to (its own bundle, read
+# 2026-11-09). Inherited, any of them would send the token elsewhere, so they are dropped, like
+# codex-kit's gitEnv drops GIT_DIR and its siblings. Authentication variables are kept.
+STRIPPED_ENV = frozenset(
+    {
+        "SONARQUBE_URL",
+        "SONAR_HOST_URL",
+        "SONARQUBE_CLI_BINARIES_URL",
+        "SONARQUBE_CLI_SONARCLOUD_URL",
+        "SONARQUBE_CLI_SONARCLOUD_API_URL",
+        "SONARQUBE_CLI_SONARCLOUD_US_URL",
+        "SONARQUBE_CLI_SONARCLOUD_US_API_URL",
+        "SONARQUBE_CLI_SONARCLOUD_SCA_SCANNER_CDN_URL",
+    }
+)
+
+
+def _repo_roots(start: Path) -> list[Path]:
+    # Every enclosing checkout, not only the nearest: this repository keeps worktrees inside the
+    # main checkout, and a submodule sits inside its superproject, so the outer tree's own `.venv`
+    # or `node_modules/.bin` must count as inside too (security review M1, 2026-11-09).
+    return [directory for directory in (start, *start.parents) if (directory / ".git").exists()]
+
+
+def _norm(path: str) -> str:
+    return os.path.normcase(os.path.normpath(path))
+
+
+def _identity(path: str) -> tuple[int, int] | None:
+    try:
+        info = os.stat(path)
+    except OSError:
+        return None
+    return (info.st_dev, info.st_ino) if info.st_ino else None  # 0: no file id on this platform
+
+
+def _inside(path: str, roots: list[Path]) -> bool:
+    # Inside by the lexical spelling, or by file identity of the resolved path or any of its
+    # parents, so a symlink, junction, 8.3 alias or case-only spelling cannot name an in-repo folder
+    # (codex-kit's isInsideRoot, widened by the security review's m2).
+    def within(child: str, parent: str) -> bool:
+        try:
+            return os.path.commonpath([child, parent]) == parent
+        except ValueError:  # different drives on Windows
+            return False
+
+    lexical = _norm(os.path.abspath(path))
+    if any(within(lexical, _norm(str(root))) for root in roots):
+        return True
+    ids = {identity for root in roots if (identity := _identity(str(root))) is not None}
+    resolved = Path(os.path.realpath(path))
+    return any(_identity(str(step)) in ids for step in (resolved, *resolved.parents))
+
+
+def _trusted_path() -> tuple[list[str], list[Path]]:
+    roots = _repo_roots(Path.cwd())
+    kept = []
+    for raw in os.environ.get("PATH", "").split(os.pathsep):
+        directory = raw.strip('"')
+        if directory and os.path.isabs(directory) and not _inside(directory, roots):
+            kept.append(directory)
+    return kept, roots
+
+
+def _find_sonar() -> str:
+    # Search PATH here, never the current directory, a relative or empty entry, or a folder inside
+    # the caller's repository: an activated `.venv` or `node_modules/.bin` there is routinely on
+    # PATH, and a branch can commit a `sonar` into it (codex-kit's gitExecutable, security re-review
+    # M-1). On Windows only `sonar.exe` is accepted, so a `.cmd` shim never runs through cmd.exe.
+    directories, roots = _trusted_path()
+    name = "sonar.exe" if IS_WINDOWS else "sonar"
+    for directory in directories:
+        candidate = os.path.join(directory, name)
+        if not (os.path.isfile(candidate) and os.access(candidate, os.X_OK)):
+            continue
+        # A link outside the repository can still point at a file inside it (review m3).
+        if _inside(os.path.dirname(os.path.realpath(candidate)), roots):
+            continue
+        return candidate
+    raise ReadError(f"{name} not found on PATH outside the repository", EXIT_INVALID)
+
+
+def _child_env() -> dict[str, str]:
+    # The child gets the same filtered PATH, so whatever `sonar` itself looks up by name never
+    # comes from a folder inside the repository either (security review M2).
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() not in STRIPPED_ENV and key.upper() != "PATH"
+    }
+    env["PATH"] = os.pathsep.join(_trusted_path()[0])
+    return env
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _arguments(argv)
     try:
-        sonar = shutil.which("sonar")
-        if sonar is None:
-            raise ReadError("sonar is not on PATH", EXIT_INVALID)
-        # A relative PATH entry (`.` or empty) would resolve against the caller's directory here and
-        # against home when run, so the checked program and the run program could differ.
-        if not os.path.isabs(sonar):
-            raise ReadError("sonar resolved to a relative path; fix PATH", EXIT_INVALID)
+        sonar = _find_sonar()
         documents = _read(args, sonar)
     except ReadError as error:
         print(f"sonar_read: {error}", file=sys.stderr)

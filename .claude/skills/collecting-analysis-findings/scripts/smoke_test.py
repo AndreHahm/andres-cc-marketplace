@@ -1110,7 +1110,8 @@ import json, os, sys
 from urllib.parse import parse_qs, urlsplit
 args, mode = sys.argv[1:], os.environ.get("STUB_MODE", "ok")
 with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
-    log.write(json.dumps({"cwd": os.getcwd(), "argv": args}) + "\n")
+    seen = {k: os.environ.get(k) for k in ("SONAR_TOKEN", "SONARQUBE_CLI_SONARCLOUD_URL", "PATH")}
+    log.write(json.dumps({"cwd": os.getcwd(), "argv": args, "env": seen}) + "\n")
 if mode == "fail":
     sys.exit(5)
 if mode == "exit51":
@@ -1398,6 +1399,90 @@ def check_sonar_read() -> None:
         check(
             "sonar_read: a refused value never reaches sonar", log.read_text(encoding="utf-8") == ""
         )
+        # A PATH entry inside the caller's repository is skipped (codex-kit's gitExecutable).
+        repo = Path(tmp) / "repo"
+        (repo / ".git").mkdir(parents=True)
+        (repo / "bin").mkdir()
+        shutil.copy2(stub, repo / "bin" / "sonar")
+        log.write_text("", encoding="utf-8")
+        done = run("pr-list", "--project", "p", path=str(repo / "bin"), cwd=str(repo))
+        check(
+            "sonar_read skips a sonar in a PATH folder inside the repository (exit 2, not run)",
+            done.returncode == 2 and log.read_text(encoding="utf-8") == "",
+            f"{done.returncode} {done.stderr}",
+        )
+        done = run(
+            "pr-list",
+            "--project",
+            "p",
+            path=os.pathsep.join([str(repo / "bin"), str(bin_dir), os.environ.get("PATH", "")]),
+            cwd=str(repo),
+        )
+        check(
+            "sonar_read falls through to a PATH folder outside the repository",
+            done.returncode == 0 and len(log.read_text(encoding="utf-8").splitlines()) == 1,
+            f"{done.returncode} {done.stderr}",
+        )
+        # Security review M1: a worktree nested in a main checkout excludes the outer tree too.
+        outer = Path(tmp) / "outer"
+        (outer / ".git").mkdir(parents=True)
+        (outer / "bin").mkdir()
+        shutil.copy2(stub, outer / "bin" / "sonar")
+        inner = outer / ".claude" / "worktrees" / "w"
+        inner.mkdir(parents=True)
+        (inner / ".git").write_text("gitdir: ../../../.git/worktrees/w\n", encoding="utf-8")
+        log.write_text("", encoding="utf-8")
+        done = run("pr-list", "--project", "p", path=str(outer / "bin"), cwd=str(inner))
+        check(
+            "sonar_read skips a sonar in the outer checkout of a nested worktree (exit 2, not run)",
+            done.returncode == 2 and log.read_text(encoding="utf-8") == "",
+            f"{done.returncode} {done.stderr}",
+        )
+        # Review m3: a link outside the repository that points at a sonar inside it.
+        linked = Path(tmp) / "linked"
+        linked.mkdir()
+        try:
+            (linked / "sonar").symlink_to(repo / "bin" / "sonar")
+        except (OSError, NotImplementedError):
+            pass  # symlinks unavailable on this platform: the check below is skipped
+        else:
+            done = run("pr-list", "--project", "p", path=str(linked), cwd=str(repo))
+            check(
+                "sonar_read refuses a sonar link that resolves into the repository (exit 2)",
+                done.returncode == 2 and log.read_text(encoding="utf-8") == "",
+                f"{done.returncode} {done.stderr}",
+            )
+        # Review M2: the child's PATH is the filtered one, without the in-repo folder.
+        done = run(
+            "pr-list",
+            "--project",
+            "p",
+            path=os.pathsep.join([str(repo / "bin"), str(bin_dir), os.environ.get("PATH", "")]),
+            cwd=str(repo),
+        )
+        child_path = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]["PATH"]
+        check(
+            "sonar_read gives sonar a PATH without folders inside the repository",
+            done.returncode == 0
+            and str(repo / "bin") not in child_path.split(os.pathsep)
+            and str(bin_dir) in child_path.split(os.pathsep),
+            f"{done.returncode} {child_path}",
+        )
+        log.write_text("", encoding="utf-8")
+        os.environ["SONARQUBE_CLI_SONARCLOUD_URL"] = "https://attacker.example"
+        os.environ["SONAR_TOKEN"] = "placeholder-token"
+        try:
+            run("pr-list", "--project", "p")
+        finally:
+            del os.environ["SONARQUBE_CLI_SONARCLOUD_URL"], os.environ["SONAR_TOKEN"]
+        seen = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]
+        check(
+            "sonar_read drops an endpoint override and keeps the auth token",
+            {k: seen[k] for k in ("SONAR_TOKEN", "SONARQUBE_CLI_SONARCLOUD_URL")}
+            == {"SONAR_TOKEN": "placeholder-token", "SONARQUBE_CLI_SONARCLOUD_URL": None},
+            str(seen),
+        )
+        log.write_text("", encoding="utf-8")
         done = run("pr-list", "--project", "p", path=".", cwd=str(bin_dir))
         check(
             "sonar_read refuses a sonar found through a relative PATH entry (exit 2, not run)",

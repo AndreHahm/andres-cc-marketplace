@@ -5,13 +5,13 @@ description: >-
   suppress inline, ignore one issue, exclude a path, or hand over a pattern or gate change. Use when
   "the Codacy check failed", "the Sonar check failed", to "resolve Codacy issues", for "should I
   ignore this Codacy finding",
-  "is this a false positive", "suppress this Bandit finding", to run the local pre-PR scan to check a
-  decision before pushing. Fires on a decision verb (fix, suppress, ignore, exclude, baseline versus new), not on listing or querying Codacy
+  "is this a false positive", "suppress this Bandit finding", or to run the local pre-PR scan before
+  pushing. Fires on a decision verb (fix, suppress, ignore, exclude, baseline versus new), not on listing or querying Codacy
   data: that is collecting-analysis-findings, or codacy-skills:codacy-cloud-cli and
   codacy-skills:codacy-code-review when installed, or using-sonarqube-cloud for ad hoc Sonar
-  questions. Not for writing the code fix itself, and not for
+  questions. Not for writing the code fix itself, nor
   repo-wide tuning of Codacy tools, patterns or gates (codacy-skills:configure-codacy, when installed);
-  one finding or one path from this PR's list stays here. Reviewer threads go to git-kit's
+  one finding or path from this PR stays here. Reviewer threads go to git-kit's
   handling-review-findings.
 argument-hint: (optional) PR number, or the path of a findings record
 allowed-tools: Read, Edit, Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings/scripts/read_pr_head.py:*), Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py issue-state:*), Skill(collecting-analysis-findings)
@@ -90,7 +90,7 @@ config file, are in `references/local-scan.md`. `codacy-analysis init` is never 
 `init` command. `codacy issues` (which has its own bulk `--ignore`) is not used
 by this skill. This skill pre-approves two reads: `scripts/read_pr_head.py`, the head re-check in the Decision rights table,
 which validates one repository and PR number and prints only the head commit SHA; and the `issue-state` form of
-`collecting-analysis-findings`' `scripts/sonar_read.py`, the Sonar issue re-check, which validates one issue key and
+`collecting-analysis-findings/scripts/sonar_read.py` (a sibling skill's script), the Sonar issue re-check, which validates one issue key and
 prints only its key, `issueStatus` and comment count. No `sonar` command is pre-approved directly: not `sonar api post`
 (the rung 3 transition), not `sonar analyze` (the local scan) and not a direct `sonar api get`. The reason is the shared prefix: `sonar api post` differs from the
 reads only in one word, and `sonar analyze` sends project files to Sonar with arguments that vary per run, so any

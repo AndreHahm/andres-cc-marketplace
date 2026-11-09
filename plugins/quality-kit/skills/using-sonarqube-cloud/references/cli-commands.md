@@ -67,7 +67,9 @@ The API refuses to go past 10,000 results with a `400`, so the wrapper stops the
 ## Gotchas
 
 - **`sonar` may be off `PATH`.** The default install is `~/.local/share/sonarqube-cli/bin/sonar`; `sonar_read.py`
-  finds it only on `PATH`, and exits 2 otherwise.
+  finds it only on `PATH`, outside every checkout that encloses the working directory (`sonar.exe` on Windows), and
+  exits 2 otherwise. A home directory that is itself a git checkout (a dotfiles repository) therefore always hides
+  the default install, from inside a project too: install `sonar` in a `PATH` folder outside it.
 - **The banner goes to stderr.** Add `2>/dev/null` when reading JSON.
 - **Responses carry identity fields.** `author`, `assignee`, `contributors`, comment logins and commit messages. Use
   the `sonar_read.py` forms: a bare `sonar api get` or `sonar list issues` prints them all into the session.

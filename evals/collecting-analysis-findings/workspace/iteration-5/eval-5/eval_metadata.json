@@ -1,0 +1,46 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The record names provider sonar and schema 1.1.0 with 3 findings",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report gives 3 findings for rule shell:S7688 in .claude/hooks/dck-session-context.sh",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The status was produced first with --kind pr-status and passed to --kind pr through --status",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report says the analysis is current because the head matches",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The report gives the quality gate status OK",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "No identity value (person-login, person@example.com) appears in the record or report",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "The record's source.analysis_date is set (the PR list's analysisDate)",
+      "type": "functionality",
+      "target": "final answer"
+    },
+    {
+      "text": "A third read of the PR list ran with --kind pr-status --confirm and the record's source.snapshot_consistent is true",
+      "type": "functionality",
+      "target": "final answer"
+    }
+  ]
+}
