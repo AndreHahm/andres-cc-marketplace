@@ -86,10 +86,16 @@ or the finding is waived:
   finding whose file is unchanged since the anchor blocks again, without a new Codex call. A finding whose
   file changed is not carried: the file is in the delta (R6) and is reviewed again.
 - **Waivers.** An accepted risk, a disclosed residual or a deferred finding is not carried when the pull
-  request body lists it in a section `## Accepted CI findings`, one line per finding:
-  `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`. A `deferred` line needs an open issue in
-  this repository, checked through the GitHub API. Anyone who can edit the pull request body can waive a
-  finding; the waiver stays visible in the body.
+  request body lists it in a section `## Accepted Review Findings`, one line per finding:
+  `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
+  `: <reason or link>`. A `deferred` line needs an open issue in this repository, checked through the
+  GitHub API. Anyone who can edit the pull request body can waive a finding; the waiver stays visible in the
+  body.
+- **One section for every reviewer.** The section is part of both pull request templates
+  (`.github/pull_request_template.md` and `git-kit`'s `create-pr` asset) and also lists accepted
+  third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the same shape, with the
+  reviewer's name in place of the rule. CI only acts on lines whose rule, path and line match one of its own
+  carried findings.
 
 Status: approved
 
@@ -142,7 +148,7 @@ Status: approved
   are cleared. Without a valid attestation, the failed review keeps blocking.
 - That labeled run makes no Codex call. Only the deterministic gates still run.
 - Any other label, and a title or body edit, does not clear a failed review (R7, R8). A body edit can
-  only waive specific findings through the `## Accepted CI findings` section (R7).
+  only waive specific findings through the `## Accepted Review Findings` section (R7).
 
 Status: approved
 

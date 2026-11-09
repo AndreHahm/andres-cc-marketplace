@@ -964,7 +964,7 @@ jobs:
             || echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped"
 
       # R7: the last reviewed run's blocking findings keep blocking while their file is unchanged,
-      # unless the PR body's `## Accepted CI findings` section waives them. Runs from the
+      # unless the PR body's `## Accepted Review Findings` section waives them. Runs from the
       # base-restored code. Anything but a clean decision reports "error", which publish blocks on.
       - name: Carry forward the last review's blocking findings
         id: carry
@@ -997,7 +997,7 @@ jobs:
           if [ "$count" != "0" ] && [ -f carried.txt ]; then
             {
               echo "### Blocking findings carried from the last review"
-              echo "Fix them, or waive one by adding its line to a \`## Accepted CI findings\` section of the PR body (a path with spaces cannot be waived):"
+              echo "Fix them, or waive one by adding its line to a \`## Accepted Review Findings\` section of the PR body (a path with spaces cannot be waived):"
               echo '```'
               cat carried.txt
               echo '```'
