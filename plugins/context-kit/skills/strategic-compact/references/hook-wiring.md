@@ -37,7 +37,11 @@ sibling skills):
   2026-09-21 — see "Windows PowerShell coverage" below) detects milestones (tests passing, commits,
   builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
-  from the real token usage the API reported for the latest turn in the transcript, or a tool-call-count fallback when none exists yet) and nudges at 40/55/65/80/90% thresholds — its
+  from the real token usage the API reported for the latest turn in the transcript, or a tool-call-count fallback when none exists yet) and nudges at 65/80/90% thresholds (the 40 and 55% nudges were dropped in issue #690). It
+  also publishes `<percent> <alert_min_context_percent>` to `~/.claude/strategic-compact/pct-<hash>` on every
+  call, which `ctx-compact-track-and-suggest.sh` reads as a gate: its call-count, time and phase alerts stay
+  silent until real context reaches that minimum (default 50%), and a missing or malformed file keeps the
+  gate closed. Its
   own throttling (60s between checks below the warning threshold, once per threshold above it) gates
   the *emit*, not the interpreter launch itself, and matters more once scoped this broadly rather
   than only to `Bash|Agent|Task`: without it, a read-heavy session (e.g. `Read`/`Grep`/`Glob`-only)
