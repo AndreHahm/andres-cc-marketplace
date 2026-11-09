@@ -283,17 +283,16 @@ def check_stop_hook_delivers_pending_suggestion(tmp_path):
     try:
         out = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return False, f"expected valid JSON block decision, got: {result.stdout!r}"
-    if out.get("decision") != "block":
-        return (
-            False,
-            f"expected decision=block for a pending suggestion, got {out.get('decision')!r}",
-        )
-    if "[StrategicCompact] Test suggestion text." not in out.get("reason", ""):
-        return False, f"reason field does not contain the pending suggestion text: {out!r}"
+        return False, f"expected valid JSON systemMessage output, got: {result.stdout!r}"
+    if "decision" in out:
+        # A blocking decision forces an extra assistant turn just to relay the text
+        # (issue #690); the hook must only show the message to the user.
+        return False, f"Stop hook must not block, got decision={out.get('decision')!r}"
+    if "[StrategicCompact] Test suggestion text." not in out.get("systemMessage", ""):
+        return False, f"systemMessage does not contain the pending suggestion text: {out!r}"
     if pending_file.exists():
         return False, "pending file was not removed after being delivered"
-    return True, "a pending suggestion correctly triggers decision=block and is consumed"
+    return True, "a pending suggestion is shown via a non-blocking systemMessage and is consumed"
 
 
 def check_pending_content_without_prefix_is_discarded(tmp_path):
@@ -371,7 +370,7 @@ def check_prefixed_content_with_hostile_tail_is_discarded(tmp_path):
 def check_stop_hook_delivers_multiple_queued_suggestions(tmp_path):
     # Two writers (ctx-compact-track-and-suggest.sh, formerly detect_mode.py) could each append a
     # suggestion to the same pending file before Stop drains it -- both must be
-    # delivered in one decision:block, not just the first or the last.
+    # delivered in one systemMessage, not just the first or the last.
     home = tmp_path / "home_multiqueue"
     track_dir = home / ".claude" / "strategic-compact"
     track_dir.mkdir(parents=True)
@@ -392,15 +391,15 @@ def check_stop_hook_delivers_multiple_queued_suggestions(tmp_path):
     try:
         out = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return False, f"expected valid JSON block decision, got: {result.stdout!r}"
-    reason = out.get("reason", "")
-    if "[StrategicCompact] First suggestion." not in reason:
-        return False, f"first queued suggestion missing from reason: {out!r}"
-    if "[StrategicCompact] Second suggestion." not in reason:
-        return False, f"second queued suggestion missing from reason: {out!r}"
+        return False, f"expected valid JSON systemMessage output, got: {result.stdout!r}"
+    message = out.get("systemMessage", "")
+    if "[StrategicCompact] First suggestion." not in message:
+        return False, f"first queued suggestion missing from systemMessage: {out!r}"
+    if "[StrategicCompact] Second suggestion." not in message:
+        return False, f"second queued suggestion missing from systemMessage: {out!r}"
     if pending_file.exists():
         return False, "pending file was not removed after being drained"
-    return True, "two queued suggestions are both delivered in one decision:block"
+    return True, "two queued suggestions are both delivered in one systemMessage"
 
 
 def check_json_injection_in_suggestion_is_escaped(tmp_path):
@@ -431,8 +430,8 @@ def check_json_injection_in_suggestion_is_escaped(tmp_path):
         )
     if "extra_field" in out:
         return False, f"quote-injection escaped into a real top-level JSON field: {out!r}"
-    if out.get("decision") != "block":
-        return False, f"expected decision=block even with a quote in the suggestion, got {out!r}"
+    if "decision" in out or "extra_field" not in out.get("systemMessage", ""):
+        return False, f"expected a plain systemMessage carrying the quoted text, got {out!r}"
     return True, "a quote/field-injection attempt in the suggestion text is safely JSON-escaped"
 
 
@@ -896,6 +895,163 @@ def check_session_init_sweeps_expired_mode_files(tmp_path):
     )
 
 
+MONITOR_SCRIPT = PLUGIN_ROOT / "scripts" / "context-monitor.py"
+
+
+def write_transcript(path, usage_tokens, *, filler_bytes=0, sidechain_tokens=None):
+    """Write a minimal transcript: optional non-context filler, then one main-chain
+    assistant record reporting `usage_tokens`, then an optional sidechain record."""
+    lines = []
+    if filler_bytes:
+        lines.append(json.dumps({"type": "attachment", "blob": "x" * filler_bytes}))
+    usage = {
+        "input_tokens": 10,
+        "cache_read_input_tokens": usage_tokens - 10,
+        "cache_creation_input_tokens": 0,
+    }
+    lines.append(json.dumps({"type": "assistant", "message": {"usage": usage}}))
+    if sidechain_tokens:
+        side = {"input_tokens": sidechain_tokens}
+        lines.append(
+            json.dumps({"type": "assistant", "isSidechain": True, "message": {"usage": side}})
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def run_monitor(tmp_path, name, transcript, env_extra=None, project_files=None):
+    home = tmp_path / f"home_{name}"
+    project = tmp_path / f"project_{name}"
+    home.mkdir()
+    project.mkdir()
+    for rel, text in (project_files or {}).items():
+        (project / rel).parent.mkdir(parents=True, exist_ok=True)
+        (project / rel).write_text(text, encoding="utf-8")
+    env: dict[str, str] = {
+        **os.environ,
+        "HOME": str(home),
+        "USERPROFILE": str(home),
+        "CLAUDE_PROJECT_DIR": str(project),
+    }
+    env.pop("CLAUDE_CONTEXT_WINDOW_TOKENS", None)
+    env.update(env_extra or {})
+    payload = json.dumps({"session_id": name, "transcript_path": str(transcript)})
+    return subprocess.run(
+        [sys.executable, str(MONITOR_SCRIPT)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+
+
+def monitor_message(result):
+    return json.loads(result.stdout).get("systemMessage", "") if result.stdout.strip() else ""
+
+
+def check_monitor_ignores_transcript_file_size(tmp_path):
+    # Issue #690: a ~1 MB transcript of mostly non-context records but only ~110k real
+    # tokens used to read as ~97% of a 200k window on the very first tool call.
+    transcript = tmp_path / "big.jsonl"
+    write_transcript(transcript, 110_000, filler_bytes=900_000)
+    result = run_monitor(tmp_path, "bigfile", transcript)
+    if result.returncode != 0:
+        return False, f"exited {result.returncode}: {result.stderr!r}"
+    if result.stdout.strip():
+        return False, f"11% real usage produced a context warning: {result.stdout!r}"
+    return True, "a 0.9 MB transcript with 110k real tokens produces no warning (was a false 90%)"
+
+
+def check_monitor_warns_at_real_high_usage(tmp_path):
+    transcript = tmp_path / "high.jsonl"
+    write_transcript(transcript, 920_000)
+    result = run_monitor(tmp_path, "high", transcript)
+    message = monitor_message(result)
+    if "~92%" not in message:
+        return (
+            False,
+            f"expected a ~92% warning for 920k of the 1M default window, got {result.stdout!r}",
+        )
+    return True, "920k real tokens against the 1M default window warns at ~92%"
+
+
+def check_monitor_skips_sidechain_usage(tmp_path):
+    transcript = tmp_path / "side.jsonl"
+    write_transcript(transcript, 110_000, sidechain_tokens=990_000)
+    result = run_monitor(tmp_path, "side", transcript)
+    if result.stdout.strip():
+        return False, f"a subagent's usage was counted toward the session: {result.stdout!r}"
+    return True, "a later sidechain (subagent) usage record is ignored"
+
+
+def check_monitor_window_env_overrides_files(tmp_path):
+    transcript = tmp_path / "env.jsonl"
+    write_transcript(transcript, 110_000)
+    local = json.dumps({"context_window_tokens": 1_000_000})
+    result = run_monitor(
+        tmp_path,
+        "envwin",
+        transcript,
+        env_extra={"CLAUDE_CONTEXT_WINDOW_TOKENS": "200000"},
+        project_files={".claude/context-kit.local.json": local},
+    )
+    if "~55%" not in monitor_message(result):
+        return False, f"expected env window 200000 to win (110k -> ~55%), got {result.stdout!r}"
+    return True, "CLAUDE_CONTEXT_WINDOW_TOKENS takes precedence over the local override file"
+
+
+def check_monitor_window_local_override_file(tmp_path):
+    transcript = tmp_path / "local.jsonl"
+    write_transcript(transcript, 190_000)
+    local = json.dumps({"context_window_tokens": 200_000})
+    result = run_monitor(
+        tmp_path, "localwin", transcript, project_files={".claude/context-kit.local.json": local}
+    )
+    if "~95%" not in monitor_message(result):
+        return False, f"expected the local 200k window to give ~95%, got {result.stdout!r}"
+    return True, ".claude/context-kit.local.json overrides the shipped window size"
+
+
+def check_monitor_window_bad_local_file_falls_back(tmp_path):
+    transcript = tmp_path / "bad.jsonl"
+    write_transcript(transcript, 190_000)
+    for name, text in (
+        ("malformed", "{not json"),
+        ("negative", '{"context_window_tokens": -5}'),
+        ("bool", '{"context_window_tokens": true}'),
+    ):
+        result = run_monitor(
+            tmp_path,
+            f"bad_{name}",
+            transcript,
+            project_files={".claude/context-kit.local.json": text},
+        )
+        if result.returncode != 0 or result.stdout.strip():
+            return (
+                False,
+                f"{name} local file did not fall back to the shipped window: "
+                f"{result.stdout!r} {result.stderr!r}",
+            )
+    return True, "a malformed, negative or boolean window value falls back to the shipped default"
+
+
+def check_monitor_without_usage_record_does_not_warn(tmp_path):
+    transcript = tmp_path / "nousage.jsonl"
+    transcript.write_text(
+        json.dumps({"type": "attachment", "blob": "x" * 900_000}) + "\n", encoding="utf-8"
+    )
+    result = run_monitor(tmp_path, "nousage", transcript)
+    if result.returncode != 0 or result.stdout.strip():
+        return (
+            False,
+            f"no usage record should fall back to the quiet counter, got {result.stdout!r}",
+        )
+    return (
+        True,
+        "a transcript with no usage record falls back to the tool-call counter without warning",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
     check_tracking_file_is_not_executed_as_shell,
@@ -926,6 +1082,13 @@ CHECKS = [
     check_skill_category_unset_plugin_root_fails_open,
     check_no_hook_script_falls_back_to_cksum,
     check_session_init_sweeps_expired_mode_files,
+    check_monitor_ignores_transcript_file_size,
+    check_monitor_warns_at_real_high_usage,
+    check_monitor_skips_sidechain_usage,
+    check_monitor_window_env_overrides_files,
+    check_monitor_window_local_override_file,
+    check_monitor_window_bad_local_file_falls_back,
+    check_monitor_without_usage_record_does_not_warn,
 ]
 
 

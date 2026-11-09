@@ -320,34 +320,14 @@ def main() -> int:
 
     session_id = hook_input.get("session_id", "") or ""
 
-    # Signal context-monitor.py to reset its byte baseline and shown-threshold
-    # flags: compaction retains the whole prior transcript (plus a summary) in
-    # the same file, so an unreset percentage estimate would stay pegged near
-    # 100% forever, and an already-shown threshold would never re-fire as the
-    # new, post-compaction context climbs back through it. transcript_path is
-    # a common field on every hook's input, SessionStart included (confirmed
-    # against Claude Code's own docs) -- captured right now, at SessionStart
-    # time, and written into the marker's own content, so context-monitor.py's
-    # _maybe_reset_baseline() reads a baseline that doesn't include the first
-    # post-compaction tool result's own bytes (found by CodeRabbit's automated
-    # review, 2026-09-11). Falls back to an empty marker -- and
-    # _maybe_reset_baseline()'s own lazy PostToolUse-time measurement -- when
-    # transcript_path is missing or unreadable here. Scoped to "compact"
-    # only, not "resume" -- this addresses the compaction-retains-history
-    # case specifically, not a session resumed from a saved state.
+    # Signal context-monitor.py to reset its shown-threshold flags: an
+    # already-shown threshold would otherwise never re-fire as the new,
+    # post-compaction context climbs back through it. Scoped to "compact" only,
+    # not "resume" -- a session resumed from a saved state keeps its own flags.
     if session_source == "compact":
         try:
             marker = get_session_dir(session_id) / "compact-baseline-reset-pending"
-            transcript_path = hook_input.get("transcript_path", "")
-            baseline_bytes = None
-            if transcript_path:
-                try:
-                    baseline_bytes = os.path.getsize(transcript_path)
-                except OSError:
-                    baseline_bytes = None
-            marker.write_text(
-                str(baseline_bytes) if baseline_bytes is not None else "", encoding="utf-8"
-            )
+            marker.write_text("", encoding="utf-8")
         except OSError:
             pass
 

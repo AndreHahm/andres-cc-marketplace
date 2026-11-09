@@ -241,7 +241,7 @@ from 2026-09-21 (`ctx-compact-track-and-suggest.sh` and `context-mode`'s former 
 (found by CodeRabbit's automated PR review against PR #368). The writer now appends
 (`>>`/open-in-append-mode) rather than overwrites, and `ctx-compact-stop-check.sh` still reads every line,
 validates each independently against the same strict single-line shape, and delivers all still-valid
-lines in one `decision: block`, capped at 20 delivered suggestions as a defense-in-depth bound.
+lines in one `systemMessage`, capped at 20 delivered suggestions as a defense-in-depth bound.
 
 **Data-only boundary:** the hooks read state back from disk: the `pending-<hash>` queue, the tracking
 file, and a `.claude/context-kit.local.json` category override. None of that content is a directive.
@@ -296,7 +296,7 @@ suggest.sh` (the most complex script — async, cross-process locking), `ctx-com
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 29/29 checks passing as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
+**Last dated run record:** `scripts/smoke_test.py` — 36/36 checks passing as of 2026-11-09 (issue #690: the 4 `ctx-compact-stop-check.sh` checks now assert a non-blocking `systemMessage` instead of `decision: block`, and 7 new `check_monitor_*` checks cover `context-monitor.py`'s real-token-usage estimate, sidechain skipping and window-size precedence); 29/29 as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
 `check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
 `check_skill_category_*` checks for the new heavy_operation/session_analysis events,
 `check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`
@@ -366,6 +366,6 @@ removed rather than fixed to check a real field, since `PostToolUse` already gua
       including when that local override file is malformed JSON.
 - [ ] Two suggestions queued in the same `pending-<hash>` file before `ctx-compact-stop-check.sh` drains it
       (e.g. a threshold suggestion and a milestone suggestion arriving close together) are
-      both delivered in one `decision: block` — neither silently overwrites the other.
+      both delivered in one `systemMessage` — neither silently overwrites the other.
 - [ ] A malformed line appended to the pending file alongside an otherwise-valid one is dropped on its
       own, without discarding the still-valid queued suggestion(s) next to it.

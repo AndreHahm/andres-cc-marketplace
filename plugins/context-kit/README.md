@@ -69,13 +69,16 @@ like:
 
 ## Configuration
 
-All configuration is via environment variables — no config file. Every variable is optional; unset
-values fall back to safe, no-op-if-unconfigured defaults:
+Every setting is optional; unset values fall back to safe, no-op-if-unconfigured defaults. The
+context-window size also has a config file: `context-kit.settings.json` at the plugin root ships the
+default (`context_window_tokens`), and an optional, gitignored `.claude/context-kit.local.json` in the
+project overrides it. Precedence for the window size: `CLAUDE_CONTEXT_WINDOW_TOKENS`, then the local
+file, then the shipped file, then `1000000`. Everything else below is an environment variable:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CLAUDE_CONTEXT_WINDOW_TOKENS` | `200000` | Context-window size used to estimate usage percentage in `context-monitor.py` |
-| `CLAUDE_CONTEXT_MAX_TOOL_CALLS` | `400` | Fallback tool-call-count proxy when a transcript file isn't available |
+| `CLAUDE_CONTEXT_WINDOW_TOKENS` | unset (see above; effective default `1000000`) | Context-window size used to turn the transcript's real token usage into a percentage in `context-monitor.py`; overrides both config files |
+| `CLAUDE_CONTEXT_MAX_TOOL_CALLS` | `400` | Fallback tool-call-count proxy when the transcript has no token-usage record yet |
 | `STRATEGIC_COMPACT_T1` / `_T2` / `_T3` | `50` / `75` / `100` | Tool-call-count thresholds for `strategic-compact`'s suggestions |
 | `STRATEGIC_COMPACT_TIME` | `1800` (30 min) | Time-based suggestion threshold, in seconds |
 | `CONTEXT_KIT_PLANS_DIR` | unset (feature inert) | Optional plan-file directory (absolute, or relative to `$CLAUDE_PROJECT_DIR`) `ctx-pre-compact.py`/`ctx-post-compact-restore.py` scan for an active plan's status/current-task |
