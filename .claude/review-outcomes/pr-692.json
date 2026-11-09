@@ -1,0 +1,76 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4516661551",
+      "line": 1173,
+      "note": "R13: bypass now gated on whole-delta deterministic checks; fixed in 87c296cd",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "declined",
+      "finding": "4516780192",
+      "line": 960,
+      "note": "approved R5 accepted residual; maintainer accepted the risk",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780200",
+      "line": 1099,
+      "note": "live draft check before the Codex call; fixed in 87c296cd",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780220",
+      "line": 1589,
+      "note": "carried list moved to an artifact; fixed in 87c296cd",
+      "path": ".github/workflows/marketplace-ci.yml",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780236",
+      "line": 1004,
+      "note": "same defect as 4516661551; fixed in 87c296cd",
+      "path": "scripts/marketplace_ci/__main__.py",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780257",
+      "line": 1193,
+      "note": "hunk occurrence index in the normalized patch; fixed in 87c296cd",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780266",
+      "line": 1273,
+      "note": "same transport defect as 4516780220; fixed in 87c296cd",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4516780275",
+      "line": 1378,
+      "note": "carry comparison failure raises CarryError; fixed in 87c296cd",
+      "path": "scripts/marketplace_ci/review.py",
+      "pr": 692,
+      "recorded_at": "2026-11-09T21:13:26+00:00"
+    }
+  ]
+}
