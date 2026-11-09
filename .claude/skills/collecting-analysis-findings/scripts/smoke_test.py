@@ -1113,6 +1113,9 @@ with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
     log.write(json.dumps({"cwd": os.getcwd(), "argv": args}) + "\n")
 if mode == "fail":
     sys.exit(5)
+if mode == "exit51":
+    print(json.dumps({"pullRequests": []}))
+    sys.exit(51)
 if mode == "text":
     print("not json")
     sys.exit(0)
@@ -1139,8 +1142,14 @@ elif args[:2] == ["api", "get"] and args[2].startswith("/api/issues/search"):
 elif args[:2] == ["quality-gate", "status"]:
     condition = {"status": "ERROR", "metricKey": "new_coverage", "comparator": "LT",
                  "errorThreshold": "80", "actualValue": "10", "extra": "x"}
-    print(json.dumps({"qualityGate": {"status": "ERROR", "project": "p", "pullRequest": "7",
-                                      "by": person, "conditions": [condition]}}))
+    status = {"gate-none": "NONE", "gate-lie": "OK"}.get(mode, "ERROR")
+    if mode not in ("gate-missing", "gate-text"):
+        print(json.dumps({"qualityGate": {"status": status, "project": "p", "pullRequest": "7",
+                                          "by": person, "conditions": [condition]}}))
+    elif mode == "gate-text":
+        print("Quality gate failed")
+    codes = {"gate-fail": 51, "gate-lie": 51, "gate-text": 51, "gate-none": 1, "gate-missing": 1}
+    sys.exit(codes.get(mode, 0))
 else:
     sys.exit(9)
 """
@@ -1300,6 +1309,33 @@ def check_sonar_read() -> None:
                 }
             },
             done.stdout + done.stderr,
+        )
+
+        gate_args = ("gate-status", "--project", "p", "--pull-request", "7")
+        done = run(*gate_args, mode="gate-fail")
+        check(
+            "sonar_read gate-status: a failing gate (CLI exit 51) prints the ERROR verdict, exit 0",
+            done.returncode == 0 and json.loads(done.stdout)["qualityGate"]["status"] == "ERROR",
+            f"{done.returncode} {done.stdout} {done.stderr}",
+        )
+        done = run(*gate_args, mode="gate-none")
+        check(
+            "sonar_read gate-status: no computed verdict (CLI exit 1 with a gate) prints it",
+            done.returncode == 0 and json.loads(done.stdout)["qualityGate"]["status"] == "NONE",
+            f"{done.returncode} {done.stdout} {done.stderr}",
+        )
+        for mode, expected in (("gate-missing", 1), ("gate-text", 1), ("gate-lie", 2)):
+            done = run(*gate_args, mode=mode)
+            check(
+                f"sonar_read gate-status: {mode} exits {expected} and prints nothing",
+                done.returncode == expected and done.stdout == "",
+                f"{done.returncode} {done.stdout} {done.stderr}",
+            )
+        check(
+            "sonar_read: exit 51 from a non-gate form stays a failure",
+            (lambda d: d.returncode == 1 and d.stdout == "")(
+                run("pr-list", "--project", "p", mode="exit51")
+            ),
         )
 
         refused = {

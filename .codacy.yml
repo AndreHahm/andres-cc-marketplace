@@ -153,6 +153,15 @@
 # excluded and raised no security finding. Same whole-path/whole-engine tradeoff as every entry
 # above: this also silences secret-detection for these two files, accepted for the same reason --
 # they hold only obviously-synthetic placeholder ids (00000000-0000-4000-8000-...), no real secrets.
+#
+# plugins/quality-kit/skills/*/scripts/smoke_test.py are quality-kit's persisted smoke tests, the same
+# shape as the context-kit entry above (PR #673): every flagged call is list-form subprocess.run of
+# sys.executable with a script from this skill's own directory and fixture data the test builds, plus a
+# stub `sonar` the test writes to its own temp directory, never external input (Bandit B404/B603,
+# Prospector's bandit, and Semgrep's "subprocess without a static string"). The production scripts
+# beside them are NOT excluded: sonar_read.py carries its own inline nosec reasons. Same
+# whole-path/whole-engine tradeoff: secret detection is also off for these files, which hold only
+# synthetic placeholders such as dev@example.com.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/**/tests/**"
@@ -167,6 +176,7 @@ exclude_paths:
   - ".claude/references/**"
   - ".claude/assets/**"
   - "plugins/context-kit/skills/*/scripts/smoke_test.py"
+  - "plugins/quality-kit/skills/*/scripts/smoke_test.py"
   - "plugins/workledger-kit/scripts/wlgr_test_*.py"
   - "plugins/workmanagement-kit/scripts/wmgt_test_*.py"
   - "plugins/workmanagement-kit/skills/notion-knowledge-management/hooks/test_guard_notion_bootstrap.py"

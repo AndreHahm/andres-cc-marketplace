@@ -97,5 +97,6 @@ statuses above. Anything else exits 2.
 
 The script shares its input and output guards with `collect_codacy.py` by importing them, so a guard fixed
 there applies here. The only Sonar grant is `sonar_read.py`. If the CLI fails, the wrapper exits 1 (2 for a
-response that is not JSON) and prints nothing; with `set -o pipefail` the pipe fails, and without it the adapter
+response that is not JSON; `gate-status` instead prints a failing or uncomputed gate's verdict, see
+`using-sonarqube-cloud`'s `cli-commands.md`) and prints nothing; with `set -o pipefail` the pipe fails, and without it the adapter
 gets empty input and exits 2.
