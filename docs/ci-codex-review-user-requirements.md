@@ -110,6 +110,9 @@ force-push review would be the most expensive one. When `compute-scope` found th
 cannot fetch it, `codex-review` fails closed so the two jobs never narrow differently.
 Carried findings (R7) come from the anchor run's artifact, not from the anchor commit. When the anchor cannot
 be fetched, CI cannot tell whether a flagged file changed, so those findings keep blocking until waived.
+Whether such an anchor can be trusted (R10) is then read from GitHub's compare API. When that call fails,
+or shows the anchor changed a gate-critical or reviewer-steering file, `Publish Codex policy result` blocks
+until a re-run or a bypass, even when the anchor had no findings.
 
 Status: approved
 
@@ -158,5 +161,10 @@ Status: approved
 - When a pull request moves from draft to ready (`ready_for_review`, which the workflow must listen to),
   CI reviews the whole pull request delta minus the exclusions (R2). This holds for every move to ready,
   including ready → draft → ready. Later runs use that run as their anchor (R5).
+- The draft pass holds only while the pull request is still a draft at the same head, re-read from the
+  GitHub API at publish time, so a re-run of an old draft run cannot pass a ready pull request.
+- **Accepted residual:** a draft's green check stays attached to its head after the pull request is marked
+  ready. If the `ready_for_review` run is then cancelled by hand or never starts, that green check may stay
+  the latest one on that head. Any later push or re-run replaces it.
 
 Status: approved

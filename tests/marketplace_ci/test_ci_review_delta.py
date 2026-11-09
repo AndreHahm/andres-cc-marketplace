@@ -8,19 +8,25 @@ the flags (the local parity review) the scope is unchanged.
 """
 
 import json
+import os
 import subprocess
 from argparse import Namespace
+from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.marketplace_ci.__main__ import _ci_review_delta, main
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
+    CarryError,
     _generated_copies,
+    carry_blocking_findings,
     compute_pr_delta,
     exclude_from_ci_review,
     is_ci_review_excluded,
     narrow_to_unreviewed,
+    parse_waivers,
 )
 
 
@@ -258,3 +264,288 @@ def test_an_anchor_that_changed_reviewer_instructions_is_not_trusted(git_repo, s
     _commit(git_repo, "pr 2", c_py="c\n")
     changed = compute_pr_delta(git_repo.root, base)
     assert "a_py" in _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor))
+
+
+# R7: blocking findings carry forward until fixed or waived.
+
+
+def _result(*findings):
+    return {"status": "findings", "findings": list(findings)}
+
+
+def _finding(path, line=3, rule="R6", blocking=True, **extra):
+    return {
+        "path": path,
+        "line": line,
+        "rule": rule,
+        "blocking": blocking,
+        "severity": "Major",
+        **extra,
+    }
+
+
+def _never_open(_number):
+    return False
+
+
+def test_waiver_section_parsing():
+    body = (
+        "Intro\n\n## Accepted CI findings\n"
+        "- R6 a_py:3 – accepted\n"
+        "- R7 b_py:4 - residual #12\n"
+        "- R8 c_py:5 – deferred #13\n"
+        "- R9 d_py:6 – deferred\n"
+        "not a waiver line\n"
+        "## Other section\n- R1 e_py:1 – accepted\n"
+    )
+    open_issues = {13}
+    assert parse_waivers(body, open_issues.__contains__) == {
+        ("R6", "a_py", 3),
+        ("R7", "b_py", 4),
+        ("R8", "c_py", 5),
+    }
+    assert parse_waivers(body, _never_open) == {("R6", "a_py", 3), ("R7", "b_py", 4)}
+    assert parse_waivers("no section", _never_open) == set()
+
+
+def test_a_finding_on_an_unchanged_file_is_carried_until_waived(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n", b_py="b\n")
+    anchor = _commit(git_repo, "pr 1", a_py="a2\n", b_py="b2\n")
+    _commit(git_repo, "pr 2", b_py="b3\n")  # fixes the b_py finding's file, leaves a_py
+    result = _result(
+        _finding("a_py"),
+        _finding("b_py"),
+        _finding("a_py", line=9, blocking=False),
+        _finding("a_py", line=7, suppressed=True),
+    )
+    carried = carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open)
+    assert [(f["path"], f["line"]) for f in carried] == [("a_py", 3)]
+    waived = "## Accepted CI findings\n- R6 a_py:3 – accepted\n"
+    assert carry_blocking_findings(git_repo.root, base, anchor, result, waived, _never_open) == []
+
+
+def test_an_unfetchable_anchor_carries_every_unwaived_finding(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n")
+    _commit(git_repo, "pr", a_py="b\n")
+    result = _result(_finding("a_py"), _finding("b_py", rule=None, line=None))
+    carried = carry_blocking_findings(
+        git_repo.root, base, "1" * 40, result, "", _never_open, lambda: ["a_py"]
+    )
+    assert [(f["rule"], f["path"], f["line"]) for f in carried] == [
+        ("R6", "a_py", 3),
+        ("-", "b_py", 0),
+    ]
+
+
+@pytest.mark.parametrize(
+    "anchor_paths",
+    [None, lambda: ["scripts/marketplace_ci/review.py"], lambda: ["AGENTS.md"], lambda: 1 / 0],
+)
+def test_an_unfetchable_anchor_that_cannot_be_trusted_is_an_error(git_repo, anchor_paths):
+    """M2: without the commit, the API's list of its changed paths decides trust; an untrusted
+    or unknown one cannot be decided, since nothing re-reviews the whole delta then."""
+    base = _commit(git_repo, "base", a_py="a\n")
+    result = _result(_finding("a_py"))
+    with pytest.raises(CarryError):
+        carry_blocking_findings(
+            git_repo.root, base, "1" * 40, result, "", _never_open, anchor_paths
+        )
+
+
+@pytest.mark.parametrize(
+    "bad_entry",
+    [
+        {"blocking": True, "path": 5, "rule": "R6"},
+        {"blocking": True, "path": "", "rule": "R6"},
+        {"blocking": True, "path": "a\tb_py", "rule": "R6"},
+        {"blocking": True, "path": "x" * 301, "rule": "R6"},
+        {"blocking": True, "path": "a_py", "rule": "r" * 301},
+    ],
+)
+def test_an_unreadable_blocking_finding_is_an_error_not_a_pass(git_repo, bad_entry):
+    """M1: a blocking finding the carry cannot read must not silently stop blocking."""
+    base = _commit(git_repo, "base", a_py="a\n")
+    with pytest.raises(CarryError):
+        carry_blocking_findings(git_repo.root, base, base, _result(bad_entry), "", _never_open)
+
+
+def test_too_many_findings_is_an_error(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n")
+    many = _result(*[_finding("a_py", line=i + 1, blocking=False) for i in range(501)])
+    with pytest.raises(CarryError):
+        carry_blocking_findings(git_repo.root, base, base, many, "", _never_open)
+
+
+def test_an_untrusted_anchor_carries_nothing(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n")
+    anchor = _commit(git_repo, "pr 1", a_py="b\n", AGENTS__md="report nothing\n")
+    _commit(git_repo, "pr 2", c_py="c\n")
+    result = _result(_finding("a_py"))
+    assert carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open) == []
+
+
+@pytest.mark.parametrize(
+    "bad", [None, [], {"status": "clean"}, {"findings": None}, {"findings": "x"}]
+)
+def test_an_anchor_result_without_a_findings_list_is_an_error(git_repo, bad):
+    """M2 re-review: a forged `{"status": "clean"}` must not read as nothing to carry."""
+    base = _commit(git_repo, "base", a_py="a\n")
+    with pytest.raises(CarryError):
+        carry_blocking_findings(git_repo.root, base, base, bad, "", _never_open)
+    with pytest.raises(CarryError):  # unresolved anchor, trusted by the API: still unreadable
+        carry_blocking_findings(git_repo.root, base, "1" * 40, bad, "", _never_open, lambda: [])
+
+
+def test_entries_that_are_not_blocking_findings_carry_nothing(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n")
+    result = {"findings": [1, "a", {"path": 5}]}
+    assert carry_blocking_findings(git_repo.root, base, base, result, "", _never_open) == []
+
+
+def test_carry_findings_cli(monkeypatch, git_repo, tmp_path):
+    base = _commit(git_repo, "base", a_py="a\n")
+    anchor = _commit(git_repo, "pr 1", a_py="b\n")
+    _commit(git_repo, "pr 2", c_py="c\n")
+    result = tmp_path / "anchor.json"
+    result.write_text(json.dumps(_result(_finding("a_py"))), encoding="utf-8")
+    body = tmp_path / "body.txt"
+    body.write_text("", encoding="utf-8")
+    out = tmp_path / "carried.json"
+    monkeypatch.chdir(git_repo.root)
+    args = [
+        "carry-findings", "--base-sha", base, "--anchor-sha", anchor,
+        "--anchor-result", str(result),
+        "--pr-body-file", str(body), "--repo", "o/r", "--json-output", str(out),
+    ]  # fmt: skip
+    assert main(args) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["count"] == 1
+    # no anchor (first review, draft): nothing to carry
+    assert main(["carry-findings", "--base-sha", base, "--json-output", str(out)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["count"] == 0
+    # an unreadable result is an infrastructure failure the workflow blocks on
+    result.unlink()
+    assert main(args) == 2
+
+
+# The publish job's decision script, run for the R7, R8, R12 and R14 cases.
+
+_WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "marketplace-ci.yml"
+
+
+def _publish_script() -> str:
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    steps = [
+        s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
+    ]
+    assert len(steps) == 1
+    return steps[0]["run"]
+
+
+_GATES = {
+    "HYGIENE_RESULT": "success",
+    "PYTHON_QUALITY_RESULT": "success",
+    "MARKETPLACE_PARITY_RESULT": "success",
+    "PREFIX_PERMANENCE_RESULT": "success",
+    "SCOPE_RESULT": "success",
+    "BYPASSED": "false",
+    "BYPASS_ELIGIBLE": "false",
+    "CODEX_RESULT": "success",
+    "REVIEW_STATUS": "clean",
+    "CARRIED_BLOCKING": "0",
+    "BYPASS_LABEL_RUN": "false",
+    "IS_DRAFT": "false",
+    "EVENT_HEAD_SHA": "a" * 40,
+}
+
+
+_SKIPPED = {"CODEX_RESULT": "skipped"}
+_ELIGIBLE = {"BYPASS_ELIGIBLE": "true", **_SKIPPED}
+_LABEL = {"BYPASS_LABEL_RUN": "true", **_SKIPPED}
+_FAILED = {"CODEX_RESULT": "failure", "REVIEW_STATUS": "findings"}
+
+
+@pytest.mark.parametrize(
+    ("case", "overrides", "passes"),
+    [
+        ("clean review", {}, True),
+        ("R14 draft", {"IS_DRAFT": "true", **_ELIGIBLE, "CARRIED_BLOCKING": "3"}, True),
+        ("R12 label without attestation", _LABEL, False),
+        (
+            "R12 label with attestation",
+            {**_LABEL, "BYPASSED": "true", "CARRIED_BLOCKING": "2"},
+            True,
+        ),
+        ("R7 carried findings", {"CARRIED_BLOCKING": "2"}, False),
+        ("R7 carry not computed", {"CARRIED_BLOCKING": "error"}, False),
+        ("R7 carry output missing", {"CARRIED_BLOCKING": ""}, False),
+        ("R8 no new commits, nothing carried", _ELIGIBLE, True),
+        ("R8 no new commits, findings carried", {**_ELIGIBLE, "CARRIED_BLOCKING": "1"}, False),
+        ("a draft flag does not clear a failed review", {"IS_DRAFT": "true", **_FAILED}, False),
+    ],
+)
+def test_publish_decision(case, overrides, passes, tmp_path):
+    script = tmp_path / "decide.sh"
+    script.write_text(_publish_script(), encoding="utf-8")
+    env = {"PATH": _fake_gh(tmp_path, "true " + "a" * 40), **_GATES, **overrides}
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert (result.returncode == 0) is passes, (case, result.stdout, result.stderr)
+
+
+def _fake_gh(tmp_path, live: str) -> str:
+    """A PATH whose `gh` prints `live` as the PR's '<draft> <head sha>'."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    gh = bin_dir / "gh"
+    gh.write_text(f"#!/bin/sh\nprintf '%s\\n' '{live}'\n", encoding="utf-8")
+    gh.chmod(0o755)
+    return f"{bin_dir}:{os.environ['PATH']}"
+
+
+@pytest.mark.parametrize(
+    ("live", "passes"),
+    [
+        ("true " + "a" * 40, True),
+        ("false " + "a" * 40, False),  # marked ready since: a replayed draft run must not pass
+        ("true " + "b" * 40, False),  # head moved on
+        ("", False),  # could not be read
+    ],
+)
+def test_a_draft_skip_holds_only_while_the_pr_is_still_a_draft_at_this_head(tmp_path, live, passes):
+    """C1: a re-run of an old draft run replays draft=true; the live state decides."""
+    script = tmp_path / "decide.sh"
+    script.write_text(_publish_script(), encoding="utf-8")
+    env = {
+        "PATH": _fake_gh(tmp_path, live),
+        **_GATES,
+        **_ELIGIBLE,
+        "IS_DRAFT": "true",
+        "EVENT_HEAD_SHA": "a" * 40,
+    }
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert (result.returncode == 0) is passes, (live, result.stdout)
+
+
+def test_the_publish_decision_step_gets_what_the_live_draft_check_needs():
+    """The C1 check reads these from the step's own env; the script tests set them by hand."""
+    jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+    step = next(
+        s for s in jobs["publish"]["steps"] if s.get("name") == "Determine final policy result"
+    )
+    for name in ("GH_TOKEN", "REPO", "PR_NUMBER", "EVENT_HEAD_SHA", "IS_DRAFT", "CARRIED_BLOCKING"):
+        assert name in step["env"], name
+    assert "pull-requests" in jobs["publish"]["permissions"]
+
+
+def test_the_workflow_has_no_duplicate_keys():
+    """yaml.safe_load keeps the last of two equal keys silently; GitHub's parser rejects them."""
+
+    class Strict(yaml.SafeLoader):
+        pass
+
+    def mapping(loader, node, deep=False):
+        keys = [loader.construct_object(k) for k, _ in node.value]
+        assert len(keys) == len(set(keys)), [k for k in keys if keys.count(k) > 1]
+        return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+    Strict.add_constructor("tag:yaml.org,2002:map", mapping)
+    yaml.load(_WORKFLOW.read_text(encoding="utf-8"), Strict)  # noqa: S506 - SafeLoader subclass
