@@ -167,8 +167,8 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
 - **Carried findings (R7).** `compute-scope`'s `carry-findings` step reads the anchor run's
   `codex-review-result` artifact. A blocking finding whose file is unchanged since the anchor (or every one,
   when the anchor cannot be fetched) keeps blocking without a new Codex call, unless the PR body waives it
-  in its `## Accepted Review Findings` section (in both PR templates: `git-kit`'s `create-pr` asset carries
-  it generically, and the conventions below are written out in `.github/pull_request_template.md`; it also
+  in its `## Accepted Review Findings` section (in both PR templates, which both write out the conventions
+  below; `git-kit`'s `create-pr` asset does not name this repository's CI; it also
   lists accepted third-party findings, which CI ignores unless one matches a carried finding), one line per
   finding: `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by
   `: <reason>` (`-` for a finding without a rule, `0` without a line, no spaces in the path; `#<issue>` is
