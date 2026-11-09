@@ -195,6 +195,22 @@ console.log("\n=== runCodexExec({ dryRun: true }): resolves and redacts, never s
     check("wouldRun resolves to the stub on PATH", result.wouldRun && (result.wouldRun.command === stubPath || result.wouldRun.args.some((a) => String(a).includes(stubName))), JSON.stringify(result.wouldRun));
     check("wouldRun.prompt redacts the secret-shaped token", result.wouldRun && !result.wouldRun.prompt.includes("AKIA1234567890ABCDEF"), result.wouldRun && result.wouldRun.prompt);
     check("wouldRun carries the real sandbox/dispatchId/promptLength", result.ok === true && result.wouldRun && result.wouldRun.sandbox === "read-only" && result.wouldRun.dispatchId === "smoke-dry-run" && typeof result.wouldRun.promptLength === "number", JSON.stringify(result));
+    // The largest accepted timeout (issue #660): resolves against the stub like any other dry run, and the value
+    // is carried through unchanged rather than merely not rejected.
+    const atCeiling = await runCodexExec({
+      prompt: "test",
+      schema,
+      sandbox: "read-only",
+      cwd: scratchDir,
+      dispatchId: "smoke-timeout-at-ceiling",
+      timeoutMs: 2147483647,
+      dryRun: true
+    });
+    check(
+      "2147483647 is accepted and carried through as wouldRun.timeoutMs",
+      atCeiling.ok === true && atCeiling.wouldRun && atCeiling.wouldRun.timeoutMs === 2147483647,
+      JSON.stringify(atCeiling)
+    );
     check("the stub was never actually spawned", !fs.existsSync(sentinelFile));
   } finally {
     restoreEnv("PATH", savedPath);
@@ -254,20 +270,6 @@ console.log("\n=== runCodexExec: timeoutMs above Node's setTimeout ceiling is re
       JSON.stringify(result)
     );
   }
-
-  const atCeiling = await runCodexExec({
-    prompt: "test",
-    schema,
-    sandbox: "read-only",
-    dispatchId: "smoke-timeout-at-ceiling",
-    timeoutMs: 2147483647,
-    dryRun: true
-  });
-  check(
-    "2147483647 is accepted: no non_zero_exit validation rejection (a cli_unavailable outcome is fine)",
-    !(atCeiling.ok === false && atCeiling.category === "non_zero_exit"),
-    JSON.stringify(atCeiling)
-  );
 }
 
 console.log("\n=== runCodexExec({ dryRun: true }): still reports CLI_UNAVAILABLE when codex isn't on PATH ===");

@@ -37,7 +37,7 @@ function check(label, condition, detail = "") {
 
 function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-test", extraEnv = {}, extraArgs = []) {
   try {
-    execFileSync(
+    const stdout = execFileSync(
       "node",
       [
         BRIDGE_INVOKE,
@@ -51,7 +51,7 @@ function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-tes
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...extraEnv } }
     );
-    return { ok: true, stderr: "" };
+    return { ok: true, stdout, stderr: "" };
   } catch (e) {
     return { ok: false, stderr: e.stderr?.toString() ?? "" };
   }
@@ -171,15 +171,34 @@ console.log("\n=== CODEX_KIT_REVIEW_TIMEOUT_MS validation ===");
     tooLarge.stderr
   );
 
-  // --dry-run true: a real run with this budget could hang for days if a working codex is on PATH.
-  const atCeiling = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
-    CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483647"
-  }, ["--dry-run", "true"]);
-  check(
-    "CODEX_KIT_REVIEW_TIMEOUT_MS of exactly 2147483647 passes the format check",
-    !atCeiling.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
-    atCeiling.stderr
-  );
+  // --dry-run true: a real run with this budget could hang for days if a working codex is on PATH. A dry run
+  // still resolves the `codex` executable, so a throwaway stub goes first on PATH (resolved, never run).
+  const stubDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-review-bridge-timeout-stub-"));
+  try {
+    if (process.platform === "win32") {
+      fs.writeFileSync(path.join(stubDir, "codex.cmd"), "@echo off\r\n");
+    } else {
+      fs.writeFileSync(path.join(stubDir, "codex"), "#!/bin/sh\n");
+      fs.chmodSync(path.join(stubDir, "codex"), 0o755);
+    }
+    const atCeiling = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+      CODEX_KIT_REVIEW_TIMEOUT_MS: "2147483647",
+      PATH: stubDir + path.delimiter + (process.env.PATH || "")
+    }, ["--dry-run", "true"]);
+    let reported;
+    try {
+      reported = JSON.parse(atCeiling.stdout);
+    } catch {
+      reported = undefined;
+    }
+    check(
+      "CODEX_KIT_REVIEW_TIMEOUT_MS of exactly 2147483647 is accepted and reaches the dispatch as wouldRun.timeoutMs",
+      atCeiling.ok && reported?.ok === true && reported?.wouldRun?.timeoutMs === 2147483647,
+      `${atCeiling.stdout || ""}${atCeiling.stderr}`.slice(0, 300)
+    );
+  } finally {
+    fs.rmSync(stubDir, { recursive: true, force: true });
+  }
 
   const valid = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
     CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
