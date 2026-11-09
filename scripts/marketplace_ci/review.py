@@ -1161,14 +1161,18 @@ def exclude_from_ci_review(
     )
 
 
-_PATCH_HUNK_HEADER = re.compile(rb"@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@.*")
+_PATCH_HUNK_HEADER = re.compile(rb"@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@.*")
+_PATCH_INDEX = re.compile(rb"index ([0-9a-f]+)\.\.[0-9a-f]+(?: \d+)?")
 
 
 def _pr_side_patch(repo: Path, base_sha: str, tip: str, paths: Sequence[str]) -> bytes | None:
     """What the PR does to `paths` at `tip`, against its merge base with `base_sha`: the
     diff with three context lines, which pin where each change sits, and with only the
     line numbers and blob ids dropped, so a rebase that just shifts the change compares
-    equal and a change moved elsewhere in the file does not."""
+    equal and a change moved elsewhere in the file does not. Each hunk keeps which
+    occurrence of its old-side lines in the old file it applies to, so an edit moved
+    between two places with identical context is not equal either. None when git
+    cannot answer."""
     try:
         raw = _run_git(
             repo,
@@ -1176,6 +1180,7 @@ def _pr_side_patch(repo: Path, base_sha: str, tip: str, paths: Sequence[str]) ->
             "core.quotepath=false",
             "diff",
             "-U3",
+            "--full-index",
             "--text",
             "--no-color",
             "--no-ext-diff",
@@ -1187,11 +1192,53 @@ def _pr_side_patch(repo: Path, base_sha: str, tip: str, paths: Sequence[str]) ->
         )
     except RuntimeError:
         return None
-    return b"\n".join(
-        b"@@" if _PATCH_HUNK_HEADER.fullmatch(line) else line
-        for line in raw.split(b"\n")
-        if not line.startswith(b"index ")
-    )
+    # One forward pass: each hunk header becomes a placeholder, filled in below once its old-side
+    # lines (context and removed lines) are known.
+    out: list[bytes] = []
+    hunks: list[tuple[int, int, list[bytes], bytes | None]] = []
+    old_blob: bytes | None = None
+    pre: list[bytes] | None = None
+    for line in raw.split(b"\n"):
+        if line.startswith(b"diff --git "):
+            old_blob, pre = None, None
+        elif (index := _PATCH_INDEX.fullmatch(line)) is not None:
+            old_blob = index.group(1)
+            continue
+        elif (header := _PATCH_HUNK_HEADER.fullmatch(line)) is not None:
+            pre = []
+            hunks.append((len(out), int(header.group(1)) - 1, pre, old_blob))
+            out.append(b"")
+            continue
+        elif pre is not None and line[:1] in (b" ", b"-"):
+            pre.append(line[1:])
+        out.append(line)
+    # The old file of each blob is read once, with where each line text occurs, so a hunk checks
+    # only the places where its rarest old-side line occurs.
+    blobs: dict[bytes, tuple[list[bytes], dict[bytes, list[int]]]] = {}
+    for pos, start, old_side, blob in hunks:
+        occurrence = 0
+        if old_side:
+            if blob is None:
+                return None
+            if blob not in blobs:
+                try:
+                    old = _run_git(repo, "cat-file", "blob", blob.decode()).split(b"\n")
+                except RuntimeError:
+                    return None
+                where: dict[bytes, list[int]] = {}
+                for at, text in enumerate(old):
+                    where.setdefault(text, []).append(at)
+                blobs[blob] = (old, where)
+            old, where = blobs[blob]
+            n = len(old_side)
+            k = min(range(n), key=lambda j: len(where.get(old_side[j], ())))
+            occurrence = sum(
+                1
+                for q in where.get(old_side[k], ())
+                if k <= q < start + k and old[q - k : q - k + n] == old_side
+            )
+        out[pos] = b"@@ #%d" % occurrence
+    return b"\n".join(out)
 
 
 def _steers_reviewers(path: str) -> bool:
@@ -1373,7 +1420,10 @@ def carry_blocking_findings(
             if path not in unchanged:
                 now = _pr_side_patch(repo, base_sha, "HEAD", [path])
                 then = _pr_side_patch(repo, base_sha, anchor_sha, [path])
-                unchanged[path] = now is not None and now == then
+                if now is None or then is None:
+                    # Unknown is not "changed": dropping the finding would fail open.
+                    raise CarryError(f"cannot compare {path} with the anchor")
+                unchanged[path] = now == then
             if not unchanged[path]:
                 continue
         carried.append(

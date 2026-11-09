@@ -18,6 +18,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scripts.marketplace_ci import __main__ as main_module
+from scripts.marketplace_ci import review as review_module
 from scripts.marketplace_ci.__main__ import _ci_review_delta, main
 from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
@@ -179,6 +181,49 @@ def test_check_scope_bypass_skips_a_tests_only_push(monkeypatch, git_repo, tmp_p
     assert first["bypass_eligible"] is False
 
 
+def _crash(*_args):
+    raise RuntimeError("verifier crashed")
+
+
+@pytest.mark.parametrize("checks", [lambda *_a: 1, _crash], ids=["blocking", "crashed"])
+def test_an_empty_reviewer_delta_still_needs_the_deterministic_checks(
+    monkeypatch, git_repo, tmp_path, checks
+):
+    base = _commit(git_repo, "base", plugins__demo__skills__x__SKILL_md="a\n")
+    anchor = _commit(git_repo, "pr 1", plugins__demo__skills__x__SKILL_md="b\n")
+    _commit(git_repo, "pr 2", plugins__demo__tests__test_x_py="t\n")
+    monkeypatch.setattr(main_module, "_deterministic_checks_block", checks)
+    args = ["--base-sha", base, "--ci-delta", "--anchor-sha", anchor]
+    scope = _scope_bypass(monkeypatch, git_repo.root, tmp_path, *args)
+    assert scope["bypass_eligible"] is False
+    assert "deterministic checks" in scope["reason"]
+
+
+def test_an_excluded_script_losing_its_executable_bit_is_not_bypassed(
+    monkeypatch, git_repo, tmp_path
+):
+    grant = "Bash(${CLAUDE_PLUGIN_ROOT}/scripts/smoke_test.sh:*)"
+    skill = f"---\nname: demo\ndescription: {'d' * 100}\nallowed-tools: {grant}\n---\nbody\n"
+    root = git_repo.root
+    _commit(git_repo, "skill", **{"plugins__demo-kit__skills__demo__SKILL.md": skill})
+    script = "plugins/demo-kit/scripts/smoke_test.sh"
+    git_repo.write(script, "#!/bin/sh\necho ok\n")
+    (root / script).chmod(0o755)
+    _git(root, "add", "-f", script)
+    _git(root, "update-index", "--chmod=+x", script)
+    _git(root, "commit", "-q", "-m", "script")
+    base = _git(root, "rev-parse", "HEAD")
+    longer = skill + "more\n"
+    anchor = _commit(git_repo, "pr 1", **{"plugins__demo-kit__skills__demo__SKILL.md": longer})
+    assert _git(root, "ls-files", "-s", script).startswith("100755")
+    (root / script).chmod(0o644)
+    _git(root, "update-index", "--chmod=-x", script)
+    _git(root, "commit", "-q", "-m", "pr 2: drop the bit")
+    args = ["--base-sha", base, "--ci-delta", "--anchor-sha", anchor]
+    scope = _scope_bypass(monkeypatch, root, tmp_path, *args)
+    assert scope["bypass_eligible"] is False, scope["reason"]
+
+
 def test_check_scope_bypass_reviews_a_component_change_since_the_anchor(
     monkeypatch, git_repo, tmp_path
 ):
@@ -231,6 +276,52 @@ def test_a_change_moved_elsewhere_in_the_file_is_reviewed(git_repo):
     _commit(git_repo, "pr 2", a_sh=body.replace("line 5\n", "  exit 1\n"))  # the guard's removed
     changed = compute_pr_delta(git_repo.root, base)
     assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == ["a_sh"]
+
+
+_TWIN = "  a\n  b\n  c\n  target\n  d\n  e\n  f\n"
+
+
+def _twins(first="  target\n", second="  target\n", above=""):
+    mid = "".join(f"mid {i}\n" for i in range(10))
+    return (
+        above
+        + "head\n"
+        + _TWIN.replace("  target\n", first)
+        + mid
+        + _TWIN.replace("  target\n", second)
+        + "tail\n"
+    )
+
+
+def test_an_edit_moved_between_identical_contexts_is_reviewed(git_repo):
+    base = _commit(git_repo, "base", a_py=_twins())
+    anchor = _commit(git_repo, "pr 1", a_py=_twins(first="  changed\n"))
+    _commit(git_repo, "pr 2", a_py=_twins(second="  changed\n"))  # same edit, other twin
+    changed = compute_pr_delta(git_repo.root, base)
+    assert _paths(narrow_to_unreviewed(git_repo.root, changed, base, anchor)) == ["a_py"]
+
+
+def test_a_rebase_that_shifts_an_edit_between_twins_reviews_nothing(git_repo):
+    root = git_repo.root
+    _commit(git_repo, "base", a_py=_twins(), c_py="c\n")
+    _git(root, "checkout", "-q", "-b", "pr")
+    anchor = _commit(git_repo, "pr", a_py=_twins(second="  changed\n"))
+    _git(root, "checkout", "-q", "-")
+    new_base = _commit(git_repo, "main moves", a_py=_twins(above="new 1\nnew 2\n"), c_py="c2\n")
+    _git(root, "checkout", "-q", "pr")
+    _git(root, "rebase", "-q", new_base)
+    changed = compute_pr_delta(root, new_base)
+    assert narrow_to_unreviewed(root, changed, new_base, anchor) == ()
+
+
+def test_a_carry_comparison_git_cannot_compute_is_an_error(git_repo, monkeypatch):
+    base = _commit(git_repo, "base", a_py="a\n")
+    anchor = _commit(git_repo, "pr 1", a_py="a2\n")
+    monkeypatch.setattr(review_module, "_pr_side_patch", lambda *_args: None)
+    with pytest.raises(CarryError):
+        carry_blocking_findings(
+            git_repo.root, base, anchor, _result(_finding("a_py")), "", _never_open
+        )
 
 
 def test_gate_critical_entries_are_never_narrowed_away(git_repo):
@@ -528,6 +619,30 @@ def test_a_draft_skip_holds_only_while_the_pr_is_still_a_draft_at_this_head(tmp_
     assert (result.returncode == 0) is passes, (live, result.stdout)
 
 
+_DRAFT_STEP = "Make no Codex call if the PR was converted to draft"
+
+
+@pytest.mark.parametrize(("live", "calls"), [("false", True), ("true", False), ("", False)])
+def test_no_codex_call_after_a_conversion_to_draft(tmp_path, live, calls):
+    run = _step("codex-review", _DRAFT_STEP)["run"]
+    assert "/usr/bin/gh api" in run  # never `gh` from PATH, which an earlier step could extend
+    _fake_gh(tmp_path, live)
+    script = tmp_path / "draft.sh"
+    script.write_text(run.replace("/usr/bin/gh", str(tmp_path / "bin" / "gh")), encoding="utf-8")
+    env = {"PATH": os.environ["PATH"], "REPO": "o/r", "PR_NUMBER": "1"}
+    result = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert (result.returncode == 0) is calls, (live, result.stdout)
+
+
+def test_the_live_draft_check_runs_right_before_the_codex_call():
+    job = _jobs()["codex-review"]
+    names = [s.get("name") for s in job["steps"]]
+    dispatch = names.index("Dispatch reviewers directly, validate output, aggregate findings")
+    assert names[dispatch - 1] == _DRAFT_STEP
+    assert job["permissions"]["pull-requests"] == "read"
+    assert "GH_TOKEN" not in job["steps"][dispatch].get("env", {})
+
+
 def test_the_publish_decision_step_gets_what_the_live_draft_check_needs():
     """The C1 check reads these from the step's own env; the script tests set them by hand."""
     jobs = yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
@@ -719,6 +834,9 @@ def _run_merge_step(tmp_path, status, outcome, count, findings):
     uv.chmod(0o755)
     script = tmp_path / "merge.sh"
     script.write_text(_step("codex-review", _MERGE_STEP)["run"], encoding="utf-8")
+    if findings:  # the downloaded artifact; none when the list was not computed
+        (tmp_path / "carried-in").mkdir()
+        (tmp_path / "carried-in" / "carried-findings.json").write_text(findings, encoding="utf-8")
     env = {
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
@@ -726,7 +844,6 @@ def _run_merge_step(tmp_path, status, outcome, count, findings):
         "RUNNER_TEMP": str(tmp_path),
         "DISPATCH_OUTCOME": outcome,
         "CARRIED_BLOCKING": count,
-        "CARRIED_FINDINGS": findings,
         "EVENT_HEAD_SHA": "a" * 40,
         "RUN_ATTEMPT": "2",
     }
@@ -763,14 +880,81 @@ def test_the_codex_review_merge_step(tmp_path, status, outcome, count, findings,
 
 def test_the_carried_findings_reach_codex_review_before_its_result_is_uploaded():
     jobs = _jobs()
-    assert "carried_findings" in jobs["compute-scope"]["outputs"]
     names = [s.get("name") for s in jobs["codex-review"]["steps"]]
     dispatch = names.index("Dispatch reviewers directly, validate output, aggregate findings")
-    assert dispatch < names.index(_MERGE_STEP) < names.index("Upload review result")
+    download = names.index("Download the carried findings")
+    assert dispatch < download < names.index(_MERGE_STEP) < names.index("Upload review result")
     step = _step("codex-review", _MERGE_STEP)
     assert step["if"] == "always()"
     assert "steps.dispatch.outcome" in step["env"]["DISPATCH_OUTCOME"]
-    assert "compute-scope.outputs.carried_findings" in step["env"]["CARRIED_FINDINGS"]
+    fetch = _step("codex-review", "Download the carried findings")
+    assert fetch["with"]["name"] == "carried-findings"
+    assert fetch["continue-on-error"] is True  # a missing file fails the merge closed instead
+    upload = _step("compute-scope", "Upload the carried findings")
+    assert (upload["with"]["name"], upload["with"]["if-no-files-found"]) == (
+        "carried-findings",
+        "error",
+    )
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+@pytest.mark.parametrize(
+    ("uv_rc", "payload", "count", "listed"),
+    [
+        (0, {"count": 1, "carried": json.loads(_ONE)}, "1", json.loads(_ONE)),
+        (0, {"count": 0, "carried": []}, "0", []),
+        (2, {"count": 0, "carried": []}, "error", None),
+        (0, {"count": "x", "carried": []}, "error", None),
+    ],
+)
+def test_the_carry_step_writes_the_list_to_a_file(tmp_path, uv_rc, payload, count, listed):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "gh").write_text("#!/bin/sh\necho body\n", encoding="utf-8")
+    (bin_dir / "uv").write_text(
+        f"#!/bin/sh\nprintf '%s' '{json.dumps(payload)}' > carried.json\nexit {uv_rc}\n",
+        encoding="utf-8",
+    )
+    for tool in ("gh", "uv"):
+        (bin_dir / tool).chmod(0o755)
+    work = tmp_path / "work"
+    work.mkdir()
+    script = tmp_path / "carry.sh"
+    script.write_text(
+        _step("compute-scope", "Carry forward the last review's blocking findings")["run"],
+        encoding="utf-8",
+    )
+    out, summary = tmp_path / "out.txt", tmp_path / "summary.md"
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "RUNNER_TEMP": str(tmp_path),
+        "GITHUB_OUTPUT": str(out),
+        "GITHUB_STEP_SUMMARY": str(summary),
+    }
+    run = subprocess.run(
+        ["bash", "-e", str(script)], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert run.returncode == 0, run.stderr
+    assert out.read_text(encoding="utf-8").splitlines() == [f"count={count}"]
+    carried = tmp_path / "carried-findings.json"
+    if listed is None:
+        assert not carried.exists()
+    else:
+        assert json.loads(carried.read_text(encoding="utf-8")) == listed
+
+
+def test_the_carried_list_never_travels_as_an_output_or_environment_variable():
+    """A long list would exceed GitHub's 1 MB job-output limit or the per-string limit of a
+    process environment; only the count is passed that way."""
+    jobs = _jobs()
+    assert set(jobs["compute-scope"]["outputs"]) >= {"carried_blocking"}
+    assert not any(
+        "findings" == k or "carried_findings" == k for k in jobs["compute-scope"]["outputs"]
+    )
+    for job in jobs.values():
+        for step in job.get("steps", []):
+            assert "CARRIED_FINDINGS" not in step.get("env", {}), step.get("name")
+            assert "findings=$" not in step.get("run", ""), step.get("name")
 
 
 # R12: a valid bypass records its head as reviewed with no findings, and the anchor lookup
@@ -1206,8 +1390,9 @@ def test_the_compute_scope_skip_record_step(tmp_path, count, findings, rc, statu
         "EVENT_HEAD_SHA": "a" * 40,
         "RUN_ATTEMPT": "1",
         "CARRIED_BLOCKING": count,
-        "CARRIED_FINDINGS": findings,
     }
+    if findings:  # the carry step's file; none when the list was not computed
+        (tmp_path / "carried-findings.json").write_text(findings, encoding="utf-8")
     run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
     assert run.returncode == rc, run.stderr
     record = tmp_path / "codex-review-skip.json"

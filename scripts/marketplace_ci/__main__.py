@@ -1020,12 +1020,57 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
                 "could not be resolved -- full review required either way"
             )
 
+    if eligible and args.ci_delta:
+        # R13: only the reviewer dispatch is narrowed. Skipping codex-review would also skip the
+        # deterministic checks, so the skip holds only while they find nothing blocking.
+        try:
+            blocked = _deterministic_checks_block(repo, base_sha)
+        except Exception as exc:  # fail closed: a check that crashed is not a clean pass
+            eligible = False
+            reason = f"the deterministic checks could not run ({exc!r}) -- failing closed"
+        else:
+            if blocked:
+                eligible = False
+                reason = (
+                    f"the deterministic checks block on the whole PR delta ({blocked}) -- "
+                    "codex-review must run them"
+                )
+
     payload = {"bypass_eligible": eligible, "mode": scope.mode, "reason": reason}
     output_text = json.dumps(payload, indent=2)
     if args.json_output:
         Path(args.json_output).write_text(output_text + "\n", encoding="utf-8")
     print(output_text)
     return 0
+
+
+def _deterministic_checks_block(repo: Path, base_sha: str) -> int:
+    """How many findings of the structural checks and script verifiers, run over the whole PR
+    delta the way run-codex-review runs them, the diff-scoped gate blocks on. Raises when a
+    check cannot run."""
+    from scripts.marketplace_ci import review_contract, review_verifiers
+    from scripts.marketplace_ci.review import (
+        ReviewResult,
+        _changed_path_set,
+        aggregate_findings,
+        collapse_identical_mirrors,
+        compute_pr_delta,
+        run_delta_structural_checks,
+    )
+
+    exceptions = review_contract.load_exceptions(review_contract.EXCEPTIONS_PATH)
+    changed = collapse_identical_mirrors(repo, compute_pr_delta(repo, base_sha), base_sha)
+    structural = run_delta_structural_checks(repo, changed)
+    outcomes = review_verifiers.run_verifiers(repo, changed, base_sha, structural=structural)
+    coverage = review_verifiers.script_coverage(repo, outcomes)
+    findings = aggregate_findings(
+        [ReviewResult(reviewer=o.name, verdict="script", findings=o.findings) for o in outcomes],
+        coverage,
+    )
+    blocking, _, _ = _diff_scope(
+        findings, repo, base_sha, _changed_path_set(changed), None, exceptions, coverage
+    )
+    return len(blocking)
 
 
 def _handle_check_trust_boundary(args: argparse.Namespace) -> int:
