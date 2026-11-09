@@ -254,6 +254,76 @@
       "pr": 673,
       "recorded_at": "2026-11-09T07:48:45+00:00",
       "rule": "security-reviewer:tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42585378719-f0",
+      "line": 11,
+      "note": "eval 5 re-run as iteration 5 with the third read (8 of 8); iteration 4 kept as its dated record",
+      "path": "evals/collecting-analysis-findings/workspace/iteration-4/eval-5/with_skill/outputs/findings-record.json",
+      "pr": 673,
+      "recorded_at": "2026-11-09T09:02:47+00:00",
+      "rule": "consistency-reviewer:capability-contract"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42585378719-f1",
+      "line": 4,
+      "note": "description trimmed to 968 chars (1009 raw block)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "plugin-rulebook-checker:plugin-rulebook"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42585378719-f2",
+      "line": 93,
+      "note": "sibling script named by its full path",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "plugin-rulebook-checker:plugin-rulebook"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42585378719-f3",
+      "line": 57,
+      "note": "sibling script named by its full path",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "plugin-rulebook-checker:plugin-rulebook"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-run42585378719-f7",
+      "line": 17,
+      "note": "bare Edit kept by the user's earlier documented decision (Boundaries)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "security-reviewer:permission-risk"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42585378719-f8",
+      "line": 340,
+      "note": "PATH search skips relative and in-repo entries, endpoint env overrides dropped (codex-kit gitExecutable pattern)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/sonar_read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "security-reviewer:credential-pii-leakage"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "codex-run42585378719-f9",
+      "line": 85,
+      "note": "codacy commands ungranted on purpose so each prompts once (Boundaries)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:59:38+00:00",
+      "rule": "skill-reviewer:tool-reconciliation"
     }
   ]
 }
