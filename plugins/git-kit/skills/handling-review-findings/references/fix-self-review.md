@@ -97,6 +97,11 @@ over the changed paths and prints `{"checked", "blocking"}`, plus `ungraded` and
   "nothing to check" - git-kit is installed in other repositories; say so in the reply's verification line
   rather than claiming the verifiers ran). **Exit 1**: at least one blocking finding. **Exit 2**: the
   verifiers could not run or the diff is empty - treat it exactly like exit 1, never as a pass.
+- **Accepted limit (decided on PR #666)**: a fix whose changed paths are all `ungraded` exits 0 with `checked`
+  empty, so no verifier judged it. That is accepted on purpose: this self-review is a pre-push aid, not the
+  merge gate, and it must neither ask the user nor stop the flow. The control is the disclosure above (the
+  reply says those paths were not checked) plus CI's own review of the pushed head. Do not turn a non-empty
+  `ungraded` list into a stop or a question.
 
 ## 4b. Sweep the pattern's siblings
 
