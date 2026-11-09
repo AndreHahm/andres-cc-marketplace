@@ -1263,7 +1263,7 @@ def narrow_to_unreviewed(
 # Blocking findings carry forward (issue #639, requirement R7): a blocking finding of the anchor
 # run whose file the pull request has not changed since stays blocking, without a new Codex call,
 # until the file changes or the pull request body waives it.
-_WAIVER_SECTION = re.compile(r"^##\s+Accepted CI findings\s*$", re.IGNORECASE | re.MULTILINE)
+_WAIVER_SECTION = re.compile(r"^##\s+Accepted Review Findings\s*$", re.IGNORECASE | re.MULTILINE)
 _WAIVER_LINE = re.compile(
     r"^\s*[-*]\s+(?P<rule>\S+)\s+(?P<path>\S+?):(?P<line>\d+)\s+[-–—]+\s+"
     r"(?P<kind>accepted|residual|deferred)\b(?:\s+#(?P<issue>\d+))?",
@@ -1282,7 +1282,7 @@ def finding_waiver_key(rule: object, path: object, line: object) -> tuple[str, s
 
 
 def parse_waivers(pr_body: str, issue_is_open: Callable[[int], bool]) -> set[tuple[str, str, int]]:
-    """The findings the pull request body's `## Accepted CI findings` section waives. A
+    """The findings the pull request body's `## Accepted Review Findings` section waives. A
     `deferred` line counts only with an open issue of this repository; `accepted` and
     `residual` lines need none. The section runs to the next heading of level 1 or 2."""
     match = _WAIVER_SECTION.search(pr_body or "")

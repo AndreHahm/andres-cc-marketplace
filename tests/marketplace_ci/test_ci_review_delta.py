@@ -290,7 +290,7 @@ def _never_open(_number):
 
 def test_waiver_section_parsing():
     body = (
-        "Intro\n\n## Accepted CI findings\n"
+        "Intro\n\n## Accepted Review Findings\n"
         "- R6 a_py:3 – accepted\n"
         "- R7 b_py:4 - residual #12\n"
         "- R8 c_py:5 – deferred #13\n"
@@ -320,7 +320,7 @@ def test_a_finding_on_an_unchanged_file_is_carried_until_waived(git_repo):
     )
     carried = carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open)
     assert [(f["path"], f["line"]) for f in carried] == [("a_py", 3)]
-    waived = "## Accepted CI findings\n- R6 a_py:3 – accepted\n"
+    waived = "## Accepted Review Findings\n- R6 a_py:3 – accepted\n"
     assert carry_blocking_findings(git_repo.root, base, anchor, result, waived, _never_open) == []
 
 
@@ -549,3 +549,35 @@ def test_the_workflow_has_no_duplicate_keys():
 
     Strict.add_constructor("tag:yaml.org,2002:map", mapping)
     yaml.load(_WORKFLOW.read_text(encoding="utf-8"), Strict)  # noqa: S506 - SafeLoader subclass
+
+
+def test_waiver_lines_may_carry_a_reason_and_third_party_lines_match_nothing_of_ci():
+    body = (
+        "## Accepted Review Findings\n"
+        "- R6 a_py:3 \u2013 accepted: covered by the header comment\n"
+        "- CodeRabbit b_py:4 \u2013 residual #12: https://example.invalid/thread\n"
+    )
+    waived = parse_waivers(body, _never_open)
+    assert ("R6", "a_py", 3) in waived
+    # a reviewer name sits where CI's rule goes, so it never matches a CI finding's rule
+    assert ("R6", "b_py", 4) not in waived
+
+
+def test_the_github_pr_template_carries_the_waiver_section_in_order():
+    """check-pr rejects a body heading the template lacks, so the section must be in it."""
+    root = Path(__file__).resolve().parents[2]
+    for template in (
+        root / ".github" / "pull_request_template.md",
+        root / "plugins/git-kit/skills/create-pr/assets/pull_request_template.md",
+    ):
+        headings = [
+            line[3:].strip()
+            for line in template.read_text(encoding="utf-8").splitlines()
+            if line.startswith("## ")
+        ]
+        known, accepted, open_items = (
+            headings.index("Known CI Failures (Accepted)"),
+            headings.index("Accepted Review Findings"),
+            headings.index("Open Items (disclosed, not blocking)"),
+        )
+        assert known < accepted < open_items, template

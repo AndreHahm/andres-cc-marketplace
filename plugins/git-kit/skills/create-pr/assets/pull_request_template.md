@@ -40,6 +40,15 @@
 
 - [ ] A specific CI check is expected to fail for a known, accepted reason (described above) — N/A otherwise
 
+## Accepted Review Findings
+
+<!-- Review findings this PR deliberately leaves in place, from any reviewer (a CI review job,
+     CodeRabbit, Devin, Codex, a human reviewer). One line per finding:
+       - <rule or reviewer> <path>:<line> – accepted|residual|deferred #<issue>: <reason or link>
+     accepted = an accepted risk; residual = a disclosed limitation; deferred = filed as an open
+     issue (the #<issue> is required). A CI job that reads this section may stop blocking on a
+     finding listed here. Use "None" if none. -->
+
 ## Open Items (disclosed, not blocking)
 
 <!-- Known limitations, deferred work, or gaps disclosed but not blocking this merge. Use "None" if none. -->

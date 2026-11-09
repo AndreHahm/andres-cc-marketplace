@@ -143,9 +143,10 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
 - **Carried findings (R7).** `compute-scope`'s `carry-findings` step reads the anchor run's
   `codex-review-result` artifact. A blocking finding whose file is unchanged since the anchor (or every one,
   when the anchor cannot be fetched) keeps blocking without a new Codex call, unless the PR body waives it
-  in a `## Accepted CI findings` section, one line per finding:
-  `- <rule> <path>:<line> – accepted|residual|deferred #<issue>` (`-` for a finding without a rule, `0`
-  without a line; `deferred` needs an open issue of this repository, checked through the API). The job
+  in its `## Accepted Review Findings` section (in both PR templates; it also lists accepted third-party
+  findings, which CI ignores unless one matches a carried finding), one line per finding:
+  `- <rule> <path>:<line> – accepted|residual|deferred #<issue>`, optionally followed by `: <reason>` (`-`
+  for a finding without a rule, `0` without a line; `deferred` needs an open issue of this repository, checked through the API). The job
   summary prints the line to copy for each carried finding. An untrusted anchor carries nothing, since the
   whole delta is reviewed again. A blocking entry the step cannot read, more than 500 findings, or an anchor
   that cannot be fetched and that GitHub's compare API cannot show to be trusted, all report `error`. The PR

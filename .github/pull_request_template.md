@@ -43,6 +43,17 @@
 
 - [ ] A specific CI check is expected to fail for a known, accepted reason (described above) — N/A otherwise
 
+## Accepted Review Findings
+
+<!-- Review findings this PR deliberately leaves in place, from any reviewer: CI's Codex delta
+     review, CodeRabbit, Devin, the Codex connector, a human reviewer. One line per finding:
+       - <rule or reviewer> <path>:<line> – accepted|residual|deferred #<issue>: <reason or link>
+     accepted = an accepted risk; residual = a disclosed limitation; deferred = filed as an open
+     issue (the #<issue> is required). For a CI Codex delta review finding, use its rule (`-` when
+     it has none) and line (`0` when it has none) exactly as the compute-scope job summary prints
+     them: CI then stops blocking on it (docs/ci.md, "CI review delta"; R7). A path with spaces
+     cannot be matched. Use "None" if none. -->
+
 ## Open Items (disclosed, not blocking)
 
 <!-- Known limitations, deferred work, or gaps disclosed but not blocking this merge. Use "None" if none. -->
