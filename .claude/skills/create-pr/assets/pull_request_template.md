@@ -47,7 +47,9 @@
        - <rule or reviewer> <path>:<line> – accepted|residual|deferred #<issue>: <reason or link>
      accepted = an accepted risk; residual = a disclosed limitation; deferred = filed as an open
      issue (the #<issue> is required). A CI job that reads this section may stop blocking on a
-     finding listed here. Use "None" if none. -->
+     finding listed here: for such a finding, use its rule (`-` when it has none) and line (`0`
+     when it has none) exactly as the CI job prints them. A path with spaces cannot be matched.
+     Use "None" if none. -->
 
 ## Open Items (disclosed, not blocking)
 

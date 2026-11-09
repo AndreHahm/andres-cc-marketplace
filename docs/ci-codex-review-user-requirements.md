@@ -123,8 +123,8 @@ residuals here and under R5, R9 and R10 are the exceptions):
   repository, checked through the GitHub API. Anyone who can edit the pull request body can waive a finding; the waiver is visible in the body
   while it is in effect (see the accepted residual below).
 - **One section for every reviewer.** The section is part of both pull request templates. `git-kit`'s
-  `create-pr` asset carries it generically; the waiver conventions (`-` for a finding without a rule, `0`
-  without a line, no spaces in paths) are written out in `.github/pull_request_template.md`. The section
+  `create-pr` asset carries it without naming this repository's CI; both write out the waiver conventions
+  (`-` for a finding without a rule, `0` without a line, no spaces in paths). The section
   also lists accepted third-party findings (CodeRabbit, Devin, the Codex connector, human reviewers) in the
   same shape, with the reviewer's name in place of the rule. CI only acts on lines whose rule, path and line match one of its own
   carried findings.
