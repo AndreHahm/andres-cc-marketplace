@@ -111,7 +111,7 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
 `run-codex-review`:
 
 - **Exclusions.** Left out of the reviewers' scope: tests and fixtures (a `tests`, `test`, `__tests__`,
-  `fixtures` or `evals` directory anywhere, `smoke_test.*`, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`),
+  `fixtures` or `evals` directory anywhere, `smoke_test.<ext>` with one letters-and-digits extension, `test_*.py`, `*_test.py`, `*.test.{js,mjs,cjs,ts}`),
   `issues/`, `evals/`, `reviewer-eval/`, and generated agent mirrors: a `.agents/skills/` or `.claude/` path
   whose blob and mode at the head equal those of its source (`.claude/skills/` for the former, a mirrored
   plugin's file for the latter, never a declared divergence exception); an extra file with no identical
@@ -187,7 +187,9 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `merge-carried-findings` on an empty `clean` result and uploads it as `codex-review-skip` (`skipped: true`,
   the still-blocking carried findings, `head_sha`, `run_attempt`); a record it cannot write fails
   `compute-scope`, which `publish` blocks on. So a carried finding ends only when its file changes, a waiver
-  covers it, or a valid bypass clears it, however many skip runs pass. A result that cannot be merged (the carry
+  covers it, or a valid bypass clears it, however many skip runs pass. The exception is an anchor that cannot
+  be fetched: those runs write no record, so once that anchor run leaves the 30-run window a run finds no
+  anchor, carries nothing and reviews the whole PR again (R9). A result that cannot be merged (the carry
   reported `error`, the list and count disagree, or the dispatch step never ran to an end) is rewritten as
   `could_not_run`, which is never an anchor. A finding that was waived when a run carried it is not
   recorded in that run's result, so removing the waiver later does not bring it back once that run is the

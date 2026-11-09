@@ -30,7 +30,7 @@ The CI reviewers are not sent:
 
 - `issues/`, `evals/` and `reviewer-eval/` at the repository root.
 - Any path with a `tests`, `test`, `__tests__`, `fixtures` or `evals` directory at any depth.
-- Files named `smoke_test.*`, `test_*.py`, `*_test.py` or `*.test.{js,mjs,cjs,ts}`, anywhere, including
+- Files named `smoke_test.<ext>` (one letters-and-digits extension), `test_*.py`, `*_test.py` or `*.test.{js,mjs,cjs,ts}`, anywhere, including
   inside a plugin's component folders where they can be run. The local parity review covers them.
 - Generated agent mirrors: a `.agents/skills/` or `.claude/` file whose content and mode equal its source
   (`.claude/skills/`, or a mirrored plugin's `plugins/<plugin>/` file). A declared divergence exception, a
@@ -106,7 +106,7 @@ Status: approved
 
 After a run with blocking findings, those findings keep blocking later runs until the flagged file changes,
 the finding is waived, or a valid bypass clears it (R12), however many runs pass in between (the accepted
-residuals here and under R5 and R10 are the exceptions):
+residuals here and under R5, R9 and R10 are the exceptions):
 
 - **Carry forward.** CI reads the anchor run's blocking findings from its `codex-review-result` artifact. A
   finding whose file is unchanged since the anchor blocks again, without a new Codex call. A finding whose
@@ -154,7 +154,9 @@ cannot fetch it, `codex-review` fails closed. The two jobs can still narrow diff
 compares from the event's base SHA, `codex-review` from the merge commit's first parent, so `codex-review` may
 review more than `compute-scope` predicts, never less.
 Carried findings (R7) come from the anchor run's artifact, not from the anchor commit. When the anchor cannot
-be fetched, CI cannot tell whether a flagged file changed, so those findings keep blocking until waived.
+be fetched, CI cannot tell whether a flagged file changed, so those findings keep blocking until waived, or
+until the anchor run leaves the 30-run lookup window: the next run then has no anchor, carries nothing and
+reviews the whole pull request again.
 Whether such an anchor can be trusted (R10) is then read from GitHub's compare API. When that call fails,
 or shows the anchor changed a gate-critical or reviewer-steering file, `Publish Codex policy result` blocks
 until a re-run or a bypass, even when the anchor had no findings.
