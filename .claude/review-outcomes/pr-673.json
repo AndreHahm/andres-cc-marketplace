@@ -324,6 +324,26 @@
       "pr": 673,
       "recorded_at": "2026-11-09T08:59:38+00:00",
       "rule": "skill-reviewer:tool-reconciliation"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42591853311-f2",
+      "line": 275,
+      "note": "issue-state exits 2 unless Sonar returns exactly the requested issue with a status",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/sonar_read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-09T09:40:02+00:00",
+      "rule": "plugin-validator:safety"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42591853311-f3",
+      "line": 1113,
+      "note": "the stub always gets a placeholder SONAR_TOKEN",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/smoke_test.py",
+      "pr": 673,
+      "recorded_at": "2026-11-09T09:40:02+00:00",
+      "rule": "security-reviewer:credential-pii-leakage"
     }
   ]
 }

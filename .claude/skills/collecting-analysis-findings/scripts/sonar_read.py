@@ -273,17 +273,16 @@ def _read(args: argparse.Namespace, sonar: str) -> list[Any]:
         query = urlencode({"issues": issue, "additionalFields": "comments"})
         root = _object(_run(sonar, ["api", "get", f"/api/issues/search?{query}"]), "response")
         states = [_object(item, "issues[]") for item in _array(root.get("issues"), "issues")]
+        # Exactly the requested issue, with a status: an empty or different answer must never read
+        # as "unchanged" to the resolver's re-check before a transition (Codex review, 2026-11-09).
+        if len(states) != 1 or states[0].get("key") != issue:
+            raise ReadError("issue-state: Sonar did not return exactly that issue", EXIT_INVALID)
+        state = states[0]
+        if not isinstance(state.get("issueStatus"), str):
+            raise ReadError("issue-state: the issue has no issueStatus", EXIT_INVALID)
+        comments = len(_array(state.get("comments", []), "issues[].comments"))
         return [
-            {
-                "issues": [
-                    {
-                        "key": item.get("key"),
-                        "issueStatus": item.get("issueStatus"),
-                        "comments": len(_array(item.get("comments", []), "issues[].comments")),
-                    }
-                    for item in states
-                ]
-            }
+            {"issues": [{"key": issue, "issueStatus": state["issueStatus"], "comments": comments}]}
         ]
     if project is None:
         raise ReadError(f"{args.form} needs --project", EXIT_INVALID)
