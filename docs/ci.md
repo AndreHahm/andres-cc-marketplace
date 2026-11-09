@@ -99,6 +99,10 @@ reflects this run.
 
 ## CI review delta (issue #639)
 
+The maintainer's requirements for this behavior are in
+[`docs/ci-codex-review-user-requirements.md`](ci-codex-review-user-requirements.md); where the two differ,
+that document states the intent.
+
 The local parity review (`plugins/git-kit/scripts/git-codex-parity-review.py`) is the
 full or delta review and the quality gate before a PR is created; it is unchanged. CI's `Codex delta
 review` is the gate after the PR exists and reviews only the delta, to cut OpenAI API cost and run time.

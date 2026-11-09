@@ -982,6 +982,8 @@ jobs:
           fi
           echo "bypass_eligible=$value" >> "$GITHUB_OUTPUT"
 
+  # Reviews only the CI review delta (issue #639). Requirements:
+  # docs/ci-codex-review-user-requirements.md; implementation: docs/ci.md, "CI review delta".
   codex-review:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity, prefix-permanence, compute-scope]
