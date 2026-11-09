@@ -17,7 +17,9 @@ Forms:
 
 `issues` and `ignored` print one JSON document per page, which `collect_sonar.py` reads from a pipe.
 Exit codes: 0 success; 1 `sonar` failed or timed out; 2 invalid arguments, `sonar` not on PATH, or a
-response that is not the expected shape; 3 more issues than PAGE_LIMIT pages hold.
+response that is not the expected shape; 3 more issues than PAGE_LIMIT pages hold. For
+`gate-status`, a `sonar` exit of 51 (failing gate) or 1 (no verdict computed) that printed a gate
+object is a verdict: it is printed and the wrapper exits 0.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ import json
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404  # runs sonar with a list argument and validated values, never a shell
 import sys
 from pathlib import Path
 from typing import Any
@@ -53,6 +55,7 @@ ISSUE_FIELDS = (
     "pullRequest",
 )
 EXIT_SONAR, EXIT_INVALID, EXIT_TOO_MANY = 1, 2, 3
+GATE_FAILED = 51  # `sonar quality-gate status` exit code for a failing gate
 
 
 class ReadError(Exception):
@@ -69,11 +72,11 @@ def _checked(value: str | None, pattern: re.Pattern[str], name: str) -> str | No
     return value
 
 
-def _run(sonar: str, arguments: list[str]) -> Any:
+def _execute(sonar: str, arguments: list[str]) -> tuple[int, bytes]:
     # Home, not the checkout: the CLI reads project configuration from its working directory, and a
     # repository-controlled file there must not choose the server the token is sent to.
     try:
-        done = subprocess.run(  # noqa: S603 - list argv, validated values, no shell
+        done = subprocess.run(  # nosec B603  # nosemgrep  # list argv, absolute sonar, no shell
             [sonar, *arguments],
             cwd=Path.home(),
             stdin=subprocess.DEVNULL,
@@ -83,12 +86,21 @@ def _run(sonar: str, arguments: list[str]) -> Any:
         )
     except subprocess.TimeoutExpired as error:
         raise ReadError(f"sonar timed out after {TIMEOUT_SECONDS}s", EXIT_SONAR) from error
-    if done.returncode != 0:
-        raise ReadError(f"sonar exited {done.returncode}", EXIT_SONAR)
+    return done.returncode, done.stdout
+
+
+def _json(stdout: bytes) -> Any:
     try:
-        return json.loads(done.stdout)
+        return json.loads(stdout)
     except ValueError as error:
         raise ReadError("sonar printed something that is not JSON", EXIT_INVALID) from error
+
+
+def _run(sonar: str, arguments: list[str]) -> Any:
+    code, stdout = _execute(sonar, arguments)
+    if code != 0:
+        raise ReadError(f"sonar exited {code}", EXIT_SONAR)
+    return _json(stdout)
 
 
 def _object(value: Any, where: str) -> dict[str, Any]:
@@ -185,11 +197,22 @@ def _gate_status(
     if (pull_request is None) == (branch is None):
         raise ReadError("gate-status needs exactly one of --branch or --pull-request", EXIT_INVALID)
     target = ["--pull-request", pull_request] if pull_request else ["--branch", str(branch)]
-    root = _object(
-        _run(sonar, ["quality-gate", "status", "-p", project, *target, "--format", "json"]),
-        "response",
+    code, stdout = _execute(
+        sonar, ["quality-gate", "status", "-p", project, *target, "--format", "json"]
     )
-    gate = _object(root.get("qualityGate"), "qualityGate")
+    # The CLI prints the verdict and then exits 51 for a failing gate and 1 when no verdict was
+    # computed (its verdict.ts, checked 2026-11-09), so those two codes carry a gate verdict. A
+    # lookup failure (a missing project also exits 1) prints no gate object and stays an error.
+    if code not in (0, 1, GATE_FAILED):
+        raise ReadError(f"sonar exited {code}", EXIT_SONAR)
+    try:
+        gate = _object(_object(_json(stdout), "response").get("qualityGate"), "qualityGate")
+    except ReadError as error:
+        if code != 0:
+            raise ReadError(f"sonar exited {code}", EXIT_SONAR) from error
+        raise
+    if code == GATE_FAILED and gate.get("status") != "ERROR":
+        raise ReadError("sonar exited 51 without a failed gate", EXIT_INVALID)
     fields = ("status", "metricKey", "comparator", "errorThreshold", "actualValue")
     return {
         "qualityGate": {

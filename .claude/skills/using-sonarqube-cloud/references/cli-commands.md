@@ -8,9 +8,11 @@ Run each form exactly as written. `<read>` stands for
 `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py`, the pre-approved wrapper
 that runs a fixed `sonar` read and prints only the fields shown. A non-zero exit means the lookup failed (1: `sonar`
 failed, for example a missing project, checked 2026-11-08; 2: a refused value, `sonar` off `PATH`, or a reply that is
-not JSON; 3: more than 10,000 issues): report that, never "nothing found". The exception is the gate form: if it printed JSON whose `qualityGate.status` is `ERROR`,
-report a failed gate, not a failed lookup. Whether a failed gate exits non-zero was not checked (no failing gate was
-available on 2026-11-08), so read the status either way.
+not JSON; 3: more than 10,000 issues): report that, never "nothing found". The gate form exits 0 with the verdict
+for a failing gate too: `sonar quality-gate status` itself exits 51 when the gate fails and 1 when no verdict was
+computed, after printing it (the CLI's `verdict.ts`, read 2026-11-09; no failing gate was available to run live), and
+the wrapper turns both into the printed verdict. Report `qualityGate.status` `ERROR` as a failed gate and `NONE` as
+not computed, never as a failed lookup.
 
 A gate status. The wrapper requires exactly one target and runs from the home directory, because a bare
 `sonar quality-gate status` run inside a checkout reports that checkout's branch or PR, not the default branch
