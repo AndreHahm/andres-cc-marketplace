@@ -1376,16 +1376,85 @@ def carry_blocking_findings(
                 unchanged[path] = now is not None and now == then
             if not unchanged[path]:
                 continue
-        severity = entry.get("severity")
         carried.append(
-            {
-                "rule": rule,
-                "path": path,
-                "line": line,
-                "severity": severity if isinstance(severity, str) else "",
-            }
+            {"rule": rule, "path": path, "line": line, "severity": _carry_severity(entry)}
         )
     return carried
+
+
+def _carry_severity(entry: dict) -> str:
+    """A carried finding's severity, bounded like its rule and path so the carried list stays
+    small enough for a job output: a missing or non-string one is empty, an unreadable one
+    raises CarryError."""
+    severity = entry.get("severity")
+    if not isinstance(severity, str) or severity == "":
+        return ""
+    if not _CARRY_FIELD.fullmatch(severity):
+        raise CarryError("a blocking finding has no usable severity")
+    return severity
+
+
+def merge_carried_findings(result: object, carried: object, expected_count: str) -> dict:
+    """This run's `codex-review-result` with the findings carried into it (R7) added as blocking
+    findings, so a later run that takes this run as its anchor still carries them: without them
+    a run whose own review is `clean` would drop the carried findings one run later. `carried` is
+    compute-scope's list from `carry_blocking_findings`; `expected_count` is its count output and
+    must match. Only a `findings` or `clean` result is merged (any other status is not an anchor).
+    Anything that cannot be merged raises CarryError: the caller must then turn the result into
+    one no later run takes as its anchor."""
+    if not isinstance(result, dict) or result.get("status") not in ("findings", "clean"):
+        raise CarryError("the review result is not a findings or clean result")
+    findings = result.get("findings")
+    if not isinstance(findings, list):
+        raise CarryError("the review result has no findings list")
+    if not isinstance(carried, list) or not re.fullmatch(r"[0-9]+", expected_count or ""):
+        raise CarryError("the carried findings were not computed")
+    if len(carried) != int(expected_count) or len(carried) > _MAX_CARRIED_INPUT:
+        raise CarryError("the carried findings do not match their count")
+    present = {
+        finding_waiver_key(f.get("rule"), f.get("path"), f.get("line"))
+        for f in findings
+        if isinstance(f, dict) and f.get("blocking") is True and f.get("suppressed") is not True
+    }
+    added: list[dict] = []
+    for entry in carried:
+        if not isinstance(entry, dict):
+            raise CarryError("a carried finding is not an object")
+        rule, path, line = entry.get("rule"), entry.get("path"), entry.get("line")
+        if not (
+            isinstance(rule, str)
+            and _CARRY_FIELD.fullmatch(rule)
+            and isinstance(path, str)
+            and _CARRY_FIELD.fullmatch(path)
+            and isinstance(line, int)
+            and not isinstance(line, bool)
+            and line >= 0
+        ):
+            raise CarryError("a carried finding has no usable rule, path or line")
+        key = finding_waiver_key(rule, path, line)
+        if key in present:
+            continue
+        present.add(key)
+        added.append(
+            {
+                "reviewer": "carried",
+                "severity": _carry_severity(entry),
+                "rule": key[0],
+                "path": key[1],
+                "line": key[2],
+                "in_diff": None,
+                "blocking": True,
+                "suppressed": False,
+                "source": "carried",
+            }
+        )
+    merged = dict(result)
+    merged["carried_findings"] = len(added)
+    if added:
+        merged["findings"] = [*findings, *added]
+        merged["status"] = "findings"
+        merged["blocking"] = True
+    return merged
 
 
 # Off Linux the filesystem (and so the bridge's existence check) may match a path

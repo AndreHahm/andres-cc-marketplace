@@ -9,7 +9,9 @@ the flags (the local parity review) the scope is unchanged.
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 from argparse import Namespace
 from pathlib import Path
 
@@ -25,6 +27,7 @@ from scripts.marketplace_ci.review import (
     compute_pr_delta,
     exclude_from_ci_review,
     is_ci_review_excluded,
+    merge_carried_findings,
     narrow_to_unreviewed,
     parse_waivers,
 )
@@ -581,3 +584,439 @@ def test_the_github_pr_template_carries_the_waiver_section_in_order():
             headings.index("Open Items (disclosed, not blocking)"),
         )
         assert known < accepted < open_items, template
+
+
+# R7 across more than one run: the carried findings are added to the run's own result, so the
+# next run that takes it as its anchor still carries them.
+
+
+def _clean_result():
+    return {"status": "clean", "findings": [], "blocking": False}
+
+
+def test_merging_carried_findings_makes_the_result_block():
+    carried = [{"rule": "R6", "path": "a_py", "line": 3, "severity": "Major"}]
+    merged = merge_carried_findings(_clean_result(), carried, "1")
+    assert merged["status"] == "findings"
+    assert merged["blocking"] is True
+    assert merged["carried_findings"] == 1
+    entry = merged["findings"][0]
+    assert (entry["rule"], entry["path"], entry["line"], entry["blocking"]) == (
+        "R6",
+        "a_py",
+        3,
+        True,
+    )
+    # nothing carried: the result is unchanged apart from the count
+    unchanged = merge_carried_findings(_clean_result(), [], "0")
+    assert (unchanged["status"], unchanged["findings"], unchanged["carried_findings"]) == (
+        "clean",
+        [],
+        0,
+    )
+    # a finding this run's own review already blocks on is not added twice
+    own = {"status": "findings", "findings": [_finding("a_py")], "blocking": True}
+    assert merge_carried_findings(own, carried, "1")["findings"] == [_finding("a_py")]
+
+
+@pytest.mark.parametrize(
+    ("result", "carried", "count"),
+    [
+        (_clean_result(), [], "error"),  # compute-scope could not decide
+        (_clean_result(), [], ""),
+        (_clean_result(), None, "0"),
+        (_clean_result(), [], "1"),  # count and list disagree
+        (_clean_result(), [{"rule": "R6", "path": "a\tb", "line": 3}], "1"),
+        (_clean_result(), [{"rule": "R6", "path": "a_py", "line": True}], "1"),
+        ({"status": "could_not_run"}, [], "0"),  # not an anchor: nothing to merge into
+        ({"status": "clean"}, [], "0"),  # no findings list
+    ],
+)
+def test_a_merge_that_cannot_be_done_is_an_error(result, carried, count):
+    with pytest.raises(CarryError):
+        merge_carried_findings(result, carried, count)
+
+
+def test_a_carried_finding_still_blocks_two_runs_later_until_fixed_or_waived(git_repo):
+    """Run A blocks on a_py; run B reviews only b_py (clean) and carries a_py; run C, whose
+    anchor is B, must still carry it. It is released once a_py changes or is waived."""
+    base = _commit(git_repo, "base", a_py="a\n", b_py="b\n", c_py="c\n")
+    head_a = _commit(git_repo, "pr 1", a_py="a2\n")
+    result_a = _result(_finding("a_py"))
+    head_b = _commit(git_repo, "pr 2", b_py="b2\n")
+    carried_b = carry_blocking_findings(git_repo.root, base, head_a, result_a, "", _never_open)
+    assert [f["path"] for f in carried_b] == ["a_py"]
+    # B's own review of b_py is clean; the carried finding goes into its result
+    result_b = merge_carried_findings(_clean_result(), carried_b, str(len(carried_b)))
+    assert result_b["status"] == "findings"
+    _commit(git_repo, "pr 3", c_py="c2\n")
+    carried_c = carry_blocking_findings(git_repo.root, base, head_b, result_b, "", _never_open)
+    assert [(f["rule"], f["path"], f["line"]) for f in carried_c] == [("R6", "a_py", 3)]
+    waived = "## Accepted Review Findings\n- R6 a_py:3 – accepted\n"
+    assert carry_blocking_findings(git_repo.root, base, head_b, result_b, waived, _never_open) == []
+    _commit(git_repo, "pr 4", a_py="a3\n")  # the flagged file changes: reviewed again, not carried
+    assert carry_blocking_findings(git_repo.root, base, head_b, result_b, "", _never_open) == []
+
+
+def test_merge_carried_findings_cli(tmp_path):
+    result = tmp_path / "codex-review-result.json"
+    carried = tmp_path / "carried.json"
+    carried.write_text(json.dumps([{"rule": "R6", "path": "a_py", "line": 3}]), encoding="utf-8")
+    args = [
+        "merge-carried-findings", "--result", str(result), "--carried", str(carried),
+        "--head-sha", "a" * 40, "--run-attempt", "2",
+    ]  # fmt: skip
+    result.write_text(json.dumps(_clean_result()), encoding="utf-8")
+    assert main([*args, "--carried-count", "1"]) == 1
+    merged = json.loads(result.read_text(encoding="utf-8"))
+    assert (merged["status"], merged["head_sha"], merged["run_attempt"]) == (
+        "findings",
+        "a" * 40,
+        2,
+    )
+    result.write_text(json.dumps(_clean_result()), encoding="utf-8")
+    assert main([*args, "--carried-count", "error"]) == 2
+    failed = json.loads(result.read_text(encoding="utf-8"))
+    assert (failed["status"], failed["head_sha"], failed["run_attempt"]) == (
+        "could_not_run",
+        "a" * 40,
+        2,
+    )
+    # without a usable head and attempt the result cannot be matched to its run: not an anchor
+    result.write_text(json.dumps(_clean_result()), encoding="utf-8")
+    assert main([*args[:5], "--carried-count", "1"]) == 2
+    assert json.loads(result.read_text(encoding="utf-8"))["status"] == "could_not_run"
+    carried.write_text("[]", encoding="utf-8")
+    result.write_text(json.dumps(_clean_result()), encoding="utf-8")
+    assert main([*args, "--carried-count", "0"]) == 0
+    assert json.loads(result.read_text(encoding="utf-8"))["status"] == "clean"
+
+
+def _jobs():
+    return yaml.safe_load(_WORKFLOW.read_text(encoding="utf-8"))["jobs"]
+
+
+def _step(job, name):
+    steps = [s for s in _jobs()[job]["steps"] if s.get("name") == name]
+    assert len(steps) == 1, name
+    return steps[0]
+
+
+_MERGE_STEP = "Add the carried findings to the review result"
+
+
+def _run_merge_step(tmp_path, status, outcome, count, findings):
+    """Run codex-review's merge step with `uv run` standing in for this interpreter."""
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "codex-review-result.json").write_text(
+        json.dumps({"status": status, "findings": [], "blocking": False}), encoding="utf-8"
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(f'#!/bin/sh\nshift 2\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+    uv.chmod(0o755)
+    script = tmp_path / "merge.sh"
+    script.write_text(_step("codex-review", _MERGE_STEP)["run"], encoding="utf-8")
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "RUNNER_TEMP": str(tmp_path),
+        "DISPATCH_OUTCOME": outcome,
+        "CARRIED_BLOCKING": count,
+        "CARRIED_FINDINGS": findings,
+        "EVENT_HEAD_SHA": "a" * 40,
+        "RUN_ATTEMPT": "2",
+    }
+    run = subprocess.run(
+        ["bash", "-e", str(script)], cwd=work, env=env, capture_output=True, text=True
+    )
+    return run.returncode, json.loads((work / "codex-review-result.json").read_text("utf-8"))
+
+
+_ONE = json.dumps([{"rule": "R6", "path": "a_py", "line": 3, "severity": "Major"}])
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+@pytest.mark.parametrize(
+    ("status", "outcome", "count", "findings", "rc", "after"),
+    [
+        ("clean", "success", "1", _ONE, 1, "findings"),
+        ("findings", "failure", "1", _ONE, 1, "findings"),
+        ("clean", "success", "0", "[]", 0, "clean"),
+        # carried findings that were not computed: the result must not become an anchor
+        ("clean", "success", "error", "", 1, "could_not_run"),
+        # a result the dispatch step did not write is not trusted as an anchor
+        ("clean", "skipped", "0", "[]", 1, "could_not_run"),
+        # not an anchor anyway: left alone
+        ("could_not_run", "failure", "1", _ONE, 0, "could_not_run"),
+    ],
+)
+def test_the_codex_review_merge_step(tmp_path, status, outcome, count, findings, rc, after):
+    got_rc, result = _run_merge_step(tmp_path, status, outcome, count, findings)
+    assert (got_rc, result["status"]) == (rc, after)
+    # every path names this run's head and attempt (m1)
+    assert (result["head_sha"], result["run_attempt"]) == ("a" * 40, 2)
+
+
+def test_the_carried_findings_reach_codex_review_before_its_result_is_uploaded():
+    jobs = _jobs()
+    assert "carried_findings" in jobs["compute-scope"]["outputs"]
+    names = [s.get("name") for s in jobs["codex-review"]["steps"]]
+    dispatch = names.index("Dispatch reviewers directly, validate output, aggregate findings")
+    assert dispatch < names.index(_MERGE_STEP) < names.index("Upload review result")
+    step = _step("codex-review", _MERGE_STEP)
+    assert step["if"] == "always()"
+    assert "steps.dispatch.outcome" in step["env"]["DISPATCH_OUTCOME"]
+    assert "compute-scope.outputs.carried_findings" in step["env"]["CARRIED_FINDINGS"]
+
+
+# R12: a valid bypass records its head as reviewed with no findings, and the anchor lookup
+# accepts that record, so later pushes no longer carry the bypassed findings.
+
+_RECORD_STEP = "Record a valid bypass as this head's review result (R12)"
+
+
+def test_only_a_valid_attestation_records_a_bypass(tmp_path):
+    jobs = _jobs()
+    steps = jobs["publish"]["steps"]
+    names = [s.get("name") for s in steps]
+    decide = names.index("Determine final policy result")
+    record = names.index(_RECORD_STEP)
+    upload = names.index("Upload the bypass record")
+    assert decide < record < upload
+    attest = names.index(
+        "Check attested bypass (comment-plus-label protocol, or CODEX_CI_REVIEW_BYPASS var)"
+    )
+    assert steps[attest]["id"] == "bypass"
+    for i in (record, upload):
+        assert steps[i]["if"] == "success() && steps.bypass.outputs.bypassed == 'true'"
+    assert steps[upload]["with"]["name"] == "codex-review-bypass"
+    script = tmp_path / "record.sh"
+    script.write_text(steps[record]["run"], encoding="utf-8")
+    env = {
+        "PATH": os.environ["PATH"],
+        "RUNNER_TEMP": str(tmp_path),
+        "EVENT_HEAD_SHA": "a" * 40,
+        "RUN_ATTEMPT": "2",
+    }
+    subprocess.run(["bash", "-e", str(script)], env=env, check=True)
+    record_json = json.loads((tmp_path / "codex-review-bypass.json").read_text("utf-8"))
+    assert record_json == {
+        "status": "bypassed",
+        "head_sha": "a" * 40,
+        "run_attempt": 2,
+        "blocking": False,
+        "findings": [],
+    }
+
+
+def test_a_bypass_record_carries_nothing(git_repo):
+    base = _commit(git_repo, "base", a_py="a\n")
+    anchor = _commit(git_repo, "pr 1", a_py="b\n")
+    _commit(git_repo, "pr 2", c_py="c\n")
+    record = {"status": "bypassed", "head_sha": anchor, "blocking": False, "findings": []}
+    assert carry_blocking_findings(git_repo.root, base, anchor, record, "", _never_open) == []
+
+
+_FAKE_GH = r"""#!/usr/bin/env python3
+import json, os, shutil, subprocess, sys
+fixtures = os.environ["FAKE_GH_FIXTURES"]
+args = sys.argv[1:]
+if args[0] == "api":
+    url = next(a for a in args[1:] if a.startswith("repos/"))
+    expr = args[args.index("--jq") + 1]
+    data = json.load(open(os.path.join(fixtures, url.replace("/", "_") + ".json")))
+    out = subprocess.run(["jq", "-r", expr], input=json.dumps(data), capture_output=True, text=True)
+    sys.stdout.write(out.stdout)
+    sys.exit(out.returncode)
+if args[:2] == ["run", "download"]:
+    run_id, name, dest = args[2], args[args.index("-n") + 1], args[args.index("-D") + 1]
+    src = os.path.join(fixtures, f"artifact-{run_id}-{name}.json")
+    if not os.path.exists(src):
+        sys.exit(1)
+    os.makedirs(dest, exist_ok=True)
+    shutil.copy(src, os.path.join(dest, name + ".json"))
+    sys.exit(0)
+sys.exit(2)
+"""
+
+_SHA1, _SHA2 = "1" * 40, "2" * 40
+_FINDINGS_A = {
+    "status": "findings",
+    "findings": [_finding("a_py")],
+    "head_sha": _SHA1,
+    "run_attempt": 1,
+}
+
+
+def _lookup(tmp_path, jobs2, artifacts2, result1=_FINDINGS_A):
+    """Run compute-scope's anchor lookup over two earlier runs: run 1 (head _SHA1, attempt 1)
+    reviewed with `result1`; run 2 (head _SHA2, newer, attempt 2) has the given jobs and
+    artifacts. Returns the anchor and its result (None when there is no anchor)."""
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    runs = {
+        "workflow_runs": [
+            {"id": rid, "head_sha": sha, "run_attempt": rid,
+             "head_repository": {"full_name": "o/r"}, "pull_requests": [{"number": 7}]}
+            for rid, sha in ((2, _SHA2), (1, _SHA1))
+        ]
+    }  # fmt: skip
+    (fixtures / "repos_o_r_actions_workflows_marketplace-ci.yml_runs.json").write_text(
+        json.dumps(runs), encoding="utf-8"
+    )
+    jobs1 = [
+        {"name": "Codex delta review", "conclusion": "failure"},
+        {"name": "Publish Codex policy result", "conclusion": "failure"},
+    ]
+    for rid, jobs in ((1, jobs1), (2, jobs2)):
+        (fixtures / f"repos_o_r_actions_runs_{rid}_jobs.json").write_text(
+            json.dumps({"jobs": jobs}), encoding="utf-8"
+        )
+    artifacts = {"1-codex-review-result": result1}
+    artifacts.update({f"2-{k}": v for k, v in artifacts2.items()})
+    for key, value in artifacts.items():
+        (fixtures / f"artifact-{key}.json").write_text(json.dumps(value), encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    gh = bin_dir / "gh"
+    gh.write_text(_FAKE_GH, encoding="utf-8")
+    gh.chmod(0o755)
+    script = tmp_path / "lookup.sh"
+    script.write_text(
+        _step("compute-scope", "Find the last reviewed head")["run"], encoding="utf-8"
+    )
+    out = tmp_path / "out.txt"
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "FAKE_GH_FIXTURES": str(fixtures),
+        "RUNNER_TEMP": str(tmp_path),
+        "GITHUB_OUTPUT": str(out),
+        "REPO": "o/r",
+        "RUN_ID": "3",
+        "PR_NUMBER": "7",
+        "HEAD_REF": "feat/x",
+        "EVENT_ACTION": "synchronize",
+        "IS_DRAFT": "false",
+    }
+    subprocess.run(["bash", "-e", str(script)], env=env, check=True, capture_output=True)
+    anchor = out.read_text(encoding="utf-8").strip().removeprefix("sha=")
+    anchor_result = tmp_path / "anchor-result.json"
+    return anchor, json.loads(anchor_result.read_text("utf-8")) if anchor_result.exists() else None
+
+
+_BYPASSED_RUN = [
+    {"name": "Codex delta review", "conclusion": "skipped"},
+    {"name": "Publish Codex policy result", "conclusion": "success"},
+]
+_RECORD2 = {
+    "status": "bypassed",
+    "head_sha": _SHA2,
+    "run_attempt": 2,
+    "blocking": False,
+    "findings": [],
+}
+_PUBLISH_FAILED = [_BYPASSED_RUN[0], {**_BYPASSED_RUN[1], "conclusion": "failure"}]
+_REVIEWED_RUN = [{"name": "Codex delta review", "conclusion": "success"}, _BYPASSED_RUN[1]]
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+@pytest.mark.parametrize(
+    ("case", "jobs2", "artifacts2", "anchor"),
+    [
+        ("valid bypass record", _BYPASSED_RUN, {"codex-review-bypass": _RECORD2}, _SHA2),
+        # a label without a valid attestation fails publish and records nothing
+        ("label without attestation", _PUBLISH_FAILED, {}, _SHA1),
+        # a record is only taken from a run whose publish job passed
+        ("record but publish failed", _PUBLISH_FAILED, {"codex-review-bypass": _RECORD2}, _SHA1),
+        (
+            "record for another head",
+            _BYPASSED_RUN,
+            {"codex-review-bypass": {**_RECORD2, "head_sha": _SHA1}},
+            _SHA1,
+        ),
+        # a record from an earlier attempt is not paired with the latest attempt's verdict (m1)
+        (
+            "record from an earlier attempt",
+            _BYPASSED_RUN,
+            {"codex-review-bypass": {**_RECORD2, "run_attempt": 1}},
+            _SHA1,
+        ),
+        (
+            "record with findings",
+            _BYPASSED_RUN,
+            {"codex-review-bypass": {**_RECORD2, "findings": [_finding("a_py")]}},
+            _SHA1,
+        ),
+        # the status only counts from the publish job's own record, not from codex-review's result
+        (
+            "bypassed status in the review result",
+            _REVIEWED_RUN,
+            {"codex-review-result": _RECORD2},
+            _SHA1,
+        ),
+    ],
+)
+def test_the_anchor_lookup_accepts_only_a_valid_bypass_record(
+    tmp_path, case, jobs2, artifacts2, anchor
+):
+    got, result = _lookup(tmp_path, jobs2, artifacts2)
+    assert got == anchor, case
+    assert result == (_RECORD2 if anchor == _SHA2 else _FINDINGS_A), case
+
+
+_RESULT2 = {"status": "clean", "findings": [], "head_sha": _SHA2, "run_attempt": 2}
+_NO_ANCHOR = ""
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+@pytest.mark.parametrize(
+    ("case", "result2", "result1", "anchor"),
+    [
+        ("this attempt's result", _RESULT2, _FINDINGS_A, _SHA2),
+        ("an earlier attempt's result", {**_RESULT2, "run_attempt": 1}, _FINDINGS_A, _SHA1),
+        ("another head's result", {**_RESULT2, "head_sha": _SHA1}, _FINDINGS_A, _SHA1),
+        (
+            "a result without head and attempt",
+            {"status": "clean", "findings": []},
+            _FINDINGS_A,
+            _SHA1,
+        ),
+        # no run qualifies: no anchor, so the whole PR is reviewed
+        (
+            "no result names its run",
+            {"status": "clean", "findings": []},
+            {"status": "findings", "findings": [_finding("a_py")]},
+            _NO_ANCHOR,
+        ),
+    ],
+)
+def test_the_anchor_lookup_pairs_a_review_result_with_its_own_head_and_attempt(
+    tmp_path, case, result2, result1, anchor
+):
+    got, result = _lookup(tmp_path, _REVIEWED_RUN, {"codex-review-result": result2}, result1)
+    assert got == anchor, case
+    expected = {_SHA2: result2, _SHA1: result1, _NO_ANCHOR: None}[anchor]
+    assert result == expected, case
+
+
+def test_a_carried_severity_is_bounded_like_its_rule_and_path(git_repo):
+    """m2: the carried list goes through a job output, so no field of it may be unbounded."""
+    base = _commit(git_repo, "base", a_py="a\n")
+    long = _finding("a_py", severity="M" * 301)
+    with pytest.raises(CarryError):
+        carry_blocking_findings(git_repo.root, base, base, _result(long), "", _never_open)
+    carried = [{"rule": "R6", "path": "a_py", "line": 3, "severity": "M" * 301}]
+    with pytest.raises(CarryError):
+        merge_carried_findings(_clean_result(), carried, "1")
+    # a missing or non-string severity is carried as empty, as before
+    ok = _finding("a_py", severity=None)
+    assert (
+        carry_blocking_findings(git_repo.root, base, base, _result(ok), "", _never_open)[0][
+            "severity"
+        ]
+        == ""
+    )

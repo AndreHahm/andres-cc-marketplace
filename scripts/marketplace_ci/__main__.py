@@ -919,6 +919,42 @@ def _handle_carry_findings(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_merge_carried_findings(args: argparse.Namespace) -> int:
+    """Add compute-scope's carried findings (R7) to this run's `codex-review-result` as blocking
+    findings, so they still carry when a later run takes this run as its anchor. Exits 0 when
+    nothing was added, 1 when the result now blocks, and 2 when the merge cannot be done: the
+    result is then rewritten as `could_not_run`, which no later run takes as its anchor. Both
+    results name this run's PR head and attempt, which the anchor lookup matches against the run."""
+    from scripts.marketplace_ci.review import CarryError, merge_carried_findings
+
+    out = Path(args.result)
+    stamp: dict = {}
+    if re.fullmatch(r"[0-9a-f]{40}", args.head_sha) and re.fullmatch(
+        r"[1-9][0-9]*", args.run_attempt
+    ):
+        stamp = {"head_sha": args.head_sha, "run_attempt": int(args.run_attempt)}
+    try:
+        if not stamp:
+            raise CarryError("no usable --head-sha or --run-attempt")
+        result = json.loads(out.read_text(encoding="utf-8"))
+        carried = json.loads(Path(args.carried).read_text(encoding="utf-8") or "null")
+        merged = merge_carried_findings(result, carried, args.carried_count)
+    except (OSError, ValueError, CarryError) as exc:
+        print(f"merge-carried-findings: {exc}", file=sys.stderr)
+        failure = {
+            "status": "could_not_run",
+            "blocking": True,
+            "error": "the carried findings could not be added to this result",
+            **stamp,
+        }
+        out.write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
+        return 2
+    merged.update(stamp)
+    out.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    print(f"carried findings added to the review result: {merged['carried_findings']}")
+    return 1 if merged["carried_findings"] else 0
+
+
 def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     """Automatic, scope-derived counterpart to check-bypass's manual
     SHA-bound attestation: computes whether the diff since --base-sha has
@@ -1799,6 +1835,18 @@ def build_parser() -> argparse.ArgumentParser:
     carry_findings.add_argument("--repo", default="", metavar="OWNER/REPO")
     carry_findings.add_argument("--json-output", required=True, metavar="PATH")
     carry_findings.set_defaults(handler=_handle_carry_findings)
+
+    merge_carried = subparsers.add_parser(
+        "merge-carried-findings",
+        help="CI only (issue #639, R7): add the carried blocking findings to this run's "
+        "codex-review-result so a later run's anchor still holds them",
+    )
+    merge_carried.add_argument("--result", required=True, metavar="PATH")
+    merge_carried.add_argument("--carried", required=True, metavar="PATH")
+    merge_carried.add_argument("--carried-count", default="", metavar="N")
+    merge_carried.add_argument("--head-sha", default="", metavar="SHA")
+    merge_carried.add_argument("--run-attempt", default="", metavar="N")
+    merge_carried.set_defaults(handler=_handle_merge_carried_findings)
 
     run_codex_review = subparsers.add_parser(
         "run-codex-review",

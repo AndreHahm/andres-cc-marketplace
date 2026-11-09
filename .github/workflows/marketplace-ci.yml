@@ -718,6 +718,10 @@ jobs:
       anchor_sha: ${{ steps.anchor.outputs.sha }}
       # Blocking findings carried from the last reviewed run (R7); "error" when not computed.
       carried_blocking: ${{ steps.carry.outputs.count }}
+      # The carried findings themselves, as one JSON line (empty when not computed): codex-review
+      # adds them to its own result, so a later run that takes this run as its anchor still
+      # carries them (R7).
+      carried_findings: ${{ steps.carry.outputs.findings }}
       # This run was started by adding the bypass label (R12): no Codex call, and publish
       # passes only on a valid attestation.
       bypass_label_run: ${{ steps.scope.outputs.bypass_label_run }}
@@ -899,7 +903,8 @@ jobs:
       # CI reviews only what no earlier run reviewed (issue #639). The anchor is the PR head of the
       # newest other run of this workflow for this PR whose `Codex delta review` job finished
       # (success or failure; cancelled or skipped runs reviewed nothing) with a result of
-      # `findings` or `clean`. narrow_to_unreviewed distrusts an anchor whose own changes touch
+      # `findings` or `clean`, or whose publish job recorded a valid bypass of its head (R12:
+      # `codex-review-bypass`, no findings). narrow_to_unreviewed distrusts an anchor whose own changes touch
       # a gate-critical path, since that run's code and workflow came from the PR. `opened` has none by
       # definition, and no such run means the first review: the whole PR. Read from the GitHub
       # API, never from the PR. A failed lookup leaves the anchor empty, so the review widens
@@ -925,11 +930,31 @@ jobs:
               --jq ".workflow_runs[] | select(.id != $RUN_ID)
                     | select(.head_repository.full_name == \"$REPO\")
                     | select(any(.pull_requests[]; .number == $PR_NUMBER))
-                    | \"\(.id) \(.head_sha)\"" ) || runs=""
-            while read -r run_id head_sha; do
+                    | \"\(.id) \(.head_sha) \(.run_attempt)\"" ) || runs=""
+            while read -r run_id head_sha run_attempt; do
               [ -n "$run_id" ] || continue
-              conclusion=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/jobs" -F per_page=100 \
-                --jq '[.jobs[] | select(.name == "Codex delta review") | .conclusion][0] // ""') || conclusion=""
+              # The jobs API reports the run's latest attempt, but an artifact download is not tied
+              # to an attempt: a result or record counts only when it names this run's head and
+              # latest attempt, so an earlier attempt's file is never paired with a later verdict.
+              # A result without both fields is not an anchor.
+              printf '%s' "$run_attempt" | grep -Eq '^[1-9][0-9]*$' || continue
+              jobs=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/jobs" -F per_page=100 \
+                --jq '.jobs[] | select(.name == "Codex delta review" or .name == "Publish Codex policy result")
+                      | "\(.name)=\(.conclusion // "")"') || jobs=""
+              conclusion=$(sed -n '/^Codex delta review=/{s///p;q;}' <<< "$jobs")
+              published=$(sed -n '/^Publish Codex policy result=/{s///p;q;}' <<< "$jobs")
+              # R12: a run whose publish job passed on a valid bypass attestation recorded its head
+              # as reviewed with no findings; the record must name this run's own head.
+              bdir="$RUNNER_TEMP/bypass-$run_id"
+              if [ "$published" = "success" ] \
+                && gh run download "$run_id" -R "$REPO" -n codex-review-bypass -D "$bdir" >/dev/null 2>&1 \
+                && jq -e --arg sha "$head_sha" --argjson attempt "$run_attempt" \
+                  '.status == "bypassed" and .head_sha == $sha and .run_attempt == $attempt and .findings == []' \
+                  "$bdir/codex-review-bypass.json" >/dev/null 2>&1; then
+                anchor="$head_sha"
+                cp "$bdir/codex-review-bypass.json" "$RUNNER_TEMP/anchor-result.json"
+                break
+              fi
               if [ "$conclusion" != "success" ] && [ "$conclusion" != "failure" ]; then
                 continue
               fi
@@ -938,7 +963,9 @@ jobs:
               dir="$RUNNER_TEMP/anchor-$run_id"
               status=""
               if gh run download "$run_id" -R "$REPO" -n codex-review-result -D "$dir" >/dev/null 2>&1; then
-                status=$(jq -r '.status // empty' "$dir/codex-review-result.json" 2>/dev/null || true)
+                status=$(jq -r --arg sha "$head_sha" --argjson attempt "$run_attempt" \
+                  'if .head_sha == $sha and .run_attempt == $attempt then (.status // empty) else empty end' \
+                  "$dir/codex-review-result.json" 2>/dev/null || true)
               fi
               if [ "$status" = "findings" ] || [ "$status" = "clean" ]; then
                 anchor="$head_sha"
@@ -976,6 +1003,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           count="error"
+          findings=""
           # The live body, not the event's: a re-run of an old `edited` run must not bring back a
           # waiver that has since been removed.
           set +e
@@ -991,7 +1019,10 @@ jobs:
           if [ $body_rc -eq 0 ] && [ $rc -eq 0 ] && [ -f carried.json ]; then
             candidate=$(jq -r '.count' carried.json 2>/dev/null || echo "")
             if printf '%s' "$candidate" | grep -Eq '^[0-9]+$'; then
-              count="$candidate"
+              findings=$(jq -c '.carried' carried.json 2>/dev/null || echo "")
+              if [ -n "$findings" ]; then
+                count="$candidate"
+              fi
             fi
           fi
           if [ "$count" != "0" ] && [ -f carried.txt ]; then
@@ -1005,6 +1036,10 @@ jobs:
           fi
           echo "carried blocking findings: $count"
           echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" = "error" ]; then
+            findings=""
+          fi
+          echo "findings=$findings" >> "$GITHUB_OUTPUT"
 
       - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
         id: scope
@@ -1168,10 +1203,12 @@ jobs:
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_REF: ${{ github.base_ref }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           rm -f codex-review-result.json
           fail() {
-            printf '{\n  "status": "could_not_run",\n  "blocking": true,\n  "error": "%s"\n}\n' "$1" > codex-review-result.json
+            printf '{\n  "status": "could_not_run",\n  "blocking": true,\n  "error": "%s",\n  "head_sha": "%s",\n  "run_attempt": %d\n}\n' \
+              "$1" "$EVENT_HEAD_SHA" "${RUN_ATTEMPT:-0}" > codex-review-result.json
             echo "::error::$1"
             exit 1
           }
@@ -1425,6 +1462,7 @@ jobs:
           codex sandbox /bin/true
 
       - name: Dispatch reviewers directly, validate output, aggregate findings
+        id: dispatch
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Optional: pin the model every dispatched reviewer uses, overriding
@@ -1461,6 +1499,63 @@ jobs:
             --base-sha "$BASE_SHA" \
             --ci-delta --anchor-sha "$ANCHOR_SHA" \
             --output codex-review-result.json
+
+      # R7: the findings compute-scope carried from the anchor are added to this run's result as
+      # blocking findings, so a later run that takes this run as its anchor still carries them
+      # (otherwise a `clean` review of other files would drop them one run later). The list comes
+      # from compute-scope's base-restored code; the merge runs this job's Tier-1-guarded copy of
+      # the same module. A result that cannot be merged becomes `could_not_run`, which is never
+      # an anchor. Only a findings/clean result from the dispatch step is merged; any other file
+      # (absent, could_not_run) is left alone, since it is not an anchor either.
+      - name: Add the carried findings to the review result
+        if: always()
+        env:
+          DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
+          CARRIED_BLOCKING: ${{ needs.compute-scope.outputs.carried_blocking }}
+          CARRIED_FINDINGS: ${{ needs.compute-scope.outputs.carried_findings }}
+          # Every result names this run's PR head and attempt; the anchor lookup accepts a result
+          # only when both match the run it downloaded it from.
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          status=""
+          if [ -f codex-review-result.json ]; then
+            status=$(jq -r '.status // empty' codex-review-result.json 2>/dev/null || true)
+          fi
+          case "$status" in
+            findings|clean) ;;
+            *)
+              # Not an anchor whatever it holds; stamped where it can be, for the record.
+              if [ -f codex-review-result.json ] && jq -e 'type == "object"' codex-review-result.json >/dev/null 2>&1; then
+                if jq --arg sha "$EVENT_HEAD_SHA" --argjson attempt "${RUN_ATTEMPT:-0}" \
+                  '. + {head_sha: $sha, run_attempt: $attempt}' codex-review-result.json > "$RUNNER_TEMP/stamped.json"; then
+                  mv "$RUNNER_TEMP/stamped.json" codex-review-result.json
+                fi
+              fi
+              exit 0
+              ;;
+          esac
+          could_not_run() {
+            printf '{\n  "status": "could_not_run",\n  "blocking": true,\n  "error": "%s",\n  "head_sha": "%s",\n  "run_attempt": %d\n}\n' \
+              "$1" "$EVENT_HEAD_SHA" "${RUN_ATTEMPT:-0}" > codex-review-result.json
+            echo "::error::$1"
+            exit 1
+          }
+          if [ "$DISPATCH_OUTCOME" != "success" ] && [ "$DISPATCH_OUTCOME" != "failure" ]; then
+            could_not_run "a review result exists although the dispatch step did not run to an end"
+          fi
+          printf '%s' "$CARRIED_FINDINGS" > "$RUNNER_TEMP/carried.json"
+          set +e
+          uv run python -m scripts.marketplace_ci merge-carried-findings \
+            --result codex-review-result.json --carried "$RUNNER_TEMP/carried.json" \
+            --carried-count "$CARRIED_BLOCKING" \
+            --head-sha "$EVENT_HEAD_SHA" --run-attempt "$RUN_ATTEMPT"
+          rc=$?
+          set -e
+          case "$rc" in
+            0|1) exit "$rc" ;;
+            *) could_not_run "the carried findings could not be added to this result" ;;
+          esac
 
       - name: Upload review result
         if: always()
@@ -1979,3 +2074,29 @@ jobs:
           else
             echo "Codex review passed (codex-review=$CODEX_RESULT, bypass_eligible=$BYPASS_ELIGIBLE, status=${REVIEW_STATUS:-none})."
           fi
+
+      # R12: a run that passed on a valid SHA-bound bypass attestation for its head records that head
+      # as reviewed with no findings, so later runs take it as their anchor and no longer carry the
+      # bypassed findings (the clear is durable). Only this job, after the base-restored
+      # check-bypass above said `bypassed=true` and the decision step passed, writes it; a label
+      # without a valid attestation fails the decision step, so nothing is recorded. The anchor
+      # lookup accepts it only from a run whose publish job succeeded, for that run's head, with an
+      # empty findings list, and still distrusts it like any anchor whose own changes touch a
+      # gate-critical or reviewer-steering path (R10).
+      - name: Record a valid bypass as this head's review result (R12)
+        if: success() && steps.bypass.outputs.bypassed == 'true'
+        env:
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          jq -n --arg sha "$EVENT_HEAD_SHA" --argjson attempt "$RUN_ATTEMPT" \
+            '{status: "bypassed", head_sha: $sha, run_attempt: $attempt, blocking: false, findings: []}' \
+            > "$RUNNER_TEMP/codex-review-bypass.json"
+
+      - name: Upload the bypass record
+        if: success() && steps.bypass.outputs.bypassed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: codex-review-bypass
+          path: ${{ runner.temp }}/codex-review-bypass.json
+          if-no-files-found: error

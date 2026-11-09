@@ -120,7 +120,13 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `.claude/rules/` and the rest) is never excluded, and repo-only `.claude/` files stay.
 - **Anchor.** The `Find the last reviewed head` step reads this PR's earlier Marketplace CI runs from the
   GitHub API and takes the PR head of the newest one whose `Codex delta review` job finished, `success` or
-  `failure`, and whose `codex-review-result` artifact reports `findings` or `clean`. A cancelled or skipped
+  `failure`, and whose `codex-review-result` artifact reports `findings` or `clean`, or whose `publish` job
+  recorded a valid bypass of its head (R12, under "Bypass label" below). The result or record must carry
+  `head_sha` and `run_attempt` equal to that run's head and latest attempt from the API: the jobs API reports
+  the latest attempt, but `gh run download` is not tied to one, so an earlier attempt's file is never paired
+  with a later verdict, and a file without both fields is not an anchor. The `codex-review` merge step stamps
+  both on every result it leaves (including `run-codex-review`'s own and the `could_not_run` rewrites), and
+  the delta-base failure writes them too. A cancelled or skipped
   run, or one that stopped before its reviewers ran (`could_not_run`), reviewed nothing and does not count, so a push that cancels a running
   review leaves its commits for the next run. An `opened` event, or no such run, means no anchor: the whole PR
   (minus the exclusions) is reviewed. That is the first run's review.
@@ -152,6 +158,17 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   that cannot be fetched and that GitHub's compare API cannot show to be trusted, all report `error`. The PR
   body is read live from the API, so a re-run cannot bring back a removed waiver. `publish` fails while `carried_blocking` is not `0`, and fails closed when
   it could not be computed. So a label or body edit after a failed review no longer clears it (R8).
+  `compute-scope` also passes the carried list as its `carried_findings` output (one JSON line), and
+  `codex-review`'s `Add the carried findings to the review result` step (`merge-carried-findings`) adds
+  them to its `codex-review-result` as blocking findings, so a later run whose anchor is this run still
+  carries them, however many runs review other files in between. A result that cannot be merged (the carry
+  reported `error`, the list and count disagree, or the dispatch step never ran to an end) is rewritten as
+  `could_not_run`, which is never an anchor. A finding that was waived when a run carried it is not
+  recorded in that run's result, so removing the waiver later does not bring it back once that run is the
+  anchor. Accepted residual (M1): an author can add an `accepted` waiver, push a commit that does not touch
+  the flagged file, then remove the waiver; the finding is dropped for good and the final body shows no
+  waiver. A carried finding's `severity` is bounded like its rule and path (300 characters), so the list
+  stays within the 1 MB job-output limit.
 - **Drafts (R14).** On a draft PR, `compute-scope` reports `bypass_eligible=true` without a lookup, no
   Codex call is made, and `publish` passes as skipped. The workflow listens to `ready_for_review`; that
   event has no anchor, so the whole PR delta minus the exclusions is reviewed. `publish` re-reads the live draft flag
@@ -160,8 +177,19 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   head until the next push or re-run.
 - **Bypass label (R12).** A run started by adding `s: codex review bypassed` skips `codex-review`
   (`bypass_label_run=true`), so no Codex call is made. `publish` passes it only on a valid SHA-bound
-  attestation and fails closed otherwise. The attestation is bound to the head commit: the next push
-  carries the anchor's findings again unless their files changed or the body waives them.
+  attestation and fails closed otherwise. The clear is durable: when `bypassed=true` and the decision step
+  passed, `publish` uploads a `codex-review-bypass` artifact (`{"status": "bypassed", "head_sha": <head>,
+  "findings": []}`), and `Find the last reviewed head` takes a run as the anchor when its `Publish Codex
+  policy result` job succeeded and that artifact names the run's own head with no findings. The next push
+  therefore no longer carries the bypassed findings. `bypassed=true` only comes from the base-restored
+  `check-bypass` (both the label path and the `CODEX_CI_REVIEW_BYPASS` path need a SHA-bound attestation),
+  and the record is distrusted like any other anchor whose own changes touch a gate-critical or
+  reviewer-steering file (R10), the same protection the `codex-review-result` artifact relies on. Accepted
+  consequence: the bypassed head counts as reviewed even when CI never reviewed its content, and later runs
+  review only what changes after it. Accepted residual (M2): an anchor whose own changes touch a
+  gate-critical path or a reviewer-steering file carries nothing (R10), so a harmless edit to such a file
+  (for example `REVIEW.md`) followed by a revert can clear carried findings unless the whole-delta review
+  finds them again; the same holds for a PR that edits the workflow to forge a result or a bypass record.
 
 ## The reviewed delta and the result status
 
