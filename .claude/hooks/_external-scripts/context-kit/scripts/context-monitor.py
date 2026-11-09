@@ -23,12 +23,17 @@ Claude's context). Plain stdout would reach Claude but NOT the user, and would
 carry literal ANSI escape codes as noise — so we emit clean structured JSON.
 See `code.claude.com/docs/en/hooks`.
 
-Context %% is a COARSE PROXY. When the hook receives a `transcript_path`, we
-estimate tokens from the transcript size against CLAUDE_CONTEXT_WINDOW_TOKENS
-(default 200,000 — the standard context window; override via env var for a
-larger-context tier). Otherwise we fall back to a tool-call counter
-(CLAUDE_CONTEXT_MAX_TOOL_CALLS, default 400). Neither is exact; treat the
-percentage as a rough early-warning signal, not a precise gauge.
+Context %% comes from the real token usage the API reported for the latest
+main-chain assistant turn in the transcript (input + cache-read + cache-creation
+tokens), against the configured window. The window is resolved in this order:
+the CLAUDE_CONTEXT_WINDOW_TOKENS env var, then `context_window_tokens` in
+`.claude/context-kit.local.json` (gitignored, per project), then the same key in
+the shipped `context-kit.settings.json` at the plugin root, then 1,000,000. Only
+when no usage record exists yet do we fall back to a tool-call counter
+(CLAUDE_CONTEXT_MAX_TOOL_CALLS, default 400). The transcript FILE SIZE is
+deliberately not used: it counts records that never reach the model (instructions
+and prompt-snapshot attachments, API request blobs) and read ~97%% at the first
+tool call of every session (issue #690).
 """
 
 from __future__ import annotations
@@ -48,9 +53,16 @@ THRESHOLD_CRITICAL = 90
 THROTTLE_INTERVAL = 60
 
 # Calibration defaults (both overridable via env)
-DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000  # standard context window
-DEFAULT_MAX_TOOL_CALLS = 400  # fallback proxy when transcript size is unavailable
-APPROX_BYTES_PER_TOKEN = 4.0
+# Last-resort fallback; keep equal to `context_window_tokens` in context-kit.settings.json.
+# It is the effective value in the .claude/ mirror copies of this script, which sit
+# next to no settings file.
+DEFAULT_CONTEXT_WINDOW_TOKENS = 1_000_000
+DEFAULT_MAX_TOOL_CALLS = 400  # fallback proxy when no usage record exists yet
+SETTINGS_FILE_NAME = "context-kit.settings.json"
+LOCAL_SETTINGS_REL = Path(".claude") / "context-kit.local.json"
+# Bytes read from the end of the transcript when looking for the latest usage
+# record, then retried once with the larger size. Single records can be >100 KB.
+USAGE_TAIL_BYTES = (512 * 1024, 8 * 1024 * 1024)
 
 
 def _env_int(name: str, default: int) -> int:
@@ -60,6 +72,86 @@ def _env_int(name: str, default: int) -> int:
         return value if value > 0 else default
     except ValueError:
         return default
+
+
+def _read_window_setting(path: Path) -> int | None:
+    """Read `context_window_tokens` from a settings JSON file, or None when the
+    file is missing, unparseable, or the value is not a positive integer.
+
+    No trust-boundary check, unlike git-kit's settings: this value only tunes an
+    advisory percentage and gates no safety control or automation, so a tracked
+    copy of the local file is harmless."""
+    try:
+        value = json.loads(path.read_text(encoding="utf-8")).get("context_window_tokens")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        return value
+    return None
+
+
+def _context_window_tokens() -> int:
+    """Resolve the context window size: env var, then the project's local
+    override, then the plugin's shipped default, then the built-in fallback."""
+    env_value = _env_int("CLAUDE_CONTEXT_WINDOW_TOKENS", 0)
+    if env_value:
+        return env_value
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    candidates = []
+    if project_dir:
+        candidates.append(Path(project_dir) / LOCAL_SETTINGS_REL)
+    candidates.append(Path(__file__).resolve().parent.parent / SETTINGS_FILE_NAME)
+    for candidate in candidates:
+        value = _read_window_setting(candidate)
+        if value:
+            return value
+    return DEFAULT_CONTEXT_WINDOW_TOKENS
+
+
+def _latest_usage_tokens(transcript_path: str) -> int | None:
+    """Total input-side tokens (input + cache read + cache creation) the API
+    reported for the latest main-chain assistant turn, or None if the
+    transcript has no such record. Reads only the file's tail, newest first.
+
+    Sidechain (subagent) records are skipped: their usage describes a separate,
+    smaller context, not this session's."""
+    try:
+        size = os.path.getsize(transcript_path)
+        with open(transcript_path, "rb") as fh:
+            for tail in USAGE_TAIL_BYTES:
+                start = max(size - tail, 0)
+                fh.seek(start)
+                lines = fh.read().splitlines()
+                if start > 0:
+                    lines = lines[1:]  # first line is likely cut mid-record
+                for raw in reversed(lines):
+                    if b'"usage"' not in raw:
+                        continue
+                    try:
+                        record = json.loads(raw)
+                    except ValueError:
+                        continue
+                    if record.get("type") != "assistant" or record.get("isSidechain"):
+                        continue
+                    usage = (record.get("message") or {}).get("usage")
+                    if not isinstance(usage, dict):
+                        continue
+                    total = sum(
+                        v
+                        for k in (
+                            "input_tokens",
+                            "cache_read_input_tokens",
+                            "cache_creation_input_tokens",
+                        )
+                        if isinstance(v := usage.get(k), int) and not isinstance(v, bool)
+                    )
+                    if total > 0:
+                        return total
+                if start == 0:
+                    break
+    except OSError:
+        return None
+    return None
 
 
 def _win_pid_alive(pid: int) -> bool:
@@ -296,7 +388,7 @@ def read_cache(session_id: str = "") -> dict:
 def save_cache(data: dict, session_id: str = "") -> bool:
     """Save the context monitor cache. Returns True on success, False on a
     write failure -- callers that must not treat the write as done until it
-    actually landed (see _maybe_reset_baseline's marker-unlink ordering)
+    actually landed (see _maybe_reset_after_compaction's marker-unlink ordering)
     check this instead of assuming success.
 
     Writes to a temp file then os.replace()s it into place -- matching this
@@ -313,62 +405,32 @@ def save_cache(data: dict, session_id: str = "") -> bool:
         return False
 
 
-def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
+def _maybe_reset_after_compaction(session_id: str = "") -> None:
     """If ctx-post-compact-restore.py signaled a compaction just completed (via a
-    marker file in the shared session dir), reset the byte baseline and every
-    progressive-nudge flag.
+    marker file in the shared session dir), reset every progressive-nudge flag
+    and the fallback tool-call counter, so a threshold already shown
+    pre-compaction can fire again as the new, post-compaction context climbs back
+    through it.
 
-    Compaction does not truncate the transcript file -- it retains every
-    pre-compaction message plus a compact-summary marker in the same file
-    (confirmed against plugins/session-kit/skills/session-recover/references/
-    file-structure.md, this repo's own trusted reference: "the last compact
-    boundary's summary reflects the most recent state... messages after the
-    last boundary are the hot zone"). Without a baseline, `os.path.getsize()`
-    on the whole file stays pegged near 100% forever after the first
-    compaction, and a threshold already marked shown pre-compaction would
-    never re-fire as the new, post-compaction context climbs back through it.
+    The usage-based estimate needs no baseline: the first assistant turn after a
+    compaction already reports the smaller post-compaction usage.
 
-    The marker is set at SessionStart(source=compact) time (post-compact-
-    restore.py) and consumed here, on the first PostToolUse call after it.
-    ctx-post-compact-restore.py writes the transcript's byte size *at SessionStart
-    time* into the marker's own content when `transcript_path` was present in
-    its hook input (confirmed present on SessionStart's payload per Claude
-    Code's own docs) -- read that pre-captured value here when present, so the
-    baseline doesn't include the first post-compaction tool result's own bytes
-    (found by CodeRabbit's automated review, 2026-09-11). Falls back to
-    measuring `transcript_path` right now (this function's own long-standing
-    behavior) when the marker is empty -- e.g. an older marker format, or
-    ctx-post-compact-restore.py couldn't read transcript_path either.
-
-    The marker is deleted only after the reset is durably persisted via
-    save_cache() -- if that write hits a transient OSError, the marker stays
-    in place so this reset is retried on the next PostToolUse call instead of
-    silently being lost (found by CodeRabbit's automated review, 2026-09-11).
+    The marker is set at SessionStart(source=compact) time and consumed here, on
+    the first PostToolUse call after it. It is deleted only after the reset is
+    durably persisted via save_cache() -- if that write hits a transient OSError,
+    the marker stays in place so this reset is retried on the next PostToolUse
+    call instead of silently being lost (found by CodeRabbit's automated review,
+    2026-09-11).
     """
     marker = get_session_dir(session_id) / "compact-baseline-reset-pending"
     if not marker.exists():
         return
-
-    marker_content = ""
-    try:
-        marker_content = marker.read_text(encoding="utf-8").strip()
-    except (OSError, UnicodeDecodeError):
-        marker_content = ""
 
     cache = read_cache(session_id)
     cache["shown_learn"] = []
     cache["shown_warn_80"] = False
     cache["shown_warn_90"] = False
     cache["tool_calls"] = 0
-    baseline_bytes = 0
-    if marker_content.isdigit():
-        baseline_bytes = int(marker_content)
-    elif transcript_path:
-        try:
-            baseline_bytes = os.path.getsize(transcript_path)
-        except OSError:
-            baseline_bytes = 0
-    cache["baseline_bytes"] = baseline_bytes
     if save_cache(cache, session_id):
         try:
             marker.unlink()
@@ -378,27 +440,19 @@ def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
 
 def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float:
     """
-    Estimate context usage as a percentage (0-100). COARSE PROXY.
-
-    Preferred: a token estimate from the transcript file size (minus any
-    post-compaction baseline -- see _maybe_reset_baseline) against the
-    model's context window (CLAUDE_CONTEXT_WINDOW_TOKENS). Fallback when no
-    transcript is available: a tool-call counter (CLAUDE_CONTEXT_MAX_TOOL_CALLS).
-    Neither is exact.
+    Estimate context usage as a percentage (0-100) from the latest real token
+    usage in the transcript (see _latest_usage_tokens) against the configured
+    window (see _context_window_tokens). Fallback when the transcript has no
+    usage record yet: a tool-call counter (CLAUDE_CONTEXT_MAX_TOOL_CALLS), which
+    is very rough.
     """
-    window = _env_int("CLAUDE_CONTEXT_WINDOW_TOKENS", DEFAULT_CONTEXT_WINDOW_TOKENS)
-    transcript_path = hook_input.get("transcript_path", "")
-    _maybe_reset_baseline(transcript_path, session_id)
+    _maybe_reset_after_compaction(session_id)
 
+    transcript_path = hook_input.get("transcript_path", "")
     if transcript_path:
-        try:
-            size_bytes = os.path.getsize(transcript_path)
-            baseline = int(read_cache(session_id).get("baseline_bytes", 0))
-            effective_bytes = max(size_bytes - baseline, 0)
-            approx_tokens = effective_bytes / APPROX_BYTES_PER_TOKEN
-            return min(approx_tokens / window * 100, 100)
-        except OSError:
-            pass
+        used = _latest_usage_tokens(transcript_path)
+        if used is not None:
+            return min(used / _context_window_tokens() * 100, 100)
 
     # Fallback: tool-call counter (very rough)
     cache = read_cache(session_id)

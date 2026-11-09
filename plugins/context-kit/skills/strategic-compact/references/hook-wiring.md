@@ -37,7 +37,7 @@ sibling skills):
   2026-09-21 — see "Windows PowerShell coverage" below) detects milestones (tests passing, commits,
   builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
-  from transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds — its
+  from the real token usage the API reported for the latest turn in the transcript, or a tool-call-count fallback when none exists yet) and nudges at 40/55/65/80/90% thresholds — its
   own throttling (60s between checks below the warning threshold, once per threshold above it) gates
   the *emit*, not the interpreter launch itself, and matters more once scoped this broadly rather
   than only to `Bash|Agent|Task`: without it, a read-heavy session (e.g. `Read`/`Grep`/`Glob`-only)
@@ -55,8 +55,9 @@ sibling skills):
   `ctx-pre-compact.py`, which captures the active plan's state (see `SessionStart` above) for
   `ctx-post-compact-restore.py` to restore afterward via `additionalContext` on `SessionStart`.
 - **`Stop`** — `ctx-compact-stop-check.sh` checks for pending suggestions that haven't reached the user
-  yet and **blocks the stop once** (`{"decision": "block", ...}`) when at least one exists, guarded by
-  `stop_hook_active` so it never re-triggers itself on the resulting continuation. This is the
+  yet and shows them to the user as a **non-blocking** `{"systemMessage": ...}` when at least one exists
+  (changed from `decision: "block"`, which forced an extra assistant turn just to relay the text, issue
+  #690), still guarded by `stop_hook_active`. The text goes to the user only, not to the model. This is the
   suggestion's actual delivery mechanism (see the `PreToolUse` note above), though not an absolute
   guarantee: since `ctx-compact-track-and-suggest.sh` now runs async, its background write of the
   pending-suggestion file could in principle still be in flight when `Stop` fires immediately after
@@ -68,7 +69,7 @@ sibling skills):
   not-yet-delivered one (found by CodeRabbit's automated PR review, 2026-09-21, against PR #368). Both
   writers append rather than overwrite; this hook reads every line, validates each independently
   against the same strict single-line shape the original single-suggestion check used, and delivers all
-  still-valid lines in one `decision: block`, capped at 20 delivered suggestions as a defense-in-depth
+  still-valid lines in one `systemMessage`, capped at 20 delivered suggestions as a defense-in-depth
   bound.
 
 `ctx-compact-track-and-suggest.sh` and `ctx-compact-milestone-detector.sh` share one tracking file per
