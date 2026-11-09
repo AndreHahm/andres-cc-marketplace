@@ -255,7 +255,7 @@ console.log("\n=== runCodexExec: timeoutMs above Node's setTimeout ceiling is re
     JSON.stringify(tooLarge)
   );
 
-  for (const bad of [0, -1, NaN, 1.5, "600000", 1000n]) {
+  for (const bad of [0, -1, Number.NaN, 1.5, "600000", 1000n]) {
     const result = await runCodexExec({
       prompt: "test",
       schema,
