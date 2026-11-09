@@ -1223,3 +1223,30 @@ def test_the_compute_scope_skip_record_step(tmp_path, count, findings, rc, statu
     upload = _step("compute-scope", "Upload the skipped-review record")
     assert upload["if"] == "steps.skip_record.outcome == 'success'"
     assert upload["with"]["name"] == "codex-review-skip"
+
+
+@pytest.mark.parametrize(("git_rc", "unresolved"), [(0, "false"), (1, "true")])
+def test_an_unfetchable_anchor_writes_no_skip_record(tmp_path, git_rc, unresolved):
+    """R9: an anchor that cannot be fetched skips the review, so its head is not recorded as
+    reviewed; a skip record would let the next run narrow the unreviewed content away for good."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    git = bin_dir / "git"
+    git.write_text(f"#!/bin/sh\nexit {git_rc}\n", encoding="utf-8")
+    git.chmod(0o755)
+    output = tmp_path / "output"
+    step = _step("compute-scope", "Fetch the last reviewed head when this checkout lacks it")
+    assert step["id"] == "anchor_fetch"
+    script = tmp_path / "fetch.sh"
+    script.write_text(step["run"], encoding="utf-8")
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "GITHUB_OUTPUT": str(output),
+        "ANCHOR_SHA": "b" * 40,
+        "REPO": "owner/repo",
+    }
+    run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert output.read_text(encoding="utf-8") == f"unresolved={unresolved}\n"
+    skip_if = _step("compute-scope", _SKIP_STEP)["if"]
+    assert "steps.anchor_fetch.outputs.unresolved != 'true'" in skip_if

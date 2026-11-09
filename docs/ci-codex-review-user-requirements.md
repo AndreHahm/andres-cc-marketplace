@@ -46,7 +46,8 @@ A changed path in `FULL_ESCALATION_PATHS` or under `BYPASS_INELIGIBLE_PREFIXES` 
 `.codex/agents/`, `.claude/rules/`, `.claude/skills/plugin-rulebook/`, `pyproject.toml`, `uv.lock`, the
 `codex-kit` bridge files, CODEOWNERS, `marketplace.json`, `marketplace-sync.json` and the rulebook governance
 files) is never excluded and never narrowed away. While a pull request contains such a change, every CI run
-reviews it, so the Tier-1 refusal fires every time.
+that runs a Codex review reviews it, so the Tier-1 refusal fires every time. A draft (R14) and a run started
+by the bypass label (R12) make no Codex call.
 
 Status: approved
 
@@ -66,7 +67,8 @@ already complete when this run was created (a re-run keeps its creation time, R1
 - a `codex-review-result` artifact reporting `findings` or `clean`, from a `Codex delta review` job that
   ended in `success` or `failure`;
 - a `codex-review-skip` record from a successful `Compute Codex review scope` job, written when narrowing left
-  nothing to review and holding the still-blocking carried findings (R7, R8);
+  nothing to review and holding the still-blocking carried findings (R7, R8), but never when the anchor could
+  not be fetched (R9);
 - a record of a valid bypass attestation from a passed `Publish Codex policy result` job (R12).
 
 A result or record counts only when it names that run's own head and the attempt whose execution of the job
@@ -145,7 +147,9 @@ Status: approved
 
 After a force-push, CI reviews the files whose change differs from the anchor (R6). When the anchor cannot be
 fetched because it was force-pushed away, the review is skipped except for gate-critical paths (R3): a
-force-push review would be the most expensive one. When `compute-scope` found the anchor but `codex-review`
+force-push review would be the most expensive one. That run writes no `codex-review-skip` record, since it
+compared nothing: the head stays unreviewed, and later runs keep the older anchor. They skip too while it
+cannot be fetched, and review the whole pull request once it has left the 30-run lookup window. When `compute-scope` found the anchor but `codex-review`
 cannot fetch it, `codex-review` fails closed. The two jobs can still narrow differently: `compute-scope`
 compares from the event's base SHA, `codex-review` from the merge commit's first parent, so `codex-review` may
 review more than `compute-scope` predicts, never less.

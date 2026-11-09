@@ -144,14 +144,16 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   dropped) differs from the one at the anchor are reviewed. A rebase that only moves the PR's changes, and an
   event with no new commits (`edited`, `labeled`, `reopened`), make no Codex call and the job is skipped as
   bypass-eligible; carried findings still block (below). An anchor that cannot be fetched (force-pushed away) also reviews nothing, by decision:
-  a force-push review would be the most expensive one. `codex-review` fetches the anchor again and fails
+  a force-push review would be the most expensive one. That run writes no `codex-review-skip` record
+  (`anchor_fetch` reports `unresolved=true`), so its head is not taken as reviewed: later runs keep the older
+  anchor, skip while it cannot be fetched, and review the whole PR once it has left the 30-run window. `codex-review` fetches the anchor again and fails
   closed when it cannot. The two jobs can still narrow differently: `compute-scope` compares from
   `github.event.pull_request.base.sha`, `codex-review` from the merge commit's first parent, so
   `codex-review` may review more than `compute-scope` predicts, never less. A moved base branch or a rebase
   is accepted; only the PR-side patch comparison decides what is reviewed again.
 - **Gate-critical paths are never narrowed away.** A changed path in `FULL_ESCALATION_PATHS` or under
-  `BYPASS_INELIGIBLE_PREFIXES` stays in scope on every run, so it keeps forcing a real review and the Tier-1
-  refusal. An anchor whose own PR changes touch such a path is not trusted, because that run's code and
+  `BYPASS_INELIGIBLE_PREFIXES` stays in scope on every run that runs a Codex review (not a draft, R14, nor a
+  bypass-label run, R12), so it keeps forcing a real review and the Tier-1 refusal. An anchor whose own PR changes touch such a path is not trusted, because that run's code and
   workflow came from the PR: the whole delta is reviewed instead. The same holds for an anchor whose changes
   touch a file Codex may load as instructions or config (`AGENTS*.md` at any depth, `.codex/`, the root
   `REVIEW.md`), since such a run could have been told to report nothing and the change reverted later. A re-run of a failed job replays the same anchor,
@@ -180,7 +182,7 @@ review` is the gate after the PR exists and reviews only the delta, to cut OpenA
   `codex-review`'s `Add the carried findings to the review result` step (`merge-carried-findings`) adds
   them to its `codex-review-result` as blocking findings, so a later run whose anchor is this run still
   carries them, however many runs review other files in between. A run that skips `codex-review` because
-  narrowing left nothing to review (`bypass_eligible=true`, not a draft) writes no `codex-review-result`, so
+  narrowing left nothing to review (`bypass_eligible=true`, not a draft, anchor fetched) writes no `codex-review-result`, so
   `compute-scope`'s `Record a skipped review as this head's result (R7)` step runs the same base-restored
   `merge-carried-findings` on an empty `clean` result and uploads it as `codex-review-skip` (`skipped: true`,
   the still-blocking carried findings, `head_sha`, `run_attempt`); a record it cannot write fails

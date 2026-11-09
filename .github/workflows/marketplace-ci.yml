@@ -1004,15 +1004,22 @@ jobs:
           echo "anchor: ${anchor:-none (whole PR is reviewed)}"
           echo "sha=$anchor" >> "$GITHUB_OUTPUT"
 
+      # An anchor that cannot be fetched skips the review (R9), so this head is then not recorded as
+      # reviewed either (unresolved=true): a skip record would make the skip permanent.
       - name: Fetch the last reviewed head when this checkout lacks it
+        id: anchor_fetch
         if: steps.anchor.outputs.sha != ''
         env:
           ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
           REPO: ${{ github.repository }}
         run: |
-          git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
-            || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA" \
-            || echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped"
+          if git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
+            || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA"; then
+            echo "unresolved=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped and this head is not recorded as reviewed"
+            echo "unresolved=true" >> "$GITHUB_OUTPUT"
+          fi
 
       # R7: the last reviewed run's blocking findings keep blocking while their file is unchanged,
       # unless the PR body's `## Accepted Review Findings` section waives them. Runs from the
@@ -1117,11 +1124,15 @@ jobs:
       # writes no codex-review-result, so without this record the carry chain would fall back to an
       # older anchor, which can drop out of the 30-run window. This step records the head as
       # reviewed with the still-blocking carried findings, from this job's base-restored code (the
-      # same merge codex-review runs). Not on a draft, which is not reviewed (R14). A record that
-      # cannot be written fails this job, which publish blocks on.
+      # same merge codex-review runs). Not on a draft, which is not reviewed (R14), and not when the
+      # anchor could not be fetched (R9): nothing was compared, so this head was not reviewed. A
+      # record that cannot be written fails this job, which publish blocks on.
       - name: Record a skipped review as this head's result (R7)
         id: skip_record
-        if: steps.scope.outputs.bypass_eligible == 'true' && github.event.pull_request.draft != true
+        if: >-
+          steps.scope.outputs.bypass_eligible == 'true'
+          && github.event.pull_request.draft != true
+          && steps.anchor_fetch.outputs.unresolved != 'true'
         env:
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
