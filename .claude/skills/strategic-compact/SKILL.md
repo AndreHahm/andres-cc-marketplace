@@ -296,7 +296,7 @@ suggest.sh` (the most complex script — async, cross-process locking), `ctx-com
 own yet — only incidental coverage via shared helper functions and constant cross-checks. Tracked as
 an open item, not silently claimed as covered.
 
-**Last dated run record:** `scripts/smoke_test.py` — 41/41 checks passing as of 2026-11-09 (issue #690, fix 3: 5 new checks cover the real-context alert gate in `ctx-compact-track-and-suggest.sh` and the monitor's `pct-<hash>` handoff, including an alert that came due while gated firing once the gate opens; the learn nudge is now a single one at 65%; earlier the same day, 36/36 — issue #690: the 4 `ctx-compact-stop-check.sh` checks now assert a non-blocking `systemMessage` instead of `decision: block`, and 7 new `check_monitor_*` checks cover `context-monitor.py`'s real-token-usage estimate, sidechain skipping and window-size precedence); 29/29 as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
+**Last dated run record:** `scripts/smoke_test.py` — 44/44 checks passing as of 2026-11-09 (issue #690, fix 4: 3 new checks cover the milestone gate, single-channel delivery and the 30-minute cooldown; 41/41 after fix 3: 5 new checks cover the real-context alert gate in `ctx-compact-track-and-suggest.sh` and the monitor's `pct-<hash>` handoff, including an alert that came due while gated firing once the gate opens; the learn nudge is now a single one at 65%; earlier the same day, 36/36 — issue #690: the 4 `ctx-compact-stop-check.sh` checks now assert a non-blocking `systemMessage` instead of `decision: block`, and 7 new `check_monitor_*` checks cover `context-monitor.py`'s real-token-usage estimate, sidechain skipping and window-size precedence); 29/29 as of 2026-10-16, including `check_session_init_sweeps_expired_mode_files` for the mode-file sweep (also 29/29 on 2026-09-21, before `check_session_init_resets_mode_file_on_startup` was removed with `detect_mode.py`; added
 `check_powershell_tool_payload_still_triggers_milestone` for the Windows PowerShell-matcher fix, 6
 `check_skill_category_*` checks for the new heavy_operation/session_analysis events,
 `check_skill_category_unset_plugin_root_fails_open` and `check_session_init_resets_mode_file_on_startup`
@@ -346,7 +346,8 @@ removed rather than fixed to check a real field, since `PostToolUse` already gua
 - [ ] A session with 50+ tool calls produces exactly one threshold suggestion per configured
       threshold (`T1`/`T2`/`T3`), not a repeated suggestion on every call past the threshold.
 - [ ] A successful `pytest`/`npm test`/etc. command produces a `test_pass` milestone suggestion (once
-      per 5-minute window); a successful `npm run build`/`cargo build`/etc. command produces a `build`
+      per 30-minute window, once real context is at or above `alert_min_context_percent`, as a
+      `systemMessage` only); a successful `npm run build`/`cargo build`/etc. command produces a `build`
       milestone suggestion the same way.
 - [ ] A `git commit` (or other milestone-pattern command) run via the **`PowerShell`** tool produces
       the same milestone suggestion as the identical command run via `Bash` — never silently dropped

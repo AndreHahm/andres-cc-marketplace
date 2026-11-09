@@ -35,7 +35,10 @@ sibling skills):
   pending-file/`Stop`-hook relay at all.
 - **`PostToolUse`** — `ctx-compact-milestone-detector.sh` (matcher `^(Bash|PowerShell)$`, broadened
   2026-09-21 — see "Windows PowerShell coverage" below) detects milestones (tests passing, commits,
-  builds, deploys) from the command that just ran. `context-monitor.py` (matcher
+  builds, deploys) from the command that just ran. A milestone shows only once real context has
+  reached `alert_min_context_percent` (same `pct-<hash>` gate as the PreToolUse alerts below), at most once per
+  30 minutes (was 5), and only as a user-facing `systemMessage` (no model-visible `additionalContext`, no
+  stderr echo; issue #690). `context-monitor.py` (matcher
   `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
   from the real token usage the API reported for the latest turn in the transcript, or a tool-call-count fallback when none exists yet) and nudges at 65/80/90% thresholds (the 40 and 55% nudges were dropped in issue #690). It
   also publishes `<percent> <alert_min_context_percent>` to `~/.claude/strategic-compact/pct-<hash>` on every

@@ -65,10 +65,15 @@ def run_category_detector(stdin_text: str, home, project_dir=None, unset_plugin_
     )
 
 
-def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
+def make_home_with_tracking_file(tmp_path, session_id="smoketest", gate_open=True):
     """ctx-compact-milestone-detector.sh exits early (0, no output) if no tracking file
     exists for the session -- it's ctx-compact-session-init.sh's job to create one on
-    SessionStart, so replicate its real on-disk shape here rather than skip the check."""
+    SessionStart, so replicate its real on-disk shape here rather than skip the check.
+
+    Since issue #690 the milestone and count/time/phase alerts also need the real-context
+    gate open (a `pct-<hash>` file context-monitor.py publishes). It is opened by default
+    so a test about something else is not made vacuous by a closed gate; a test of the
+    gate itself passes gate_open=False or rewrites the file."""
     import hashlib
 
     home = tmp_path / f"home_{session_id}"
@@ -91,6 +96,8 @@ def make_home_with_tracking_file(tmp_path, session_id="smoketest"):
         encoding="utf-8",
         newline="",
     )
+    if gate_open:
+        (track_dir / f"pct-{session_hash}").write_text("99 50", encoding="utf-8", newline="")
     return home
 
 
@@ -1119,6 +1126,8 @@ def check_count_alert_silent_without_valid_published_percentage(tmp_path):
         _set_tracking_total(track_file, 9)
         if content is not None:
             pct_file.write_text(content, encoding="utf-8", newline="")
+        else:
+            pct_file.unlink()  # the helper opens the gate by default
         result = _run_track(home, session)
         if result.returncode != 0 or result.stdout.strip():
             return False, f"{label} percentage file did not keep the gate closed: {result.stdout!r}"
@@ -1171,8 +1180,73 @@ def check_monitor_publishes_percentage_for_shell_hooks(tmp_path):
     return True, "the monitor publishes '<percent> <gate>' under the shell hooks' session hash"
 
 
+def _set_tracking_value(track_file, key, value):
+    lines = track_file.read_text(encoding="utf-8").splitlines()
+    lines = [f"{key}={value}" if line.startswith(f"{key}=") else line for line in lines]
+    track_file.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="")
+
+
+def _run_commit_milestone(home, session_id):
+    payload = json.dumps(
+        {
+            "session_id": session_id,
+            "tool_name": "Bash",
+            "tool_input": {"command": "git commit -m x"},
+        }
+    )
+    return run(MILESTONE_SCRIPT, payload, home)
+
+
+def check_milestone_silent_while_context_below_gate(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "milegated")
+    track_file, pct_file = _track_paths(home, "milegated")
+    pct_file.write_text("20 50", encoding="utf-8", newline="")
+    result = _run_commit_milestone(home, "milegated")
+    if result.stdout.strip():
+        return False, f"a commit milestone fired below the context gate: {result.stdout!r}"
+    if _tracking_value(track_file, "LAST_MILESTONE_TIME") != "0":
+        return False, "a gated-out milestone restarted the cooldown"
+    return (
+        True,
+        "a commit milestone stays silent, and keeps the cooldown, while real context < gate",
+    )
+
+
+def check_milestone_uses_a_single_channel(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "milechannel")
+    result = _run_commit_milestone(home, "milechannel")
+    try:
+        out = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return False, f"expected a JSON systemMessage, got {result.stdout!r}"
+    if "Code committed" not in out.get("systemMessage", ""):
+        return False, f"commit milestone missing from systemMessage: {out!r}"
+    if "hookSpecificOutput" in out:
+        return False, f"milestone also sent a model-visible additionalContext: {out!r}"
+    if "[StrategicCompact]" in result.stderr:
+        return False, f"milestone was also echoed to stderr: {result.stderr!r}"
+    return True, "a milestone is delivered once, as a user-facing systemMessage only"
+
+
+def check_milestone_cooldown_is_thirty_minutes(tmp_path):
+    home = make_home_with_tracking_file(tmp_path, "milecool")
+    track_file, _ = _track_paths(home, "milecool")
+    _set_tracking_value(track_file, "LAST_MILESTONE_TIME", int(time.time()) - 600)
+    recent = _run_commit_milestone(home, "milecool")
+    if recent.stdout.strip():
+        return False, f"a milestone 10 minutes after the last one fired: {recent.stdout!r}"
+    _set_tracking_value(track_file, "LAST_MILESTONE_TIME", int(time.time()) - 1900)
+    later = _run_commit_milestone(home, "milecool")
+    if "Code committed" not in later.stdout:
+        return False, f"a milestone 31 minutes after the last one did not fire: {later.stdout!r}"
+    return True, "milestone alerts are limited to one per 30 minutes"
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
+    check_milestone_silent_while_context_below_gate,
+    check_milestone_uses_a_single_channel,
+    check_milestone_cooldown_is_thirty_minutes,
     check_count_alert_silent_while_context_below_gate,
     check_count_alert_fires_when_context_reaches_gate,
     check_count_alert_silent_without_valid_published_percentage,

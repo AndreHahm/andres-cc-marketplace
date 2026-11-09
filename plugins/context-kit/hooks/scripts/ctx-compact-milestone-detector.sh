@@ -207,9 +207,28 @@ if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(deploy|npm run deploy|ver
     MILESTONE_TYPE="deploy"
 fi
 
-# If milestone detected and enough time passed since last milestone suggestion (5 minutes)
+# Real context percentage gate (issue #690) -- same file, same format and same fail-quiet
+# rule as ctx-compact-track-and-suggest.sh: context-monitor.py publishes
+# "<percent> <min-percent>" to pct-<hash> on every tool call, and a milestone note ("good
+# checkpoint for /compact") is only worth showing once real context has reached the
+# configured minimum. A missing or malformed file keeps the gate closed.
+GATE_OPEN=0
+PCT_FILE="${TRACK_DIR}/pct-${SESSION_HASH}"
+if [ -f "$PCT_FILE" ]; then
+    _pct=""
+    _min=""
+    read -r _pct _min < "$PCT_FILE" 2>/dev/null
+    if [[ "$_pct" =~ ^[0-9]{1,3}$ ]] && [[ "$_min" =~ ^[0-9]{1,3}$ ]] \
+        && [ "$((10#$_pct))" -ge "$((10#$_min))" ]; then
+        GATE_OPEN=1
+    fi
+fi
+
+# If milestone detected, the gate is open, and enough time passed since the last milestone
+# suggestion (30 minutes; was 5, which fired ~88 commit milestones across 27 sessions).
+# A gated-out milestone neither shows a note nor restarts the cooldown.
 SUGGESTION=""
-if [ -n "$MILESTONE_TYPE" ] && [ "$TIME_SINCE_MILESTONE" -ge 300 ]; then
+if [ -n "$MILESTONE_TYPE" ] && [ "$GATE_OPEN" -eq 1 ] && [ "$TIME_SINCE_MILESTONE" -ge 1800 ]; then
     case "$MILESTONE_TYPE" in
         test_pass)
             SUGGESTION="[StrategicCompact] Tests passed - milestone reached. Good checkpoint for /compact if implementation phase complete."
@@ -265,16 +284,12 @@ if [ -n "$SUGGESTION" ]; then
         notify-send "Strategic Compact" "$SUGGESTION" 2>/dev/null &
     fi
 
-    # Also write to stderr for immediate visibility
-    echo "$SUGGESTION" >&2
-
+    # One channel only (issue #690): a user-facing systemMessage. It used to be sent three
+    # ways -- also as model-visible additionalContext (which the model then repeated to
+    # the user) and echoed to stderr -- so every milestone arrived two or three times.
     cat << EOF
 {
-  "systemMessage": "$SUGGESTION",
-  "hookSpecificOutput": {
-    "hookEventName": "PostToolUse",
-    "additionalContext": "$SUGGESTION"
-  }
+  "systemMessage": "$SUGGESTION"
 }
 EOF
 fi
