@@ -1,4 +1,0 @@
-{
-  "context_window_tokens": 1000000,
-  "alert_min_context_percent": 50
-}

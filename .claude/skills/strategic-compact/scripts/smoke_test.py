@@ -1242,8 +1242,139 @@ def check_milestone_cooldown_is_thirty_minutes(tmp_path):
     return True, "milestone alerts are limited to one per 30 minutes"
 
 
+def _initial_thresholds(tmp_path, name, plugin_root=None, project_dir=None, env_extra=None):
+    """Run ctx-compact-track-and-suggest.sh once from a fresh HOME so it writes its initial
+    tracking file, and return the (T1, T2, T3) it recorded."""
+    home = tmp_path / f"home_{name}"
+    (home / ".claude" / "strategic-compact").mkdir(parents=True)
+    env: dict[str, str] = {**os.environ, "HOME": str(home)}
+    for key in ("STRATEGIC_COMPACT_T1", "STRATEGIC_COMPACT_T2", "STRATEGIC_COMPACT_T3"):
+        env.pop(key, None)
+    env.pop("CLAUDE_PLUGIN_ROOT", None)
+    env.pop("CLAUDE_PROJECT_DIR", None)
+    if plugin_root is not None:
+        env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+    if project_dir is not None:
+        env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+    env.update(env_extra or {})
+    payload = json.dumps({"session_id": name, "tool_name": "Read"})
+    subprocess.run(
+        ["bash", str(TRACK_SCRIPT)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+    track_file, _ = _track_paths(home, name)
+    return tuple(_tracking_value(track_file, k) for k in ("T1", "T2", "T3"))
+
+
+def _write_settings(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="")
+
+
+def check_tool_call_thresholds_default_to_50_100_150(tmp_path):
+    builtin = _initial_thresholds(tmp_path, "thrbuiltin")
+    shipped = _initial_thresholds(tmp_path, "thrshipped", plugin_root=PLUGIN_ROOT)
+    expected = ("50", "100", "150")
+    if builtin != expected:
+        return False, f"built-in thresholds are {builtin}, expected {expected}"
+    if shipped != expected:
+        return (
+            False,
+            f"the shipped assets/context-kit.settings.json gives {shipped}, expected {expected}",
+        )
+    return (
+        True,
+        "tool-call thresholds default to 50/100/150, built in and in the shipped settings file",
+    )
+
+
+def check_tool_call_thresholds_follow_settings_precedence(tmp_path):
+    plugin = tmp_path / "plugin"
+    project = tmp_path / "project"
+    shipped_json = (
+        '{"tool_call_threshold_1": 11, "tool_call_threshold_2": 22, "tool_call_threshold_3": 33}'
+    )
+    _write_settings(plugin / "assets" / "context-kit.settings.json", shipped_json)
+    got = _initial_thresholds(tmp_path, "thrship", plugin_root=plugin)
+    if got != ("11", "22", "33"):
+        return False, f"shipped file values not used: {got}"
+    _write_settings(project / ".claude" / "context-kit.local.json", '{"tool_call_threshold_2": 44}')
+    got = _initial_thresholds(tmp_path, "thrlocal", plugin_root=plugin, project_dir=project)
+    if got != ("11", "44", "33"):
+        return False, f"local override should replace only threshold 2: {got}"
+    env = {"STRATEGIC_COMPACT_T3": "99"}
+    got = _initial_thresholds(
+        tmp_path, "threnv", plugin_root=plugin, project_dir=project, env_extra=env
+    )
+    if got != ("11", "44", "99"):
+        return False, f"env var should win over both files for threshold 3: {got}"
+    return True, "tool-call thresholds resolve env var > local file > shipped file, per threshold"
+
+
+def check_tool_call_thresholds_ignore_hostile_settings_values(tmp_path):
+    plugin = tmp_path / "plugin_hostile"
+    hostile = (
+        '{"tool_call_threshold_1": "50; touch pwned", "tool_call_threshold_2": 0, '
+        '"tool_call_threshold_3": -7}'
+    )
+    _write_settings(plugin / "assets" / "context-kit.settings.json", hostile)
+    got = _initial_thresholds(tmp_path, "thrhostile", plugin_root=plugin)
+    if got != ("50", "100", "150"):
+        return False, f"a string, zero or negative value was not ignored: {got}"
+    return True, "a string, zero or negative threshold in a settings file falls back to the default"
+
+
+def check_session_init_reads_tool_call_thresholds_from_settings(tmp_path):
+    # ctx-compact-session-init.sh carries its own copy of the settings lookup helper and is
+    # the normal writer of the tracking file (at SessionStart), so it needs its own check.
+    plugin = tmp_path / "plugin_init"
+    project = tmp_path / "project_init"
+    shipped_json = (
+        '{"tool_call_threshold_1": 11, "tool_call_threshold_2": 22, "tool_call_threshold_3": 33}'
+    )
+    _write_settings(plugin / "assets" / "context-kit.settings.json", shipped_json)
+    _write_settings(project / ".claude" / "context-kit.local.json", '{"tool_call_threshold_1": 7}')
+    home = tmp_path / "home_initthr"
+    (home / ".claude").mkdir(parents=True)
+    env: dict[str, str] = {
+        **os.environ,
+        "HOME": str(home),
+        "CLAUDE_PLUGIN_ROOT": str(plugin),
+        "CLAUDE_PROJECT_DIR": str(project),
+    }
+    for key in ("STRATEGIC_COMPACT_T1", "STRATEGIC_COMPACT_T2", "STRATEGIC_COMPACT_T3"):
+        env.pop(key, None)
+    payload = json.dumps({"session_id": "initthr", "source": "startup"})
+    result = subprocess.run(
+        ["bash", str(HOOKS_DIR / "ctx-compact-session-init.sh")],
+        input=payload,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+    )
+    track_file, _ = _track_paths(home, "initthr")
+    if not track_file.exists():
+        return False, f"session-init wrote no tracking file: {result.stderr!r}"
+    got = tuple(_tracking_value(track_file, k) for k in ("T1", "T2", "T3"))
+    if got != ("7", "22", "33"):
+        return False, f"expected local 7 over shipped 11, shipped 22/33; got {got}"
+    return (
+        True,
+        "session-init reads tool-call thresholds from the local override, then the shipped file",
+    )
+
+
 CHECKS = [
     check_get_session_dir_implementations_agree,
+    check_session_init_reads_tool_call_thresholds_from_settings,
+    check_tool_call_thresholds_default_to_50_100_150,
+    check_tool_call_thresholds_follow_settings_precedence,
+    check_tool_call_thresholds_ignore_hostile_settings_values,
     check_milestone_silent_while_context_below_gate,
     check_milestone_uses_a_single_channel,
     check_milestone_cooldown_is_thirty_minutes,
