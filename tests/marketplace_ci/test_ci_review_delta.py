@@ -828,7 +828,10 @@ args = sys.argv[1:]
 if args[0] == "api":
     url = next(a for a in args[1:] if a.startswith("repos/"))
     expr = args[args.index("--jq") + 1]
-    data = json.load(open(os.path.join(fixtures, url.replace("/", "_") + ".json")))
+    path = os.path.join(fixtures, url.replace("/", "_") + ".json")
+    if not os.path.exists(path):
+        sys.exit(1)
+    data = json.load(open(path))
     out = subprocess.run(["jq", "-r", expr], input=json.dumps(data), capture_output=True, text=True)
     sys.stdout.write(out.stdout)
     sys.exit(out.returncode)
@@ -852,34 +855,47 @@ _FINDINGS_A = {
 }
 
 
-def _lookup(tmp_path, jobs2, artifacts2, result1=_FINDINGS_A):
-    """Run compute-scope's anchor lookup over two earlier runs: run 1 (head _SHA1, attempt 1)
-    reviewed with `result1`; run 2 (head _SHA2, newer, attempt 2) has the given jobs and
-    artifacts. Returns the anchor and its result (None when there is no anchor)."""
+def _write(path, data):
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+def _run_lookup(tmp_path, candidates, created="2026-01-01T01:00:00Z"):
+    """Run compute-scope's anchor lookup for run 3 (created at `created`) over `candidates`,
+    newest first. Each is a dict: id, sha, jobs ([{name, conclusion}] of the latest attempt),
+    and optionally attempt (latest attempt number, default 1), reused (job names a re-run of
+    only the failed jobs reused from attempt 1), updated (the run's updated_at) and artifacts
+    ({name: content}). Returns the anchor and its result (None when there is no anchor)."""
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
-    runs = {
-        "workflow_runs": [
-            {"id": rid, "head_sha": sha, "run_attempt": rid,
+    runs = []
+    for c in candidates:
+        rid, attempt = c["id"], c.get("attempt", 1)
+        runs.append(
+            {"id": rid, "head_sha": c["sha"], "run_attempt": attempt,
+             "updated_at": c.get("updated", f"2026-01-01T00:00:{rid:02d}Z"),
              "head_repository": {"full_name": "o/r"}, "pull_requests": [{"number": 7}]}
-            for rid, sha in ((2, _SHA2), (1, _SHA1))
-        ]
-    }  # fmt: skip
-    (fixtures / "repos_o_r_actions_workflows_marketplace-ci.yml_runs.json").write_text(
-        json.dumps(runs), encoding="utf-8"
+        )  # fmt: skip
+        done = {j["name"]: f"2026-01-01T00:{rid:02d}:{i:02d}Z" for i, j in enumerate(c["jobs"])}
+        latest = [{**j, "completed_at": done[j["name"]], "run_attempt": attempt} for j in c["jobs"]]
+        _write(fixtures / f"repos_o_r_actions_runs_{rid}_jobs.json", {"jobs": latest})
+        for k in range(1, attempt + 1):
+            same = k == attempt
+            jobs_k = [
+                {**j, "completed_at": done[j["name"]] if same or j["name"] in c.get("reused", ())
+                 else f"2025-12-31T23:{k:02d}:00Z", "run_attempt": k}
+                for j in c["jobs"]
+            ]  # fmt: skip
+            _write(
+                fixtures / f"repos_o_r_actions_runs_{rid}_attempts_{k}_jobs.json", {"jobs": jobs_k}
+            )
+        for name, content in c.get("artifacts", {}).items():
+            _write(fixtures / f"artifact-{rid}-{name}.json", content)
+    _write(
+        fixtures / "repos_o_r_actions_workflows_marketplace-ci.yml_runs.json",
+        {"workflow_runs": runs},
     )
-    jobs1 = [
-        {"name": "Codex delta review", "conclusion": "failure"},
-        {"name": "Publish Codex policy result", "conclusion": "failure"},
-    ]
-    for rid, jobs in ((1, jobs1), (2, jobs2)):
-        (fixtures / f"repos_o_r_actions_runs_{rid}_jobs.json").write_text(
-            json.dumps({"jobs": jobs}), encoding="utf-8"
-        )
-    artifacts = {"1-codex-review-result": result1}
-    artifacts.update({f"2-{k}": v for k, v in artifacts2.items()})
-    for key, value in artifacts.items():
-        (fixtures / f"artifact-{key}.json").write_text(json.dumps(value), encoding="utf-8")
+    if created is not None:
+        _write(fixtures / "repos_o_r_actions_runs_3.json", {"id": 3, "created_at": created})
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     gh = bin_dir / "gh"
@@ -906,6 +922,24 @@ def _lookup(tmp_path, jobs2, artifacts2, result1=_FINDINGS_A):
     anchor = out.read_text(encoding="utf-8").strip().removeprefix("sha=")
     anchor_result = tmp_path / "anchor-result.json"
     return anchor, json.loads(anchor_result.read_text("utf-8")) if anchor_result.exists() else None
+
+
+_JOBS1 = [
+    {"name": "Codex delta review", "conclusion": "failure"},
+    {"name": "Publish Codex policy result", "conclusion": "failure"},
+]
+
+
+def _lookup(tmp_path, jobs2, artifacts2, result1=_FINDINGS_A):
+    """Two earlier runs: run 1 (head _SHA1, attempt 1) reviewed with `result1`; run 2 (head
+    _SHA2, newer, attempt 2, every job re-run) has the given jobs and artifacts."""
+    return _run_lookup(
+        tmp_path,
+        [
+            {"id": 2, "sha": _SHA2, "attempt": 2, "jobs": jobs2, "artifacts": artifacts2},
+            {"id": 1, "sha": _SHA1, "jobs": _JOBS1, "artifacts": {"codex-review-result": result1}},
+        ],
+    )
 
 
 _BYPASSED_RUN = [
@@ -1020,3 +1054,172 @@ def test_a_carried_severity_is_bounded_like_its_rule_and_path(git_repo):
         ]
         == ""
     )
+
+
+# R11 (D1): a run, a re-run included, anchors only on runs already complete when it was created.
+
+_SHA4 = "4" * 40
+_CLEAN4 = {"status": "clean", "findings": [], "head_sha": _SHA4, "run_attempt": 1}
+_RUN1 = {"id": 1, "sha": _SHA1, "jobs": _JOBS1, "artifacts": {"codex-review-result": _FINDINGS_A}}
+_REVIEWED_JOBS = [
+    {"name": "Codex delta review", "conclusion": "success"},
+    {"name": "Publish Codex policy result", "conclusion": "success"},
+]
+
+
+def _newer_and_older(updated4):
+    return [
+        {"id": 4, "sha": _SHA4, "updated": updated4, "jobs": _REVIEWED_JOBS,
+         "artifacts": {"codex-review-result": _CLEAN4}},
+        {"id": 1, "sha": _SHA1, "jobs": _JOBS1, "artifacts": {"codex-review-result": _FINDINGS_A}},
+    ]  # fmt: skip
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_a_rerun_after_a_newer_run_keeps_its_original_anchor(tmp_path):
+    """Run 3 was created at 01:00 and anchored on run 1. Run 4 (a newer push) finished at 02:00;
+    re-running run 3 afterwards must not anchor on run 4, or it would review a different delta."""
+    anchor, result = _run_lookup(tmp_path, _newer_and_older("2026-01-01T02:00:00Z"))
+    assert (anchor, result) == (_SHA1, _FINDINGS_A)
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_a_run_complete_before_this_one_was_created_is_its_anchor(tmp_path):
+    anchor, result = _run_lookup(tmp_path, _newer_and_older("2026-01-01T00:30:00Z"))
+    assert (anchor, result) == (_SHA4, _CLEAN4)
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_an_unreadable_creation_time_means_no_anchor(tmp_path):
+    """The lookup cannot tell which runs came before: no anchor (whole PR), never a newer one."""
+    anchor, result = _run_lookup(tmp_path, _newer_and_older("2026-01-01T00:30:00Z"), created=None)
+    assert (anchor, result) == ("", None)
+
+
+# R7 (D2): a run that skips the Codex call still records its head with the carried findings.
+
+_SKIP_JOBS = [
+    {"name": "Compute Codex review scope", "conclusion": "success"},
+    {"name": "Codex delta review", "conclusion": "skipped"},
+    {"name": "Publish Codex policy result", "conclusion": "failure"},
+]
+_SKIP2 = {
+    "status": "findings",
+    "skipped": True,
+    "findings": [{**_finding("a_py"), "source": "carried"}],
+    "blocking": True,
+    "head_sha": _SHA2,
+    "run_attempt": 1,
+}
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+@pytest.mark.parametrize(
+    ("case", "jobs2", "reused", "anchor"),
+    [
+        ("skip record", _SKIP_JOBS, (), _SHA2),
+        # publish re-run alone (attempt 2) reuses compute-scope's execution and its record
+        ("re-run of only the failed jobs", _SKIP_JOBS, ("Compute Codex review scope",), _SHA2),
+        # compute-scope itself re-ran in attempt 2: the attempt-1 record is not its verdict
+        ("record of a re-run job's earlier execution", _SKIP_JOBS, None, _SHA1),
+        (
+            "compute-scope failed",
+            [{**_SKIP_JOBS[0], "conclusion": "failure"}, *_SKIP_JOBS[1:]],
+            (),
+            _SHA1,
+        ),
+    ],
+)
+def test_the_anchor_lookup_accepts_a_skipped_review_record(tmp_path, case, jobs2, reused, anchor):
+    attempt = 1 if reused == () else 2
+    got, result = _run_lookup(
+        tmp_path,
+        [
+            {"id": 2, "sha": _SHA2, "attempt": attempt, "reused": reused or (), "jobs": jobs2,
+             "artifacts": {"codex-review-skip": _SKIP2}},
+            _RUN1,
+        ],
+    )  # fmt: skip
+    assert got == anchor, case
+    assert result == (_SKIP2 if anchor == _SHA2 else _FINDINGS_A), case
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="the workflow step uses jq")
+def test_a_review_result_reused_by_a_rerun_of_only_the_failed_jobs_stays_an_anchor(tmp_path):
+    result2 = {"status": "clean", "findings": [], "head_sha": _SHA2, "run_attempt": 1}
+    got, result = _run_lookup(
+        tmp_path,
+        [
+            {"id": 2, "sha": _SHA2, "attempt": 2, "reused": ("Codex delta review",),
+             "jobs": _REVIEWED_JOBS, "artifacts": {"codex-review-result": result2}},
+            _RUN1,
+        ],
+    )  # fmt: skip
+    assert (got, result) == (_SHA2, result2)
+
+
+def test_a_carried_finding_survives_a_chain_of_skipped_runs_past_the_run_window(git_repo):
+    """Run A blocks on a_py; 32 later runs each skip the Codex call (nothing left to review) and
+    record the carried finding, each the next one's anchor. Before D2 those runs wrote nothing,
+    so the chain fell back to run A, which drops out of the 30-run window. Only a waiver or a
+    change to a_py ends it."""
+    base = _commit(git_repo, "base", a_py="a\n", b_py="b\n")
+    anchor = _commit(git_repo, "pr 1", a_py="a2\n")
+    result = _result(_finding("a_py"))
+    for i in range(32):
+        head = _commit(git_repo, f"tests only {i}", tests__t_py=f"{i}\n")
+        carried = carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open)
+        assert [f["path"] for f in carried] == ["a_py"], i
+        skip = {"status": "clean", "skipped": True, "findings": [], "blocking": False}
+        anchor, result = head, merge_carried_findings(skip, carried, str(len(carried)))
+    assert result["status"] == "findings"
+    waived = "## Accepted Review Findings\n- R6 a_py:3 – accepted\n"
+    assert carry_blocking_findings(git_repo.root, base, anchor, result, waived, _never_open) == []
+    _commit(git_repo, "fix", a_py="a3\n")
+    assert carry_blocking_findings(git_repo.root, base, anchor, result, "", _never_open) == []
+
+
+_SKIP_STEP = "Record a skipped review as this head's result (R7)"
+
+
+@pytest.mark.parametrize(
+    ("count", "findings", "rc", "status"),
+    [("1", _ONE, 0, "findings"), ("0", "[]", 0, "clean"), ("error", "", 1, None)],
+)
+def test_the_compute_scope_skip_record_step(tmp_path, count, findings, rc, status):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(f'#!/bin/sh\nshift 2\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+    uv.chmod(0o755)
+    step = _step("compute-scope", _SKIP_STEP)
+    assert "steps.scope.outputs.bypass_eligible == 'true'" in step["if"]
+    assert "draft != true" in step["if"]
+    script = tmp_path / "skip.sh"
+    script.write_text(step["run"], encoding="utf-8")
+    env = {
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "RUNNER_TEMP": str(tmp_path),
+        "EVENT_HEAD_SHA": "a" * 40,
+        "RUN_ATTEMPT": "1",
+        "CARRIED_BLOCKING": count,
+        "CARRIED_FINDINGS": findings,
+    }
+    run = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    assert run.returncode == rc, run.stderr
+    record = tmp_path / "codex-review-skip.json"
+    if status is None:
+        assert not record.exists()
+        return
+    data = json.loads(record.read_text(encoding="utf-8"))
+    assert (data["status"], data["skipped"], data["head_sha"], data["run_attempt"]) == (
+        status,
+        True,
+        "a" * 40,
+        1,
+    )
+    upload = _step("compute-scope", "Upload the skipped-review record")
+    assert upload["if"] == "steps.skip_record.outcome == 'success'"
+    assert upload["with"]["name"] == "codex-review-skip"

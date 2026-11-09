@@ -901,15 +901,18 @@ jobs:
       - run: uv sync --locked --no-config --group dev
 
       # CI reviews only what no earlier run reviewed (issue #639). The anchor is the PR head of the
-      # newest other run of this workflow for this PR whose `Codex delta review` job finished
-      # (success or failure; cancelled or skipped runs reviewed nothing) with a result of
-      # `findings` or `clean`, or whose publish job recorded a valid bypass of its head (R12:
-      # `codex-review-bypass`, no findings). narrow_to_unreviewed distrusts an anchor whose own changes touch
-      # a gate-critical path, since that run's code and workflow came from the PR. `opened` has none by
-      # definition, and no such run means the first review: the whole PR. Read from the GitHub
-      # API, never from the PR. A failed lookup leaves the anchor empty, so the review widens
-      # to the whole PR rather than skipping anything. Fetched by SHA when this checkout lacks
-      # it; a SHA that cannot be fetched (force-pushed away) skips the review, by decision.
+      # newest other run of this workflow for this PR that was already complete when this run was
+      # created (R11: a re-run, which keeps its creation time, finds the same anchor), and that
+      # left one of: a `codex-review-result` of `findings` or `clean` from its `Codex delta review`
+      # job (success or failure; cancelled or skipped runs reviewed nothing), a `codex-review-skip`
+      # from compute-scope when narrowing left nothing to review (R7: it holds the carried
+      # findings), or a valid bypass record from publish (R12: `codex-review-bypass`, no findings).
+      # narrow_to_unreviewed distrusts an anchor whose own changes touch a gate-critical path,
+      # since that run's code and workflow came from the PR. `opened` has none by definition, and
+      # no such run means the first review: the whole PR. Read from the GitHub API, never from the
+      # PR. A failed lookup leaves the anchor empty, so the review widens to the whole PR rather
+      # than skipping anything. Fetched by SHA when this checkout lacks it; a SHA that cannot be
+      # fetched (force-pushed away) skips the review, by decision.
       - name: Find the last reviewed head
         id: anchor
         env:
@@ -922,54 +925,75 @@ jobs:
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           anchor=""
+          # job <name> <field>: that field of the job's latest execution in this candidate run.
+          job() {
+            jq -r --arg n "$1" --arg f "$2" '[.[] | select(.name == $n)][0][$f] // ""' <<< "$jobs" 2>/dev/null || true
+          }
+          # same_execution <job name> <file>: the file names the candidate's head and the attempt
+          # whose execution of that job is still the latest one. A re-run of only the failed jobs
+          # reuses a passed job (same completion time) under a new attempt number, and an artifact
+          # download is not tied to an attempt, so this pairs a file with the verdict of the very
+          # execution that wrote it. A file without both fields is not an anchor.
+          same_execution() {
+            local attempt done_at
+            attempt=$(jq -r --arg sha "$head_sha" 'if .head_sha == $sha then (.run_attempt // "") else "" end' "$2" 2>/dev/null || true)
+            printf '%s' "$attempt" | grep -Eq '^[1-9][0-9]{0,3}$' || return 1
+            done_at=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/attempts/$attempt/jobs" -F per_page=100 \
+              --jq "[.jobs[] | select(.name == \"$1\") | .completed_at][0] // \"\"") || return 1
+            [ -n "$done_at" ] && [ "$done_at" = "$(job "$1" completed_at)" ]
+          }
           # opened and ready_for_review review the whole PR (R4, R14); a draft is not reviewed.
           if [ "$IS_DRAFT" != "true" ] && [ "$EVENT_ACTION" != "opened" ] \
             && [ "$EVENT_ACTION" != "ready_for_review" ]; then
-            runs=$(gh api -X GET "repos/$REPO/actions/workflows/marketplace-ci.yml/runs" \
-              -f event=pull_request -f branch="$HEAD_REF" -f status=completed -F per_page=30 \
-              --jq ".workflow_runs[] | select(.id != $RUN_ID)
-                    | select(.head_repository.full_name == \"$REPO\")
-                    | select(any(.pull_requests[]; .number == $PR_NUMBER))
-                    | \"\(.id) \(.head_sha) \(.run_attempt)\"" ) || runs=""
-            while read -r run_id head_sha run_attempt; do
+            # R11: only runs already complete when this run was created. created_at does not change
+            # across attempts; a candidate's updated_at is at or after its completion, so an earlier
+            # updated_at proves it was complete then. Unreadable: no anchor, never a newer one.
+            created=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at | fromdateiso8601') || created=""
+            runs=""
+            if printf '%s' "$created" | grep -Eq '^[0-9]+$'; then
+              runs=$(gh api -X GET "repos/$REPO/actions/workflows/marketplace-ci.yml/runs" \
+                -f event=pull_request -f branch="$HEAD_REF" -f status=completed -F per_page=30 \
+                --jq ".workflow_runs[] | select(.id != $RUN_ID)
+                      | select(.head_repository.full_name == \"$REPO\")
+                      | select(any(.pull_requests[]; .number == $PR_NUMBER))
+                      | select((.updated_at | fromdateiso8601) < $created)
+                      | \"\(.id) \(.head_sha)\"" ) || runs=""
+            else
+              echo "::warning::cannot read this run's creation time; no anchor, the whole PR is reviewed"
+            fi
+            while read -r run_id head_sha; do
               [ -n "$run_id" ] || continue
-              # The jobs API reports the run's latest attempt, but an artifact download is not tied
-              # to an attempt: a result or record counts only when it names this run's head and
-              # latest attempt, so an earlier attempt's file is never paired with a later verdict.
-              # A result without both fields is not an anchor.
-              printf '%s' "$run_attempt" | grep -Eq '^[1-9][0-9]*$' || continue
               jobs=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/jobs" -F per_page=100 \
-                --jq '.jobs[] | select(.name == "Codex delta review" or .name == "Publish Codex policy result")
-                      | "\(.name)=\(.conclusion // "")"') || jobs=""
-              conclusion=$(sed -n '/^Codex delta review=/{s///p;q;}' <<< "$jobs")
-              published=$(sed -n '/^Publish Codex policy result=/{s///p;q;}' <<< "$jobs")
+                --jq '[.jobs[] | {name, conclusion, completed_at}]') || jobs="[]"
               # R12: a run whose publish job passed on a valid bypass attestation recorded its head
-              # as reviewed with no findings; the record must name this run's own head.
+              # as reviewed with no findings.
               bdir="$RUNNER_TEMP/bypass-$run_id"
-              if [ "$published" = "success" ] \
+              if [ "$(job "Publish Codex policy result" conclusion)" = "success" ] \
                 && gh run download "$run_id" -R "$REPO" -n codex-review-bypass -D "$bdir" >/dev/null 2>&1 \
-                && jq -e --arg sha "$head_sha" --argjson attempt "$run_attempt" \
-                  '.status == "bypassed" and .head_sha == $sha and .run_attempt == $attempt and .findings == []' \
-                  "$bdir/codex-review-bypass.json" >/dev/null 2>&1; then
+                && jq -e '.status == "bypassed" and .findings == []' "$bdir/codex-review-bypass.json" >/dev/null 2>&1 \
+                && same_execution "Publish Codex policy result" "$bdir/codex-review-bypass.json"; then
                 anchor="$head_sha"
                 cp "$bdir/codex-review-bypass.json" "$RUNNER_TEMP/anchor-result.json"
                 break
               fi
-              if [ "$conclusion" != "success" ] && [ "$conclusion" != "failure" ]; then
+              # A job that failed before its reviewers ran (could_not_run: the delta-base
+              # derivation, the Tier-1 refusal, the sandbox probe) reviewed nothing either. A
+              # skipped review counts only through compute-scope's own record (R7).
+              case "$(job "Codex delta review" conclusion)" in
+                success|failure) name="codex-review-result"; producer="Codex delta review" ;;
+                skipped) name="codex-review-skip"; producer="Compute Codex review scope" ;;
+                *) continue ;;
+              esac
+              if [ "$name" = "codex-review-skip" ] && [ "$(job "$producer" conclusion)" != "success" ]; then
                 continue
               fi
-              # A job that failed before its reviewers ran (could_not_run: the delta-base
-              # derivation, the Tier-1 refusal, the sandbox probe) reviewed nothing either.
               dir="$RUNNER_TEMP/anchor-$run_id"
-              status=""
-              if gh run download "$run_id" -R "$REPO" -n codex-review-result -D "$dir" >/dev/null 2>&1; then
-                status=$(jq -r --arg sha "$head_sha" --argjson attempt "$run_attempt" \
-                  'if .head_sha == $sha and .run_attempt == $attempt then (.status // empty) else empty end' \
-                  "$dir/codex-review-result.json" 2>/dev/null || true)
-              fi
-              if [ "$status" = "findings" ] || [ "$status" = "clean" ]; then
+              if gh run download "$run_id" -R "$REPO" -n "$name" -D "$dir" >/dev/null 2>&1 \
+                && jq -e '(.status == "findings" or .status == "clean") and (.findings | type == "array")' \
+                  "$dir/$name.json" >/dev/null 2>&1 \
+                && same_execution "$producer" "$dir/$name.json"; then
                 anchor="$head_sha"
-                cp "$dir/codex-review-result.json" "$RUNNER_TEMP/anchor-result.json"
+                cp "$dir/$name.json" "$RUNNER_TEMP/anchor-result.json"
                 break
               fi
             done <<< "$runs"
@@ -1088,6 +1112,45 @@ jobs:
             fi
           fi
           echo "bypass_eligible=$value" >> "$GITHUB_OUTPUT"
+
+      # R7: a run that skips the Codex call because narrowing left nothing to review (bypass_eligible)
+      # writes no codex-review-result, so without this record the carry chain would fall back to an
+      # older anchor, which can drop out of the 30-run window. This step records the head as
+      # reviewed with the still-blocking carried findings, from this job's base-restored code (the
+      # same merge codex-review runs). Not on a draft, which is not reviewed (R14). A record that
+      # cannot be written fails this job, which publish blocks on.
+      - name: Record a skipped review as this head's result (R7)
+        id: skip_record
+        if: steps.scope.outputs.bypass_eligible == 'true' && github.event.pull_request.draft != true
+        env:
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          CARRIED_BLOCKING: ${{ steps.carry.outputs.count }}
+          CARRIED_FINDINGS: ${{ steps.carry.outputs.findings }}
+        run: |
+          record="$RUNNER_TEMP/codex-review-skip.json"
+          printf '%s\n' '{"status": "clean", "skipped": true, "findings": [], "blocking": false}' > "$record"
+          printf '%s' "$CARRIED_FINDINGS" > "$RUNNER_TEMP/carried-skip.json"
+          set +e
+          uv run python -m scripts.marketplace_ci merge-carried-findings \
+            --result "$record" --carried "$RUNNER_TEMP/carried-skip.json" \
+            --carried-count "$CARRIED_BLOCKING" \
+            --head-sha "$EVENT_HEAD_SHA" --run-attempt "$RUN_ATTEMPT"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+            rm -f "$record"
+            echo "::error::the skipped review could not be recorded with its carried findings -- failing closed"
+            exit 1
+          fi
+
+      - name: Upload the skipped-review record
+        if: steps.skip_record.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: codex-review-skip
+          path: ${{ runner.temp }}/codex-review-skip.json
+          if-no-files-found: error
 
   # Reviews only the CI review delta (issue #639). Requirements:
   # docs/ci-codex-review-user-requirements.md; implementation: docs/ci.md, "CI review delta".
