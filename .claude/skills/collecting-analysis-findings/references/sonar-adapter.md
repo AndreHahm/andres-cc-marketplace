@@ -22,7 +22,8 @@ default install is `~/.local/share/sonarqube-cli/bin`.
 What each form runs: `pr-list` is `sonar api get /api/project_pull_requests/list`; `issues` is `sonar list issues`
 with `--format json --page-size 500 --page <n>`; `ignored` is `sonar api get /api/issues/search` with
 `issueStatuses=ACCEPTED,FALSE_POSITIVE`, `additionalFields=comments`, `ps=500` and `p=<n>`. A fifth form,
-`issue-state --issue <id>`, reads one issue's `issueStatus` and comment count (never the text) for
+`issue-state --issue <id>`, reads one issue's `issueStatus` and comment count (never the text; exit 2 unless Sonar
+returns exactly that issue with a status) for
 `resolving-analysis-findings` and `using-sonarqube-cloud`, and `gate-status --project <key>` with exactly one of
 `--branch` or `--pull-request` runs `sonar quality-gate status` for `using-sonarqube-cloud`.
 

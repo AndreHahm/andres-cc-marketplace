@@ -1139,7 +1139,9 @@ elif args[:2] == ["api", "get"] and args[2].startswith("/api/issues/search"):
     query = parse_qs(urlsplit(args[2]).query)
     page = int(query.get("p", ["1"])[0])
     print(json.dumps({"paging": {"pageIndex": page, "pageSize": 500, "total": 1},
-                      "issues": [dict(issue(1), issueStatus="ACCEPTED")] if page == 1 else []}))
+                      "issues": [] if page != 1 or mode == "no-issue"
+                      else [dict(issue(9 if mode == "other-issue" else 1),
+                                 issueStatus="ACCEPTED")]}))
 elif args[:2] == ["quality-gate", "status"]:
     condition = {"status": "ERROR", "metricKey": "new_coverage", "comparator": "LT",
                  "errorThreshold": "80", "actualValue": "10", "extra": "x"}
@@ -1173,6 +1175,7 @@ def check_sonar_read() -> None:
                 PATH=path or f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
                 STUB_MODE=mode,
                 STUB_LOG=str(log),
+                SONAR_TOKEN="placeholder-token",  # never a real token in the stub's log
             )
             return subprocess.run(
                 [sys.executable, "-I", "-B", str(HERE / "sonar_read.py"), *argv],
@@ -1339,6 +1342,14 @@ def check_sonar_read() -> None:
             ),
         )
 
+        for mode in ("no-issue", "other-issue"):
+            done = run("issue-state", "--issue", "K1", mode=mode)
+            check(
+                f"sonar_read issue-state: {mode} exits 2 and prints nothing",
+                done.returncode == 2 and done.stdout == "",
+                f"{done.returncode} {done.stdout} {done.stderr}",
+            )
+
         refused = {
             "path-like branch": ("issues", "--project", "p", "--branch", "a/../b"),
             "flag-like project": ("issues", "--project", "-I"),
@@ -1470,11 +1481,10 @@ def check_sonar_read() -> None:
         )
         log.write_text("", encoding="utf-8")
         os.environ["SONARQUBE_CLI_SONARCLOUD_URL"] = "https://attacker.example"
-        os.environ["SONAR_TOKEN"] = "placeholder-token"
         try:
-            run("pr-list", "--project", "p")
+            run("pr-list", "--project", "p")  # run() supplies the placeholder SONAR_TOKEN
         finally:
-            del os.environ["SONARQUBE_CLI_SONARCLOUD_URL"], os.environ["SONAR_TOKEN"]
+            del os.environ["SONARQUBE_CLI_SONARCLOUD_URL"]
         seen = json.loads(log.read_text(encoding="utf-8").splitlines()[0])["env"]
         check(
             "sonar_read drops an endpoint override and keeps the auth token",
