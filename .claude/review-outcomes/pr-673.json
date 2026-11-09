@@ -1,0 +1,259 @@
+{
+  "entries": [
+    {
+      "disposition": "fixed",
+      "finding": "4505424312",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4505424315",
+      "note": "pages carry no query params to compare; one command with fixed args binds them",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424319",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424321",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424323",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424324",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424327",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424336",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424340",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505424342",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4505426813",
+      "note": "no stderr sanitizer exists; failure still reported via exit status; reviewer agreed",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4505426817",
+      "note": "strict branch/file allowlist is the deliberate injection guard",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505426821",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "false_positive",
+      "finding": "4505426828",
+      "note": "jq deliberately ungranted so each run prompts once (Boundaries)",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4505426831",
+      "note": "fixed in 9b8d800f, verified by smoke tests or a re-read",
+      "pr": 673,
+      "recorded_at": "2026-11-08T08:23:47+00:00"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "4510489077",
+      "line": 87,
+      "note": "gate-status prints the verdict for CLI exit 51 and 1 with a gate object (07e827d3)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/sonar_read.py",
+      "pr": 673,
+      "recorded_at": "2026-11-09T08:22:37+00:00",
+      "rule": "codex-connector:P2"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f0",
+      "line": 30,
+      "note": "resolver re-collect passes sonar and the project key (b119aa14)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "consistency-reviewer:capability-contract"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f1",
+      "line": 192,
+      "note": "Verify has a Sonar branch: head SHA plus snapshot_consistent (b119aa14)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "consistency-reviewer:functionality-overlap"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f10",
+      "line": 32,
+      "note": "commands only in forms the skill references list (b119aa14)",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "security-reviewer:injection-surface"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f11",
+      "line": 152,
+      "note": "ignored keeps only the last comment; record warns before sharing (b119aa14)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/scripts/collect_sonar.py",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "security-reviewer:credential-pii-leakage"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f12",
+      "line": 90,
+      "note": "Sonar reads go through the pinned sonar_read.py wrapper (b119aa14)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "skill-reviewer:tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f13",
+      "line": 55,
+      "note": "Sonar reads go through the pinned sonar_read.py wrapper (b119aa14)",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "skill-reviewer:tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f2",
+      "line": 8,
+      "note": "codacy-skills added to the repo R23 whitelist (b119aa14)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-rulebook-checker:rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f3",
+      "line": 10,
+      "note": "codacy-skills added to the repo R23 whitelist (b119aa14)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-rulebook-checker:rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f4",
+      "line": 174,
+      "note": "eval evidence moved to references; size reduced (b119aa14)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-rulebook-checker:rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f5",
+      "line": 286,
+      "note": "evidence and scenarios moved to references; Sonar gates kept inline by smoke test (b119aa14)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-rulebook-checker:rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f6",
+      "line": 81,
+      "note": "gotchas moved to cli-commands; size at 100 (b119aa14)",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-rulebook-checker:rulebook-compliance"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f7",
+      "line": 124,
+      "note": "S1309 skips the inline suppression rung (b119aa14)",
+      "path": "plugins/quality-kit/skills/resolving-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "plugin-validator:functionality"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f8",
+      "line": 12,
+      "note": "grant replaced by the pinned sonar_read.py wrapper (b119aa14)",
+      "path": "plugins/quality-kit/skills/using-sonarqube-cloud/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "security-reviewer:tool-scoping"
+    },
+    {
+      "disposition": "fixed",
+      "finding": "codex-run42464374248-f9",
+      "line": 16,
+      "note": "grant replaced by the pinned sonar_read.py wrapper (b119aa14)",
+      "path": "plugins/quality-kit/skills/collecting-analysis-findings/SKILL.md",
+      "pr": 673,
+      "recorded_at": "2026-11-09T07:48:45+00:00",
+      "rule": "security-reviewer:tool-scoping"
+    }
+  ]
+}
