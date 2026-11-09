@@ -1073,8 +1073,8 @@ def check_skills() -> None:
         collecting,
     )
     check(
-        "collecting pre-approves only `sonar list issues`, never `sonar api`",
-        re.findall(r"Bash\(sonar[^)]*\)", collecting) == ["Bash(sonar list issues:*)"],
+        "collecting pre-approves no direct sonar command, only the sonar_read.py wrapper",
+        not re.search(r"Bash\(sonar", collecting) and "scripts/sonar_read.py:*)" in collecting,
         collecting,
     )
     sonar_ref = (SKILL_DIR / "references" / "sonar-adapter.md").read_text(encoding="utf-8")
@@ -1105,7 +1105,289 @@ def guarded(name: str, run) -> None:
         check(f"{name} ran to completion", False, f"{type(exc).__name__}: {exc}")
 
 
+SONAR_STUB = r"""#!/usr/bin/env python3
+import json, os, sys
+from urllib.parse import parse_qs, urlsplit
+args, mode = sys.argv[1:], os.environ.get("STUB_MODE", "ok")
+with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
+    log.write(json.dumps({"cwd": os.getcwd(), "argv": args}) + "\n")
+if mode == "fail":
+    sys.exit(5)
+if mode == "text":
+    print("not json")
+    sys.exit(0)
+person = {"author": "dev@example.com", "assignee": "dev"}
+def issue(n):
+    impact = {"softwareQuality": "RELIABILITY", "severity": "MEDIUM"}
+    return dict(person, key=f"K{n}", rule="python:S1", severity="MAJOR", type="BUG",
+                component="p:a.py", line=n, message="m", issueStatus="OPEN", impacts=[impact],
+                comments=[{"login": "dev", "markdown": "old"}, {"login": "dev", "markdown": "why"}])
+if args[:2] == ["list", "issues"]:
+    page, total = int(args[args.index("--page") + 1]), 20000 if mode == "huge" else 501
+    count = max(0, min(500, total - (page - 1) * 500))
+    print(json.dumps({"paging": {"pageIndex": page, "pageSize": 500, "total": total},
+                      "issues": [issue((page - 1) * 500 + n) for n in range(count)]}))
+elif args[:2] == ["api", "get"] and args[2].startswith("/api/project_pull_requests/list"):
+    print(json.dumps({"pullRequests": [{"key": "7", "analysisDate": "d", "commit": {"sha": "abc"},
+                      "status": {"qualityGateStatus": "OK"}, "contributors": [person]},
+                      {"key": "8", "analysisDate": "d", "commit": {"sha": "def"}, "status": {}}]}))
+elif args[:2] == ["api", "get"] and args[2].startswith("/api/issues/search"):
+    query = parse_qs(urlsplit(args[2]).query)
+    page = int(query.get("p", ["1"])[0])
+    print(json.dumps({"paging": {"pageIndex": page, "pageSize": 500, "total": 1},
+                      "issues": [dict(issue(1), issueStatus="ACCEPTED")] if page == 1 else []}))
+elif args[:2] == ["quality-gate", "status"]:
+    condition = {"status": "ERROR", "metricKey": "new_coverage", "comparator": "LT",
+                 "errorThreshold": "80", "actualValue": "10", "extra": "x"}
+    print(json.dumps({"qualityGate": {"status": "ERROR", "project": "p", "pullRequest": "7",
+                                      "by": person, "conditions": [condition]}}))
+else:
+    sys.exit(9)
+"""
+
+
+def check_sonar_read() -> None:
+    """sonar_read.py against a stub `sonar` on PATH: projection, paging, cwd, refusals."""
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir, log = Path(tmp) / "bin", Path(tmp) / "log.jsonl"
+        bin_dir.mkdir()
+        stub = bin_dir / "sonar"
+        stub.write_text(SONAR_STUB, encoding="utf-8")
+        stub.chmod(0o755)
+
+        def run(
+            *argv: str, mode: str = "ok", path: str | None = None, cwd: str | None = None
+        ) -> subprocess.CompletedProcess[str]:
+            env = dict(
+                os.environ,
+                PATH=path or f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
+                STUB_MODE=mode,
+                STUB_LOG=str(log),
+            )
+            return subprocess.run(
+                [sys.executable, "-I", "-B", str(HERE / "sonar_read.py"), *argv],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=env,
+                cwd=cwd or tmp,
+                check=False,
+            )
+
+        done = run("issues", "--project", "p", "--pull-request", "7")
+        pages = [json.loads(line) for line in done.stdout.splitlines()]
+        check(
+            "sonar_read issues: exit 0, two pages for 501 issues",
+            done.returncode == 0 and len(pages) == 2,
+            done.stderr,
+        )
+        check("sonar_read issues: every issue kept", sum(len(p["issues"]) for p in pages) == 501)
+        check(
+            "sonar_read issues: no identity field or comment",
+            not re.search(r"author|assignee|login|comments", done.stdout),
+        )
+        calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+        check(
+            "sonar_read: runs sonar from home, not the caller's directory",
+            all(c["cwd"] == str(Path.home()) for c in calls),
+        )
+        check(
+            "sonar_read issues: fixed argv with --pull-request and page size",
+            calls[0]["argv"]
+            == [
+                "list",
+                "issues",
+                "-p",
+                "p",
+                "--pull-request",
+                "7",
+                "--format",
+                "json",
+                "--page-size",
+                "500",
+                "--page",
+                "1",
+            ],
+            str(calls[0]["argv"]),
+        )
+        records = Path(tmp) / "scratchpad"
+        records.mkdir(mode=0o700)
+        piped = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-B",
+                str(HERE / "collect_sonar.py"),
+                "--kind",
+                "repo",
+                "--project",
+                "p",
+                "--input",
+                "-",
+                "--output",
+                str(records / "r.json"),
+            ],
+            input=run("issues", "--project", "p").stdout,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        check(
+            "sonar_read output pipes into collect_sonar.py",
+            piped.returncode == 0 and "501 finding" in piped.stdout,
+            piped.stderr,
+        )
+
+        done = run("pr-list", "--project", "p", "--pull-request", "7")
+        check(
+            "sonar_read pr-list: one PR, contributors dropped",
+            done.returncode == 0
+            and json.loads(done.stdout)
+            == {
+                "pullRequests": [
+                    {
+                        "key": "7",
+                        "analysisDate": "d",
+                        "commit": {"sha": "abc"},
+                        "status": {"qualityGateStatus": "OK"},
+                    }
+                ]
+            },
+            done.stdout + done.stderr,
+        )
+        done = run("ignored", "--project", "p")
+        page = json.loads(done.stdout.splitlines()[0]) if done.stdout else {}
+        check(
+            "sonar_read ignored: only the last comment's text kept, login dropped",
+            done.returncode == 0
+            and page.get("issues", [{}])[0].get("comments") == [{"markdown": "why"}]
+            and "login" not in done.stdout,
+            done.stdout + done.stderr,
+        )
+        done = run("issue-state", "--issue", "K1")
+        check(
+            "sonar_read issue-state: key, status and comment count only",
+            done.returncode == 0
+            and json.loads(done.stdout)
+            == {"issues": [{"key": "K1", "issueStatus": "ACCEPTED", "comments": 2}]},
+            done.stdout + done.stderr,
+        )
+        log.write_text("", encoding="utf-8")
+        done = run("gate-status", "--project", "p", "--pull-request", "7")
+        gate_call = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
+        check(
+            "sonar_read gate-status: named target, home cwd, projected conditions",
+            done.returncode == 0
+            and gate_call["argv"]
+            == ["quality-gate", "status", "-p", "p", "--pull-request", "7", "--format", "json"]
+            and gate_call["cwd"] == str(Path.home())
+            and json.loads(done.stdout)
+            == {
+                "qualityGate": {
+                    "status": "ERROR",
+                    "project": "p",
+                    "pullRequest": "7",
+                    "conditions": [
+                        {
+                            "status": "ERROR",
+                            "metricKey": "new_coverage",
+                            "comparator": "LT",
+                            "errorThreshold": "80",
+                            "actualValue": "10",
+                        }
+                    ],
+                }
+            },
+            done.stdout + done.stderr,
+        )
+
+        refused = {
+            "path-like branch": ("issues", "--project", "p", "--branch", "a/../b"),
+            "flag-like project": ("issues", "--project", "-I"),
+            "PR and branch together": (
+                "issues",
+                "--project",
+                "p",
+                "--pull-request",
+                "7",
+                "--branch",
+                "main",
+            ),
+            "an option the form does not take": ("ignored", "--project", "p", "--issue", "K1"),
+            "a missing project": ("pr-list",),
+            "a non-numeric PR": ("pr-list", "--project", "p", "--pull-request", "7;x"),
+            "an unknown form": ("api", "--project", "p"),
+            "a flag-like project in = form": ("issues", "--project=-x"),
+            "a flag-like file in = form": ("issues", "--project", "p", "--file=-x"),
+            "a branch ending in a newline": ("issues", "--project", "p", "--branch", "main\n"),
+            "a non-ASCII digit in the PR": (
+                "pr-list",
+                "--project",
+                "p",
+                "--pull-request",
+                "\u0663",
+            ),
+            "an abbreviated option": ("issues", "--proj", "p"),
+            "an extra positional argument": ("issues", "extra", "--project", "p"),
+            "a branch over 255 characters": ("issues", "--project", "p", "--branch", "a" * 256),
+            "gate-status with no target": ("gate-status", "--project", "p"),
+            "gate-status with two targets": (
+                "gate-status",
+                "--project",
+                "p",
+                "--branch",
+                "main",
+                "--pull-request",
+                "7",
+            ),
+            "gate-status with a file": (
+                "gate-status",
+                "--project",
+                "p",
+                "--branch",
+                "m",
+                "--file",
+                "f",
+            ),
+        }
+        log.write_text("", encoding="utf-8")
+        for name, argv in refused.items():
+            done = run(*argv)
+            check(
+                f"sonar_read refuses {name} (exit 2)",
+                done.returncode == 2,
+                f"{done.returncode} {done.stderr}",
+            )
+        check(
+            "sonar_read: a refused value never reaches sonar", log.read_text(encoding="utf-8") == ""
+        )
+        done = run("pr-list", "--project", "p", path=".", cwd=str(bin_dir))
+        check(
+            "sonar_read refuses a sonar found through a relative PATH entry (exit 2, not run)",
+            done.returncode == 2 and log.read_text(encoding="utf-8") == "",
+            f"{done.returncode} {done.stderr}",
+        )
+        check(
+            "sonar_read: sonar failure exits 1, prints nothing",
+            (lambda d: d.returncode == 1 and d.stdout == "")(
+                run("pr-list", "--project", "p", mode="fail")
+            ),
+        )
+        check(
+            "sonar_read: non-JSON output exits 2",
+            run("pr-list", "--project", "p", mode="text").returncode == 2,
+        )
+        check(
+            "sonar_read: more than 20 pages exits 3, prints nothing",
+            (lambda d: d.returncode == 3 and d.stdout == "")(
+                run("issues", "--project", "p", mode="huge")
+            ),
+        )
+
+
 def main() -> int:
+    guarded("sonar read wrapper checks", check_sonar_read)
     guarded("adapter checks", check_adapter)
     guarded("sonar adapter checks", check_sonar_adapter)
     guarded("sonar snapshot confirm checks", check_sonar_confirm)

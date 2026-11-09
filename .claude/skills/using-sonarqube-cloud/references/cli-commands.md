@@ -4,18 +4,20 @@ Checked 2026-11-07 against `sonar` CLI 1.11.0 and SonarQube Cloud.
 
 ## Read forms
 
-Run each form exactly as written; the pipes are real shell pipes. The piped forms start with `set -o pipefail;`,
-because `2>/dev/null` hides the CLI's error and `jq` exits 0 on empty input: without it a failed lookup looks like an
-empty answer. A non-zero exit means the lookup failed (a missing project exits 1, checked 2026-11-08): report that,
-never "nothing found". The exception is the gate form: if it printed JSON whose `qualityGate.status` is `ERROR`,
+Run each form exactly as written. `<read>` stands for
+`python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings/scripts/sonar_read.py`, the pre-approved wrapper
+that runs a fixed `sonar` read and prints only the fields shown. A non-zero exit means the lookup failed (1: `sonar`
+failed, for example a missing project, checked 2026-11-08; 2: a refused value, `sonar` off `PATH`, or a reply that is
+not JSON; 3: more than 10,000 issues): report that, never "nothing found". The exception is the gate form: if it printed JSON whose `qualityGate.status` is `ERROR`,
 report a failed gate, not a failed lookup. Whether a failed gate exits non-zero was not checked (no failing gate was
 available on 2026-11-08), so read the status either way.
 
-A gate status. Always name the target: run from inside a checkout, a bare form reports the gate of that checkout's
-branch or PR, not the default branch (checked 2026-11-08: inside a PR branch's worktree it returned that PR's gate):
+A gate status. The wrapper requires exactly one target and runs from the home directory, because a bare
+`sonar quality-gate status` run inside a checkout reports that checkout's branch or PR, not the default branch
+(checked 2026-11-08: inside a PR branch's worktree it returned that PR's gate):
 
 ```bash
-sonar quality-gate status -p <key> --branch <b> --format json 2>/dev/null
+<read> gate-status --project <key> --branch <b>
 ```
 
 Use `--pull-request <n>` in place of `--branch <b>` for a PR, and confirm the `branch` or `pullRequest` field in the
@@ -26,37 +28,50 @@ PR's current head: report it as the analyzed commit, and use `collecting-analysi
 checked against the current head:
 
 ```bash
-set -o pipefail; sonar api get "/api/project_pull_requests/list?project=<key>" 2>/dev/null | jq '.pullRequests[] | select(.key == "<n>") | {key, analysisDate, sha: .commit.sha, gate: .status.qualityGateStatus}'
+<read> pr-list --project <key> --pull-request <n>
 ```
+
+It prints `{"pullRequests": [{key, analysisDate, commit: {sha}, status: {qualityGateStatus}}]}`; an empty list means
+Sonar has no analysis for that PR.
 
 Open issues on a PR, or on a branch with `--branch <b>` in place of `--pull-request <n>`; add `--file <path>` for one
 file's issues:
 
 ```bash
-set -o pipefail; sonar list issues -p <key> --pull-request <n> --format json 2>/dev/null | jq '{paging, issues: [.issues[] | {key, rule, severity, type, impacts, component, line, message, issueStatus}]}'
+<read> issues --project <key> --pull-request <n>
 ```
 
-If `paging.total` is larger than the issues shown, the list is one page: say how many were shown out of the total,
-and fetch the next with `--page <p>` (500 per page) only if the question needs the rest.
+It fetches every page (500 each) and prints one JSON line per page, `{paging, issues: [{key, rule, severity, type,
+component, line, message, issueStatus, impacts}]}`; count across the lines.
 
 One issue's status and how many comments it has. Comment text is left out because it can name or mention a
 person; if the question needs it, ask the user to read it in the Sonar UI and pass on what is relevant:
 
 ```bash
-set -o pipefail; sonar api get "/api/issues/search?issues=<key>&additionalFields=comments" 2>/dev/null | jq '.issues[] | {key, issueStatus, comments: (.comments // [] | length)}'
+<read> issue-state --issue <key>
 ```
 
-What an endpoint accepts:
+What an endpoint accepts (not a wrapper form, so it prompts; its output names no person):
 
 ```bash
 sonar api get "/api/webservices/list?include_internals=false" 2>/dev/null
 ```
 
-Each form keeps only what it needs, because the raw responses carry identity fields. `sonar quality-gate status` carries none.
-`sonar list issues` is pre-approved, so a bare run without the `jq` part raises no prompt and prints `author` and
-`assignee` into the session: never run it without the projection.
+Each wrapper form keeps only what it needs, because the raw responses carry identity fields. A direct `sonar list issues` or `sonar api get` is not pre-approved and prints those fields: use the
+wrapper.
 
-`--page-size` is at most 500. The API refuses to go past 10,000 results with a `400`.
+The API refuses to go past 10,000 results with a `400`, so the wrapper stops there with exit 3: narrow with `--file`.
+
+## Gotchas
+
+- **`sonar` may be off `PATH`.** The default install is `~/.local/share/sonarqube-cli/bin/sonar`; `sonar_read.py`
+  finds it only on `PATH`, and exits 2 otherwise.
+- **The banner goes to stderr.** Add `2>/dev/null` when reading JSON.
+- **Responses carry identity fields.** `author`, `assignee`, `contributors`, comment logins and commit messages. Use
+  the `sonar_read.py` forms: a bare `sonar api get` or `sonar list issues` prints them all into the session.
+- **`--severities` names differ from response names** in MQR mode, and `MINOR` exits 2 with empty stdout.
+- **`.sonarcloud.properties` is read from the default branch only**, so a change takes effect after merge.
+- **No coverage under Automatic Analysis.** A missing coverage figure is expected, not a fault.
 
 ## Severity names
 

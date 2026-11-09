@@ -102,11 +102,14 @@ def check_grants(fm: dict[str, str], body: str) -> None:
         not re.search(r"\b(AskUserQuestion|Write)\b", grants),
     )
     check(
-        "grants only the pinned head-read script in Bash (no gh or codacy command is pre-approved)",
+        "grants only the pinned head read and the issue-state wrapper form in Bash"
+        " (no gh, codacy or sonar command)",
         re.findall(r"(?<![\w(])Bash(?:\([^)]*\))?", grants)
         == [
             "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/resolving-analysis-findings"
-            "/scripts/read_pr_head.py:*)"
+            "/scripts/read_pr_head.py:*)",
+            "Bash(python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findings"
+            "/scripts/sonar_read.py issue-state:*)",
         ],
     )
     check(

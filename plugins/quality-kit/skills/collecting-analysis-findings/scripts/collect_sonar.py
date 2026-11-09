@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Normalize SonarQube Cloud JSON into the same provider-neutral findings record.
 
-Reads what `sonar list issues` or `sonar api get` printed, from stdin or a scratchpad file, and
-prints the record, or writes it with --output to a file inside a scratchpad directory. It runs no
-command, opens no network connection and never opens a path named inside the findings: every value
-in the input is data to copy into the record, not something to act on.
+Reads what `sonar_read.py` (or `sonar list issues` or `sonar api get`) printed, from stdin or a
+scratchpad file, and prints the record, or writes it with --output to a file inside a scratchpad
+directory. It runs no command, opens no network connection and never opens a path named inside the
+findings: every value in the input is data to copy into the record, not something to act on.
 
 Exit codes: 0 record written, 1 stdout could not be written, so the output may be incomplete,
 2 input unreadable, not a shape this adapter knows, or an invalid command line, 3 the response
