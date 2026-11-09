@@ -718,10 +718,6 @@ jobs:
       anchor_sha: ${{ steps.anchor.outputs.sha }}
       # Blocking findings carried from the last reviewed run (R7); "error" when not computed.
       carried_blocking: ${{ steps.carry.outputs.count }}
-      # The carried findings themselves, as one JSON line (empty when not computed): codex-review
-      # adds them to its own result, so a later run that takes this run as its anchor still
-      # carries them (R7).
-      carried_findings: ${{ steps.carry.outputs.findings }}
       # This run was started by adding the bypass label (R12): no Codex call, and publish
       # passes only on a valid attestation.
       bypass_label_run: ${{ steps.scope.outputs.bypass_label_run }}
@@ -1034,7 +1030,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           count="error"
-          findings=""
+          carried_file="$RUNNER_TEMP/carried-findings.json"
+          rm -f "$carried_file"
           # The live body, not the event's: a re-run of an old `edited` run must not bring back a
           # waiver that has since been removed.
           set +e
@@ -1050,8 +1047,7 @@ jobs:
           if [ $body_rc -eq 0 ] && [ $rc -eq 0 ] && [ -f carried.json ]; then
             candidate=$(jq -r '.count' carried.json 2>/dev/null || echo "")
             if printf '%s' "$candidate" | grep -Eq '^[0-9]+$'; then
-              findings=$(jq -c '.carried' carried.json 2>/dev/null || echo "")
-              if [ -n "$findings" ]; then
+              if jq -c '.carried' carried.json > "$carried_file" 2>/dev/null && [ -s "$carried_file" ]; then
                 count="$candidate"
               fi
             fi
@@ -1068,9 +1064,21 @@ jobs:
           echo "carried blocking findings: $count"
           echo "count=$count" >> "$GITHUB_OUTPUT"
           if [ "$count" = "error" ]; then
-            findings=""
+            rm -f "$carried_file"
           fi
-          echo "findings=$findings" >> "$GITHUB_OUTPUT"
+
+      # The carried list travels as a file, not as a job output or an environment variable, so its
+      # size is not bound by GitHub's 1 MB job-output limit or the per-string limit of a process
+      # environment. codex-review downloads it; a missing file fails closed there.
+      - name: Upload the carried findings
+        if: steps.carry.outputs.count != 'error'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: carried-findings
+          path: ${{ runner.temp }}/carried-findings.json
+          if-no-files-found: error
+          # a re-run of this job replaces the earlier attempt's list
+          overwrite: true
 
       - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
         id: scope
@@ -1137,14 +1145,12 @@ jobs:
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           CARRIED_BLOCKING: ${{ steps.carry.outputs.count }}
-          CARRIED_FINDINGS: ${{ steps.carry.outputs.findings }}
         run: |
           record="$RUNNER_TEMP/codex-review-skip.json"
           printf '%s\n' '{"status": "clean", "skipped": true, "findings": [], "blocking": false}' > "$record"
-          printf '%s' "$CARRIED_FINDINGS" > "$RUNNER_TEMP/carried-skip.json"
           set +e
           uv run python -m scripts.marketplace_ci merge-carried-findings \
-            --result "$record" --carried "$RUNNER_TEMP/carried-skip.json" \
+            --result "$record" --carried "$RUNNER_TEMP/carried-findings.json" \
             --carried-count "$CARRIED_BLOCKING" \
             --head-sha "$EVENT_HEAD_SHA" --run-attempt "$RUN_ATTEMPT"
           rc=$?
@@ -1176,6 +1182,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
+      pull-requests: read  # the live draft check before the Codex call (R14)
     outputs:
       # findings | clean | could_not_run, read from the result file by the last step;
       # the publish step words its message by it. Never decides pass/fail itself.
@@ -1535,6 +1542,25 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           codex sandbox /bin/true
 
+      # R14: this run started on a ready PR, but it may have been converted to draft while it
+      # waited, and `converted_to_draft` starts no run that would cancel this one. The draft flag
+      # is re-read live right before the Codex call; a draft, or a flag that cannot be read, makes
+      # no call and fails this job (a draft cannot be merged; marking it ready reviews it). A
+      # separate step, so the token never reaches the step that runs the PR's code.
+      - name: Make no Codex call if the PR was converted to draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # By absolute path (the runner image's apt package), not through PATH, which an earlier
+          # step could have extended.
+          live=$(/usr/bin/gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.draft' 2>/dev/null || echo "")
+          if [ "$live" != "false" ]; then
+            echo "::error::the PR is a draft now (or its draft state could not be read): no Codex call -- marking it ready re-runs the review"
+            exit 1
+          fi
+
       - name: Dispatch reviewers directly, validate output, aggregate findings
         id: dispatch
         env:
@@ -1581,12 +1607,20 @@ jobs:
       # the same module. A result that cannot be merged becomes `could_not_run`, which is never
       # an anchor. Only a findings/clean result from the dispatch step is merged; any other file
       # (absent, could_not_run) is left alone, since it is not an anchor either.
+      # A download that fails leaves no file, so the merge below fails closed (`could_not_run`).
+      - name: Download the carried findings
+        if: always() && needs.compute-scope.outputs.carried_blocking != 'error'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
+        with:
+          name: carried-findings
+          path: ${{ runner.temp }}/carried-in
+
       - name: Add the carried findings to the review result
         if: always()
         env:
           DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
           CARRIED_BLOCKING: ${{ needs.compute-scope.outputs.carried_blocking }}
-          CARRIED_FINDINGS: ${{ needs.compute-scope.outputs.carried_findings }}
           # Every result names this run's PR head and attempt; the anchor lookup accepts a result
           # only when both match the run it downloaded it from.
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -1618,10 +1652,9 @@ jobs:
           if [ "$DISPATCH_OUTCOME" != "success" ] && [ "$DISPATCH_OUTCOME" != "failure" ]; then
             could_not_run "a review result exists although the dispatch step did not run to an end"
           fi
-          printf '%s' "$CARRIED_FINDINGS" > "$RUNNER_TEMP/carried.json"
           set +e
           uv run python -m scripts.marketplace_ci merge-carried-findings \
-            --result codex-review-result.json --carried "$RUNNER_TEMP/carried.json" \
+            --result codex-review-result.json --carried "$RUNNER_TEMP/carried-in/carried-findings.json" \
             --carried-count "$CARRIED_BLOCKING" \
             --head-sha "$EVENT_HEAD_SHA" --run-attempt "$RUN_ATTEMPT"
           rc=$?
