@@ -831,7 +831,8 @@ if args[0] == "api":
     path = os.path.join(fixtures, url.replace("/", "_") + ".json")
     if not os.path.exists(path):
         sys.exit(1)
-    data = json.load(open(path))
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
     out = subprocess.run(["jq", "-r", expr], input=json.dumps(data), capture_output=True, text=True)
     sys.stdout.write(out.stdout)
     sys.exit(out.returncode)
