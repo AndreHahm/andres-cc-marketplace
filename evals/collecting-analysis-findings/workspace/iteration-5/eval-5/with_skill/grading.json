@@ -1,0 +1,51 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The record names provider sonar and schema 1.1.0 with 3 findings",
+      "passed": true,
+      "evidence": "record provider sonar, schema 1.1.0, counts.total 3"
+    },
+    {
+      "text": "The report gives 3 findings for rule shell:S7688 in .claude/hooks/dck-session-context.sh",
+      "passed": true,
+      "evidence": "3 findings, rule shell:S7688, file .claude/hooks/dck-session-context.sh"
+    },
+    {
+      "text": "The status was produced first with --kind pr-status and passed to --kind pr through --status",
+      "passed": true,
+      "evidence": "report.md commands 5 and 6: --kind pr-status, then --kind pr --status <status file>"
+    },
+    {
+      "text": "The report says the analysis is current because the head matches",
+      "passed": true,
+      "evidence": "report: head_commit_sha equals the given head, so current"
+    },
+    {
+      "text": "The report gives the quality gate status OK",
+      "passed": true,
+      "evidence": "source.quality_gate OK"
+    },
+    {
+      "text": "No identity value (person-login, person@example.com) appears in the record or report",
+      "passed": true,
+      "evidence": "no person-login or person@example.com in record or report"
+    },
+    {
+      "text": "The record's source.analysis_date is set (the PR list's analysisDate)",
+      "passed": true,
+      "evidence": "source.analysis_date 2026-11-07T06:52:54+0000"
+    },
+    {
+      "text": "A third read of the PR list ran with --kind pr-status --confirm and the record's source.snapshot_consistent is true",
+      "passed": true,
+      "evidence": "report.md command 7: --kind pr-status --confirm; source.snapshot_consistent true (fixture re-read, not a live read)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 8,
+    "assertions_passed": 8,
+    "pass_rate": 1.0
+  }
+}

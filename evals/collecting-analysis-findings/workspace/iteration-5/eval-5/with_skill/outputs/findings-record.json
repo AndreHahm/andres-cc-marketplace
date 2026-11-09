@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.1.0",
+  "provider": "sonar",
+  "source": {
+    "kind": "pr",
+    "repository": "example_project",
+    "pull_request": 651,
+    "pr_status": null,
+    "head_commit_sha": "1111111111111111111111111111111111111111",
+    "is_analysing": null,
+    "quality_gate": "OK",
+    "analysis_date": "2026-11-07T06:52:54+0000",
+    "snapshot_consistent": true
+  },
+  "findings": [
+    {
+      "provider": "sonar",
+      "tool": null,
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "category": "CODE_SMELL",
+      "impacts": [
+        {
+          "software_quality": "RELIABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "subcategory": null,
+      "file": ".claude/hooks/dck-session-context.sh",
+      "line": 8,
+      "issue_id": "AaFIXTURE00000000001",
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "state": "new",
+      "delta_type": null,
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    },
+    {
+      "provider": "sonar",
+      "tool": null,
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "category": "CODE_SMELL",
+      "impacts": [
+        {
+          "software_quality": "RELIABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "subcategory": null,
+      "file": ".claude/hooks/dck-session-context.sh",
+      "line": 9,
+      "issue_id": "AaFIXTURE00000000002",
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "state": "new",
+      "delta_type": null,
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    },
+    {
+      "provider": "sonar",
+      "tool": null,
+      "rule": "shell:S7688",
+      "severity": "MAJOR",
+      "category": "CODE_SMELL",
+      "impacts": [
+        {
+          "software_quality": "RELIABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "subcategory": null,
+      "file": ".claude/hooks/dck-session-context.sh",
+      "line": 15,
+      "issue_id": "AaFIXTURE00000000003",
+      "message": "Use '[[' instead of '[' for conditional tests. The '[[' construct is safer and more feature-rich.",
+      "state": "new",
+      "delta_type": null,
+      "ignored": false,
+      "ignore_reason": null,
+      "ignore_comment": null
+    }
+  ],
+  "groups": [
+    {
+      "rule": "shell:S7688",
+      "file": ".claude/hooks/dck-session-context.sh",
+      "count": 3
+    }
+  ],
+  "counts": {
+    "total": 3,
+    "by_category": {
+      "CODE_SMELL": 3
+    }
+  }
+}

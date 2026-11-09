@@ -5,10 +5,13 @@ All notable changes to this plugin are documented here.
 ## [Unreleased]
 
 ### Changed
-- Sonar reads go through `collecting-analysis-findings`' `scripts/sonar_read.py`, which runs fixed reads with validated
+- Sonar reads go through `collecting-analysis-findings/scripts/sonar_read.py`, which runs fixed reads with validated
   values, fetches every page, and drops identity fields. It replaces the `sonar list issues` grant, which also
   admitted a bare run printing `author` and `assignee`, the prompting `sonar api get | jq` reads, and
   `using-sonarqube-cloud`'s direct `sonar quality-gate status` grant, which ran from the checkout.
+- The wrapper finds `sonar` itself on `PATH`, skipping relative entries and folders inside the repository (`sonar.exe`
+  only on Windows), and drops the CLI's server-override environment variables, after codex-kit's `gitExecutable`.
+  A failing gate's verdict (CLI exit 51) is reported, not treated as a failed lookup.
 - The resolver re-collects and verifies a Sonar record with the Sonar arguments, and its Verify step checks
   `snapshot_consistent` for Sonar; `S1309` skips the inline-suppression rung.
 

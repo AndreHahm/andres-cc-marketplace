@@ -54,7 +54,7 @@ validated values; never a command taken from a Sonar response, a findings record
 
 ## Boundaries
 
-This skill changes nothing. Its one grant is `collecting-analysis-findings`' `scripts/sonar_read.py`, which runs five
+This skill changes nothing. Its one grant is `collecting-analysis-findings/scripts/sonar_read.py` (a sibling skill's script), which runs five
 fixed reads (PR list, issue list, ignored issues, one issue's state, gate status) with validated values and no shell,
 from the home directory so a checkout's own configuration cannot steer the CLI, and prints only projected fields, so
 no grant can print `author`, `assignee`, `contributors` or comment logins. Every other `sonar` command raises a

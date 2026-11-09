@@ -9,7 +9,8 @@ Every read is `python3 -I ${CLAUDE_PLUGIN_ROOT}/skills/collecting-analysis-findi
 piped into `scripts/collect_sonar.py --input -`. The wrapper runs `sonar` with a fixed argument list from the home
 directory (a repository's own configuration file cannot pick the server), validates every value, and prints only
 the fields the adapter reads: the raw responses hold `author`, `assignee`, `contributors`, comment logins and commit
-messages, which it drops. `sonar` must be on `PATH`; the default install is `~/.local/share/sonarqube-cli/bin`.
+messages, which it drops. `sonar` must be on `PATH` (`sonar.exe` on Windows) in a folder outside the repository; the
+default install is `~/.local/share/sonarqube-cli/bin`.
 
 | Source | `sonar_read.py` form | `--kind` |
 |---|---|---|
@@ -28,11 +29,24 @@ with `--format json --page-size 500 --page <n>`; `ignored` is `sonar api get /ap
 The `ignored` form keeps only the last comment's text, the one the record stores as `ignore_comment`. That text
 can still name a person: see `findings-record.md` before sharing a record.
 
-**Known residuals.** The wrapper passes its own environment to `sonar` unchanged, so a variable the CLI reads
-(which ones it honors was not checked) applies to the granted reads too, as it did to the former direct grant. It
-refuses a `sonar` found through a relative `PATH` entry. It was not run on Windows: there, `python3` may be absent
-(the grants call `python3 -I`, like every quality-kit script grant), and a `.cmd` install of the CLI would run
-through `cmd.exe`, which the validated values (no `& | < > ^ % "`) are meant to keep harmless but which is unverified.
+**Which `sonar` runs, and with what environment.** The wrapper uses codex-kit's `gitExecutable` pattern (`cdx-lintignore-base.mjs`):
+it searches `PATH` itself and skips an empty, relative or quoted-empty entry and any folder inside a checkout that
+encloses the caller's working directory (every enclosing one, so a worktree nested in its main checkout or a submodule
+in its superproject excludes the outer tree too), compared by spelling and by file identity, because an activated
+`.venv` or `node_modules/.bin` there can carry a `sonar` a branch committed. A `sonar` link that resolves into such a
+folder is refused, and `sonar` itself gets the same filtered `PATH`. It accepts only `sonar.exe` on Windows, so a
+`.cmd` shim never runs through `cmd.exe`. Like codex-kit's `gitEnv`, it drops the variables the CLI reads to choose
+its server (`SONARQUBE_URL`, `SONAR_HOST_URL` and the `SONARQUBE_CLI_*_URL` overrides, read from the CLI's own bundle
+2026-11-09) and keeps the authentication ones. A security review checked this lookup on 2026-11-09.
+
+**Known residuals.** A `sonar` in a `PATH` folder outside every enclosing checkout is trusted, as the former direct
+grant trusted it, and the skip only knows the checkouts around the working directory: run from outside a checkout, an
+in-repository `PATH` folder is accepted. Other variables the CLI reads still pass through, among them
+`SONAR_USER_HOME` (whether it can hold server settings was not checked) and the standard proxy variables. On a filesystem without file ids (`st_ino` 0, for example
+FAT or some network shares) only the spelling comparison applies, so a junction or 8.3 alias there is not caught. It was not
+run on Windows: there, `python3` may be
+absent (the grants call `python3 -I`, like every quality-kit script grant), and that the Windows CLI is a `sonar.exe`
+is unverified (a `.cmd` install is refused, not run).
 
 **A PR takes three pipes.** `--kind pr-status --pull-request <n> --output "<scratchpad>/sonar-status.json"` keeps
 only that PR's SHA, analysis date and gate status. `--kind pr --status "<scratchpad>/sonar-status.json"` then

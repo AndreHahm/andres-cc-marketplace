@@ -185,7 +185,7 @@ one-way dependency with `resolving-analysis-findings`.
 Eval evidence (`evals/collecting-analysis-findings/evals.json`, Codacy evals 1 to 4 and Sonar evals 5 and 6) is in
 `references/testing-scenarios.md`.
 
-**Last dated run record:** 2026-11-09, `scripts/smoke_test.py` passed, including the `sonar_read.py` checks
+**Last dated run record:** 2026-11-09, eval 5 re-run (iteration 5, with skill, 8 of 8), and `scripts/smoke_test.py` passed, including the `sonar_read.py` checks
 against a stub `sonar`; every wrapper form was also run live against SonarQube Cloud for PR 673, and its output piped
 into `collect_sonar.py`. 2026-10-17, `scripts/smoke_test.py`, 60 of 60 checks passed. The adapter was also
 run by hand against this repository's real Cloud CLI output for a PR, the repository list and the ignored list;

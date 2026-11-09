@@ -15,3 +15,8 @@ two assertions. The adapter's own behavior is covered by the smoke test.
 **Sonar evidence:** evals 5 and 6, Full Pipeline, iteration 3, 2026-11-07, one run per arm, on the redacted fixtures: with skill 9 of 9 assertions, baseline 7 of 9. Only eval 5 separates the arms (the record and the two-pipe status step). Eval 6 passes for both arms, one assertion only because the baseline never mentions `is_analysing`. `scripts/smoke_test.py` passed all its checks the same day, adapter included.
 
 **Sonar re-run after the review fixes:** evals 5 and 6 with skill only (baselines do not read this file), iteration 4, 2026-11-07: 9 of 9 assertions.
+
+**Eval 5 after the third read:** iteration 4 predates the `--confirm` read, so its eval 5 record has no
+`analysis_date` or `snapshot_consistent`. Eval 5 was re-run with skill only (Quick Workflow), iteration 5,
+2026-11-09, with two added assertions for those fields: 8 of 8. Its confirm read re-used the saved PR list, so
+`snapshot_consistent: true` there shows the pipe works, not that two live reads agreed.
