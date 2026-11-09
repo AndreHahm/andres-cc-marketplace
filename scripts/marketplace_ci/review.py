@@ -1260,6 +1260,134 @@ def narrow_to_unreviewed(
     return tuple(kept)
 
 
+# Blocking findings carry forward (issue #639, requirement R7): a blocking finding of the anchor
+# run whose file the pull request has not changed since stays blocking, without a new Codex call,
+# until the file changes or the pull request body waives it.
+_WAIVER_SECTION = re.compile(r"^##\s+Accepted CI findings\s*$", re.IGNORECASE | re.MULTILINE)
+_WAIVER_LINE = re.compile(
+    r"^\s*[-*]\s+(?P<rule>\S+)\s+(?P<path>\S+?):(?P<line>\d+)\s+[-–—]+\s+"
+    r"(?P<kind>accepted|residual|deferred)\b(?:\s+#(?P<issue>\d+))?",
+    re.IGNORECASE,
+)
+_MAX_CARRIED_INPUT = 500
+_CARRY_FIELD = re.compile(r"[^\x00-\x1f\x7f]{1,300}")
+
+
+def finding_waiver_key(rule: object, path: object, line: object) -> tuple[str, str, int]:
+    """How a waiver line names a finding: its rule (`-` when it has none), path and line (0 when
+    it has none)."""
+    rule_text = rule if isinstance(rule, str) and rule.strip() else "-"
+    line_no = line if isinstance(line, int) and not isinstance(line, bool) and line > 0 else 0
+    return rule_text.strip(), str(path), line_no
+
+
+def parse_waivers(pr_body: str, issue_is_open: Callable[[int], bool]) -> set[tuple[str, str, int]]:
+    """The findings the pull request body's `## Accepted CI findings` section waives. A
+    `deferred` line counts only with an open issue of this repository; `accepted` and
+    `residual` lines need none. The section runs to the next heading of level 1 or 2."""
+    match = _WAIVER_SECTION.search(pr_body or "")
+    if match is None:
+        return set()
+    rest = pr_body[match.end() :]
+    end = re.search(r"^#{1,2}\s", rest, re.MULTILINE)
+    section = rest[: end.start()] if end else rest
+    waived: set[tuple[str, str, int]] = set()
+    for raw in section.splitlines():
+        m = _WAIVER_LINE.match(raw)
+        if m is None:
+            continue
+        if m["kind"].lower() == "deferred" and not (m["issue"] and issue_is_open(int(m["issue"]))):
+            continue
+        waived.add((m["rule"], m["path"], int(m["line"])))
+    return waived
+
+
+class CarryError(Exception):
+    """The carried findings cannot be decided; the caller must block."""
+
+
+def carry_blocking_findings(
+    repo: Path,
+    base_sha: str,
+    anchor_sha: str,
+    anchor_result: object,
+    pr_body: str,
+    issue_is_open: Callable[[int], bool],
+    anchor_paths: Callable[[], Sequence[str]] | None = None,
+) -> list[dict]:
+    """The anchor run's blocking findings that still block: their file has not changed since the
+    anchor (or the anchor cannot be resolved here, so that cannot be told) and the pull request
+    body does not waive them. An anchor whose own changes touch a gate-critical path or a
+    reviewer-steering file carries nothing, since the whole delta is reviewed again (R10).
+    When the anchor cannot be resolved here, `anchor_paths` (the paths its PR changes, from the
+    GitHub API) decides that trust question instead; without it, or when it fails, this raises
+    CarryError. A blocking entry that cannot be read (no usable path or rule, more entries than
+    can be checked) raises CarryError too, rather than silently not blocking. Each returned entry
+    holds `rule`, `path`, `line` and `severity`."""
+    resolved = (
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{anchor_sha}^{{commit}}"],
+            cwd=repo,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+    if resolved:
+        if _anchor_touches_gate(repo, base_sha, anchor_sha):
+            return []
+    else:
+        if anchor_paths is None:
+            raise CarryError("anchor unresolved and its changed paths are unknown")
+        try:
+            paths = list(anchor_paths())
+        except Exception as exc:
+            raise CarryError(f"cannot list the anchor's changed paths: {exc!r}") from exc
+        if any(is_gate_critical(p) or _steers_reviewers(p) for p in paths):
+            # Without the commit nothing re-reviews the whole delta (narrowing keeps only the
+            # gate-critical paths), so an untrusted, unfetchable anchor cannot be decided.
+            raise CarryError("the unfetchable anchor changed a gate-critical or reviewer file")
+    # After the trust checks: an anchor result without a findings list is unreadable, not clean
+    # (run-codex-review always writes one).
+    findings = anchor_result.get("findings") if isinstance(anchor_result, dict) else None
+    if not isinstance(findings, list):
+        raise CarryError("anchor result has no findings list")
+    if len(findings) > _MAX_CARRIED_INPUT:
+        raise CarryError(f"anchor result has more than {_MAX_CARRIED_INPUT} findings")
+    waived = parse_waivers(pr_body, issue_is_open)
+    unchanged: dict[str, bool] = {}
+    carried: list[dict] = []
+    for entry in findings:
+        if not isinstance(entry, dict) or entry.get("blocking") is not True:
+            continue
+        if entry.get("suppressed") is True:
+            continue
+        path = entry.get("path")
+        if not isinstance(path, str) or not _CARRY_FIELD.fullmatch(path):
+            raise CarryError("a blocking finding has no usable path")
+        rule, _, line = finding_waiver_key(entry.get("rule"), path, entry.get("line"))
+        if not _CARRY_FIELD.fullmatch(rule):
+            raise CarryError("a blocking finding has no usable rule")
+        if (rule, path, line) in waived:
+            continue
+        if resolved:
+            if path not in unchanged:
+                now = _pr_side_patch(repo, base_sha, "HEAD", [path])
+                then = _pr_side_patch(repo, base_sha, anchor_sha, [path])
+                unchanged[path] = now is not None and now == then
+            if not unchanged[path]:
+                continue
+        severity = entry.get("severity")
+        carried.append(
+            {
+                "rule": rule,
+                "path": path,
+                "line": line,
+                "severity": severity if isinstance(severity, str) else "",
+            }
+        )
+    return carried
+
+
 # Off Linux the filesystem (and so the bridge's existence check) may match a path
 # whatever its case or Unicode normalisation form, but git reports the stored
 # spelling. Fold both sides there; on Linux a different spelling is a different file.

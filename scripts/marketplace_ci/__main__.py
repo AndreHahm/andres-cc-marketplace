@@ -20,6 +20,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -837,6 +838,85 @@ def _ci_review_delta(args: argparse.Namespace, repo: Path, changed, base_sha: st
     if anchor:
         changed = narrow_to_unreviewed(repo, changed, base_sha, anchor)
     return changed
+
+
+def _issue_is_open(repo: str, number: int) -> bool:
+    """True only for an open issue (not a pull request) of `repo`, read through `gh api`."""
+    result = subprocess.run(
+        ["gh", "api", f"repos/{repo}/issues/{number}", "--jq", "[.state, (.pull_request != null)]"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return False
+    try:
+        state, is_pr = json.loads(result.stdout)
+    except (ValueError, TypeError):
+        return False
+    return state == "open" and is_pr is False
+
+
+def _compare_paths(repo: str, base_sha: str, head_sha: str) -> list[str]:
+    """The paths `head_sha` changes against its merge base with `base_sha`, from GitHub's compare
+    API (which serves a commit this checkout lacks). Raises when the list may be incomplete: the
+    API returns at most 300 files."""
+    result = subprocess.run(
+        [
+            "gh",
+            "api",
+            f"repos/{repo}/compare/{base_sha}...{head_sha}",
+            "--jq",
+            "[.files[] | .filename, (.previous_filename // empty)]",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("compare API failed")
+    paths = json.loads(result.stdout)
+    # 300 is the API's file cap; a rename lists two paths, so this bound is conservative.
+    if not isinstance(paths, list) or len(paths) >= 300:
+        raise RuntimeError("compare API list unusable or truncated")
+    return [p for p in paths if isinstance(p, str)]
+
+
+def _handle_carry_findings(args: argparse.Namespace) -> int:
+    """The anchor run's blocking findings that still block (issue #639, R7), written as JSON
+    `{"count": N, "carried": [...]}`. Each carried finding is printed with the waiver line that
+    would accept it. Exits 0 on a decision, 2 when the inputs cannot be read (the caller must
+    treat that as blocking)."""
+    from scripts.marketplace_ci.review import CarryError, carry_blocking_findings
+
+    carried: list[dict] = []
+    if args.anchor_sha:
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repo):
+            print(f"carry-findings: bad --repo {args.repo!r}", file=sys.stderr)
+            return 2
+        try:
+            anchor_result = json.loads(Path(args.anchor_result).read_text(encoding="utf-8"))
+            body = Path(args.pr_body_file).read_text(encoding="utf-8")
+        except (OSError, ValueError) as exc:
+            print(f"carry-findings: cannot read inputs: {exc}", file=sys.stderr)
+            return 2
+        try:
+            carried = carry_blocking_findings(
+                Path.cwd(),
+                args.base_sha,
+                args.anchor_sha,
+                anchor_result,
+                body,
+                lambda n: _issue_is_open(args.repo, n),
+                lambda: _compare_paths(args.repo, args.base_sha, args.anchor_sha),
+            )
+        except CarryError as exc:
+            print(f"carry-findings: {exc}", file=sys.stderr)
+            return 2
+    payload = {"count": len(carried), "carried": carried}
+    Path(args.json_output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    for f in carried:
+        print(f"- {f['rule']} {f['path']}:{f['line']} \u2013 accepted|residual|deferred #<issue>")
+    print(f"carried blocking findings: {len(carried)}")
+    return 0
 
 
 def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
@@ -1707,6 +1787,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="with --ci-delta: review only what the PR changed since this already-reviewed head",
     )
     check_scope_bypass.set_defaults(handler=_handle_check_scope_bypass)
+
+    carry_findings = subparsers.add_parser(
+        "carry-findings",
+        help="list the last reviewed run's blocking findings that still block (issue #639)",
+    )
+    carry_findings.add_argument("--base-sha", required=True, metavar="SHA")
+    carry_findings.add_argument("--anchor-sha", default="", metavar="SHA")
+    carry_findings.add_argument("--anchor-result", default="", metavar="PATH")
+    carry_findings.add_argument("--pr-body-file", default="", metavar="PATH")
+    carry_findings.add_argument("--repo", default="", metavar="OWNER/REPO")
+    carry_findings.add_argument("--json-output", required=True, metavar="PATH")
+    carry_findings.set_defaults(handler=_handle_carry_findings)
 
     run_codex_review = subparsers.add_parser(
         "run-codex-review",

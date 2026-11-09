@@ -5,7 +5,9 @@ on:
     # "labeled" is required so applying the bypass label actually re-triggers
     # a run -- without it, a maintainer's attested bypass would sit inert
     # against an already-failed check with no automatic re-evaluation.
-    types: [opened, synchronize, reopened, edited, labeled]
+    # ready_for_review: a draft gets no Codex review, and moving it to ready reviews the whole PR
+    # (docs/ci-codex-review-user-requirements.md, R14).
+    types: [opened, synchronize, reopened, edited, labeled, ready_for_review]
 
 concurrency:
   group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -707,9 +709,18 @@ jobs:
       contents: read
       # Read this PR's earlier Marketplace CI runs to find the last reviewed head (issue #639).
       actions: read
+      # Check that a `deferred` waiver names an open issue (R7).
+      issues: read
+      # Read the live PR body for waivers (R7).
+      pull-requests: read
     outputs:
       bypass_eligible: ${{ steps.scope.outputs.bypass_eligible }}
       anchor_sha: ${{ steps.anchor.outputs.sha }}
+      # Blocking findings carried from the last reviewed run (R7); "error" when not computed.
+      carried_blocking: ${{ steps.carry.outputs.count }}
+      # This run was started by adding the bypass label (R12): no Codex call, and publish
+      # passes only on a valid attestation.
+      bypass_label_run: ${{ steps.scope.outputs.bypass_label_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -903,9 +914,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           EVENT_ACTION: ${{ github.event.action }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           anchor=""
-          if [ "$EVENT_ACTION" != "opened" ]; then
+          # opened and ready_for_review review the whole PR (R4, R14); a draft is not reviewed.
+          if [ "$IS_DRAFT" != "true" ] && [ "$EVENT_ACTION" != "opened" ] \
+            && [ "$EVENT_ACTION" != "ready_for_review" ]; then
             runs=$(gh api -X GET "repos/$REPO/actions/workflows/marketplace-ci.yml/runs" \
               -f event=pull_request -f branch="$HEAD_REF" -f status=completed -F per_page=30 \
               --jq ".workflow_runs[] | select(.id != $RUN_ID)
@@ -928,6 +942,7 @@ jobs:
               fi
               if [ "$status" = "findings" ] || [ "$status" = "clean" ]; then
                 anchor="$head_sha"
+                cp "$dir/codex-review-result.json" "$RUNNER_TEMP/anchor-result.json"
                 break
               fi
             done <<< "$runs"
@@ -948,6 +963,49 @@ jobs:
             || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA" \
             || echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped"
 
+      # R7: the last reviewed run's blocking findings keep blocking while their file is unchanged,
+      # unless the PR body's `## Accepted CI findings` section waives them. Runs from the
+      # base-restored code. Anything but a clean decision reports "error", which publish blocks on.
+      - name: Carry forward the last review's blocking findings
+        id: carry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          count="error"
+          # The live body, not the event's: a re-run of an old `edited` run must not bring back a
+          # waiver that has since been removed.
+          set +e
+          gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.body // ""' > "$RUNNER_TEMP/pr-body.txt"
+          body_rc=$?
+          uv run python -m scripts.marketplace_ci carry-findings \
+            --base-sha "$BASE_SHA" --anchor-sha "$ANCHOR_SHA" \
+            --anchor-result "$RUNNER_TEMP/anchor-result.json" \
+            --pr-body-file "$RUNNER_TEMP/pr-body.txt" --repo "$REPO" \
+            --json-output carried.json > carried.txt
+          rc=$?
+          set -e
+          if [ $body_rc -eq 0 ] && [ $rc -eq 0 ] && [ -f carried.json ]; then
+            candidate=$(jq -r '.count' carried.json 2>/dev/null || echo "")
+            if printf '%s' "$candidate" | grep -Eq '^[0-9]+$'; then
+              count="$candidate"
+            fi
+          fi
+          if [ "$count" != "0" ] && [ -f carried.txt ]; then
+            {
+              echo "### Blocking findings carried from the last review"
+              echo "Fix them, or waive one by adding its line to a \`## Accepted CI findings\` section of the PR body (a path with spaces cannot be waived):"
+              echo '```'
+              cat carried.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "carried blocking findings: $count"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
       - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
         id: scope
         env:
@@ -959,7 +1017,21 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.event.after }}
           ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          EVENT_ACTION: ${{ github.event.action }}
+          LABEL_NAME: ${{ github.event.label.name }}
         run: |
+          bypass_label_run="false"
+          if [ "$EVENT_ACTION" = "labeled" ] && [ "$LABEL_NAME" = "s: codex review bypassed" ]; then
+            bypass_label_run="true"
+          fi
+          echo "bypass_label_run=$bypass_label_run" >> "$GITHUB_OUTPUT"
+          # R14: a draft gets no Codex review and publish passes as skipped.
+          if [ "$IS_DRAFT" = "true" ]; then
+            echo "draft PR: the Codex delta review runs when it is marked ready"
+            echo "bypass_eligible=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Deliberately defaults to bypass_eligible=false (i.e. codex-review
           # runs normally) if the scope computation itself fails for any
           # reason -- fail closed on an infrastructure error, never silently
@@ -987,7 +1059,10 @@ jobs:
   codex-review:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity, prefix-permanence, compute-scope]
-    if: github.event.pull_request.head.repo.fork == false && needs.compute-scope.outputs.bypass_eligible != 'true'
+    if: >-
+      github.event.pull_request.head.repo.fork == false
+      && needs.compute-scope.outputs.bypass_eligible != 'true'
+      && needs.compute-scope.outputs.bypass_label_run != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -1443,6 +1518,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      # Re-read the live draft flag and head (R14).
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -1799,6 +1876,13 @@ jobs:
           BYPASS_ELIGIBLE: ${{ needs.compute-scope.outputs.bypass_eligible }}
           CODEX_RESULT: ${{ needs.codex-review.result }}
           REVIEW_STATUS: ${{ needs.codex-review.outputs.review_status }}
+          CARRIED_BLOCKING: ${{ needs.compute-scope.outputs.carried_blocking }}
+          BYPASS_LABEL_RUN: ${{ needs.compute-scope.outputs.bypass_label_run }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PREFIX_PERMANENCE_RESULT: ${{ needs.prefix-permanence.result }}
           HYGIENE_RESULT: ${{ needs.hygiene.result }}
           PYTHON_QUALITY_RESULT: ${{ needs.python-quality.result }}
@@ -1835,6 +1919,34 @@ jobs:
           # compute-scope must never read as a legitimate bypass.
           if [ "$SCOPE_RESULT" != "success" ]; then
             echo "compute-scope did not succeed (result: $SCOPE_RESULT) -- cannot verify the automatic reviewer-scope bypass, failing closed."
+            exit 1
+          fi
+          # R14: a draft gets no Codex review; it passes as skipped and cannot be merged anyway.
+          # A re-run replays the event payload, so the draft flag is re-read live: the skip holds
+          # only while the PR is still a draft at the same head.
+          if [ "$IS_DRAFT" = "true" ] && [ "$BYPASS_ELIGIBLE" = "true" ] && [ "$CODEX_RESULT" = "skipped" ]; then
+            live=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.draft) \(.head.sha)"' 2>/dev/null || echo "")
+            if [ "$live" = "true $EVENT_HEAD_SHA" ]; then
+              echo "Draft PR: the Codex delta review runs when the PR is marked ready."
+              exit 0
+            fi
+            echo "This run saw a draft, but the PR is no longer a draft at this head (or that could not be read) -- failing closed."
+            exit 1
+          fi
+          # R12: the bypass label skipped codex-review, so it only passes with a valid attestation,
+          # which was checked above.
+          if [ "$BYPASS_LABEL_RUN" = "true" ]; then
+            echo "The bypass label was added without a valid SHA-bound attestation for this head -- failing closed."
+            exit 1
+          fi
+          # R7: blocking findings of the last reviewed run whose file is unchanged and that the PR
+          # body does not waive. "error" (or anything not a number) means they were not computed.
+          if [ "$CARRIED_BLOCKING" != "0" ]; then
+            if printf '%s' "$CARRIED_BLOCKING" | grep -Eq '^[0-9]+$'; then
+              echo "$CARRIED_BLOCKING blocking finding(s) carried from the last review are not fixed or waived. See the compute-scope job summary for the waiver lines."
+            else
+              echo "Carried findings could not be computed (carried_blocking=${CARRIED_BLOCKING:-none}) -- failing closed."
+            fi
             exit 1
           fi
           # A 'skipped' codex-review is only legitimate when compute-scope
