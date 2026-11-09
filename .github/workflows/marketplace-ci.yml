@@ -705,8 +705,11 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      # Read this PR's earlier Marketplace CI runs to find the last reviewed head (issue #639).
+      actions: read
     outputs:
       bypass_eligible: ${{ steps.scope.outputs.bypass_eligible }}
+      anchor_sha: ${{ steps.anchor.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -882,6 +885,69 @@ jobs:
 
       - run: uv sync --locked --no-config --group dev
 
+      # CI reviews only what no earlier run reviewed (issue #639). The anchor is the PR head of the
+      # newest other run of this workflow for this PR whose `Codex delta review` job finished
+      # (success or failure; cancelled or skipped runs reviewed nothing) with a result of
+      # `findings` or `clean`. narrow_to_unreviewed distrusts an anchor whose own changes touch
+      # a gate-critical path, since that run's code and workflow came from the PR. `opened` has none by
+      # definition, and no such run means the first review: the whole PR. Read from the GitHub
+      # API, never from the PR. A failed lookup leaves the anchor empty, so the review widens
+      # to the whole PR rather than skipping anything. Fetched by SHA when this checkout lacks
+      # it; a SHA that cannot be fetched (force-pushed away) skips the review, by decision.
+      - name: Find the last reviewed head
+        id: anchor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          anchor=""
+          if [ "$EVENT_ACTION" != "opened" ]; then
+            runs=$(gh api -X GET "repos/$REPO/actions/workflows/marketplace-ci.yml/runs" \
+              -f event=pull_request -f branch="$HEAD_REF" -f status=completed -F per_page=30 \
+              --jq ".workflow_runs[] | select(.id != $RUN_ID)
+                    | select(.head_repository.full_name == \"$REPO\")
+                    | select(any(.pull_requests[]; .number == $PR_NUMBER))
+                    | \"\(.id) \(.head_sha)\"" ) || runs=""
+            while read -r run_id head_sha; do
+              [ -n "$run_id" ] || continue
+              conclusion=$(gh api -X GET "repos/$REPO/actions/runs/$run_id/jobs" -F per_page=100 \
+                --jq '[.jobs[] | select(.name == "Codex delta review") | .conclusion][0] // ""') || conclusion=""
+              if [ "$conclusion" != "success" ] && [ "$conclusion" != "failure" ]; then
+                continue
+              fi
+              # A job that failed before its reviewers ran (could_not_run: the delta-base
+              # derivation, the Tier-1 refusal, the sandbox probe) reviewed nothing either.
+              dir="$RUNNER_TEMP/anchor-$run_id"
+              status=""
+              if gh run download "$run_id" -R "$REPO" -n codex-review-result -D "$dir" >/dev/null 2>&1; then
+                status=$(jq -r '.status // empty' "$dir/codex-review-result.json" 2>/dev/null || true)
+              fi
+              if [ "$status" = "findings" ] || [ "$status" = "clean" ]; then
+                anchor="$head_sha"
+                break
+              fi
+            done <<< "$runs"
+          fi
+          if ! printf '%s' "$anchor" | grep -Eq '^[0-9a-f]{40}$'; then
+            anchor=""
+          fi
+          echo "anchor: ${anchor:-none (whole PR is reviewed)}"
+          echo "sha=$anchor" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch the last reviewed head when this checkout lacks it
+        if: steps.anchor.outputs.sha != ''
+        env:
+          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
+            || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA" \
+            || echo "::notice::last reviewed head $ANCHOR_SHA cannot be fetched (force-pushed away?); the Codex review is skipped"
+
       - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
         id: scope
         env:
@@ -892,6 +958,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.event.after }}
+          ANCHOR_SHA: ${{ steps.anchor.outputs.sha }}
         run: |
           # Deliberately defaults to bypass_eligible=false (i.e. codex-review
           # runs normally) if the scope computation itself fails for any
@@ -902,6 +969,7 @@ jobs:
             --base-sha "$BASE_SHA" \
             --before "$BEFORE_SHA" \
             --after "$AFTER_SHA" \
+            --ci-delta --anchor-sha "$ANCHOR_SHA" \
             --json-output scope-bypass.json
           rc=$?
           set -e
@@ -1301,9 +1369,20 @@ jobs:
           # this fallback and the variable, so keep the expression in this exact shape.
           CODEX_KIT_REVIEW_TIMEOUT_MS: ${{ vars.CODEX_KIT_REVIEW_TIMEOUT_MS || '600000' }}
           BASE_SHA: ${{ steps.delta_base.outputs.sha }}
+          ANCHOR_SHA: ${{ needs.compute-scope.outputs.anchor_sha }}
+          REPO: ${{ github.repository }}
         run: |
+          # Same anchor compute-scope used (issue #639); fetched here too, since this job's
+          # merge-ref checkout may not hold it. compute-scope found it, so failing to fetch it
+          # here fails closed instead of narrowing differently from compute-scope.
+          if [ -n "$ANCHOR_SHA" ]; then
+            git cat-file -e "$ANCHOR_SHA^{commit}" 2>/dev/null \
+              || git fetch --no-tags --quiet "https://github.com/$REPO" "$ANCHOR_SHA" \
+              || { echo "::error::cannot fetch the last reviewed head $ANCHOR_SHA"; exit 1; }
+          fi
           uv run python -m scripts.marketplace_ci run-codex-review \
             --base-sha "$BASE_SHA" \
+            --ci-delta --anchor-sha "$ANCHOR_SHA" \
             --output codex-review-result.json
 
       - name: Upload review result
